@@ -3,7 +3,7 @@ import test from "ava";
 import TestRenderer from "react-test-renderer";
 import { HeatmapLayer } from "./HeatmapLayer.tsx";
 
-test("render empty", (t) => {
+test("empty", (t) => {
   const keyboard = loadKeyboard(Layout.EN_US);
 
   const renderer = TestRenderer.create(
@@ -15,16 +15,16 @@ test("render empty", (t) => {
   t.snapshot(renderer.toJSON());
 });
 
-test("render with equal counts", (t) => {
+test("equal counts", (t) => {
   const keyboard = loadKeyboard(Layout.EN_US);
 
   const renderer = TestRenderer.create(
     <KeyboardContext.Provider value={keyboard}>
       <HeatmapLayer
         histogram={[
-          [{ codePoint: 0x0061 }, 1],
-          [{ codePoint: 0x0062 }, 1],
-          [{ codePoint: 0x0063 }, 1],
+          [{ codePoint: /* a */ 0x0061 }, 1],
+          [{ codePoint: /* b */ 0x0062 }, 1],
+          [{ codePoint: /* c */ 0x0063 }, 1],
         ]}
         modifier="f"
       />
@@ -34,16 +34,35 @@ test("render with equal counts", (t) => {
   t.snapshot(renderer.toJSON());
 });
 
-test("render with different counts", (t) => {
+test("different counts", (t) => {
   const keyboard = loadKeyboard(Layout.EN_US);
 
   const renderer = TestRenderer.create(
     <KeyboardContext.Provider value={keyboard}>
       <HeatmapLayer
         histogram={[
-          [{ codePoint: 0x0061 }, 1],
-          [{ codePoint: 0x0062 }, 2],
-          [{ codePoint: 0x0063 }, 3],
+          [{ codePoint: /* a */ 0x0061 }, 1],
+          [{ codePoint: /* b */ 0x0062 }, 2],
+          [{ codePoint: /* c */ 0x0063 }, 3],
+        ]}
+        modifier="f"
+      />
+    </KeyboardContext.Provider>,
+  );
+
+  t.snapshot(renderer.toJSON());
+});
+
+test("combine counts for the same key", (t) => {
+  const keyboard = loadKeyboard(Layout.EN_US);
+
+  const renderer = TestRenderer.create(
+    <KeyboardContext.Provider value={keyboard}>
+      <HeatmapLayer
+        histogram={[
+          [{ codePoint: /* a */ 0x0061 }, 1],
+          [{ codePoint: /* A */ 0x0041 }, 1],
+          [{ codePoint: /* b */ 0x0062 }, 1],
         ]}
         modifier="f"
       />
