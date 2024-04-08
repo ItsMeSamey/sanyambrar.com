@@ -35,7 +35,7 @@ export default {
   KeyK: "eE",
   KeyL: "oO",
   Semicolon: "iI",
-  Quote: `'"`,
+  Quote: "'\"",
   IntlBackslash: "\\|",
   KeyZ: "zZ",
   KeyX: "xX",

@@ -4,7 +4,7 @@ import { type CodePointDict } from "../../types.ts";
 
 // prettier-ignore
 export const LAYOUT_DE_MINE: CodePointDict = {
-  Backquote: [/* ^ */ 0x005e, /* ˇ */ 0x02c7],
+  Backquote: [/* DEAD CIRCUMFLEX ACCENT */ 0x0302, /* DEAD CARON */ 0x030c],
   Digit1: [/* 1 */ 0x0031, /* ° */ 0x00b0],
   Digit2: [/* 2 */ 0x0032, /* § */ 0x00a7],
   Digit3: [/* 3 */ 0x0033, /* ℓ */ 0x2113],
@@ -16,7 +16,7 @@ export const LAYOUT_DE_MINE: CodePointDict = {
   Digit9: [/* 9 */ 0x0039, /* “ */ 0x201c],
   Digit0: [/* 0 */ 0x0030, /* ” */ 0x201d],
   Minus: [/* - */ 0x002d, /* — */ 0x2014],
-  Equal: [/* ` */ 0x0060, /* ¸ */ 0x00b8],
+  Equal: [/* DEAD GRAVE ACCENT */ 0x0300, /* DEAD CEDILLA */ 0x0327, /* DEAD DIAERESIS */ 0x0308],
   KeyQ: [/* j */ 0x006a, /* J */ 0x004a],
   KeyW: [/* l */ 0x006c, /* L */ 0x004c],
   KeyE: [/* u */ 0x0075, /* U */ 0x0055],
@@ -26,9 +26,10 @@ export const LAYOUT_DE_MINE: CodePointDict = {
   KeyU: [/* b */ 0x0062, /* B */ 0x0042],
   KeyI: [/* d */ 0x0064, /* D */ 0x0044],
   KeyO: [/* g */ 0x0067, /* G */ 0x0047],
-  KeyP: [/* Y */ 0x0059, /* Y */ 0x0059],
+  KeyP: [/* y */ 0x0079, /* Y */ 0x0059],
   BracketLeft: [/* z */ 0x007a, /* Z */ 0x005a],
   BracketRight: [/* ß */ 0x00df, /* ẞ */ 0x1e9e],
+  Backslash: [/* DEAD ACUTE ACCENT */ 0x0301, /* DEAD TILDE */ 0x0303],
   KeyA: [/* c */ 0x0063, /* C */ 0x0043],
   KeyS: [/* r */ 0x0072, /* R */ 0x0052],
   KeyD: [/* i */ 0x0069, /* I */ 0x0049],
@@ -39,7 +40,6 @@ export const LAYOUT_DE_MINE: CodePointDict = {
   KeyK: [/* t */ 0x0074, /* T */ 0x0054],
   KeyL: [/* s */ 0x0073, /* S */ 0x0053],
   Semicolon: [/* h */ 0x0068, /* H */ 0x0048],
-  IntlBackslash: [/* ´ */ 0x00b4, /* ˜ */ 0x02dc],
   KeyZ: [/* v */ 0x0076, /* V */ 0x0056],
   KeyX: [/* x */ 0x0078, /* X */ 0x0058],
   KeyC: [/* ü */ 0x00fc, /* Ü */ 0x00dc],
