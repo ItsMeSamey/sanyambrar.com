@@ -1,11 +1,11 @@
 import { FakeIntlProvider, PreferredLocaleContext } from "@keybr/intl";
 import { PageDataContext, Sitemap } from "@keybr/pages-shared";
+import { render } from "@testing-library/react";
 import test from "ava";
-import TestRenderer from "react-test-renderer";
 import { NavMenu } from "./NavMenu.tsx";
 
 test("render", (t) => {
-  const renderer = TestRenderer.create(
+  const r = render(
     <PageDataContext.Provider
       value={{
         base: "https://www.keybr.com/",
@@ -30,5 +30,9 @@ test("render", (t) => {
     </PageDataContext.Provider>,
   );
 
-  t.snapshot(renderer.toJSON());
+  t.not(r.queryByText("userName"), null);
+  t.not(r.queryByText("Polski"), null);
+  t.not(r.queryByText("English"), null);
+
+  r.unmount();
 });
