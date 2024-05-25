@@ -5,12 +5,8 @@
   "main": "lib/index.ts",
   "types": ".types/index.d.ts",
   "dependencies": {
-    "@keybr/debug": "*",
-    "@keybr/intl": "*",
-    "@keybr/keyboard": "*",
-    "@keybr/lang": "*",
-    "@keybr/unicode": "*",
-    "@keybr/widget": "*"
+    "@keybr/content": "*",
+    "@keybr/debug": "*"
   },
   "devDependencies": {},
   "scripts": {
