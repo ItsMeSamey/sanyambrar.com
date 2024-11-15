@@ -11,10 +11,8 @@ import {
 export type IconButtonProps = {
   readonly autoFocus?: boolean;
   readonly children?: ReactNode;
-  readonly href?: string;
   readonly icon: ReactElement<IconProps>;
   readonly label?: ReactNode;
-  readonly target?: string;
   readonly title?: string;
 } & FocusProps &
   MouseProps &

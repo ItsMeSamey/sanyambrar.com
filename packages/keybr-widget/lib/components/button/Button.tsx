@@ -3,7 +3,6 @@ import {
   type ForwardedRef,
   forwardRef,
   type ReactNode,
-  type RefObject,
   useImperativeHandle,
   useRef,
 } from "react";
@@ -18,18 +17,16 @@ export const Button = forwardRef(function Button(
     anchor,
     children,
     disabled,
-    href,
     icon,
     label,
     size,
     tabIndex,
-    target,
     title,
     ...props
   }: ButtonProps,
   ref: ForwardedRef<ButtonRef>,
 ): ReactNode {
-  const element = useRef<HTMLAnchorElement | HTMLButtonElement>(null);
+  const element = useRef<HTMLButtonElement>(null);
   useImperativeHandle(ref, () => ({
     focus() {
       element.current?.focus();
@@ -43,45 +40,21 @@ export const Button = forwardRef(function Button(
       return getBoundingBox(element.current!, position);
     },
   }));
-  if (href != null) {
-    if (disabled != null) {
-      throw new TypeError();
-    }
-    return (
-      <a
-        {...props}
-        ref={element as RefObject<HTMLAnchorElement>}
-        className={clsx(
-          styles.button,
-          iconStyles.altIcon,
-          disabled && styles.disabled,
-          sizeClassName(size),
-        )}
-        href={href}
-        tabIndex={tabIndex}
-        target={target}
-        title={title}
-      >
-        {icon} {label || children}
-      </a>
-    );
-  } else {
-    return (
-      <button
-        {...props}
-        ref={element as RefObject<HTMLButtonElement>}
-        className={clsx(
-          styles.button,
-          iconStyles.altIcon,
-          disabled && styles.disabled,
-          sizeClassName(size),
-        )}
-        disabled={disabled}
-        tabIndex={tabIndex}
-        title={title}
-      >
-        {icon} {label || children}
-      </button>
-    );
-  }
+  return (
+    <button
+      {...props}
+      ref={element}
+      className={clsx(
+        styles.root,
+        iconStyles.altIcon,
+        disabled && styles.disabled,
+        sizeClassName(size),
+      )}
+      disabled={disabled}
+      tabIndex={tabIndex}
+      title={title}
+    >
+      {icon} {label || children}
+    </button>
+  );
 });
