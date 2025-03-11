@@ -1,3 +1,5 @@
+'use strict'
+
 import { showToast } from '~/registry/ui/toast'
 
 export function showError(e: Error) {

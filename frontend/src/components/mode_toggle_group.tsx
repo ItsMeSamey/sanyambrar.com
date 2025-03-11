@@ -1,3 +1,5 @@
+'use strict'
+
 import { createSignal, ValidComponent } from 'solid-js'
 import { ConfigColorMode, createLocalStorageManager, PolymorphicProps, useColorMode } from '@kobalte/core'
 import * as ToggleGroupPrimitive from '@kobalte/core/toggle-group'

@@ -1,3 +1,5 @@
+'use strict'
+
 // This way we dont create a new object every time we assign to a functions
 function nothingFn(v: any) { return v }
 

@@ -1,3 +1,5 @@
+'use strict'
+
 import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
 import bsearch from 'binary-search-bounds'

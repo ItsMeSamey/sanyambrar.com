@@ -1,3 +1,5 @@
+'use strict'
+
 import { createSignal, JSX, onCleanup, onMount } from 'solid-js'
 
 import '../css/pages/loading_screen.css'

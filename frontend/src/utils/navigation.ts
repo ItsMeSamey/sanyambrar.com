@@ -1,3 +1,5 @@
+'use strict'
+
 import { createSelector, createSignal, untrack } from 'solid-js'
 import { UrlSearchStore } from './store'
 

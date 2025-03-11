@@ -1,3 +1,5 @@
+'use strict'
+
 import { JSX, onCleanup, onMount, resetErrorBoundaries } from 'solid-js'
 
 import '../css/pages/error_page.css'

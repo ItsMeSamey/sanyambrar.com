@@ -1,3 +1,5 @@
+'use strict'
+
 import { appendFileSync, readFileSync, writeFileSync } from 'fs'
 
 const words = readFileSync('./words.txt', 'utf8').split('\n')
@@ -11,7 +13,7 @@ for (const word of words) {
 
 const fileName = `words.ts`
 
-writeFileSync(fileName, `export const WORDS: {[key: string]: string[]} = {\n`)
+writeFileSync(fileName, `'use strict'\nexport const WORDS: {[key: string]: string[]} = {\n`)
 for (const [size, words] of sized.entries()) {
   appendFileSync(fileName, `  w${size}: ${JSON.stringify(words.sort())},\n`)
 }

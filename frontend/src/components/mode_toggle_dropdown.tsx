@@ -1,3 +1,5 @@
+'use strict'
+
 import { createSignal, Match, Switch } from 'solid-js'
 import { ConfigColorMode, createLocalStorageManager, useColorMode } from '@kobalte/core'
 import { Button } from '~/registry/ui/button'

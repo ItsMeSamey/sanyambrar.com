@@ -1,3 +1,5 @@
+'use strict'
+
 import { batch, createEffect, createSignal, For, JSX, onCleanup, onMount } from 'solid-js'
 import { createMutable, createStore, SetStoreFunction, unwrap } from 'solid-js/store'
 import { showToast } from '~/registry/ui/toast'

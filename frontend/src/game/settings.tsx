@@ -1,3 +1,5 @@
+'use strict'
+
 import { createSignal, JSX, Show } from 'solid-js'
 import { IconSettings } from '~/components/icons'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
