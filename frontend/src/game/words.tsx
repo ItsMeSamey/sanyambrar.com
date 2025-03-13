@@ -7,14 +7,15 @@ import bsearch from 'binary-search-bounds'
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
 
 export interface HistoryEntry {
-  allowAny: boolean
-  history: string[]
+  a: boolean // allowAny
+  h: string // history
 }
+
 export interface Value {
-  idx: number
-  word: string
-  done?: 0 | 1
-  histories?: HistoryEntry[]
+  i: number // Idx
+  w: string // Word
+  a: boolean // AllowAny
+  h: HistoryEntry[] // Histories
 }
 
 type schemaValue = {
@@ -44,8 +45,11 @@ interface Schema {
 }
 
 let db: IDBPDatabase<Schema>
-openDB<Schema>('wordle.words', 1, {
+openDB<Schema>('wordle.words', 2, {
   upgrade(db) {
+    // Delete old data
+    for (const store of db.objectStoreNames) db.deleteObjectStore(store);
+
     for (let i = 3; i <= 20; i++) {
       const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'idx'})
       store.createIndex('wordIndex', 'word', {unique: true})
@@ -102,11 +106,9 @@ export async function setDone(word: string, h: [string, string][], allowAny: boo
   const store = db.transaction('w' + word.length, 'readwrite').objectStore('w' + word.length)
 
   const record: Value = await store.index('wordIndex').get(word) ?? {word}
-  record.done = 1
-  record.histories = record.histories ?? []
-  record.histories.push({
-    allowAny,
-    history: h.map(([w, _]) => w),
+  record.h.push({
+    a: allowAny,
+    h: h.map(([w, _]) => w).join(),
   })
 
   await store.put(record)
