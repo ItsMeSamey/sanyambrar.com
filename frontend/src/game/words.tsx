@@ -19,9 +19,9 @@ export interface Value {
 }
 
 type schemaValue = {
-  key: 'idx'
+  key: 'i'
   value: Value
-  indexes: {'wordIndex': 'word', 'doneIndex': 'done'}
+  indexes: {'wordIndex': 'w'}
 }
 interface Schema {
   'w3' : schemaValue
@@ -51,9 +51,8 @@ openDB<Schema>('wordle.words', 2, {
     for (const store of db.objectStoreNames) db.deleteObjectStore(store);
 
     for (let i = 3; i <= 20; i++) {
-      const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'idx'})
-      store.createIndex('wordIndex', 'word', {unique: true})
-      store.createIndex('doneIndex', 'done')
+      const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'i'})
+      store.createIndex('wordIndex', 'w', {unique: true})
     }
   }
 }).then(_db => db = _db).catch(console.error)
