@@ -45,7 +45,7 @@ interface Schema {
 }
 
 let db: IDBPDatabase<Schema>
-openDB<Schema>('game.wordle.words', 1, {
+openDB<Schema>('game.wordle', 1, {
   upgrade(db) {
     // Delete old data
     for (const store of db.objectStoreNames) db.deleteObjectStore(store);
