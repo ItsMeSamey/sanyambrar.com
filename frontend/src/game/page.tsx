@@ -120,7 +120,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   const stateStore = new LocalstorageStore<{
     word: string
     history: [string, string][]
-  }>('wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength, {
+  }>('game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength, {
     word: '',
     history: [],
   }, str => {
@@ -327,14 +327,14 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 }
 
 export default function Wordle() {
-  const hardStore = new LocalstorageStore<SettingsHardProps>('wordle.settings.hard', {
+  const hardStore = new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {
     wordLength: 6,
     allowAny: false,
   }, JSON.parse, JSON.stringify)
   const hard = createMutable(hardStore.get()!)
   createEffect(() => hardStore.set(hard))
 
-  const softStore = new LocalstorageStore<SettingsSoftProps>('wordle.settings.soft', {
+  const softStore = new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {
     reveal: false,
     fastInvalidate: false,
   }, JSON.parse, val => JSON.stringify(val, (k, v) => {
