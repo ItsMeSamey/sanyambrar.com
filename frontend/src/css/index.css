@@ -190,6 +190,6 @@
 }
 
 body {
-  @apply w-full h-screen bg-background text-foreground flex justify-center items-center m-0 overflow-clip;
+  @apply w-full h-dvh bg-background text-foreground flex justify-center items-center m-0 overflow-clip;
 }
 
