@@ -7,7 +7,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
-import { Settings, SettingsHardProps, SettingsSoftProps } from './game_settings'
+import { Settings, SettingsHardProps, SettingsSoftProps } from './page_settings'
 import { calcDiff, getGuessWord, getRandomWord, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
