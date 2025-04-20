@@ -310,7 +310,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
-    <div class='flex flex-col max-h-auto overflow-y-scroll overflow-x-visible mx-auto p-0 max-sm:mt-auto'>
+    <div class='flex flex-col max-h-auto overflow-y-scroll overflow-x-visible mx-auto p-0 max-sm:mt-auto scrollbar-none'>
       <For each={older}>
         {([word, mask]) => Block(hard.wordLength, word, mask)}
       </For>
