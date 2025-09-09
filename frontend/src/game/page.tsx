@@ -296,13 +296,11 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       if (key.length !== 1 || !ABCD.includes(key)) return
       if (last[0].length === hard.wordLength) {
         currentBlock.classList.remove('motion-preset-wiggle')
-        setTimeout(() => {
-          currentBlock.classList.add('motion-preset-wiggle')
-        }, 0)
+        setTimeout(() => currentBlock.classList.add('motion-preset-wiggle'), 0)
         return
       }
 
-      last[0] = last[0] + e.key
+      last[0] = last[0] + e.key.toLowerCase()
       gameState.fastInvalidate()
     })
   }
