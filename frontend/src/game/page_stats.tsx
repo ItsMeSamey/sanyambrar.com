@@ -7,6 +7,8 @@ import { Popover as PopoverPrimitive } from '@kobalte/core/popover'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Block } from './page'
+import { IconHome } from '~/components/icons'
+import { Page, setP } from '../utils/navigation'
 
 interface GameStats {
   totalGames: number
@@ -226,6 +228,7 @@ function StatsPage() {
   const [stats] = createResource(WordStats.fetchStats);
 
   return <div class='container mx-auto p-4 h-full'>
+    <IconHome class='absolute top-2 left-2 size-10 p-[0.625rem] bg-muted/50 hover:bg-muted rounded-lg' onClick={() => setP(Page.Wordle)}/>
     <h1 class='text-2xl font-bold mb-4'>Analytics</h1>
     <Switch>
       <Match when={stats.loading}>
