@@ -10,7 +10,8 @@ import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/s
 import { untrack } from 'solid-js/web'
 import { Button } from '~/registry/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { WordLength } from './history'
+import { Page, setP } from '../utils/navigation'
+import { WordLength } from './words'
 
 // Props that can be changed without a re-render
 export interface SettingsSoftProps {
@@ -138,6 +139,17 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         </Button>,
         'Reveals and then skips the current word.'
       )}
+      <div class='flex flex-row gap-2'>
+        {TooltipWithContent(
+          <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
+            Reveal
+          </Button>,
+          'Reveals and then skips the current word.'
+        )}
+        <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300' onClick={() => setP(Page.Stats)}>
+          Stats
+        </Button>
+      </div>
     </PopoverContent>
   </Popover>
 }

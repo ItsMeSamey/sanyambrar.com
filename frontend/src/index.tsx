@@ -3,6 +3,7 @@ import { render } from 'solid-js/web'
 import { ColorModeProvider, ColorModeScript, createLocalStorageManager } from '@kobalte/core'
 import { ErrorBoundary, Match, Switch } from 'solid-js'
 import { Toaster } from '~/registry/ui/toast'
+import StatsPage from './game/page_stats'
 
 import './css/index.css'
 
@@ -24,6 +25,9 @@ render(function() {
       <Switch fallback={ErrorPage(NoPageError.err, NoPageError.reset)}>
         <Match when={selectP(Page.Wordle)}>
           <Wordle />
+        </Match>
+        <Match when={selectP(Page.Stats)}>
+          <StatsPage />
         </Match>
       </Switch>
     </ErrorBoundary>

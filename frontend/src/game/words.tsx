@@ -13,14 +13,15 @@ export enum KindEnum {
   Revealed = 2,
 }
 
-interface HistoryEntry {
+export interface HistoryEntry {
   a: boolean // AllowAny
   k: KindEnum // Kind
-  t: number // maxTries
+  m: number // maxTries
+  t: number // Timestamp
   h: string // Histories
 }
 
-interface Value {
+export interface Value {
   i: number // Idx
   w: string // Word
   h: HistoryEntry[] // The history for this word
@@ -115,7 +116,8 @@ export async function setDone(entry: {word: string, history: [string, string][]}
   record.h.push({
     a: hard.allowAny,
     k: kind,
-    t: hard.maxTries,
+    m: hard.maxTries,
+    t: Date.now(),
     h: entry.history.map(([w, _]) => w).join(''),
   })
 

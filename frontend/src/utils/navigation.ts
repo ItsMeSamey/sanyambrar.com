@@ -5,6 +5,7 @@ import { UrlSearchStore } from './store'
 
 export enum Page {
   Wordle,
+  Stats,
 
   Error,
 }
