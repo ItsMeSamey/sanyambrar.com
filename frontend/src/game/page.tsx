@@ -196,33 +196,31 @@ class GameState {
   }
 
   submit() {
-    batch(() => {
-      const last = this.history.at(-1)!
-      const guess = unwrap(last)[0]
-      if (guess.length !== this.hard.wordLength) return showError(new Error('Invalid length'))
+    const last = this.history.at(-1)!
+    const guess = unwrap(last)[0]
+    if (guess.length !== this.hard.wordLength) return showError(new Error('Invalid length'))
 
-      if (!this.hard.allowAny && !getGuessWord(guess)) {
-        showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in dictionary', variant: 'error', duration: 1000})
-        return
-      }
+    if (!this.hard.allowAny && !getGuessWord(guess)) {
+      showToast({title: 'Invalid Guess 😕', description: guess + ' is not present in dictionary', variant: 'error', duration: 1000})
+      return
+    }
 
-      const response = calcDiff(this.stateStore.current_value!.word, guess)
+    const response = calcDiff(this.stateStore.current_value!.word, guess)
 
-      for (let i = 0; i < this.hard.wordLength; i += 1) {
-        const old = this.state.keyboard[guess[i].toUpperCase() as Keys];
-        if (old.state === 'g' || (old.state === 'y' && response[i] === 'r')) continue;
-        old.state = response[i] as WordleStringState
-      }
+    for (let i = 0; i < this.hard.wordLength; i += 1) {
+      const old = this.state.keyboard[guess[i].toUpperCase() as Keys];
+      if (old.state === 'g' || (old.state === 'y' && response[i] === 'r')) continue;
+      old.state = response[i] as WordleStringState
+    }
 
-      last[1] = response
-      if (response.split('').every(s => s === 'g')) {
-        this.state.showPopOver = true
-        return
-      }
-      
+    last[1] = response
+    this.stateStore.set(this.stateStore.current_value!)
+
+    if (response.split('').every(s => s === 'g')) {
+      this.state.showPopOver = true
+    } else {
       this.history.push(['', ''])
-      this.stateStore.set(this.stateStore.current_value!)
-    })
+    }
   }
 
   fastInvalidate() {
@@ -230,11 +228,6 @@ class GameState {
 
     const last = this.history.at(-1)!
     const [word, color] = last
-    if (color.length > word.length) {
-      last[1] = color.slice(0, word.length)
-      return
-    }
-
     last[1] = color + (this.existsPrefix(word) ? 'b': 'r')
   }
 
@@ -245,11 +238,9 @@ class GameState {
       setDone(this.stateStore.current_value!.word, this.stateStore.current_value!.history, this.hard.allowAny)
     }
 
-    batch(() => {
-      this.history.length = 0
-      this.history.push(['', ''])
-      this.state.keyboard = structuredClone(defaultKeyboardState)
-    })
+    this.history.length = 0
+    this.history.push(['', ''])
+    this.state.keyboard = structuredClone(defaultKeyboardState)
 
     this.stateStore.current_value!.word = getRandomWord(this.hard.wordLength)
     this.stateStore.set(this.stateStore.current_value!)
@@ -263,7 +254,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     if (soft.reveal) batch(() => {
       const last = gameState.history.at(-1)!
       last[0] = gameState.stateStore.current_value!.word
-      last[1] = Array.from({length: hard.wordLength}).fill('g').join('')
+      last[1] = Array.from({length: hard.wordLength}).fill('b').join('')
       gameState.state.showPopOver = true
     })
   })
@@ -281,40 +272,36 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    const last = gameState.history.at(-1)!
-    if (e.key === 'Escape') {
-      batch(() => {
+    batch(() => {
+      const last = gameState.history.at(-1)!
+      if (e.key === 'Escape') {
         last[0] = ''
         last[1] = ''
-      })
-      return
-    }
+        return
+      }
 
-    setKeyState(e.key, true)
-    if (e.key === 'Enter') {
-      gameState.submit()
-      return
-    }
+      setKeyState(e.key, true)
+      if (e.key === 'Enter') {
+        gameState.submit()
+        return
+      }
 
-    if (e.key === 'Backspace') {
-      batch(() => {
+      if (e.key === 'Backspace') {
         last[0] = (last[0] ?? '').slice(0, -1)
         last[1] = (last[1] ?? '').slice(0, -1)
-      })
-      return
-    }
+        return
+      }
 
-    const key = e.key.toUpperCase()
-    if (key.length !== 1 || !ABCD.includes(key)) return
-    if (last[0].length === hard.wordLength) {
-      currentBlock.classList.remove('motion-preset-wiggle')
-      setTimeout(() => {
-        currentBlock.classList.add('motion-preset-wiggle')
-      }, 0)
-      return
-    }
+      const key = e.key.toUpperCase()
+      if (key.length !== 1 || !ABCD.includes(key)) return
+      if (last[0].length === hard.wordLength) {
+        currentBlock.classList.remove('motion-preset-wiggle')
+        setTimeout(() => {
+          currentBlock.classList.add('motion-preset-wiggle')
+        }, 0)
+        return
+      }
 
-    batch(() => {
       last[0] = last[0] + e.key
       gameState.fastInvalidate()
     })
@@ -335,18 +322,27 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   })
 
   return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
-    <Drawer open={gameState.state.showPopOver} onOpenChange={state => {
+    <Drawer open={gameState.state.showPopOver} onOpenChange={state => batch(() => {
       gameState.resetState()
       gameState.state.showPopOver = state
-    }}>
+    })}>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle class='text-success-foreground'>{gameState.stateStore.current_value!.word}</DrawerTitle>
-          <DrawerDescription>
-            Correctly guessed in <span class={
-              gameState.history.length < hard.wordLength? 'text-success-foreground':
-              gameState.history.length < 2*hard.wordLength? 'text-warning-foreground': 'text-error-foreground'
-            }>{gameState.history.length+1}</span> attempts
+          <DrawerTitle class='text-success-foreground text-4xl tracking-widest'>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
+          <DrawerDescription class='text-2xl'>
+            {(() => {
+              const last = gameState.history.at(-1)!
+              const isCorrect = last[0] === gameState.stateStore.current_value!.word
+              const isFailed = hard.maxTries !== 1 && hard.maxTries === gameState.history.length
+              const str = isCorrect? 'Correctly guessed in ': isFailed? 'Failed after ': 'Revealed after '
+              return <>
+                {str}
+                <span class={
+                  !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
+                  gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
+                }>{gameState.history.length}</span> attempts
+              </>
+            })()}
           </DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
