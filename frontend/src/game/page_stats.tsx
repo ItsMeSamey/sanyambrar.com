@@ -37,6 +37,7 @@ class WordStats {
     const wordsStatsStats: Value[][] = []
 
     for (let i = 3; i <= 20; i++) {
+      let subTotalGuesses = 0
       const storeName = `w${i}` as const
       const tx = db.transaction(storeName, 'readonly')
       const store = tx.objectStore(storeName)
@@ -46,11 +47,12 @@ class WordStats {
         for (const history of record.h) {
           if (history.k === KindEnum.Correct) {
             totalWins += 1
-            totalGuesses += history.h.length
+            subTotalGuesses += history.h.length
           }
         }
       }
       wordsStatsStats.push(allRecords);
+      totalGuesses += subTotalGuesses / i
     }
 
     const words: Value[] = wordsStatsStats.flat()
@@ -73,7 +75,7 @@ class WordStats {
 
     return <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
-        class='max-h-[50dvh] overflow-y-scroll scrollbar scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
+        class='max-h-[45dvh] overflow-y-scroll scrollbar scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
       >
         <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
           <For each={guesses}>
@@ -195,16 +197,16 @@ class StatsSidebar {
 
     function renderStat(heading: JSX.Element, value: JSX.Element) {
       return <div class='p-2 border border-muted/50 text-center content-end'>
-        <h2 class='text-lg font-semibold text-muted-foreground'>{heading}</h2>
-        <p class='text-3xl font-bold'>{value}</p>
+        <h2 class='font-semibold text-muted-foreground'>{heading}</h2>
+        <p class='text-lg font-bold'>{value}</p>
       </div>
     }
 
-    return <div class='w-1/3 border border-muted-foreground/20 rounded-none p-4 bg-muted/10'>
-      <div class='grid grid-cols-2 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40'>
+    return <div class='w-1/3 border border-muted-foreground/20 rounded-none p-4 bg-muted/10 overflow-scroll scrollbar-none h-full pb-10'>
+      <div class='grid grid-cols-1 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40'>
         {renderStat('Total Games', this.stats.totalGames)}
         {renderStat('Total Wins', this.stats.totalWins)}
-        {renderStat('Win Rate', (this.stats.totalWins / this.stats.totalGames).toFixed(1) + '%')}
+        {renderStat('Win Rate', (100 * this.stats.totalWins / this.stats.totalGames).toFixed(1) + '%')}
         {renderStat('Average Guesses', this.stats.averageGuesses.toFixed(2))}
       </div>
       <h2 class='text-xl font-bold mb-2 uppercase'>{this.selectedValue()?.w || 'Detailed Stats'}</h2>
@@ -227,7 +229,7 @@ class StatsSidebar {
 function StatsPage() {
   const [stats] = createResource(WordStats.fetchStats);
 
-  return <div class='container mx-auto p-4 h-full'>
+  return <div class='mx-auto p-4 h-full w-full min-md:container'>
     <div
       class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40'
       onClick={() => setP(Page.Wordle)}
@@ -235,7 +237,7 @@ function StatsPage() {
       <IconHome class='size-5' />
     </div>
     
-    <h1 class='text-2xl font-bold mb-4'>Analytics</h1>
+    <h1 class='text-2xl font-bold mb-4 ml-8'>Analytics</h1>
     <Switch>
       <Match when={stats.loading}>
         <p>Loading stats...</p>

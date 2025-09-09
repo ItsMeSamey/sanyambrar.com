@@ -11,6 +11,7 @@ import { Settings, SettingsHardProps, SettingsSoftProps } from './page_settings'
 import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
+import { unwatchFile } from 'fs'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -208,16 +209,21 @@ class GameState {
     }
 
     last[1] = response
-    this.stateStore.set(this.stateStore.current_value!)
 
     if (response.split('').every(s => s === 'g')) {
+      this.stateStore.current_value!.history = unwrap(this.history)
+      this.stateStore.set(this.stateStore.current_value!)
       setDone(this.stateStore.current_value!, this.hard, KindEnum.Correct)
       this.state.showPopOver = true
     } else if (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries) {
+      this.stateStore.current_value!.history = unwrap(this.history)
+      this.stateStore.set(this.stateStore.current_value!)
       setDone(this.stateStore.current_value!, this.hard, KindEnum.Failed)
       this.state.showPopOver = true
     } else {
       this.history.push(['', ''])
+      this.stateStore.current_value!.history = unwrap(this.history)
+      this.stateStore.set(this.stateStore.current_value!)
     }
   }
 
@@ -225,8 +231,12 @@ class GameState {
     if (!this.soft.fastInvalidate || this.hard.allowAny) return
 
     const last = this.history.at(-1)!
-    const [word, color] = last
-    last[1] = color + (this.existsPrefix(word) ? 'b': 'r')
+    let [word, color] = unwrap(last)
+    while (color.length < word.length) {
+      const exists = this.existsPrefix(word.slice(0, color.length+1))
+      color += exists? 'b': 'r'
+    }
+    last[1] = color
   }
 
   resetState() {
@@ -239,6 +249,7 @@ class GameState {
     this.state.keyboard = structuredClone(defaultKeyboardState)
 
     this.stateStore.current_value!.word = getRandomWord(this.hard.wordLength)
+    this.stateStore.current_value!.history = unwrap(this.history)
     this.stateStore.set(this.stateStore.current_value!)
   }
 }
@@ -377,7 +388,7 @@ export default function Wordle() {
 
   const softStore = new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {
     reveal: false,
-    fastInvalidate: false,
+    fastInvalidate: true,
   }, JSON.parse, val => JSON.stringify(val, (k, v) => {
     if (['reveal'].includes(k)) return undefined
     return v
