@@ -25,73 +25,110 @@ interface KeyState {
 
 interface KeyboardState extends Record<Keys, KeyState> {}
 
+const ABCD = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ⏎⌫'
+
 const defaultKeyboardState: KeyboardState = {
   BACKSPACE: {state: undefined, pressed: false}
 } as any
-
-const ABCD = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ⏎⌫'
 for (const key of ABCD) {
   defaultKeyboardState[key as Keys] = {state: undefined, pressed: false}
 }
 
-function Keyboard({state: KeyboardState}: {state: KeyboardState}) {
-  return <div class='flex flex-col select-none'>
-    {['QWERTYUIOP', 'ASDFGHJKL', '⏎ZXCVBNM⌫'].map((text, row) => (
-      <div
-        class='flex flex-row mx-auto'
-        style={{
-        'padding-left': `${row%2}rem`,
-      }}>
-        {text.split('').map(char => {
-          const key = char === '⏎' ? 'Enter' : char === '⌫' ? 'Backspace' : char
-          const evObj = {key: key, code: key, location: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, repeat: false}
-          return <div
-            onmousedown={() => document.dispatchEvent(new KeyboardEvent('keydown', evObj))}
-            onmouseup={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
-            onmouseleave={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
-            class={'text-center content-center size-10 rounded transition-all will-change-transform ' + (
-              KeyboardState[char as Keys].state === 'g' ? 'bg-green-600/60':
-              KeyboardState[char as Keys].state === 'y' ? 'bg-yellow-500/70':
-              KeyboardState[char as Keys].state === 'r' ? 'bg-red-700/50': 'bg-muted'
-              ) + ' ' + (KeyboardState[char as Keys].pressed ? 'scale-105 invert': '')
-            }
-            style={{
-              'height': `min(2.5rem, 10vw)`,
-              'width' : key.length === 1? `min(2.5rem, ${100/11.6}vw)`: `calc(1.6 * min(2.5rem, ${100/11.6}vw))`,
-              'margin': `min(0.5rem, ${10/16}vw)`,
-            }}
-          >{char}</div>
-        })}
-      </div>
-    ))}
-  </div>
+class Keyboard {
+  public state: KeyboardState
+
+  constructor(state: KeyboardState) {
+    this.state = state
+  }
+
+  static fromHistory(history: [string, string][]): Keyboard {
+    return this.constructor(Keyboard.stateFromHistory(history))
+  }
+
+  static stateFromHistory(history: [string, string][]): KeyboardState {
+    const state = structuredClone(defaultKeyboardState)
+    for (const [guess, response] of history) {
+      for (let i = 0; i < guess.length; i += 1) {
+        const key = guess[i].toUpperCase() as keyof KeyboardState
+        const obj = state[key] ?? {pressed: false}
+        if (obj.state === 'g' || (obj.state === 'y' && response[i] === 'r')) continue
+        obj.state = response[i] as WordleStringState
+        state[key] = obj
+      }
+    }
+
+    return state
+  }
+
+  render() {
+    return <div class='flex flex-col select-none'>
+      {['QWERTYUIOP', 'ASDFGHJKL', '⏎ZXCVBNM⌫'].map((text, row) => (
+        <div
+          class='flex flex-row mx-auto'
+          style={{
+          'padding-left': `${row%2}rem`,
+        }}>
+          {text.split('').map(char => {
+            const key = char === '⏎' ? 'Enter' : char === '⌫' ? 'Backspace' : char
+            const evObj = {key: key, code: key, location: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, repeat: false}
+            return <div
+              onmousedown={() => document.dispatchEvent(new KeyboardEvent('keydown', evObj))}
+              onmouseup={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
+              onmouseleave={() => document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
+              class={'text-center content-center size-10 rounded transition-all will-change-transform ' + (
+                this.state[char as Keys].state === 'g' ? 'bg-green-600/60':
+                this.state[char as Keys].state === 'y' ? 'bg-yellow-500/70':
+                this.state[char as Keys].state === 'r' ? 'bg-red-700/50': 'bg-muted'
+                ) + ' ' + (this.state[char as Keys].pressed ? 'scale-105 invert': '')
+              }
+              style={{
+                'height': `min(2.5rem, 10vw)`,
+                'width' : key.length === 1? `min(2.5rem, ${100/11.6}vw)`: `calc(1.6 * min(2.5rem, ${100/11.6}vw))`,
+                'margin': `min(0.5rem, ${10/16}vw)`,
+              }}
+            >{char}</div>
+          })}
+        </div>
+      ))}
+    </div>
+  }
 }
 
-function Block(wordLength: number, word: string, mask: string) {
-  word = word.slice(0, wordLength)
-  if (word.length < wordLength) word += ' '.repeat(wordLength - word.length)
-  return (
-    <span
+class Block {
+  public wordLength: number
+  public word: string
+  public mask: string
+
+  constructor(wordLength: number, word: string, mask: string) {
+    this.wordLength = wordLength
+    this.word = word
+    this.mask = mask
+  }
+
+  render() {
+    this.word = this.word.slice(0, this.wordLength)
+    if (this.word.length < this.wordLength) this.word += ' '.repeat(this.wordLength - this.word.length)
+    return <span
       class='flex flex-row text-foreground overflow-visible mx-auto'
       style={{
-        'margin': `-min(0.25rem, ${100/(wordLength*wordLength)}vw)`
+        'margin': `-min(0.25rem, ${100/(this.wordLength*this.wordLength)}vw)`
       }}
     >
-      <For each={word as unknown as string[]}>
+      <For each={this.word as unknown as string[]}>
         {(char, i) => (
           <div
-            class={'border border-muted-foreground/50 capitalize rounded relative ' + (
-              mask[i()] === 'r' ? 'bg-red-700/50':
-              mask[i()] === 'y' ? 'bg-yellow-500/70':
-              mask[i()] === 'g' ? 'bg-green-600/60':
-              mask[i()] === 'b' ? 'bg-blue-600/60':
+            class={'border border-muted-foreground/50 capitalize relative ' + (
+              this.mask[i()] === 'r' ? 'bg-red-700/50':
+              this.mask[i()] === 'y' ? 'bg-yellow-500/70':
+              this.mask[i()] === 'g' ? 'bg-green-600/60':
+              this.mask[i()] === 'b' ? 'bg-blue-600/60':
               'bg-transparent'
             )}
             style={{
-              'height': `min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw)))`,
-              'width':  `min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw)))`,
-              'margin': `min(0.25rem, ${100/(wordLength*wordLength)}vw)`,
-              'font-size': `min(min(2.5rem, calc(${100/(wordLength + 1)}vw - min(0.25rem, ${200/(wordLength*wordLength)}vw))), 1.875rem)`,
+              'height': `min(3.5rem, calc(${100/(this.wordLength + 1)}vw - min(0.25rem, ${200/(this.wordLength*this.wordLength)}vw)))`,
+              'width':  `min(3.5rem, calc(${100/(this.wordLength + 1)}vw - min(0.25rem, ${200/(this.wordLength*this.wordLength)}vw)))`,
+              'margin': `min(0.125rem, ${100/(this.wordLength*this.wordLength)}vw)`,
+              'font-size': `min(min(2.5rem, calc(${100/(this.wordLength + 1)}vw - min(0.25rem, ${200/(this.wordLength*this.wordLength)}vw))), 1.875rem)`,
             }}
           >
             <span class='absolute top-1/2 left-0 right-0 -translate-y-1/2 text-center font-extrabold'>{char}</span>
@@ -99,21 +136,7 @@ function Block(wordLength: number, word: string, mask: string) {
         )}
       </For>
     </span>
-  )
-}
-
-function keyboardStateFromHistory(history: [string, string][]): KeyboardState {
-  const state = structuredClone(defaultKeyboardState)
-  for (const [guess, response] of history) {
-    for (let i = 0; i < guess.length; i += 1) {
-      const key = guess[i].toUpperCase() as keyof KeyboardState
-      const obj = state[key] ?? {pressed: false}
-      if (obj.state === 'g' || (obj.state === 'y' && response[i] === 'r')) continue
-      obj.state = response[i] as WordleStringState
-      state[key] = obj
-    }
   }
-  return state
 }
 
 function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Element {
@@ -146,7 +169,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     })
   }) as SetStoreFunction<[string, string][]>
 
-  const [state, setState] = createStore<KeyboardState>(keyboardStateFromHistory(unwrap(older)))
+  const [state, setState] = createStore<KeyboardState>(Keyboard.stateFromHistory(unwrap(older)))
   const [current, setCurrent] = createSignal<string>('')
   const [currentColor, setCurrentColor] = createSignal<string>('')
   const [showPopOver, setShowPopOver] = createSignal((unwrap(older).at(-1) ?? ['', 'r'])![1].split('').every(s => s === 'g'))
@@ -312,16 +335,16 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     </Drawer>
     <div class='flex flex-col max-h-auto overflow-y-scroll overflow-x-visible mx-auto p-0 max-sm:mt-auto scrollbar-none'>
       <For each={older}>
-        {([word, mask]) => Block(hard.wordLength, word, mask)}
+        {([word, mask]) => new Block(hard.wordLength, word, mask).render()}
       </For>
       {(() => {
-        currentBlock = Block(hard.wordLength, current(), currentColor()) as HTMLDivElement
+        currentBlock = new Block(hard.wordLength, current(), currentColor()).render() as HTMLDivElement
         onMount(() => currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
         return currentBlock as JSX.Element
       })()}
     </div>
     <div class='mt-10 justify-center justify-items-center overflow-visible max-sm:mt-auto max-sm:mb-4 max-sm:pt-4'>
-      <Keyboard state={state}/>
+      {new Keyboard(state).render()}
     </div>
   </div>
 }

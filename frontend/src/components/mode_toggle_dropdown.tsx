@@ -1,6 +1,6 @@
 'use strict'
 
-import { createSignal, Match, Switch } from 'solid-js'
+import { ComponentProps, createSignal, JSX, Match, Switch } from 'solid-js'
 import { ConfigColorMode, createLocalStorageManager, useColorMode } from '@kobalte/core'
 import { Button } from '~/registry/ui/button'
 import {
@@ -13,9 +13,23 @@ import {
 import { IconSun, IconMoon, IconLaptop } from '~/components/icons'
 import { DropdownMenuRootProps } from '@kobalte/core/dropdown-menu'
 
+function capatalizeFirst(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
 export default function ModeToggleDropDown(props: DropdownMenuRootProps) {
   const { setColorMode } = useColorMode()
   const [colorState, setColorState] = createSignal<ConfigColorMode>(createLocalStorageManager('ui-theme').get() ?? 'system')
+
+  function MenuItem(Icon: (props: ComponentProps<"svg">) => JSX.Element, value: string) {
+    return <DropdownMenuItem onSelect={() => {
+      setColorMode(value as ConfigColorMode)
+      setColorState(value as ConfigColorMode)
+    }} class={colorState() === value? 'bg-muted/50': ''}>
+      <Icon class='mr-2 size-4'/>
+      <span>{capatalizeFirst(value)}</span>
+    </DropdownMenuItem>
+  }
 
   return (
     <DropdownMenu {...props}>
@@ -33,27 +47,9 @@ export default function ModeToggleDropDown(props: DropdownMenuRootProps) {
         </Switch>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='border-muted absolute overflow-visible'>
-        <DropdownMenuItem onSelect={() => {
-          setColorMode('light')
-          setColorState('light')
-        }} class={colorState() === 'light'? 'bg-muted/50': ''}>
-          <IconSun class='mr-2 size-4'/>
-          <span>Light</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => {
-          setColorMode('dark')
-          setColorState('dark')
-        }} class={colorState() === 'dark'? 'bg-muted/50': ''}>
-          <IconMoon class='mr-2 size-4'/>
-          <span>Dark</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => {
-          setColorMode('system')
-          setColorState('system')
-        }} class={colorState() === 'system'? 'bg-muted/50': ''}>
-          <IconLaptop class='mr-2 size-4'/>
-          <span>System</span>
-        </DropdownMenuItem>
+        {MenuItem(IconSun, 'light')}
+        {MenuItem(IconMoon, 'dark')}
+        {MenuItem(IconLaptop, 'system')}
       </DropdownMenuContent>
     </DropdownMenu>
   )
