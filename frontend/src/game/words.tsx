@@ -61,8 +61,7 @@ export function getDB(): typeof db { return db }
 
 // Calculates the diff (coloring) from a word and a guess
 // assumes that word and guess are of the same length
-export function calcDiff(word: string, guess: string):  string {
-  if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
+export function calcDiff(word: string, guess: string): string {
   if (word.length !== guess.length) throw new Error('Length mismatch')
 
   const og = word.split('')

@@ -1,7 +1,7 @@
 'use strict'
 
 import { batch, createEffect, For, JSX, onCleanup, onMount } from 'solid-js'
-import { createMutable } from 'solid-js/store'
+import { createMutable, unwrap } from 'solid-js/store'
 import { showToast } from '~/registry/ui/toast'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
 
@@ -78,9 +78,9 @@ class Keyboard {
                 ) + ' ' + (this.state[char as Keys].pressed ? 'scale-105 invert': '')
               }
               style={{
-                'height': `min(2.5rem, 10vw)`,
-                'width' : key.length === 1? `min(2.5rem, ${100/11.6}vw)`: `calc(1.6 * min(2.5rem, ${100/11.6}vw))`,
-                'margin': `min(0.5rem, ${10/16}vw)`,
+                'height': `min(3.5rem, 10vw)`,
+                'width' : key.length === 1? `min(3.5rem, ${100/11.6}vw)`: `calc(1.6 * min(3.5rem, ${100/11.6}vw))`,
+                'margin': `min(0.25rem, ${10/32}vw)`,
               }}
             >{char}</div>
           })}
@@ -136,8 +136,6 @@ class Block {
 }
 
 interface CurrentState {
-  word: string
-  color: string
   keyboard: KeyboardState
   showPopOver: boolean
 }
@@ -164,29 +162,27 @@ class GameState {
       word: string
       history: [string, string][]
     }>(
-      'game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength,
-      { word: '', history: []},
+      'game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength + '.' + hard.maxTries,
+      { word: '', history: [['', '']]},
       str => {
         const retval = JSON.parse(str) as {word: string, history: string[]}
         return {
           word: retval.word,
-          history: retval.history.map(s => [s, calcDiff(retval.word, s)]),
+          history: retval.history.map(s => [s, s? calcDiff(retval.word, s): '']),
         }
       },
       ({word, history}) => JSON.stringify({word, history: history.map(([w, _]) => w)})
     )
 
-
     if (!this.stateStore.current_value!.word) {
-      this.stateStore.set({word: getRandomWord(hard.wordLength), history: []})
+      this.stateStore.current_value!.word = getRandomWord(hard.wordLength)
+      this.stateStore.set(this.stateStore.current_value!)
     }
 
     this.history = createMutable<[string, string][]>(this.stateStore.current_value!.history)
     this.state = createMutable<CurrentState>({
-      word: '',
-      color: '',
       keyboard: Keyboard.stateFromHistory(this.stateStore.current_value!.history),
-      showPopOver: (this.stateStore.current_value!.history.at(-1) ?? ['', 'r'])![1].split('').every(s => s === 'g'),
+      showPopOver: ((this.stateStore.current_value!.history.at(-1) ?? ['', 'r'])![1] || 'r').split('').every(s => s === 'g'),
     })
 
     this.state.keyboard = createMutable(this.state.keyboard)
@@ -201,7 +197,8 @@ class GameState {
 
   submit() {
     batch(() => {
-      const guess = this.state.word
+      const last = this.history.at(-1)!
+      const guess = unwrap(last)[0]
       if (guess.length !== this.hard.wordLength) return showError(new Error('Invalid length'))
 
       if (!this.hard.allowAny && !getGuessWord(guess)) {
@@ -217,33 +214,28 @@ class GameState {
         old.state = response[i] as WordleStringState
       }
 
+      last[1] = response
       if (response.split('').every(s => s === 'g')) {
-        this.state.color = response
         this.state.showPopOver = true
         return
       }
       
-      this.history.push([guess, response])
+      this.history.push(['', ''])
       this.stateStore.set(this.stateStore.current_value!)
-      this.state.word = ''
-      this.state.color = ''
     })
   }
 
   fastInvalidate() {
     if (!this.soft.fastInvalidate || this.hard.allowAny) return
 
-    let word = this.state.word
-    let coloring = this.existsPrefix(word) ? 'b': 'r'
-    while (coloring[0] === 'r' && coloring.length < word.length) {
-      word = word.slice(0, word.length - 1)
-      coloring = (this.existsPrefix(word) ? 'b': 'r') + coloring
-    }
-    while (coloring.length < word.length) {
-      coloring = 'b' + coloring
+    const last = this.history.at(-1)!
+    const [word, color] = last
+    if (color.length > word.length) {
+      last[1] = color.slice(0, word.length)
+      return
     }
 
-    this.state.color = coloring
+    last[1] = color + (this.existsPrefix(word) ? 'b': 'r')
   }
 
   resetState() {
@@ -255,10 +247,10 @@ class GameState {
 
     batch(() => {
       this.history.length = 0
+      this.history.push(['', ''])
       this.state.keyboard = structuredClone(defaultKeyboardState)
-      this.state.word = ''
-      this.state.color = ''
     })
+
     this.stateStore.current_value!.word = getRandomWord(this.hard.wordLength)
     this.stateStore.set(this.stateStore.current_value!)
   }
@@ -269,9 +261,10 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
   createEffect(() => {
     if (soft.reveal) batch(() => {
+      const last = gameState.history.at(-1)!
+      last[0] = gameState.stateStore.current_value!.word
+      last[1] = Array.from({length: hard.wordLength}).fill('g').join('')
       gameState.state.showPopOver = true
-      gameState.state.word = gameState.stateStore.current_value!.word
-      gameState.state.color = Array.from({length: hard.wordLength}).fill('g').join('')
     })
   })
 
@@ -288,9 +281,12 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    const last = gameState.history.at(-1)!
     if (e.key === 'Escape') {
-      gameState.state.word = ''
-      gameState.state.color = ''
+      batch(() => {
+        last[0] = ''
+        last[1] = ''
+      })
       return
     }
 
@@ -301,14 +297,16 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     }
 
     if (e.key === 'Backspace') {
-      gameState.state.word = (gameState.state.word ?? '').slice(0, -1)
-      gameState.state.color = (gameState.state.color ?? '').slice(0, -1)
+      batch(() => {
+        last[0] = (last[0] ?? '').slice(0, -1)
+        last[1] = (last[1] ?? '').slice(0, -1)
+      })
       return
     }
 
     const key = e.key.toUpperCase()
     if (key.length !== 1 || !ABCD.includes(key)) return
-    if (gameState.state.word.length === hard.wordLength) {
+    if (last[0].length === hard.wordLength) {
       currentBlock.classList.remove('motion-preset-wiggle')
       setTimeout(() => {
         currentBlock.classList.add('motion-preset-wiggle')
@@ -316,8 +314,10 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       return
     }
 
-    gameState.state.word = (gameState.state.word ?? '') + e.key
-    gameState.fastInvalidate()
+    batch(() => {
+      last[0] = last[0] + e.key
+      gameState.fastInvalidate()
+    })
   }
 
   function handleKeyUp(e: KeyboardEvent) {
@@ -352,14 +352,18 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
       </DrawerContent>
     </Drawer>
     <div class='flex flex-col max-h-auto overflow-y-auto overflow-visible mx-auto p-0 max-sm:mt-auto scrollbar-none w-full'>
-      <For each={gameState.history}>
+      <For each={gameState.history.length? gameState.history.slice(0, -1): []}>
         {([word, mask]) => new Block(hard.wordLength, word, mask).render()}
       </For>
       {(() => {
-        currentBlock = new Block(hard.wordLength, gameState.state.word, gameState.state.color).render() as HTMLDivElement
+        const last = gameState.history.at(-1)!
+        currentBlock = new Block(hard.wordLength, last[0], last[1]).render() as HTMLDivElement
         onMount(() => currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
         return currentBlock as JSX.Element
       })()}
+      <For each={Array.from({length: hard.maxTries - gameState.history.length}).fill(undefined)}>
+        {() => new Block(hard.wordLength, '', '').render()}
+      </For>
     </div>
     <div class='mt-10 justify-center justify-items-center overflow-visible max-sm:mt-auto max-sm:mb-4 max-sm:pt-4'>
       {new Keyboard(gameState.state.keyboard).render()}
@@ -370,6 +374,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 export default function Wordle() {
   const hardStore = new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {
     wordLength: 6,
+    maxTries: 6,
     allowAny: false,
   }, JSON.parse, JSON.stringify)
   const hard = createMutable(hardStore.get()!)

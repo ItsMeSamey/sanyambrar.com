@@ -27,6 +27,9 @@ export interface SettingsHardProps {
 
   // Allow any word, even if not in dictionary
   allowAny: boolean
+
+  // The max number of words that can be guessed
+  maxTries: number
 }
 
 function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
@@ -89,6 +92,8 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
       </Switch>
 
+      <div class='font-bold text-center text-1xl mx-auto w-full text-muted-foreground mb-2 mt-1'>ADVANCED</div>
+
       <Slider
         minValue={3}
         maxValue={20}
@@ -106,6 +111,26 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
           <SliderThumb />
         </SliderTrack>
       </Slider>
+
+      <Slider
+        minValue={1}
+        maxValue={50}
+        defaultValue={untrack(() => [hard.maxTries])}
+        getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
+        onChange={([len]) => hard.maxTries = len as WordLength}
+        class='space-y-3 '
+      >
+        <div class='flex w-full justify-between'>
+          <SliderLabel>Max Words</SliderLabel>
+          <SliderValueLabel />
+        </div>
+        <SliderTrack>
+          <SliderFill />
+          <SliderThumb />
+        </SliderTrack>
+      </Slider>
+
+      <div class='h-1' />
 
       {TooltipWithContent(
         <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
