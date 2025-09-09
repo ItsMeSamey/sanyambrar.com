@@ -116,7 +116,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
     a: hard.allowAny,
     k: kind,
     t: hard.maxTries,
-    h: entry.history.map(([w, _]) => w).join(),
+    h: entry.history.map(([w, _]) => w).join(''),
   })
 
   await store.put(record)
