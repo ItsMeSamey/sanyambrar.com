@@ -226,7 +226,7 @@ function StatsPage() {
   const [stats] = createResource(WordStats.fetchStats);
 
   return <div class='container mx-auto p-4 h-full'>
-    <h1 class='text-2xl font-bold mb-4 mb-96'>Analytics</h1>
+    <h1 class='text-2xl font-bold mb-4'>Analytics</h1>
     <Switch>
       <Match when={stats.loading}>
         <p>Loading stats...</p>
