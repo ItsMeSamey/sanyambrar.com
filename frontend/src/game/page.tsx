@@ -105,7 +105,7 @@ export class Block {
     this.word = this.word.slice(0, this.wordLength)
     if (this.word.length < this.wordLength) this.word += ' '.repeat(this.wordLength - this.word.length)
     return <span
-      class='flex flex-row text-foreground overflow-visible mx-auto'
+      class='flex flex-row text-foreground overflow-visible mx-0'
       style={{
         'margin': `-min(0.25rem, ${100/(this.wordLength*this.wordLength)}vw)`
       }}
@@ -324,29 +324,29 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     })}>
       <DrawerContent>
         <DrawerHeader>
-            {(() => {
-              const last = gameState.history.at(-1)!
-              const isCorrect = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'g')
-              const isReveled = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'b')
-              const str = isCorrect? 'Correctly guessed in ': isReveled? 'Revealed after ': 'Failed after ';
-              return <>
-                <DrawerTitle class={'text-4xl tracking-widest ' + (
-                  isCorrect? 'text-success-foreground':
-                  isReveled? 'text-blue-500': 'text-error-foreground'
-                )}>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
-                <DrawerDescription class='text-2xl'>
-                  {str}
-                  <span class={
-                    !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
-                      gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
-                  }>{gameState.history.length}</span> attempts
-                </DrawerDescription>
-              </>
-            })()}
+          {(() => {
+            const last = gameState.history.at(-1)!
+            const isCorrect = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'g')
+            const isReveled = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'b')
+            const str = isCorrect? 'Correctly guessed in ': isReveled? 'Revealed after ': 'Failed after ';
+            return <>
+              <DrawerTitle class={'text-4xl tracking-widest ' + (
+                isCorrect? 'text-success-foreground':
+                isReveled? 'text-blue-500': 'text-error-foreground'
+              )}>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
+              <DrawerDescription class='text-2xl'>
+                {str}
+                <span class={
+                  !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
+                    gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
+                }>{gameState.history.length}</span> attempts
+              </DrawerDescription>
+            </>
+          })()}
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
-    <div class='flex flex-col max-h-auto overflow-y-auto overflow-visible mx-auto p-0 max-sm:mt-auto scrollbar-none w-full'>
+    <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar scrollbar-track-muted/35 scrollbar-thumb-muted'>
       <For each={gameState.history.length? gameState.history.slice(0, -1): []}>
         {([word, mask]) => new Block(hard.wordLength, word, mask).render()}
       </For>
