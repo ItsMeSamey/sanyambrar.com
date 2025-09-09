@@ -2,7 +2,9 @@
 
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, Setter, Show, Switch } from 'solid-js'
 import { getDB, HistoryEntry, KindEnum, calcDiff, Value } from './words'
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '~/registry/ui/accordion'
+import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
+import { Popover as PopoverPrimitive } from '@kobalte/core/popover'
+import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Block } from './page'
 
@@ -67,59 +69,78 @@ class WordStats {
       guesses.push(entry.h.substring(i, i + wordLength));
     }
 
-    return <div class="flex flex-col gap-1 p-1 m-auto bg-background-muted/50">
-      <For each={guesses}>
-        {(guess) => {
-          const mask = calcDiff(word, guess);
-          return new Block(word.length, guess, mask).render()
-        }}
-      </For>
-    </div>
+    return <PopoverPrimitive.Portal>
+      <PopoverPrimitive.Content
+        class='max-h-[50dvh] overflow-y-scroll scrollbar scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
+      >
+        <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
+          <For each={guesses}>
+            {(guess) => {
+              const mask = calcDiff(word, guess);
+              return new Block(word.length, guess, mask).render()
+            }}
+          </For>
+        </div>
+      </PopoverPrimitive.Content>
+    </PopoverPrimitive.Portal>
   }
 
   renderValue(value: Value) {
-    return <AccordionItem value={value.w} class="border border-muted-foreground/20 rounded-none">
+    if (value.h.length === 1) {
+      const attempt = value.h[0]
+      return <Popover>
+        <PopoverTrigger class='flex w-full border border-muted-foreground/20 rounded-none my-1'>
+          <div
+            class='w-full text-left p-2 bg-muted/40 hover:bg-muted/75 transition-all items-center flex flex-1 justify-between'
+            onClick={() => this.sidebar.setSelectedValue(value)}
+          >
+            <span class='font-semibold uppercase'>{value.w}</span>
+            <span class={'ml-auto text-sm font-semibold ' + (
+              attempt.k === KindEnum.Correct? 'text-success-foreground':
+              attempt.k === KindEnum.Failed? 'text-error-foreground': 'text-blue-500'
+            )}>{attempt.h.length / value.w.length} guesses</span>
+          </div>
+
+        </PopoverTrigger>
+        {WordStats.renderHistoryEntry(value.w, attempt)}
+      </Popover>
+    }
+
+    return <AccordionItem value={value.w} class='border border-muted-foreground/20 rounded-none my-1'>
       <AccordionTrigger
-        class="w-full text-left p-2 bg-muted/50 hover:bg-muted/80 transition-colors flex justify-between items-center rounded-none"
+        class='w-full text-left p-2 bg-muted/40 hover:bg-muted/75 transition-all items-center'
         onClick={() => this.sidebar.setSelectedValue(value)}
       >
-        <span class="font-semibold uppercase">{value.w}</span>
-        <span class="text-sm text-muted-foreground">{value.h.length} attempts</span>
+        <span class='font-semibold uppercase'>{value.w}</span>
+        <span class='text-sm text-muted-foreground ml-auto mr-2'>{value.h.length} attempts</span>
       </AccordionTrigger>
-      <AccordionContent class="p-2 space-y-1">
+      <AccordionPrimitive.Content class='animate-accordion-up overflow-hidden text-sm transition-all data-[expanded]:animate-accordion-down p-2 space-y-1'>
         <For each={value.h}>
-          {(attempt, i) => {
-            const wordLength = value.w.length;
-            const guessCount = attempt.h.length / wordLength;
-            const outcome = attempt.k === KindEnum.Correct ? 'Correct' : attempt.k === KindEnum.Failed ? 'Failed' : 'Revealed';
-            return (
-              <Popover>
-                <PopoverTrigger class="w-full">
-                  <div class="flex justify-between items-center p-1 bg-muted/20 hover:bg-muted/40 rounded-none">
-                    <span>Attempt #{i() + 1} - {guessCount} guesses</span>
-                    <span class={`text-sm font-semibold ${
-                      outcome === 'Correct' ? 'text-success-foreground' :
-                      outcome === 'Failed' ? 'text-error-foreground' :
-                      'text-blue-500'
-                    }`}>{outcome}</span>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent class="rounded-none">
-                  {WordStats.renderHistoryEntry(value.w, attempt)}
-                </PopoverContent>
-              </Popover>
-            )
-          }}
+          {(attempt) => <Popover>
+            <PopoverTrigger class='w-full m-0 p-0'>
+              <div class='flex justify-between items-center bg-muted/20 hover:bg-muted/40 rounded-none p-2'>
+                <span>{attempt.h.length / value.w.length} guesses</span>
+                {
+                  attempt.k === KindEnum.Correct? <span class='text-sm font-semibold text-success-foreground'>Correct</span>:
+                  attempt.k === KindEnum.Failed? <span class='text-sm font-semibold text-error-foreground'>Failed</span>:
+                  <span class='text-sm font-semibold text-blue-500'>Revealed</span>
+                }
+              </div>
+            </PopoverTrigger>
+            <PopoverContent class='rounded-none'>
+              {WordStats.renderHistoryEntry(value.w, attempt)}
+            </PopoverContent>
+          </Popover>}
         </For>
-      </AccordionContent>
+      </AccordionPrimitive.Content>
     </AccordionItem>
   }
 
   render() {
     const stats = this.sidebar.stats
-    return <div class="flex flex-row gap-4 h-full">
-      <div class="w-2/3">
-        <Accordion class="w-full space-y-2" multiple>
+    return <div class='flex flex-row gap-4 h-full'>
+      <div class='w-2/3'>
+        <Accordion class='w-full space-y-2' multiple>
           <For each={stats.words}>
             {this.renderValue.bind(this)}
           </For>
@@ -171,30 +192,30 @@ class StatsSidebar {
     const valueStats = createMemo(() => StatsSidebar.valueStats(this.selectedValue()))
 
     function renderStat(heading: JSX.Element, value: JSX.Element) {
-      return <div class="p-2 border border-muted/50 text-center content-end">
-        <h2 class="text-lg font-semibold text-muted-foreground">{heading}</h2>
-        <p class="text-3xl font-bold">{value}</p>
+      return <div class='p-2 border border-muted/50 text-center content-end'>
+        <h2 class='text-lg font-semibold text-muted-foreground'>{heading}</h2>
+        <p class='text-3xl font-bold'>{value}</p>
       </div>
     }
 
-    return <div class="w-1/3 border border-muted-foreground/20 rounded-none p-4 bg-muted/10">
-      <div class="grid grid-cols-2 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40">
+    return <div class='w-1/3 border border-muted-foreground/20 rounded-none p-4 bg-muted/10'>
+      <div class='grid grid-cols-2 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40'>
         {renderStat('Total Games', this.stats.totalGames)}
         {renderStat('Total Wins', this.stats.totalWins)}
         {renderStat('Win Rate', (this.stats.totalWins / this.stats.totalGames).toFixed(1) + '%')}
         {renderStat('Average Guesses', this.stats.averageGuesses.toFixed(2))}
       </div>
-      <h2 class="text-xl font-bold mb-2 uppercase">{this.selectedValue()?.w || 'Detailed Stats'}</h2>
+      <h2 class='text-xl font-bold mb-2 uppercase'>{this.selectedValue()?.w || 'Detailed Stats'}</h2>
       <Show when={this.selectedValue() && valueStats()} fallback={<p>Select a word to see detailed stats.</p>}>
-        <div class="space-y-2">
-          <div class="flex justify-between"><span>Times Played:</span> <strong>{valueStats()!.played}</strong></div>
-          <div class="flex justify-between"><span>Win Rate:</span> <strong>{((valueStats()!.wins / valueStats()!.played) * 100).toFixed(1)}%</strong></div>
-          <div class="flex justify-between"><span>Average Guesses (on win):</span> <strong>{valueStats()!.avgGuesses.toFixed(2)}</strong></div>
-          <hr class="border-muted-foreground/20 my-2" />
-          <h3 class="font-bold">Outcomes:</h3>
-          <div class="flex justify-between text-success-foreground"><span>Correct:</span> <strong>{valueStats()!.wins}</strong></div>
-          <div class="flex justify-between text-error-foreground"><span>Failed:</span> <strong>{valueStats()!.fails}</strong></div>
-          <div class="flex justify-between text-blue-500"><span>Revealed:</span> <strong>{valueStats()!.reveals}</strong></div>
+        <div class='space-y-2'>
+          <div class='flex justify-between'><span>Times Played:</span> <strong>{valueStats()!.played}</strong></div>
+          <div class='flex justify-between'><span>Win Rate:</span> <strong>{((valueStats()!.wins / valueStats()!.played) * 100).toFixed(1)}%</strong></div>
+          <div class='flex justify-between'><span>Average Guesses (on win):</span> <strong>{valueStats()!.avgGuesses.toFixed(2)}</strong></div>
+          <hr class='border-muted-foreground/20 my-2' />
+          <h3 class='font-bold'>Outcomes:</h3>
+          <div class='flex justify-between text-success-foreground'><span>Correct:</span> <strong>{valueStats()!.wins}</strong></div>
+          <div class='flex justify-between text-error-foreground'><span>Failed:</span> <strong>{valueStats()!.fails}</strong></div>
+          <div class='flex justify-between text-blue-500'><span>Revealed:</span> <strong>{valueStats()!.reveals}</strong></div>
         </div>
       </Show>
     </div>
@@ -204,14 +225,14 @@ class StatsSidebar {
 function StatsPage() {
   const [stats] = createResource(WordStats.fetchStats);
 
-  return <div class="container mx-auto p-4 h-full">
-    <h1 class="text-2xl font-bold mb-4">Analytics</h1>
+  return <div class='container mx-auto p-4 h-full'>
+    <h1 class='text-2xl font-bold mb-4 mb-96'>Analytics</h1>
     <Switch>
       <Match when={stats.loading}>
         <p>Loading stats...</p>
       </Match>
       <Match when={stats.error}>
-        <p class="text-error-foreground">Error loading stats: {stats.error.message}</p>
+        <p class='text-error-foreground'>Error loading stats: {stats.error.message}</p>
       </Match>
       <Match when={stats()}>
         {new WordStats(stats()!).render()}

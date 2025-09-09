@@ -1,5 +1,6 @@
-@import "tailwindcss";
-@plugin "tailwindcss-motion";
+@import 'tailwindcss';
+@plugin 'tailwindcss-motion';
+@plugin 'tailwind-scrollbar';
 
 @layer base {
   :root {
@@ -186,17 +187,6 @@
     border-style: solid;
     border-color: var(--color-border);
     outline: none;
-  }
-
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* Hide scrollbar for IE, Edge and Firefox */
-  .scrollbar-none {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
   }
 }
 

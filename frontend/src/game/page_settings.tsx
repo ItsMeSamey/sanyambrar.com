@@ -131,14 +131,8 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         </SliderTrack>
       </Slider>
 
-      <div class='h-1' />
+      <div class='h-[1px]' />
 
-      {TooltipWithContent(
-        <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
-          Reveal
-        </Button>,
-        'Reveals and then skips the current word.'
-      )}
       <div class='flex flex-row gap-2'>
         {TooltipWithContent(
           <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
