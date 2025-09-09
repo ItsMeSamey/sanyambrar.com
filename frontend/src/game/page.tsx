@@ -7,11 +7,10 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
-import { Settings, SettingsHardProps, SettingsSoftProps } from './page_settings'
+import { Settings, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
-import { unwatchFile } from 'fs'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'

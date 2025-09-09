@@ -69,9 +69,10 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
     <PopoverTrigger>
       {emptydiv}
       <Show when={!open()}>
-        <div onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
-          {button}
-        </div>
+        <Tooltip>
+          <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>{button}</TooltipTrigger>
+          <TooltipContent>Settings</TooltipContent>
+        </Tooltip>
       </Show>
     </PopoverTrigger>
     <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-5'>
@@ -79,9 +80,10 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         <div class='flex flex-row items-end w-full h-full'>
           <ModeToggleGroup class='border border-muted rounded-lg' />
           <div class='w-full' />
-          <div class='motion-preset-slide-down-left motion-delay-75'>
-            {button}
-          </div>
+          <Tooltip>
+            <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-down-left motion-delay-75'>{button}</TooltipTrigger>
+            <TooltipContent>Close Settings</TooltipContent>
+          </Tooltip>
         </div>
       </Show>
 
