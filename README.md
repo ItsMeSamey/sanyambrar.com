@@ -13,6 +13,22 @@ A simple and lightweight Wordle game clone built using [Solid.js](https://www.so
 * **Customizable Max Attempts**
 * **Clean and Minimalist UI**
 
+## Images
+
+<table>
+  <tr>
+    <td>
+      <img src="./images/1.png" alt="Home Page image">
+    </td>
+    <td>
+      <img src="./images/2.png" alt="Home Page With Settings Image">
+    </td>
+    <td>
+      <img src="./images/3.png" alt="Game Stats Page image">
+    </td>
+  </tr>
+</table>
+
 ## Technologies Used
 
 * [Solid.js](https://www.solidjs.com/) - A reactive JavaScript library for building user interfaces.
