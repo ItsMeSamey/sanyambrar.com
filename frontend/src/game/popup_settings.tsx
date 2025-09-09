@@ -1,7 +1,7 @@
 'use strict'
 
 import { createSignal, JSX, Show } from 'solid-js'
-import { IconSettings } from '~/components/icons'
+import { IconSettings, IconX } from '~/components/icons'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
 
@@ -57,12 +57,14 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
 
   const emptydiv = <div class='w-full -mt-1 mb-1'/>
 
-  const button = <div
-    class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-    onClick={() => setOpen(x => !x)}
-  >
-    <IconSettings class='size-5' />
-  </div>
+  function buttonWithIcon(icon: JSX.Element) {
+    return <div
+      class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
+      onClick={() => setOpen(x => !x)}
+    >
+      {icon}
+    </div>
+  }
 
 
   return <Popover anchorRef={() => emptydiv as any} open={open()} onOpenChange={setOpen}>
@@ -70,7 +72,9 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
       {emptydiv}
       <Show when={!open()}>
         <Tooltip>
-          <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>{button}</TooltipTrigger>
+          <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
+            {buttonWithIcon(<IconSettings class='size-5' />)}
+          </TooltipTrigger>
           <TooltipContent>Settings</TooltipContent>
         </Tooltip>
       </Show>
@@ -81,7 +85,9 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
           <ModeToggleGroup class='border border-muted rounded-lg' />
           <div class='w-full' />
           <Tooltip>
-            <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-down-left motion-delay-75'>{button}</TooltipTrigger>
+            <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-down-left motion-delay-75 bg-warning/50 rounded'>
+              {buttonWithIcon(<IconX class='size-5 stroke-red-500' />)}
+            </TooltipTrigger>
             <TooltipContent>Close Settings</TooltipContent>
           </Tooltip>
         </div>
