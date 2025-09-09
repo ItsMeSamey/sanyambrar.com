@@ -8,7 +8,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
 import { Settings, SettingsHardProps, SettingsSoftProps } from './page_settings'
-import { calcDiff, getGuessWord, getRandomWord, setDone } from './words'
+import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
 
@@ -164,14 +164,7 @@ class GameState {
     }>(
       'game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength + '.' + hard.maxTries,
       { word: '', history: [['', '']]},
-      str => {
-        const retval = JSON.parse(str) as {word: string, history: string[]}
-        return {
-          word: retval.word,
-          history: retval.history.map(s => [s, s? calcDiff(retval.word, s): '']),
-        }
-      },
-      ({word, history}) => JSON.stringify({word, history: history.map(([w, _]) => w)})
+        JSON.parse, JSON.stringify
     )
 
     if (!this.stateStore.current_value!.word) {
@@ -180,9 +173,10 @@ class GameState {
     }
 
     this.history = createMutable<[string, string][]>(this.stateStore.current_value!.history)
+    const lastColors = ((this.stateStore.current_value!.history.at(-1) ?? ['', 'r'])![1] || 'r').split('');
     this.state = createMutable<CurrentState>({
       keyboard: Keyboard.stateFromHistory(this.stateStore.current_value!.history),
-      showPopOver: ((this.stateStore.current_value!.history.at(-1) ?? ['', 'r'])![1] || 'r').split('').every(s => s === 'g'),
+      showPopOver: lastColors.every(s => s === 'g') || lastColors.every(s => s === 'b'),
     })
 
     this.state.keyboard = createMutable(this.state.keyboard)
@@ -216,7 +210,11 @@ class GameState {
     last[1] = response
     this.stateStore.set(this.stateStore.current_value!)
 
-    if (response.split('').every(s => s === 'g') || (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries)) {
+    if (response.split('').every(s => s === 'g')) {
+      setDone(this.stateStore.current_value!, this.hard, KindEnum.Correct)
+      this.state.showPopOver = true
+    } else if (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries) {
+      setDone(this.stateStore.current_value!, this.hard, KindEnum.Failed)
       this.state.showPopOver = true
     } else {
       this.history.push(['', ''])
@@ -234,8 +232,6 @@ class GameState {
   resetState() {
     if (this.soft.reveal) {
       this.soft.reveal = false
-    } else {
-      setDone(this.stateStore.current_value!.word, this.stateStore.current_value!.history, this.hard.allowAny)
     }
 
     this.history.length = 0
@@ -252,9 +248,11 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
   createEffect(() => {
     if (soft.reveal) batch(() => {
+      setDone(gameState.stateStore.current_value!, hard, KindEnum.Revealed)
       const last = gameState.history.at(-1)!
       last[0] = gameState.stateStore.current_value!.word
       last[1] = Array.from({length: hard.wordLength}).fill('b').join('')
+      gameState.stateStore.set(gameState.stateStore.current_value!)
       gameState.state.showPopOver = true
     })
   })
@@ -326,22 +324,25 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
     })}>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle class='text-success-foreground text-4xl tracking-widest'>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
-          <DrawerDescription class='text-2xl'>
             {(() => {
               const last = gameState.history.at(-1)!
-              const isCorrect = last[0] === gameState.stateStore.current_value!.word
-              const isFailed = hard.maxTries !== 1 && hard.maxTries === gameState.history.length
-              const str = isCorrect? 'Correctly guessed in ': isFailed? 'Failed after ': 'Revealed after '
+              const isCorrect = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'g')
+              const isReveled = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'b')
+              const str = isCorrect? 'Correctly guessed in ': isReveled? 'Revealed after ': 'Failed after ';
               return <>
-                {str}
-                <span class={
-                  !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
-                  gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
-                }>{gameState.history.length}</span> attempts
+                <DrawerTitle class={'text-4xl tracking-widest ' + (
+                  isCorrect? 'text-success-foreground':
+                  isReveled? 'text-blue-500': 'text-error-foreground'
+                )}>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
+                <DrawerDescription class='text-2xl'>
+                  {str}
+                  <span class={
+                    !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
+                      gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
+                  }>{gameState.history.length}</span> attempts
+                </DrawerDescription>
               </>
             })()}
-          </DrawerDescription>
         </DrawerHeader>
       </DrawerContent>
     </Drawer>

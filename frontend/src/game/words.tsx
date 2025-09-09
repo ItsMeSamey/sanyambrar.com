@@ -3,19 +3,27 @@
 import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
 import bsearch from 'binary-search-bounds'
+import { SettingsHardProps } from './page_settings.tsx'
 
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
 
-export interface HistoryEntry {
-  a: boolean // allowAny
-  h: string // history
+export enum KindEnum {
+  Correct = 0,
+  Failed = 1,
+  Revealed = 2,
 }
 
-export interface Value {
+interface HistoryEntry {
+  a: boolean // AllowAny
+  k: KindEnum // Kind
+  t: number // maxTries
+  h: string // Histories
+}
+
+interface Value {
   i: number // Idx
   w: string // Word
-  a: boolean // AllowAny
-  h: HistoryEntry[] // Histories
+  h: HistoryEntry[] // The history for this word
 }
 
 type schemaValue = {
@@ -99,14 +107,16 @@ export function getRandomWord(wlen: WordLength): string {
 }
 
 // Sets the word as done, adding the history to the record
-export async function setDone(word: string, h: [string, string][], allowAny: boolean): Promise<void> {
-  if (word.length < 3 || word.length > 20) throw new Error('Invalid word length')
-  const store = db.transaction('w' + word.length, 'readwrite').objectStore('w' + word.length)
+export async function setDone(entry: {word: string, history: [string, string][]}, hard: SettingsHardProps, kind: KindEnum): Promise<void> {
+  if (entry.word.length < 3 || entry.word.length > 20) throw new Error('Invalid word length')
+  const store = db.transaction('w' + entry.word.length, 'readwrite').objectStore('w' + entry.word.length)
 
-  const record: Value = await store.index('wordIndex').get(word) ?? {word}
+  const record: Value = await store.index('wordIndex').get(entry.word) ?? {w: entry.word, h: []}
   record.h.push({
-    a: allowAny,
-    h: h.map(([w, _]) => w).join(),
+    a: hard.allowAny,
+    k: kind,
+    t: hard.maxTries,
+    h: entry.history.map(([w, _]) => w).join(),
   })
 
   await store.put(record)
