@@ -29,6 +29,25 @@ export interface SettingsHardProps {
   allowAny: boolean
 }
 
+function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
+  return <Tooltip>
+    <TooltipTrigger>{trigger}</TooltipTrigger>
+    <TooltipContent>{content}</TooltipContent>
+  </Tooltip>
+}
+
+function SwitchContent(content: JSX.Element) {
+  return <>
+    <SwitchControl>
+      <SwitchThumb />
+    </SwitchControl>
+
+    <SwitchLabel class='ml-auto text-md'>
+      {content}
+    </SwitchLabel>
+  </>
+}
+
 export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
 
@@ -40,6 +59,7 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
   >
     <IconSettings class='size-5' />
   </div>
+
 
   return <Popover anchorRef={() => emptydiv as any} open={open()} onOpenChange={setOpen}>
     <PopoverTrigger>
@@ -61,6 +81,14 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         </div>
       </Show>
 
+      <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
+        {SwitchContent(TooltipWithContent('Allow Any Word', 'Allow any word to be used, even if not in the database.'))}
+      </Switch>
+
+      <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
+        {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
+      </Switch>
+
       <Slider
         minValue={3}
         maxValue={20}
@@ -79,50 +107,12 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
         </SliderTrack>
       </Slider>
 
-      <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
-        <SwitchControl>
-          <SwitchThumb />
-        </SwitchControl>
-
-        <SwitchLabel class='ml-auto text-md'>
-          <Tooltip>
-            <TooltipTrigger>
-              Allow Any Word
-            </TooltipTrigger>
-            <TooltipContent>
-              Allow any word to be used, even if not in the database.
-            </TooltipContent>
-          </Tooltip>
-        </SwitchLabel>
-      </Switch>
-
-      <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
-        <SwitchControl>
-          <SwitchThumb />
-        </SwitchControl>
-
-        <SwitchLabel class='ml-auto text-md'>
-          <Tooltip>
-            <TooltipTrigger>
-              Fast Invalidate
-            </TooltipTrigger>
-            <TooltipContent>
-              Fast invalidation of incorrect input (for words that are not in db).
-            </TooltipContent>
-          </Tooltip>
-        </SwitchLabel>
-      </Switch>
-
-      <Tooltip>
-        <TooltipTrigger>
-          <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
-            Reveal
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          Reveals and then skips the current word.
-        </TooltipContent>
-      </Tooltip>
+      {TooltipWithContent(
+        <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
+          Reveal
+        </Button>,
+        'Reveals and then skips the current word.'
+      )}
     </PopoverContent>
   </Popover>
 }
