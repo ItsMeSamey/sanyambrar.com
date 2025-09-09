@@ -6,7 +6,7 @@ import '../css/components/pointer.css'
 
 export default function Pointer({POINTER_SIZE}: {POINTER_SIZE: number}) {
   const cursor = <div
-    class='absolute top-0 left-0 z-[9999] rounded-full subpixel-antialiased will-change-transform transform-gpu'
+    class='absolute top-0 left-0 z-[9999] rounded-full subpixel-antialiased will-change-transform transform-gpu transition-none'
     style={{
       'width': `${POINTER_SIZE}px`,
       'height': `${POINTER_SIZE}px`,
