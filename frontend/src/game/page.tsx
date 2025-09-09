@@ -216,7 +216,7 @@ class GameState {
     last[1] = response
     this.stateStore.set(this.stateStore.current_value!)
 
-    if (response.split('').every(s => s === 'g')) {
+    if (response.split('').every(s => s === 'g') || (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries)) {
       this.state.showPopOver = true
     } else {
       this.history.push(['', ''])
