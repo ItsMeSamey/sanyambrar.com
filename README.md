@@ -6,13 +6,12 @@ A simple and lightweight Wordle game clone built using [Solid.js](https://www.so
 
 ## Features
 
-* **Frontend Only**
-* **Built with Solid.js**
+* **No backend Required**
 * **Responsive Design**
 * **Dark and Light Themes**
 * **Customizable Word Length**
+* **Customizable Max Attempts**
 * **Clean and Minimalist UI**
-* **Appcache to cache page locally**
 
 ## Technologies Used
 
