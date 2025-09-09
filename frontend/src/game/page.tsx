@@ -90,7 +90,7 @@ class Keyboard {
   }
 }
 
-class Block {
+export class Block {
   public wordLength: number
   public word: string
   public mask: string
