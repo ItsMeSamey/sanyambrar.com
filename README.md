@@ -8,10 +8,9 @@ A simple and lightweight Wordle game clone built using [Solid.js](https://www.so
 
 * **No backend Required**
 * **Responsive Design**
-* **Dark and Light Themes**
 * **Customizable Word Length**
 * **Customizable Max Attempts**
-* **Clean and Minimalist UI**
+* **Sharing**
 
 ## Images
 
