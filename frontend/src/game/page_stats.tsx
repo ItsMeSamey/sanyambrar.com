@@ -6,8 +6,9 @@ import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
 import { Popover as PopoverPrimitive } from '@kobalte/core/popover'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Block } from './page'
-import { IconHome } from '~/components/icons'
+import { IconHome, IconArchive } from '~/components/icons'
 import { Page, setP } from '../utils/navigation'
 
 interface GameStats {
@@ -75,7 +76,7 @@ class WordStats {
 
     return <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
-        class='max-h-[45dvh] overflow-y-scroll scrollbar scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
+        class='max-h-[45dvh] overflow-y-scroll scrollbar-thin scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
       >
         <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
           <For each={guesses}>
@@ -226,7 +227,7 @@ class StatsSidebar {
   }
 }
 
-function StatsPage() {
+export default function StatsPage() {
   const [stats] = createResource(WordStats.fetchStats);
 
   return <div class='mx-auto p-4 h-full w-full min-md:container'>
@@ -252,5 +253,17 @@ function StatsPage() {
   </div>
 }
 
-export default StatsPage
+export function StatePageTrigger(): JSX.Element {
+  return <Tooltip>
+    <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
+      <div
+        class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
+        onClick={() => setP(Page.Stats)}
+      >
+        <IconArchive class='size-5' />
+      </div>
+    </TooltipTrigger>
+    <TooltipContent>Stats</TooltipContent>
+  </Tooltip>
+}
 

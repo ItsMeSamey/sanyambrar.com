@@ -7,7 +7,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
-import { Settings, SettingsHardProps, SettingsSoftProps } from './popup_settings'
+import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
@@ -356,7 +356,7 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
         </DrawerHeader>
       </DrawerContent>
     </Drawer>
-    <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar scrollbar-track-muted/35 scrollbar-thumb-muted'>
+    <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
       <For each={gameState.history.length? gameState.history.slice(0, -1): []}>
         {([word, mask]) => new Block(hard.wordLength, word, mask).render()}
       </For>

@@ -12,6 +12,7 @@ import { Button } from '~/registry/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Page, setP } from '../utils/navigation'
 import { WordLength } from './words'
+import { ActiveGames } from './popup_active_games'
 
 // Props that can be changed without a re-render
 export interface SettingsSoftProps {
@@ -52,8 +53,9 @@ function SwitchContent(content: JSX.Element) {
   </>
 }
 
-export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
+export default function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
+  const [activeGames, setActiveGames] = createSignal(false)
 
   const emptydiv = <div class='w-full -mt-1 mb-1'/>
 
@@ -65,7 +67,6 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
       {icon}
     </div>
   }
-
 
   return <Popover anchorRef={() => emptydiv as any} open={open()} onOpenChange={setOpen}>
     <PopoverTrigger>
@@ -148,9 +149,11 @@ export function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsH
           </Button>,
           'Reveals and then skips the current word.'
         )}
-        <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300' onClick={() => setP(Page.Stats)}>
-          Stats
-        </Button>
+        <ActiveGames hard={hard} trigger={
+          <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300'>
+            Active Games
+          </Button>
+        }/>
       </div>
     </PopoverContent>
   </Popover>
