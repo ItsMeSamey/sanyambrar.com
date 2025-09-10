@@ -11,6 +11,7 @@ import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings
 import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
+import { StatsPageTrigger } from './page_stats'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -396,7 +397,12 @@ export default function Wordle() {
   createEffect(() => softStore.set(soft))
 
   return <>
-    <nav class='flex flex-col p-2 ml-auto absolute align-middle items-end top-0 left-0 w-full'>
+    <nav class='flex flex-row p-2 w-full absolute items-end top-0 left-0'>
+      <div>
+        <div class='-mt-1 mb-1' />
+        <StatsPageTrigger />
+      </div>
+      <div class='w-full' />
       <Settings soft={soft} hard={hard} />
     </nav>
     {WordleModel(soft, {...hard})}

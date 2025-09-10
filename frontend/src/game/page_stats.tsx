@@ -1,5 +1,6 @@
 'use strict'
 
+import { ChartNoAxesCombined } from 'lucide-solid';
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, Setter, Show, Switch } from 'solid-js'
 import { getDB, HistoryEntry, KindEnum, calcDiff, Value } from './words'
 import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
@@ -8,7 +9,7 @@ import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accord
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Block } from './page'
-import { IconHome, IconArchive } from '~/components/icons'
+import { IconHome } from '~/components/icons'
 import { Page, setP } from '../utils/navigation'
 
 interface GameStats {
@@ -232,8 +233,8 @@ export default function StatsPage() {
 
   return <div class='mx-auto p-4 h-full w-full min-md:container'>
     <div
-      class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40'
-      onClick={() => setP(Page.Wordle)}
+      class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
+    onClick={() => setP(Page.Wordle)}
     >
       <IconHome class='size-5' />
     </div>
@@ -253,14 +254,14 @@ export default function StatsPage() {
   </div>
 }
 
-export function StatePageTrigger(): JSX.Element {
+export function StatsPageTrigger(): JSX.Element {
   return <Tooltip>
     <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
       <div
         class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
         onClick={() => setP(Page.Stats)}
       >
-        <IconArchive class='size-5' />
+        <ChartNoAxesCombined class='size-5 stroke-foreground' />
       </div>
     </TooltipTrigger>
     <TooltipContent>Stats</TooltipContent>
