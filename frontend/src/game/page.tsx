@@ -12,6 +12,7 @@ import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './word
 import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
 import { StatsPageTrigger } from './page_stats'
+import { ShareTrigger } from './page_share'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -141,32 +142,27 @@ interface CurrentState {
   showPopOver: boolean
 }
 
+export interface WordLocalStorageState {
+  word: string
+  history: [string, string][]
+}
+
 class GameState {
   soft: SettingsSoftProps
   hard: SettingsHardProps
   allWords: string[]
 
-  stateStore: LocalstorageStore<{
-    word: string
-    history: [string, string][]
-  }>
+  stateStore: LocalstorageStore<WordLocalStorageState>
 
   state: CurrentState
   history: [string, string][]
 
-  constructor(soft: SettingsSoftProps, hard: SettingsHardProps) {
+  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>) {
     this.soft = soft
     this.hard = hard
     this.allWords = WORDS['w' + hard.wordLength]
 
-    this.stateStore = new LocalstorageStore<{
-      word: string
-      history: [string, string][]
-    }>(
-      'game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength + '.' + hard.maxTries,
-      { word: '', history: [['', '']]},
-        JSON.parse, JSON.stringify
-    )
+    this.stateStore = stateStore
 
     if (!this.stateStore.current_value!.word) {
       this.stateStore.current_value!.word = getRandomWord(hard.wordLength)
@@ -254,44 +250,35 @@ class GameState {
   }
 }
 
-function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Element {
-  const gameState = new GameState(soft, hard)
+export class WordleModel {
+  state: GameState
+  currentBlock: HTMLDivElement = undefined as any
 
-  createEffect(() => {
-    if (soft.reveal) batch(() => {
-      setDone(gameState.stateStore.current_value!, hard, KindEnum.Revealed)
-      const last = gameState.history.at(-1)!
-      last[0] = gameState.stateStore.current_value!.word
-      last[1] = Array.from({length: hard.wordLength}).fill('b').join('')
-      gameState.stateStore.set(gameState.stateStore.current_value!)
-      gameState.state.showPopOver = true
-    })
-  })
+  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>) {
+    this.state = new GameState(soft, hard, stateStore)
+  }
 
-  // The block that is currently being inputted in
-  let currentBlock: HTMLDivElement = undefined as any
-
-  function setKeyState(key: string, pressed: boolean) {
+  setKeyState(key: string, pressed: boolean) {
     key = key.toUpperCase()
     if (key === 'ENTER') key = '⏎'
     if (key === 'BACKSPACE') key = '⌫'
     if (key.length === 1 && ABCD.includes(key)) {
-      gameState.state.keyboard[key as Keys].pressed = pressed
+      this.state.state.keyboard[key as Keys].pressed = pressed
     }
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
+  handleKeyDown(e: KeyboardEvent) {
     batch(() => {
-      const last = gameState.history.at(-1)!
+      const last = this.state.history.at(-1)!
       if (e.key === 'Escape') {
         last[0] = ''
         last[1] = ''
         return
       }
 
-      setKeyState(e.key, true)
+      this.setKeyState(e.key, true)
       if (e.key === 'Enter') {
-        gameState.submit()
+        this.state.submit()
         return
       }
 
@@ -303,78 +290,107 @@ function WordleModel(soft: SettingsSoftProps, hard: SettingsHardProps): JSX.Elem
 
       const key = e.key.toUpperCase()
       if (key.length !== 1 || !ABCD.includes(key)) return
-      if (last[0].length === hard.wordLength) {
-        currentBlock.classList.remove('motion-preset-wiggle')
-        setTimeout(() => currentBlock.classList.add('motion-preset-wiggle'), 0)
+      if (last[0].length === this.state.hard.wordLength) {
+        this.currentBlock.classList.remove('motion-preset-wiggle')
+        setTimeout(() => this.currentBlock.classList.add('motion-preset-wiggle'), 0)
         return
       }
 
       last[0] = last[0] + e.key.toLowerCase()
-      gameState.fastInvalidate()
+      this.state.fastInvalidate()
     })
   }
 
-  function handleKeyUp(e: KeyboardEvent) {
-    setKeyState(e.key, false)
+  handleKeyUp(e: KeyboardEvent) {
+    this.setKeyState(e.key, false)
   }
 
-  onMount(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('keyup', handleKeyUp)
-  })
 
-  onCleanup(() => {
-    document.removeEventListener('keydown', handleKeyDown)
-    document.removeEventListener('keyup', handleKeyUp)
-  })
+  render() {
+    createEffect(() => {
+      if (this.state.soft.reveal) batch(() => {
+        setDone(this.state.stateStore.current_value!, this.state.hard, KindEnum.Revealed)
+        const last = this.state.history.at(-1)!
+        last[0] = this.state.stateStore.current_value!.word
+        last[1] = Array.from({length: this.state.hard.wordLength}).fill('b').join('')
+        this.state.stateStore.set(this.state.stateStore.current_value!)
+        this.state.state.showPopOver = true
+      })
+    })
 
-  return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
-    <Drawer open={gameState.state.showPopOver} onOpenChange={state => batch(() => {
-      gameState.resetState()
-      gameState.state.showPopOver = state
-    })}>
-      <DrawerContent>
-        <DrawerHeader>
-          {(() => {
-            const last = gameState.history.at(-1)!
-            const isCorrect = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'g')
-            const isReveled = last[0] === gameState.stateStore.current_value!.word && last[1].split('').every(s => s === 'b')
-            const str = isCorrect? 'Correctly guessed in ': isReveled? 'Revealed after ': 'Failed after ';
-            return <>
-              <DrawerTitle class={'text-4xl tracking-widest ' + (
-                isCorrect? 'text-success-foreground':
-                isReveled? 'text-blue-500': 'text-error-foreground'
-              )}>{gameState.stateStore.current_value!.word?.toUpperCase()}</DrawerTitle>
-              <DrawerDescription class='text-2xl'>
-                {str}
-                <span class={
-                  !isCorrect || gameState.history.length > hard.wordLength? 'text-error-foreground':
-                    gameState.history.length < hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
-                }>{gameState.history.length}</span> attempts
-              </DrawerDescription>
-            </>
-          })()}
-        </DrawerHeader>
-      </DrawerContent>
-    </Drawer>
-    <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
-      <For each={gameState.history.length? gameState.history.slice(0, -1): []}>
-        {([word, mask]) => new Block(hard.wordLength, word, mask).render()}
-      </For>
-      {(() => {
-        const last = gameState.history.at(-1)!
-        currentBlock = new Block(hard.wordLength, last[0], last[1]).render() as HTMLDivElement
-        onMount(() => currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
-        return currentBlock as JSX.Element
-      })()}
-      <For each={Array.from({length: hard.maxTries - gameState.history.length}).fill(undefined)}>
-        {() => new Block(hard.wordLength, '', '').render()}
-      </For>
+    const handleKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
+    const handleKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
+
+    onMount(() => {
+      document.addEventListener('keydown', handleKeyDown)
+      document.addEventListener('keyup', handleKeyUp)
+    })
+
+    onCleanup(() => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    })
+
+    return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
+      <Drawer open={this.state.state.showPopOver} onOpenChange={state => batch(() => {
+        this.state.resetState()
+        this.state.state.showPopOver = state
+      })}>
+        <DrawerContent>
+          <DrawerHeader>
+            {(() => {
+              const last = this.state.history.at(-1)!
+              const isCorrect = last[0] === this.state.stateStore.current_value!.word && last[1].split('').every(s => s === 'g')
+              const isReveled = last[0] === this.state.stateStore.current_value!.word && last[1].split('').every(s => s === 'b')
+              const str = isCorrect? 'Correctly guessed in ': isReveled? 'Revealed after ': 'Failed after ';
+              return <>
+                <DrawerTitle class={'text-4xl tracking-widest ' + (
+                  isCorrect? 'text-success-foreground':
+                  isReveled? 'text-blue-500': 'text-error-foreground'
+                )}>
+                  {this.state.stateStore.current_value!.word?.toUpperCase()}
+                  <ShareTrigger word={() => this.state.stateStore.current_value!.word} soft={this.state.soft} hard={this.state.hard} />
+                </DrawerTitle>
+                <DrawerDescription class='text-2xl'>
+                  {str}
+                  <span class={
+                    !isCorrect || this.state.history.length > this.state.hard.wordLength? 'text-error-foreground':
+                      this.state.history.length < this.state.hard.wordLength? 'text-success-foreground': 'text-warning-foreground'
+                  }>{this.state.history.length}</span> attempts
+                </DrawerDescription>
+              </>
+            })()}
+          </DrawerHeader>
+        </DrawerContent>
+      </Drawer>
+      <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
+        <For each={this.state.history.length? this.state.history.slice(0, -1): []}>
+          {([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}
+        </For>
+        {(() => {
+          const last = this.state.history.at(-1)!
+          this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).render() as HTMLDivElement
+          onMount(() => this.currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
+          return this.currentBlock as JSX.Element
+        })()}
+        <For each={Array.from({length: this.state.hard.maxTries - this.state.history.length}).fill(undefined)}>
+          {() => new Block(this.state.hard.wordLength, '', '').render()}
+        </For>
+      </div>
+      <div class='mt-10 justify-center justify-items-center overflow-visible max-sm:mt-auto max-sm:mb-4 max-sm:pt-4'>
+        {new Keyboard(this.state.state.keyboard).render()}
+      </div>
     </div>
-    <div class='mt-10 justify-center justify-items-center overflow-visible max-sm:mt-auto max-sm:mb-4 max-sm:pt-4'>
-      {new Keyboard(gameState.state.keyboard).render()}
-    </div>
-  </div>
+  }
+}
+
+function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps) {
+  const stateStore = new LocalstorageStore<WordLocalStorageState>(
+    'game.wordle.' + (hard.allowAny? 'any.': '') + hard.wordLength + '.' + hard.maxTries,
+    { word: '', history: [['', '']]},
+      JSON.parse, JSON.stringify
+  )
+  return new WordleModel(soft, hard, stateStore).render()
 }
 
 export default function Wordle() {
@@ -403,9 +419,9 @@ export default function Wordle() {
         <StatsPageTrigger />
       </div>
       <div class='w-full' />
-      <Settings soft={soft} hard={hard} />
+      {Settings({soft, hard, showActive: true, showWordLength: true})}
     </nav>
-    {WordleModel(soft, {...hard})}
+    {RenderWordleModel({...hard}, soft)}
   </>
 }
 

@@ -4,26 +4,7 @@ import { batch, createSignal, For, JSX, Show } from 'solid-js'
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { WordLength } from './words'
 import { Block } from './page'
-
-// Props that can be changed without a re-render
-export interface SettingsSoftProps {
-  // when this is set to true, latest word is revealed and then skipped
-  reveal: boolean
-  // weather fast invalidation is enabled
-  fastInvalidate: boolean
-}
-
-// Props that on change should trigger a re-render
-export interface SettingsHardProps {
-  // The length of the word
-  wordLength: WordLength
-
-  // Allow any word, even if not in dictionary
-  allowAny: boolean
-
-  // The max number of words that can be guessed
-  maxTries: number
-}
+import { SettingsHardProps } from './popup_settings'
 
 export function ActiveGames({hard, trigger}: {hard: SettingsHardProps, trigger: JSX.Element}): JSX.Element {
   const [open, setOpen] = createSignal(false)

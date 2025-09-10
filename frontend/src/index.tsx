@@ -11,6 +11,7 @@ import { NoPageError, Page, selectP } from './utils/navigation'
 import ErrorPage from './pages/error_page'
 import Pointer from './components/pointer'
 import Wordle from './game/page'
+import SharePage from './game/page_share'
 
 render(function() {
   const storageManager = createLocalStorageManager('ui-theme')
@@ -28,6 +29,9 @@ render(function() {
         </Match>
         <Match when={selectP(Page.Stats)}>
           <StatsPage />
+        </Match>
+        <Match when={selectP(Page.Share)}>
+          <SharePage />
         </Match>
       </Switch>
     </ErrorBoundary>

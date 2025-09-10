@@ -6,10 +6,10 @@ function nothingFn(v: any) { return v }
 export class LocalstorageStore<T> {
   key: string
   from_string: ((s: string) => T)
-  to_string: ((t: T) => string)
+  to_string: ((t: T) => string | undefined)
   current_value: T | undefined
 
-  constructor(key: string, default_value?: T, from_string?: ((s: string) => T), to_string?: ((t: T) => string)) {
+  constructor(key: string, default_value?: T, from_string?: ((s: string) => T), to_string?: ((t: T) => string | undefined)) {
     this.key = key
     this.from_string = from_string ?? nothingFn as any
     this.to_string = to_string ?? nothingFn as any
@@ -31,9 +31,16 @@ export class LocalstorageStore<T> {
     this.current_value = v
     if (v === undefined) {
       localStorage.removeItem(this.key)
-    } else {
-      localStorage.setItem(this.key, this.to_string(v))
+      return
     }
+
+    const string = this.to_string(v)
+    if (string === undefined) {
+      localStorage.removeItem(this.key)
+      return
+    }
+
+    localStorage.setItem(this.key, string)
   }
 }
 

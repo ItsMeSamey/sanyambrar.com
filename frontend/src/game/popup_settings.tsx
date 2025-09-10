@@ -10,7 +10,6 @@ import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/s
 import { untrack } from 'solid-js/web'
 import { Button } from '~/registry/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { Page, setP } from '../utils/navigation'
 import { WordLength } from './words'
 import { ActiveGames } from './popup_active_games'
 
@@ -53,9 +52,60 @@ function SwitchContent(content: JSX.Element) {
   </>
 }
 
-export default function Settings({soft, hard}: {soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
+export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftProps, hard: SettingsHardProps, showWordLength: boolean}) {
+  return <>
+    <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
+      {SwitchContent(TooltipWithContent('Allow Any Word', 'Allow any word to be used, even if not in the database.'))}
+    </Switch>
+
+    <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
+      {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
+    </Switch>
+
+    <div class='font-bold text-center text-1xl mx-auto w-full text-muted-foreground mb-2 mt-1'>ADVANCED</div>
+
+    <Show when={showWordLength}>
+      <Slider
+        minValue={3}
+        maxValue={20}
+        defaultValue={untrack(() => [hard.wordLength])}
+        getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
+        onChange={([len]) => hard.wordLength = len as WordLength}
+        class='space-y-3 '
+      >
+        <div class='flex w-full justify-between'>
+          <SliderLabel>Word count</SliderLabel>
+          <SliderValueLabel />
+        </div>
+        <SliderTrack>
+          <SliderFill />
+          <SliderThumb />
+        </SliderTrack>
+      </Slider>
+    </Show>
+
+    <Slider
+      minValue={1}
+      maxValue={50}
+      defaultValue={untrack(() => [hard.maxTries])}
+      getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
+      onChange={([len]) => hard.maxTries = len as WordLength}
+      class='space-y-3 '
+    >
+      <div class='flex w-full justify-between'>
+        <SliderLabel>Max Words</SliderLabel>
+        <SliderValueLabel />
+      </div>
+      <SliderTrack>
+        <SliderFill />
+        <SliderThumb />
+      </SliderTrack>
+    </Slider>
+  </>
+}
+
+export default function Settings({soft, hard, showActive, showWordLength}: {soft: SettingsSoftProps, hard: SettingsHardProps, showActive: boolean, showWordLength: boolean}) {
   const [open, setOpen] = createSignal(false)
-  const [activeGames, setActiveGames] = createSignal(false)
 
   const emptydiv = <div class='w-full -mt-1 mb-1'/>
 
@@ -94,51 +144,7 @@ export default function Settings({soft, hard}: {soft: SettingsSoftProps, hard: S
         </div>
       </Show>
 
-      <Switch class='flex items-center space-x-2' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
-        {SwitchContent(TooltipWithContent('Allow Any Word', 'Allow any word to be used, even if not in the database.'))}
-      </Switch>
-
-      <Switch class='flex items-center space-x-2' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
-        {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
-      </Switch>
-
-      <div class='font-bold text-center text-1xl mx-auto w-full text-muted-foreground mb-2 mt-1'>ADVANCED</div>
-
-      <Slider
-        minValue={3}
-        maxValue={20}
-        defaultValue={untrack(() => [hard.wordLength])}
-        getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
-        onChange={([len]) => hard.wordLength = len as WordLength}
-        class='space-y-3 '
-      >
-        <div class='flex w-full justify-between'>
-          <SliderLabel>Word count</SliderLabel>
-          <SliderValueLabel />
-        </div>
-        <SliderTrack>
-          <SliderFill />
-          <SliderThumb />
-        </SliderTrack>
-      </Slider>
-
-      <Slider
-        minValue={1}
-        maxValue={50}
-        defaultValue={untrack(() => [hard.maxTries])}
-        getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
-        onChange={([len]) => hard.maxTries = len as WordLength}
-        class='space-y-3 '
-      >
-        <div class='flex w-full justify-between'>
-          <SliderLabel>Max Words</SliderLabel>
-          <SliderValueLabel />
-        </div>
-        <SliderTrack>
-          <SliderFill />
-          <SliderThumb />
-        </SliderTrack>
-      </Slider>
+      <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
 
       <div class='h-[1px]' />
 
@@ -149,11 +155,13 @@ export default function Settings({soft, hard}: {soft: SettingsSoftProps, hard: S
           </Button>,
           'Reveals and then skips the current word.'
         )}
-        <ActiveGames hard={hard} trigger={
-          <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300'>
-            Active Games
-          </Button>
-        }/>
+        <Show when={showActive}>
+          <ActiveGames hard={hard} trigger={
+            <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300'>
+              Active Games
+            </Button>
+          }/>
+        </Show>
       </div>
     </PopoverContent>
   </Popover>
