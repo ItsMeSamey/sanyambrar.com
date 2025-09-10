@@ -77,20 +77,18 @@ class WordStats {
       guesses.push(entry.h.substring(i, i + wordLength));
     }
 
-    return <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content
-        class='max-h-[45dvh] overflow-y-scroll scrollbar-thin scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
-      >
-        <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
-          <For each={guesses}>
-            {(guess) => {
-              const mask = calcDiff(word, guess);
-              return new Block(word.length, guess, mask).render()
-            }}
-          </For>
-        </div>
-      </PopoverPrimitive.Content>
-    </PopoverPrimitive.Portal>
+    return <PopoverPrimitive.Content
+      class='max-h-[45dvh] overflow-y-scroll scrollbar-thin scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
+    >
+      <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
+        <For each={guesses}>
+          {(guess) => {
+            const mask = calcDiff(word, guess);
+            return new Block(word.length, guess, mask).render()
+          }}
+        </For>
+      </div>
+    </PopoverPrimitive.Content>
   }
 
   renderValue(value: Value) {

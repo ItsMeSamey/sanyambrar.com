@@ -108,7 +108,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
       <TooltipContent>Share</TooltipContent>
     </Tooltip>
     </DialogTrigger>
-    <DialogContent class='flex flex-col gap-2 p-4 bg-background-muted/50 rounded-none'>
+    <DialogContent class='flex flex-col gap-2 p-4 bg-background-muted rounded-none'>
       <DialogHeader class='flex flex-row gap-2 items-center'>
         {props.word()}
       </DialogHeader>
