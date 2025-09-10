@@ -224,7 +224,9 @@ class GameState {
   }
 
   fastInvalidate() {
-    if (!this.soft.fastInvalidate || this.hard.allowAny) return
+    if (!this.soft.fastInvalidate || this.hard.allowAny) {
+      return
+    }
 
     const last = this.history.at(-1)!
     let [word, color] = unwrap(last)
@@ -317,6 +319,15 @@ export class WordleModel {
         this.state.state.showPopOver = true
       })
     })
+
+    createEffect(() => batch(() => {
+      if (this.state.soft.fastInvalidate) {
+        this.state.fastInvalidate()
+      } else {
+        const last = this.state.history.at(-1)!
+        last[1] = ''
+      }
+    }))
 
     const handleKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
     const handleKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
