@@ -18,13 +18,16 @@ A simple and lightweight Wordle game clone built using [Solid.js](https://www.so
 <table>
   <tr>
     <td>
-      <img src="./images/1.png" alt="Home Page image">
+      <img src="./images/1.png" alt="Home Page">
     </td>
     <td>
-      <img src="./images/2.png" alt="Home Page With Settings Image">
+      <img src="./images/2.png" alt="Home Page With Settings">
     </td>
     <td>
-      <img src="./images/3.png" alt="Game Stats Page image">
+      <img src="./images/3.png" alt="Game Stats Page">
+    </td>
+    <td>
+      <img src="./images/4.png" alt="Sharing Current Game">
     </td>
   </tr>
 </table>

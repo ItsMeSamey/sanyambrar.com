@@ -122,8 +122,9 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
         <Button
           class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success duration-200 active:scale-90 transition-all'
           onClick={() => {
+            const wlen = props.word().length
             if (idx === -1) {
-              idx = bsearch.eq(WORDS['w' + props.word().length], props.word().toLowerCase(), (a, b) => {
+              idx = bsearch.eq(WORDS['w' + wlen], props.word().toLowerCase(), (a, b) => {
                 if (a === b) return 0
                 return a < b? -1: 1
               })
@@ -134,7 +135,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
             }
 
             const btos = (b: boolean) => (b? 't': 'f')
-            const serialized = `${btos(soft.fastInvalidate)}${btos(hard.allowAny)},${idx.toString(36)},${props.word().length.toString(36)},${hard.maxTries.toString(16)}`
+            const serialized = `${btos(soft.fastInvalidate)}${btos(hard.allowAny)},${idx.toString(36)},${wlen.toString(36)},${hard.maxTries.toString(16)}`
             navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?p=${Page.Share}&v=${serialized}`)
             setCopyButtonText('Copied!')
             setTimeout(() => setCopyButtonText('Copy'), 1000)
