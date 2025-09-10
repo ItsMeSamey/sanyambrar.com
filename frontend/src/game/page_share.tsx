@@ -91,8 +91,11 @@ export default function SharePage() {
 
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
+  const [copyButtonText, setCopyButtonText] = createSignal<string>('Copy')
   const soft: SettingsSoftProps = createMutable(unwrap(props.soft))
   const hard: SettingsHardProps = createMutable(unwrap(props.hard))
+
+  let idx: number = -1
 
   return <Dialog open={open()} onOpenChange={setOpen}>
     <DialogTrigger>
@@ -108,30 +111,36 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
       <TooltipContent>Share</TooltipContent>
     </Tooltip>
     </DialogTrigger>
-    <DialogContent class='flex flex-col gap-2 p-4 bg-background-muted rounded-none'>
+    <DialogContent class='flex flex-col gap-2 p-4 bg-background rounded'>
       <DialogHeader class='flex flex-row gap-2 items-center'>
-        {props.word()}
+        Share <span class='text-blue-500 font-bold uppercase'>{props.word()}</span>
       </DialogHeader>
 
       <SettingsKnobs soft={soft} hard={hard} showWordLength={false} />
 
-      <DialogFooter class='flex flex-row gap-2 items-center'>
+      <DialogFooter class='flex flex-row gap-2 items-center mt-4'>
         <Button
-          class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success transition-colors duration-300'
+          class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success duration-200 active:scale-90 transition-all'
           onClick={() => {
-            const idx: number = bsearch.eq(WORDS['w' + hard.wordLength], props.word(), (a, b) => {
-              if (a === b) return 0
-              return a < b? -1: 1
-            })
             if (idx === -1) {
-              return showError(new Error('Word not found in the database'))
+              idx = bsearch.eq(WORDS['w' + props.word().length], props.word().toLowerCase(), (a, b) => {
+                if (a === b) return 0
+                return a < b? -1: 1
+              })
+
+              if (idx === -1) {
+                return showError(new Error('Word not found in the database'))
+              }
             }
+
             const btos = (b: boolean) => (b? 't': 'f')
-            const serialized = `${btos(soft.fastInvalidate)}${btos(hard.allowAny)},${idx.toString(36)},${hard.wordLength.toString(36)},${hard.maxTries.toString(16)}`
+            const serialized = `${btos(soft.fastInvalidate)}${btos(hard.allowAny)},${idx.toString(36)},${props.word().length.toString(36)},${hard.maxTries.toString(16)}`
             navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?p=${Page.Share}&v=${serialized}`)
+            setCopyButtonText('Copied!')
+            setTimeout(() => setCopyButtonText('Copy'), 1000)
           }}
         >
-          Copy
+          {copyButtonText()}
         </Button>
       </DialogFooter>
     </DialogContent>
