@@ -10,7 +10,7 @@ A simple and lightweight Wordle game clone built using [Solid.js](https://www.so
 * **Responsive Design**
 * **Customizable Word Length**
 * **Customizable Max Attempts**
-* **Sharing**
+* **Sharing Challanges**
 
 ## Images
 
