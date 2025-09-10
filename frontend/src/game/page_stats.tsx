@@ -8,9 +8,11 @@ import { Popover as PopoverPrimitive } from '@kobalte/core/popover'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { Block } from './page'
+import { Block, GetSettingsStore } from './page'
 import { IconHome } from '~/components/icons'
 import { Page, setP } from '../utils/navigation'
+import { ShareTrigger } from './page_share';
+import { SettingsHardProps, SettingsSoftProps } from './popup_settings';
 
 interface GameStats {
   totalGames: number
@@ -100,7 +102,7 @@ class WordStats {
             class='w-full text-left p-2 bg-muted/40 hover:bg-muted/75 transition-all items-center flex flex-1 justify-between'
             onClick={() => this.sidebar.setSelectedValue(value)}
           >
-            <span class='font-semibold uppercase'>{value.w}</span>
+            <span class='font-semibold uppercase mr-auto'>{value.w}</span>
             <span class={'ml-auto text-sm font-semibold ' + (
               attempt.k === KindEnum.Correct? 'text-success-foreground':
               attempt.k === KindEnum.Failed? 'text-error-foreground': 'text-blue-500'
@@ -161,10 +163,16 @@ class StatsSidebar {
   selectedValue: Accessor<Value | undefined>
   setSelectedValue: Setter<Value | undefined>
   stats: GameStats
+  soft: SettingsSoftProps
+  hard: SettingsHardProps
 
   constructor(stats: GameStats) {
     [this.selectedValue, this.setSelectedValue] = createSignal<Value | undefined>(undefined)
     this.stats = stats
+
+    const {softStore, hardStore} = GetSettingsStore()
+    this.soft = softStore.get()!
+    this.hard = hardStore.get()!
   }
 
   static valueStats(selectedValue?: Value) {
@@ -211,7 +219,12 @@ class StatsSidebar {
         {renderStat('Win Rate', (100 * this.stats.totalWins / this.stats.totalGames).toFixed(1) + '%')}
         {renderStat('Average Guesses', this.stats.averageGuesses.toFixed(2))}
       </div>
-      <h2 class='text-xl font-bold mb-2 uppercase'>{this.selectedValue()?.w || 'Detailed Stats'}</h2>
+      <div class='flex flex-row items-center align-middle justify-center justify-items-center place-items-center place-content-center'>
+        <Show when={this.selectedValue()} fallback={<h2 class='text-xl font-bold mb-2 uppercase'>Detailed Stats</h2>}>
+          <h2 class='text-xl font-bold mb-2 uppercase mr-auto text-blue-500'>{this.selectedValue()!.w}</h2>
+          <ShareTrigger word={() => this.selectedValue()!.w} soft={this.soft} hard={this.hard} />
+        </Show>
+      </div>
       <Show when={this.selectedValue() && valueStats()} fallback={<p>Select a word to see detailed stats.</p>}>
         <div class='space-y-2'>
           <div class='flex justify-between'><span>Times Played:</span> <strong>{valueStats()!.played}</strong></div>

@@ -393,22 +393,29 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps) {
   return new WordleModel(soft, hard, stateStore).render()
 }
 
+export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
+  return {
+    softStore: new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {
+      reveal: false,
+      fastInvalidate: true,
+    }, JSON.parse, val => JSON.stringify(val, (k, v) => {
+      if (['reveal'].includes(k)) return undefined
+      return v
+    })),
+    hardStore: new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {
+      wordLength: 6,
+      maxTries: 6,
+      allowAny: false,
+    }, JSON.parse, JSON.stringify),
+  }
+}
+
 export default function Wordle() {
-  const hardStore = new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {
-    wordLength: 6,
-    maxTries: 6,
-    allowAny: false,
-  }, JSON.parse, JSON.stringify)
+  const {softStore, hardStore} = GetSettingsStore()
+
   const hard = createMutable(hardStore.get()!)
   createEffect(() => hardStore.set(hard))
 
-  const softStore = new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {
-    reveal: false,
-    fastInvalidate: true,
-  }, JSON.parse, val => JSON.stringify(val, (k, v) => {
-    if (['reveal'].includes(k)) return undefined
-    return v
-  }))
   const soft = createMutable(softStore.get()!)
   createEffect(() => softStore.set(soft))
 
