@@ -3,7 +3,7 @@
 import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
 import bsearch from 'binary-search-bounds'
-import { SettingsHardProps } from './page_settings.tsx'
+import { SettingsHardProps } from './popup_settings'
 
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
 
