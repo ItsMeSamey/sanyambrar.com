@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PortaFile | Secure URL File Encapsulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script>
+    tailwind.config = {
+      darkMode: 'media',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.3s ease-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+    </script>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+
+    /* Hide scrollbars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none;  scrollbar-width: none; }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 dark:bg-slate-900 dark:text-gray-100 min-h-screen transition-colors duration-300 flex flex-col">
+
+    <main id="main-container" class="flex-grow flex flex-col items-center justify-center p-4 sm:p-6 transition-all duration-500 ease-in-out">
+      <div id="content-wrapper" class="w-full max-w-3xl transition-[max-width] duration-500 ease-in-out">
+        <!-- VIEWER PANEL -->
+        <div id="viewer-panel" class="hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col h-[85vh] sm:h-auto animate-fade-in">
+
+          <!-- Toolbar -->
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/95 backdrop-blur z-20">
+            <button onclick="goHome()" class="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+              <span class="text-sm font-semibold hidden sm:inline">Back</span>
+            </button>
+
+            <div class="flex items-center space-x-2 truncate max-w-[50%]">
+              <span id="viewer-icon-small" class="hidden sm:block"></span>
+              <span id="viewer-filename" class="text-sm font-medium text-gray-900 dark:text-white truncate">filename.ext</span>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <button id="viewer-copy-btn" class="p-2 text-gray-500 hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors" title="Copy Link">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-4M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v8"></path></svg>
+              </button>
+              <button id="viewer-download-btn" class="flex items-center space-x-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-brand-500/20 transition-all active:scale-95">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <span class="hidden sm:inline">Download</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview Content Area -->
+          <div id="preview-container" class="flex-grow bg-gray-100 dark:bg-slate-900/50 p-4 sm:p-8 flex items-center justify-center overflow-auto relative min-h-[500px]">
+            <!-- Dynamic Content Injected Here -->
+          </div>
+        </div>
+
+        <!-- ENCODER PANEL -->
+        <div id="encoder-panel" class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden animate-fade-in">
+          <div class="p-8 sm:p-10">
+            <div class="text-center mb-8">
+              <h2 class="text-3xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">
+                Share Files via URL
+              </h2>
+              <p class="text-gray-500 dark:text-gray-400">
+                Select a file to encode into a secure, serverless link.
+              </p>
+            </div>
+
+            <!-- Drop Zone -->
+            <div class="relative group cursor-pointer">
+              <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+              <div class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-10 flex flex-col items-center justify-center transition-all duration-300 group-hover:border-brand-500 dark:group-hover:border-brand-400 group-hover:bg-blue-50/50 dark:group-hover:bg-slate-700/50 bg-gray-50 dark:bg-slate-800/50">
+                <div class="w-16 h-16 bg-white dark:bg-slate-700 shadow-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg class="w-8 h-8 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                </div>
+                <p class="text-lg font-semibold text-gray-700 dark:text-gray-200 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">Click to upload or drag file</p>
+                <p class="text-sm text-gray-400 mt-2">Recommended: < 2MB (Text/Images)</p>
+            </div>
+          </div>
+
+          <!-- Settings & Output Area -->
+          <div id="settings-area" class="hidden mt-8 space-y-6 border-t border-gray-100 dark:border-slate-700 pt-6">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Filename</label>
+                <input type="text" id="filename-input" class="block w-full rounded-lg border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 dark:text-white shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm p-2.5 border transition-colors" placeholder="file.txt">
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Compression Status</label>
+                <div id="compression-stats" class="block w-full rounded-lg border border-transparent bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400 p-2.5 text-xs font-mono h-[42px] flex items-center truncate">
+                  Waiting for file...
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Generated URL</label>
+              <textarea id="result-url" readonly class="block w-full h-20 p-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 text-gray-600 dark:text-gray-300 text-xs font-mono focus:ring-brand-500 focus:border-brand-500 resize-none no-scrollbar"></textarea>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button id="copy-btn" class="flex-1 inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-600 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 shadow-lg shadow-brand-500/30 transition-all">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v2"></path></svg>
+                Copy URL
+              </button>
+
+              <button id="view-result-btn" class="flex-1 inline-flex justify-center items-center px-4 py-2.5 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                View Result
+              </button>
+            </div>
+          </div>
+
+          <!-- Error Box -->
+          <div id="error-msg" class="hidden mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center">
+            <svg class="w-5 h-5 text-red-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span class="text-red-600 dark:text-red-400 text-sm font-medium" id="error-text"></span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold rounded-full shadow-2xl opacity-0 transition-all duration-300 translate-y-8 z-50 flex items-center">
+    <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    <span id="toast-msg">Notification</span>
+  </div>
+
+  <script>
+  const svgs = {
+    image: '<svg class="w-24 h-24 text-purple-500 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>',
+    video: '<svg class="w-24 h-24 text-pink-500 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>',
+    audio: '<svg class="w-24 h-24 text-yellow-500 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>',
+    text: '<svg class="w-24 h-24 text-blue-500 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>',
+    pdf: '<svg class="w-24 h-24 text-red-500 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>',
+    default: '<svg class="w-24 h-24 text-gray-400 drop-shadow-xl" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>'
+  };
+
+  const els = {
+    wrapper: document.getElementById('content-wrapper'),
+    viewer: document.getElementById('viewer-panel'),
+    encoder: document.getElementById('encoder-panel'),
+    preview: document.getElementById('preview-container'),
+    filenameDisplay: document.getElementById('viewer-filename'),
+    fileInput: document.getElementById('file-input'),
+    settings: document.getElementById('settings-area'),
+    filenameInput: document.getElementById('filename-input'),
+    resultUrl: document.getElementById('result-url'),
+    copyBtn: document.getElementById('copy-btn'),
+    viewerCopyBtn: document.getElementById('viewer-copy-btn'),
+    viewResultBtn: document.getElementById('view-result-btn'),
+    downloadBtn: document.getElementById('viewer-download-btn'),
+    errorBox: document.getElementById('error-msg'),
+    errorText: document.getElementById('error-text'),
+    stats: document.getElementById('compression-stats'),
+    toast: document.getElementById('toast'),
+    toastMsg: document.getElementById('toast-msg')
+  };
+
+  function showToast(msg) {
+    els.toastMsg.textContent = msg;
+    els.toast.classList.remove('opacity-0', 'translate-y-8');
+    setTimeout(() => els.toast.classList.add('opacity-0', 'translate-y-8'), 3000);
+  }
+
+  function goHome() {
+    window.history.pushState({}, document.title, window.location.pathname);
+    window.location.reload();
+  }
+
+  function renderError(msg) {
+    els.errorText.textContent = msg;
+    els.errorBox.classList.remove('hidden');
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const compressedData = params.get('d');
+  const metadataName = params.get('n');
+
+  if (compressedData) { // PREVIEW MODE
+    els.encoder.classList.add('hidden');
+    els.viewer.classList.remove('hidden');
+    els.wrapper.classList.remove('max-w-3xl');
+    els.wrapper.classList.add('w-full', 'max-w-7xl');
+
+    try {
+      const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+      if (!decompressed) throw new Error("Data corruption or invalid URL.");
+
+      const fileName = metadataName ? decodeURIComponent(metadataName) : 'downloaded_file';
+      els.filenameDisplay.textContent = fileName;
+
+      const mimeMatch = decompressed.match(/^data:([^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
+      let previewHtml = '';
+
+      if (mimeType.startsWith('image/')) {
+        previewHtml = `<img src="${decompressed}" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl" alt="Preview">`;
+      } else if (mimeType.startsWith('video/')) {
+        previewHtml = `
+        <div class="flex flex-col items-center justify-center w-full h-full">
+          <video controls src="${decompressed}" class="max-w-full max-h-[70vh] rounded-lg shadow-2xl bg-black"></video>
+          <div class="mt-4 text-gray-500 text-sm">Video Preview</div>
+        </div>`;
+      } else if (mimeType.startsWith('audio/')) {
+        previewHtml = `
+        <div class="flex flex-col items-center justify-center w-full max-w-lg p-10 bg-white dark:bg-slate-800 rounded-2xl shadow-xl">
+          <div class="mb-6 animate-pulse">${svgs.audio}</div>
+          <audio controls src="${decompressed}" class="w-full"></audio>
+          <p class="mt-4 text-sm text-gray-500">${fileName}</p>
+        </div>`;
+      } else if (mimeType === 'application/pdf') {
+        previewHtml = `
+        <div class="flex flex-col items-center justify-center text-center">
+          <div class="mb-4">${svgs.pdf}</div>
+          <h3 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">PDF Document</h3>
+          <iframe src="${decompressed}" class="w-[80vw] h-[70vh] border border-gray-300 rounded shadow-sm bg-white mt-4" title="PDF Preview"></iframe>
+        </div>`;
+      } else if (mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType.includes('xml')) {
+        const content = atob(decompressed.split(',')[1]);
+        const safeContent = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        previewHtml = `
+        <div class="w-full max-w-5xl">
+          <div class="flex items-center space-x-2 mb-2">
+            <div class="w-6 h-6">${svgs.text.replace('w-24 h-24', 'w-full h-full')}</div>
+            <span class="text-sm font-bold uppercase text-gray-500">Text Content Preview</span>
+          </div>
+          <pre class="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg p-6 overflow-auto max-h-[70vh] text-sm font-mono whitespace-pre-wrap text-gray-800 dark:text-green-400 shadow-inner">${safeContent}</pre>
+        </div>`;
+      } else {
+        previewHtml = `
+        <div class="flex flex-col items-center justify-center text-center p-10 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700">
+          <div class="mb-6">${svgs.default}</div>
+          <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Binary File</h3>
+          <p class="text-gray-500 mb-6">Preview not available for <span class="font-mono bg-gray-100 dark:bg-slate-700 px-1 rounded">${mimeType}</span></p>
+        </div>`;
+      }
+
+      els.preview.innerHTML = previewHtml;
+
+      els.downloadBtn.onclick = () => {
+        const a = document.createElement('a');
+        a.href = decompressed;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+
+      els.viewerCopyBtn.onclick = () => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+          showToast("Link copied to clipboard!");
+        });
+      };
+
+    } catch (e) {
+      els.preview.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+          <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Loading Failed</h2>
+        <p class="text-gray-500 mt-2">The link is broken or the data is corrupted.</p>
+        <button onclick="goHome()" class="mt-6 px-6 py-2 bg-gray-200 dark:bg-slate-700 rounded-lg hover:bg-gray-300 transition">Go Home</button>
+      </div>`;
+      console.error(e);
+    }
+
+  } else { // ENCODER MODE
+    let currentDataUrl = '';
+    let originalSize = 0;
+
+    els.fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      els.errorBox.classList.add('hidden');
+      if (file.size > 2 * 1024 * 1024) { // 2MB
+        renderError("Warning: Files larger than 2MB generate extremely long URLs that may not be supported in some browsers.");
+      }
+
+      els.filenameInput.value = file.name;
+      originalSize = file.size;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        currentDataUrl = ev.target.result;
+        generateUrl();
+      };
+      reader.onerror = () => renderError("Failed to read file.");
+      reader.readAsDataURL(file);
+    });
+
+    els.filenameInput.addEventListener('input', generateUrl);
+
+    function generateUrl() {
+      if (!currentDataUrl) return;
+
+      els.settings.classList.remove('hidden');
+      els.settings.classList.add('animate-fade-in');
+
+      const filename = els.filenameInput.value.trim() || 'file';
+      const compressed = LZString.compressToEncodedURIComponent(currentDataUrl);
+      const baseUrl = window.location.origin + window.location.pathname;
+      const fullUrl = `${baseUrl}?d=${compressed}&n=${encodeURIComponent(filename)}`;
+
+      els.resultUrl.value = fullUrl;
+
+      const encodedSize = fullUrl.length;
+      const ratio = ((1 - (encodedSize / (originalSize * 1.37))) * 100).toFixed(1); // Base64 is ~1.37x larger normally
+      let statText = `Size: ${(originalSize/1024).toFixed(1)}KB`;
+
+      if (encodedSize < originalSize) {
+        statText += ` | Compressed (${ratio}% saved)`;
+        els.stats.className = "block w-full rounded-lg border border-green-200 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-2.5 text-xs font-mono h-[42px] flex items-center";
+      } else {
+        statText += ` | URL Length: ${encodedSize} chars`;
+        els.stats.className = "block w-full rounded-lg border border-gray-200 bg-gray-100 dark:bg-slate-900 text-gray-500 dark:text-gray-400 p-2.5 text-xs font-mono h-[42px] flex items-center";
+      }
+      els.stats.textContent = statText;
+    }
+
+    els.copyBtn.addEventListener('click', () => {
+      if(!els.resultUrl.value) return;
+      els.resultUrl.select();
+      document.execCommand('copy');
+      showToast('Link copied to clipboard!');
+    });
+
+    els.viewResultBtn.addEventListener('click', () => {
+      const url = els.resultUrl.value;
+      if(url) {
+        window.location.href = url;
+      }
+    });
+  }
+  </script>
+</body>
+</html>
