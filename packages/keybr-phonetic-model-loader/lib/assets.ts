@@ -31,6 +31,7 @@ import SV from "@keybr/phonetic-model/assets/model-sv.data";
 import TH from "@keybr/phonetic-model/assets/model-th.data";
 import TR from "@keybr/phonetic-model/assets/model-tr.data";
 import UK from "@keybr/phonetic-model/assets/model-uk.data";
+import VI from "@keybr/phonetic-model/assets/model-vi.data";
 
 export function modelAssetPath(language: Language): string {
   switch (language) {
@@ -98,6 +99,8 @@ export function modelAssetPath(language: Language): string {
       return TR;
     case Language.UK:
       return UK;
+    case Language.VI:
+      return VI;
     default:
       throw new Error();
   }
