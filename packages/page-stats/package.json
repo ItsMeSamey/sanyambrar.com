@@ -15,6 +15,7 @@
     "@keybr/phonetic-model": "workspace:*",
     "@keybr/phonetic-model-loader": "workspace:*",
     "@keybr/result": "workspace:*",
+    "@keybr/result-io": "workspace:*",
     "@keybr/settings": "workspace:*",
     "@keybr/widget": "workspace:*",
     "@mdi/js": "^7.4.47",

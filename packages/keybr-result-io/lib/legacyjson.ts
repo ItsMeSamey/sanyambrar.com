@@ -51,10 +51,18 @@ export function histogramToJson(histogram: Histogram): HistogramtJson {
   return json;
 }
 
-export function resultFromJson(json: ResultJson): Result | null {
+export function resultFromJson(json: unknown): Result | null {
   if (!isPlainObject(json)) {
     return null;
   }
+  const data = json as Record<string, unknown>;
+  if ("l" in data || "m" in data || "ts" in data || "h" in data) {
+    return resultFromCompactJson(data);
+  }
+  return resultFromExportJson(data);
+}
+
+function resultFromCompactJson(json: Record<string, unknown>): Result | null {
   const {
     l: layoutId,
     m: textTypeId,
@@ -76,7 +84,55 @@ export function resultFromJson(json: ResultJson): Result | null {
   ) {
     return null;
   }
-  const histogram = histogramFromJson(histogramJson);
+  const histogram = histogramFromJson(histogramJson as HistogramtJson);
+  return makeResult(
+    layoutId,
+    textTypeId,
+    timeStamp as number,
+    length as number,
+    time as number,
+    errors as number,
+    histogram,
+  );
+}
+
+function resultFromExportJson(json: Record<string, unknown>): Result | null {
+  const { layout, textType, timeStamp, length, time, errors, histogram } = json;
+  if (
+    !(
+      isString(layout) &&
+      isString(textType) &&
+      Number.isSafeInteger(length) &&
+      Number.isSafeInteger(time) &&
+      Number.isSafeInteger(errors)
+    )
+  ) {
+    return null;
+  }
+  const parsedTimeStamp = parseTimeStamp(timeStamp);
+  if (parsedTimeStamp == null) {
+    return null;
+  }
+  return makeResult(
+    layout,
+    textType,
+    parsedTimeStamp,
+    length as number,
+    time as number,
+    errors as number,
+    histogramFromExportJson(histogram),
+  );
+}
+
+function makeResult(
+  layoutId: string,
+  textTypeId: string,
+  timeStamp: number,
+  length: number,
+  time: number,
+  errors: number,
+  histogram: Histogram | null,
+): Result | null {
   if (histogram == null) {
     return null;
   }
@@ -93,6 +149,55 @@ export function resultFromJson(json: ResultJson): Result | null {
   } catch {
     return null;
   }
+}
+
+function parseTimeStamp(value: unknown): number | null {
+  if (Number.isSafeInteger(value)) {
+    return value as number;
+  }
+  if (isString(value)) {
+    const timeStamp = Date.parse(value);
+    if (Number.isSafeInteger(timeStamp)) {
+      return timeStamp;
+    }
+  }
+  return null;
+}
+
+function histogramFromExportJson(json: unknown): Histogram | null {
+  if (!Array.isArray(json)) {
+    return null;
+  }
+  const samples = [];
+  for (const value of json) {
+    if (!isPlainObject(value)) {
+      return null;
+    }
+    const { codePoint, hitCount, missCount, timeToType } = value as Record<
+      string,
+      unknown
+    >;
+    if (
+      !(
+        Number.isSafeInteger(codePoint) &&
+        (codePoint as number) > 0 &&
+        (codePoint as number) <= 65535 &&
+        Number.isSafeInteger(hitCount) &&
+        Number.isSafeInteger(missCount) &&
+        typeof timeToType === "number" &&
+        Number.isFinite(timeToType)
+      )
+    ) {
+      return null;
+    }
+    samples.push({
+      codePoint: codePoint as number,
+      hitCount: hitCount as number,
+      missCount: missCount as number,
+      timeToType: Math.round(timeToType),
+    });
+  }
+  return new Histogram(samples);
 }
 
 export function histogramFromJson(json: HistogramtJson): Histogram | null {

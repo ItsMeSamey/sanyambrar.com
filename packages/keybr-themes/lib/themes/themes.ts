@@ -5,9 +5,9 @@ export type ThemeOption<T extends string = string> = {
 
 export const COLORS = [
   { id: "light", name: "Light" },
-  { id: "light-contrast", name: "Light High Contrast" },
+  { id: "clear-light", name: "Clear Light" },
   { id: "dark", name: "Dark" },
-  { id: "dark-contrast", name: "Dark High Contrast" },
+  { id: "clear-dark", name: "Clear Dark" },
   { id: "custom", name: "Custom…" },
 ] as const satisfies readonly ThemeOption[];
 
@@ -58,6 +58,12 @@ export const DARK_CUSTOM_THEME: CustomThemeColors = {
 export type CustomThemeColorName = Exclude<keyof CustomThemeColors, "tone">;
 
 export function colorTheme(id: unknown): ThemeColor {
+  if (id === "light-contrast") {
+    return "clear-light";
+  }
+  if (id === "dark-contrast") {
+    return "clear-dark";
+  }
   return COLORS.find((item) => item.id === id)?.id ?? defaultColorTheme();
 }
 
