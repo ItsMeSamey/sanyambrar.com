@@ -88,8 +88,7 @@ export const PracticeTour = memo(function PracticeTour({
           id="m_tour09"
           defaultMessage={
             "<p>This is the typing score indicator in abstract points and the difference from the average value.</p>" +
-            "<p>The score is calculated from your typing speed, error count, and the current size of the letter set. The formula is designed to reward for typing speed, and punish for error count. You cannot obtain a high score by typing fast while also making many errors.</p>" +
-            "<p>Users who score the highest points are recorded in the high score table.</p>"
+            "<p>The score is calculated from your typing speed, error count, and the current size of the letter set. The formula is designed to reward for typing speed, and punish for error count. Typing fast while making many errors will still produce a poor result.</p>"
           }
         />
       </Slide>

@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-env NODE_ENV=test node --enable-source-maps --import @keybr/tsl $@

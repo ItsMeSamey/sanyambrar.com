@@ -2,7 +2,6 @@ export * from "./accuracy.ts";
 export * from "./context.ts";
 export * from "./dailystats.ts";
 export * from "./errors.ts";
-export * from "./fake.tsx";
 export * from "./group.ts";
 export * from "./keystats.ts";
 export * from "./localdate.ts";

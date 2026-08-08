@@ -1,0 +1,20 @@
+{
+  "private": true,
+  "name": "@keybr/app",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@keybr/debug": "*",
+    "@keybr/intl": "*",
+    "@keybr/page-practice": "*",
+    "@keybr/page-stats": "*",
+    "@keybr/pages-shared": "*",
+    "@keybr/result-loader": "*",
+    "@keybr/settings-loader": "*",
+    "@keybr/themes": "*",
+    "@keybr/widget": "*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-intl": "^10.1.0"
+  }
+}

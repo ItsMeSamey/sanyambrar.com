@@ -1,4 +1,3 @@
-import { LoadingProgress, usePageData } from "@keybr/pages-shared";
 import { type SettingsStorage } from "@keybr/settings";
 import { type ReactNode, useMemo } from "react";
 import { useLoader } from "./internal/loader.ts";
@@ -7,7 +6,7 @@ import { openSettingsStorage } from "./internal/storage.ts";
 
 export function SettingsLoader({
   children,
-  fallback = <LoadingProgress />,
+  fallback = null,
 }: {
   readonly children: ReactNode;
   readonly fallback?: ReactNode;
@@ -16,19 +15,14 @@ export function SettingsLoader({
   const settings = useLoader(storage);
   if (settings == null) {
     return fallback;
-  } else {
-    return (
-      <SettingsProvider storage={storage} initialSettings={settings}>
-        {children}
-      </SettingsProvider>
-    );
   }
+  return (
+    <SettingsProvider storage={storage} initialSettings={settings}>
+      {children}
+    </SettingsProvider>
+  );
 }
 
 function useSettingsStorage(): SettingsStorage {
-  const pageData = usePageData();
-  return useMemo(() => {
-    const { publicUser, settings } = pageData;
-    return openSettingsStorage(publicUser.id, settings);
-  }, [pageData]);
+  return useMemo(() => openSettingsStorage(), []);
 }

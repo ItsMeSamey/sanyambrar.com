@@ -1,4 +1,3 @@
-import { expectType, request } from "@keybr/request";
 import { getAudioContext } from "./audiocontext.ts";
 import { nullPlayer, WebAudioPlayer } from "./player.ts";
 import { type Player, type PlayerId, type SoundAssets } from "./types.ts";
@@ -47,10 +46,10 @@ class PlayerLoader {
    */
   async #load() {
     try {
-      const response = await request
-        .use(expectType("audio/*"))
-        .GET(this.#url)
-        .send();
+      const response = await fetch(this.#url);
+      if (!response.ok) {
+        throw new Error(`Cannot load sound: ${response.status}`);
+      }
       this.#buffer = await response.arrayBuffer();
     } catch (err) {
       this.#player = nullPlayer;

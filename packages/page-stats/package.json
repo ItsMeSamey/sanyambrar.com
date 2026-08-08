@@ -1,0 +1,24 @@
+{
+  "private": true,
+  "name": "@keybr/page-stats",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/chart": "*",
+    "@keybr/intl": "*",
+    "@keybr/keyboard": "*",
+    "@keybr/lesson": "*",
+    "@keybr/lesson-ui": "*",
+    "@keybr/math": "*",
+    "@keybr/pages-shared": "*",
+    "@keybr/phonetic-model": "*",
+    "@keybr/phonetic-model-loader": "*",
+    "@keybr/result": "*",
+    "@keybr/settings": "*",
+    "@keybr/widget": "*",
+    "@mdi/js": "^7.4.47",
+    "react": "^19.2.4",
+    "react-intl": "^10.1.0"
+  }
+}

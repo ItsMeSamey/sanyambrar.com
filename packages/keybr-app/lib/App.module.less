@@ -1,0 +1,42 @@
+.app {
+  min-block-size: 100vh;
+}
+
+.header {
+  position: sticky;
+  z-index: 10;
+  inset-block-start: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-block-end: 1px solid var(--separator-color);
+  background: var(--background-color);
+}
+
+.navButton,
+.active {
+  appearance: none;
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.active {
+  background: var(--accent);
+  color: var(--primary-l2);
+}
+
+.localBadge {
+  margin-inline-start: auto;
+  opacity: 0.65;
+  font-size: 0.85rem;
+}
+
+.main {
+  min-block-size: calc(100vh - 3rem);
+}

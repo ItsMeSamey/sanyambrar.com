@@ -281,7 +281,7 @@ export function withStyles(styles: ChartStyles) {
     return [
       Shapes.fillText({
         value: formatMessage({
-          id: "profile.emptyChart.header",
+          id: "stats.emptyChart.header",
           defaultMessage: "Not enough data",
         }),
         x: box.cx,
@@ -294,7 +294,7 @@ export function withStyles(styles: ChartStyles) {
       }),
       Shapes.fillText({
         value: formatMessage({
-          id: "profile.emptyChart.description",
+          id: "stats.emptyChart.description",
           defaultMessage:
             "Complete a few more lessons to get more data points.",
         }),

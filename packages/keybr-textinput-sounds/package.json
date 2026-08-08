@@ -4,17 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "main": "lib/index.ts",
-  "types": ".types/index.d.ts",
   "dependencies": {
     "@keybr/lang": "*",
     "@keybr/rand": "*",
-    "@keybr/request": "*",
     "@keybr/settings": "*",
-    "@keybr/textinput": "*"
-  },
-  "devDependencies": {},
-  "scripts": {
-    "clean": "rm -fr .types",
-    "compile": "tsc"
+    "@keybr/textinput": "*",
+    "react": "^19.2.4"
   }
 }

@@ -1,5 +1,0 @@
-[lib/generate-layouts.ts]
-max_line_length = 200
-
-[layout/*.json]
-max_line_length = 200

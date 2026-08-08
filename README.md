@@ -1,41 +1,94 @@
-[![CI](https://github.com/aradzie/keybr.com/actions/workflows/ci.yml/badge.svg)](https://github.com/aradzie/keybr.com/actions/workflows/ci.yml)
+# keybr local
 
-# [keybr.com](https://www.keybr.com/) is not (just) a typing test
+A local-only, frontend-only fork of [keybr.com](https://www.keybr.com/).
 
-<p align="center">
-    <img src="assets/screenshot.png" alt="screenshot" width="600"/>
-</p>
+This fork keeps the adaptive typing trainer, keyboard layouts, lesson modes, local statistics, and settings. It removes the hosted-service parts: accounts, authentication, public profiles, remote sync, high scores, multiplayer, checkout, server rendering, the Node HTTP/WebSocket backend, and the SQL/user-data persistence layers.
 
-It's the smartest way to learn touch typing and improve your typing speed.
-On the surface, it looks pretty simple: it shows you a piece of text, and you type it out.
-But the devil is in the details — keybr.com offers a few unique features:
+## What remains
 
-* keybr.com tracks every single keystroke and computes statistics for each individual key.
-* It automatically generates lessons that focus on your weakest keys.
-* You can set your own target typing speed, and it tracks your progress toward that goal.
-* It starts with a small set of the most frequent letters in your language.
-* More letters are added once you reach the target speed with the current ones.
-* It can even predict how many more lessons you will need to complete to reach your target speed.
-* It provides a beautiful profile page with detailed graphs showing your learning progress.
-* It offers plenty of modes and configuration options.
+- Adaptive guided lessons and per-key learning statistics.
+- Word, book, custom text, number, and code lesson support.
+- Keyboard layouts and typing languages from the original project.
+- Practice settings and local statistics/charts.
+- Settings stored in `localStorage`.
+- Typing history stored in IndexedDB (`history`).
+- System/light/dark color handling via CSS; no bundled web fonts or decorative theme assets.
 
-<p align="center">
-    <img src="docs/assets/graph.png" alt="screenshot" width="600"/>
-</p>
+No typing history or settings are sent to a server by this application.
 
-## Can I contribute?
+## Requirements
 
-Yes!
+Install [Bun](https://bun.sh/) 1.2.20 or newer.
 
-* **[Give us a ⭐️.](https://github.com/aradzie/keybr.com)** Help this project gain visibility and stand out.
-* **[Report a bug.](https://github.com/aradzie/keybr.com/issues)** If something is not working, let us know.
-* **[Suggest a feature.](https://github.com/aradzie/keybr.com/issues)** We are open to new ideas.
-* **[Translate.](./docs/translations.md)** If you want to see keybr.com in your language.
-* **[Getting started.](./docs/getting_started.md)** Launch a local instance of keybr.com, make a pull request.
-* **[Add a keyboard.](docs/custom_keyboard.md)** Add a custom keyboard to keybr.com
-* **[Add a language.](docs/custom_language.md)** Add a custom language to keybr.com
-* **[Join our Discord server](https://discord.gg/gY4RA4enVH).** To discuss things in a less formal way.
+```sh
+bun install
+```
 
-## License
+There is no npm workflow or `package-lock.json` in this fork.
 
-Released under the GNU Affero General Public License v3.0.
+## Build
+
+```sh
+bun run build
+```
+
+The production build intentionally emits exactly one file:
+
+```text
+dist/index.html
+```
+
+JavaScript, CSS, phonetic-model data, sounds, and other runtime assets are inlined into that HTML file. Webpack is configured to fail the build if another emitted asset survives the final bundling step.
+
+For an unminified/watch build:
+
+```sh
+bun run dev
+```
+
+## Run locally
+
+Build and serve on `http://localhost:3000`:
+
+```sh
+bun run start
+```
+
+Or after building:
+
+```sh
+bun run serve
+```
+
+Set `PORT` to use another port:
+
+```sh
+PORT=8080 bun run serve
+```
+
+Opening `dist/index.html` directly may work in some browsers, but serving it from localhost is recommended because browser storage and security behavior is more predictable on an HTTP origin.
+
+## Data model
+
+There is intentionally no user identity. One browser profile is one local typing profile.
+
+```text
+Browser
+  ├─ React SPA
+  │   ├─ Practice
+  │   └─ Statistics
+  ├─ localStorage
+  │   └─ settings
+  └─ IndexedDB
+      └─ typing history
+```
+
+Clearing site data deletes the local history/settings. There is no cloud recovery or cross-device synchronization.
+
+## Validation note
+
+The refactor is designed for Bun and a browser-only Webpack target. The source tree can be statically validated without the removed backend. If you change build dependencies, run `bun install` followed by `bun run build`; the single-file plugin will reject accidental extra output files.
+
+## Origin and license
+
+Derived from `aradzie/keybr.com` by Aliaksandr Radzivanovich and contributors. The original project and this derivative are distributed under the GNU Affero General Public License v3.0; see `LICENSE`.

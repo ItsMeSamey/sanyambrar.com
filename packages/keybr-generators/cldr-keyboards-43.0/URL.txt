@@ -1,2 +1,0 @@
-https://unicode.org/reports/tr35/tr35-keyboards.html
-https://unicode.org/Public/cldr/43/

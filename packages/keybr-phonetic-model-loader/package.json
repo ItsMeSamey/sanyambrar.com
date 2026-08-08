@@ -4,17 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "main": "lib/index.ts",
-  "types": ".types/index.d.ts",
   "dependencies": {
     "@keybr/debug": "*",
     "@keybr/keyboard": "*",
     "@keybr/pages-shared": "*",
     "@keybr/phonetic-model": "*",
-    "@keybr/request": "*"
-  },
-  "devDependencies": {},
-  "scripts": {
-    "clean": "rm -fr .types",
-    "compile": "tsc"
+    "react": "^19.2.4"
   }
 }
