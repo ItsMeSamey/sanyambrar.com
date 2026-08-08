@@ -6,6 +6,6 @@
   "main": "lib/index.ts",
   "sideEffects": false,
   "dependencies": {
-    "@keybr/lang": "*"
+    "@keybr/lang": "workspace:*"
   }
 }

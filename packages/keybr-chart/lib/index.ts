@@ -1,6 +1,5 @@
 export * from "./AccuracyHistogram.tsx";
 export * from "./Chart.tsx";
-export * from "./dist/index.ts";
 export * from "./geometry.ts";
 export * from "./graph.ts";
 export * from "./KeyDetailsChart.tsx";

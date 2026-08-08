@@ -5,7 +5,7 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/lang": "*",
+    "@keybr/lang": "workspace:*",
     "react": "^19.2.4"
   }
 }

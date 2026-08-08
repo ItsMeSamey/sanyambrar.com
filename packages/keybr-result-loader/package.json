@@ -5,9 +5,9 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/debug": "*",
-    "@keybr/result": "*",
-    "@keybr/result-io": "*",
+    "@keybr/debug": "workspace:*",
+    "@keybr/result": "workspace:*",
+    "@keybr/result-io": "workspace:*",
     "react": "^19.2.4"
   }
 }

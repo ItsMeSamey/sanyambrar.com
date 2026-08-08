@@ -11,11 +11,12 @@
   ],
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "build": "NODE_ENV=production webpack",
-    "build:dev": "NODE_ENV=development webpack",
-    "dev": "NODE_ENV=development webpack --watch",
+    "build": "bun run check:workspaces && NODE_ENV=production webpack",
+    "build:dev": "bun run check:workspaces && NODE_ENV=development webpack",
+    "dev": "bun run check:workspaces && NODE_ENV=development webpack --watch",
     "serve": "bun ./scripts/serve.ts",
-    "start": "bun run build && bun run serve"
+    "start": "bun run build && bun run serve",
+    "check:workspaces": "bun ./scripts/check-workspaces.mjs"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",

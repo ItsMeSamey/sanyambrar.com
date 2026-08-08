@@ -5,10 +5,10 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/keyboard": "*",
-    "@keybr/settings": "*",
-    "@keybr/unicode": "*",
-    "@keybr/widget": "*",
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/unicode": "workspace:*",
+    "@keybr/widget": "workspace:*",
     "react": "^19.2.4"
   }
 }

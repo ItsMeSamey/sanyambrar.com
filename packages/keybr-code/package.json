@@ -5,8 +5,8 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/lang": "*",
-    "@keybr/rand": "*",
-    "@keybr/textinput": "*"
+    "@keybr/lang": "workspace:*",
+    "@keybr/rand": "workspace:*",
+    "@keybr/textinput": "workspace:*"
   }
 }

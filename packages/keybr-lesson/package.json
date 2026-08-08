@@ -5,16 +5,16 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/code": "*",
-    "@keybr/content": "*",
-    "@keybr/keyboard": "*",
-    "@keybr/lang": "*",
-    "@keybr/math": "*",
-    "@keybr/phonetic-model": "*",
-    "@keybr/rand": "*",
-    "@keybr/result": "*",
-    "@keybr/settings": "*",
-    "@keybr/textinput": "*",
-    "@keybr/unicode": "*"
+    "@keybr/code": "workspace:*",
+    "@keybr/content": "workspace:*",
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/lang": "workspace:*",
+    "@keybr/math": "workspace:*",
+    "@keybr/phonetic-model": "workspace:*",
+    "@keybr/rand": "workspace:*",
+    "@keybr/result": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/textinput": "workspace:*",
+    "@keybr/unicode": "workspace:*"
   }
 }

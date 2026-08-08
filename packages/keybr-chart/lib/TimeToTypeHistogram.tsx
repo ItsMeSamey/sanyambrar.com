@@ -6,7 +6,6 @@ import { Canvas, type Rect, type ShapeList, Shapes } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
-import { bucketize } from "./dist/util.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 
 export function TimeToTypeHistogram({
@@ -84,4 +83,21 @@ function buildHistogram(steps: readonly Step[]) {
     }
   }
   return bucketize(histogram, 15);
+}
+
+function bucketize(data: readonly number[], buckets: number): number[] {
+  const result = [...data];
+  const bucketSize = data.length / buckets;
+  for (let i = 0; i < buckets; i++) {
+    const a = Math.floor(i * bucketSize);
+    const b = Math.floor((i + 1) * bucketSize);
+    let sum = 0;
+    for (let j = a; j < b; j++) {
+      sum += data[j];
+    }
+    for (let j = a; j < b; j++) {
+      result[j] = sum / (b - a);
+    }
+  }
+  return result;
 }

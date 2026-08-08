@@ -5,7 +5,7 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/keyboard": "*",
-    "@keybr/unicode": "*"
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/unicode": "workspace:*"
   }
 }

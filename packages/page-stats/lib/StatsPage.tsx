@@ -19,20 +19,28 @@ import { SpeedChartSection } from "./stats/SpeedChartSection.tsx";
 import { AllTimeSummary, TodaySummary } from "./stats/Summary.tsx";
 
 /** Local statistics only; there is no user identity or public stats. */
-export function StatsPage() {
+export function StatsPage({ onDone }: { readonly onDone?: () => void }) {
   return (
     <Screen>
       <ExplainerBoundary>
         <ExplainStats />
         <ResultGrouper>
-          {(keyStatsMap) => <Content keyStatsMap={keyStatsMap} />}
+          {(keyStatsMap) => (
+            <Content keyStatsMap={keyStatsMap} onDone={onDone} />
+          )}
         </ResultGrouper>
       </ExplainerBoundary>
     </Screen>
   );
 }
 
-function Content({ keyStatsMap }: { keyStatsMap: KeyStatsMap }) {
+function Content({
+  keyStatsMap,
+  onDone,
+}: {
+  readonly keyStatsMap: KeyStatsMap;
+  readonly onDone?: () => void;
+}) {
   const { results } = keyStatsMap;
   const stats = makeSummaryStats(results);
   const dailyStatsMap = new DailyStatsMap(results);
@@ -48,7 +56,7 @@ function Content({ keyStatsMap }: { keyStatsMap: KeyStatsMap }) {
       <KeyFrequencyHistogramSection keyStatsMap={keyStatsMap} />
       <KeyFrequencyHeatmapSection keyStatsMap={keyStatsMap} />
       <CalendarSection dailyStatsMap={dailyStatsMap} />
-      <FooterSection />
+      <FooterSection onDone={onDone} />
     </>
   );
 }

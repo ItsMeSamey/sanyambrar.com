@@ -4,6 +4,7 @@ import { useSettings } from "@keybr/settings";
 import { Button, Icon, IconButton, useView } from "@keybr/widget";
 import {
   mdiAspectRatio,
+  mdiChartAreaspline,
   mdiCog,
   mdiHelpCircleOutline,
   mdiRedo,
@@ -13,6 +14,7 @@ import { memo, type ReactNode } from "react";
 import { useIntl } from "react-intl";
 import { views } from "../views.tsx";
 import * as styles from "./Controls.module.less";
+import { ThemeControls } from "./ThemeControls.tsx";
 
 export const Controls = memo(function Controls({
   onChangeView,
@@ -63,6 +65,17 @@ export const Controls = memo(function Controls({
           defaultMessage: "Switch the current interface layout.",
         })}
         onClick={onChangeView}
+      />
+      <ThemeControls />
+      <IconButton
+        icon={<Icon shape={mdiChartAreaspline} />}
+        title={formatMessage({
+          id: "local.statistics.description",
+          defaultMessage: "Show your local typing statistics.",
+        })}
+        onClick={() => {
+          setView("statistics");
+        }}
       />
       {settings.isNew ? (
         <Button

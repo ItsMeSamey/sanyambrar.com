@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
@@ -6,6 +7,29 @@ import webpack from "webpack";
 import { SingleFilePlugin } from "./webpack-single-file.js";
 
 const mode = process.env.NODE_ENV || "production";
+const rootDir = import.meta.dirname;
+const packagesDir = join(rootDir, "packages");
+
+// Bun does not need to expose private workspaces through node_modules for the
+// bundle to work. Resolve every retained @keybr/* workspace directly from its
+// package directory instead. This also makes Less imports such as
+// @keybr/themes/lib/index.less resolve through the same graph as TS imports.
+const workspaceAliases = Object.fromEntries(
+  readdirSync(packagesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const packageDir = join(packagesDir, entry.name);
+      const packageJson = join(packageDir, "package.json");
+      try {
+        const { name } = JSON.parse(readFileSync(packageJson, "utf8"));
+        return typeof name === "string" && name.startsWith("@keybr/")
+          ? [[name, packageDir]]
+          : [];
+      } catch {
+        return [];
+      }
+    }),
+);
 
 const ruleTs = {
   test: /\.(ts|tsx)$/,
@@ -14,7 +38,9 @@ const ruleTs = {
     {
       loader: "ts-loader",
       options: {
+        configFile: join(rootDir, "tsconfig.webpack.json"),
         transpileOnly: true,
+        onlyCompileBundledFiles: true,
         compilerOptions: {
           target: "es2022",
           module: "esnext",
@@ -53,21 +79,36 @@ export default {
   name: "keybr-local",
   target: "web",
   mode,
-  context: import.meta.dirname,
+  context: rootDir,
   entry: "./packages/keybr-app/lib/entry.tsx",
   output: {
-    path: join(import.meta.dirname, "dist"),
+    path: join(rootDir, "dist"),
     clean: true,
     filename: "app.js",
     chunkFilename: "chunk-[id].js",
     publicPath: "",
+  },
+  resolve: {
+    alias: workspaceAliases,
+    extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
   },
   module: {
     rules: [
       ruleTs,
       ruleLess,
       {
+        test: /\.data$/i,
+        type: "asset/inline",
+        generator: {
+          dataUrl: {
+            encoding: "base64",
+            mimetype: "application/octet-stream",
+          },
+        },
+      },
+      {
         test: /\/assets\//,
+        exclude: /\.data$/i,
         type: "asset/inline",
       },
     ],

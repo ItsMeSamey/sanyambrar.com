@@ -57,15 +57,15 @@ export function renderChars(
 function specialChar(whitespaceStyle: WhitespaceStyle, codePoint: CodePoint) {
   switch (codePoint) {
     case 0x0009:
-      return "\uE002";
+      return "\u2192"; // → tab
     case 0x000a:
-      return "\uE003";
+      return "\u21B5"; // ↵ line break
     case 0x0020:
       switch (whitespaceStyle) {
         case WhitespaceStyle.Bar:
-          return "\uE001";
+          return "_"; // ASCII bar: guaranteed to exist in the active font
         case WhitespaceStyle.Bullet:
-          return "\uE000";
+          return "\u00B7"; // · visible space
         default:
           return "\u00A0";
       }

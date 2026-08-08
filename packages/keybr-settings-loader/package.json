@@ -5,8 +5,8 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/debug": "*",
-    "@keybr/settings": "*",
+    "@keybr/debug": "workspace:*",
+    "@keybr/settings": "workspace:*",
     "react": "^19.2.4"
   }
 }

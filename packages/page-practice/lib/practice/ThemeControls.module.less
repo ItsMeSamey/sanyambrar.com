@@ -1,0 +1,39 @@
+@import "@keybr/widget/lib/index.less";
+
+.root {
+  display: flex;
+  align-items: center;
+}
+
+.menu {
+  list-style: none;
+  max-block-size: 24rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  box-shadow: var(--Popup__box-shadow);
+  cursor: pointer;
+}
+
+.item {
+  .text-truncate();
+  display: block;
+  block-size: @field-height;
+  margin: 0;
+  padding-inline: 1.5rem;
+  color: var(--MenuItem__color);
+  background-color: var(--MenuItem__background-color);
+  line-height: @field-height;
+}
+
+.item:hover {
+  color: var(--MenuItem--hover__color);
+  background-color: var(--MenuItem--hover__background-color);
+}
+
+.item_selected,
+.item_selected:hover {
+  color: var(--MenuItem--selected__color);
+  background-color: var(--MenuItem--selected__background-color);
+}

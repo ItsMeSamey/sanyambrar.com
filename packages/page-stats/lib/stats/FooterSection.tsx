@@ -1,9 +1,9 @@
 import { useResults } from "@keybr/result";
 import { Button, Field, FieldList, Icon } from "@keybr/widget";
-import { mdiDeleteForever, mdiDownload } from "@mdi/js";
+import { mdiCheckCircle, mdiDeleteForever, mdiDownload } from "@mdi/js";
 import { useIntl } from "react-intl";
 
-export function FooterSection() {
+export function FooterSection({ onDone }: { readonly onDone?: () => void }) {
   const { formatMessage } = useIntl();
   const { handleDownloadData, handleResetData } = useCommands();
 
@@ -45,6 +45,19 @@ export function FooterSection() {
           }}
         />
       </Field>
+      {onDone != null && (
+        <Field>
+          <Button
+            size={16}
+            icon={<Icon shape={mdiCheckCircle} />}
+            label={formatMessage({
+              id: "t_Done",
+              defaultMessage: "Done",
+            })}
+            onClick={onDone}
+          />
+        </Field>
+      )}
     </FieldList>
   );
 }

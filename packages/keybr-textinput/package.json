@@ -5,11 +5,11 @@
   "type": "module",
   "main": "lib/index.ts",
   "dependencies": {
-    "@keybr/keyboard": "*",
-    "@keybr/lang": "*",
-    "@keybr/settings": "*",
-    "@keybr/themes": "*",
-    "@keybr/unicode": "*",
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/lang": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/themes": "workspace:*",
+    "@keybr/unicode": "workspace:*",
     "react": "^19.2.4"
   }
 }
