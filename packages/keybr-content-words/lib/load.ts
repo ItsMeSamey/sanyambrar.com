@@ -1,240 +1,117 @@
 import { type WordList } from "@keybr/content";
 import { Language } from "@keybr/keyboard";
+import WORDS_AR from "./data/words-ar.json?gzip";
+import WORDS_BE from "./data/words-be.json?gzip";
+import WORDS_BR from "./data/words-br.json?gzip";
+import WORDS_CS from "./data/words-cs.json?gzip";
+import WORDS_DA from "./data/words-da.json?gzip";
+import WORDS_DE from "./data/words-de.json?gzip";
+import WORDS_EL from "./data/words-el.json?gzip";
+import WORDS_EN from "./data/words-en.json?gzip";
+import WORDS_EN_GB from "./data/words-en-GB.json?gzip";
+import WORDS_ES from "./data/words-es.json?gzip";
+import WORDS_ET from "./data/words-et.json?gzip";
+import WORDS_FA from "./data/words-fa.json?gzip";
+import WORDS_FI from "./data/words-fi.json?gzip";
+import WORDS_FR from "./data/words-fr.json?gzip";
+import WORDS_HE from "./data/words-he.json?gzip";
+import WORDS_HR from "./data/words-hr.json?gzip";
+import WORDS_HU from "./data/words-hu.json?gzip";
+import WORDS_IT from "./data/words-it.json?gzip";
+import WORDS_JA from "./data/words-ja.json?gzip";
+import WORDS_LT from "./data/words-lt.json?gzip";
+import WORDS_LV from "./data/words-lv.json?gzip";
+import WORDS_NB from "./data/words-nb.json?gzip";
+import WORDS_NL from "./data/words-nl.json?gzip";
+import WORDS_PL from "./data/words-pl.json?gzip";
+import WORDS_PT from "./data/words-pt.json?gzip";
+import WORDS_RO from "./data/words-ro.json?gzip";
+import WORDS_RU from "./data/words-ru.json?gzip";
+import WORDS_SL from "./data/words-sl.json?gzip";
+import WORDS_SV from "./data/words-sv.json?gzip";
+import WORDS_TH from "./data/words-th.json?gzip";
+import WORDS_TR from "./data/words-tr.json?gzip";
+import WORDS_UK from "./data/words-uk.json?gzip";
+import WORDS_VI from "./data/words-vi.json?gzip";
 
 export async function loadWordList(language: Language): Promise<WordList> {
   switch (language) {
     case Language.AR:
-      return (
-        await import(
-          /* webpackChunkName: "words-ar" */ "./data/words-ar.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_AR);
     case Language.BE:
-      return (
-        await import(
-          /* webpackChunkName: "words-be" */ "./data/words-be.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_BE);
     case Language.BR:
-      return (
-        await import(
-          /* webpackChunkName: "words-br" */ "./data/words-br.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_BR);
     case Language.CS:
-      return (
-        await import(
-          /* webpackChunkName: "words-cs" */ "./data/words-cs.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_CS);
     case Language.DA:
-      return (
-        await import(
-          /* webpackChunkName: "words-da" */ "./data/words-da.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_DA);
     case Language.DE:
-      return (
-        await import(
-          /* webpackChunkName: "words-de" */ "./data/words-de.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_DE);
     case Language.EL:
-      return (
-        await import(
-          /* webpackChunkName: "words-el" */ "./data/words-el.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_EL);
     case Language.EN:
-      return (
-        await import(
-          /* webpackChunkName: "words-en" */ "./data/words-en.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_EN);
     case Language.EN_GB:
-      return (
-        await import(
-          /* webpackChunkName: "words-en-GB" */ "./data/words-en-GB.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_EN_GB);
     case Language.ES:
-      return (
-        await import(
-          /* webpackChunkName: "words-es" */ "./data/words-es.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_ES);
     case Language.ET:
-      return (
-        await import(
-          /* webpackChunkName: "words-et" */ "./data/words-et.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_ET);
     case Language.FA:
-      return (
-        await import(
-          /* webpackChunkName: "words-fa" */ "./data/words-fa.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_FA);
     case Language.FI:
-      return (
-        await import(
-          /* webpackChunkName: "words-fi" */ "./data/words-fi.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_FI);
     case Language.FR:
-      return (
-        await import(
-          /* webpackChunkName: "words-fr" */ "./data/words-fr.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_FR);
     case Language.HE:
-      return (
-        await import(
-          /* webpackChunkName: "words-he" */ "./data/words-he.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_HE);
     case Language.HR:
-      return (
-        await import(
-          /* webpackChunkName: "words-hr" */ "./data/words-hr.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_HR);
     case Language.HU:
-      return (
-        await import(
-          /* webpackChunkName: "words-hu" */ "./data/words-hu.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_HU);
     case Language.IT:
-      return (
-        await import(
-          /* webpackChunkName: "words-it" */ "./data/words-it.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_IT);
     case Language.JA:
-      return (
-        await import(
-          /* webpackChunkName: "words-ja" */ "./data/words-ja.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_JA);
     case Language.LT:
-      return (
-        await import(
-          /* webpackChunkName: "words-lt" */ "./data/words-lt.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_LT);
     case Language.LV:
-      return (
-        await import(
-          /* webpackChunkName: "words-lv" */ "./data/words-lv.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_LV);
     case Language.NB:
-      return (
-        await import(
-          /* webpackChunkName: "words-nb" */ "./data/words-nb.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_NB);
     case Language.NL:
-      return (
-        await import(
-          /* webpackChunkName: "words-nl" */ "./data/words-nl.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_NL);
     case Language.PL:
-      return (
-        await import(
-          /* webpackChunkName: "words-pl" */ "./data/words-pl.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_PL);
     case Language.PT:
-      return (
-        await import(
-          /* webpackChunkName: "words-pt" */ "./data/words-pt.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_PT);
     case Language.RO:
-      return (
-        await import(
-          /* webpackChunkName: "words-ro" */ "./data/words-ro.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_RO);
     case Language.RU:
-      return (
-        await import(
-          /* webpackChunkName: "words-ru" */ "./data/words-ru.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_RU);
     case Language.SL:
-      return (
-        await import(
-          /* webpackChunkName: "words-sl" */ "./data/words-sl.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_SL);
     case Language.SV:
-      return (
-        await import(
-          /* webpackChunkName: "words-sv" */ "./data/words-sv.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_SV);
     case Language.TH:
-      return (
-        await import(
-          /* webpackChunkName: "words-th" */ "./data/words-th.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_TH);
     case Language.TR:
-      return (
-        await import(
-          /* webpackChunkName: "words-tr" */ "./data/words-tr.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_TR);
     case Language.UK:
-      return (
-        await import(
-          /* webpackChunkName: "words-uk" */ "./data/words-uk.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_UK);
     case Language.VI:
-      return (
-        await import(
-          /* webpackChunkName: "words-vi" */ "./data/words-vi.json",
-          { with: { type: "json" } }
-        )
-      ).default;
+      return loadCompressedJson<WordList>(WORDS_VI);
     default:
-      throw new Error();
+      throw new Error(`Unsupported language: ${language.id}`);
   }
+}
+
+async function loadCompressedJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok || response.body == null) {
+    throw new Error(`Cannot load compressed JSON: ${response.status}`);
+  }
+  const stream = response.body.pipeThrough(new DecompressionStream("gzip"));
+  return (await new Response(stream).json()) as T;
 }

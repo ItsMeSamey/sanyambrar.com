@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import TerserPlugin from "terser-webpack-plugin";
@@ -9,6 +10,11 @@ import { SingleFilePlugin } from "./webpack-single-file.js";
 const mode = process.env.NODE_ENV || "production";
 const rootDir = import.meta.dirname;
 const packagesDir = join(rootDir, "packages");
+
+function gzipDataUrl(content) {
+  const compressed = gzipSync(content, { level: 9 });
+  return `data:application/gzip;base64,${compressed.toString("base64")}`;
+}
 
 // Bun does not need to expose private workspaces through node_modules for the
 // bundle to work. Resolve every retained @keybr/* workspace directly from its
@@ -97,13 +103,18 @@ export default {
       ruleTs,
       ruleLess,
       {
+        test: /\.json$/i,
+        resourceQuery: /gzip/,
+        type: "asset/inline",
+        generator: {
+          dataUrl: gzipDataUrl,
+        },
+      },
+      {
         test: /\.data$/i,
         type: "asset/inline",
         generator: {
-          dataUrl: {
-            encoding: "base64",
-            mimetype: "application/octet-stream",
-          },
+          dataUrl: gzipDataUrl,
         },
       },
       {
