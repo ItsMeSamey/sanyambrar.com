@@ -12,7 +12,7 @@ This fork keeps the adaptive typing trainer, keyboard layouts, lesson modes, loc
 - Practice settings and local statistics/charts.
 - Settings stored in `localStorage`.
 - Typing history stored in IndexedDB (`history`).
-- System/light/dark color handling via CSS; no bundled web fonts or decorative theme assets.
+- Light, dark, high-contrast variants, and a persistent custom color theme; no bundled web fonts or decorative theme assets.
 
 No typing history or settings are sent to a server by this application.
 

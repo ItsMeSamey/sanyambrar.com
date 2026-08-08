@@ -1,6 +1,10 @@
 import {
   COLORS,
+  DARK_CUSTOM_THEME,
   FONTS,
+  LIGHT_CUSTOM_THEME,
+  type CustomThemeColorName,
+  type CustomThemeColors,
   type ThemeColor,
   type ThemeFont,
   useTheme,
@@ -12,14 +16,35 @@ import { useState } from "react";
 import { useIntl } from "react-intl";
 import * as styles from "./ThemeControls.module.less";
 
+const customFields: readonly {
+  readonly name: CustomThemeColorName;
+  readonly label: string;
+}[] = [
+  { name: "background", label: "Background" },
+  { name: "text", label: "Text" },
+  { name: "accent", label: "Accent" },
+  { name: "error", label: "Errors" },
+  { name: "slow", label: "Slow keys" },
+  { name: "fast", label: "Fast keys" },
+  { name: "effort", label: "Effort" },
+];
+
 export function ThemeControls() {
   const { formatMessage } = useIntl();
-  const { color, font, switchColor, switchFont } = useTheme();
-  const [open, setOpen] = useState<"color" | "font" | null>(null);
+  const {
+    color,
+    font,
+    custom,
+    switchColor,
+    switchFont,
+    setCustomColor,
+    setCustomTheme,
+  } = useTheme();
+  const [open, setOpen] = useState<"color" | "custom" | "font" | null>(null);
   return (
     <div className={styles.root}>
       <Popover
-        open={open === "color"}
+        open={open === "color" || open === "custom"}
         anchor={
           <IconButton
             icon={<Icon shape={mdiThemeLightDark} />}
@@ -27,19 +52,34 @@ export function ThemeControls() {
               id: "local.theme.color.description",
               defaultMessage: "Change the color theme.",
             })}
-            onClick={() => setOpen(open === "color" ? null : "color")}
+            onClick={() => setOpen(open == null ? "color" : null)}
           />
         }
         offset={10}
       >
-        <ThemeMenu
-          options={COLORS}
-          selectedId={color}
-          onSelect={(id) => {
-            switchColor(id as ThemeColor);
-            setOpen(null);
-          }}
-        />
+        {open === "custom" ? (
+          <CustomThemeEditor
+            custom={custom}
+            onChange={setCustomColor}
+            onReset={setCustomTheme}
+            onBack={() => setOpen("color")}
+            onDone={() => setOpen(null)}
+          />
+        ) : (
+          <ThemeMenu
+            options={COLORS}
+            selectedId={color}
+            onSelect={(id) => {
+              if (id === "custom") {
+                switchColor("custom");
+                setOpen("custom");
+              } else {
+                switchColor(id as ThemeColor);
+                setOpen(null);
+              }
+            }}
+          />
+        )}
       </Popover>
       <Popover
         open={open === "font"}
@@ -93,5 +133,63 @@ function ThemeMenu({
         </li>
       ))}
     </ul>
+  );
+}
+
+function CustomThemeEditor({
+  custom,
+  onChange,
+  onReset,
+  onBack,
+  onDone,
+}: {
+  readonly custom: CustomThemeColors;
+  readonly onChange: (name: CustomThemeColorName, value: string) => void;
+  readonly onReset: (theme: CustomThemeColors) => void;
+  readonly onBack: () => void;
+  readonly onDone: () => void;
+}) {
+  return (
+    <div className={styles.editor}>
+      <div className={styles.editorHeader}>
+        <strong>Custom theme</strong>
+        <button type="button" className={styles.textButton} onClick={onBack}>
+          Presets
+        </button>
+      </div>
+      <div className={styles.editorBody}>
+        {customFields.map(({ name, label }) => (
+          <label key={name} className={styles.colorField}>
+            <span>{label}</span>
+            <span className={styles.colorValue}>{custom[name]}</span>
+            <input
+              className={styles.colorInput}
+              type="color"
+              value={custom[name]}
+              onChange={(event) => onChange(name, event.currentTarget.value)}
+            />
+          </label>
+        ))}
+      </div>
+      <div className={styles.editorActions}>
+        <button
+          type="button"
+          className={styles.textButton}
+          onClick={() => onReset(LIGHT_CUSTOM_THEME)}
+        >
+          Light base
+        </button>
+        <button
+          type="button"
+          className={styles.textButton}
+          onClick={() => onReset(DARK_CUSTOM_THEME)}
+        >
+          Dark base
+        </button>
+        <button type="button" className={styles.doneButton} onClick={onDone}>
+          Done
+        </button>
+      </div>
+    </div>
   );
 }
