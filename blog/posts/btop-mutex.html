@@ -1,20 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-home-href="../../" data-theme-settings-href="../../keybr.html">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="How a broken atomic lock in btop admitted multiple owners, why relaxed atomics did not synchronize the UI and runner threads, and what I changed in PR #1649.">
-  <title>The mutex that wasn't · Samey</title>
+  <title>btop's broken atomic lock · Samey</title>
   <script src="../../theme.js"></script>
   <link rel="stylesheet" href="../blog.css">
 </head>
 <body>
-  <header class="top"><a class="top-home" href="../">Blog</a><div class="brand">Samey</div><div></div></header>
+  <header class="top"><div></div><a class="brand" href="../">Blog</a><div></div></header>
   <article class="article">
     <header class="article-head">
-      <h1>The mutex that wasn't</h1>
-      <p class="dek">I went looking for a race in btop and found a lock that could let a second thread acquire it while the first thread still held it.</p>
+      <h1>btop's broken atomic lock</h1>
+      <p class="dek">What was wrong with btop's custom lock, where synchronization was missing, and what PR #1649 changed.</p>
       <div class="meta">25 Aug 2026 · btop · C++ atomics · PR <a class="plain" href="https://github.com/aristocratos/btop/pull/1649">#1649</a></div>
     </header>
 
@@ -24,7 +24,7 @@
 
     <p><strong>WTF. The mutex was not a mutex.</strong></p>
 
-    <p>That sounds dramatic, so the rest of this post is the proof. There were actually two different concurrency bugs hiding in the same small set of helpers: the blocking lock could admit multiple owners, and the runner's atomic state was being waited on with relaxed memory ordering even though callers treated that wait as a synchronization boundary.</p>
+    <p>There were two separate concurrency bugs in the same small set of helpers: the blocking lock could admit multiple owners, and the runner's atomic state was being waited on with relaxed memory ordering even though callers treated that wait as a synchronization boundary.</p>
 
     <div class="aside"><p>This is not a claim that PR #1649 solved the original CPU-hotplug crash in #1012. That issue is still open. It is the bug trail that led me into this code. The races in #1042 are what #1649 addressed.</p></div>
 
@@ -39,7 +39,7 @@
       </div>
     </figure>
 
-    <h2>The first bug: compare-exchange ate the lock</h2>
+    <h2>The first bug: compare-exchange could admit a second owner</h2>
 
     <p>Before the fix, <code>atomic_lock</code> wrapped a <code>std::atomic&lt;bool&gt;</code>. Constructing it set the boolean to <code>true</code>; destroying it set the boolean back to <code>false</code>. With <code>wait=true</code>, construction used a compare-exchange loop so it was supposed to wait until it could change the state from unlocked to locked.</p>
 
@@ -68,30 +68,59 @@ atomic_lock::~atomic_lock() noexcept {
 
     <p>That last part is the entire bug.</p>
 
-    <figure class="viz" id="cas-viz">
-      <div class="viz-head"><div class="viz-title">The broken acquisition, one instruction at a time</div><div class="viz-note">press Step</div></div>
-      <div class="cas-grid">
-        <div class="thread">
-          <div class="thread-name">Thread A</div>
-          <div class="step-list">
-            <div class="cas-step" data-a="1">expected = false</div>
-            <div class="cas-step" data-a="2">CAS(false → true) succeeds</div>
-            <div class="cas-step" data-a="3">enters critical section</div>
-            <div class="cas-step" data-a="6">still inside critical section</div>
-          </div>
-        </div>
-        <div class="atom-state"><div>atomic</div><div class="atom-pill" id="atom-pill">false</div><div class="owners" id="owners">owners: 0</div></div>
-        <div class="thread">
-          <div class="thread-name">Thread B</div>
-          <div class="step-list">
-            <div class="cas-step fail" data-b="4">CAS(false → true) fails<br>expected becomes true</div>
-            <div class="cas-step breach" data-b="5">CAS(true → true) succeeds</div>
-            <div class="cas-step breach" data-b="6">enters the same critical section</div>
-          </div>
-        </div>
+    <figure class="viz cas-viz" id="cas-viz" tabindex="0" aria-label="Interactive simulation of the broken atomic lock">
+      <div class="viz-head">
+        <div><div class="viz-title">The broken acquisition</div><div class="viz-sub">Step through the exact state that lets Thread B enter while A still owns the lock.</div></div>
+        <div class="cas-shortcuts">← / → to step</div>
       </div>
-      <div class="controls"><button type="button" id="cas-step">Step</button><button type="button" id="cas-reset">Reset</button></div>
-      <figcaption class="viz-caption" id="cas-caption">The lock starts unlocked. Thread A is about to acquire it.</figcaption>
+
+      <div class="cas-progress" role="group" aria-label="Simulation steps">
+        <button type="button" data-cas-jump="0" aria-label="Initial state"><span>0</span></button>
+        <i></i><button type="button" data-cas-jump="1"><span>1</span></button>
+        <i></i><button type="button" data-cas-jump="2"><span>2</span></button>
+        <i></i><button type="button" data-cas-jump="3"><span>3</span></button>
+        <i></i><button type="button" data-cas-jump="4"><span>4</span></button>
+        <i></i><button type="button" data-cas-jump="5"><span>5</span></button>
+        <i></i><button type="button" data-cas-jump="6"><span>6</span></button>
+      </div>
+
+      <div class="cas-machine">
+        <section class="cas-thread-card" id="thread-a-card">
+          <header><b>Thread A</b><span class="thread-state" id="a-state">waiting</span></header>
+          <div class="register"><span>expected</span><strong id="a-expected">false</strong></div>
+          <div class="instruction" id="a-instruction">about to acquire</div>
+        </section>
+
+        <section class="cas-shared">
+          <div class="cas-atomic-label">shared atomic</div>
+          <div class="cas-atomic-value" id="atom-pill">false</div>
+          <div class="cas-owner-label">critical section</div>
+          <div class="owner-slots" id="owner-slots"><span>A</span><span>B</span></div>
+          <div class="owners" id="owners">0 owners</div>
+        </section>
+
+        <section class="cas-thread-card" id="thread-b-card">
+          <header><b>Thread B</b><span class="thread-state" id="b-state">waiting</span></header>
+          <div class="register"><span>expected</span><strong id="b-expected">false</strong></div>
+          <div class="instruction" id="b-instruction">not contending yet</div>
+        </section>
+      </div>
+
+      <div class="cas-code">
+        <div><span class="ln">1</span><code>bool expected = false;</code></div>
+        <div id="cas-code-line"><span class="ln">2</span><code>while (!atom.compare_exchange_strong(expected, true));</code></div>
+      </div>
+
+      <div class="cas-event" id="cas-event"><span class="event-tag">state</span><span id="cas-event-text">The atomic is false. Nobody owns the critical section.</span></div>
+
+      <div class="controls cas-controls">
+        <button type="button" id="cas-prev">Previous</button>
+        <button type="button" id="cas-step">Next</button>
+        <button type="button" id="cas-play">Play</button>
+        <button type="button" id="cas-reset">Reset</button>
+        <span class="cas-count" id="cas-count">0 / 6</span>
+      </div>
+      <figcaption class="viz-caption" id="cas-caption">No contention yet.</figcaption>
     </figure>
 
     <p>Thread A changes <code>false → true</code> and enters the critical section. Thread B starts with <code>expected == false</code>, sees that the atomic is already <code>true</code>, and its first CAS correctly fails. But the failed CAS also writes <code>true</code> into <code>expected</code>.</p>
@@ -243,7 +272,7 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
 
     <p>The old generic <code>atomic_lock</code> remained for simple atomic-boolean guards, but its acquisition loop was fixed. The runner, which had the more complicated “state flag plus waits plus timeout” contract, moved to the mutex/condition-variable implementation.</p>
 
-    <h2>Other things that fell out of the sweep</h2>
+    <h2>Other fixes from the same sweep</h2>
 
     <p>Once I was already running sanitizers and reading the surrounding synchronization, a few other fixes came along with the PR.</p>
 
@@ -270,9 +299,9 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
       <a class="commit plain" href="https://github.com/aristocratos/btop/commit/2c631e4c8f430701e804f5f35151bb8798e55759"><code>2c631e4</code><div>Move runner timed waiting to a mutex + condition variable abstraction.</div></a>
     </div>
 
-    <h2>The history made it stranger</h2>
+    <h2>The lock had already been replaced once</h2>
 
-    <p>The repository history has an extra twist. In October 2021, btop replaced atomic-bool spinlocks with mutexes in commit <code>804fe60</code>, explicitly to fix a rare deadlock. Three days later, commit <code>1601422</code> reverted the mutexes back to custom atomic-bool locks. The compare-exchange form that survived into 2026 dates back to that period, with later changes adding atomic wait/notify.</p>
+    <p>The repository history adds useful context. In October 2021, btop replaced atomic-bool spinlocks with mutexes in commit <code>804fe60</code>, explicitly to fix a rare deadlock. Three days later, commit <code>1601422</code> reverted the mutexes back to custom atomic-bool locks. The compare-exchange form that survived into 2026 dates back to that period, with later changes adding atomic wait/notify.</p>
 
     <p>That does not make the original decision irrational. Hot-path locking, portability, older compiler/library behavior, and wanting a tiny state primitive are all plausible reasons to reach for atomics. The problem is that once you build a mutex-like abstraction yourself, you inherit the mutex contract: exactly one owner, correct publication of protected state, correct wakeups, correct lifetime semantics, and a memory model that still works on architectures less forgiving than the machine on your desk.</p>
 
@@ -292,15 +321,15 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
 
     <p>That is why ThreadSanitizer was useful here. It does not need the race to turn into a human-visible crash. It reports conflicting accesses without a valid happens-before relationship. The tool got me to the neighborhood; reading the actual synchronization code found the broken lock.</p>
 
-    <h2>One popular project, one very ordinary lesson</h2>
+    <h2>Why this matters for an OSS project</h2>
 
-    <p>btop is a mature, widely used project. When I am writing this it has years of development behind it and a lot of users. A lock this small still stayed wrong for years.</p>
+    <p>btop is widely used and has years of development behind it. This lock still stayed wrong for years.</p>
 
     <p>I do not think the lesson is “how did the maintainers miss this?” The useful lesson is the opposite: this is what open source looks like when a project has far more code paths, platforms, hardware combinations and users than maintainer attention.</p>
 
-    <p>If you use btop, contribute in whatever way fits. Fix an issue. Reproduce a weird crash. Run a sanitizer build. Review a concurrency change. Improve a test. Sponsor the project. A bug does not have to be glamorous to be worth removing.</p>
+    <p>If you use btop, contribute in whatever way fits. Fix an issue. Reproduce a crash. Run a sanitizer build. Review a concurrency change. Improve a test. Sponsor the project.</p>
 
-    <p>I started with a crash I could barely reproduce. A year later, following a different sanitizer trail, I found a mutex that could let two threads in at once. That is a pretty good argument for looking.</p>
+    <p>I started with a crash I could barely reproduce. A year later, following the sanitizer reports and the synchronization around them led to the broken lock and the races in #1042.</p>
   </article>
   <script src="../btop-lock.js"></script>
 </body>

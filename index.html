@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-home-href="./" data-theme-settings-href="./keybr.html">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -18,11 +18,32 @@
     button,a{-webkit-tap-highlight-color:transparent}
     .top{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:0 18px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);z-index:5}
     .brand{font-size:25px;font-weight:800;letter-spacing:.01em}
-    main{width:min(820px,100%);margin:0 auto;padding:42px 20px 64px}
-    section+section{margin-top:46px}
-    h1{font-size:14px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    main{width:min(920px,100%);margin:0 auto;padding:34px 20px 72px}
+    section+section{margin-top:44px}
+    h1{font-size:12px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+    .intro{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;align-items:end;padding:16px 0 28px;border-bottom:1px solid var(--line)}
+    .intro-name{font-size:clamp(34px,7vw,60px);font-weight:800;letter-spacing:-.05em;line-height:.92}
+    .intro-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;color:var(--muted);font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .intro-meta span{border:1px solid var(--line);padding:5px 7px;border-radius:4px;background:var(--soft)}
+    .intro-links{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .intro-links a{border-bottom:1px solid var(--line);padding:7px 1px;color:var(--muted);font:13px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .intro-links a:hover{color:var(--fg);border-color:var(--fg)}
+    .project-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .project{border:1px solid var(--line);border-radius:8px;padding:15px;min-height:144px;background:var(--tile);display:flex;flex-direction:column;transition:border-color .12s ease,transform .12s ease,background .12s ease}
+    .project:hover{border-color:var(--muted);background:var(--soft);transform:translateY(-1px)}
+    .project-head{display:flex;align-items:start;justify-content:space-between;gap:8px}
+    .project-name{font-size:16px;font-weight:750;letter-spacing:-.02em}
+    .lang{font:10px/1.25 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--muted);border:1px solid var(--line);padding:3px 5px;border-radius:3px;white-space:nowrap}
+    .project p{margin:14px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+    .project .metric{margin-top:auto;padding-top:14px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--fg)}
+    .oss-list{border-top:1px solid var(--line)}.oss-row{display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.oss-row:hover{background:var(--soft)}.oss-name{font-weight:700}.oss-copy{color:var(--muted);line-height:1.4}.oss-arrow{color:var(--muted);font-size:18px}
+    .numbers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .number{padding:14px 16px;background:var(--tile)}
+    .number+.number{border-left:1px solid var(--line)}
+    .number b{display:block;font-size:22px;letter-spacing:-.04em}
+    .number span{display:block;margin-top:3px;color:var(--muted);font-size:12px;line-height:1.35}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .card{min-height:148px;border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;background:var(--tile);transition:transform .12s ease,border-color .12s ease,background .12s ease}
+    .card{min-height:148px;border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;background:var(--tile);transition:transform .12s ease,border-color .12s ease,background .12s ease}.card-main{display:block;flex:1}.card-copy{margin-top:20px;color:var(--muted);font-size:14px;line-height:1.4}.repo-link{display:inline-flex;align-items:center;gap:5px;margin-top:7px;color:var(--muted);font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-decoration:underline;text-underline-offset:3px}.repo-link:hover{color:var(--fg)}
     .card:hover{border-color:var(--muted);background:var(--soft)}
     .card:active{transform:scale(.985)}
     .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -47,33 +68,104 @@
     .keys{display:flex;gap:4px;align-items:flex-end}
     .key{height:26px;min-width:22px;padding:0 5px;border-radius:3px;background:var(--line);display:grid;place-items:center;font-size:11px;font-weight:700}
     .empty{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 2px;color:var(--muted);font-size:15px}.post-list-home{border-top:1px solid var(--line)}.blog-row{min-height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 2px;font-size:17px;font-weight:650}.blog-row:hover span:first-child{text-decoration:underline;text-underline-offset:3px}
-    @media(max-width:520px){main{padding-top:28px}.grid{grid-template-columns:1fr}.card{min-height:126px}.top{height:54px}.brand{font-size:23px}}
+    @media(max-width:760px){.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oss-row{grid-template-columns:130px 1fr auto}.numbers{grid-template-columns:repeat(2,minmax(0,1fr))}.number:nth-child(3){border-left:0;border-top:1px solid var(--line)}.number:nth-child(4){border-top:1px solid var(--line)}}
+    @media(max-width:520px){main{padding-top:22px}.intro{grid-template-columns:1fr;gap:8px}.oss-row{grid-template-columns:1fr auto;gap:5px 12px}.oss-copy{grid-column:1 / -1;grid-row:2}.oss-arrow{grid-column:2;grid-row:1}.intro-links{justify-content:flex-start}.grid,.project-grid{grid-template-columns:1fr}.card{min-height:126px}.top{height:54px}.brand{font-size:23px}.numbers{grid-template-columns:1fr}.number+.number,.number:nth-child(3),.number:nth-child(4){border-left:0;border-top:1px solid var(--line)}}
     @media(prefers-reduced-motion:reduce){.card{transition:none}}
   </style>
 </head>
 <body>
   <header class="top"><div class="brand">Samey</div></header>
   <main>
+    <section class="intro" aria-label="About">
+      <div>
+        <div class="intro-name">Sanyam Brar</div>
+        <div class="intro-meta"><span>systems</span><span>backend</span><span>performance</span><span>Zig / C++ / Go / Java</span></div>
+      </div>
+      <div class="intro-links">
+        <a href="https://github.com/ItsMeSamey">GitHub ↗</a>
+        <a href="https://github.com/SmallThingz">SmallThingz ↗</a>
+      </div>
+    </section>
     <section aria-labelledby="games-title">
       <h1 id="games-title">Games</h1>
       <div class="grid">
-        <a class="card" href="./wordle.html" aria-label="Open Wordle">
-          <div class="card-top">
-            <div class="wordle-mark" aria-hidden="true"><span class="tile">W</span><span class="tile">O</span><span class="tile">R</span><span class="tile">D</span><span class="tile">L</span><span class="tile">E</span></div>
-            <span class="arrow" aria-hidden="true">›</span>
-          </div>
+        <div class="card">
+          <a class="card-main" href="./wordle.html" aria-label="Open Wordle">
+            <div class="card-top">
+              <div class="wordle-mark" aria-hidden="true"><span class="tile">W</span><span class="tile">O</span><span class="tile">R</span><span class="tile">D</span><span class="tile">L</span><span class="tile">E</span></div>
+              <span class="arrow" aria-hidden="true">›</span>
+            </div>
+            <div class="card-copy">A Wordle clone.</div>
+          </a>
+          <a class="repo-link" href="https://github.com/ItsMeSamey/wordle" aria-label="Wordle source repository">source ↗</a>
+        </div>
+        <div class="card">
+          <a class="card-main" href="./keybr.html" aria-label="Open Keybr">
+            <div class="card-top">
+              <div class="keybr-mark" aria-hidden="true"><span class="keybr-hit">K</span><span class="keybr-hit">e</span><span class="keybr-miss">y</span><span class="keybr-hit">b</span><span class="keybr-miss-bg">r</span><span class="keybr-cursor"></span></div>
+              <span class="arrow" aria-hidden="true">›</span>
+            </div>
+            <div class="card-copy">A local-first fork of keybr.com.</div>
+          </a>
+          <a class="repo-link" href="https://github.com/ItsMeSamey/keybr.local" aria-label="Keybr local source repository">source ↗</a>
+        </div>
+      </div>
+    </section>
+    <section aria-labelledby="projects-title">
+      <h1 id="projects-title">Projects</h1>
+      <div class="project-grid">
+        <a class="project" href="https://github.com/SmallThingz/zhtml">
+          <div class="project-head"><span class="project-name">zhtml</span><span class="lang">Zig</span></div>
+          <p>HTML parser built around throughput, deliberately trading full HTML compliance for speed.</p>
+          <div class="metric">GiB/s+ · up to 7× lexbor</div>
         </a>
-        <a class="card" href="./keybr.html" aria-label="Open Keybr">
-          <div class="card-top">
-            <div class="keybr-mark" aria-hidden="true"><span class="keybr-hit">K</span><span class="keybr-hit">e</span><span class="keybr-miss">y</span><span class="keybr-hit">b</span><span class="keybr-miss-bg">r</span><span class="keybr-cursor"></span></div>
-            <span class="arrow" aria-hidden="true">›</span>
-          </div>
+        <a class="project" href="https://github.com/SmallThingz/zxml">
+          <div class="project-head"><span class="project-name">zxml</span><span class="lang">Zig</span></div>
+          <p>XML parser designed so parsing itself performs no runtime allocation.</p>
+          <div class="metric">0 runtime allocations</div>
         </a>
+        <a class="project" href="https://github.com/SmallThingz/timetravel">
+          <div class="project-head"><span class="project-name">timetravel</span><span class="lang">Kotlin</span></div>
+          <p>Android background audio recorder that keeps recent audio in memory and saves it on demand.</p>
+          <div class="metric">circular in-memory history</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/java_debug_shell">
+          <div class="project-head"><span class="project-name">java debug shell</span><span class="lang">Java</span></div>
+          <p>Terminal REPL that attaches to a running JVM to inspect state and evaluate expressions.</p>
+          <div class="metric">attach · inspect · evaluate</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/oneserial">
+          <div class="project-head"><span class="project-name">OneSerial</span><span class="lang">Zig</span></div>
+          <p>Nested data structures packed into one contiguous allocation for locality and zero-copy serialization.</p>
+          <div class="metric">single allocation · zero-copy</div>
+        </a>
+        <a class="project" href="https://github.com/ItsMeSamey/cnn_digit_recognition_zig">
+          <div class="project-head"><span class="project-name">CNN</span><span class="lang">Zig</span></div>
+          <p>A convolutional network implemented from scratch with Python weight import/export.</p>
+          <div class="metric">~99% MNIST · 0 runtime allocs</div>
+        </a>
+      </div>
+    </section>
+    <section aria-labelledby="oss-title">
+      <h1 id="oss-title">Open source</h1>
+      <div class="oss-list">
+        <a class="oss-row" href="https://github.com/aristocratos/btop/pull/1649"><span class="oss-name">aristocratos/btop</span><span class="oss-copy">Fixed data races and broken mutex-like locking.</span><span class="oss-arrow">›</span></a>
+        <a class="oss-row" href="https://github.com/karlseguin/http.zig"><span class="oss-name">karlseguin/http.zig</span><span class="oss-copy">Memory leak fixes, faster CORS handling, and newer Zig build support.</span><span class="oss-arrow">›</span></a>
+        <a class="oss-row" href="https://github.com/gofiber/fiber"><span class="oss-name">gofiber/fiber</span><span class="oss-copy">Route parameter binding and request-context lifecycle improvements.</span><span class="oss-arrow">›</span></a>
+      </div>
+    </section>
+    <section aria-labelledby="numbers-title">
+      <h1 id="numbers-title">A few numbers</h1>
+      <div class="numbers">
+        <div class="number"><b>1st</b><span>coding competition<br>150 participants</span></div>
+        <div class="number"><b>Top 5</b><span>data privacy hackathon<br>400 teams</span></div>
+        <div class="number"><b>500+</b><span>participants at an event I helped organize</span></div>
+        <div class="number"><b>3rd</b><span>university competitive programming contest</span></div>
       </div>
     </section>
     <section aria-labelledby="blog-title">
       <h1 id="blog-title">Blog</h1>
-      <div class="post-list-home"><a class="blog-row" href="./blog/posts/btop-mutex.html"><span>The mutex that wasn't</span><span class="arrow" aria-hidden="true">›</span></a></div>
+      <div class="post-list-home"><a class="blog-row" href="./blog/posts/btop-mutex.html"><span>btop's broken atomic lock</span><span class="arrow" aria-hidden="true">›</span></a></div>
     </section>
   </main>
 </body>
