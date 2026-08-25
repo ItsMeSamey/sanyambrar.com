@@ -310,8 +310,12 @@ async function auditSource() {
   must(home.includes("Sanyam Brar"), "homepage identity must be Sanyam Brar");
   must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
   must(!home.includes("class=\"repo-link\"") && !home.includes("Wordle source repository") && !home.includes("Keybr local source repository"), "game source links must not be present");
-  must(home.includes('href="./wordle"') && home.includes('href="./keybr"'), "game navigation must use extensionless URLs");
-  must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"'), "game navigation leaked .html suffixes");
+  must(home.includes('href="./wordle"') && home.includes('href="./keybr"') && home.includes('href="./chain"'), "game navigation must use extensionless URLs");
+  must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
+  must(home.includes("Chain Reaction") && home.includes("canvas renderer"), "Chain Reaction homepage card missing");
+  const chain = await readFile(join(STATIC, "chain.html"), "utf8");
+  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(AI)", "board[i] === 0 || owners[i] === owner"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
+  must(!chain.includes("transition-all") && !chain.includes("new Atom("), "Chain Reaction regressed to per-atom DOM transitions");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
@@ -336,7 +340,7 @@ async function auditSource() {
 }
 
 async function verifyDocs() {
-  for (const file of ["index.html", "keybr.html", "wordle.html", "theme.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
+  for (const file of ["index.html", "keybr.html", "wordle.html", "chain.html", "theme.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
   const keybr = await readFile(join(DOCS, "keybr.html"), "utf8"), wordle = await readFile(join(DOCS, "wordle.html"), "utf8");
   for (const [name, html] of [["keybr", keybr], ["wordle", wordle]] as const) must(!html.includes('manifest="appcache.manifest"'), `${name}: obsolete AppCache manifest`);
   must(!keybr.includes('<header class="site-header"'), "keybr: stale custom header emitted");

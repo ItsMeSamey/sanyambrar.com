@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en" data-spa data-home-href="./" data-site-kind="chain">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121213" media="(prefers-color-scheme: dark)">
+  <title>Chain Reaction · Sanyam Brar</title>
+  <script src="./appearance.generated.js"></script>
+  <script src="./theme.js"></script>
+  <link rel="stylesheet" href="./site.css">
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
+    button,input{font:inherit;color:inherit}
+    .chain-shell{height:100dvh;display:grid;grid-template-rows:58px minmax(0,1fr);background:var(--site-bg,#fff)}
+    .chain-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;height:58px;padding:0 14px 0 96px;border-bottom:1px solid var(--site-line,#d3d6da);background:color-mix(in srgb,var(--site-bg,#fff) 95%,transparent);backdrop-filter:blur(10px);z-index:4}
+    .chain-title{font-size:15px;font-weight:780;letter-spacing:-.015em;white-space:nowrap}
+    .chain-status{font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--site-muted,#787c7e);text-align:center;white-space:nowrap}
+    .chain-actions{justify-self:end;display:flex;align-items:center;gap:6px}
+    .chain-button{height:32px;padding:0 10px;border:1px solid var(--site-line,#d3d6da);border-radius:5px;background:var(--site-bg,#fff);cursor:pointer;font-size:12px;font-weight:700}
+    .chain-button:hover{background:var(--site-soft,#f6f7f8)}
+    .chain-stage{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:18px;overflow:hidden;touch-action:none;user-select:none}
+    #chain-canvas{display:block;max-width:100%;max-height:100%;touch-action:none}
+    .chain-help{position:absolute;left:50%;bottom:10px;translate:-50% 0;color:var(--site-muted,#787c7e);font:10px/1.3 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;pointer-events:none;white-space:nowrap}
+    @media(max-width:640px){.chain-shell{grid-template-rows:54px minmax(0,1fr)}.chain-bar{height:54px;padding-left:88px;padding-right:8px}.chain-title{font-size:13px}.chain-status{font-size:9px}.chain-stage{padding:8px}.chain-button{height:30px;padding:0 8px}.chain-help{display:none}}
+    @media(max-width:430px){.chain-title{display:none}.chain-bar{grid-template-columns:1fr auto}.chain-status{text-align:left}.chain-actions{grid-column:2}}
+  </style>
+</head>
+<body>
+  <div class="chain-shell">
+    <header class="chain-bar">
+      <div class="chain-title">Chain Reaction</div>
+      <div id="chain-status" class="chain-status" aria-live="polite">Your turn</div>
+      <div class="chain-actions"><button id="chain-reset" class="chain-button" type="button">New game</button></div>
+    </header>
+    <main id="chain-stage" class="chain-stage">
+      <canvas id="chain-canvas" aria-label="Chain Reaction board"></canvas>
+      <div class="chain-help">Blue: you · Red: random AI · click empty or blue cells</div>
+    </main>
+  </div>
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('chain-canvas');
+  const stage = document.getElementById('chain-stage');
+  const statusEl = document.getElementById('chain-status');
+  const resetEl = document.getElementById('chain-reset');
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+
+  const rows = 9;
+  const cols = 6;
+  const EMPTY = 0, HUMAN = 1, AI = 2;
+  const board = new Uint8Array(rows * cols);
+  const owners = new Uint8Array(rows * cols);
+  const degree = new Uint8Array(rows * cols);
+  const neighbors = Array.from({length: rows * cols}, () => []);
+  const entered = new Uint8Array(3);
+  let turn = HUMAN;
+  let locked = false;
+  let gameOver = false;
+  let cssW = 0, cssH = 0, cell = 0, ox = 0, oy = 0, dpr = 1;
+  let frame = 0;
+  let particles = [];
+
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const i = r * cols + c;
+    if (r) neighbors[i].push(i - cols);
+    if (c) neighbors[i].push(i - 1);
+    if (c + 1 < cols) neighbors[i].push(i + 1);
+    if (r + 1 < rows) neighbors[i].push(i + cols);
+    degree[i] = neighbors[i].length;
+  }
+
+  const css = () => getComputedStyle(document.documentElement);
+  const color = (name, fallback) => css().getPropertyValue(name).trim() || fallback;
+
+  function layout() {
+    const rect = stage.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const gap = 2;
+    cell = Math.max(24, Math.floor(Math.min((rect.width - 24) / cols, (rect.height - 34) / rows)));
+    cssW = cols * cell + gap;
+    cssH = rows * cell + gap;
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ox = gap / 2; oy = gap / 2;
+    draw(performance.now());
+  }
+
+  function center(i) {
+    return [ox + (i % cols + .5) * cell, oy + (Math.floor(i / cols) + .5) * cell];
+  }
+
+  function atomOffsets(n, radius) {
+    if (n <= 1) return [[0,0]];
+    if (n === 2) return [[-radius*.36,0],[radius*.36,0]];
+    if (n === 3) return [[0,-radius*.39],[-radius*.36,radius*.28],[radius*.36,radius*.28]];
+    return [[-radius*.32,-radius*.32],[radius*.32,-radius*.32],[-radius*.32,radius*.32],[radius*.32,radius*.32]];
+  }
+
+  function draw(now) {
+    frame = 0;
+    const bg = color('--site-bg', '#fff');
+    const fg = color('--site-fg', '#121213');
+    const line = color('--site-line', '#d3d6da');
+    const blue = '#3b82f6';
+    const red = '#ef4444';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, cssW, cssH);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = line;
+    ctx.beginPath();
+    for (let c = 0; c <= cols; c++) { const x = ox + c * cell; ctx.moveTo(x, oy); ctx.lineTo(x, oy + rows * cell); }
+    for (let r = 0; r <= rows; r++) { const y = oy + r * cell; ctx.moveTo(ox, y); ctx.lineTo(ox + cols * cell, y); }
+    ctx.stroke();
+
+    const atomR = Math.max(4.5, Math.min(11, cell * .135));
+    for (let i = 0; i < board.length; i++) {
+      const count = board[i]; if (!count) continue;
+      const [cx, cy] = center(i);
+      ctx.fillStyle = owners[i] === HUMAN ? blue : red;
+      for (const [dx,dy] of atomOffsets(count, atomR)) {
+        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, atomR, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    if (particles.length) {
+      let alive = false;
+      for (const p of particles) {
+        const t = Math.min(1, (now - p.start) / p.duration);
+        if (t < 1) alive = true;
+        const e = 1 - (1 - t) * (1 - t);
+        const x = p.x0 + (p.x1 - p.x0) * e;
+        const y = p.y0 + (p.y1 - p.y0) * e;
+        ctx.globalAlpha = 1 - t * .12;
+        ctx.fillStyle = p.owner === HUMAN ? blue : red;
+        ctx.beginPath(); ctx.arc(x, y, atomR, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (alive) requestDraw(); else particles = [];
+    }
+
+    if (gameOver) {
+      // Fade the board with the resolved page background; no CSS transitions or per-atom DOM.
+      ctx.globalAlpha = .76; ctx.fillStyle = bg; ctx.fillRect(0,0,cssW,cssH); ctx.globalAlpha = 1;
+      ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '700 ' + Math.max(18, Math.min(30, cell*.42)) + 'px ' + color('--site-font','Arial');
+      ctx.fillText(statusEl.textContent, cssW/2, cssH/2);
+    }
+  }
+
+  function requestDraw() {
+    if (!frame) frame = requestAnimationFrame(draw);
+  }
+
+  function winner() {
+    if (!entered[HUMAN] || !entered[AI]) return EMPTY;
+    let human = false, ai = false;
+    for (let i = 0; i < board.length; i++) if (board[i]) {
+      if (owners[i] === HUMAN) human = true;
+      else if (owners[i] === AI) ai = true;
+      if (human && ai) return EMPTY;
+    }
+    return human ? HUMAN : ai ? AI : EMPTY;
+  }
+
+  function updateStatus(text) { statusEl.textContent = text; }
+
+  function applyAtom(i, owner) {
+    owners[i] = owner;
+    board[i]++;
+  }
+
+  async function playMove(start, owner) {
+    locked = true;
+    entered[owner] = 1;
+    const queue = [start];
+    let head = 0;
+    while (head < queue.length && !gameOver) {
+      const waveEnd = queue.length;
+      const transfers = [];
+      while (head < waveEnd) {
+        const i = queue[head++];
+        applyAtom(i, owner);
+        if (board[i] < degree[i]) continue;
+        board[i] -= degree[i];
+        if (board[i] === 0) owners[i] = EMPTY;
+        const [x0,y0] = center(i);
+        for (const n of neighbors[i]) {
+          const [x1,y1] = center(n);
+          transfers.push({x0,y0,x1,y1,owner,start:performance.now(),duration:105});
+          queue.push(n);
+        }
+      }
+      requestDraw();
+      if (transfers.length) {
+        particles = transfers;
+        await new Promise(resolve => setTimeout(resolve, 82));
+      }
+      const win = winner();
+      if (win) {
+        gameOver = true;
+        updateStatus(win === HUMAN ? 'You win' : 'AI wins');
+        requestDraw();
+        locked = false;
+        return;
+      }
+    }
+    particles = [];
+    turn = owner === HUMAN ? AI : HUMAN;
+    updateStatus(turn === HUMAN ? 'Your turn' : 'AI thinking');
+    requestDraw();
+    locked = false;
+  }
+
+  function legalMoves(owner) {
+    const out = [];
+    for (let i = 0; i < board.length; i++) if (board[i] === 0 || owners[i] === owner) out.push(i);
+    return out;
+  }
+
+  async function aiTurn() {
+    if (gameOver || turn !== AI || locked) return;
+    const moves = legalMoves(AI);
+    if (!moves.length) return;
+    await new Promise(resolve => setTimeout(resolve, 90 + Math.random() * 80));
+    if (gameOver || turn !== AI || locked) return;
+    const idx = moves[(Math.random() * moves.length) | 0];
+    await playMove(idx, AI);
+  }
+
+  async function humanMove(i) {
+    if (locked || gameOver || turn !== HUMAN) return;
+    if (board[i] !== 0 && owners[i] !== HUMAN) {
+      canvas.animate([{transform:'translateX(0)'},{transform:'translateX(-2px)'},{transform:'translateX(2px)'},{transform:'translateX(0)'}], {duration:95});
+      return;
+    }
+    await playMove(i, HUMAN);
+    aiTurn();
+  }
+
+  function cellFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left - ox;
+    const y = e.clientY - rect.top - oy;
+    if (x < 0 || y < 0) return -1;
+    const c = Math.floor(x / cell), r = Math.floor(y / cell);
+    if (c < 0 || c >= cols || r < 0 || r >= rows) return -1;
+    return r * cols + c;
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const i = cellFromEvent(e);
+    if (i >= 0) humanMove(i);
+  });
+
+  function reset() {
+    board.fill(0); owners.fill(0); entered.fill(0); particles = [];
+    turn = HUMAN; locked = false; gameOver = false;
+    updateStatus('Your turn'); requestDraw();
+  }
+
+  resetEl.addEventListener('click', reset);
+  new ResizeObserver(layout).observe(stage);
+  window.addEventListener('sameyappearancechange', requestDraw);
+  new MutationObserver(requestDraw).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', requestDraw);
+  layout();
+})();
+</script>
+</body>
+</html>

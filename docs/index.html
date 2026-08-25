@@ -19,7 +19,7 @@
     button,a{-webkit-tap-highlight-color:transparent}
     .top{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:0 18px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);z-index:5}
     .brand{font-size:25px;font-weight:800;letter-spacing:.01em}
-    main{width:min(1080px,100%);margin:0 auto;padding:0 24px 80px}
+    main{width:min(var(--site-content-width,1080px),100%);margin:0 auto;padding:0 24px 80px}
     section+section{margin-top:40px}
     h1{font-size:12px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
     .intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center;padding:34px 0 30px;border-bottom:1px solid var(--line)}
@@ -38,7 +38,7 @@
     .project p{margin:14px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
     .project .metric{margin-top:auto;padding-top:14px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--fg)}
     .oss-list{border-top:1px solid var(--line)}.oss-row{display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.oss-row:hover{background:var(--soft)}.oss-name{font-weight:700}.oss-copy{color:var(--muted);line-height:1.4}.oss-arrow{color:var(--muted);font-size:18px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .card{min-height:112px;border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;background:var(--tile);transition:transform .12s ease,border-color .12s ease,background .12s ease}.card-main{display:block;flex:1}.card-copy{margin-top:12px;color:var(--muted);font-size:14px;line-height:1.4}
     .card:hover{border-color:var(--muted);background:var(--soft)}
     .card:active{transform:scale(.985)}
@@ -56,6 +56,7 @@
     .keybr-cursor{width:2px;height:1.05em;background:#797979;margin-left:2px;animation:blink 1s steps(1,end) infinite}
     @keyframes blink{50%{opacity:0}}
     html[data-kb-theme=dark] .keybr-hit{color:#9f9999}html[data-kb-theme=dark] .keybr-miss{color:#9b4545}html[data-kb-theme=dark] .keybr-miss-bg{background:#9b4545;color:#121213}html[data-kb-theme=dark] .keybr-cursor{background:#9f9999}
+    .chain-mark{position:relative;width:76px;height:32px}.chain-mark span{position:absolute;width:13px;height:13px;border-radius:50%;background:#3b82f6}.chain-mark span:nth-child(1){left:1px;top:9px}.chain-mark span:nth-child(2){left:22px;top:1px}.chain-mark span:nth-child(3){left:22px;bottom:1px}.chain-mark span:nth-child(4){left:43px;top:9px;background:#ef4444}.chain-mark i{position:absolute;left:11px;right:21px;top:15px;height:1px;background:var(--line);z-index:-1}
     .arrow{font-size:20px;color:var(--muted);line-height:1}
     .tiles{display:flex;gap:4px}
     .tile{width:27px;height:27px;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;background:var(--green)}
@@ -64,7 +65,7 @@
     .keys{display:flex;gap:4px;align-items:flex-end}
     .key{height:26px;min-width:22px;padding:0 5px;border-radius:3px;background:var(--line);display:grid;place-items:center;font-size:11px;font-weight:700}
     .empty{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 2px;color:var(--muted);font-size:15px}.post-list-home{border-top:1px solid var(--line)}.blog-row{min-height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 2px;font-size:17px;font-weight:650}.blog-row>span:first-child{display:grid;min-width:0;gap:5px}.blog-row:hover .blog-name{text-decoration:underline;text-underline-offset:3px}.blog-note{display:block;color:var(--muted);font-size:12px;font-weight:450;line-height:1.35}
-    @media(max-width:760px){.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oss-row{grid-template-columns:130px 1fr auto}}
+    @media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oss-row{grid-template-columns:130px 1fr auto}}
     @media(max-width:520px){main{padding:0 14px 56px}.intro{grid-template-columns:1fr;gap:8px}.oss-row{grid-template-columns:1fr auto;gap:5px 12px}.oss-copy{grid-column:1 / -1;grid-row:2}.oss-arrow{grid-column:2;grid-row:1}.intro-links{justify-content:flex-start}.grid,.project-grid{grid-template-columns:1fr}.card{min-height:104px}.top{height:54px}.brand{font-size:23px}}
     @media(prefers-reduced-motion:reduce){.card{transition:none}}
   </style>
@@ -100,6 +101,15 @@
               <span class="arrow" aria-hidden="true">›</span>
             </div>
             <div class="card-copy">A local-first fork of keybr.com.</div>
+          </a>
+        </div>
+        <div class="card">
+          <a class="card-main" href="./chain" aria-label="Open Chain Reaction" data-copy-label="Chain Reaction">
+            <div class="card-top">
+              <div class="chain-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
+              <span class="arrow" aria-hidden="true">›</span>
+            </div>
+            <div class="card-copy">Chain Reaction, rebuilt around a canvas renderer for smooth cascades.</div>
           </a>
         </div>
       </div>
