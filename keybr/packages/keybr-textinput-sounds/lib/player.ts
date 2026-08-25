@@ -9,11 +9,6 @@ import { mechanical2 } from "./themes/mechanical2.ts";
 import { typewriter1 } from "./themes/typewriter1.ts";
 import { typewriter2 } from "./themes/typewriter2.ts";
 
-export function useSoundPlayer() {
-  const { settings } = useSettings();
-  return useMemo(() => makeSoundPlayer(settings), [settings]);
-}
-
 export function makeSoundPlayer(settings: Settings) {
   const playSounds = settings.get(soundProps.playSounds);
   const soundVolume = settings.get(soundProps.soundVolume);

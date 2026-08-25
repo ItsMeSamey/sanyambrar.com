@@ -8,18 +8,6 @@ import { RgbColor } from "./color-rgb.ts";
 import { namedColors } from "./named-colors.ts";
 import { parseHex } from "./parse-hex.ts";
 
-/**
- * Returns an RGB color from the hex number with RGB components.
- * @param hex A number with RGB components.
- * @return An RGB color instance.
- */
-export function hexColor(hex: number): RgbColor {
-  const r = (hex >>> 16) & 0xff;
-  const g = (hex >>> 8) & 0xff;
-  const b = hex & 0xff;
-  return new RgbColor(r / 255, g / 255, b / 255);
-}
-
 export function tryParseColor(value: string): Color | null {
   value = value.trim();
   if (value === "transparent") {

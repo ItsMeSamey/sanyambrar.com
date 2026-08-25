@@ -33,15 +33,3 @@ export const toCodePoints = (text: string): Iterable<CodePoint> => {
     },
   };
 };
-
-export const codePointLength = (text: string): number => {
-  const it = toCodePoints(text)[Symbol.iterator]();
-  let length = 0;
-  while (true) {
-    const { done } = it.next();
-    if (done) {
-      return length;
-    }
-    length += 1;
-  }
-};

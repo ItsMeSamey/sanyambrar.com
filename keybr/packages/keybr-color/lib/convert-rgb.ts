@@ -76,32 +76,6 @@ export function hwbToRgb({ h, w, b, alpha }: Readonly<Hwb>): RgbColor {
   }
 }
 
-export function rgbToHwb({ r, g, b, alpha }: Readonly<Rgb>): HwbColor {
-  // RGB to HSL
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const d = max - min;
-  let h = 0;
-  if (d > 0) {
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-    h /= 6;
-  }
-  // HSL to HWB
-  const ww = min;
-  const bb = 1 - max;
-  return new HwbColor(h, ww, bb, alpha);
-}
-
 export function hwbToHsl({ h, w, b, alpha }: Readonly<Hwb>): HslColor {
   // HWB to HSV
   const v = 1 - b;
@@ -112,24 +86,8 @@ export function hwbToHsl({ h, w, b, alpha }: Readonly<Hwb>): HslColor {
   return new HslColor(h, ss, ll, alpha);
 }
 
-export function hslToHwb({ h, s, l, alpha }: Readonly<Hsl>): HwbColor {
-  // HSL to HSV
-  const vv = l + s * Math.min(l, 1 - l);
-  const ss = vv > 0 ? 2 * (1 - l / vv) : 0;
-  // HSV to HWB
-  const ww = (1 - ss) * vv;
-  const bb = 1 - vv;
-  return new HwbColor(h, ww, bb, alpha);
-}
-
 export function hwbToHsv({ h, w, b, alpha }: Readonly<Hwb>): HsvColor {
   const vv = 1 - b;
   const ss = vv > 0 ? 1 - w / vv : 0;
   return new HsvColor(h, ss, vv, alpha);
-}
-
-export function hsvToHwb({ h, s, v, alpha }: Readonly<Hsv>): HwbColor {
-  const ww = (1 - s) * v;
-  const bb = 1 - v;
-  return new HwbColor(h, ww, bb, alpha);
 }

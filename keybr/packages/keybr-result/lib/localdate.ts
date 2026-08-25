@@ -169,12 +169,6 @@ export class LocalDateRange {
   }
 }
 
-export class Yesterday extends LocalDateRange {
-  constructor(now = LocalDate.now()) {
-    super(now.minusDays(1), now);
-  }
-}
-
 export class Today extends LocalDateRange {
   constructor(now = LocalDate.now()) {
     super(now, now.plusDays(1));

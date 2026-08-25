@@ -76,12 +76,6 @@ export function getDir(locale: LocaleId): "ltr" | "rtl" {
   }
 }
 
-export const PreferredLocaleContext = createContext<LocaleId>(defaultLocale);
-
-export function usePreferredLocale(): LocaleId {
-  return useContext(PreferredLocaleContext);
-}
-
 const map = (() => {
   const tmp = new Map<string, LocaleId>();
   for (const id of allLocales) {
@@ -93,9 +87,3 @@ const map = (() => {
   }
   return tmp;
 })();
-
-export function selectLocale(
-  filter: (...locales: readonly string[]) => string | null,
-): LocaleId {
-  return map.get(filter(...map.keys()) ?? "") ?? defaultLocale;
-}

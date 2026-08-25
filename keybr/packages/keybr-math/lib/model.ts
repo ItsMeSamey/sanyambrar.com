@@ -4,14 +4,6 @@ export type Model = {
   eval(x: number): number;
 };
 
-export function constModel(v: number): Model {
-  return new (class Const implements Model {
-    eval(x: number): number {
-      return v;
-    }
-  })();
-}
-
 /**
  * @see https://en.wikipedia.org/wiki/Coefficient_of_determination
  */

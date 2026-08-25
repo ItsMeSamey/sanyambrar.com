@@ -6,10 +6,6 @@ export const getScreenSize = (): Size => {
   return new Size(window.innerWidth, window.innerHeight);
 };
 
-export const getScreenScrollOffset = (): Point => {
-  return new Point(window.scrollX, window.scrollY);
-};
-
 export const getElementSize = (el: Element): Size => {
   return new Size(el.clientWidth, el.clientHeight);
 };

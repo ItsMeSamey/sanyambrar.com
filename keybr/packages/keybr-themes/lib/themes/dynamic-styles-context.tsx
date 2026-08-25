@@ -9,24 +9,6 @@ export const DynamicStylesContext = createContext({
   getStyledElement: (): HTMLElement => document.body,
 });
 
-export const DynamicStylesProvider = ({
-  children,
-  elementRef,
-}: {
-  readonly children: ReactNode;
-  readonly elementRef: RefObject<HTMLElement | null>;
-}) => {
-  return (
-    <DynamicStylesContext.Provider
-      value={{
-        getStyledElement: () => elementRef.current ?? document.body,
-      }}
-    >
-      {children}
-    </DynamicStylesContext.Provider>
-  );
-};
-
 export const useDynamicStyles = () => {
   return useContext(DynamicStylesContext);
 };

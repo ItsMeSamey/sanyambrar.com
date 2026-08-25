@@ -27,7 +27,6 @@
     "@keybr/textinput-events": "workspace:*",
     "@keybr/textinput-sounds": "workspace:*",
     "@keybr/textinput-ui": "workspace:*",
-    "@keybr/themes": "workspace:*",
     "@keybr/unicode": "workspace:*",
     "@keybr/widget": "workspace:*",
     "@mdi/js": "^7.4.47",

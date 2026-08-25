@@ -29,12 +29,3 @@ export type LocalResultStorage = {
   append(results: readonly Result[]): Promise<void>;
   clear(): Promise<void>;
 };
-
-/**
- * A result storage which loads/sends results from/to the server.
- */
-export type RemoteResultSync = {
-  receive(pl: ProgressListener): Promise<Result[]>;
-  send(results: readonly Result[], pl: ProgressListener): Promise<void>;
-  clear(): Promise<void>;
-};

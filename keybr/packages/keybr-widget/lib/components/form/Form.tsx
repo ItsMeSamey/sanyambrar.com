@@ -7,19 +7,6 @@ import {
   type LegendProps,
 } from "./Form.types.ts";
 
-export function Form(props: FormProps): ReactNode {
-  const { className, id, title, children } = props;
-  return (
-    <form
-      id={id} //
-      className={clsx(styles.form, className)}
-      title={title}
-    >
-      {children}
-    </form>
-  );
-}
-
 export function FieldSet(props: FieldSetProps): ReactNode {
   const { className, id, disabled, legend, title, children } = props;
   return (

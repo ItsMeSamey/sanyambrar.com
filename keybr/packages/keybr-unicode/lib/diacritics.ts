@@ -18,10 +18,6 @@ export const combineDiacritic = (
   return toCombined.get((combining << 16) | base) ?? base;
 };
 
-export const stripDiacritic = (combined: CodePoint): CodePoint => {
-  return toBase.get(combined) ?? combined;
-};
-
 for (const [codePoint, baseList, combinedList] of [
   [
     /* COMBINING GRAVE ACCENT */ 0x0300, //

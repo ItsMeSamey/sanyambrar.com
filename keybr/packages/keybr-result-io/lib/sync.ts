@@ -9,7 +9,3 @@ export function formatMessage(results: Iterable<Result>): Uint8Array {
   writeResults(writer, results);
   return scramble(writer.buffer());
 }
-
-export function parseMessage(buffer: Uint8Array): Iterable<Result> {
-  return readStructuredContent(new Reader(unscramble(buffer)));
-}

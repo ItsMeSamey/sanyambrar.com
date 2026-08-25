@@ -15,8 +15,6 @@ export type IKeyboardEvent = {
   readonly modifiers: readonly ModifierId[];
 };
 
-export type AnyEvent = IKeyboardEvent | IInputEvent;
-
 export type ModifierId =
   | "CapsLock"
   | "NumLock"

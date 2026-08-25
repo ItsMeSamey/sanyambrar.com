@@ -47,30 +47,3 @@ export function weightedRandomSample<T>(
   }
   throw new Error();
 }
-
-/**
- * Selects a subset of random elements without replacement of the given size
- * from the given list of uniform elements.
- * @param list A list of uniform elements to sample from.
- * @param size The number of unique elements to sample.
- * @param random A random number generator function.
- * @return A subset of random unique elements sampled from the list.
- */
-export function randomSamples<T>(
-  list: readonly T[],
-  size: number,
-  random: RNG = Math.random,
-): T[] {
-  const { length } = list;
-  if (size > length) {
-    throw new Error();
-  }
-  const shuffled = [...list];
-  for (let i = 0; i < size; i++) {
-    const j = (i + random() * (length - i)) | 0;
-    const tmp = shuffled[i];
-    shuffled[i] = shuffled[j];
-    shuffled[j] = tmp;
-  }
-  return shuffled.slice(0, size);
-}

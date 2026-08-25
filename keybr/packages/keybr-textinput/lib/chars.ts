@@ -113,15 +113,3 @@ export function charArraysAreEqual(
   }
   return true;
 }
-
-export function toLine(styledText: StyledText): Line {
-  const text = flattenStyledText(styledText);
-  const chars = splitStyledText(styledText);
-  return { text, chars };
-}
-
-export function singleLine(styledText: StyledText): LineList {
-  const text = flattenStyledText(styledText);
-  const chars = splitStyledText(styledText);
-  return { text, lines: [{ text, chars }] };
-}

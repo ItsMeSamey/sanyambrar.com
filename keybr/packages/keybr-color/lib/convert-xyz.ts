@@ -109,21 +109,6 @@ export function oklabToXyz({ l, a, b, alpha }: Readonly<Oklab>, to: Xyz): void {
   to.alpha = alpha;
 }
 
-export function oklabToOklch(
-  { l, a, b, alpha }: Readonly<Oklab>,
-  to: Oklch,
-): void {
-  const c = Math.sqrt(a * a + b * b);
-  let h = Math.atan2(b, a) / Math.PI / 2;
-  if (h < 0) {
-    h = 1 + h;
-  }
-  to.l = l;
-  to.c = c;
-  to.h = h;
-  to.alpha = alpha;
-}
-
 export function oklchToOklab(
   { l, c, h, alpha }: Readonly<Oklch>,
   to: Oklab,
@@ -138,25 +123,6 @@ export function rgbToOklab0(rgb: Readonly<Rgb>, to: Oklab): void {
   rgbGammaToLinear(rgb, tmpRgb);
   linearRgbToXyz(tmpRgb, tmpXyz);
   xyzToOklab(tmpXyz, to);
-}
-
-export function rgbToOklab(rgb: Readonly<Rgb>): OklabColor {
-  const to = new OklabColor();
-  rgbToOklab0(rgb, to);
-  return to;
-}
-
-export function rgbToOklch0(rgb: Readonly<Rgb>, to: Oklch): void {
-  rgbGammaToLinear(rgb, tmpRgb);
-  linearRgbToXyz(tmpRgb, tmpXyz);
-  xyzToOklab(tmpXyz, tmpOklab);
-  oklabToOklch(tmpOklab, to);
-}
-
-export function rgbToOklch(rgb: Readonly<Rgb>): OklchColor {
-  const to = new OklchColor();
-  rgbToOklch0(rgb, to);
-  return to;
 }
 
 export function oklabToRgb0(oklab: Readonly<Oklab>, to: RgbColor): void {

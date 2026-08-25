@@ -57,13 +57,3 @@ export const isOklch = (o: any): o is Oklch => {
     isNumber(o.alpha)
   );
 };
-
-export const isXyz = (o: any): o is Xyz => {
-  return (
-    isObjectLike(o) &&
-    isNumber(o.x) &&
-    isNumber(o.y) &&
-    isNumber(o.z) &&
-    isNumber(o.alpha)
-  );
-};

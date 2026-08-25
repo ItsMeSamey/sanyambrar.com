@@ -16,19 +16,3 @@ export function Box(props: BoxProps): ReactNode {
     </Component>
   );
 }
-
-export function HBox({ ...props }: HBoxProps): ReactNode {
-  return (
-    <Box direction="row" {...props}>
-      {props.children}
-    </Box>
-  );
-}
-
-export function VBox({ ...props }: VBoxProps): ReactNode {
-  return (
-    <Box direction="column" {...props}>
-      {props.children}
-    </Box>
-  );
-}
