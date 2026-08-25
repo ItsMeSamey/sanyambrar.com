@@ -4,7 +4,7 @@ import { useSettings } from "@keybr/settings";
 import { Button, Icon, IconButton, useView } from "@keybr/widget";
 import {
   mdiAspectRatio,
-  mdiChartAreaspline,
+  mdiChartBar,
   mdiCog,
   mdiHelpCircleOutline,
   mdiRedo,
@@ -66,7 +66,7 @@ export const Controls = memo(function Controls({
         onClick={onChangeView}
       />
       <IconButton
-        icon={<Icon shape={mdiChartAreaspline} />}
+        icon={<Icon shape={mdiChartBar} />}
         title={formatMessage({
           id: "local.statistics.description",
           defaultMessage: "Show your local typing statistics.",
