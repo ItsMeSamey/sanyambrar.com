@@ -251,7 +251,7 @@
     host.className = "samey-site-controls";
     host.dataset.sameyRuntime = "";
     const nav = navTarget();
-    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}">${icon(nav.icon)}</a>`);
+    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}" data-copy-label="${nav.label}">${icon(nav.icon)}</a>`);
 
     host.insertAdjacentHTML("beforeend", `<button class="samey-icon" type="button" aria-label="Appearance" title="Appearance" aria-expanded="false">${icon("appearance")}</button>`);
     const panel = document.createElement("div");
@@ -286,6 +286,7 @@
     if (!el || !target) return;
     el.href = target.href;
     el.setAttribute("aria-label", target.label);
+    el.dataset.copyLabel = target.label;
     el.title = target.label;
     el.innerHTML = icon(target.icon);
   };
@@ -304,7 +305,7 @@
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" aria-hidden="true"><mask id="samey-grab-mask"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="7" fill="black"/><rect x="29" y="41" width="6" height="7" fill="black"/><rect x="16" y="29" width="7" height="6" fill="black"/><rect x="41" y="29" width="7" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M32 18a14 14 0 1 1 0 28 14 14 0 1 1 0-28Zm-3-2h6v7h-6v-7Zm0 25h6v7h-6v-7ZM16 29h7v6h-7v-6Zm25 0h7v6h-7v-6Z"/></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
     const wantsGrab = (target) => {
@@ -313,18 +314,29 @@
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
-    const move = (event) => {
+    let dragging = false;
+    const place = (event) => {
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
       cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
       cursor.dataset.visible = "";
-      cursor.toggleAttribute("data-grab", wantsGrab(event.target));
+    };
+    const move = (event) => {
+      place(event);
+      cursor.toggleAttribute("data-grab", dragging || wantsGrab(event.target));
     };
     document.addEventListener("pointermove", move, { capture: true, passive: true });
     document.addEventListener("pointerrawupdate", move, { capture: true, passive: true });
     document.addEventListener("mousemove", move, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => { cursor.toggleAttribute("data-grab", wantsGrab(event.target)); }, true);
-    addEventListener("pointercancel", () => cursor.removeAttribute("data-grab"), true);
-    addEventListener("blur", () => cursor.removeAttribute("data-grab"));
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget) delete cursor.dataset.visible; });
+    document.addEventListener("pointerdown", (event) => { cursor.toggleAttribute("data-grab", dragging || wantsGrab(event.target)); }, true);
+    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
+    document.addEventListener("dragenter", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
+    document.addEventListener("dragover", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
+    const stopDragging = () => { dragging = false; cursor.removeAttribute("data-grab"); };
+    document.addEventListener("dragend", stopDragging, true);
+    document.addEventListener("drop", stopDragging, true);
+    addEventListener("pointercancel", stopDragging, true);
+    addEventListener("blur", stopDragging);
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !dragging) delete cursor.dataset.visible; });
   };
 
   const editableTarget = (el) => {
@@ -349,24 +361,28 @@
       el.focus(); document.execCommand("insertText", false, text);
     }
   };
-  const captureScreenshot = async () => {
-    const stream = await navigator.mediaDevices?.getDisplayMedia?.({ video: { displaySurface: "browser" }, audio: false });
-    if (!stream) return;
+  const linkCopyText = (link) => {
+    if (!(link instanceof HTMLAnchorElement)) return "";
+    const explicit = link.dataset.copyLabel?.trim();
+    if (explicit) return explicit;
+    const labelled = link.getAttribute("aria-label")?.trim() || link.title?.trim();
+    if (labelled) return labelled.replace(/^(Open|Go to|Visit)\s+/i, "").replace(/\s+(source repository)$/i, " source");
+    const named = link.querySelector(".project-name,.oss-name,.blog-name,.brand")?.textContent?.trim();
+    if (named) return named;
     try {
-      const video = document.createElement("video");
-      video.srcObject = stream; video.muted = true; await video.play();
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-      if (blob) {
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-        a.download = `samey-${new Date().toISOString().replace(/[:.]/g, "-")}.png`; a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      }
-    } finally { stream.getTracks().forEach(track => track.stop()); }
+      const url = new URL(link.href, location.href);
+      const part = decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || url.hostname.replace(/^www\./, ""));
+      return part.replace(/\.html?$/i, "").replace(/[-_]+/g, " ") || url.hostname;
+    } catch { return "Link"; }
   };
+  const stampLinkCopyLabels = (root = document) => {
+    const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+    for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
+  };
+  stampLinkCopyLabels();
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) stampLinkCopyLabels(node);
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
   const mountContextMenu = () => {
     if (document.getElementById("samey-context-menu")) return;
@@ -406,7 +422,7 @@
         if (link) {
           add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
           add("Copy link", () => writeClipboard(link.href));
-          add("Copy Markdown link", () => writeClipboard(`[${link.textContent.trim() || link.href}](${link.href})`));
+          add("Copy Markdown link", () => writeClipboard(`[${linkCopyText(link)}](${link.href})`));
         }
         if (image) {
           add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
@@ -422,7 +438,6 @@
       add("Copy page title", () => writeClipboard(document.title));
       add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
-      if (navigator.mediaDevices?.getDisplayMedia) add("Screenshot…", captureScreenshot);
       menu.hidden = false;
       const rect = menu.getBoundingClientRect();
       menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;

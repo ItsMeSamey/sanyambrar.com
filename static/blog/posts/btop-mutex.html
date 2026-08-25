@@ -11,15 +11,15 @@
   <link rel="stylesheet" href="../blog.css">
 </head>
 <body>
-  <header class="top"><div></div><a class="brand" href="../">Blog</a><div></div></header>
+  <header class="top"><div></div><a class="brand" href="../" data-copy-label="Blog">Blog</a><div></div></header>
   <main class="article">
     <header class="article-head">
       <h1>btop's broken lock</h1>
       <p class="dek">the mutex that wasn't</p>
-      <div class="meta">25 Aug 2026 · btop · C++ atomics · PR <a class="plain" href="https://github.com/aristocratos/btop/pull/1649">#1649</a></div>
+      <div class="meta">25 Aug 2026 · btop · C++ atomics · PR <a class="plain" href="https://github.com/aristocratos/btop/pull/1649" data-copy-label="btop PR #1649">#1649</a></div>
     </header>
 
-    <p>I was having issues with btop. It would occasionally crash, and in January 2025 I opened <a href="https://github.com/aristocratos/btop/issues/1012">issue #1012</a> with a core dump. The trigger seemed related to CPU cores being off-lined, but the failure was rare and I did not have a clean reproducer. I poked at it, found other sanitizer failures, opened <a href="https://github.com/aristocratos/btop/issues/1042">#1042</a>, and then mostly ignored it.</p>
+    <p>I was having issues with btop. It would occasionally crash, and in January 2025 I opened <a href="https://github.com/aristocratos/btop/issues/1012" data-copy-label="btop issue #1012">issue #1012</a> with a core dump. The trigger seemed related to CPU cores being off-lined, but the failure was rare and I did not have a clean reproducer. I poked at it, found other sanitizer failures, opened <a href="https://github.com/aristocratos/btop/issues/1042" data-copy-label="btop issue #1042">#1042</a>, and then mostly ignored it.</p>
 
     <p>About a year later I came back to the races. I was tracing where synchronization was missing around the UI and runner thread, and I got curious about the custom atomic lock used throughout the codebase. I opened the implementation.</p>
 
@@ -44,7 +44,7 @@
 
     <p>Before the fix, <code>atomic_lock</code> wrapped a <code>std::atomic&lt;bool&gt;</code>. Constructing it set the boolean to <code>true</code>; destroying it set the boolean back to <code>false</code>. With <code>wait=true</code>, construction used a compare-exchange loop so it was supposed to wait until it could change the state from unlocked to locked.</p>
 
-    <div class="code-label"><span>Before PR #1649</span><a href="https://github.com/aristocratos/btop/blob/6e39144aaf5a6bc01b9f795010b0914431067183/src/btop_tools.cpp#L553-L561">btop_tools.cpp</a></div>
+    <div class="code-label"><span>Before PR #1649</span><a href="https://github.com/aristocratos/btop/blob/6e39144aaf5a6bc01b9f795010b0914431067183/src/btop_tools.cpp#L553-L561" data-copy-label="btop_tools.cpp lines 553–561">btop_tools.cpp</a></div>
     <pre><code>atomic_lock::atomic_lock(atomic&lt;bool&gt;&amp; atom, bool wait) : atom(atom) {
     if (wait)
         while (not this-&gt;atom.compare_exchange_strong(this-&gt;not_true, true));
@@ -191,7 +191,7 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
 
     <p>The first atomic fix changed waits to acquire and unlock/store operations to release:</p>
 
-    <div class="code-label"><span>Commit <code>88b0ed6</code>, then tightened by <code>5aaca91</code> and <code>312592f</code></span><a href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931">view commit</a></div>
+    <div class="code-label"><span>Commit <code>88b0ed6</code>, then tightened by <code>5aaca91</code> and <code>312592f</code></span><a href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931" data-copy-label="btop commit 88b0ed6">view commit</a></div>
     <pre><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
     atom.wait(old, std::memory_order_acquire);
 }
@@ -244,7 +244,7 @@ Config::apply_preset(...);</code></pre>
       <figcaption class="viz-caption">Waiting after the mutation cannot retroactively protect the mutation.</figcaption>
     </figure>
 
-    <p>Commit <a href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0"><code>557fbe5</code></a> moved the wait above the first access. Two more menu paths could reset <code>current_preset</code> while the runner was drawing, so <a href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553"><code>677336f</code></a> added the same guard there.</p>
+    <p>Commit <a href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0" data-copy-label="btop commit 557fbe5"><code>557fbe5</code></a> moved the wait above the first access. Two more menu paths could reset <code>current_preset</code> while the runner was drawing, so <a href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553" data-copy-label="btop commit 677336f"><code>677336f</code></a> added the same guard there.</p>
 
     <p>This is also why fixing only the atomic primitive would not have been enough. A correct lock does nothing for code that touches the shared object before taking the lock.</p>
 
@@ -281,23 +281,23 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
 
     <p>The SIGINT handler sometimes called <code>clean_quit(0)</code> directly. That function stops and joins threads, writes configuration, logs, formats strings, touches the terminal, and walks through code that can allocate. Those are not operations you can safely execute from an asynchronous POSIX signal handler.</p>
 
-    <p><a href="https://github.com/aristocratos/btop/commit/3843042"><code>3843042</code></a> changed SIGINT to set state and call <code>Input::interrupt()</code>. That helper is just <code>kill(getpid(), SIGUSR1)</code>, so normal program flow wakes up and performs the actual shutdown outside the asynchronous handler.</p>
+    <p><a href="https://github.com/aristocratos/btop/commit/3843042" data-copy-label="btop commit 3843042"><code>3843042</code></a> changed SIGINT to set state and call <code>Input::interrupt()</code>. That helper is just <code>kill(getpid(), SIGUSR1)</code>, so normal program flow wakes up and performs the actual shutdown outside the asynchronous handler.</p>
 
     <h3>An Intel GPU failure-path leak</h3>
 
-    <p><a href="https://github.com/aristocratos/btop/commit/327f695"><code>327f695</code></a> freed <code>gpu_device_name</code> on two early-return paths and freed the discovered engine structure when PMU initialization failed. This was separate from the locking issue, but it came from the same sanitizer pass.</p>
+    <p><a href="https://github.com/aristocratos/btop/commit/327f695" data-copy-label="btop commit 327f695"><code>327f695</code></a> freed <code>gpu_device_name</code> on two early-return paths and freed the discovered engine structure when PMU initialization failed. This was separate from the locking issue, but it came from the same sanitizer pass.</p>
 
     <h2>The sequence of fixes</h2>
 
     <div class="commit-list">
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0"><code>557fbe5</code><div>Move the preset wait before the first <code>current_preset</code> access.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553"><code>677336f</code><div>Guard two more menu mutations of <code>current_preset</code>.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931"><code>88b0ed6</code><div>Fix acquire/release ordering and reset the CAS expected value.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/3843042"><code>3843042</code><div>Stop calling <code>clean_quit</code> from SIGINT.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/327f695"><code>327f695</code><div>Fix Intel GPU cleanup on failure paths.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/5aaca91b3bffdfef4d5c11d96352670670815fd5"><code>5aaca91</code><div>Use relaxed ordering for failed CAS attempts.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/312592f01ecb5bc963ae0e78a81eafc0ffa3392a"><code>312592f</code><div>Make <code>expected</code> local, reset it on failure, and notify one waiter.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/2c631e4c8f430701e804f5f35151bb8798e55759"><code>2c631e4</code><div>Move runner timed waiting to a mutex + condition variable abstraction.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0" data-copy-label="btop commit 557fbe5"><code>557fbe5</code><div>Move the preset wait before the first <code>current_preset</code> access.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553" data-copy-label="btop commit 677336f"><code>677336f</code><div>Guard two more menu mutations of <code>current_preset</code>.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931" data-copy-label="btop commit 88b0ed6"><code>88b0ed6</code><div>Fix acquire/release ordering and reset the CAS expected value.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/3843042" data-copy-label="btop commit 3843042"><code>3843042</code><div>Stop calling <code>clean_quit</code> from SIGINT.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/327f695" data-copy-label="btop commit 327f695"><code>327f695</code><div>Fix Intel GPU cleanup on failure paths.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/5aaca91b3bffdfef4d5c11d96352670670815fd5" data-copy-label="btop commit 5aaca91"><code>5aaca91</code><div>Use relaxed ordering for failed CAS attempts.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/312592f01ecb5bc963ae0e78a81eafc0ffa3392a" data-copy-label="btop commit 312592f"><code>312592f</code><div>Make <code>expected</code> local, reset it on failure, and notify one waiter.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/2c631e4c8f430701e804f5f35151bb8798e55759" data-copy-label="btop commit 2c631e4"><code>2c631e4</code><div>Move runner timed waiting to a mutex + condition variable abstraction.</div></a>
     </div>
 
     <h2>The lock had already been replaced once</h2>
