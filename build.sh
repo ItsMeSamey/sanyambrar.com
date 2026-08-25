@@ -13,3 +13,4 @@ cp dist/index.html "$ROOT/wordle.html"
 
 cd "$ROOT"
 node ./verify-build.mjs
+node ./audit-keybr-theme.mjs
