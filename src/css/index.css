@@ -197,7 +197,7 @@ body {
 
 
 /* Site shell */
-body { font-family: Arial, Helvetica, sans-serif; align-items: stretch; overflow: hidden; }
+body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items: stretch; overflow: hidden; }
 .wordle-nav { height: 58px; padding: 0 12px; border-bottom: 1px solid var(--color-border); background: var(--color-background); z-index: 20; }
 .wordle-nav-button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 4px; }
 .wordle-nav-button:hover { background: var(--color-muted); }
