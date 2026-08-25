@@ -13,6 +13,7 @@ import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
+import { IconHome } from '~/components/icons'
 
 // Green, Yellow, Red respectively
 type WordleStringState = 'g' | 'y' | 'r'
@@ -431,7 +432,10 @@ export default function Wordle() {
   createEffect(() => softStore.set(soft))
 
   return <>
-    <nav class='flex flex-row p-2 w-full absolute items-end top-0 left-0'>
+    <nav class='wordle-nav flex flex-row w-full absolute items-center top-0 left-0'>
+      <a class='wordle-nav-button' href='../' aria-label='Home' title='Home'>
+        <IconHome class='size-5' />
+      </a>
       <div>
         <div class='-mt-1 mb-1' />
         <StatsPageTrigger />

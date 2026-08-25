@@ -54,7 +54,7 @@ interface Schema {
 }
 
 let db: IDBPDatabase<Schema>
-openDB<Schema>('game.wordle', 1, {
+const dbReady = openDB<Schema>('game.wordle', 1, {
   upgrade(db) {
     // Delete old data
     for (const store of db.objectStoreNames) db.deleteObjectStore(store);
@@ -64,7 +64,7 @@ openDB<Schema>('game.wordle', 1, {
       store.createIndex('wordIndex', 'w', {unique: true})
     }
   }
-}).then(_db => db = _db).catch(console.error)
+}).then(_db => db = _db)
 
 export function getDB(): typeof db { return db }
 
@@ -110,7 +110,8 @@ export function getRandomWord(wlen: WordLength): string {
 // Sets the word as done, adding the history to the record
 export async function setDone(entry: {word: string, history: [string, string][]}, hard: SettingsHardProps, kind: KindEnum): Promise<void> {
   if (entry.word.length < 3 || entry.word.length > 20) throw new Error('Invalid word length')
-  const store = db.transaction('w' + entry.word.length, 'readwrite').objectStore('w' + entry.word.length)
+  const readyDb = db ?? await dbReady
+  const store = readyDb.transaction('w' + entry.word.length, 'readwrite').objectStore('w' + entry.word.length)
 
   const record: Value = await store.index('wordIndex').get(entry.word) ?? {w: entry.word, h: []}
   record.h.push({
@@ -127,7 +128,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
 
 // Get all the words that have been done
 export async function getDoneWords(wlen: WordLength): Promise<Value[]> {
-  const store = db.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).index('doneIndex')
-  return await store.getAll(1)
+  const readyDb = db ?? await dbReady
+  return await readyDb.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).getAll()
 }
 

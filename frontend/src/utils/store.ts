@@ -57,7 +57,7 @@ export class UrlSearchStore<T> {
     this.current_value = undefined
 
     if (window.location.search.length > 1) {
-      const kv = window.location.search.substring(1).split('&').find((s) => s.startsWith(key))
+      const kv = window.location.search.substring(1).split('&').find((s) => s.split('=', 1)[0] === key)
       if (kv !== undefined) {
         this.current_value = this.from_string(kv.substring(key.length + 1))
       }
@@ -73,7 +73,7 @@ export class UrlSearchStore<T> {
 
   set(v: T | undefined) {
     this.current_value = v
-    const filteredKeys = window.location.search.slice(1).split('&').filter((s) => s.length && !s.startsWith(this.key))
+    const filteredKeys = window.location.search.slice(1).split('&').filter((s) => s.length && s.split('=', 1)[0] !== this.key)
     const url = new URL(window.location.href)
     if (v === undefined) {
       this.current_value = undefined
@@ -101,8 +101,8 @@ export class UrlHashStore<T> {
     this.to_string = to_string ?? nothingFn as any
     this.current_value = undefined
 
-    if (window.location.search.length > 1) {
-      const kv = window.location.hash.substring(1).split('&').find((s) => s.startsWith(key))
+    if (window.location.hash.length > 1) {
+      const kv = window.location.hash.substring(1).split('&').find((s) => s.split('=', 1)[0] === key)
       if (kv !== undefined) {
         this.current_value = this.from_string(kv.substring(key.length + 1))
       }
@@ -118,7 +118,7 @@ export class UrlHashStore<T> {
 
   set(v: T | undefined) {
     this.current_value = v
-    const filteredKeys = window.location.hash.slice(1).split('&').filter((s) => s.length && !s.startsWith(this.key))
+    const filteredKeys = window.location.hash.slice(1).split('&').filter((s) => s.length && s.split('=', 1)[0] !== this.key)
     if (v === undefined) {
       this.current_value = undefined
       window.location.hash = '#' + filteredKeys.join('&')

@@ -8,20 +8,14 @@ import './css/index.css'
 
 import { NoPageError, Page, selectP } from './utils/navigation'
 import ErrorPage from './pages/error_page'
-import Pointer from './components/pointer'
 import Wordle from './game/page'
 import SharePage from './game/page_share'
 import { Toaster } from '~/registry/ui/toast'
 
 render(function() {
   const storageManager = createLocalStorageManager('ui-theme')
-  const isTouch = window.matchMedia('(pointer: coarse)').matches
-
   return <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
     <ColorModeScript storageType={storageManager.type} />
-    <Show when={!isTouch}>
-      <Pointer POINTER_SIZE={20} />
-    </Show>
     <Toaster class='max-sm:left-0' />
 
     <ErrorBoundary fallback={ErrorPage}>

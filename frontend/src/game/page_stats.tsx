@@ -214,7 +214,7 @@ class StatsSidebar {
       <div class='grid grid-cols-1 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40'>
         {renderStat('Total Games', this.stats.totalGames)}
         {renderStat('Total Wins', this.stats.totalWins)}
-        {renderStat('Win Rate', (100 * this.stats.totalWins / this.stats.totalGames).toFixed(1) + '%')}
+        {renderStat('Win Rate', (this.stats.totalGames ? 100 * this.stats.totalWins / this.stats.totalGames : 0).toFixed(1) + '%')}
         {renderStat('Average Guesses', this.stats.averageGuesses.toFixed(2))}
       </div>
       <div class='flex flex-row items-center align-middle justify-center justify-items-center place-items-center place-content-center'>
@@ -245,7 +245,7 @@ export default function StatsPage() {
   return <div class='mx-auto p-4 h-full w-full min-md:container'>
     <div
       class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-    onClick={() => setP(Page.Wordle)}
+    onClick={() => window.location.assign('../')}
     >
       <IconHome class='size-5' />
     </div>
