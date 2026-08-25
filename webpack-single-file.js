@@ -35,16 +35,16 @@ export class SingleFilePlugin {
             .toString()
             .replaceAll("</script", "<\\/script");
           const html = `<!doctype html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" data-home-href="./" data-theme-settings-href="./keybr.html">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>keybr local</title>
 <style>${css}</style>
+<script src="./theme.js"></script>
 </head>
 <body>
-<header class="site-header"><a class="site-header__home" href="./">Home</a><div class="site-header__title">Keybr</div><div></div></header>
 <div id="app"></div>
 <script>${js}</script>
 </body>
