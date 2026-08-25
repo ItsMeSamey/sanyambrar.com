@@ -326,22 +326,26 @@
     cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8;8;14;14;8;8" keyTimes="0;0.699;0.7;0.72;0.82;1" dur="1.5s" repeatCount="indefinite" calcMode="linear" begin="indefinite"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
+
+    const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
+    const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
     const wantsGrab = (target) => {
       if (!(target instanceof Element)) return false;
-      if (target.closest(".samey-vscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]")) return true;
+      if (target.closest(grabSelector)) return true;
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
     const linkTarget = (target) => target instanceof Element ? target.closest("a[href],area[href],[role=link]") : null;
-    const wantsLink = (target) => !!linkTarget(target);
+    const elementAt = (event) => {
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return event.target instanceof Element ? event.target : null;
+      return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
+    };
     const linkCorner = cursor.querySelector(".samey-cursor-link-corner");
     const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
     const setGrabState = (grab) => {
       const wasGrab = cursor.hasAttribute("data-grab");
       cursor.toggleAttribute("data-grab", grab);
-      if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") {
-        grabPulse.beginElement();
-      }
+      if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
     };
     const animateLinkClick = () => {
       if (!(linkCorner instanceof SVGElement) || typeof linkCorner.animate !== "function") return;
@@ -355,37 +359,73 @@
         { transform: "translate(10px,-10px)", offset: 1 },
       ], { duration: 1500, easing: "linear", iterations: 1 });
     };
-    let dragging = false;
-    const place = (event) => {
-      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
-      cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
+
+    let nativeDragging = false;
+    let pressedGrab = false;
+    let pressedPointerId = null;
+    let lastX = 0, lastY = 0;
+    const placeXY = (x, y) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      lastX = x; lastY = y;
+      cursor.style.transform = `translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
       cursor.dataset.visible = "";
     };
+    const place = (event) => placeXY(event.clientX, event.clientY);
     const setMode = (target) => {
-      const grab = dragging || wantsGrab(target);
+      const grab = nativeDragging || pressedGrab || wantsGrab(target);
       setGrabState(grab);
-      cursor.toggleAttribute("data-link", !grab && wantsLink(target));
+      cursor.toggleAttribute("data-link", !grab && !!linkTarget(target));
     };
-    const move = (event) => {
+    const refreshAt = (event) => {
       place(event);
-      setMode(event.target);
+      setMode(elementAt(event));
     };
-    document.addEventListener("pointermove", move, { capture: true, passive: true });
-    document.addEventListener("pointerrawupdate", move, { capture: true, passive: true });
-    document.addEventListener("mousemove", move, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => { setMode(event.target); }, true);
-    document.addEventListener("click", (event) => {
-      if (event.button === 0 && linkTarget(event.target)) animateLinkClick();
+
+    const dragImage = (() => {
+      const holder = runtimeNode(document.createElement("div"));
+      holder.className = "samey-native-drag-image";
+      holder.innerHTML = `<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg"><mask id="samey-native-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="white" mask="url(#samey-native-grab-mask)"/><circle cx="32" cy="32" r="8" fill="white"/></svg>`;
+      document.body.append(holder);
+      return holder;
+    })();
+
+    for (const type of ["pointermove", "pointerrawupdate", "mousemove"]) document.addEventListener(type, refreshAt, { capture: true, passive: true });
+    document.addEventListener("pointerover", refreshAt, { capture: true, passive: true });
+    document.addEventListener("pointerdown", (event) => {
+      const actual = elementAt(event);
+      pressedPointerId = event.pointerId;
+      pressedGrab = !!actual?.closest?.(pressedGrabSelector);
+      place(event);
+      setMode(actual);
     }, true);
-    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
-    document.addEventListener("dragenter", (event) => { dragging = true; place(event); setGrabState(true); }, true);
-    document.addEventListener("dragover", (event) => { dragging = true; place(event); setGrabState(true); }, true);
-    const stopDragging = () => { dragging = false; setGrabState(false); cursor.removeAttribute("data-link"); };
+    document.addEventListener("pointerup", (event) => {
+      if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
+      place(event);
+      setMode(elementAt(event));
+    }, true);
+    document.addEventListener("click", (event) => { if (event.button === 0 && linkTarget(event.target)) animateLinkClick(); }, true);
+    document.addEventListener("dragstart", (event) => {
+      nativeDragging = true;
+      pressedGrab = false;
+      place(event);
+      cursor.removeAttribute("data-link");
+      setGrabState(true);
+      try { if (event.dataTransfer) event.dataTransfer.setDragImage(dragImage, 32, 32); } catch {}
+    }, true);
+    document.addEventListener("dragenter", (event) => { nativeDragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
+    document.addEventListener("dragover", (event) => { nativeDragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
+    const stopDragging = (event) => {
+      nativeDragging = false;
+      pressedGrab = false;
+      pressedPointerId = null;
+      if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
+      else { setGrabState(false); cursor.removeAttribute("data-link"); }
+    };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
     addEventListener("blur", stopDragging);
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !dragging) delete cursor.dataset.visible; });
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging) delete cursor.dataset.visible; });
   };
 
   const editableTarget = (el) => {

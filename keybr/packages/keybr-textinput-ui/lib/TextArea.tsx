@@ -96,7 +96,7 @@ export function TextArea({
     event.preventDefault();
   };
   return (
-    <div ref={ref} className={styles.root} onClick={handleClick}>
+    <div ref={ref} className={styles.root} data-grab-cursor-on-drag="" onClick={handleClick}>
       <TextEvents
         focusRef={innerRef}
         onFocus={handleFocus}

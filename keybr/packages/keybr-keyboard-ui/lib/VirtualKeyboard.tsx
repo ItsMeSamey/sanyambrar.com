@@ -23,6 +23,7 @@ export const VirtualKeyboard = memo(function VirtualKeyboard({
     <svg
       {...props}
       className={styles.keyboard}
+      data-grab-cursor-on-drag=""
       viewBox={`0 0 ${size.width} ${size.height}`}
       style={{ aspectRatio: `${size.width}/${size.height}` }}
       width={width}
