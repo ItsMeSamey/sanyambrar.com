@@ -88,8 +88,8 @@ export default {
   context: rootDir,
   entry: "./packages/keybr-app/lib/entry.tsx",
   output: {
-    path: join(rootDir, "dist"),
-    clean: true,
+    path: join(rootDir, "../docs"),
+    clean: false,
     filename: "app.js",
     chunkFilename: "chunk-[id].js",
     publicPath: "",

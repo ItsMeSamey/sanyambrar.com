@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import { ViteMinifyPlugin } from 'vite-plugin-minify'
 import path from 'node:path'
+import { rename, rm } from 'node:fs/promises'
 
 export default defineConfig({
   publicDir: false,
@@ -11,6 +12,15 @@ export default defineConfig({
     solid(),
     tailwindcss(),
     viteSingleFile({ removeViteModuleLoader: true }),
+    {
+      name: 'wordle-output-name',
+      async closeBundle() {
+        const app = path.resolve(import.meta.dirname, 'docs/app.html')
+        const wordle = path.resolve(import.meta.dirname, 'docs/wordle.html')
+        await rm(wordle, { force: true })
+        await rename(app, wordle)
+      },
+    },
     ViteMinifyPlugin({
       collapseBooleanAttributes: true,
       collapseInlineTagWhitespace: true,
@@ -26,9 +36,12 @@ export default defineConfig({
   ],
   resolve: { alias: { '~': path.resolve(import.meta.dirname, './src/ui-kit/') } },
   build: {
-    outDir: '.build/solid',
-    emptyOutDir: true,
-    rollupOptions: { input: path.resolve(import.meta.dirname, 'app.html') },
+    outDir: 'docs',
+    emptyOutDir: false,
+    rollupOptions: {
+      input: path.resolve(import.meta.dirname, 'app.html'),
+      checks: { pluginTimings: false },
+    },
     minify: 'terser',
     cssMinify: true,
     terserOptions: {

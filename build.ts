@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { cp, mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
@@ -14,16 +14,17 @@ const unbrotliAsync = promisify(brotliDecompress);
 
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "static");
-const DIST = join(ROOT, "dist");
 const DOCS = join(ROOT, "docs");
-const SOLID_OUT = join(ROOT, ".build", "solid");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
-for (const target of targets) if (!ALL.has(target)) throw new Error(`unknown target: ${target} (use solid, keybr, static, or all)`);
+const invalidTargets = [...targets].filter((target) => !ALL.has(target));
 const fullBuild = targets.size === ALL.size && [...ALL].every((target) => targets.has(target));
+const DOCS_BACKUP = join(ROOT, ".build", "docs-backup");
+let docsTransactionStarted = false;
+let docsExistedBeforeBuild = false;
 
 const log = (message: string) => console.log(`[build] ${message}`);
 const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
@@ -81,50 +82,56 @@ async function walk(root: string, accept: (path: string, name: string) => boolea
   return files.sort();
 }
 
-async function copyStatic() {
-  await mkdir(DIST, { recursive: true });
-  await cp(STATIC, DIST, { recursive: true, force: true });
+
+async function beginDocsTransaction() {
+  docsExistedBeforeBuild = existsSync(DOCS);
+  await rm(DOCS_BACKUP, { recursive: true, force: true });
+  await mkdir(join(ROOT, ".build"), { recursive: true });
+  if (docsExistedBeforeBuild) {
+    if (fullBuild) await rename(DOCS, DOCS_BACKUP);
+    else await cp(DOCS, DOCS_BACKUP, { recursive: true, force: true });
+  }
+  if (fullBuild) await mkdir(DOCS, { recursive: true });
+  docsTransactionStarted = true;
 }
 
-async function publishDocs() {
+async function rollbackDocsTransaction() {
+  if (!docsTransactionStarted) return;
   await rm(DOCS, { recursive: true, force: true });
-  await cp(DIST, DOCS, { recursive: true, force: true });
-  log("published verified dist/ tree to docs/ for GitHub Pages");
+  if (docsExistedBeforeBuild && existsSync(DOCS_BACKUP)) await rename(DOCS_BACKUP, DOCS);
 }
 
-async function verifyPublishedDocs() {
-  const files = await walk(DIST, () => true);
-  for (const source of files) {
-    const rel = relative(DIST, source);
-    const target = join(DOCS, rel);
-    must(existsSync(target), `missing published docs/${rel}`);
-    must((await readFile(target)).equals(await readFile(source)), `published docs drift: ${rel}`);
+async function copyStatic() {
+  await mkdir(DOCS, { recursive: true });
+  await cp(STATIC, DOCS, { recursive: true, force: true });
+}
+
+async function cleanupBuildArtifacts() {
+  const transientDocs = [
+    "app.html",
+    "app.js",
+    "app.css",
+  ];
+  await Promise.all([
+    rm(join(ROOT, ".build"), { recursive: true, force: true }),
+    rm(join(ROOT, "dist"), { recursive: true, force: true }),
+    rm(join(ROOT, "keybr/dist"), { recursive: true, force: true }),
+    ...transientDocs.map((name) => rm(join(DOCS, name), { recursive: true, force: true })),
+  ]);
+  for (const file of await walk(DOCS, (_path, name) => /^chunk-.*\.js$/.test(name))) {
+    await rm(file, { force: true });
   }
-  const docsFiles = await walk(DOCS, () => true);
-  must(docsFiles.length === files.length, `docs/ contains unexpected files (${docsFiles.length} != ${files.length})`);
-  for (const page of await walk(DIST, (_path, name) => name.endsWith(".html"))) {
-    const rel = relative(DIST, page);
-    for (const suffix of [".gz", ".br"]) must(existsSync(join(DOCS, `${rel}${suffix}`)), `missing published docs/${rel}${suffix}`);
-  }
-  for (const page of ["index.html", "wordle.html", "keybr.html"]) {
-    must(existsSync(join(DOCS, page)), `GitHub Pages docs/${page} was not published`);
-    must(existsSync(join(DOCS, `${page}.gz`)), `GitHub Pages docs/${page}.gz was not published`);
-    must(existsSync(join(DOCS, `${page}.br`)), `GitHub Pages docs/${page}.br was not published`);
-  }
-  must(existsSync(join(DOCS, ".nojekyll")), "GitHub Pages docs/.nojekyll marker was not published");
 }
 
 
 async function buildSolid() {
   await ensureDeps(ROOT);
-  await rm(SOLID_OUT, { recursive: true, force: true });
   await Promise.all([
     run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
     run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"]),
   ]);
-  await mkdir(DIST, { recursive: true });
-  await cp(join(SOLID_OUT, "app.html"), join(DIST, "wordle.html"), { force: true });
-  log("solid -> dist/wordle.html");
+  must(existsSync(join(DOCS, "wordle.html")), "Vite did not emit docs/wordle.html");
+  log("solid -> docs/wordle.html");
 }
 
 async function buildKeybr() {
@@ -132,27 +139,26 @@ async function buildKeybr() {
   await ensureDeps(dir);
   await run(dir, process.execPath, ["./scripts/check-workspaces.mjs"]);
   await run(dir, process.execPath, ["./node_modules/webpack/bin/webpack.js"], { NODE_ENV: "production" });
-  await mkdir(DIST, { recursive: true });
-  await cp(join(dir, "dist/index.html"), join(DIST, "keybr.html"), { force: true });
-  log("keybr -> dist/keybr.html");
+  must(existsSync(join(DOCS, "keybr.html")), "Webpack did not emit docs/keybr.html");
+  log("keybr -> docs/keybr.html");
 }
 
 async function deployAssets() {
-  return (await walk(DIST, (_path, name) => /\.(?:html|css|js)$/.test(name) && name !== "sw.js"))
-    .map((path) => relative(DIST, path).replaceAll("\\", "/"));
+  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js)$/.test(name) && name !== "sw.js"))
+    .map((path) => relative(DOCS, path).replaceAll("\\", "/"));
 }
 
 async function generateServiceWorker() {
   const files = await deployAssets();
   const hash = createHash("sha256");
-  for (const file of files) hash.update(file).update("\0").update(await readFile(join(DIST, file))).update("\0");
+  for (const file of files) hash.update(file).update("\0").update(await readFile(join(DOCS, file))).update("\0");
   const version = hash.digest("hex").slice(0, 16);
   const source = `// Generated by build.ts. Do not edit.\nconst CACHE_PREFIX = 'samey-site-';\nconst CACHE = CACHE_PREFIX + '${version}';\nconst ROOT = new URL('./', self.registration.scope);\nconst CORE = ${JSON.stringify(files)};\n\nself.addEventListener('install', event => {\n  event.waitUntil(Promise.all([\n    caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new URL(path, ROOT)))),\n    self.skipWaiting(),\n  ]));\n});\n\nself.addEventListener('activate', event => {\n  event.waitUntil(Promise.all([\n    caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).map(key => caches.delete(key)))),\n    self.clients.claim(),\n  ]));\n});\n\nconst offlineNavigation = async request => {\n  const cached = await caches.match(request);\n  if (cached) return cached;\n  const url = new URL(request.url);\n  if (url.pathname.endsWith('/')) {\n    const directoryIndex = await caches.match(new URL('index.html', url));\n    if (directoryIndex) return directoryIndex;\n  }\n  return caches.match(new URL('index.html', ROOT));\n};\n\nself.addEventListener('fetch', event => {\n  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;\n  if (event.request.mode === 'navigate') {\n    event.respondWith((async () => {\n      try {\n        const response = await fetch(event.request);\n        if (response.ok) (await caches.open(CACHE)).put(event.request, response.clone());\n        return response;\n      } catch { return offlineNavigation(event.request); }\n    })());\n    return;\n  }\n  const refresh = fetch(event.request).then(async response => {\n    if (response.ok) (await caches.open(CACHE)).put(event.request, response.clone());\n    return response;\n  });\n  event.respondWith(caches.match(event.request).then(cached => cached || refresh).catch(() => refresh));\n  event.waitUntil(refresh.catch(() => undefined));\n});\n`;
-  await writeFile(join(DIST, "sw.js"), source);
+  await writeFile(join(DOCS, "sw.js"), source);
 }
 
 async function compressHtml() {
-  const pages = await walk(DIST, (_path, name) => name.endsWith(".html"));
+  const pages = await walk(DOCS, (_path, name) => name.endsWith(".html"));
   await Promise.all(pages.map(async (page) => {
     const input = await readFile(page);
     const [gz, br] = await Promise.all([
@@ -161,7 +167,7 @@ async function compressHtml() {
     ]);
     await Promise.all([writeFile(`${page}.gz`, gz), writeFile(`${page}.br`, br)]);
   }));
-  const sidecars = await walk(DIST, (_path, name) => /\.html\.(?:gz|br)$/.test(name));
+  const sidecars = await walk(DOCS, (_path, name) => /\.html\.(?:gz|br)$/.test(name));
   await Promise.all(sidecars.map(async (sidecar) => { if (!existsSync(sidecar.replace(/\.(?:gz|br)$/, ""))) await unlink(sidecar); }));
 }
 
@@ -200,15 +206,21 @@ async function auditSource() {
   must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
+  const viteConfig = await readFile(join(ROOT, "vite.config.ts"), "utf8");
+  const webpackConfig = await readFile(join(ROOT, "keybr/webpack.config.js"), "utf8");
+  const singleFilePlugin = await readFile(join(ROOT, "keybr/webpack-single-file.js"), "utf8");
+  must(viteConfig.includes("outDir: 'docs'") && viteConfig.includes("emptyOutDir: false"), "Wordle must build directly into docs/");
+  must(webpackConfig.includes('path: join(rootDir, "../docs")') && webpackConfig.includes("clean: false"), "Keybr must build directly into docs/");
+  must(singleFilePlugin.includes('"keybr.html"'), "Keybr single-file build must emit docs/keybr.html");
   const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
   for (const token of ["::selection", ".samey-site-controls", ".samey-context-menu", ".samey-cursor-grab"]) must(sharedCss.includes(token), `shared UI CSS missing ${token}`);
   for (const token of ["Search web for selection", "Screenshot…", "Copy Markdown link", "requestFullscreen", 'rect x="29" y="16" width="6" height="7"']) must(theme.includes(token), `shared runtime missing ${token}`);
   for (const token of ["--wordle-control-top", "--wordle-control-right", "top: var(--wordle-control-top) !important", "right: var(--wordle-control-right) !important", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
 }
 
-async function verifyDist() {
-  for (const file of ["index.html", "keybr.html", "wordle.html", "theme.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DIST, file)), `missing dist/${file}`);
-  const keybr = await readFile(join(DIST, "keybr.html"), "utf8"), wordle = await readFile(join(DIST, "wordle.html"), "utf8");
+async function verifyDocs() {
+  for (const file of ["index.html", "keybr.html", "wordle.html", "theme.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
+  const keybr = await readFile(join(DOCS, "keybr.html"), "utf8"), wordle = await readFile(join(DOCS, "wordle.html"), "utf8");
   for (const [name, html] of [["keybr", keybr], ["wordle", wordle]] as const) must(!html.includes('manifest="appcache.manifest"'), `${name}: obsolete AppCache manifest`);
   must(!keybr.includes('<header class="site-header"'), "keybr: stale custom header emitted");
   must(keybr.includes('data-site-kind="keybr"'), "keybr: missing Keybr theme namespace marker");
@@ -216,9 +228,9 @@ async function verifyDist() {
   must(!keybr.includes("Change the color theme.") && !keybr.includes("Change the interface font."), "keybr: stale native appearance controls emitted");
   must(wordle.includes("Active Games") && wordle.includes("stats-page"), "wordle: expected game/statistics UI missing");
 
-  const pages = await walk(DIST, (_path, name) => name.endsWith(".html"));
+  const pages = await walk(DOCS, (_path, name) => name.endsWith(".html"));
   for (const path of pages) {
-    const html = await readFile(path, "utf8"), name = relative(DIST, path);
+    const html = await readFile(path, "utf8"), name = relative(DOCS, path);
     must(/<script\s+src=["'][^"']*appearance\.generated\.js["']><\/script>/i.test(html), `${name}: missing generated appearance config`);
     must(/<script\s+src=["'][^"']*theme\.js["']><\/script>/i.test(html), `${name}: missing shared theme/runtime script`);
     must(/data-home-href=|data-back-href=/i.test(html), `${name}: missing shared navigation metadata`);
@@ -227,33 +239,39 @@ async function verifyDist() {
     must(Buffer.from(br).equals(raw), `brotli drift: ${name}`);
   }
 
-  const theme = await readFile(join(DIST, "theme.js"), "utf8"), css = await readFile(join(DIST, "site.css"), "utf8");
+  const theme = await readFile(join(DOCS, "theme.js"), "utf8"), css = await readFile(join(DOCS, "site.css"), "utf8");
   for (const token of ["samey-site-controls", "samey-context-menu", "samey-cursor-grab", "samey-vscroll-thumb", "samey-hscroll-thumb", "pointerrawupdate", "contextmenu", "getDisplayMedia", "history.pushState", "popstate", "X-Samey-SPA", "Copy", "Paste", "Select all", "Screenshot…", '<rect x="29" y="16" width="6" height="7" fill="black"/>', '<rect x="16" y="29" width="7" height="6" fill="black"/>']) must(theme.includes(token), `theme.js: missing runtime contract ${token}`);
   for (const token of ["::selection", ".samey-site-controls", "left:12px", "cursor:none!important", ".samey-context-menu", ".samey-vscroll", ".samey-hscroll"]) must(css.includes(token), `site.css: missing shared UI contract ${token}`);
-  const post = await readFile(join(DIST, "blog/posts/btop-mutex.html"), "utf8");
+  const post = await readFile(join(DOCS, "blog/posts/btop-mutex.html"), "utf8");
   must(post.includes("<h1>btop's broken lock</h1>"), "blog post title drift");
   must(post.includes('<p class="dek">the mutex that wasn\'t</p>'), "blog post subtitle drift");
-  const expected = await deployAssets(), sw = await readFile(join(DIST, "sw.js"), "utf8"), match = sw.match(/const CORE = (\[[^;]+\]);/);
+  const expected = await deployAssets(), sw = await readFile(join(DOCS, "sw.js"), "utf8"), match = sw.match(/const CORE = (\[[^;]+\]);/);
   must(match && JSON.stringify(JSON.parse(match[1])) === JSON.stringify(expected), "service worker asset list drift");
 }
 
 async function main() {
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, static, or all)`);
   await generateAppearance();
   await auditSource();
-  if (fullBuild) await Promise.all([rm(DIST, { recursive: true, force: true }), rm(join(ROOT, ".build"), { recursive: true, force: true })]);
+  await beginDocsTransaction();
+  if (targets.has("static")) await copyStatic();
   const jobs: Promise<void>[] = [];
-  if (targets.has("static")) jobs.push(copyStatic());
   if (targets.has("solid")) jobs.push(buildSolid());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
   await compressHtml();
   if (fullBuild) {
     await generateServiceWorker();
-    await verifyDist();
-    await publishDocs();
-    await verifyPublishedDocs();
-    log("all verification passed and docs/ is publishable as the GitHub Pages site root");
+    await verifyDocs();
+    log("all verification passed; docs/ is the GitHub Pages site root");
   }
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  await rollbackDocsTransaction();
+  throw error;
+} finally {
+  await cleanupBuildArtifacts();
+}

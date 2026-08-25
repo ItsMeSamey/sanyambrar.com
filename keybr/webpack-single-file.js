@@ -54,7 +54,7 @@ export class SingleFilePlugin {
             compilation.deleteAsset(name);
           }
           compilation.emitAsset(
-            "index.html",
+            "keybr.html",
             new webpack.sources.RawSource(html),
           );
         },
