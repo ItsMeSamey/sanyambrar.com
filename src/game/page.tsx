@@ -347,7 +347,7 @@ export class WordleModel {
         this.state.resetState()
         this.state.state.showPopOver = state
       })}>
-        <DrawerContent>
+        <DrawerContent class='result-dialog'>
           <DrawerHeader>
             {(() => {
               const last = this.state.history.at(-1)!

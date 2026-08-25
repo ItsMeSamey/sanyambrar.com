@@ -5,7 +5,6 @@ import { IconSettings, IconX } from '~/components/icons'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
 
-import ModeToggleGroup from '../components/mode_toggle_group'
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import { untrack } from 'solid-js/web'
 import { Button } from '~/registry/ui/button'
@@ -74,7 +73,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
         class='space-y-3 '
       >
         <div class='flex w-full justify-between'>
-          <SliderLabel>Word count</SliderLabel>
+          <SliderLabel>Word length</SliderLabel>
           <SliderValueLabel />
         </div>
         <SliderTrack>
@@ -93,7 +92,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
       class='space-y-3 '
     >
       <div class='flex w-full justify-between'>
-        <SliderLabel>Max Words</SliderLabel>
+        <SliderLabel>Max guesses</SliderLabel>
         <SliderValueLabel />
       </div>
       <SliderTrack>
@@ -107,8 +106,6 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
 export default function Settings({soft, hard, showActive, showWordLength}: {soft: SettingsSoftProps, hard: SettingsHardProps, showActive: boolean, showWordLength: boolean}) {
   const [open, setOpen] = createSignal(false)
 
-  const emptydiv = <div class='w-full -mt-1 mb-1'/>
-
   function buttonWithIcon(icon: JSX.Element) {
     return <div
       class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
@@ -118,9 +115,8 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
     </div>
   }
 
-  return <Popover anchorRef={() => emptydiv as any} open={open()} onOpenChange={setOpen}>
+  return <Popover open={open()} onOpenChange={setOpen}>
     <PopoverTrigger>
-      {emptydiv}
       <Show when={!open()}>
         <Tooltip>
           <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
@@ -130,25 +126,22 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
         </Tooltip>
       </Show>
     </PopoverTrigger>
-    <PopoverContent class='border-muted absolute overflow-visible motion-preset-slide-down-left space-y-5'>
+    <PopoverContent class='settings-popover border-muted'>
       <Show when={open()}>
-        <div class='flex flex-row items-end w-full h-full'>
-          <ModeToggleGroup class='border border-muted rounded-lg' />
-          <div class='w-full' />
-          <Tooltip>
-            <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-down-left motion-delay-75 bg-warning/50 rounded'>
-              {buttonWithIcon(<IconX class='size-5 stroke-red-500' />)}
-            </TooltipTrigger>
-            <TooltipContent>Close Settings</TooltipContent>
-          </Tooltip>
-        </div>
+        <Tooltip>
+          <TooltipTrigger onClick={e => e.stopPropagation()} class='settings-close bg-warning/50 rounded'>
+            {buttonWithIcon(<IconX class='size-5 stroke-red-500' />)}
+          </TooltipTrigger>
+          <TooltipContent>Close Settings</TooltipContent>
+        </Tooltip>
       </Show>
 
-      <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
+      <div class='settings-body space-y-5'>
+        <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
 
-      <div class='h-[1px]' />
+        <div class='h-[1px]' />
 
-      <div class='flex flex-row gap-2'>
+        <div class='settings-actions flex flex-wrap gap-2'>
         {TooltipWithContent(
           <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
             Reveal
@@ -162,6 +155,7 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
             </Button>
           }/>
         </Show>
+        </div>
       </div>
     </PopoverContent>
   </Popover>

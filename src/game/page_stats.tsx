@@ -1,6 +1,6 @@
 'use strict'
 
-import { ChartNoAxesCombined } from 'lucide-solid'
+import { BarChart3 } from 'lucide-solid'
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
@@ -207,7 +207,7 @@ export function StatsPageTrigger(): JSX.Element {
     <Tooltip>
       <TooltipTrigger onClick={e => e.stopPropagation()}>
         <button type='button' class='wordle-nav-button' onClick={() => setP(Page.Stats)} aria-label='Statistics'>
-          <ChartNoAxesCombined class='size-5 stroke-foreground' />
+          <BarChart3 class='size-5 stroke-foreground' />
         </button>
       </TooltipTrigger>
       <TooltipContent>Stats</TooltipContent>
