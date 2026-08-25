@@ -342,7 +342,7 @@ export class WordleModel {
       document.removeEventListener('keyup', handleKeyUp)
     })
 
-    return <div class='flex flex-col h-full p-6 max-sm:p-1 sm:content-center sm:justify-center'>
+    return <div class='wordle-game-shell'>
       <Drawer open={this.state.state.showPopOver} onOpenChange={state => batch(() => {
         this.state.resetState()
         this.state.state.showPopOver = state
@@ -374,7 +374,7 @@ export class WordleModel {
           </DrawerHeader>
         </DrawerContent>
       </Drawer>
-      <div class='flex flex-col mx-auto overflow-y-auto overflow-visible p-0 max-sm:mt-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
+      <div class='wordle-board mx-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
         <For each={this.state.history.length? this.state.history.slice(0, -1): []}>
           {([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}
         </For>
@@ -388,7 +388,7 @@ export class WordleModel {
           {() => new Block(this.state.hard.wordLength, '', '').render()}
         </For>
       </div>
-      <div class='mt-10 justify-center justify-items-center overflow-visible max-sm:mt-auto max-sm:mb-4 max-sm:pt-4'>
+      <div class='wordle-keyboard justify-center justify-items-center overflow-visible'>
         {new Keyboard(this.state.state.keyboard).render()}
       </div>
     </div>
