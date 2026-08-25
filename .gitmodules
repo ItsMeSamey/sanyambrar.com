@@ -1,0 +1,6 @@
+[submodule "keybr.local"]
+	path = keybr
+	url = https://github.com/ItsMeSamey/keybr.local
+[submodule "wordle"]
+	path = wordle
+	url = https://github.com/ItsMeSamey/wordle
