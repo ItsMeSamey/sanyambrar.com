@@ -44,6 +44,7 @@ export class SingleFilePlugin {
 <style>${css}</style>
 </head>
 <body>
+<header class="site-header"><a class="site-header__home" href="./">Home</a><div class="site-header__title">Keybr</div><div></div></header>
 <div id="app"></div>
 <script>${js}</script>
 </body>

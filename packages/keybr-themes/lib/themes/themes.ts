@@ -35,9 +35,9 @@ export type CustomThemeColors = {
 
 export const LIGHT_CUSTOM_THEME: CustomThemeColors = {
   tone: "light",
-  background: "#f4f0f0",
-  text: "#282640",
-  accent: "#3d475c",
+  background: "#ffffff",
+  text: "#121213",
+  accent: "#787c7e",
   error: "#ff3333",
   slow: "#cc0000",
   fast: "#60d788",
@@ -46,9 +46,9 @@ export const LIGHT_CUSTOM_THEME: CustomThemeColors = {
 
 export const DARK_CUSTOM_THEME: CustomThemeColors = {
   tone: "dark",
-  background: "#333333",
-  text: "#9f9999",
-  accent: "#6c6666",
+  background: "#121213",
+  text: "#f8f8f8",
+  accent: "#a7a7a7",
   error: "#9b4545",
   slow: "#8c1818",
   fast: "#448154",

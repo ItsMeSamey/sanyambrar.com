@@ -18,3 +18,53 @@ body {
   background-size: cover;
   background-repeat: no-repeat;
 }
+
+/* Samey site shell */
+body {
+  display: flex;
+  min-block-size: 100dvh;
+  flex-direction: column;
+}
+
+#app {
+  min-block-size: calc(100dvh - 58px);
+}
+
+.site-header {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  block-size: 58px;
+  flex: 0 0 58px;
+  align-items: center;
+  padding-inline: 12px;
+  border-block-end: 1px solid var(--primary-d1);
+  background: color-mix(in srgb, var(--primary) 94%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.site-header__home {
+  justify-self: start;
+  color: var(--secondary);
+  font: 700 14px/1 var(--default-font-family);
+  text-decoration: none;
+  padding: 10px 8px;
+  border-radius: 4px;
+}
+
+.site-header__home:hover {
+  background: var(--primary-d1);
+}
+
+.site-header__title {
+  color: var(--secondary);
+  font: 800 20px/1 var(--default-font-family);
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 640px) {
+  #app { min-block-size: calc(100dvh - 54px); }
+  .site-header { block-size: 54px; flex-basis: 54px; }
+}
