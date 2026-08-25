@@ -1,7 +1,7 @@
 import { type KeyId } from "@keybr/keyboard";
 import { names } from "@keybr/lesson-ui";
 import { Screen } from "@keybr/pages-shared";
-import { enumProp, Preferences } from "@keybr/settings";
+import { booleanProp, enumProp, Preferences } from "@keybr/settings";
 import { type LineList } from "@keybr/textinput";
 import {
   type IInputEvent,
@@ -53,6 +53,7 @@ function getNextView(view: View): View {
 }
 
 const propView = enumProp("prefs.practice.view", View, View.Normal);
+const propTourSeen = booleanProp("prefs.practice.tourSeen", false);
 
 export class Presenter extends PureComponent<Props, State> {
   readonly focusRef = createRef<Focusable>();
@@ -64,7 +65,8 @@ export class Presenter extends PureComponent<Props, State> {
   };
 
   override componentDidMount() {
-    if (this.props.state.settings.isNew) {
+    if (this.props.state.settings.isNew && !Preferences.get(propTourSeen)) {
+      Preferences.set(propTourSeen, true);
       this.setState({
         view: View.Normal,
         tour: true,

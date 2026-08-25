@@ -534,7 +534,7 @@
   };
 
   const SPA_EXCLUDE = /\/(?:keybr|wordle)\.html$/;
-  const pageStyleNodes = () => [...document.head.children].filter(el => (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) && !el.dataset.sameyShared);
+  const pageStyleNodes = () => [...document.head.children].filter(el => (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) && !el.hasAttribute("data-samey-shared"));
   const markInitialPageStyles = () => pageStyleNodes().forEach(el => el.dataset.spaPage = "");
   const syncHtmlData = (doc) => {
     for (const key of [...document.documentElement.attributes].map(a => a.name).filter(name => name.startsWith("data-") && !["data-site-theme","data-kb-theme","data-font","data-color"].includes(name))) document.documentElement.removeAttribute(key);
