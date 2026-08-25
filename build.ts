@@ -314,7 +314,8 @@ async function auditSource() {
   must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
   must(home.includes("Chain Reaction") && home.includes("canvas renderer"), "Chain Reaction homepage card missing");
   const chain = await readFile(join(STATIC, "chain.html"), "utf8");
-  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(AI)", "board[i] === 0 || owners[i] === owner"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
+  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
+  for (const removed of ['>Chain Reaction</div>', '>Your turn</div>', '>New game</button>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
   must(!chain.includes("transition-all") && !chain.includes("new Atom("), "Chain Reaction regressed to per-atom DOM transitions");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
