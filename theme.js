@@ -32,7 +32,7 @@
     const raw = rawTheme();
     let color = raw.color;
     if (color === "system" || !["light", "clear-light", "dark", "clear-dark", "custom"].includes(color)) {
-      color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      color = window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     if (color !== "custom") return { color, selected: raw.color || "system", ...defaults[color] };
     const c = raw.custom || {};
@@ -52,6 +52,7 @@
     root.dataset.siteTheme = t.color;
     root.dataset.kbTheme = t.tone;
     if (t.color !== "custom") root.dataset.color = t.color;
+    else root.removeAttribute("data-color");
     root.classList.toggle("dark", t.tone === "dark");
     root.style.colorScheme = t.tone;
     const line = mix(t.text, t.background, t.tone === "dark" ? .72 : .82);
@@ -134,6 +135,10 @@
   document.head.append(css);
 
   window.addEventListener("storage", (event) => { if (event.key === KEY) apply(); });
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    const raw = rawTheme();
+    if (!raw.color || raw.color === "system") apply();
+  });
   window.SameyTheme = { apply, read };
   apply();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountControls, {once:true}); else mountControls();
