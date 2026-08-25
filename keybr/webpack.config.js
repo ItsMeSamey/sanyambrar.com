@@ -4,7 +4,8 @@ import { gzipSync } from "node:zlib";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import TerserPlugin from "terser-webpack-plugin";
-import webpack from "webpack";
+import DefinePlugin from "webpack/lib/DefinePlugin.js";
+import LimitChunkCountPlugin from "webpack/lib/optimize/LimitChunkCountPlugin.js";
 import { SingleFilePlugin } from "./webpack-single-file.js";
 
 const mode = process.env.NODE_ENV || "production";
@@ -134,11 +135,11 @@ export default {
   },
   devtool: false,
   plugins: [
-    new webpack.DefinePlugin({
+    new DefinePlugin({
       "process.env.NODE_ENV": JSON.stringify(mode),
       "typeof window": JSON.stringify("object"),
     }),
-    new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
+    new LimitChunkCountPlugin({ maxChunks: 1 }),
     new MiniCssExtractPlugin({ filename: "app.css", chunkFilename: "app.css" }),
     new SingleFilePlugin(),
   ],

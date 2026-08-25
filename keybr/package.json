@@ -11,9 +11,9 @@
   ],
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "build": "node ./scripts/check-workspaces.mjs && NODE_ENV=production webpack",
-    "build:dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack",
-    "dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack --watch",
+    "build": "bun ./scripts/check-workspaces.mjs && NODE_ENV=production bun ./scripts/build-webpack.mjs",
+    "build:dev": "bun ./scripts/check-workspaces.mjs && NODE_ENV=development bun ./scripts/build-webpack.mjs",
+    "dev": "bun ./scripts/check-workspaces.mjs && NODE_ENV=development bun ./scripts/build-webpack.mjs --watch",
     "check:workspaces": "bun ./scripts/check-workspaces.mjs"
   },
   "dependencies": {

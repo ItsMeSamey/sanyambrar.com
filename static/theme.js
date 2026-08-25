@@ -323,7 +323,7 @@
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8;8;14;14;8;8" keyTimes="0;0.699;0.7;0.72;0.82;1" dur="1.5s" repeatCount="indefinite" calcMode="linear" begin="indefinite"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="7" fill="white"/><rect x="30.5" y="24" width="3" height="16" fill="black"/><rect x="24" y="30.5" width="16" height="3" fill="black"/></mask><circle cx="32" cy="32" r="7" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="7;4" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(25 25) scale(.1666666667)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;10 -10" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
 
@@ -340,7 +340,7 @@
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return event.target instanceof Element ? event.target : null;
       return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
     };
-    const linkCorner = cursor.querySelector(".samey-cursor-link-corner");
+    const linkClick = cursor.querySelector(".samey-cursor-link-click");
     const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
     const setGrabState = (grab) => {
       const wasGrab = cursor.hasAttribute("data-grab");
@@ -348,19 +348,14 @@
       if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
     };
     const animateLinkClick = () => {
-      if (!(linkCorner instanceof SVGElement) || typeof linkCorner.animate !== "function") return;
-      linkCorner.getAnimations().forEach((animation) => animation.cancel());
-      linkCorner.animate([
-        { transform: "translate(10px,-10px)", offset: 0 },
-        { transform: "translate(10px,-10px)", offset: .699 },
-        { transform: "translate(0,0)", offset: .7 },
-        { transform: "translate(0,0)", offset: .72 },
-        { transform: "translate(10px,-10px)", offset: .82 },
-        { transform: "translate(10px,-10px)", offset: 1 },
-      ], { duration: 1500, easing: "linear", iterations: 1 });
+      if (!matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof linkClick?.beginElement === "function") linkClick.beginElement();
     };
 
     let nativeDragging = false;
+    let selectionDragging = false;
+    let selectionDragCandidate = false;
+    let selectionDragText = "";
+    let selectionStartX = 0, selectionStartY = 0;
     let pressedGrab = false;
     let pressedPointerId = null;
     let lastX = 0, lastY = 0;
@@ -371,51 +366,139 @@
       cursor.dataset.visible = "";
     };
     const place = (event) => placeXY(event.clientX, event.clientY);
+    const unshiftCursor = (grab) => {
+      if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+      const visual = grab ? cursor.querySelector(".samey-cursor-grab") : cursor.querySelector(".samey-cursor-dot");
+      visual?.animate?.(
+        [{ transform: "translate(-7px,7px)" }, { transform: "translate(0,0)" }],
+        { duration: 65, easing: "cubic-bezier(.2,.8,.2,1)" },
+      );
+    };
     const setMode = (target) => {
-      const grab = nativeDragging || pressedGrab || wantsGrab(target);
+      const wasLink = cursor.hasAttribute("data-link") && !cursor.hasAttribute("data-grab");
+      const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
+      const link = !grab && !!linkTarget(target);
       setGrabState(grab);
-      cursor.toggleAttribute("data-link", !grab && !!linkTarget(target));
+      cursor.toggleAttribute("data-link", link);
+      if (wasLink && !link) unshiftCursor(grab);
     };
     const refreshAt = (event) => {
+      if (nativeDragging) { delete cursor.dataset.visible; return; }
+      if (selectionDragCandidate && (event.buttons & 1)) {
+        const dx = event.clientX - selectionStartX, dy = event.clientY - selectionStartY;
+        if (!selectionDragging && dx * dx + dy * dy >= 9) {
+          selectionDragging = true;
+          pressedGrab = true;
+        }
+      }
       place(event);
       setMode(elementAt(event));
     };
 
-    const dragImage = (() => {
-      const holder = runtimeNode(document.createElement("div"));
-      holder.className = "samey-native-drag-image";
-      holder.innerHTML = `<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg"><mask id="samey-native-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="white" mask="url(#samey-native-grab-mask)"/><circle cx="32" cy="32" r="8" fill="white"/></svg>`;
-      document.body.append(holder);
-      return holder;
-    })();
+
 
     for (const type of ["pointermove", "pointerrawupdate", "mousemove"]) document.addEventListener(type, refreshAt, { capture: true, passive: true });
     document.addEventListener("pointerover", refreshAt, { capture: true, passive: true });
+    const selectionAtPoint = (x, y, target) => {
+      if (!(target instanceof Element) || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
+      const selection = getSelection();
+      if (!selection || selection.isCollapsed || !selection.toString()) return false;
+      for (let i = 0; i < selection.rangeCount; i++) {
+        for (const rect of selection.getRangeAt(i).getClientRects()) {
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return true;
+        }
+      }
+      return false;
+    };
+    const collapseSelectionAt = (x, y) => {
+      const selection = getSelection();
+      if (!selection) return;
+      const pos = document.caretPositionFromPoint?.(x, y);
+      if (pos) { selection.collapse(pos.offsetNode, pos.offset); return; }
+      const range = document.caretRangeFromPoint?.(x, y);
+      if (range) { selection.removeAllRanges(); selection.addRange(range); }
+    };
     document.addEventListener("pointerdown", (event) => {
       const actual = elementAt(event);
       pressedPointerId = event.pointerId;
+      selectionDragCandidate = event.button === 0 && selectionAtPoint(event.clientX, event.clientY, actual);
+      if (selectionDragCandidate) {
+        event.preventDefault();
+        selectionDragText = getSelection()?.toString() || "";
+        selectionStartX = event.clientX; selectionStartY = event.clientY;
+      }
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event);
       setMode(actual);
     }, true);
+    document.addEventListener("mousedown", (event) => {
+      if (selectionDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
+    }, true);
+    const editableAt = (target) => {
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return target;
+      return target instanceof Element ? target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]') : null;
+    };
+    const dropSelectionText = (target) => {
+      const editable = editableAt(target);
+      if (!editable || !selectionDragText) return;
+      if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) {
+        const start = editable.selectionStart ?? editable.value.length;
+        const end = editable.selectionEnd ?? start;
+        editable.setRangeText(selectionDragText, start, end, "end");
+        editable.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromDrop", data: selectionDragText }));
+      } else {
+        editable.focus();
+        document.execCommand("insertText", false, selectionDragText);
+      }
+    };
     document.addEventListener("pointerup", (event) => {
+      if (selectionDragging) dropSelectionText(elementAt(event));
+      else if (selectionDragCandidate) collapseSelectionAt(event.clientX, event.clientY);
+      selectionDragging = false;
+      selectionDragCandidate = false;
+      selectionDragText = "";
       if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
       place(event);
       setMode(elementAt(event));
     }, true);
     document.addEventListener("click", (event) => { if (event.button === 0 && linkTarget(event.target)) animateLinkClick(); }, true);
-    document.addEventListener("dragstart", (event) => {
+    const isPlainSelectionDrag = (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
+      const selection = getSelection();
+      return !!selection && !selection.isCollapsed && !!selection.toString();
+    };
+    const startNativeDrag = (event, allowSelectionEmulation = false) => {
+      if (allowSelectionEmulation && isPlainSelectionDrag(event)) {
+        event.preventDefault();
+        nativeDragging = false;
+        selectionDragCandidate = false;
+        selectionDragging = true;
+        selectionDragText = getSelection()?.toString() || "";
+        pressedGrab = true;
+        cursor.removeAttribute("data-link");
+        setGrabState(true);
+        placeXY(lastX, lastY);
+        return;
+      }
       nativeDragging = true;
+      selectionDragging = false;
+      selectionDragCandidate = false;
+      selectionDragText = "";
       pressedGrab = false;
-      place(event);
+      pressedPointerId = null;
+      setGrabState(false);
       cursor.removeAttribute("data-link");
-      setGrabState(true);
-      try { if (event.dataTransfer) event.dataTransfer.setDragImage(dragImage, 32, 32); } catch {}
-    }, true);
-    document.addEventListener("dragenter", (event) => { nativeDragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
-    document.addEventListener("dragover", (event) => { nativeDragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
+      delete cursor.dataset.visible;
+    };
+    document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
+    document.addEventListener("dragenter", (event) => { if (!selectionDragging) startNativeDrag(event); }, true);
+    document.addEventListener("dragover", (event) => { if (!nativeDragging && !selectionDragging) startNativeDrag(event); }, true);
     const stopDragging = (event) => {
       nativeDragging = false;
+      selectionDragging = false;
+      selectionDragCandidate = false;
+      selectionDragText = "";
       pressedGrab = false;
       pressedPointerId = null;
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
@@ -543,18 +626,29 @@
     ? { top: scrollY, size: innerHeight, total: target.scrollHeight }
     : { top: target.scrollTop, size: target.clientHeight, total: target.scrollHeight };
   const setScroll = (target, top) => target === document.scrollingElement ? scrollTo({ top }) : target.scrollTop = top;
+  const virtualScrollerEligible = (target) => {
+    if (target === document.scrollingElement) return true;
+    if (!(target instanceof Element) || !target.isConnected || target.closest("[data-samey-runtime]")) return false;
+    const style = getComputedStyle(target);
+    if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= 0.001) return false;
+    const r = target.getBoundingClientRect();
+    // Hidden focus/IME controls (notably Keybr's 1px TextEvents textarea) can
+    // report scroll overflow. They are not user-scrollable and must never get bars.
+    if (r.width < 8 || r.height < 8 || style.pointerEvents === "none") return false;
+    return true;
+  };
   const updateVirtualBars = () => {
     virtualRaf = 0;
     for (const [target, bar] of virtualBars) {
-      if (target !== document.scrollingElement && !target.isConnected) { bar.remove(); virtualBars.delete(target); continue; }
+      if (!virtualScrollerEligible(target)) { bar.remove(); virtualBars.delete(target); continue; }
       const { top, size, total } = scrollMetrics(target);
       if (total <= size + 2) { bar.hidden = true; continue; }
       bar.hidden = false;
       let height, y, x, topPx;
-      if (target === document.scrollingElement) { height = innerHeight - 8; x = innerWidth - 9; topPx = 4; }
+      if (target === document.scrollingElement) { height = innerHeight; x = innerWidth - 7; topPx = 0; }
       else {
         const r = target.getBoundingClientRect();
-        height = Math.max(18, r.height - 4); x = r.right - 9; topPx = r.top + 2;
+        height = Math.max(18, r.height); x = r.right - 7; topPx = r.top;
         if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) { bar.hidden = true; continue; }
       }
       bar.style.cssText = `height:${height}px;left:${x}px;top:${topPx}px`;
@@ -604,16 +698,16 @@
   };
   const updateVirtualXBars = () => {
     for (const [target, bar] of virtualXBars) {
-      if (!target.isConnected) { bar.remove(); virtualXBars.delete(target); continue; }
+      if (!virtualScrollerEligible(target)) { bar.remove(); virtualXBars.delete(target); continue; }
       if (target.scrollWidth <= target.clientWidth + 2) { bar.hidden = true; continue; }
       const r = target.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) { bar.hidden = true; continue; }
-      bar.hidden = false; const width = Math.max(18, r.width - 4); bar.style.cssText = `width:${width}px;left:${r.left + 2}px;top:${r.bottom - 9}px`;
+      bar.hidden = false; const width = Math.max(18, r.width); bar.style.cssText = `width:${width}px;left:${r.left}px;top:${r.bottom - 7}px`;
       const thumb = bar.firstElementChild; const thumbW = Math.max(24, width * target.clientWidth / target.scrollWidth);
       const x = (width - thumbW) * target.scrollLeft / Math.max(1, target.scrollWidth - target.clientWidth); thumb.style.width = `${thumbW}px`; thumb.style.transform = `translateX(${x}px)`;
     }
   };
   const considerVirtualScroller = (el) => {
-    if (!(el instanceof Element) || el.closest("[data-samey-runtime]")) return;
+    if (!virtualScrollerEligible(el)) return;
     const style = getComputedStyle(el);
     if ((style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 2) addVirtualBar(el);
     if ((style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 2) addVirtualXBar(el);

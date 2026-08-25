@@ -138,7 +138,10 @@ async function buildKeybr() {
   const dir = join(ROOT, "keybr");
   await ensureDeps(dir);
   await run(dir, process.execPath, ["./scripts/check-workspaces.mjs"]);
-  await run(dir, process.execPath, ["./node_modules/webpack/bin/webpack.js"], { NODE_ENV: "production" });
+  // Use Bun directly and bypass webpack-cli. webpack-cli probes Webpack's aggregate
+  // CommonJS export, which makes Bun touch deprecated compatibility getters. The
+  // local runner imports Webpack's implementation directly and treats warnings as errors.
+  await run(dir, process.execPath, ["./scripts/build-webpack.mjs"], { NODE_ENV: "production" });
   must(existsSync(join(DOCS, "keybr.html")), "Webpack did not emit docs/keybr.html");
   log("keybr -> docs/keybr.html");
 }
@@ -169,6 +172,98 @@ async function compressHtml() {
   }));
   const sidecars = await walk(DOCS, (_path, name) => /\.html\.(?:gz|br)$/.test(name));
   await Promise.all(sidecars.map(async (sidecar) => { if (!existsSync(sidecar.replace(/\.(?:gz|br)$/, ""))) await unlink(sidecar); }));
+}
+
+const SHARED_CSS_REQUIRED = [
+  "::selection",
+  ".samey-site-controls",
+  ".samey-context-menu",
+  ".samey-cursor-grab",
+  ".samey-cursor-link",
+  ".samey-cursor-link{transform:translate(-7px,7px)}",
+  ".samey-vscroll",
+  ".samey-hscroll",
+  "width:64px;height:64px",
+  "left:25px;top:25px;width:14px;height:14px",
+] as const;
+
+const RUNTIME_REQUIRED = [
+  "Search web for selection",
+  "Copy Markdown link",
+  "requestFullscreen",
+  'id="samey-grab-mask"',
+  '<circle cx="32" cy="32" r="7" fill="white"/>',
+  '<rect x="30.5" y="24" width="3" height="16" fill="black"/>',
+  '<rect x="24" y="30.5" width="16" height="3" fill="black"/>',
+  'class="samey-cursor-grab-pulse"',
+  'values="7;4"',
+  'dur=".18s"',
+  'repeatCount="1"',
+  'fill="remove"',
+  'begin="indefinite"',
+  "grabPulse.beginElement()",
+  "document.elementFromPoint",
+  "data-grab-cursor-on-drag",
+  "samey-cursor-link-corner",
+  "samey-cursor-link-click",
+  "scale(.1666666667)",
+  'type="translate"',
+  'values="0 0;10 -10"',
+  "linkClick.beginElement()",
+  "startNativeDrag",
+  "isPlainSelectionDrag",
+  "selectionAtPoint",
+  "selectionDragCandidate",
+  "selectionDragging",
+  "dropSelectionText",
+  "event.preventDefault()",
+  "delete cursor.dataset.visible",
+  "unshiftCursor",
+  "duration: 65",
+  "virtualScrollerEligible",
+  "r.width < 8 || r.height < 8",
+  "x = innerWidth - 7",
+  "topPx = 0",
+  'link.target = "_blank"',
+  'link.rel = "noopener noreferrer"',
+  "samey-site-controls",
+  "samey-context-menu",
+  "samey-cursor-grab",
+  "samey-cursor-link",
+  "a[href],area[href],[role=link]",
+  "M42 0 H84 V42",
+  "M59.5 3.5 H80.5 V24.5",
+  "samey-vscroll-thumb",
+  "samey-hscroll-thumb",
+  "pointerrawupdate",
+  "pointerover",
+  "pointerup",
+  "contextmenu",
+  "history.pushState",
+  "popstate",
+  "X-Samey-SPA",
+  "Copy",
+  "Paste",
+  "Select all",
+] as const;
+
+const RUNTIME_REMOVED = [
+  "Screenshot…",
+  "getDisplayMedia",
+  "setDragImage",
+  "samey-native-drag-image",
+  'fill-rule="evenodd"',
+  "M32 18a14 14 0 1 1 0 28",
+  '<rect x="29" y="16" width="6" height="7" fill="black"/>',
+  '<rect x="16" y="29" width="7" height="6" fill="black"/>',
+  "scale(.3333333333)",
+  'values="14;8"',
+] as const;
+
+function auditSharedRuntime(theme: string, css: string, where: string) {
+  for (const token of RUNTIME_REQUIRED) must(theme.includes(token), `${where}/theme.js: missing runtime contract ${token}`);
+  for (const token of RUNTIME_REMOVED) must(!theme.includes(token), `${where}/theme.js: removed/stale runtime feature leaked back in: ${token}`);
+  for (const token of SHARED_CSS_REQUIRED) must(css.includes(token), `${where}/site.css: missing shared UI contract ${token}`);
 }
 
 async function auditSource() {
@@ -204,18 +299,23 @@ async function auditSource() {
   const home = await readFile(join(STATIC, "index.html"), "utf8");
   must(home.includes("Sanyam Brar"), "homepage identity must be Sanyam Brar");
   must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
+  must(!home.includes("class=\"repo-link\"") && !home.includes("Wordle source repository") && !home.includes("Keybr local source repository"), "game source links must not be present");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const viteConfig = await readFile(join(ROOT, "vite.config.ts"), "utf8");
   const webpackConfig = await readFile(join(ROOT, "keybr/webpack.config.js"), "utf8");
   const singleFilePlugin = await readFile(join(ROOT, "keybr/webpack-single-file.js"), "utf8");
+  const webpackRunner = await readFile(join(ROOT, "keybr/scripts/build-webpack.mjs"), "utf8");
+  const buildSource = await readFile(join(ROOT, "build.ts"), "utf8");
   must(viteConfig.includes("outDir: 'docs'") && viteConfig.includes("emptyOutDir: false"), "Wordle must build directly into docs/");
   must(webpackConfig.includes('path: join(rootDir, "../docs")') && webpackConfig.includes("clean: false"), "Keybr must build directly into docs/");
   must(singleFilePlugin.includes('"keybr.html"'), "Keybr single-file build must emit docs/keybr.html");
+  must(!webpackConfig.includes('import webpack from "webpack"'), "Keybr webpack config must not touch deprecated aggregate Webpack exports");
+  must(!singleFilePlugin.includes('from "webpack"'), "Keybr single-file plugin must not touch deprecated aggregate Webpack exports");
+  must(webpackRunner.includes('webpack/lib/webpack.js') && webpackRunner.includes('stats.hasWarnings()'), "Keybr must use the Bun-safe warning-strict Webpack runner");
+  must(!buildSource.includes(['run(dir, \"', 'node', '\"'].join('')), "build.ts must not require a separate Node executable");
   const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
-  for (const token of ["::selection", ".samey-site-controls", ".samey-context-menu", ".samey-cursor-grab", ".samey-cursor-link"]) must(sharedCss.includes(token), `shared UI CSS missing ${token}`);
-  for (const token of ["Search web for selection", "Copy Markdown link", "requestFullscreen", 'id="samey-grab-mask"', '<rect x="29" y="16" width="6" height="32" fill="black"/>', '<rect x="16" y="29" width="32" height="6" fill="black"/>', 'class="samey-cursor-grab-pulse"', 'values="8;8;14;14;8;8"', 'keyTimes="0;0.699;0.7;0.72;0.82;1"', 'dur="1.5s"', 'begin="indefinite"', "grabPulse.beginElement()", "document.elementFromPoint", "setDragImage", "data-grab-cursor-on-drag", "samey-cursor-link-corner", "scale(.3333333333)", "offset: .699", "offset: .7", "duration: 1500", 'link.target = "_blank"', 'link.rel = "noopener noreferrer"']) must(theme.includes(token), `shared runtime missing ${token}`);
-  for (const token of ["Screenshot…", "getDisplayMedia", 'fill-rule="evenodd"', "M32 18a14 14 0 1 1 0 28", '<rect x="29" y="16" width="6" height="7" fill="black"/>']) must(!theme.includes(token), `shared runtime still contains removed ${token}`);
+  auditSharedRuntime(theme, sharedCss, "static");
   for (const token of ["--wordle-control-top", "--wordle-control-right", "top: var(--wordle-control-top) !important", "right: var(--wordle-control-right) !important", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
 }
 
@@ -241,9 +341,7 @@ async function verifyDocs() {
   }
 
   const theme = await readFile(join(DOCS, "theme.js"), "utf8"), css = await readFile(join(DOCS, "site.css"), "utf8");
-  for (const token of ["samey-site-controls", "samey-context-menu", "samey-cursor-grab", "samey-cursor-link", "samey-cursor-link-corner", "a[href],area[href],[role=link]", "M42 0 H84 V42", "M59.5 3.5 H80.5 V24.5", "scale(.3333333333)", "offset: .699", "offset: .7", "duration: 1500", 'link.target = "_blank"', 'link.rel = "noopener noreferrer"', "samey-vscroll-thumb", "samey-hscroll-thumb", "pointerrawupdate", "pointerover", "pointerup", "document.elementFromPoint", "setDragImage", "data-grab-cursor-on-drag", "contextmenu", "history.pushState", "popstate", "X-Samey-SPA", "Copy", "Paste", "Select all", "Copy Markdown link", 'id="samey-grab-mask"', '<rect x="29" y="16" width="6" height="32" fill="black"/>', '<rect x="16" y="29" width="32" height="6" fill="black"/>', 'class="samey-cursor-grab-pulse"', 'values="8;8;14;14;8;8"', 'keyTimes="0;0.699;0.7;0.72;0.82;1"', 'dur="1.5s"', "grabPulse.beginElement()"]) must(theme.includes(token), `theme.js: missing runtime contract ${token}`);
-  for (const token of ["getDisplayMedia", "Screenshot…", 'fill-rule="evenodd"', "M32 18a14 14 0 1 1 0 28", '<rect x="29" y="16" width="6" height="7" fill="black"/>', '<rect x="16" y="29" width="7" height="6" fill="black"/>']) must(!theme.includes(token), `theme.js: removed runtime feature leaked back in: ${token}`);
-  for (const token of ["::selection", ".samey-site-controls", "left:12px", "cursor:none!important", ".samey-context-menu", ".samey-vscroll", ".samey-hscroll", "width:64px;height:64px", "left:18px;top:18px;width:28px;height:28px"]) must(css.includes(token), `site.css: missing shared UI contract ${token}`);
+  auditSharedRuntime(theme, css, "docs");
   const post = await readFile(join(DOCS, "blog/posts/btop-mutex.html"), "utf8");
   must(post.includes("<h1>btop's broken lock</h1>"), "blog post title drift");
   must(post.includes('<p class="dek">the mutex that wasn\'t</p>'), "blog post subtitle drift");

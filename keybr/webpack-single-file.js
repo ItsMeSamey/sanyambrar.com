@@ -1,5 +1,3 @@
-import webpack from "webpack";
-
 /** Emits a single self-contained index.html and removes intermediate JS/CSS. */
 export class SingleFilePlugin {
   apply(compiler) {
@@ -7,7 +5,7 @@ export class SingleFilePlugin {
       compilation.hooks.processAssets.tap(
         {
           name: "SingleFilePlugin",
-          stage: webpack.Compilation.PROCESS_ASSETS_STAGE_SUMMARIZE,
+          stage: compiler.webpack.Compilation.PROCESS_ASSETS_STAGE_SUMMARIZE,
         },
         () => {
           const names = Object.keys(compilation.assets);
@@ -55,7 +53,7 @@ export class SingleFilePlugin {
           }
           compilation.emitAsset(
             "keybr.html",
-            new webpack.sources.RawSource(html),
+            new compiler.webpack.sources.RawSource(html),
           );
         },
       );
