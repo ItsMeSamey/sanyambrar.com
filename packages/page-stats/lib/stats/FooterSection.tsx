@@ -9,6 +9,7 @@ import {
 } from "@mdi/js";
 import { useRef } from "react";
 import { useIntl } from "react-intl";
+import * as styles from "./FooterSection.module.less";
 
 export function FooterSection({ onDone }: { readonly onDone?: () => void }) {
   const { formatMessage } = useIntl();
@@ -32,6 +33,7 @@ export function FooterSection({ onDone }: { readonly onDone?: () => void }) {
           }
         }}
       />
+      <div className={styles.footer}>
       <FieldList>
         <Field>
           <Button
@@ -94,6 +96,7 @@ export function FooterSection({ onDone }: { readonly onDone?: () => void }) {
           </Field>
         )}
       </FieldList>
+      </div>
     </>
   );
 }
