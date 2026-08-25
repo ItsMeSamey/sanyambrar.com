@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
 
@@ -25,7 +25,7 @@ for (const target of targets) if (!ALL.has(target)) throw new Error(`unknown tar
 const fullBuild = targets.size === ALL.size && [...ALL].every((target) => targets.has(target));
 
 const log = (message: string) => console.log(`[build] ${message}`);
-const must = (ok: unknown, message: string): asserts ok => { if (!ok) throw new Error(message); };
+const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
 
 async function run(cwd: string, file: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   const { stdout, stderr } = await runFile(file, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
@@ -164,6 +164,12 @@ async function auditSource() {
   const keybrGuard = 'if (root.dataset.siteKind === "wordle")';
   must(theme.includes(keybrGuard), "Wordle palette variables are not scoped away from Keybr");
   for (const name of ["--primary", "--secondary", "--accent"]) must(theme.indexOf(`setProperty("${name}"`) >= theme.indexOf(keybrGuard), `${name} is written outside the Wordle-only scope`);
+
+  const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
+  const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
+  for (const token of ["::selection", ".samey-site-controls", ".samey-context-menu", ".samey-cursor-grab"]) must(sharedCss.includes(token), `shared UI CSS missing ${token}`);
+  for (const token of ["Search web for selection", "Screenshot…", "Copy Markdown link", "requestFullscreen", 'rect x="29" y="16" width="6" height="7"']) must(theme.includes(token), `shared runtime missing ${token}`);
+  for (const token of ["--wordle-control-top", "--wordle-control-right", "top: var(--wordle-control-top) !important", "right: var(--wordle-control-right) !important", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
 }
 
 async function verifyDist() {
@@ -206,9 +212,9 @@ async function main() {
   if (targets.has("solid")) jobs.push(buildSolid());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
+  await compressHtml();
   if (fullBuild) {
     await generateServiceWorker();
-    await compressHtml();
     await verifyDist();
     log("all verification passed");
   }

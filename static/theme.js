@@ -307,23 +307,23 @@
     cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" aria-hidden="true"><mask id="samey-grab-mask"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="7" fill="black"/><rect x="29" y="41" width="6" height="7" fill="black"/><rect x="16" y="29" width="7" height="6" fill="black"/><rect x="41" y="29" width="7" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
-    const move = (event) => {
-      cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
-      cursor.dataset.visible = "";
-    };
     const wantsGrab = (target) => {
       if (!(target instanceof Element)) return false;
       if (target.closest(".samey-vscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]")) return true;
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
+    const move = (event) => {
+      cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
+      cursor.dataset.visible = "";
+      cursor.toggleAttribute("data-grab", wantsGrab(event.target));
+    };
     document.addEventListener("pointermove", move, { capture: true, passive: true });
     document.addEventListener("pointerrawupdate", move, { capture: true, passive: true });
     document.addEventListener("mousemove", move, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => { if (wantsGrab(event.target)) cursor.dataset.grab = ""; }, true);
-    addEventListener("pointerup", () => delete cursor.dataset.grab, true);
-    addEventListener("pointercancel", () => delete cursor.dataset.grab, true);
-    addEventListener("blur", () => delete cursor.dataset.grab);
+    document.addEventListener("pointerdown", (event) => { cursor.toggleAttribute("data-grab", wantsGrab(event.target)); }, true);
+    addEventListener("pointercancel", () => cursor.removeAttribute("data-grab"), true);
+    addEventListener("blur", () => cursor.removeAttribute("data-grab"));
     addEventListener("pointerout", (event) => { if (!event.relatedTarget) delete cursor.dataset.visible; });
   };
 
@@ -375,34 +375,53 @@
     document.body.append(menu);
     let target = null;
     const close = () => { menu.hidden = true; menu.replaceChildren(); };
-    const add = (label, action, enabled = true) => {
-      const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.disabled = !enabled;
+    const add = (label, action, enabled = true, hint = "") => {
+      const button = document.createElement("button"); button.type = "button"; button.disabled = !enabled;
+      const text = document.createElement("span"); text.textContent = label; button.append(text);
+      if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
       button.addEventListener("click", async () => { close(); try { await action(); } catch {} }); menu.append(button);
     };
     const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
     document.addEventListener("contextmenu", (event) => {
+      if (event.shiftKey) return;
       event.preventDefault(); target = event.target; menu.replaceChildren();
       const link = target instanceof Element ? target.closest("a[href]") : null;
       const image = target instanceof Element ? target.closest("img[src]") : null;
       const selection = selectedText();
       const editable = editableTarget(target);
-      if (selection) add("Copy", () => writeClipboard(selection));
-      if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText);
+      if (selection) add("Copy", () => writeClipboard(selection), true, navigator.platform?.includes("Mac") ? "⌘C" : "Ctrl+C");
+      if (editable && selection) add("Cut", async () => { await writeClipboard(selection); document.execCommand("delete"); }, true, navigator.platform?.includes("Mac") ? "⌘X" : "Ctrl+X");
+      if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, navigator.platform?.includes("Mac") ? "⌘V" : "Ctrl+V");
       add("Select all", () => {
         if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) { editable.focus(); editable.select(); }
         else if (editable) { const range = document.createRange(); range.selectNodeContents(editable); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); }
         else { const range = document.createRange(); range.selectNodeContents(document.body); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); }
-      });
+      }, true, navigator.platform?.includes("Mac") ? "⌘A" : "Ctrl+A");
+      if (selection && !editable) {
+        sep();
+        add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, "_blank", "noopener"));
+      }
       if (link || image) {
         sep();
-        if (link) { add("Open link in new tab", () => open(link.href, "_blank", "noopener")); add("Copy link", () => writeClipboard(link.href)); }
-        if (image) { add("Open image in new tab", () => open(image.src, "_blank", "noopener")); add("Copy image address", () => writeClipboard(image.src)); }
+        if (link) {
+          add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
+          add("Copy link", () => writeClipboard(link.href));
+          add("Copy Markdown link", () => writeClipboard(`[${link.textContent.trim() || link.href}](${link.href})`));
+        }
+        if (image) {
+          add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
+          add("Copy image address", () => writeClipboard(image.src));
+          add("Save image", () => { const a = document.createElement("a"); a.href = image.src; a.download = image.alt || "image"; a.click(); });
+        }
       }
       sep();
       add("Back", () => history.back(), history.length > 1);
       add("Forward", () => history.forward());
-      add("Reload", () => location.reload());
+      add("Reload", () => location.reload(), true, navigator.platform?.includes("Mac") ? "⌘R" : "Ctrl+R");
       add("Copy page link", () => writeClipboard(location.href));
+      add("Copy page title", () => writeClipboard(document.title));
+      add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
+      if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
       if (navigator.mediaDevices?.getDisplayMedia) add("Screenshot…", captureScreenshot);
       menu.hidden = false;
       const rect = menu.getBoundingClientRect();
