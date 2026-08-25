@@ -1,27 +1,30 @@
 # ItsMeSamey.github.io
 
-Single repository for the static site and both source-built apps:
+Solid is the root application. Keybr remains isolated because it has its own React/Webpack workspace. Hand-written pages and shared browser assets live under `static/`; deploy output is generated under `dist/`.
 
-- `keybr/` builds `keybr.html`
-- `wordle/` builds `wordle.html`
-- `blog/` contains the static blog
-- `shared/appearance.json` is the source of truth for site fonts and base theme palettes
-- `theme.js` and `site.css` own shared runtime/chrome behavior
-
-Run:
-
-```sh
-./build.sh
+```text
+src/        Solid app
+static/     home, blog, shared theme/runtime, appearance source
+keybr/      Keybr source workspace
+build.ts    generation + parallel builds + compression + verification
+dist/       generated deploy tree (ignored)
 ```
 
-If dependencies are absent or do not match their lockfile, the build uses Bun with `--frozen-lockfile` before compiling. Both app lockfiles are checked in.
+Build everything:
 
-The build then:
+```sh
+node --experimental-strip-types ./build.ts
+```
 
-1. generates runtime and Keybr palette data from `shared/appearance.json`;
-2. typechecks Wordle, then builds Keybr and Wordle into deterministic single-file HTML outputs;
-3. generates the service worker from the actual deploy tree;
-4. generates deterministic `.html.gz` and `.html.br` siblings;
-5. verifies build artifacts, compression, shared site contracts, architecture boundaries, and every Keybr theme variable.
+Build only selected source targets:
 
-Shared appearance persistence, validation, custom-theme derivation, navigation controls, custom cursors, virtual scrollbars, context menus, SPA navigation, and service-worker registration live in one runtime. Keybr only subscribes to that runtime through `SameyAppearance`; it does not persist or derive a second copy of the site appearance state.
+```sh
+node --experimental-strip-types ./build.ts solid
+node --experimental-strip-types ./build.ts keybr
+node --experimental-strip-types ./build.ts solid keybr
+node --experimental-strip-types ./build.ts static
+```
+
+A full build generates the shared appearance artifacts, audits source invariants, builds Solid and Keybr concurrently, assembles the static deploy tree, generates the service worker, compresses HTML in parallel, and verifies the resulting site.
+
+If a selected app's dependencies are absent or stale, `build.ts` runs `bun install --frozen-lockfile` for that app. Root `bun.lock` and `keybr/bun.lock` are source files and are not ignored.

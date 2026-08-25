@@ -2,10 +2,10 @@ import { useIntlNumbers } from "@keybr/intl";
 import { useFormatter } from "@keybr/lesson-ui";
 import { hasData, linearRegression, Range, smooth, Vector } from "@keybr/math";
 import { type Result } from "@keybr/result";
-import { Canvas, type Rect, type ShapeList } from "@keybr/widget";
+import { type Rect, type ShapeList } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { useIntl } from "react-intl";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
@@ -21,11 +21,7 @@ export function SpeedChart({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, results, smoothness);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(

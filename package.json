@@ -1,0 +1,33 @@
+{
+  "name": "samey-site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --open /app.html",
+    "build": "node --experimental-strip-types ./build.ts",
+    "build:solid": "node --experimental-strip-types ./build.ts solid",
+    "build:keybr": "node --experimental-strip-types ./build.ts keybr"
+  },
+  "dependencies": {
+    "@kobalte/core": "^0.13.13",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.2.0",
+    "binary-search-bounds": "^2.0.5",
+    "class-variance-authority": "^0.7.1",
+    "idb": "^8.0.3",
+    "lucide-solid": "^1.33.0",
+    "solid-js": "^1.9.15",
+    "tailwind-merge": "^3.6.0",
+    "tailwind-scrollbar": "^4.0.2",
+    "tailwindcss": "^4.3.3",
+    "tailwindcss-motion": "^1.1.1",
+    "vite-plugin-minify": "^2.1.0",
+    "vite-plugin-singlefile": "^2.3.3"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2",
+    "vite-plugin-solid": "^2.11.14"
+  }
+}

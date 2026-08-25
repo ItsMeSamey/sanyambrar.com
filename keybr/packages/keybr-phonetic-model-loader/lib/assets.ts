@@ -33,75 +33,44 @@ import TR from "@keybr/phonetic-model/assets/model-tr.data";
 import UK from "@keybr/phonetic-model/assets/model-uk.data";
 import VI from "@keybr/phonetic-model/assets/model-vi.data";
 
+const MODEL_BY_LANGUAGE: Readonly<Record<string, string>> = {
+  [Language.AR.id]: AR,
+  [Language.BE.id]: BE,
+  [Language.BR.id]: BR,
+  [Language.CS.id]: CS,
+  [Language.DA.id]: DA,
+  [Language.DE.id]: DE,
+  [Language.EL.id]: EL,
+  [Language.EN.id]: EN,
+  [Language.EN_GB.id]: EN_GB,
+  [Language.ES.id]: ES,
+  [Language.ET.id]: ET,
+  [Language.FA.id]: FA,
+  [Language.FI.id]: FI,
+  [Language.FR.id]: FR,
+  [Language.HE.id]: HE,
+  [Language.HR.id]: HR,
+  [Language.HU.id]: HU,
+  [Language.IT.id]: IT,
+  [Language.JA.id]: JA,
+  [Language.LT.id]: LT,
+  [Language.LV.id]: LV,
+  [Language.NB.id]: NB,
+  [Language.NL.id]: NL,
+  [Language.PL.id]: PL,
+  [Language.PT.id]: PT,
+  [Language.RO.id]: RO,
+  [Language.RU.id]: RU,
+  [Language.SL.id]: SL,
+  [Language.SV.id]: SV,
+  [Language.TH.id]: TH,
+  [Language.TR.id]: TR,
+  [Language.UK.id]: UK,
+  [Language.VI.id]: VI,
+};
+
 export function modelAssetPath(language: Language): string {
-  switch (language) {
-    case Language.AR:
-      return AR;
-    case Language.BE:
-      return BE;
-    case Language.BR:
-      return BR;
-    case Language.CS:
-      return CS;
-    case Language.DA:
-      return DA;
-    case Language.DE:
-      return DE;
-    case Language.EL:
-      return EL;
-    case Language.EN:
-      return EN;
-    case Language.EN_GB:
-      return EN_GB;
-    case Language.ES:
-      return ES;
-    case Language.ET:
-      return ET;
-    case Language.FA:
-      return FA;
-    case Language.FI:
-      return FI;
-    case Language.FR:
-      return FR;
-    case Language.HE:
-      return HE;
-    case Language.HR:
-      return HR;
-    case Language.HU:
-      return HU;
-    case Language.IT:
-      return IT;
-    case Language.JA:
-      return JA;
-    case Language.LT:
-      return LT;
-    case Language.LV:
-      return LV;
-    case Language.NB:
-      return NB;
-    case Language.NL:
-      return NL;
-    case Language.PL:
-      return PL;
-    case Language.PT:
-      return PT;
-    case Language.RO:
-      return RO;
-    case Language.RU:
-      return RU;
-    case Language.SL:
-      return SL;
-    case Language.SV:
-      return SV;
-    case Language.TH:
-      return TH;
-    case Language.TR:
-      return TR;
-    case Language.UK:
-      return UK;
-    case Language.VI:
-      return VI;
-    default:
-      throw new Error();
-  }
+  const asset = MODEL_BY_LANGUAGE[language.id];
+  if (asset == null) throw new Error(`Unsupported language: ${language.id}`);
+  return asset;
 }

@@ -1,4 +1,4 @@
-import { Rect, type ShapeList, Shapes, type Size } from "@keybr/widget";
+import { Canvas, Rect, type ShapeList, Shapes, type Size } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { type ChartStyles } from "./use-chart-styles.ts";
 
@@ -30,6 +30,22 @@ export function Chart({
     >
       {children}
     </div>
+  );
+}
+
+export function ChartCanvas({
+  styles,
+  paint,
+  width,
+  height,
+}: {
+  readonly styles: ChartStyles;
+  readonly paint: (rect: Rect) => ShapeList;
+} & SizeProps): ReactNode {
+  return (
+    <Chart width={width} height={height}>
+      <Canvas paint={chartArea(styles, paint)} />
+    </Chart>
   );
 }
 

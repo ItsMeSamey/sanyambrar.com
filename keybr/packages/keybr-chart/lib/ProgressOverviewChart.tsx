@@ -5,7 +5,6 @@ import { hasData, Range, resample, Vector } from "@keybr/math";
 import { type KeyStats, type KeyStatsMap } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import {
-  Canvas,
   type Graphics,
   type Rect,
   type ShapeList,
@@ -13,7 +12,7 @@ import {
 } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { useIntl } from "react-intl";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { hBoxes } from "./geometry.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
@@ -27,11 +26,7 @@ export function ProgressOverviewChart({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, keyStatsMap);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {

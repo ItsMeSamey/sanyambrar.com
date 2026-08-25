@@ -1,10 +1,10 @@
 import { useFormatter } from "@keybr/lesson-ui";
 import { hasData, Histogram, KeySet, Range } from "@keybr/math";
 import { type KeyStatsMap, timeToSpeed } from "@keybr/result";
-import { Canvas, type Rect, type ShapeList } from "@keybr/widget";
+import { type Rect, type ShapeList } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { useIntl } from "react-intl";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
@@ -18,11 +18,7 @@ export function KeySpeedHistogram({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, keyStatsMap);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {

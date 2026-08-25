@@ -1,7 +1,7 @@
 import { mdiRadioboxBlank, mdiRadioboxMarked } from "@mdi/js";
 import { clsx } from "clsx";
 import { type ReactNode, useImperativeHandle, useRef } from "react";
-import * as styles from "./RadioBox.module.less";
+import * as styles from "../Checkable.module.less";
 import { type RadioBoxProps } from "./RadioBox.types.ts";
 
 export function RadioBox({

@@ -1,9 +1,9 @@
 import { hasData, Range } from "@keybr/math";
 import { type KeyStatsMap } from "@keybr/result";
-import { Canvas, Rect, type ShapeList } from "@keybr/widget";
+import { Rect, type ShapeList } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { useIntl } from "react-intl";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
 import { keyUsage } from "./keyusage.ts";
@@ -18,11 +18,7 @@ export function KeyFrequencyHistogram({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, keyStatsMap);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {

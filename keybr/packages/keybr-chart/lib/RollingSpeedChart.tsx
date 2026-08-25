@@ -2,14 +2,13 @@ import { useFormatter } from "@keybr/lesson-ui";
 import { Range, Vector } from "@keybr/math";
 import { computeSpeed, type Stats, type Step } from "@keybr/textinput";
 import {
-  Canvas,
   formatDuration,
   type Rect,
   type ShapeList,
   Shapes,
 } from "@keybr/widget";
 import { type ReactNode } from "react";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
@@ -25,11 +24,7 @@ export function RollingSpeedChart({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, stats, steps);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(styles: ChartStyles, stats: Stats, steps: readonly Step[]) {

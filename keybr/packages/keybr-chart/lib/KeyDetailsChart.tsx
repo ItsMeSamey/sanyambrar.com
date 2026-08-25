@@ -3,10 +3,10 @@ import { type LearningRate, type LessonKey, Target } from "@keybr/lesson";
 import { useFormatter } from "@keybr/lesson-ui";
 import { Range } from "@keybr/math";
 import { useSettings } from "@keybr/settings";
-import { Canvas, type Rect, type ShapeList, Shapes } from "@keybr/widget";
+import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
 import { type ReactNode } from "react";
 import { useIntl } from "react-intl";
-import { Chart, chartArea, type SizeProps } from "./Chart.tsx";
+import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
@@ -22,11 +22,7 @@ export function KeyDetailsChart({
 } & SizeProps): ReactNode {
   const styles = useChartStyles();
   const paint = usePaint(styles, lessonKey, learningRate);
-  return (
-    <Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)} />
-    </Chart>
-  );
+  return <ChartCanvas styles={styles} paint={paint} width={width} height={height} />;
 }
 
 function usePaint(

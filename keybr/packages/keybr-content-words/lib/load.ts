@@ -1,4 +1,4 @@
-import { type WordList } from "@keybr/content";
+import { loadCompressedJson, type WordList } from "@keybr/content";
 import { Language } from "@keybr/keyboard";
 import WORDS_AR from "./data/words-ar.json?gzip";
 import WORDS_BE from "./data/words-be.json?gzip";
@@ -34,84 +34,44 @@ import WORDS_TR from "./data/words-tr.json?gzip";
 import WORDS_UK from "./data/words-uk.json?gzip";
 import WORDS_VI from "./data/words-vi.json?gzip";
 
-export async function loadWordList(language: Language): Promise<WordList> {
-  switch (language) {
-    case Language.AR:
-      return loadCompressedJson<WordList>(WORDS_AR);
-    case Language.BE:
-      return loadCompressedJson<WordList>(WORDS_BE);
-    case Language.BR:
-      return loadCompressedJson<WordList>(WORDS_BR);
-    case Language.CS:
-      return loadCompressedJson<WordList>(WORDS_CS);
-    case Language.DA:
-      return loadCompressedJson<WordList>(WORDS_DA);
-    case Language.DE:
-      return loadCompressedJson<WordList>(WORDS_DE);
-    case Language.EL:
-      return loadCompressedJson<WordList>(WORDS_EL);
-    case Language.EN:
-      return loadCompressedJson<WordList>(WORDS_EN);
-    case Language.EN_GB:
-      return loadCompressedJson<WordList>(WORDS_EN_GB);
-    case Language.ES:
-      return loadCompressedJson<WordList>(WORDS_ES);
-    case Language.ET:
-      return loadCompressedJson<WordList>(WORDS_ET);
-    case Language.FA:
-      return loadCompressedJson<WordList>(WORDS_FA);
-    case Language.FI:
-      return loadCompressedJson<WordList>(WORDS_FI);
-    case Language.FR:
-      return loadCompressedJson<WordList>(WORDS_FR);
-    case Language.HE:
-      return loadCompressedJson<WordList>(WORDS_HE);
-    case Language.HR:
-      return loadCompressedJson<WordList>(WORDS_HR);
-    case Language.HU:
-      return loadCompressedJson<WordList>(WORDS_HU);
-    case Language.IT:
-      return loadCompressedJson<WordList>(WORDS_IT);
-    case Language.JA:
-      return loadCompressedJson<WordList>(WORDS_JA);
-    case Language.LT:
-      return loadCompressedJson<WordList>(WORDS_LT);
-    case Language.LV:
-      return loadCompressedJson<WordList>(WORDS_LV);
-    case Language.NB:
-      return loadCompressedJson<WordList>(WORDS_NB);
-    case Language.NL:
-      return loadCompressedJson<WordList>(WORDS_NL);
-    case Language.PL:
-      return loadCompressedJson<WordList>(WORDS_PL);
-    case Language.PT:
-      return loadCompressedJson<WordList>(WORDS_PT);
-    case Language.RO:
-      return loadCompressedJson<WordList>(WORDS_RO);
-    case Language.RU:
-      return loadCompressedJson<WordList>(WORDS_RU);
-    case Language.SL:
-      return loadCompressedJson<WordList>(WORDS_SL);
-    case Language.SV:
-      return loadCompressedJson<WordList>(WORDS_SV);
-    case Language.TH:
-      return loadCompressedJson<WordList>(WORDS_TH);
-    case Language.TR:
-      return loadCompressedJson<WordList>(WORDS_TR);
-    case Language.UK:
-      return loadCompressedJson<WordList>(WORDS_UK);
-    case Language.VI:
-      return loadCompressedJson<WordList>(WORDS_VI);
-    default:
-      throw new Error(`Unsupported language: ${language.id}`);
-  }
-}
+const WORDS_BY_LANGUAGE: Readonly<Record<string, string>> = {
+  [Language.AR.id]: WORDS_AR,
+  [Language.BE.id]: WORDS_BE,
+  [Language.BR.id]: WORDS_BR,
+  [Language.CS.id]: WORDS_CS,
+  [Language.DA.id]: WORDS_DA,
+  [Language.DE.id]: WORDS_DE,
+  [Language.EL.id]: WORDS_EL,
+  [Language.EN.id]: WORDS_EN,
+  [Language.EN_GB.id]: WORDS_EN_GB,
+  [Language.ES.id]: WORDS_ES,
+  [Language.ET.id]: WORDS_ET,
+  [Language.FA.id]: WORDS_FA,
+  [Language.FI.id]: WORDS_FI,
+  [Language.FR.id]: WORDS_FR,
+  [Language.HE.id]: WORDS_HE,
+  [Language.HR.id]: WORDS_HR,
+  [Language.HU.id]: WORDS_HU,
+  [Language.IT.id]: WORDS_IT,
+  [Language.JA.id]: WORDS_JA,
+  [Language.LT.id]: WORDS_LT,
+  [Language.LV.id]: WORDS_LV,
+  [Language.NB.id]: WORDS_NB,
+  [Language.NL.id]: WORDS_NL,
+  [Language.PL.id]: WORDS_PL,
+  [Language.PT.id]: WORDS_PT,
+  [Language.RO.id]: WORDS_RO,
+  [Language.RU.id]: WORDS_RU,
+  [Language.SL.id]: WORDS_SL,
+  [Language.SV.id]: WORDS_SV,
+  [Language.TH.id]: WORDS_TH,
+  [Language.TR.id]: WORDS_TR,
+  [Language.UK.id]: WORDS_UK,
+  [Language.VI.id]: WORDS_VI,
+};
 
-async function loadCompressedJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok || response.body == null) {
-    throw new Error(`Cannot load compressed JSON: ${response.status}`);
-  }
-  const stream = response.body.pipeThrough(new DecompressionStream("gzip"));
-  return (await new Response(stream).json()) as T;
+export async function loadWordList(language: Language): Promise<WordList> {
+  const data = WORDS_BY_LANGUAGE[language.id];
+  if (data == null) throw new Error(`Unsupported language: ${language.id}`);
+  return loadCompressedJson<WordList>(data);
 }

@@ -1,7 +1,7 @@
 import { mdiCheckboxBlankOutline, mdiCheckboxMarkedOutline } from "@mdi/js";
 import { clsx } from "clsx";
 import { type ReactNode, useImperativeHandle, useRef } from "react";
-import * as styles from "./CheckBox.module.less";
+import * as styles from "../Checkable.module.less";
 import { type CheckBoxProps } from "./CheckBox.types.ts";
 
 export function CheckBox({
