@@ -300,12 +300,30 @@
 
   const runtimeNode = (el) => { el.dataset.sameyRuntime = ""; return el; };
 
+  const normalizeExternalLinks = (root = document) => {
+    for (const link of root.querySelectorAll?.('a[href]') || []) {
+      let url;
+      try { url = new URL(link.href, location.href); } catch { continue; }
+      if (url.hostname === "github.com" || url.hostname.endsWith(".github.com")) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+    }
+  };
+  const observeExternalLinks = () => new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (!(node instanceof Element)) continue;
+      if (node.matches?.("a[href]")) normalizeExternalLinks(node.parentElement || document);
+      else normalizeExternalLinks(node);
+    }
+  }).observe(document.documentElement, { subtree: true, childList: true });
+
   const mountCursor = () => {
     if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M32 18a14 14 0 1 1 0 28 14 14 0 1 1 0-28Zm-3-2h6v7h-6v-7Zm0 25h6v7h-6v-7ZM16 29h7v6h-7v-6Zm25 0h7v6h-7v-6Z"/></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M32 18a14 14 0 1 1 0 28 14 14 0 1 1 0-28Zm-3-2h6v7h-6v-7Zm0 25h6v7h-6v-7ZM16 29h7v6h-7v-6Zm25 0h7v6h-7v-6Z"/></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
     const wantsGrab = (target) => {
@@ -314,24 +332,47 @@
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
+    const linkTarget = (target) => target instanceof Element ? target.closest("a[href],area[href],[role=link]") : null;
+    const wantsLink = (target) => !!linkTarget(target);
+    const linkCorner = cursor.querySelector(".samey-cursor-link-corner");
+    const animateLinkClick = () => {
+      if (!(linkCorner instanceof SVGElement) || typeof linkCorner.animate !== "function") return;
+      linkCorner.getAnimations().forEach((animation) => animation.cancel());
+      linkCorner.animate([
+        { transform: "translate(10px,-10px)", offset: 0 },
+        { transform: "translate(10px,-10px)", offset: .699 },
+        { transform: "translate(0,0)", offset: .7 },
+        { transform: "translate(0,0)", offset: .72 },
+        { transform: "translate(10px,-10px)", offset: .82 },
+        { transform: "translate(10px,-10px)", offset: 1 },
+      ], { duration: 1500, easing: "linear", iterations: 1 });
+    };
     let dragging = false;
     const place = (event) => {
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
       cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
       cursor.dataset.visible = "";
     };
+    const setMode = (target) => {
+      const grab = dragging || wantsGrab(target);
+      cursor.toggleAttribute("data-grab", grab);
+      cursor.toggleAttribute("data-link", !grab && wantsLink(target));
+    };
     const move = (event) => {
       place(event);
-      cursor.toggleAttribute("data-grab", dragging || wantsGrab(event.target));
+      setMode(event.target);
     };
     document.addEventListener("pointermove", move, { capture: true, passive: true });
     document.addEventListener("pointerrawupdate", move, { capture: true, passive: true });
     document.addEventListener("mousemove", move, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => { cursor.toggleAttribute("data-grab", dragging || wantsGrab(event.target)); }, true);
-    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
+    document.addEventListener("pointerdown", (event) => { setMode(event.target); }, true);
+    document.addEventListener("click", (event) => {
+      if (event.button === 0 && linkTarget(event.target)) animateLinkClick();
+    }, true);
+    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.removeAttribute("data-link"); cursor.setAttribute("data-grab", ""); }, true);
     document.addEventListener("dragenter", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
     document.addEventListener("dragover", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
-    const stopDragging = () => { dragging = false; cursor.removeAttribute("data-grab"); };
+    const stopDragging = () => { dragging = false; cursor.removeAttribute("data-grab"); cursor.removeAttribute("data-link"); };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
@@ -623,7 +664,7 @@
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

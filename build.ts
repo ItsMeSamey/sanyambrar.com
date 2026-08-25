@@ -213,8 +213,9 @@ async function auditSource() {
   must(webpackConfig.includes('path: join(rootDir, "../docs")') && webpackConfig.includes("clean: false"), "Keybr must build directly into docs/");
   must(singleFilePlugin.includes('"keybr.html"'), "Keybr single-file build must emit docs/keybr.html");
   const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
-  for (const token of ["::selection", ".samey-site-controls", ".samey-context-menu", ".samey-cursor-grab"]) must(sharedCss.includes(token), `shared UI CSS missing ${token}`);
-  for (const token of ["Search web for selection", "Screenshot…", "Copy Markdown link", "requestFullscreen", 'rect x="29" y="16" width="6" height="7"']) must(theme.includes(token), `shared runtime missing ${token}`);
+  for (const token of ["::selection", ".samey-site-controls", ".samey-context-menu", ".samey-cursor-grab", ".samey-cursor-link"]) must(sharedCss.includes(token), `shared UI CSS missing ${token}`);
+  for (const token of ["Search web for selection", "Copy Markdown link", "requestFullscreen", 'fill-rule="evenodd"', "M32 18a14 14 0 1 1 0 28", "samey-cursor-link-corner", "scale(.3333333333)", "offset: .699", "offset: .7", "duration: 1500", 'link.target = "_blank"', 'link.rel = "noopener noreferrer"']) must(theme.includes(token), `shared runtime missing ${token}`);
+  for (const token of ["Screenshot…", "getDisplayMedia", '<rect x="29" y="16" width="6" height="7" fill="black"/>']) must(!theme.includes(token), `shared runtime still contains removed ${token}`);
   for (const token of ["--wordle-control-top", "--wordle-control-right", "top: var(--wordle-control-top) !important", "right: var(--wordle-control-right) !important", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
 }
 
@@ -240,8 +241,9 @@ async function verifyDocs() {
   }
 
   const theme = await readFile(join(DOCS, "theme.js"), "utf8"), css = await readFile(join(DOCS, "site.css"), "utf8");
-  for (const token of ["samey-site-controls", "samey-context-menu", "samey-cursor-grab", "samey-vscroll-thumb", "samey-hscroll-thumb", "pointerrawupdate", "contextmenu", "getDisplayMedia", "history.pushState", "popstate", "X-Samey-SPA", "Copy", "Paste", "Select all", "Screenshot…", '<rect x="29" y="16" width="6" height="7" fill="black"/>', '<rect x="16" y="29" width="7" height="6" fill="black"/>']) must(theme.includes(token), `theme.js: missing runtime contract ${token}`);
-  for (const token of ["::selection", ".samey-site-controls", "left:12px", "cursor:none!important", ".samey-context-menu", ".samey-vscroll", ".samey-hscroll"]) must(css.includes(token), `site.css: missing shared UI contract ${token}`);
+  for (const token of ["samey-site-controls", "samey-context-menu", "samey-cursor-grab", "samey-cursor-link", "samey-cursor-link-corner", "a[href],area[href],[role=link]", "M42 0 H84 V42", "M59.5 3.5 H80.5 V24.5", "scale(.3333333333)", "offset: .699", "offset: .7", "duration: 1500", 'link.target = "_blank"', 'link.rel = "noopener noreferrer"', "samey-vscroll-thumb", "samey-hscroll-thumb", "pointerrawupdate", "contextmenu", "history.pushState", "popstate", "X-Samey-SPA", "Copy", "Paste", "Select all", "Copy Markdown link", 'fill-rule="evenodd"', "M32 18a14 14 0 1 1 0 28"]) must(theme.includes(token), `theme.js: missing runtime contract ${token}`);
+  for (const token of ["getDisplayMedia", "Screenshot…", '<rect x="29" y="16" width="6" height="7" fill="black"/>', '<rect x="16" y="29" width="7" height="6" fill="black"/>']) must(!theme.includes(token), `theme.js: removed runtime feature leaked back in: ${token}`);
+  for (const token of ["::selection", ".samey-site-controls", "left:12px", "cursor:none!important", ".samey-context-menu", ".samey-vscroll", ".samey-hscroll", "width:64px;height:64px", "left:18px;top:18px;width:28px;height:28px"]) must(css.includes(token), `site.css: missing shared UI contract ${token}`);
   const post = await readFile(join(DOCS, "blog/posts/btop-mutex.html"), "utf8");
   must(post.includes("<h1>btop's broken lock</h1>"), "blog post title drift");
   must(post.includes('<p class="dek">the mutex that wasn\'t</p>'), "blog post subtitle drift");
