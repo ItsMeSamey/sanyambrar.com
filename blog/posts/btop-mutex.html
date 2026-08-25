@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en" data-home-href="../../" data-back-href="../" data-theme-settings-href="../../keybr.html">
+<html lang="en" data-spa data-home-href="../../" data-back-href="../" data-theme-settings-href="../../keybr.html">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="How a broken atomic lock in btop admitted multiple owners, why relaxed atomics did not synchronize the UI and runner threads, and what I changed in PR #1649.">
-  <title>btop's broken atomic lock · Samey</title>
+  <title>btop's broken lock · Samey</title>
   <script src="../../theme.js"></script>
   <link rel="stylesheet" href="../blog.css">
 </head>
@@ -13,8 +13,8 @@
   <header class="top"><div></div><a class="brand" href="../">Blog</a><div></div></header>
   <main class="article">
     <header class="article-head">
-      <h1>btop's broken atomic lock</h1>
-      <p class="dek">What was wrong with btop's custom lock, where synchronization was missing, and what PR #1649 changed.</p>
+      <h1>btop's broken lock</h1>
+      <p class="dek">the mutex that wasn't</p>
       <div class="meta">25 Aug 2026 · btop · C++ atomics · PR <a class="plain" href="https://github.com/aristocratos/btop/pull/1649">#1649</a></div>
     </header>
 

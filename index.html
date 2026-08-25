@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-home-href="./" data-theme-settings-href="./keybr.html">
+<html lang="en" data-spa data-home-href="./" data-theme-settings-href="./keybr.html">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -18,7 +18,7 @@
     button,a{-webkit-tap-highlight-color:transparent}
     .top{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:0 18px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);z-index:5}
     .brand{font-size:25px;font-weight:800;letter-spacing:.01em}
-    main{width:min(920px,100%);margin:0 auto;padding:34px 20px 72px}
+    main{width:min(920px,100%);margin:0 auto;padding:0 20px 72px}
     section+section{margin-top:44px}
     h1{font-size:12px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
     .intro{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;align-items:end;padding:16px 0 28px;border-bottom:1px solid var(--line)}
@@ -62,9 +62,9 @@
     .tile:nth-child(3){background:#787c7e}
     .keys{display:flex;gap:4px;align-items:flex-end}
     .key{height:26px;min-width:22px;padding:0 5px;border-radius:3px;background:var(--line);display:grid;place-items:center;font-size:11px;font-weight:700}
-    .empty{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 2px;color:var(--muted);font-size:15px}.post-list-home{border-top:1px solid var(--line)}.blog-row{min-height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 2px;font-size:17px;font-weight:650}.blog-row:hover span:first-child{text-decoration:underline;text-underline-offset:3px}
+    .empty{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 2px;color:var(--muted);font-size:15px}.post-list-home{border-top:1px solid var(--line)}.blog-row{min-height:64px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:7px 2px;font-size:17px;font-weight:650}.blog-row:hover .blog-name{text-decoration:underline;text-underline-offset:3px}.blog-note{margin-top:3px;color:var(--muted);font-size:12px;font-weight:450}
     @media(max-width:760px){.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oss-row{grid-template-columns:130px 1fr auto}}
-    @media(max-width:520px){main{padding-top:22px}.intro{grid-template-columns:1fr;gap:8px}.oss-row{grid-template-columns:1fr auto;gap:5px 12px}.oss-copy{grid-column:1 / -1;grid-row:2}.oss-arrow{grid-column:2;grid-row:1}.intro-links{justify-content:flex-start}.grid,.project-grid{grid-template-columns:1fr}.card{min-height:126px}.top{height:54px}.brand{font-size:23px}}
+    @media(max-width:520px){main{padding-top:0}.intro{grid-template-columns:1fr;gap:8px}.oss-row{grid-template-columns:1fr auto;gap:5px 12px}.oss-copy{grid-column:1 / -1;grid-row:2}.oss-arrow{grid-column:2;grid-row:1}.intro-links{justify-content:flex-start}.grid,.project-grid{grid-template-columns:1fr}.card{min-height:126px}.top{height:54px}.brand{font-size:23px}}
     @media(prefers-reduced-motion:reduce){.card{transition:none}}
   </style>
 </head>
@@ -107,7 +107,7 @@
     </section>
     <section aria-labelledby="blog-title">
       <h1 id="blog-title">Blog</h1>
-      <div class="post-list-home"><a class="blog-row" href="./blog/posts/btop-mutex.html"><span>btop's broken atomic lock</span><span class="arrow" aria-hidden="true">›</span></a></div>
+      <div class="post-list-home"><a class="blog-row" href="./blog/posts/btop-mutex.html"><span><span class="blog-name">btop's broken lock</span><span class="blog-note">the mutex that wasn't</span></span><span class="arrow" aria-hidden="true">›</span></a></div>
     </section>
     <section aria-labelledby="projects-title">
       <h1 id="projects-title">Projects</h1>

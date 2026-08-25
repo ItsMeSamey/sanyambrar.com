@@ -12,5 +12,8 @@ node ./node_modules/vite/bin/vite.js build
 cp dist/index.html "$ROOT/wordle.html"
 
 cd "$ROOT"
+node ./compress-static.mjs
 node ./verify-build.mjs
+node ./verify-compressed.mjs
+node ./verify-site-contract.mjs
 node ./audit-keybr-theme.mjs
