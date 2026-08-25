@@ -1,7 +1,7 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
 import { ColorModeProvider, ColorModeScript, createLocalStorageManager } from '@kobalte/core'
-import { ErrorBoundary, Match, Show, Switch } from 'solid-js'
+import { ErrorBoundary, Match, Switch } from 'solid-js'
 import StatsPage from './game/page_stats'
 
 import './css/index.css'

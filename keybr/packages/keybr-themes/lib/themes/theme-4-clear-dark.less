@@ -1,13 +1,14 @@
 @import "palettes.less";
+@import "site-presets.generated.less";
 
 // A readability-focused dark theme: clearer text and data colors than the
 // regular dark theme, without the glare of the old high-contrast preset.
 html[data-color="clear-dark"] {
   @colors: {
-    @primary: #303237;
-    @secondary: #b0b4bd;
-    @accent: #7c9fc4;
-    @error: #e2848b;
+    @primary: @samey-clear-dark-background;
+    @secondary: @samey-clear-dark-text;
+    @accent: @samey-clear-dark-accent;
+    @error: @samey-clear-dark-error;
   };
 
   --primary-d2: #474a51;
@@ -30,9 +31,9 @@ html[data-color="clear-dark"] {
   --error: @colors[@error];
   --error-l1: #ca6f77;
   --shadow-color: #00000088;
-  --slow-key-color: #e2848b;
-  --fast-key-color: #69aa80;
-  --effort-color: #80a1c5;
+  --slow-key-color: @samey-clear-dark-slow;
+  --fast-key-color: @samey-clear-dark-fast;
+  --effort-color: @samey-clear-dark-effort;
   .use-textinput-colors(@colors);
   .use-interface-colors(@colors);
   --Value--more__color: #7fc47c;

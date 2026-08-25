@@ -1,11 +1,12 @@
 @import "palettes.less";
+@import "site-presets.generated.less";
 
 .light-theme-props() {
   @colors: {
-    @primary: #ffffff;
-    @secondary: #121213;
-    @accent: #787c7e;
-    @error: #ff3333;
+    @primary: @samey-light-background;
+    @secondary: @samey-light-text;
+    @accent: @samey-light-accent;
+    @error: @samey-light-error;
   };
 
   --primary-d2: darken(@colors[@primary], 10);
@@ -28,9 +29,9 @@
   --error: @colors[@error];
   --error-l1: lighten(@colors[@error], 10);
   --shadow-color: #00000044;
-  --slow-key-color: #cc0000;
-  --fast-key-color: #60d788;
-  --effort-color: #6699ff;
+  --slow-key-color: @samey-light-slow;
+  --fast-key-color: @samey-light-fast;
+  --effort-color: @samey-light-effort;
   .use-textinput-colors(@colors);
   .use-interface-colors(@colors);
   .use-chart-colors(@colors, 0);

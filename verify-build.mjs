@@ -6,8 +6,6 @@ for (const file of ['index.html','keybr.html','wordle.html','theme.js','sw.js','
 const keybr = readFileSync('keybr.html','utf8');
 const wordle = readFileSync('wordle.html','utf8');
 for (const [name, html] of [['keybr',keybr],['wordle',wordle]]) {
-  must(html.includes('src="./theme.js"'), `${name}: missing shared theme integration`);
-  must(html.includes('data-home-href="./"'), `${name}: missing home integration`);
   must(!html.includes('manifest="appcache.manifest"'), `${name}: obsolete AppCache manifest`);
 }
 must(!keybr.includes('<header class="site-header"'), 'keybr: stale custom header emitted');

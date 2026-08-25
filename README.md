@@ -1,9 +1,12 @@
 # ItsMeSamey.github.io
 
-Static site with two source-built single-file apps:
+Single repository for the static site and both source-built apps:
 
-- `keybr/` -> `keybr.html`
-- `wordle/` -> `wordle.html`
+- `keybr/` builds `keybr.html`
+- `wordle/` builds `wordle.html`
+- `blog/` contains the static blog
+- `shared/appearance.json` is the source of truth for site fonts and base theme palettes
+- `theme.js` and `site.css` own shared runtime/chrome behavior
 
 Run:
 
@@ -11,8 +14,14 @@ Run:
 ./build.sh
 ```
 
-The build rebuilds both game submodules, copies their single-file outputs to the site root, generates deterministic `.html.gz` and `.html.br` siblings for every deployed HTML page, then verifies that each compressed file decompresses byte-for-byte to its source page.
+If dependencies are absent or do not match their lockfile, the build uses Bun with `--frozen-lockfile` before compiling. Both app lockfiles are checked in.
 
-Shared site behavior lives in `theme.js` and `site.css`: theme/font state, navigation controls, custom cursors, virtual scrollbars, context menus, and SPA navigation for the Home/Blog pages. Keeping that chrome centralized avoids per-page styling drift.
+The build then:
 
-The archive includes the dependency trees used for the build. Wordle's small UI compatibility layer lives in `wordle/src/ui-kit/`, so its build does not require the historical nested `solid-ui` git submodule.
+1. generates runtime and Keybr palette data from `shared/appearance.json`;
+2. typechecks Wordle, then builds Keybr and Wordle into deterministic single-file HTML outputs;
+3. generates the service worker from the actual deploy tree;
+4. generates deterministic `.html.gz` and `.html.br` siblings;
+5. verifies build artifacts, compression, shared site contracts, architecture boundaries, and every Keybr theme variable.
+
+Shared appearance persistence, validation, custom-theme derivation, navigation controls, custom cursors, virtual scrollbars, context menus, SPA navigation, and service-worker registration live in one runtime. Keybr only subscribes to that runtime through `SameyAppearance`; it does not persist or derive a second copy of the site appearance state.

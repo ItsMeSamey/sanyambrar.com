@@ -3,22 +3,14 @@
   const KEY = "keybr.theme";
   const WORDLE_KEY = "ui-theme";
   const FONT_KEY = "samey.font";
-  const COLOR_IDS = ["light", "clear-light", "dark", "clear-dark", "custom"];
-  const FONT_IDS = ["sans-serif", "serif", "monospace", "cursive"];
-  const colors = {
-    light: { tone: "light", background: "#ffffff", text: "#121213", accent: "#787c7e", error: "#ff3333" },
-    "clear-light": { tone: "light", background: "#faf9f8", text: "#202332", accent: "#355d82", error: "#c43d46" },
-    dark: { tone: "dark", background: "#121213", text: "#f8f8f8", accent: "#a7a7a7", error: "#9b4545" },
-    "clear-dark": { tone: "dark", background: "#303237", text: "#b0b4bd", accent: "#7c9fc4", error: "#e2848b" },
-  };
-  const colorLabels = { system: "System", light: "Light", "clear-light": "Clear light", dark: "Dark", "clear-dark": "Clear dark" };
-  const fontLabels = { "sans-serif": "Sans serif", serif: "Serif", monospace: "Monospace", cursive: "Cursive" };
-  const fontStacks = {
-    "sans-serif": 'system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
-    serif: 'ui-serif,Georgia,Cambria,"Times New Roman",serif',
-    monospace: 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace',
-    cursive: 'cursive',
-  };
+  const config = globalThis.SameyAppearanceConfig;
+  if (config == null) throw new Error("Shared appearance config is not loaded");
+  const colors = config.colors;
+  const COLOR_IDS = [...Object.keys(colors), "custom"];
+  const FONT_IDS = Object.keys(config.fonts);
+  const colorLabels = { system: "System", ...Object.fromEntries(Object.entries(colors).map(([id, value]) => [id, value.label])) };
+  const fontLabels = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.label]));
+  const fontStacks = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.stack]));
 
   const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
   const mix = (a, b, weight) => {
@@ -46,13 +38,20 @@
     const legacy = rawPrefs().font;
     return FONT_IDS.includes(legacy) ? legacy : "sans-serif";
   };
+  const migrateColor = (value) => {
+    if (value === "light-contrast") return "clear-light";
+    if (value === "dark-contrast") return "clear-dark";
+    if (value === "chocolate") return "dark";
+    if (["gray", "yellow", "garden", "coffee", "honey"].includes(value)) return "light";
+    return value === "system" || COLOR_IDS.includes(value) ? value : "system";
+  };
   const read = () => {
     const raw = rawPrefs();
-    let selected = raw.color;
+    const selected = migrateColor(raw.color);
     let color = selected;
-    if (color === "system" || !COLOR_IDS.includes(color)) color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (color === "system") color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     const font = readFont();
-    if (color !== "custom") return { color, selected: selected || "system", font, ...colors[color] };
+    if (color !== "custom") return { color, selected: selected || "system", font, ...colors[color], custom: { ...colors[color] } };
     const custom = raw.custom || {};
     const fallback = custom.tone === "dark" ? colors.dark : colors.light;
     return {
@@ -64,8 +63,79 @@
       text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
       accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
       error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+      slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
+      fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
+      effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
+      custom: {
+        tone: custom.tone === "dark" ? "dark" : "light",
+        background: validHex(custom.background) ? custom.background.toLowerCase() : fallback.background,
+        text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
+        accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
+        error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+        slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
+        fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
+        effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
+      },
     };
   };
+
+  const keybrCustomProperties = (theme) => {
+    const dark = theme.tone === "dark";
+    const primary = theme.background, secondary = theme.text, accent = theme.accent, error = theme.error;
+    const chartMix = dark ? .5 : 0;
+    return {
+      "--primary-d2": mix(primary, dark ? "#ffffff" : "#000000", .1),
+      "--primary-d1": mix(primary, dark ? "#ffffff" : "#000000", .05),
+      "--primary": primary,
+      "--primary-l1": mix(primary, dark ? "#000000" : "#ffffff", dark ? .02 : .03),
+      "--primary-l2": mix(primary, dark ? "#000000" : "#ffffff", dark ? .03 : .05),
+      "--secondary-d1": mix(secondary, dark ? "#ffffff" : "#000000", .1),
+      "--secondary": secondary,
+      "--secondary-l1": mix(secondary, dark ? "#000000" : "#ffffff", .1),
+      "--secondary-l2": mix(secondary, dark ? "#000000" : "#ffffff", .2),
+      "--secondary-f1": mix(secondary, primary, .2),
+      "--secondary-f2": mix(secondary, primary, .4),
+      "--accent-d2": mix(accent, "#000000", dark ? .1 : .2),
+      "--accent-d1": mix(accent, "#000000", dark ? .05 : .1),
+      "--accent": accent,
+      "--accent-l1": mix(accent, "#ffffff", dark ? .05 : .1),
+      "--accent-l2": mix(accent, "#ffffff", dark ? .1 : .2),
+      "--error-d1": mix(error, dark ? "#ffffff" : "#000000", .1),
+      "--error": error,
+      "--error-l1": mix(error, dark ? "#000000" : "#ffffff", .1),
+      "--shadow-color": dark ? "#00000088" : "#00000044",
+      "--slow-key-color": theme.slow,
+      "--fast-key-color": theme.fast,
+      "--effort-color": theme.effort,
+      "--textinput__color": secondary,
+      "--textinput--special__color": mix(secondary, primary, .5),
+      "--textinput--hit__color": mix(secondary, primary, .4),
+      "--textinput--miss__color": error,
+      "--Name-color": mix(secondary, "#ffffff", .2),
+      "--Value-color": mix(secondary, "#000000", .1),
+      "--Value--more__color": "#2a7e21",
+      "--Value--less__color": "#a1464e",
+      "--Chart-speed__color": mix("#6fb48c", primary, chartMix),
+      "--Chart-accuracy__color": mix("#ef522f", primary, chartMix),
+      "--Chart-complexity__color": mix("#ac71d0", primary, chartMix),
+      "--Chart-threshold__color": mix("#d2649a", primary, chartMix),
+      "--Chart-hist-h__color": mix("#5f6cb4", primary, chartMix),
+      "--Chart-hist-m__color": mix("#b43f3e", primary, chartMix),
+      "--Chart-hist-r__color": mix("#b140b4", primary, chartMix),
+      "--KeyboardKey-pointer__color": "#4ba0f2",
+      "--pinky-zone-color": mix("#8ec07c", primary, chartMix),
+      "--ring-zone-color": mix("#b8bb26", primary, chartMix),
+      "--middle-zone-color": mix("#fabd2f", primary, chartMix),
+      "--left-index-zone-color": mix("#83a698", primary, chartMix),
+      "--right-index-zone-color": mix("#d3869b", primary, chartMix),
+      "--thumb-zone-color": mix("#d66354", primary, chartMix),
+      "--syntax-keyword": dark ? "#5991cd" : "#56a1f4",
+      "--syntax-string": "#72b172",
+      "--syntax-number": dark ? "#b281d3" : "#763a9e",
+      "--syntax-comment": "#9f8484",
+    };
+  };
+  const KEYBR_CUSTOM_PROPERTIES = Object.keys(keybrCustomProperties(colors.light));
 
   const nativeSetItem = Storage.prototype.setItem;
   let notifying = false;
@@ -81,8 +151,7 @@
     root.dataset.siteTheme = theme.color;
     root.dataset.kbTheme = theme.tone;
     root.dataset.font = theme.font;
-    if (theme.color !== "custom") root.dataset.color = theme.color;
-    else if (root.dataset.siteKind !== "keybr") root.removeAttribute("data-color");
+    root.dataset.color = theme.color;
     root.classList.toggle("dark", theme.tone === "dark");
     root.style.colorScheme = theme.tone;
 
@@ -97,8 +166,13 @@
     root.style.setProperty("--site-error", theme.error);
     root.style.setProperty("--site-font", fontStacks[theme.font]);
 
-    // Wordle uses Tailwind/shadcn-style variables whose names collide with
-    // Keybr's palette variables. Never install these variables on Keybr.
+    if (root.dataset.siteKind === "keybr") {
+      for (const name of KEYBR_CUSTOM_PROPERTIES) root.style.removeProperty(name);
+      if (theme.color === "custom") {
+        for (const [name, value] of Object.entries(keybrCustomProperties(theme))) root.style.setProperty(name, value);
+      }
+    }
+
     if (root.dataset.siteKind === "wordle") {
       root.style.setProperty("--background", hsl(theme.background));
       root.style.setProperty("--foreground", hsl(theme.text));
@@ -125,19 +199,6 @@
     document.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
     notify(theme);
     return theme;
-  };
-
-  Storage.prototype.setItem = function (key, value) {
-    nativeSetItem.call(this, key, value);
-    if (this === localStorage && (key === KEY || key === FONT_KEY)) queueMicrotask(apply);
-    if (this === localStorage && key === WORDLE_KEY && (value === "light" || value === "dark")) {
-      const raw = rawPrefs();
-      if (raw.color !== value) {
-        const { font: _legacyFont, ...theme } = raw;
-        nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...theme, color: value }));
-      }
-      queueMicrotask(apply);
-    }
   };
 
   const icon = (name) => name === "home"
@@ -173,6 +234,15 @@
     }
     apply();
   };
+  const appearance = Object.freeze({
+    get: read,
+    set: setPrefs,
+    apply,
+    themeIds: Object.freeze(["system", ...COLOR_IDS]),
+    fontIds: Object.freeze([...FONT_IDS]),
+  });
+  Object.defineProperty(globalThis, "SameyAppearance", { value: appearance, configurable: false, writable: false });
+
   const section = (title, items, attr) => `<div class="samey-panel-title">${title}</div>${Object.entries(items).map(([value, label]) => `<button type="button" ${attr}="${value}">${label}</button>`).join("")}`;
   const mountControls = () => {
     if (document.getElementById("samey-site-controls")) return;
@@ -518,7 +588,6 @@
     const raw = rawPrefs();
     if (!raw.color || raw.color === "system") apply();
   });
-  window.SameyTheme = { apply, read };
   apply();
   const mountRuntime = () => { mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });

@@ -1,24 +1,15 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { htmlPages } from './scripts/site-files.mjs';
 
 const root = process.cwd();
-const skip = new Set(['.git', 'keybr', 'wordle', 'node_modules']);
-const pages = [];
-const walk = (dir) => {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (skip.has(entry.name)) continue;
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) walk(path);
-    else if (entry.isFile() && entry.name.endsWith('.html')) pages.push(path);
-  }
-};
-walk(root);
-pages.sort();
+const pages = htmlPages(root);
 
 const fail = (message) => { throw new Error(message); };
 for (const path of pages) {
   const html = readFileSync(path, 'utf8');
   const name = relative(root, path);
+  if (!/<script\s+src=["'][^"']*appearance\.generated\.js["']><\/script>/i.test(html)) fail(`${name}: missing generated appearance config`);
   if (!/<script\s+src=["'][^"']*theme\.js["']><\/script>/i.test(html)) fail(`${name}: missing shared theme/runtime script`);
   if (!/data-home-href=|data-back-href=/i.test(html)) fail(`${name}: missing shared navigation metadata`);
 }

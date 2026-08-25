@@ -10,7 +10,7 @@ import { createMutable, unwrap } from 'solid-js/store';
 import { SettingsHardProps, SettingsSoftProps } from './popup_settings';
 import { WORDS } from './words/words';
 import bsearch from 'binary-search-bounds';
-import { Page, setP, setPageError } from '../utils/navigation';
+import { Page, setPageError } from '../utils/navigation';
 import { showError } from '../utils/toast';
 import { LocalstorageStore, UrlSearchStore } from '../utils/store';
 import { WordLength } from './words';

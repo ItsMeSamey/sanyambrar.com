@@ -1,13 +1,14 @@
 @import "palettes.less";
+@import "site-presets.generated.less";
 
 // A slightly crisper version of the regular light theme without the
 // black-on-white extremes of the old high-contrast preset.
 html[data-color="clear-light"] {
   @colors: {
-    @primary: #faf9f8;
-    @secondary: #202332;
-    @accent: #355d82;
-    @error: #c43d46;
+    @primary: @samey-clear-light-background;
+    @secondary: @samey-clear-light-text;
+    @accent: @samey-clear-light-accent;
+    @error: @samey-clear-light-error;
   };
 
   --primary-d2: #dfdddb;
@@ -30,9 +31,9 @@ html[data-color="clear-light"] {
   --error: @colors[@error];
   --error-l1: #d75a62;
   --shadow-color: #0000004d;
-  --slow-key-color: #aa2832;
-  --fast-key-color: #267549;
-  --effort-color: #365f9c;
+  --slow-key-color: @samey-clear-light-slow;
+  --fast-key-color: @samey-clear-light-fast;
+  --effort-color: @samey-clear-light-effort;
   .use-textinput-colors(@colors);
   .use-interface-colors(@colors);
   --Value--more__color: #246d2b;

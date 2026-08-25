@@ -42,6 +42,7 @@ export class SingleFilePlugin {
 <meta name="color-scheme" content="light dark">
 <title>keybr local</title>
 <style>${css}</style>
+<script src="./appearance.generated.js"></script>
 <script src="./theme.js"></script>
 </head>
 <body>
