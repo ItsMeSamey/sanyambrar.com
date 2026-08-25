@@ -1,9 +1,8 @@
-import { type ReactNode, useMemo } from "react";
-import { useLoader } from "./internal/loader.ts";
-import { PersistentResultStorage } from "./internal/local.ts";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { catchError } from "@keybr/debug";
+import { type Result } from "@keybr/result";
 import { ResultProvider } from "./internal/ResultProvider.tsx";
-import { wrapResultStorage } from "./internal/storage.ts";
-import { type ResultStorage } from "./internal/types.ts";
+import { createResultStorage, type ResultStorage } from "./internal/storage.ts";
 
 export function ResultLoader({
   children,
@@ -26,7 +25,17 @@ export function ResultLoader({
 
 function useResultStorage(): ResultStorage {
   return useMemo(
-    () => wrapResultStorage(new PersistentResultStorage()),
+    () => createResultStorage(),
     [],
   );
+}
+
+function useLoader(storage: ResultStorage): { readonly type: "loading" } | { readonly type: "ready"; readonly results: readonly Result[] } {
+  const [state, setState] = useState<{ readonly type: "loading" } | { readonly type: "ready"; readonly results: readonly Result[] }>({ type: "loading" });
+  useEffect(() => {
+    let cancelled = false;
+    storage.load().then((results) => { if (!cancelled) setState({ type: "ready", results }); }).catch(catchError);
+    return () => { cancelled = true; };
+  }, [storage]);
+  return state;
 }

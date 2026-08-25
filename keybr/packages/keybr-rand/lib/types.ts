@@ -3,9 +3,4 @@ export type RNG = {
   (): number;
 };
 
-export type RNGStream<MarkT = unknown> = RNG & {
-  /** Remembers position within the stream of random numbers. */
-  mark(): MarkT;
-  /** Goes to the remembered position within the stream of random numbers. */
-  reset(mark: MarkT): void;
-};
+export type RNGStream = RNG;

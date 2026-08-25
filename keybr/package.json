@@ -14,8 +14,6 @@
     "build": "node ./scripts/check-workspaces.mjs && NODE_ENV=production webpack",
     "build:dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack",
     "dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack --watch",
-    "serve": "bun ./scripts/serve.ts",
-    "start": "bun run build && bun run serve",
     "check:workspaces": "bun ./scripts/check-workspaces.mjs"
   },
   "dependencies": {

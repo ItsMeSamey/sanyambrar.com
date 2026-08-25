@@ -48,25 +48,7 @@ bun run dev
 
 ## Run locally
 
-Build and serve on `http://localhost:3000`:
-
-```sh
-bun run start
-```
-
-Or after building:
-
-```sh
-bun run serve
-```
-
-Set `PORT` to use another port:
-
-```sh
-PORT=8080 bun run serve
-```
-
-Opening `dist/index.html` directly may work in some browsers, but serving it from localhost is recommended because browser storage and security behavior is more predictable on an HTTP origin.
+Build with `bun run build`, then open or host `dist/index.html` with any static-file server. The repository contains no application server.
 
 ## Data model
 

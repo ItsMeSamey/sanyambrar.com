@@ -1,6 +1,5 @@
 import { clsx } from "clsx";
 import { type ElementType, type HTMLAttributes, type ReactNode } from "react";
-import * as styles from "./Header.module.less";
 import { type HeaderProps } from "./Header.types.ts";
 
 export function Header(props: HeaderProps): ReactNode {
@@ -27,7 +26,7 @@ export function Header(props: HeaderProps): ReactNode {
       break;
   }
   return (
-    <Component id={id} className={clsx(styles.root, className)} title={title}>
+    <Component id={id} className={className} title={title}>
       {children}
     </Component>
   );

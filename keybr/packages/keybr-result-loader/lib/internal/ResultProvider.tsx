@@ -1,7 +1,7 @@
 import { type Result, ResultContext } from "@keybr/result";
 import { type ReactNode, useState } from "react";
-import { catchError } from "./debug.tsx";
-import { type ResultStorage } from "./types.ts";
+import { ErrorAlert } from "@keybr/debug";
+import { type ResultStorage } from "./storage.ts";
 
 export function ResultProvider({
   storage,
@@ -29,5 +29,16 @@ export function ResultProvider({
     >
       {children}
     </ResultContext.Provider>
+  );
+}
+
+function catchError(error: unknown) {
+  console.error(error);
+  ErrorAlert.toast(
+    <>
+      <p>Could not access local typing history.</p>
+      <p>Check that this browser allows local site storage.</p>
+    </>,
+    error,
   );
 }

@@ -6,8 +6,6 @@
   "main": "lib/index.ts",
   "dependencies": {
     "@keybr/content": "workspace:*",
-    "@keybr/debug": "workspace:*",
-    "@keybr/keyboard": "workspace:*",
-    "react": "^19.2.4"
+    "@keybr/keyboard": "workspace:*"
   }
 }

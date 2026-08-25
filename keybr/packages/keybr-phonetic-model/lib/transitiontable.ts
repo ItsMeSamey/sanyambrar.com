@@ -1,4 +1,3 @@
-import { DataError, Reader, Writer } from "@keybr/binary";
 import { type Language, Ngram1, Ngram2 } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
 import { Letter } from "./letter.ts";
@@ -6,6 +5,31 @@ import { Letter } from "./letter.ts";
 const signature = Object.freeze([
   0x6b, 0x65, 0x79, 0x62, 0x72, 0x2e, 0x63, 0x6f, 0x6d,
 ]);
+
+class Reader {
+  readonly #view: DataView;
+  #offset = 0;
+
+  constructor(buffer: Uint8Array) {
+    this.#view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  }
+
+  getUint8(): number {
+    if (this.#offset + 1 > this.#view.byteLength) throw new Error("Invalid transition table");
+    return this.#view.getUint8(this.#offset++);
+  }
+
+  getUint16(): number {
+    if (this.#offset + 2 > this.#view.byteLength) throw new Error("Invalid transition table");
+    const value = this.#view.getUint16(this.#offset, false);
+    this.#offset += 2;
+    return value;
+  }
+
+  remaining(): number {
+    return this.#view.byteLength - this.#offset;
+  }
+}
 
 export type Entry = {
   readonly codePoint: CodePoint;
@@ -21,7 +45,7 @@ export class TransitionTable {
     const chain = readChain(reader);
     const segments = readSegments(reader, chain);
     if (reader.remaining() > 0) {
-      throw new DataError();
+      throw new Error("Invalid transition table");
     }
     return new TransitionTable(chain, segments);
   }
@@ -51,14 +75,6 @@ export class TransitionTable {
 
   segment(chain: readonly CodePoint[]): Segment {
     return this.segments[this.chain.segmentIndex(chain)];
-  }
-
-  compress(): Uint8Array {
-    const writer = new Writer();
-    writeSignature(writer);
-    writeChain(writer, this.chain);
-    writeSegments(writer, this.chain, this.segments);
-    return writer.buffer();
   }
 
   letters({ letterName }: Language): Letter[] {
@@ -107,7 +123,6 @@ export class Chain {
   readonly alphabet: readonly CodePoint[];
   readonly size: number;
   readonly segments: number;
-  readonly width: number;
   readonly offsets: readonly number[];
 
   constructor(order: number, alphabet: readonly CodePoint[]) {
@@ -115,7 +130,6 @@ export class Chain {
     this.alphabet = alphabet;
     this.size = this.alphabet.length;
     this.segments = Math.pow(this.size, this.order - 1);
-    this.width = Math.pow(this.size, this.order);
     this.offsets = offsets(this.size, this.order);
   }
 
@@ -130,16 +144,6 @@ export class Chain {
     return index;
   }
 
-  entryIndex(chain: readonly CodePoint[]): number {
-    const { order, offsets } = this;
-    const { length } = chain;
-    let index = 0;
-    for (let i = 0; i < order; i++) {
-      const codePoint = chain[length - order + i] || 0x0020;
-      index += this.index(codePoint) * offsets[i];
-    }
-    return index;
-  }
 
   codePoint(index: number): CodePoint {
     return this.alphabet[index];
@@ -150,25 +154,11 @@ export class Chain {
   }
 }
 
-function writeSignature(writer: Writer): void {
-  for (const c of signature) {
-    writer.putUint8(c);
-  }
-}
-
 function readSignature(reader: Reader): void {
   for (const c of signature) {
     if (reader.getUint8() !== c) {
-      throw new DataError();
+      throw new Error("Invalid transition table");
     }
-  }
-}
-
-function writeChain(writer: Writer, chain: Chain): void {
-  writer.putUint8(chain.order);
-  writer.putUint8(chain.size);
-  for (let i = 0; i < chain.size; i++) {
-    writer.putUint16(chain.alphabet[i]);
   }
 }
 
@@ -182,37 +172,22 @@ function readChain(reader: Reader): Chain {
   return new Chain(order, alphabet);
 }
 
-function writeSegments(
-  writer: Writer,
-  chain: Chain,
-  segments: readonly Segment[],
-): void {
-  for (let segmentIndex = 0; segmentIndex < chain.segments; segmentIndex++) {
-    const segment = segments[segmentIndex];
-    writer.putUint8(segment.length);
-    for (const { codePoint, frequency } of segment) {
-      writer.putUint8(chain.index(codePoint));
-      writer.putUint8(frequency);
-    }
-  }
-}
-
 function readSegments(reader: Reader, chain: Chain): Segment[] {
   const segments = [];
   for (let segmentIndex = 0; segmentIndex < chain.segments; segmentIndex++) {
     const segment = [];
     const length = reader.getUint8();
     if (length > chain.size) {
-      throw new DataError();
+      throw new Error("Invalid transition table");
     }
     for (let entryIndex = 0; entryIndex < length; entryIndex++) {
       const index = reader.getUint8();
       if (index >= chain.size) {
-        throw new DataError();
+        throw new Error("Invalid transition table");
       }
       const frequency = reader.getUint8();
       if (frequency === 0) {
-        throw new DataError();
+        throw new Error("Invalid transition table");
       }
       segment.push({ codePoint: chain.codePoint(index), frequency });
     }

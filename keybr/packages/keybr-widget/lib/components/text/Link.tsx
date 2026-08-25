@@ -1,6 +1,5 @@
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
-import * as styles from "./Link.module.less";
 import { type LinkProps } from "./Link.types.ts";
 
 export function Link({
@@ -18,7 +17,7 @@ export function Link({
     <Component
       {...props}
       id={id}
-      className={clsx(styles.root, className)}
+      className={className}
       href={href}
       target={target}
       download={download}

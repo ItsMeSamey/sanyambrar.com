@@ -1,7 +1,6 @@
 import { type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { querySelector } from "../../utils/query.ts";
-import * as styles from "./Portal.module.less";
 
 export function Portal({
   children,
@@ -17,6 +16,6 @@ export function PortalContainer(): ReactNode {
   return <div id={PortalContainer.id} />;
 }
 
-PortalContainer.id = styles.root;
+PortalContainer.id = "keybr-portal";
 
 PortalContainer.query = () => querySelector(`#${PortalContainer.id}`);
