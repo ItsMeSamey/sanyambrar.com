@@ -1,0 +1,45 @@
+{
+  "private": true,
+  "name": "keybr-local",
+  "version": "0.0.0",
+  "type": "module",
+  "homepage": ".",
+  "license": "AGPL-3.0-only",
+  "author": "Aliaksandr Radzivanovich <aradzivanovich@gmail.com>",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist node_modules",
+    "build": "node ./scripts/check-workspaces.mjs && NODE_ENV=production webpack",
+    "build:dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack",
+    "dev": "node ./scripts/check-workspaces.mjs && NODE_ENV=development webpack --watch",
+    "serve": "bun ./scripts/serve.ts",
+    "start": "bun run build && bun run serve",
+    "check:workspaces": "bun ./scripts/check-workspaces.mjs"
+  },
+  "dependencies": {
+    "@mdi/js": "^7.4.47",
+    "clsx": "^2.1.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-intl": "^10.1.23"
+  },
+  "devDependencies": {
+    "css-loader": "^7.1.4",
+    "css-minimizer-webpack-plugin": "^8.0.0",
+    "less": "^4.9.0",
+    "less-loader": "^13.0.0",
+    "mini-css-extract-plugin": "^2.10.1",
+    "terser-webpack-plugin": "^5.4.0",
+    "ts-loader": "^9.6.2",
+    "typescript": "^6.0.3",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2"
+  },
+  "description": "A local-only, frontend-only adaptive typing trainer derived from keybr.com.",
+  "packageManager": "bun@1.2.20",
+  "engines": {
+    "bun": ">=1.2.20"
+  }
+}

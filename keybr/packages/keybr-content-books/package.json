@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "@keybr/content-books",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/content": "workspace:*",
+    "@keybr/debug": "workspace:*",
+    "react": "^19.2.4"
+  }
+}

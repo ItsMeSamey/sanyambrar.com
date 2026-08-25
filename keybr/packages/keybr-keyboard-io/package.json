@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "name": "@keybr/keyboard-io",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/unicode": "workspace:*"
+  }
+}

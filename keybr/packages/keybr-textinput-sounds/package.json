@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "@keybr/textinput-sounds",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/lang": "workspace:*",
+    "@keybr/rand": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/textinput": "workspace:*",
+    "react": "^19.2.4"
+  }
+}

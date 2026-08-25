@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "@keybr/keyboard",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/intl": "workspace:*",
+    "@keybr/lang": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/unicode": "workspace:*",
+    "react": "^19.2.4"
+  }
+}

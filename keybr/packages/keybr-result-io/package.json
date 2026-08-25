@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "@keybr/result-io",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/binary": "workspace:*",
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/lang": "workspace:*",
+    "@keybr/result": "workspace:*",
+    "@keybr/textinput": "workspace:*"
+  }
+}

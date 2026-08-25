@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "@keybr/math",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts"
+}
