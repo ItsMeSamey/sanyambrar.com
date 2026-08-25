@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { ThemeContext } from "./context.ts";
 import {
   colorTheme,
@@ -12,6 +12,7 @@ import {
 } from "./themes.ts";
 
 const storageKey = "keybr.theme";
+const fontStorageKey = "samey.font";
 
 const customPropertyNames = [
   "--primary-d2",
@@ -82,14 +83,15 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
     return { ...prefs, hash: 0 };
   });
 
-  const update = (prefs: ThemePrefs) => {
+  const update = (patch: Partial<ThemePrefs>) => {
+    const prefs = { ...readPrefs(), ...patch };
     applyPrefs(prefs);
-    storePrefs(prefs);
+    storePatch(patch, prefs);
     setState((state) => ({ ...prefs, hash: state.hash + 1 }));
   };
 
   const setCustomTheme = (custom: CustomThemeColors) => {
-    update({ ...state, color: "custom", custom });
+    update({ color: "custom", custom });
   };
 
   const setCustomColor = (name: CustomThemeColorName, value: string) => {
@@ -97,19 +99,37 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
       return;
     }
     const normalized = value.toLowerCase();
+    const custom = readPrefs().custom;
     setCustomTheme({
-      ...state.custom,
+      ...custom,
       ...(name === "background" ? { tone: toneForBackground(normalized) } : {}),
       [name]: normalized,
     });
   };
 
+  useEffect(() => {
+    const sync = () => {
+      const prefs = readPrefs();
+      applyPrefs(prefs);
+      setState((state) => ({ ...prefs, hash: state.hash + 1 }));
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === storageKey || event.key === fontStorageKey) sync();
+    };
+    addEventListener("samey-themechange", sync);
+    addEventListener("storage", onStorage);
+    return () => {
+      removeEventListener("samey-themechange", sync);
+      removeEventListener("storage", onStorage);
+    };
+  }, []);
+
   return (
     <ThemeContext.Provider
       value={{
         ...state,
-        switchColor: (color) => update({ ...state, color }),
-        switchFont: (font) => update({ ...state, font }),
+        switchColor: (color) => update({ color }),
+        switchFont: (font) => update({ font }),
         setCustomColor,
         setCustomTheme,
       }}
@@ -122,14 +142,12 @@ export function ThemeProvider({ children }: { readonly children: ReactNode }) {
 function readPrefs(): ThemePrefs {
   try {
     const value = localStorage.getItem(storageKey);
-    if (value != null) {
-      const data = JSON.parse(value) as Record<string, unknown>;
-      return {
-        color: migrateColor(data.color),
-        font: fontTheme(data.font),
-        custom: customTheme(data.custom),
-      };
-    }
+    const data = value != null ? (JSON.parse(value) as Record<string, unknown>) : {};
+    return {
+      color: migrateColor(data.color),
+      font: fontTheme(localStorage.getItem(fontStorageKey) ?? data.font),
+      custom: customTheme(data.custom),
+    };
   } catch {
     // localStorage can be unavailable in locked-down browser contexts.
   }
@@ -157,11 +175,24 @@ function migrateColor(value: unknown): ThemeColor {
   }
 }
 
-function storePrefs(prefs: ThemePrefs): void {
+function storePatch(patch: Partial<ThemePrefs>, prefs: ThemePrefs): void {
   try {
-    localStorage.setItem(storageKey, JSON.stringify(prefs));
+    if (patch.color !== undefined || patch.custom !== undefined) {
+      const value = localStorage.getItem(storageKey);
+      const stored = value != null ? (JSON.parse(value) as Record<string, unknown>) : {};
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          color: patch.color ?? stored.color ?? prefs.color,
+          custom: patch.custom ?? customTheme(stored.custom),
+        }),
+      );
+    }
+    if (patch.font !== undefined) {
+      localStorage.setItem(fontStorageKey, patch.font);
+    }
   } catch {
-    // Theme persistence is optional; the active theme still works in-memory.
+    // Appearance persistence is optional; the active values still work in-memory.
   }
 }
 
