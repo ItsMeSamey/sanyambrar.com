@@ -142,7 +142,23 @@
 
   const icon = (name) => name === "home"
     ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z"/></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
+    : name === "back"
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h11"/></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
+
+  const navTarget = () => {
+    const root = document.documentElement;
+    if (root.dataset.siteKind === "wordle") {
+      const url = new URL(location.href);
+      if ((url.searchParams.get("p") || "0") !== "0") {
+        url.searchParams.set("p", "0");
+        url.searchParams.delete("v");
+        return { href: url.href, icon: "back", label: "Back to Wordle" };
+      }
+    }
+    if (root.dataset.backHref) return { href: root.dataset.backHref, icon: "back", label: "Back" };
+    return root.dataset.homeHref ? { href: root.dataset.homeHref, icon: "home", label: "Home" } : null;
+  };
 
   const setPrefs = (patch) => {
     if (Object.hasOwn(patch, "font")) {
@@ -163,8 +179,8 @@
     const host = document.createElement("div");
     host.id = "samey-site-controls";
     host.className = "samey-site-controls";
-    const home = document.documentElement.dataset.homeHref;
-    if (home) host.insertAdjacentHTML("beforeend", `<a class="samey-icon" href="${home}" aria-label="Home" title="Home">${icon("home")}</a>`);
+    const nav = navTarget();
+    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}">${icon(nav.icon)}</a>`);
 
     // Keybr owns the preference state, but its practice toolbar should stay
     // uncluttered. Other pages expose the shared appearance control.
@@ -197,8 +213,39 @@
     apply();
   };
 
+  const refreshNav = () => {
+    const target = navTarget();
+    const el = document.querySelector("#samey-site-controls .samey-nav");
+    if (!el || !target) return;
+    el.href = target.href;
+    el.setAttribute("aria-label", target.label);
+    el.title = target.label;
+    el.innerHTML = icon(target.icon);
+  };
+
+  const pushState = history.pushState.bind(history);
+  const replaceState = history.replaceState.bind(history);
+  history.pushState = (...args) => { pushState(...args); dispatchEvent(new Event("samey-locationchange")); };
+  history.replaceState = (...args) => { replaceState(...args); dispatchEvent(new Event("samey-locationchange")); };
+  addEventListener("popstate", () => queueMicrotask(refreshNav));
+  addEventListener("samey-locationchange", () => queueMicrotask(refreshNav));
+
+  const mountCursor = () => {
+    if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
+    const cursor = document.createElement("div");
+    cursor.id = "samey-cursor";
+    cursor.className = "samey-cursor";
+    document.documentElement.classList.add("samey-custom-cursor");
+    document.body.append(cursor);
+    addEventListener("pointermove", (event) => {
+      cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
+      cursor.dataset.visible = "";
+    }, { passive: true });
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget) delete cursor.dataset.visible; });
+  };
+
   const css = document.createElement("style");
-  css.textContent = `.samey-site-controls{position:fixed;top:10px;right:12px;z-index:10000;display:flex;gap:2px;align-items:center}.samey-icon{appearance:none;border:0;background:transparent;color:var(--site-fg,#121213);width:36px;height:36px;padding:8px;display:grid;place-items:center;cursor:pointer;border-radius:3px}.samey-icon:hover,.samey-icon:focus-visible{background:var(--site-soft,#eee);outline:none}.samey-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.samey-theme-panel{position:absolute;right:0;top:42px;min-width:166px;padding:5px;background:var(--site-bg,#fff);color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 .5rem 2rem #0002}.samey-theme-panel[hidden]{display:none}.samey-panel-title{padding:7px 9px 4px;color:var(--site-muted,#777);font:10px/1.2 var(--site-font,system-ui);text-transform:uppercase;letter-spacing:.08em}.samey-panel-title:not(:first-child){border-top:1px solid var(--site-line,#ddd);margin-top:4px;padding-top:10px}.samey-theme-panel button{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:7px 9px;font:12px/1.3 var(--site-font,system-ui);display:flex;justify-content:space-between;cursor:pointer}.samey-theme-panel button:hover,.samey-theme-panel button[data-selected],.samey-theme-panel button[data-font-choice][data-selected]{background:var(--site-soft,#eee)}.samey-theme-panel button[data-selected]::after{content:'•'}@media(max-width:520px){.samey-site-controls{top:8px;right:8px}}`;
+  css.textContent = `.samey-site-controls{position:fixed;top:10px;right:12px;z-index:10000;display:flex;gap:2px;align-items:center}.samey-icon{appearance:none;border:0;background:transparent;color:var(--site-fg,#121213);width:36px;height:36px;padding:8px;display:grid;place-items:center;cursor:pointer;border-radius:3px}.samey-icon:hover,.samey-icon:focus-visible{background:var(--site-soft,#eee);outline:none}.samey-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.samey-theme-panel{position:absolute;right:0;top:42px;min-width:166px;padding:5px;background:var(--site-bg,#fff);color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 .5rem 2rem #0002}.samey-theme-panel[hidden]{display:none}.samey-panel-title{padding:7px 9px 4px;color:var(--site-muted,#777);font:10px/1.2 var(--site-font,system-ui);text-transform:uppercase;letter-spacing:.08em}.samey-panel-title:not(:first-child){border-top:1px solid var(--site-line,#ddd);margin-top:4px;padding-top:10px}.samey-theme-panel button{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:7px 9px;font:12px/1.3 var(--site-font,system-ui);display:flex;justify-content:space-between;cursor:pointer}.samey-theme-panel button:hover,.samey-theme-panel button[data-selected],.samey-theme-panel button[data-font-choice][data-selected]{background:var(--site-soft,#eee)}.samey-theme-panel button[data-selected]::after{content:'•'}@media(max-width:520px){.samey-site-controls{top:8px;right:8px}}.samey-cursor{position:fixed;left:0;top:0;width:18px;height:18px;border-radius:50%;pointer-events:none;z-index:2147483647;opacity:0;backdrop-filter:saturate(0%) brightness(1.25) invert(100%) contrast(1.75);will-change:transform;transition:opacity .08s}.samey-cursor[data-visible]{opacity:1}@media(pointer:fine){html.samey-custom-cursor,html.samey-custom-cursor *{cursor:none!important}}html[data-site-kind=wordle] .samey-site-controls{left:12px;right:auto}html[data-site-kind=wordle] .samey-theme-panel{left:0;right:auto}@media(max-width:520px){html[data-site-kind=wordle] .samey-site-controls{left:8px;right:auto}}`;
   document.head.append(css);
 
   addEventListener("storage", (event) => { if (event.key === KEY) apply(); });
@@ -210,5 +257,7 @@
   apply();
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountControls, { once: true });
   else mountControls();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountCursor, { once: true });
+  else mountCursor();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
 })();
