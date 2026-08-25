@@ -59,9 +59,9 @@
   top: 0;
   right: 0;
   z-index: 1;
-  background: color-mix(in srgb, var(--color-warning, #fef3c7) 55%, var(--color-background, var(--site-bg, #fff)));
+  background: transparent;
 }
-.game-settings-close:hover { background: var(--color-warning, #fef3c7); }
+.game-settings-close:hover { background: var(--color-muted, var(--site-soft, #f3f4f5)); }
 .game-settings-close svg { stroke: var(--color-error-foreground, var(--site-error, #ef4444)); fill: none; stroke-width: 2; }
 .game-settings-body { display: grid; gap: 18px; padding: 48px 16px 16px; }
 .game-settings-section-title {
@@ -138,13 +138,14 @@
   border: 0;
   border-radius: 4px;
   font-weight: 600;
-  background: var(--color-warning, #fef3c7);
-  color: var(--color-warning-foreground, #c2410c);
+  border: 1px solid var(--color-border, var(--site-line, #d3d6da));
+  background: var(--color-secondary, var(--site-soft, #f3f4f5));
+  color: var(--color-foreground, var(--site-fg, #121213));
   transition: background-color 120ms ease, color 120ms ease;
 }
 .game-settings-action:hover {
-  background: var(--color-warning-foreground, #c2410c);
-  color: var(--color-warning, #fef3c7);
+  background: var(--color-muted, color-mix(in srgb, var(--site-soft, #f3f4f5) 78%, var(--site-fg, #121213)));
+  color: var(--color-foreground, var(--site-fg, #121213));
 }
 
 @media (max-width: 640px) {

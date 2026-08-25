@@ -314,10 +314,14 @@ async function auditSource() {
   must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
   must(home.includes("Chain Reaction") && home.includes("canvas renderer"), "Chain Reaction homepage card missing");
   const chain = await readFile(join(STATIC, "chain.html"), "utf8");
-  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies", "chain-new-game", "game-settings-slider", "orbSprite(owner, radius)", "imageSmoothingQuality = 'high'", "const win = winner();"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
+  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies", "chain-new-game", "game-settings-slider", "orbSprite(owner, radius)", "imageSmoothingQuality = 'high'", "liveWinner(owner, next)", "chain-turn"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
   for (const removed of ['>Chain Reaction</div>', '>Your turn</div>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
-  must(chain.indexOf("const win = winner();") > chain.indexOf("while (head < queue.length && !gameOver)"), "Chain Reaction winner check must happen after cascade settlement");
+  must(chain.includes("const winNow = liveWinner(owner, next);"), "Chain Reaction must resolve elimination during cascades");
+  must(!chain.includes("strokeRect(ox + 1"), "Chain Reaction turn outline flicker returned");
+  must(chain.includes("availableW") && chain.includes("availableH"), "Chain Reaction canvas must be constrained to stage bounds");
   must(!chain.includes("transition-all") && !chain.includes("new Atom("), "Chain Reaction regressed to per-atom DOM transitions");
+  must(chain.includes("let pending = new Uint32Array(board.length)") && chain.includes("const bursts = Math.floor(total / d)"), "Chain Reaction cascades must stay count-bounded");
+  must(!chain.includes("if (!sole) return pendingOwner"), "Chain Reaction broken multi-owner winner logic returned");
   const sharedSettingsCss = await readFile(join(STATIC, "shared/game-settings.css"), "utf8");
   for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
 

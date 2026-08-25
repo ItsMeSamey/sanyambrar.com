@@ -16,21 +16,28 @@
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
     button,input{font:inherit;color:inherit}
     .chain-shell{position:relative;height:100dvh;background:var(--site-bg,#fff)}
-    .chain-stage{position:absolute;inset:0;min-width:0;min-height:0;display:grid;place-items:center;padding:58px 18px 18px;overflow:hidden;touch-action:none;user-select:none}
+    .chain-stage{position:absolute;inset:0;min-width:0;min-height:0;display:grid;place-items:center;padding:62px 22px 22px;overflow:hidden;touch-action:none;user-select:none}
     #chain-canvas{display:block;max-width:100%;max-height:100%;touch-action:none}
+    .chain-turn{position:fixed;top:var(--game-control-top);left:50%;z-index:38;height:var(--game-control-size);display:flex;align-items:center;gap:12px;padding:0 10px;border:1px solid var(--site-line,#d3d6da);border-radius:6px;background:var(--site-bg,#fff);color:var(--site-muted,#787c7e);font-size:11px;font-weight:700;letter-spacing:.06em;transform:translateX(-50%);pointer-events:none;box-shadow:0 1px 2px #00000010}
+    .chain-turn-item{display:flex;align-items:center;gap:6px;white-space:nowrap}
+    .chain-turn-dot{width:12px;height:12px;border:2px solid var(--site-bg,#fff);border-radius:50%;box-shadow:0 0 0 1px var(--site-line,#d3d6da)}
     .chain-settings-trigger{position:fixed;top:var(--game-control-top);right:var(--game-control-right);z-index:39}
-    .chain-settings-trigger svg{fill:currentColor}
+    .chain-settings-trigger svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
     .chain-settings{opacity:0;transform:translateY(-3px) scale(.99);transform-origin:top right;pointer-events:none;transition:opacity 90ms ease,transform 90ms ease}
     .chain-settings[data-open="true"]{opacity:1;transform:none;pointer-events:auto}
     .chain-settings .game-settings-close svg{stroke:var(--site-error,#ef4444)}
     .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-    @media(max-width:640px){.chain-stage{padding:54px 8px 8px}}
+    @media(max-width:640px){.chain-stage{padding:58px 12px 12px}}
   </style>
 </head>
 <body>
   <div class="chain-shell">
+    <div id="chain-turn" class="chain-turn" aria-hidden="true">
+      <span class="chain-turn-item"><span>YOU</span><span id="chain-you-dot" class="chain-turn-dot"></span></span>
+      <span class="chain-turn-item"><span>TURN</span><span id="chain-active-dot" class="chain-turn-dot"></span></span>
+    </div>
     <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15ZM12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
     </button>
     <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
       <button id="chain-settings-close" type="button" class="game-settings-close" aria-label="Close settings">
@@ -67,6 +74,9 @@
   const canvas = document.getElementById('chain-canvas');
   const stage = document.getElementById('chain-stage');
   const statusEl = document.getElementById('chain-status');
+  const turnEl = document.getElementById('chain-turn');
+  const youDot = document.getElementById('chain-you-dot');
+  const activeDot = document.getElementById('chain-active-dot');
   const settingsButton = document.getElementById('chain-settings-button');
   const settingsPanel = document.getElementById('chain-settings');
   const settingsClose = document.getElementById('chain-settings-close');
@@ -81,7 +91,7 @@
 
   const EMPTY = 0;
   const HUMAN = 1;
-  const PLAYER_COLORS = ['','#3b82f6','#ef4444','#22c55e','#a855f7','#f59e0b','#06b6d4'];
+  const PLAYER_COLORS = ['', '#6aaa64', '#c95d63', '#6b8fd6', '#b07aa1', '#d2a94b', '#62a8a8'];
   const defaults = { rows: 9, cols: 6, enemies: 1 };
   let config = loadConfig();
   let rows = config.rows;
@@ -142,15 +152,18 @@
 
   function layout() {
     const rect = stage.getBoundingClientRect();
+    const stageStyle = getComputedStyle(stage);
+    const availableW = Math.max(1, rect.width - parseFloat(stageStyle.paddingLeft) - parseFloat(stageStyle.paddingRight));
+    const availableH = Math.max(1, rect.height - parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom));
     dpr = Math.min(window.devicePixelRatio || 1, 3);
     const gap = 2;
-    cell = Math.max(18, Math.floor(Math.min((rect.width - 24) / cols, (rect.height - 24) / rows)));
-    cssW = cols * cell + gap;
-    cssH = rows * cell + gap;
+    cell = Math.max(1, Math.floor(Math.min((availableW - gap) / cols, (availableH - gap) / rows)));
+    cssW = Math.min(availableW, cols * cell + gap);
+    cssH = Math.min(availableH, rows * cell + gap);
     canvas.style.width = cssW + 'px';
     canvas.style.height = cssH + 'px';
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
+    canvas.width = Math.max(1, Math.round(cssW * dpr));
+    canvas.height = Math.max(1, Math.round(cssH * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -221,8 +234,9 @@
   function draw(now) {
     frame = 0;
     const bg = color('--site-bg', '#fff');
+    const boardBg = color('--site-soft', '#f3f4f5');
     const line = color('--site-line', '#d3d6da');
-    ctx.fillStyle = bg;
+    ctx.fillStyle = boardBg;
     ctx.fillRect(0, 0, cssW, cssH);
     ctx.lineWidth = 1;
     ctx.strokeStyle = line;
@@ -252,27 +266,48 @@
       if (alive) requestDraw(); else particles = [];
     }
 
-    if (!gameOver && turn > EMPTY) {
-      ctx.strokeStyle = playerColor(turn);
-      ctx.lineWidth = 2;
-      ctx.strokeRect(ox + 1, oy + 1, cols * cell - 2, rows * cell - 2);
-    }
   }
 
   function requestDraw() { if (!frame) frame = requestAnimationFrame(draw); }
 
-  function winner() {
-    for (let player = 1; player <= playerCount; player++) if (!entered[player]) return EMPTY;
+  function allPlayersEntered() {
+    for (let player = 1; player <= playerCount; player++) if (!entered[player]) return false;
+    return true;
+  }
+
+  function liveWinner(pendingOwner = EMPTY, pending = null) {
+    if (!allPlayersEntered()) return EMPTY;
+    const live = new Uint8Array(playerCount + 1);
+    for (let i = 0; i < board.length; i++) if (board[i]) live[owners[i]] = 1;
+    if (pending && pendingOwner) {
+      for (let i = 0; i < pending.length; i++) {
+        if (pending[i]) { live[pendingOwner] = 1; break; }
+      }
+    }
     let sole = EMPTY;
-    for (let i = 0; i < board.length; i++) if (board[i]) {
-      const owner = owners[i];
-      if (!sole) sole = owner;
-      else if (sole !== owner) return EMPTY;
+    for (let player = 1; player <= playerCount; player++) {
+      if (!entered[player] || !live[player]) continue;
+      if (sole) return EMPTY;
+      sole = player;
     }
     return sole;
   }
 
+  function finishGame(win) {
+    gameOver = true;
+    turn = win;
+    locked = false;
+    particles = [];
+    updateStatus();
+    requestDraw();
+  }
+
   function updateStatus() {
+    youDot.style.backgroundColor = playerColor(HUMAN);
+    activeDot.style.backgroundColor = playerColor(turn || HUMAN);
+    turnEl.setAttribute('aria-label', gameOver
+      ? (turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`)
+      : (turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`));
     if (gameOver) statusEl.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
     else statusEl.textContent = turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`;
   }
@@ -283,43 +318,65 @@
     const version = gameVersion;
     locked = true;
     entered[owner] = 1;
-    const queue = [start];
-    let head = 0;
-    while (head < queue.length && !gameOver) {
-      const waveEnd = queue.length;
+
+    // Aggregate pending atoms per cell. A cascade wave is therefore O(board size)
+    // instead of O(number of atoms), so edge/corner explosions cannot grow an
+    // unbounded JS queue during large reactions.
+    let pending = new Uint32Array(board.length);
+    pending[start] = 1;
+
+    while (!gameOver) {
+      const next = new Uint32Array(board.length);
       const transfers = [];
-      while (head < waveEnd) {
-        const i = queue[head++];
-        applyAtom(i, owner);
-        if (board[i] < degree[i]) continue;
-        board[i] -= degree[i];
-        if (board[i] === 0) owners[i] = EMPTY;
-        const [x0,y0] = center(i);
+      let anyPending = false;
+
+      for (let i = 0; i < pending.length; i++) {
+        const incoming = pending[i];
+        if (!incoming) continue;
+        anyPending = true;
+
+        const total = board[i] + incoming;
+        const d = degree[i];
+        const bursts = Math.floor(total / d);
+        const remainder = total - bursts * d;
+        board[i] = remainder;
+        owners[i] = remainder ? owner : EMPTY;
+
+        if (!bursts) continue;
+        const [x0, y0] = center(i);
         for (const n of neighbors[i]) {
-          const [x1,y1] = center(n);
+          next[n] += bursts;
+          // One visual orb per direction is enough to communicate the wave.
+          // The simulation itself still propagates every atom via the count.
+          const [x1, y1] = center(n);
           transfers.push({x0,y0,x1,y1,owner,start:performance.now(),duration:105});
-          queue.push(n);
         }
       }
+
+      if (!anyPending) break;
       requestDraw();
+
+      // Pending transfers are live ownership for the mover. This prevents the
+      // mover's last exploding cell from looking eliminated mid-transition, but
+      // unlike the old code it does not confuse a multi-owner board with a win.
+      const winNow = liveWinner(owner, next);
+      if (winNow) { finishGame(winNow); return; }
+
+      let hasNext = false;
+      for (let i = 0; i < next.length; i++) if (next[i]) { hasNext = true; break; }
+      if (!hasNext) break;
+
       if (transfers.length) {
         particles = transfers;
         await new Promise(resolve => setTimeout(resolve, 82));
         if (version !== gameVersion) return;
       }
+      pending = next;
     }
+
     particles = [];
-    // Never evaluate elimination while an explosion wave is in flight. A player's
-    // last occupied cell is intentionally empty between emission and settlement.
-    const win = winner();
-    if (win) {
-      gameOver = true;
-      turn = win;
-      locked = false;
-      updateStatus();
-      requestDraw();
-      return;
-    }
+    const win = liveWinner();
+    if (win) { finishGame(win); return; }
     locked = false;
     turn = nextPlayer(owner);
     updateStatus();
@@ -442,9 +499,9 @@
   buildBoard();
   updateStatus();
   new ResizeObserver(layout).observe(stage);
-  window.addEventListener('sameyappearancechange', () => { orbCache.clear(); requestDraw(); });
-  new MutationObserver(() => { orbCache.clear(); requestDraw(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { orbCache.clear(); requestDraw(); });
+  window.addEventListener('sameyappearancechange', () => { orbCache.clear(); updateStatus(); requestDraw(); });
+  new MutationObserver(() => { orbCache.clear(); updateStatus(); requestDraw(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { orbCache.clear(); updateStatus(); requestDraw(); });
   layout();
 })();
 </script>
