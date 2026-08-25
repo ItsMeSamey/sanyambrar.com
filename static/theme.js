@@ -323,7 +323,7 @@
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M32 18a14 14 0 1 1 0 28 14 14 0 1 1 0-28Zm-3-2h6v7h-6v-7Zm0 25h6v7h-6v-7ZM16 29h7v6h-7v-6Zm25 0h7v6h-7v-6Z"/></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8;8;14;14;8;8" keyTimes="0;0.699;0.7;0.72;0.82;1" dur="1.5s" repeatCount="indefinite" calcMode="linear" begin="indefinite"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
     const wantsGrab = (target) => {
@@ -335,6 +335,14 @@
     const linkTarget = (target) => target instanceof Element ? target.closest("a[href],area[href],[role=link]") : null;
     const wantsLink = (target) => !!linkTarget(target);
     const linkCorner = cursor.querySelector(".samey-cursor-link-corner");
+    const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
+    const setGrabState = (grab) => {
+      const wasGrab = cursor.hasAttribute("data-grab");
+      cursor.toggleAttribute("data-grab", grab);
+      if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") {
+        grabPulse.beginElement();
+      }
+    };
     const animateLinkClick = () => {
       if (!(linkCorner instanceof SVGElement) || typeof linkCorner.animate !== "function") return;
       linkCorner.getAnimations().forEach((animation) => animation.cancel());
@@ -355,7 +363,7 @@
     };
     const setMode = (target) => {
       const grab = dragging || wantsGrab(target);
-      cursor.toggleAttribute("data-grab", grab);
+      setGrabState(grab);
       cursor.toggleAttribute("data-link", !grab && wantsLink(target));
     };
     const move = (event) => {
@@ -369,10 +377,10 @@
     document.addEventListener("click", (event) => {
       if (event.button === 0 && linkTarget(event.target)) animateLinkClick();
     }, true);
-    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.removeAttribute("data-link"); cursor.setAttribute("data-grab", ""); }, true);
-    document.addEventListener("dragenter", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
-    document.addEventListener("dragover", (event) => { dragging = true; place(event); cursor.setAttribute("data-grab", ""); }, true);
-    const stopDragging = () => { dragging = false; cursor.removeAttribute("data-grab"); cursor.removeAttribute("data-link"); };
+    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
+    document.addEventListener("dragenter", (event) => { dragging = true; place(event); setGrabState(true); }, true);
+    document.addEventListener("dragover", (event) => { dragging = true; place(event); setGrabState(true); }, true);
+    const stopDragging = () => { dragging = false; setGrabState(false); cursor.removeAttribute("data-link"); };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);

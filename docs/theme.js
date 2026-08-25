@@ -251,7 +251,7 @@
     host.className = "samey-site-controls";
     host.dataset.sameyRuntime = "";
     const nav = navTarget();
-    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}">${icon(nav.icon)}</a>`);
+    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}" data-copy-label="${nav.label}">${icon(nav.icon)}</a>`);
 
     host.insertAdjacentHTML("beforeend", `<button class="samey-icon" type="button" aria-label="Appearance" title="Appearance" aria-expanded="false">${icon("appearance")}</button>`);
     const panel = document.createElement("div");
@@ -286,6 +286,7 @@
     if (!el || !target) return;
     el.href = target.href;
     el.setAttribute("aria-label", target.label);
+    el.dataset.copyLabel = target.label;
     el.title = target.label;
     el.innerHTML = icon(target.icon);
   };
@@ -299,12 +300,30 @@
 
   const runtimeNode = (el) => { el.dataset.sameyRuntime = ""; return el; };
 
+  const normalizeExternalLinks = (root = document) => {
+    for (const link of root.querySelectorAll?.('a[href]') || []) {
+      let url;
+      try { url = new URL(link.href, location.href); } catch { continue; }
+      if (url.hostname === "github.com" || url.hostname.endsWith(".github.com")) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+    }
+  };
+  const observeExternalLinks = () => new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (!(node instanceof Element)) continue;
+      if (node.matches?.("a[href]")) normalizeExternalLinks(node.parentElement || document);
+      else normalizeExternalLinks(node);
+    }
+  }).observe(document.documentElement, { subtree: true, childList: true });
+
   const mountCursor = () => {
     if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" aria-hidden="true"><mask id="samey-grab-mask"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="7" fill="black"/><rect x="29" y="41" width="6" height="7" fill="black"/><rect x="16" y="29" width="7" height="6" fill="black"/><rect x="41" y="29" width="7" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="14" fill="white"/><rect x="29" y="16" width="6" height="32" fill="black"/><rect x="16" y="29" width="32" height="6" fill="black"/></mask><circle cx="32" cy="32" r="14" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8;8;14;14;8;8" keyTimes="0;0.699;0.7;0.72;0.82;1" dur="1.5s" repeatCount="indefinite" calcMode="linear" begin="indefinite"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(18 18) scale(.3333333333)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
     const wantsGrab = (target) => {
@@ -313,18 +332,60 @@
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
-    const move = (event) => {
+    const linkTarget = (target) => target instanceof Element ? target.closest("a[href],area[href],[role=link]") : null;
+    const wantsLink = (target) => !!linkTarget(target);
+    const linkCorner = cursor.querySelector(".samey-cursor-link-corner");
+    const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
+    const setGrabState = (grab) => {
+      const wasGrab = cursor.hasAttribute("data-grab");
+      cursor.toggleAttribute("data-grab", grab);
+      if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") {
+        grabPulse.beginElement();
+      }
+    };
+    const animateLinkClick = () => {
+      if (!(linkCorner instanceof SVGElement) || typeof linkCorner.animate !== "function") return;
+      linkCorner.getAnimations().forEach((animation) => animation.cancel());
+      linkCorner.animate([
+        { transform: "translate(10px,-10px)", offset: 0 },
+        { transform: "translate(10px,-10px)", offset: .699 },
+        { transform: "translate(0,0)", offset: .7 },
+        { transform: "translate(0,0)", offset: .72 },
+        { transform: "translate(10px,-10px)", offset: .82 },
+        { transform: "translate(10px,-10px)", offset: 1 },
+      ], { duration: 1500, easing: "linear", iterations: 1 });
+    };
+    let dragging = false;
+    const place = (event) => {
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
       cursor.style.transform = `translate3d(${event.clientX}px,${event.clientY}px,0) translate(-50%,-50%)`;
       cursor.dataset.visible = "";
-      cursor.toggleAttribute("data-grab", wantsGrab(event.target));
+    };
+    const setMode = (target) => {
+      const grab = dragging || wantsGrab(target);
+      setGrabState(grab);
+      cursor.toggleAttribute("data-link", !grab && wantsLink(target));
+    };
+    const move = (event) => {
+      place(event);
+      setMode(event.target);
     };
     document.addEventListener("pointermove", move, { capture: true, passive: true });
     document.addEventListener("pointerrawupdate", move, { capture: true, passive: true });
     document.addEventListener("mousemove", move, { capture: true, passive: true });
-    document.addEventListener("pointerdown", (event) => { cursor.toggleAttribute("data-grab", wantsGrab(event.target)); }, true);
-    addEventListener("pointercancel", () => cursor.removeAttribute("data-grab"), true);
-    addEventListener("blur", () => cursor.removeAttribute("data-grab"));
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget) delete cursor.dataset.visible; });
+    document.addEventListener("pointerdown", (event) => { setMode(event.target); }, true);
+    document.addEventListener("click", (event) => {
+      if (event.button === 0 && linkTarget(event.target)) animateLinkClick();
+    }, true);
+    document.addEventListener("dragstart", (event) => { dragging = true; place(event); cursor.removeAttribute("data-link"); setGrabState(true); }, true);
+    document.addEventListener("dragenter", (event) => { dragging = true; place(event); setGrabState(true); }, true);
+    document.addEventListener("dragover", (event) => { dragging = true; place(event); setGrabState(true); }, true);
+    const stopDragging = () => { dragging = false; setGrabState(false); cursor.removeAttribute("data-link"); };
+    document.addEventListener("dragend", stopDragging, true);
+    document.addEventListener("drop", stopDragging, true);
+    addEventListener("pointercancel", stopDragging, true);
+    addEventListener("blur", stopDragging);
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !dragging) delete cursor.dataset.visible; });
   };
 
   const editableTarget = (el) => {
@@ -349,24 +410,28 @@
       el.focus(); document.execCommand("insertText", false, text);
     }
   };
-  const captureScreenshot = async () => {
-    const stream = await navigator.mediaDevices?.getDisplayMedia?.({ video: { displaySurface: "browser" }, audio: false });
-    if (!stream) return;
+  const linkCopyText = (link) => {
+    if (!(link instanceof HTMLAnchorElement)) return "";
+    const explicit = link.dataset.copyLabel?.trim();
+    if (explicit) return explicit;
+    const labelled = link.getAttribute("aria-label")?.trim() || link.title?.trim();
+    if (labelled) return labelled.replace(/^(Open|Go to|Visit)\s+/i, "").replace(/\s+(source repository)$/i, " source");
+    const named = link.querySelector(".project-name,.oss-name,.blog-name,.brand")?.textContent?.trim();
+    if (named) return named;
     try {
-      const video = document.createElement("video");
-      video.srcObject = stream; video.muted = true; await video.play();
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-      if (blob) {
-        const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-        a.download = `samey-${new Date().toISOString().replace(/[:.]/g, "-")}.png`; a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      }
-    } finally { stream.getTracks().forEach(track => track.stop()); }
+      const url = new URL(link.href, location.href);
+      const part = decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || url.hostname.replace(/^www\./, ""));
+      return part.replace(/\.html?$/i, "").replace(/[-_]+/g, " ") || url.hostname;
+    } catch { return "Link"; }
   };
+  const stampLinkCopyLabels = (root = document) => {
+    const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+    for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
+  };
+  stampLinkCopyLabels();
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) stampLinkCopyLabels(node);
+  }).observe(document.documentElement, { childList: true, subtree: true });
 
   const mountContextMenu = () => {
     if (document.getElementById("samey-context-menu")) return;
@@ -406,7 +471,7 @@
         if (link) {
           add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
           add("Copy link", () => writeClipboard(link.href));
-          add("Copy Markdown link", () => writeClipboard(`[${link.textContent.trim() || link.href}](${link.href})`));
+          add("Copy Markdown link", () => writeClipboard(`[${linkCopyText(link)}](${link.href})`));
         }
         if (image) {
           add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
@@ -422,7 +487,6 @@
       add("Copy page title", () => writeClipboard(document.title));
       add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
-      if (navigator.mediaDevices?.getDisplayMedia) add("Screenshot…", captureScreenshot);
       menu.hidden = false;
       const rect = menu.getBoundingClientRect();
       menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
@@ -608,7 +672,7 @@
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
