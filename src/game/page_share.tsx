@@ -15,7 +15,6 @@ import { showError } from '../utils/toast';
 import { LocalstorageStore, UrlSearchStore } from '../utils/store';
 import { WordLength } from './words';
 import { WordleModel, WordLocalStorageState } from './page';
-import { IconHome } from '~/components/icons';
 
 export default function SharePage() {
   const valueStore = new UrlSearchStore('v', '')
@@ -70,18 +69,6 @@ export default function SharePage() {
 
   return <div class='mx-auto p-4 h-full w-full min-md:container'>
     <nav class='flex flex-row p-2 w-full absolute items-end top-0 left-0'>
-      <div>
-        <div class='-mt-1 mb-1' />
-        <div
-          class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-          onClick={() => {
-            setP(Page.Wordle)
-            valueStore.set(undefined)
-          }}
-        >
-          <IconHome class='size-5' />
-        </div>
-      </div>
       <div class='w-full' />
       <Settings soft={soft} hard={hard} showActive={false} showWordLength={false} />
     </nav>

@@ -6,7 +6,6 @@ import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { IconHome } from '~/components/icons'
 import { Block, GetSettingsStore } from './page'
 import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
@@ -184,7 +183,6 @@ export default function StatsPage() {
 
   return <main class='stats-page'>
     <header class='stats-page-header'>
-      <button type='button' class='wordle-nav-button' onClick={() => setP(Page.Wordle)} aria-label='Back to Wordle'><IconHome class='size-5' /></button>
       <h1>Statistics</h1>
     </header>
     <Switch>
