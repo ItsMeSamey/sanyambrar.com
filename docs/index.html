@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" data-spa data-home-href="./">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121213" media="(prefers-color-scheme: dark)">
+  <title>Samey</title>
+  <script src="./appearance.generated.js"></script>
+  <script src="./theme.js"></script>
+  <style>
+    :root{color-scheme:light dark;--bg:var(--site-bg,#fff);--fg:var(--site-fg,#121213);--muted:var(--site-muted,#787c7e);--line:var(--site-line,#d3d6da);--soft:var(--site-soft,#f6f7f8);--green:#6aaa64;--yellow:#c9b458;--tile:var(--site-bg,#fff)}
+    html[data-kb-theme=dark]{--green:#538d4e;--yellow:#b59f3b}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
+    body{min-height:100dvh}
+    a{color:inherit;text-decoration:none}
+    button,a{-webkit-tap-highlight-color:transparent}
+    .top{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:0 18px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);z-index:5}
+    .brand{font-size:25px;font-weight:800;letter-spacing:.01em}
+    main{width:min(1080px,100%);margin:0 auto;padding:0 24px 80px}
+    section+section{margin-top:40px}
+    h1{font-size:12px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+    .intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:28px;align-items:center;padding:34px 0 30px;border-bottom:1px solid var(--line)}
+    .intro-name{max-width:720px;font-size:clamp(24px,4vw,38px);font-weight:760;letter-spacing:-.035em;line-height:1.05}
+    .intro-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px;color:var(--muted);font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .intro-meta span{border:1px solid var(--line);padding:5px 7px;border-radius:4px;background:var(--soft)}
+    .intro-links{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .intro-links a{border-bottom:1px solid var(--line);padding:7px 1px;color:var(--muted);font:13px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .intro-links a:hover{color:var(--fg);border-color:var(--fg)}
+    .project-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .project{border:1px solid var(--line);border-radius:8px;padding:15px;min-height:144px;background:var(--tile);display:flex;flex-direction:column;transition:border-color .12s ease,transform .12s ease,background .12s ease}
+    .project:hover{border-color:var(--muted);background:var(--soft);transform:translateY(-1px)}
+    .project-head{display:flex;align-items:start;justify-content:space-between;gap:8px}
+    .project-name{font-size:16px;font-weight:750;letter-spacing:-.02em}
+    .lang{font:10px/1.25 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--muted);border:1px solid var(--line);padding:3px 5px;border-radius:3px;white-space:nowrap}
+    .project p{margin:14px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+    .project .metric{margin-top:auto;padding-top:14px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:var(--fg)}
+    .oss-list{border-top:1px solid var(--line)}.oss-row{display:grid;grid-template-columns:150px 1fr auto;gap:16px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.oss-row:hover{background:var(--soft)}.oss-name{font-weight:700}.oss-copy{color:var(--muted);line-height:1.4}.oss-arrow{color:var(--muted);font-size:18px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .card{min-height:148px;border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;background:var(--tile);transition:transform .12s ease,border-color .12s ease,background .12s ease}.card-main{display:block;flex:1}.card-copy{margin-top:20px;color:var(--muted);font-size:14px;line-height:1.4}.repo-link{display:inline-flex;align-items:center;gap:5px;margin-top:7px;color:var(--muted);font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-decoration:underline;text-underline-offset:3px}.repo-link:hover{color:var(--fg)}
+    .card:hover{border-color:var(--muted);background:var(--soft)}
+    .card:active{transform:scale(.985)}
+    .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+    .card-title{font-size:20px;font-weight:750;letter-spacing:-.02em}
+    .wordle-mark{display:flex;gap:4px;align-items:center}
+    .wordle-mark .tile{width:30px;height:30px;font-size:16px}
+    .wordle-mark .tile:nth-child(1),.wordle-mark .tile:nth-child(4),.wordle-mark .tile:nth-child(6){background:var(--green)}
+    .wordle-mark .tile:nth-child(2),.wordle-mark .tile:nth-child(5){background:var(--yellow)}
+    .wordle-mark .tile:nth-child(3){background:#787c7e}
+    .keybr-mark{display:flex;align-items:center;font:600 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;letter-spacing:-.04em}
+    .keybr-hit{color:#797979}
+    .keybr-miss{color:#f33}
+    .keybr-miss-bg{color:#fff;background:#f33;padding:0 2px;margin:0 1px}
+    .keybr-cursor{width:2px;height:1.05em;background:#797979;margin-left:2px;animation:blink 1s steps(1,end) infinite}
+    @keyframes blink{50%{opacity:0}}
+    html[data-kb-theme=dark] .keybr-hit{color:#9f9999}html[data-kb-theme=dark] .keybr-miss{color:#9b4545}html[data-kb-theme=dark] .keybr-miss-bg{background:#9b4545;color:#121213}html[data-kb-theme=dark] .keybr-cursor{background:#9f9999}
+    .arrow{font-size:20px;color:var(--muted);line-height:1}
+    .tiles{display:flex;gap:4px}
+    .tile{width:27px;height:27px;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;background:var(--green)}
+    .tile:nth-child(2){background:var(--yellow)}
+    .tile:nth-child(3){background:#787c7e}
+    .keys{display:flex;gap:4px;align-items:flex-end}
+    .key{height:26px;min-width:22px;padding:0 5px;border-radius:3px;background:var(--line);display:grid;place-items:center;font-size:11px;font-weight:700}
+    .empty{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 2px;color:var(--muted);font-size:15px}.post-list-home{border-top:1px solid var(--line)}.blog-row{min-height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 2px;font-size:17px;font-weight:650}.blog-row>span:first-child{display:grid;min-width:0;gap:5px}.blog-row:hover .blog-name{text-decoration:underline;text-underline-offset:3px}.blog-note{display:block;color:var(--muted);font-size:12px;font-weight:450;line-height:1.35}
+    @media(max-width:760px){.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.oss-row{grid-template-columns:130px 1fr auto}}
+    @media(max-width:520px){main{padding:0 14px 56px}.intro{grid-template-columns:1fr;gap:8px}.oss-row{grid-template-columns:1fr auto;gap:5px 12px}.oss-copy{grid-column:1 / -1;grid-row:2}.oss-arrow{grid-column:2;grid-row:1}.intro-links{justify-content:flex-start}.grid,.project-grid{grid-template-columns:1fr}.card{min-height:126px}.top{height:54px}.brand{font-size:23px}}
+    @media(prefers-reduced-motion:reduce){.card{transition:none}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="brand">Samey</div></header>
+  <main>
+    <section class="intro" aria-label="About">
+      <div>
+        <div class="intro-name">Systems / backend / performance</div>
+        <div class="intro-meta"><span>Zig</span><span>C++</span><span>Go</span><span>Java</span></div>
+      </div>
+      <div class="intro-links">
+        <a href="https://github.com/ItsMeSamey">GitHub ↗</a>
+        <a href="https://github.com/SmallThingz">SmallThingz ↗</a>
+      </div>
+    </section>
+    <section aria-labelledby="games-title">
+      <h1 id="games-title">Games</h1>
+      <div class="grid">
+        <div class="card">
+          <a class="card-main" href="./wordle.html" aria-label="Open Wordle">
+            <div class="card-top">
+              <div class="wordle-mark" aria-hidden="true"><span class="tile">W</span><span class="tile">O</span><span class="tile">R</span><span class="tile">D</span><span class="tile">L</span><span class="tile">E</span></div>
+              <span class="arrow" aria-hidden="true">›</span>
+            </div>
+            <div class="card-copy">A Wordle clone.</div>
+          </a>
+          <a class="repo-link" href="https://github.com/ItsMeSamey/wordle" aria-label="Wordle source repository">source ↗</a>
+        </div>
+        <div class="card">
+          <a class="card-main" href="./keybr.html" aria-label="Open Keybr">
+            <div class="card-top">
+              <div class="keybr-mark" aria-hidden="true"><span class="keybr-hit">K</span><span class="keybr-hit">e</span><span class="keybr-miss">y</span><span class="keybr-hit">b</span><span class="keybr-miss-bg">r</span><span class="keybr-cursor"></span></div>
+              <span class="arrow" aria-hidden="true">›</span>
+            </div>
+            <div class="card-copy">A local-first fork of keybr.com.</div>
+          </a>
+          <a class="repo-link" href="https://github.com/ItsMeSamey/keybr.local" aria-label="Keybr local source repository">source ↗</a>
+        </div>
+      </div>
+    </section>
+    <section aria-labelledby="blog-title">
+      <h1 id="blog-title">Blog</h1>
+      <div class="post-list-home"><a class="blog-row" href="./blog/posts/btop-mutex.html"><span><span class="blog-name">btop's broken lock</span><span class="blog-note">the mutex that wasn't</span></span><span class="arrow" aria-hidden="true">›</span></a></div>
+    </section>
+    <section aria-labelledby="projects-title">
+      <h1 id="projects-title">Projects</h1>
+      <div class="project-grid">
+        <a class="project" href="https://github.com/SmallThingz/zhtml">
+          <div class="project-head"><span class="project-name">zhtml</span><span class="lang">Zig</span></div>
+          <p>HTML parser built around throughput, deliberately trading full HTML compliance for speed.</p>
+          <div class="metric">GiB/s+ · up to 7× lexbor</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/zxml">
+          <div class="project-head"><span class="project-name">zxml</span><span class="lang">Zig</span></div>
+          <p>XML parser in Zig focused on fast parsing and explicit memory management.</p>
+          <div class="metric">high-throughput XML parsing</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/reverb">
+          <div class="project-head"><span class="project-name">Reverb</span><span class="lang">Kotlin</span></div>
+          <p>Android background audio recorder that keeps recent audio in memory and saves it on demand.</p>
+          <div class="metric">circular in-memory history</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/java_debug_shell">
+          <div class="project-head"><span class="project-name">java debug shell</span><span class="lang">Java</span></div>
+          <p>Terminal REPL that attaches to a running JVM to inspect state and evaluate expressions.</p>
+          <div class="metric">attach · inspect · evaluate</div>
+        </a>
+        <a class="project" href="https://github.com/SmallThingz/oneserial">
+          <div class="project-head"><span class="project-name">OneSerial</span><span class="lang">Zig</span></div>
+          <p>Nested data structures packed into one contiguous allocation for locality and zero-copy serialization.</p>
+          <div class="metric">single allocation · zero-copy</div>
+        </a>
+        <a class="project" href="https://github.com/ItsMeSamey/cnn_digit_recognition_zig">
+          <div class="project-head"><span class="project-name">CNN</span><span class="lang">Zig</span></div>
+          <p>A convolutional network implemented from scratch with Python weight import/export.</p>
+          <div class="metric">~99% MNIST · 0 runtime allocs</div>
+        </a>
+      </div>
+    </section>
+    <section aria-labelledby="oss-title">
+      <h1 id="oss-title">Open source</h1>
+      <div class="oss-list">
+        <a class="oss-row" href="https://github.com/aristocratos/btop/pull/1649"><span class="oss-name">aristocratos/btop</span><span class="oss-copy">Fixed data races and broken mutex-like locking.</span><span class="oss-arrow">›</span></a>
+        <a class="oss-row" href="https://github.com/karlseguin/http.zig"><span class="oss-name">karlseguin/http.zig</span><span class="oss-copy">Memory leak fixes, faster CORS handling, and newer Zig build support.</span><span class="oss-arrow">›</span></a>
+        <a class="oss-row" href="https://github.com/gofiber/fiber"><span class="oss-name">gofiber/fiber</span><span class="oss-copy">Route parameter binding and request-context lifecycle improvements.</span><span class="oss-arrow">›</span></a>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>

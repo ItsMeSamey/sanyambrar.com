@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
 
@@ -15,6 +15,7 @@ const unbrotliAsync = promisify(brotliDecompress);
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "static");
 const DIST = join(ROOT, "dist");
+const DOCS = join(ROOT, "docs");
 const SOLID_OUT = join(ROOT, ".build", "solid");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
@@ -84,6 +85,32 @@ async function copyStatic() {
   await mkdir(DIST, { recursive: true });
   await cp(STATIC, DIST, { recursive: true, force: true });
 }
+
+async function publishDocs() {
+  await rm(DOCS, { recursive: true, force: true });
+  await cp(DIST, DOCS, { recursive: true, force: true });
+  log("published verified dist/ tree to docs/ for GitHub Pages");
+}
+
+async function verifyPublishedDocs() {
+  const files = await walk(DIST, () => true);
+  for (const source of files) {
+    const rel = relative(DIST, source);
+    const target = join(DOCS, rel);
+    must(existsSync(target), `missing published docs/${rel}`);
+    must((await readFile(target)).equals(await readFile(source)), `published docs drift: ${rel}`);
+  }
+  const docsFiles = await walk(DOCS, () => true);
+  must(docsFiles.length === files.length, `docs/ contains unexpected files (${docsFiles.length} != ${files.length})`);
+  for (const page of await walk(DIST, (_path, name) => name.endsWith(".html"))) {
+    const rel = relative(DIST, page);
+    for (const suffix of [".gz", ".br"]) must(existsSync(join(DOCS, `${rel}${suffix}`)), `missing published docs/${rel}${suffix}`);
+  }
+  must(existsSync(join(DOCS, "index.html")), "GitHub Pages docs/index.html was not published");
+  must(existsSync(join(DOCS, "index.html.gz")) && existsSync(join(DOCS, "index.html.br")), "GitHub Pages docs/index compression sidecars were not published");
+  must(existsSync(join(DOCS, ".nojekyll")), "GitHub Pages docs/.nojekyll marker was not published");
+}
+
 
 async function buildSolid() {
   await ensureDeps(ROOT);
@@ -216,7 +243,9 @@ async function main() {
   if (fullBuild) {
     await generateServiceWorker();
     await verifyDist();
-    log("all verification passed");
+    await publishDocs();
+    await verifyPublishedDocs();
+    log("all verification passed and docs/ is publishable as the GitHub Pages site root");
   }
 }
 
