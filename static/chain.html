@@ -10,6 +10,7 @@
   <script src="./appearance.generated.js"></script>
   <script src="./theme.js"></script>
   <link rel="stylesheet" href="./site.css">
+  <link rel="stylesheet" href="./shared/game-settings.css">
   <style>
     *{box-sizing:border-box}
     html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
@@ -17,33 +18,42 @@
     .chain-shell{position:relative;height:100dvh;background:var(--site-bg,#fff)}
     .chain-stage{position:absolute;inset:0;min-width:0;min-height:0;display:grid;place-items:center;padding:58px 18px 18px;overflow:hidden;touch-action:none;user-select:none}
     #chain-canvas{display:block;max-width:100%;max-height:100%;touch-action:none}
-    .chain-settings-button{position:fixed;top:12px;right:12px;z-index:12;width:34px;height:34px;padding:0;border:0;border-radius:50%;display:grid;place-items:center;background:transparent;color:var(--site-fg,#121213);cursor:pointer}
-    .chain-settings-button:hover{background:var(--site-soft,#f3f4f5)}
-    .chain-settings-button svg{width:20px;height:20px;display:block;fill:currentColor}
-    .chain-settings-button .close-icon{display:none}
-    .chain-settings-button[aria-expanded="true"] .settings-icon{display:none}
-    .chain-settings-button[aria-expanded="true"] .close-icon{display:block}
-    .chain-settings{position:fixed;top:8px;right:8px;z-index:11;width:min(330px,calc(100vw - 16px));padding:52px 18px 18px;border:1px solid var(--site-line,#d3d6da);border-radius:12px;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);box-shadow:0 14px 42px rgba(0,0,0,.16);backdrop-filter:blur(14px);opacity:0;transform:translateY(-4px) scale(.985);transform-origin:top right;pointer-events:none;transition:opacity 90ms ease,transform 90ms ease}
+    .chain-settings-trigger{position:fixed;top:var(--game-control-top);right:var(--game-control-right);z-index:39}
+    .chain-settings-trigger svg{fill:currentColor}
+    .chain-settings{opacity:0;transform:translateY(-3px) scale(.99);transform-origin:top right;pointer-events:none;transition:opacity 90ms ease,transform 90ms ease}
     .chain-settings[data-open="true"]{opacity:1;transform:none;pointer-events:auto}
-    .chain-setting{display:grid;grid-template-columns:84px minmax(0,1fr) 34px;align-items:center;gap:10px;min-height:42px}
-    .chain-setting+ .chain-setting{border-top:1px solid var(--site-line,#d3d6da)}
-    .chain-setting label{font-size:12px;font-weight:700}
-    .chain-setting output{font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-align:right;color:var(--site-muted,#787c7e)}
-    .chain-setting input[type="range"]{width:100%;margin:0;accent-color:currentColor}
+    .chain-settings .game-settings-close svg{stroke:var(--site-error,#ef4444)}
     .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-    @media(max-width:640px){.chain-stage{padding:54px 8px 8px}.chain-settings-button{top:10px;right:10px}.chain-settings{top:6px;right:6px;width:min(320px,calc(100vw - 12px))}}
+    @media(max-width:640px){.chain-stage{padding:54px 8px 8px}}
   </style>
 </head>
 <body>
   <div class="chain-shell">
-    <button id="chain-settings-button" class="chain-settings-button" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings">
-      <svg class="settings-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.1 7.1 0 0 0-1.62-.94L14.4 2.81A.48.48 0 0 0 13.92 2h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.58.24-1.12.55-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.72 8.47a.49.49 0 0 0 .12.61l2.03 1.58c-.05.31-.08.65-.08.96 0 .31.03.63.08.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.38.31.59.22l2.39-.96c.5.39 1.04.71 1.62.94l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.58-.24 1.12-.55 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.02-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/></svg>
-      <svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z"/></svg>
+    <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15ZM12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
     </button>
-    <aside id="chain-settings" class="chain-settings" aria-hidden="true">
-      <div class="chain-setting"><label for="chain-rows">Rows</label><input id="chain-rows" type="range" min="4" max="14" step="1"><output id="chain-rows-value"></output></div>
-      <div class="chain-setting"><label for="chain-cols">Columns</label><input id="chain-cols" type="range" min="4" max="12" step="1"><output id="chain-cols-value"></output></div>
-      <div class="chain-setting"><label for="chain-enemies">Enemies</label><input id="chain-enemies" type="range" min="1" max="5" step="1"><output id="chain-enemies-value"></output></div>
+    <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
+      <button id="chain-settings-close" type="button" class="game-settings-close" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="game-settings-body">
+        <div class="game-settings-section-title">BOARD</div>
+        <label class="game-settings-slider" for="chain-rows">
+          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Rows</span><output id="chain-rows-value" class="game-settings-slider-value"></output></span>
+          <input id="chain-rows" type="range" min="4" max="14" step="1">
+        </label>
+        <label class="game-settings-slider" for="chain-cols">
+          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Columns</span><output id="chain-cols-value" class="game-settings-slider-value"></output></span>
+          <input id="chain-cols" type="range" min="4" max="12" step="1">
+        </label>
+        <label class="game-settings-slider" for="chain-enemies">
+          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Enemies</span><output id="chain-enemies-value" class="game-settings-slider-value"></output></span>
+          <input id="chain-enemies" type="range" min="1" max="5" step="1">
+        </label>
+        <div class="game-settings-actions">
+          <button id="chain-new-game" class="game-settings-action" type="button">New Game</button>
+        </div>
+      </div>
     </aside>
     <main id="chain-stage" class="chain-stage">
       <canvas id="chain-canvas" aria-label="Chain Reaction board"></canvas>
@@ -59,6 +69,8 @@
   const statusEl = document.getElementById('chain-status');
   const settingsButton = document.getElementById('chain-settings-button');
   const settingsPanel = document.getElementById('chain-settings');
+  const settingsClose = document.getElementById('chain-settings-close');
+  const newGameButton = document.getElementById('chain-new-game');
   const rowsInput = document.getElementById('chain-rows');
   const colsInput = document.getElementById('chain-cols');
   const enemiesInput = document.getElementById('chain-enemies');
@@ -83,6 +95,7 @@
   let frame = 0;
   let particles = [];
   let gameVersion = 0;
+  const orbCache = new Map();
 
   function clampInt(value, min, max, fallback) {
     const n = Number.parseInt(value, 10);
@@ -129,7 +142,7 @@
 
   function layout() {
     const rect = stage.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
     const gap = 2;
     cell = Math.max(18, Math.floor(Math.min((rect.width - 24) / cols, (rect.height - 24) / rows)));
     cssW = cols * cell + gap;
@@ -139,6 +152,9 @@
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    orbCache.clear();
     ox = gap / 2; oy = gap / 2;
     draw(performance.now());
   }
@@ -152,6 +168,54 @@
     if (n === 2) return [[-radius*.36,0],[radius*.36,0]];
     if (n === 3) return [[0,-radius*.39],[-radius*.36,radius*.28],[radius*.36,radius*.28]];
     return [[-radius*.32,-radius*.32],[radius*.32,-radius*.32],[-radius*.32,radius*.32],[radius*.32,radius*.32]];
+  }
+
+  function mixHex(a, b, t) {
+    const n = hex => [1,3,5].map(i => Number.parseInt(hex.slice(i, i + 2), 16));
+    const [ar,ag,ab] = n(a), [br,bg,bb] = n(b);
+    const c = (x,y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+    return `#${c(ar,br)}${c(ag,bg)}${c(ab,bb)}`;
+  }
+
+  function orbSprite(owner, radius) {
+    const base = playerColor(owner);
+    const key = `${owner}:${radius.toFixed(2)}:${dpr}`;
+    let sprite = orbCache.get(key);
+    if (sprite) return sprite;
+    const pad = 3, size = Math.ceil(radius * 2 + pad * 2);
+    sprite = document.createElement('canvas');
+    sprite.width = Math.ceil(size * dpr);
+    sprite.height = Math.ceil(size * dpr);
+    const g = sprite.getContext('2d');
+    g.scale(dpr, dpr);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    const c = size / 2;
+    const gradient = g.createRadialGradient(c - radius*.34, c - radius*.38, radius*.08, c, c, radius*1.04);
+    gradient.addColorStop(0, mixHex(base, '#ffffff', .55));
+    gradient.addColorStop(.32, mixHex(base, '#ffffff', .16));
+    gradient.addColorStop(.74, base);
+    gradient.addColorStop(1, mixHex(base, '#000000', .30));
+    g.shadowColor = 'rgba(0,0,0,.18)';
+    g.shadowBlur = Math.max(1.5, radius * .22);
+    g.shadowOffsetY = Math.max(.5, radius * .08);
+    g.fillStyle = gradient;
+    g.beginPath(); g.arc(c, c, radius, 0, Math.PI * 2); g.fill();
+    g.shadowColor = 'transparent';
+    g.strokeStyle = mixHex(base, '#000000', .18);
+    g.lineWidth = Math.max(.65, radius * .07);
+    g.stroke();
+    orbCache.set(key, sprite);
+    return sprite;
+  }
+
+  function drawOrb(x, y, owner, radius, alpha = 1) {
+    const sprite = orbSprite(owner, radius);
+    const w = sprite.width / dpr, h = sprite.height / dpr;
+    const old = ctx.globalAlpha;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(sprite, x - w/2, y - h/2, w, h);
+    ctx.globalAlpha = old;
   }
 
   function draw(now) {
@@ -171,10 +235,7 @@
     for (let i = 0; i < board.length; i++) {
       const count = board[i]; if (!count) continue;
       const [cx, cy] = center(i);
-      ctx.fillStyle = playerColor(owners[i]);
-      for (const [dx,dy] of atomOffsets(count, atomR)) {
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, atomR, 0, Math.PI * 2); ctx.fill();
-      }
+      for (const [dx,dy] of atomOffsets(count, atomR)) drawOrb(cx + dx, cy + dy, owners[i], atomR);
     }
 
     if (particles.length) {
@@ -185,9 +246,7 @@
         const e = 1 - (1 - t) * (1 - t);
         const x = p.x0 + (p.x1 - p.x0) * e;
         const y = p.y0 + (p.y1 - p.y0) * e;
-        ctx.globalAlpha = 1 - t * .12;
-        ctx.fillStyle = playerColor(p.owner);
-        ctx.beginPath(); ctx.arc(x, y, atomR, 0, Math.PI * 2); ctx.fill();
+        drawOrb(x, y, p.owner, atomR, 1 - t * .12);
       }
       ctx.globalAlpha = 1;
       if (alive) requestDraw(); else particles = [];
@@ -248,17 +307,19 @@
         await new Promise(resolve => setTimeout(resolve, 82));
         if (version !== gameVersion) return;
       }
-      const win = winner();
-      if (win) {
-        gameOver = true;
-        turn = win;
-        updateStatus();
-        requestDraw();
-        locked = false;
-        return;
-      }
     }
     particles = [];
+    // Never evaluate elimination while an explosion wave is in flight. A player's
+    // last occupied cell is intentionally empty between emission and settlement.
+    const win = winner();
+    if (win) {
+      gameOver = true;
+      turn = win;
+      locked = false;
+      updateStatus();
+      requestDraw();
+      return;
+    }
     locked = false;
     turn = nextPlayer(owner);
     updateStatus();
@@ -340,6 +401,12 @@
     settingsButton.setAttribute('aria-expanded', String(open));
   }
 
+  function syncRangeProgress(input) {
+    const min = Number(input.min), max = Number(input.max), value = Number(input.value);
+    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    input.style.setProperty('--range-progress', `${pct}%`);
+  }
+
   function syncSettings() {
     rowsInput.value = String(config.rows);
     colsInput.value = String(config.cols);
@@ -347,6 +414,7 @@
     rowsValue.value = String(config.rows);
     colsValue.value = String(config.cols);
     enemiesValue.value = String(config.enemies);
+    for (const input of [rowsInput, colsInput, enemiesInput]) syncRangeProgress(input);
   }
 
   function applySettings() {
@@ -361,6 +429,8 @@
   }
 
   settingsButton.addEventListener('click', () => setSettingsOpen(settingsButton.getAttribute('aria-expanded') !== 'true'));
+  settingsClose.addEventListener('click', () => setSettingsOpen(false));
+  newGameButton.addEventListener('click', () => { reset(); setSettingsOpen(false); });
   settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
   document.addEventListener('pointerdown', e => {
     if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
@@ -372,9 +442,9 @@
   buildBoard();
   updateStatus();
   new ResizeObserver(layout).observe(stage);
-  window.addEventListener('sameyappearancechange', requestDraw);
-  new MutationObserver(requestDraw).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', requestDraw);
+  window.addEventListener('sameyappearancechange', () => { orbCache.clear(); requestDraw(); });
+  new MutationObserver(() => { orbCache.clear(); requestDraw(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { orbCache.clear(); requestDraw(); });
   layout();
 })();
 </script>

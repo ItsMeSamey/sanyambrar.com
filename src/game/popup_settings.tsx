@@ -61,7 +61,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
       {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
     </Switch>
 
-    <div class='settings-section-title'>ADVANCED</div>
+    <div class='game-settings-section-title settings-section-title'>ADVANCED</div>
 
     <Show when={showWordLength}>
       <Slider
@@ -70,7 +70,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
         defaultValue={untrack(() => [hard.wordLength])}
         getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
         onChange={([len]) => hard.wordLength = len as WordLength}
-        class='settings-slider'
+        class='game-settings-slider settings-slider'
       >
         <div class='flex w-full justify-between'>
           <SliderLabel>Word length</SliderLabel>
@@ -89,7 +89,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
       defaultValue={untrack(() => [hard.maxTries])}
       getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
       onChange={([len]) => hard.maxTries = len}
-      class='settings-slider'
+      class='game-settings-slider settings-slider'
     >
       <div class='flex w-full justify-between'>
         <SliderLabel>Max guesses</SliderLabel>
@@ -107,18 +107,18 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
   const [open, setOpen] = createSignal(false)
 
   return <Popover open={open()} onOpenChange={setOpen}>
-    <PopoverTrigger class='wordle-nav-button settings-trigger' aria-label='Settings'>
+    <PopoverTrigger class='wordle-nav-button game-settings-trigger settings-trigger' aria-label='Settings'>
       <IconSettings class='size-5' />
     </PopoverTrigger>
-    <PopoverContent class='settings-popover border-muted'>
-      <button type='button' class='wordle-nav-button settings-close' onClick={() => setOpen(false)} aria-label='Close settings'>
+    <PopoverContent class='game-settings-popover settings-popover border-muted'>
+      <button type='button' class='wordle-nav-button game-settings-close settings-close' onClick={() => setOpen(false)} aria-label='Close settings'>
         <IconX class='size-5 stroke-red-500' />
       </button>
 
-      <div class='settings-body'>
+      <div class='game-settings-body settings-body'>
         <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
 
-        <div class='settings-actions flex flex-wrap gap-2'>
+        <div class='game-settings-actions settings-actions flex flex-wrap gap-2'>
         {TooltipWithContent(
           <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
             Reveal

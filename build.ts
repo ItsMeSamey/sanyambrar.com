@@ -314,9 +314,12 @@ async function auditSource() {
   must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
   must(home.includes("Chain Reaction") && home.includes("canvas renderer"), "Chain Reaction homepage card missing");
   const chain = await readFile(join(STATIC, "chain.html"), "utf8");
-  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
-  for (const removed of ['>Chain Reaction</div>', '>Your turn</div>', '>New game</button>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
+  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies", "chain-new-game", "game-settings-slider", "orbSprite(owner, radius)", "imageSmoothingQuality = 'high'", "const win = winner();"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
+  for (const removed of ['>Chain Reaction</div>', '>Your turn</div>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
+  must(chain.indexOf("const win = winner();") > chain.indexOf("while (head < queue.length && !gameOver)"), "Chain Reaction winner check must happen after cascade settlement");
   must(!chain.includes("transition-all") && !chain.includes("new Atom("), "Chain Reaction regressed to per-atom DOM transitions");
+  const sharedSettingsCss = await readFile(join(STATIC, "shared/game-settings.css"), "utf8");
+  for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
@@ -337,7 +340,9 @@ async function auditSource() {
   must(!buildSource.includes(['run(dir, \"', 'node', '\"'].join('')), "build.ts must not require a separate Node executable");
   const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
   auditSharedRuntime(theme, sharedCss, "static");
-  for (const token of ["--wordle-control-top", "--wordle-control-right", "top: var(--wordle-control-top) !important", "right: var(--wordle-control-right) !important", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
+  for (const token of ["../../static/shared/game-settings.css", "--wordle-control-top: var(--game-control-top)", "--wordle-control-right: var(--game-control-right)", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
+  const wordleSettings = await readFile(join(ROOT, "src/game/popup_settings.tsx"), "utf8");
+  for (const token of ["game-settings-trigger", "game-settings-popover", "game-settings-slider", "game-settings-body"]) must(wordleSettings.includes(token), `Wordle shared settings component contract missing ${token}`);
 }
 
 async function verifyDocs() {

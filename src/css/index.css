@@ -1,3 +1,4 @@
+@import '../../static/shared/game-settings.css';
 @import 'tailwindcss';
 @plugin 'tailwindcss-motion';
 @plugin 'tailwind-scrollbar';
@@ -198,11 +199,11 @@ body {
 
 /* Site shell */
 body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items: stretch; overflow: hidden; }
-:root { --wordle-control-top: 11px; --wordle-control-right: 12px; --wordle-control-size: 36px; --wordle-nav-height: 58px; }
+:root { --wordle-control-top: var(--game-control-top); --wordle-control-right: var(--game-control-right); --wordle-control-size: var(--game-control-size); --wordle-nav-height: 58px; }
 .wordle-nav { height: var(--wordle-nav-height); padding: 0 var(--wordle-control-right) 0 100px; border-bottom: 1px solid var(--color-border); background: var(--color-background); z-index: 20; }
 .wordle-nav-button { display: grid; place-items: center; width: var(--wordle-control-size); height: var(--wordle-control-size); border-radius: 4px; }
 .wordle-nav-button:hover { background: var(--color-muted); }
-@media (max-width: 640px) { :root { --wordle-control-top: 9px; --wordle-control-right: 8px; --wordle-nav-height: 54px; } .wordle-nav { padding-left: 94px; } }
+@media (max-width: 640px) { :root { --wordle-nav-height: 54px; } .wordle-nav { padding-left: 94px; } }
 
 
 /* Keep the game below the fixed navigation bar. The board owns the flexible
@@ -311,48 +312,10 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 /* Wordle shell geometry */
 .wordle-nav { padding-left: 88px; padding-right: var(--wordle-control-right); }
-/* Kobalte positions the parent [data-popper-positioner], not the content.
-   Pin that parent to the trigger's exact top/right corner so Floating UI cannot
-   move the settings panel below/left of the gear. */
-[data-popper-positioner]:has(> .settings-popover) {
-  position: fixed !important;
-  top: var(--wordle-control-top) !important;
-  right: var(--wordle-control-right) !important;
-  bottom: auto !important;
-  left: auto !important;
-  min-width: 0 !important;
-  transform: none !important;
-}
-.settings-popover {
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
-  left: auto !important;
-  width: min(360px, calc(100vw - 24px));
-  max-height: calc(100dvh - 22px);
-  padding: 0 !important;
-  overflow: auto !important;
-  transform: none !important;
-}
-.settings-trigger { flex: 0 0 var(--wordle-control-size); padding: 0; }
-.settings-close { position: absolute; top: 0; right: 0; z-index: 1; padding: 0; background: color-mix(in srgb, var(--color-warning) 55%, var(--color-background)); }
-.settings-close:hover { background: var(--color-warning); }
-.settings-body { display: grid; gap: 18px; padding: 48px 16px 16px; }
-.settings-body.space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
+.settings-trigger { flex: 0 0 var(--wordle-control-size); }
 .settings-switch { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 18px; }
 .settings-switch-label { min-width: 0; flex: 1; font-size: .95rem; line-height: 1.25; }
-.settings-section-title { margin: 2px 0 -2px; color: var(--color-muted-foreground); font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-align: left; }
-.settings-slider { display: grid; gap: 10px; }
-.settings-slider.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0; }
-.settings-slider [role=slider] { touch-action: none; }
-/* Kobalte supplies horizontal X positioning inline, but does not vertically
-   center a horizontal thumb. Keep its original 1rem knob and center it on the
-   0.375rem track without touching Kobalte's translateX(value) transform. */
-.settings-slider [role=slider][data-orientation=horizontal] {
-  top: 50%;
-  margin-top: -.5rem;
-}
-.settings-slider [data-kb-slider-track] { margin-inline: 2px; width: calc(100% - 4px); }
+
 .result-dialog {
   width: min(560px, calc(100vw - 24px)) !important;
   padding: 18px 20px !important;
@@ -365,8 +328,6 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .stats-guess-board { border: 0; padding: 0; }
 @media (max-width:520px) {
   .wordle-nav { padding-left: 84px; padding-right: var(--wordle-control-right); }
-  .settings-popover { width: min(360px, calc(100vw - 16px)); max-height: calc(100dvh - 18px); }
-  .settings-body { padding: 46px 12px 12px; }
   .result-dialog { width: calc(100vw - 16px) !important; padding: 14px !important; }
 }
 
