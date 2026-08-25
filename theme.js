@@ -2,6 +2,7 @@
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
   const KEY = "keybr.theme";
   const WORDLE_KEY = "ui-theme";
+  const FONT_KEY = "samey.font";
   const COLOR_IDS = ["light", "clear-light", "dark", "clear-dark", "custom"];
   const FONT_IDS = ["sans-serif", "serif", "monospace", "cursive"];
   const colors = {
@@ -37,12 +38,20 @@
   const rawPrefs = () => {
     try { return JSON.parse(localStorage.getItem(KEY) || "null") || {}; } catch { return {}; }
   };
+  const readFont = () => {
+    try {
+      const value = localStorage.getItem(FONT_KEY);
+      if (FONT_IDS.includes(value)) return value;
+    } catch {}
+    const legacy = rawPrefs().font;
+    return FONT_IDS.includes(legacy) ? legacy : "sans-serif";
+  };
   const read = () => {
     const raw = rawPrefs();
     let selected = raw.color;
     let color = selected;
     if (color === "system" || !COLOR_IDS.includes(color)) color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const font = FONT_IDS.includes(raw.font) ? raw.font : "sans-serif";
+    const font = readFont();
     if (color !== "custom") return { color, selected: selected || "system", font, ...colors[color] };
     const custom = raw.custom || {};
     const fallback = custom.tone === "dark" ? colors.dark : colors.light;
@@ -120,10 +129,13 @@
 
   Storage.prototype.setItem = function (key, value) {
     nativeSetItem.call(this, key, value);
-    if (this === localStorage && key === KEY) queueMicrotask(apply);
+    if (this === localStorage && (key === KEY || key === FONT_KEY)) queueMicrotask(apply);
     if (this === localStorage && key === WORDLE_KEY && (value === "light" || value === "dark")) {
       const raw = rawPrefs();
-      if (raw.color !== value) nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...raw, color: value }));
+      if (raw.color !== value) {
+        const { font: _legacyFont, ...theme } = raw;
+        nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...theme, color: value }));
+      }
       queueMicrotask(apply);
     }
   };
@@ -133,8 +145,16 @@
     : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
 
   const setPrefs = (patch) => {
-    const raw = rawPrefs();
-    nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...raw, ...patch }));
+    if (Object.hasOwn(patch, "font")) {
+      nativeSetItem.call(localStorage, FONT_KEY, patch.font);
+    }
+    const themePatch = { ...patch };
+    delete themePatch.font;
+    if (Object.keys(themePatch).length > 0) {
+      const raw = rawPrefs();
+      const { font: _legacyFont, ...theme } = raw;
+      nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...theme, ...themePatch }));
+    }
     apply();
   };
   const section = (title, items, attr) => `<div class="samey-panel-title">${title}</div>${Object.entries(items).map(([value, label]) => `<button type="button" ${attr}="${value}">${label}</button>`).join("")}`;

@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'samey-site-';
-const CACHE = `${CACHE_PREFIX}v7`;
+const CACHE = `${CACHE_PREFIX}v8`;
 const ROOT = new URL('./', self.registration.scope);
 const CORE = ['index.html','theme.js','keybr.html','wordle.html','blog/index.html','blog/blog.css','blog/posts/btop-mutex.html','blog/btop-lock.js'];
 
