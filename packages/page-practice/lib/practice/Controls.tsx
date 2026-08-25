@@ -14,7 +14,6 @@ import { memo, type ReactNode } from "react";
 import { useIntl } from "react-intl";
 import { views } from "../views.tsx";
 import * as styles from "./Controls.module.less";
-import { ThemeControls } from "./ThemeControls.tsx";
 
 export const Controls = memo(function Controls({
   onChangeView,
@@ -66,7 +65,6 @@ export const Controls = memo(function Controls({
         })}
         onClick={onChangeView}
       />
-      <ThemeControls />
       <IconButton
         icon={<Icon shape={mdiChartAreaspline} />}
         title={formatMessage({

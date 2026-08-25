@@ -35,7 +35,7 @@ export class SingleFilePlugin {
             .toString()
             .replaceAll("</script", "<\\/script");
           const html = `<!doctype html>
-<html lang="en" dir="ltr" data-home-href="./" data-theme-settings-href="./keybr.html">
+<html lang="en" dir="ltr" data-site-kind="keybr" data-home-href="./">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
