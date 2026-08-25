@@ -323,7 +323,7 @@
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="7" fill="white"/><rect x="30.5" y="24" width="3" height="16" fill="black"/><rect x="24" y="30.5" width="16" height="3" fill="black"/></mask><circle cx="32" cy="32" r="7" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="7;4" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(25 25) scale(.1666666667)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M59.5 3.5 H80.5 V24.5" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;10 -10" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M57.5 1.5 H84.5 V28.5" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;18 -18" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
 
@@ -350,6 +350,15 @@
     const animateLinkClick = () => {
       if (!matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof linkClick?.beginElement === "function") linkClick.beginElement();
     };
+    const holdLinkCursor = (event, link) => {
+      if (!link) return;
+      linkHandoffUntil = performance.now() + 240;
+      if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
+      setGrabState(false);
+      cursor.removeAttribute("data-grab");
+      cursor.dataset.link = "";
+      cursor.dataset.visible = "";
+    };
 
     let nativeDragging = false;
     let selectionDragging = false;
@@ -359,6 +368,7 @@
     let pressedGrab = false;
     let pressedPointerId = null;
     let lastX = 0, lastY = 0;
+    let linkHandoffUntil = 0;
     const placeXY = (x, y) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       lastX = x; lastY = y;
@@ -370,7 +380,7 @@
       if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
       const visual = grab ? cursor.querySelector(".samey-cursor-grab") : cursor.querySelector(".samey-cursor-dot");
       visual?.animate?.(
-        [{ transform: "translate(-7px,7px)" }, { transform: "translate(0,0)" }],
+        [{ transform: "translate(-8.4px,8.4px)" }, { transform: "translate(0,0)" }],
         { duration: 65, easing: "cubic-bezier(.2,.8,.2,1)" },
       );
     };
@@ -430,6 +440,8 @@
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event);
       setMode(actual);
+      const pressedLink = linkTarget(actual);
+      if (pressedLink && (event.ctrlKey || event.metaKey || event.button === 1)) holdLinkCursor(event, pressedLink);
     }, true);
     document.addEventListener("mousedown", (event) => {
       if (selectionDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
@@ -461,7 +473,22 @@
       place(event);
       setMode(elementAt(event));
     }, true);
-    document.addEventListener("click", (event) => { if (event.button === 0 && linkTarget(event.target)) animateLinkClick(); }, true);
+    document.addEventListener("click", (event) => {
+      const link = event.button === 0 ? linkTarget(event.target) : null;
+      if (!link) return;
+      holdLinkCursor(event, link);
+      animateLinkClick();
+      if ((event.ctrlKey || event.metaKey) && link instanceof HTMLAnchorElement && link.href) {
+        event.preventDefault();
+        window.open(link.href, "_blank", "noopener,noreferrer");
+      }
+    }, true);
+    document.addEventListener("auxclick", (event) => {
+      const link = event.button === 1 ? linkTarget(event.target) : null;
+      if (!link) return;
+      holdLinkCursor(event, link);
+      animateLinkClick();
+    }, true);
     const isPlainSelectionDrag = (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
@@ -508,7 +535,7 @@
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
     addEventListener("blur", stopDragging);
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging) delete cursor.dataset.visible; });
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) delete cursor.dataset.visible; });
   };
 
   const editableTarget = (el) => {
