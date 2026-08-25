@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
 
@@ -22,7 +22,7 @@ const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
-for (const target of targets) if (!ALL.has(target)) throw new Error(`unknown target: ${target} (use solid, keybric, or all)`);
+for (const target of targets) if (!ALL.has(target)) throw new Error(`unknown target: ${target} (use solid, keybr, static, or all)`);
 const fullBuild = targets.size === ALL.size && [...ALL].every((target) => targets.has(target));
 
 const log = (message: string) => console.log(`[build] ${message}`);
@@ -106,8 +106,11 @@ async function verifyPublishedDocs() {
     const rel = relative(DIST, page);
     for (const suffix of [".gz", ".br"]) must(existsSync(join(DOCS, `${rel}${suffix}`)), `missing published docs/${rel}${suffix}`);
   }
-  must(existsSync(join(DOCS, "index.html")), "GitHub Pages docs/index.html was not published");
-  must(existsSync(join(DOCS, "index.html.gz")) && existsSync(join(DOCS, "index.html.br")), "GitHub Pages docs/index compression sidecars were not published");
+  for (const page of ["index.html", "wordle.html", "keybr.html"]) {
+    must(existsSync(join(DOCS, page)), `GitHub Pages docs/${page} was not published`);
+    must(existsSync(join(DOCS, `${page}.gz`)), `GitHub Pages docs/${page}.gz was not published`);
+    must(existsSync(join(DOCS, `${page}.br`)), `GitHub Pages docs/${page}.br was not published`);
+  }
   must(existsSync(join(DOCS, ".nojekyll")), "GitHub Pages docs/.nojekyll marker was not published");
 }
 
@@ -191,6 +194,10 @@ async function auditSource() {
   const keybrGuard = 'if (root.dataset.siteKind === "wordle")';
   must(theme.includes(keybrGuard), "Wordle palette variables are not scoped away from Keybr");
   for (const name of ["--primary", "--secondary", "--accent"]) must(theme.indexOf(`setProperty("${name}"`) >= theme.indexOf(keybrGuard), `${name} is written outside the Wordle-only scope`);
+
+  const home = await readFile(join(STATIC, "index.html"), "utf8");
+  must(home.includes("Sanyam Brar"), "homepage identity must be Sanyam Brar");
+  must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");

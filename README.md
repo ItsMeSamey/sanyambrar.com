@@ -1,4 +1,4 @@
-# ItsMeSamey.github.io
+# Sanyam Brar
 
 Solid is the root application. Keybr remains isolated because it has its own React/Webpack workspace. Hand-written pages and shared browser assets live under `static/`. `dist/` is the clean staging/verification tree; a full build then replaces `docs/` with that verified tree so GitHub Pages can publish from `/docs`. Inside Pages, `docs/` is the site root.
 
