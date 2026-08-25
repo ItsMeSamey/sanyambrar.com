@@ -7,9 +7,10 @@
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#121213" media="(prefers-color-scheme: dark)">
   <title>Samey</title>
+  <script src="./theme.js"></script>
   <style>
-    :root{color-scheme:light dark;--bg:#fff;--fg:#121213;--muted:#787c7e;--line:#d3d6da;--soft:#f6f7f8;--green:#6aaa64;--yellow:#c9b458;--tile:#fff}
-    @media(prefers-color-scheme:dark){:root{--bg:#121213;--fg:#f8f8f8;--muted:#a7a7a7;--line:#3a3a3c;--soft:#1a1a1b;--green:#538d4e;--yellow:#b59f3b;--tile:#121213}}
+    :root{color-scheme:light dark;--bg:var(--site-bg,#fff);--fg:var(--site-fg,#121213);--muted:var(--site-muted,#787c7e);--line:var(--site-line,#d3d6da);--soft:var(--site-soft,#f6f7f8);--green:#6aaa64;--yellow:#c9b458;--tile:var(--site-bg,#fff)}
+    html[data-kb-theme=dark]{--green:#538d4e;--yellow:#b59f3b}
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif}
     body{min-height:100dvh}
@@ -17,7 +18,7 @@
     button,a{-webkit-tap-highlight-color:transparent}
     .top{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:0 18px;position:sticky;top:0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(10px);z-index:5}
     .brand{font-size:25px;font-weight:800;letter-spacing:.01em}
-    main{width:min(680px,100%);margin:0 auto;padding:42px 20px 64px}
+    main{width:min(820px,100%);margin:0 auto;padding:42px 20px 64px}
     section+section{margin-top:46px}
     h1{font-size:14px;line-height:1;margin:0 0 14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -26,6 +27,18 @@
     .card:active{transform:scale(.985)}
     .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
     .card-title{font-size:20px;font-weight:750;letter-spacing:-.02em}
+    .wordle-mark{display:flex;gap:4px;align-items:center}
+    .wordle-mark .tile{width:30px;height:30px;font-size:16px}
+    .wordle-mark .tile:nth-child(1),.wordle-mark .tile:nth-child(4),.wordle-mark .tile:nth-child(6){background:var(--green)}
+    .wordle-mark .tile:nth-child(2),.wordle-mark .tile:nth-child(5){background:var(--yellow)}
+    .wordle-mark .tile:nth-child(3){background:#787c7e}
+    .keybr-mark{display:flex;align-items:center;font:600 22px/1.2 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;letter-spacing:-.04em}
+    .keybr-hit{color:#797979}
+    .keybr-miss{color:#f33}
+    .keybr-miss-bg{color:#fff;background:#f33;padding:0 2px;margin:0 1px}
+    .keybr-cursor{width:2px;height:1.05em;background:#797979;margin-left:2px;animation:blink 1s steps(1,end) infinite}
+    @keyframes blink{50%{opacity:0}}
+    html[data-kb-theme=dark] .keybr-hit{color:#9f9999}html[data-kb-theme=dark] .keybr-miss{color:#9b4545}html[data-kb-theme=dark] .keybr-miss-bg{background:#9b4545;color:#121213}html[data-kb-theme=dark] .keybr-cursor{background:#9f9999}
     .arrow{font-size:20px;color:var(--muted);line-height:1}
     .tiles{display:flex;gap:4px}
     .tile{width:27px;height:27px;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;background:var(--green)}
@@ -45,12 +58,16 @@
       <h1 id="games-title">Games</h1>
       <div class="grid">
         <a class="card" href="./wordle.html" aria-label="Open Wordle">
-          <div class="card-top"><span class="card-title">Wordle</span><span class="arrow" aria-hidden="true">›</span></div>
-          <div class="tiles" aria-hidden="true"><span class="tile">W</span><span class="tile">O</span><span class="tile">R</span><span class="tile">D</span></div>
+          <div class="card-top">
+            <div class="wordle-mark" aria-hidden="true"><span class="tile">W</span><span class="tile">O</span><span class="tile">R</span><span class="tile">D</span><span class="tile">L</span><span class="tile">E</span></div>
+            <span class="arrow" aria-hidden="true">›</span>
+          </div>
         </a>
-        <a class="card" href="./keybr.html" aria-label="Open typing game">
-          <div class="card-top"><span class="card-title">Typing</span><span class="arrow" aria-hidden="true">›</span></div>
-          <div class="keys" aria-hidden="true"><span class="key">A</span><span class="key">S</span><span class="key">D</span><span class="key">F</span></div>
+        <a class="card" href="./keybr.html" aria-label="Open Keybr">
+          <div class="card-top">
+            <div class="keybr-mark" aria-hidden="true"><span class="keybr-hit">K</span><span class="keybr-hit">e</span><span class="keybr-miss">y</span><span class="keybr-hit">b</span><span class="keybr-miss-bg">r</span><span class="keybr-cursor"></span></div>
+            <span class="arrow" aria-hidden="true">›</span>
+          </div>
         </a>
       </div>
     </section>
