@@ -31,16 +31,19 @@ export class LocalstorageStore<T> {
     this.current_value = v
     if (v === undefined) {
       localStorage.removeItem(this.key)
+      window.dispatchEvent(new Event('wordle:storage-change'))
       return
     }
 
     const string = this.to_string(v)
     if (string === undefined) {
       localStorage.removeItem(this.key)
+      window.dispatchEvent(new Event('wordle:storage-change'))
       return
     }
 
     localStorage.setItem(this.key, string)
+    window.dispatchEvent(new Event('wordle:storage-change'))
   }
 }
 

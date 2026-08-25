@@ -1,59 +1,101 @@
 'use strict'
 
-import { batch, createSignal, For, JSX, Show } from 'solid-js'
+import { batch, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { WordLength } from './words'
 import { Block } from './page'
 import { SettingsHardProps } from './popup_settings'
 
-export function ActiveGames({hard, trigger}: {hard: SettingsHardProps, trigger: JSX.Element}): JSX.Element {
-  const [open, setOpen] = createSignal(false)
-
-  return <Dialog open={open()} onOpenChange={setOpen}>
-    <DialogTrigger>
-      {trigger}
-    </DialogTrigger>
-    <DialogContent class='flex flex-col w-max px-1 pb-1 max-w-[95vw] max-h-[95dvh]'>
-      {/* <DialogHeader class='text-center font-bold mx-4 mt-[-0.75rem]'>Active Games: Click to Switch</DialogHeader> */}
-      <Show when={open()}>
-        <div class='justify-items-center w-max grid grid-cols-1 gap-1 overflow-y-auto scrollbar-thin scrollbar-track-muted/50 scrollbar-thumb-muted-foreground/30'>
-          <For each={Array.from({length: 1 + 50 - 1}).fill(0).map((_, i) => i + 1)}>
-            {i => <For each={Array.from({length: 1 + 20 - 3}).fill(0).map((_, j) => j + 3)}>
-              {j => <For each={Array.from({length: 2}).fill(0).map((_, k) => k)}>
-                {k => {
-                  const val = localStorage.getItem(`game.wordle.${k? 'any.': ''}${j}.${i}`)
-                  if (!val) return
-                  const jsonVal = JSON.parse(val)
-                  if (jsonVal?.history?.length <= 1) return;
-                  const history = jsonVal.history.slice(0, -1)
-                  {/* if (!jsonVal?.history) return; */}
-                  {/* const history = jsonVal.history */}
-                  return <div
-                    class='border border-muted rounded-lg p-2 text-center w-fit'
-                    onClick={() => batch(() => {
-                      if (hard.maxTries === i && hard.wordLength === j && hard.allowAny === (k === 1)) return
-                      hard.maxTries = i
-                      hard.wordLength = j as WordLength
-                      hard.allowAny = k === 1
-                      setOpen(false)
-                    })}
-                  >
-                    <span class={'font-bold text-xl ' +
-                      ((hard.maxTries === i && hard.wordLength === j && hard.allowAny === (k === 1))? 'text-success-foreground': 'text-muted-foreground')}
-                    >
-                      {`${k? 'Any Word, ': ''}${j} Chars, ${i === 1? 'Inf': i} Guesses Allowed`}
-                    </span>
-                    <For each={history}>
-                      {([word, mask]) => new Block(j, word, mask).render()}
-                    </For>
-                  </div>
-                }}
-              </For>}
-            </For>}
-          </For>
-        </div>
-      </Show>
-    </DialogContent>
-  </Dialog>
+type ActiveGame = {
+  allowAny: boolean
+  wordLength: WordLength
+  maxTries: number
+  history: [string, string][]
 }
 
+const ACTIVE_GAME_RE = /^game\.wordle\.(any\.)?(\d+)\.(\d+)$/
+
+export function getActiveGames(): ActiveGame[] {
+  const games: ActiveGame[] = []
+  for (let n = 0; n < localStorage.length; n++) {
+    const key = localStorage.key(n)
+    if (!key) continue
+    const match = ACTIVE_GAME_RE.exec(key)
+    if (!match) continue
+
+    try {
+      const value = JSON.parse(localStorage.getItem(key)!)
+      if (!Array.isArray(value?.history) || value.history.length <= 1) continue
+      const wordLength = Number(match[2])
+      const maxTries = Number(match[3])
+      if (wordLength < 3 || wordLength > 20 || maxTries < 1 || maxTries > 50) continue
+      games.push({
+        allowAny: !!match[1],
+        wordLength: wordLength as WordLength,
+        maxTries,
+        history: value.history.slice(0, -1),
+      })
+    } catch {
+      // Ignore stale/corrupt game entries instead of breaking settings.
+    }
+  }
+  return games.sort((a, b) => a.wordLength - b.wordLength || a.maxTries - b.maxTries || Number(a.allowAny) - Number(b.allowAny))
+}
+
+export function ActiveGames({hard, trigger}: {hard: SettingsHardProps, trigger: JSX.Element}): JSX.Element {
+  const [open, setOpen] = createSignal(false)
+  const [games, setGames] = createSignal(getActiveGames())
+  const refresh = () => setGames(getActiveGames())
+
+  onMount(() => {
+    window.addEventListener('storage', refresh)
+    window.addEventListener('wordle:storage-change', refresh)
+  })
+  onCleanup(() => {
+    window.removeEventListener('storage', refresh)
+    window.removeEventListener('wordle:storage-change', refresh)
+  })
+
+  return <Show when={games().length > 0}>
+    <Dialog open={open()} onOpenChange={value => {
+      if (value) refresh()
+      setOpen(value)
+    }}>
+      <DialogTrigger>{trigger}</DialogTrigger>
+      <DialogContent class='active-games-dialog'>
+        <Show when={open()}>
+          <div class='active-games-header'>
+            <strong>Active games</strong>
+            <span>{games().length}</span>
+          </div>
+          <div class='active-games-list'>
+            <For each={games()}>{game => {
+              const current = () => hard.maxTries === game.maxTries && hard.wordLength === game.wordLength && hard.allowAny === game.allowAny
+              return <button
+                type='button'
+                class='active-game-card'
+                data-current={current() ? '' : undefined}
+                onClick={() => batch(() => {
+                  if (current()) return setOpen(false)
+                  hard.maxTries = game.maxTries
+                  hard.wordLength = game.wordLength
+                  hard.allowAny = game.allowAny
+                  setOpen(false)
+                })}
+              >
+                <div class='active-game-meta'>
+                  <span>{game.wordLength} letters</span>
+                  <span>{game.maxTries === 1 ? '∞' : game.maxTries} guesses</span>
+                  <Show when={game.allowAny}><span>any word</span></Show>
+                </div>
+                <div class='active-game-board' style={{'--word-length': game.wordLength}}>
+                  <For each={game.history}>{([word, mask]) => new Block(game.wordLength, word, mask).render()}</For>
+                </div>
+              </button>
+            }}</For>
+          </div>
+        </Show>
+      </DialogContent>
+    </Dialog>
+  </Show>
+}

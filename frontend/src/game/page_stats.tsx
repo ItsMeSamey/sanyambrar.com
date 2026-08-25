@@ -1,18 +1,16 @@
 'use strict'
 
-import { ChartNoAxesCombined } from 'lucide-solid';
-import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, Setter, Show, Switch } from 'solid-js'
-import { getDB, HistoryEntry, KindEnum, calcDiff, Value } from './words'
+import { ChartNoAxesCombined } from 'lucide-solid'
+import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
-import { Popover as PopoverPrimitive } from '@kobalte/core/popover'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
-import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { Block, GetSettingsStore } from './page'
 import { IconHome } from '~/components/icons'
+import { Block, GetSettingsStore } from './page'
+import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
-import { ShareTrigger } from './page_share';
-import { SettingsHardProps, SettingsSoftProps } from './popup_settings';
+import { ShareTrigger } from './page_share'
 
 interface GameStats {
   totalGames: number
@@ -21,261 +19,200 @@ interface GameStats {
   words: Value[]
 }
 
-class WordStats {
-  sidebar: StatsSidebar
-
-  constructor(stats: GameStats) {
-    this.sidebar = new StatsSidebar(stats)
-  }
-
-  static async fetchStats(): Promise<GameStats> {
+async function waitForDB() {
+  for (;;) {
     const db = getDB()
-    if (!db) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return WordStats.fetchStats()
-    }
-
-    let totalGames = 0
-    let totalWins = 0
-    let totalGuesses = 0
-    const wordsStatsStats: Value[][] = []
-
-    for (let i = 3; i <= 20; i++) {
-      let subTotalGuesses = 0
-      const storeName = `w${i}` as const
-      const tx = db.transaction(storeName, 'readonly')
-      const store = tx.objectStore(storeName)
-      const allRecords = await store.getAll() as Value[];
-      for (const record of allRecords) {
-        totalGames += record.h.length
-        for (const history of record.h) {
-          if (history.k === KindEnum.Correct) {
-            totalWins += 1
-            subTotalGuesses += history.h.length
-          }
-        }
-      }
-      wordsStatsStats.push(allRecords);
-      totalGuesses += subTotalGuesses / i
-    }
-
-    const words: Value[] = wordsStatsStats.flat()
-    const averageGuesses = totalWins > 0 ? totalGuesses / totalWins : 0
-
-    return {
-      totalGames,
-      totalWins,
-      averageGuesses,
-      words,
-    }
-  }
-
-  static renderHistoryEntry(word: string, entry: HistoryEntry) {
-    const wordLength = word.length;
-    const guesses = [];
-    for (let i = 0; i < entry.h.length; i += wordLength) {
-      guesses.push(entry.h.substring(i, i + wordLength));
-    }
-
-    return <PopoverPrimitive.Content
-      class='max-h-[45dvh] overflow-y-scroll scrollbar-thin scrollbar-w-0 scrollbar-thumb-muted scrollbar-track-muted/35'
-    >
-      <div class='flex flex-col gap-1 p-1 m-auto bg-background-muted/50 motion-preset-fade-sm motion-duration-300'>
-        <For each={guesses}>
-          {(guess) => {
-            const mask = calcDiff(word, guess);
-            return new Block(word.length, guess, mask).render()
-          }}
-        </For>
-      </div>
-    </PopoverPrimitive.Content>
-  }
-
-  renderValue(value: Value) {
-    if (value.h.length === 1) {
-      const attempt = value.h[0]
-      return <Popover>
-        <PopoverTrigger class='flex w-full border border-muted-foreground/20 rounded-none my-1'>
-          <div
-            class='w-full text-left p-2 bg-muted/40 hover:bg-muted/75 transition-all items-center flex flex-1 justify-between'
-            onClick={() => this.sidebar.setSelectedValue(value)}
-          >
-            <span class='font-semibold uppercase mr-auto'>{value.w}</span>
-            <span class={'ml-auto text-sm font-semibold ' + (
-              attempt.k === KindEnum.Correct? 'text-success-foreground':
-              attempt.k === KindEnum.Failed? 'text-error-foreground': 'text-blue-500'
-            )}>{attempt.h.length / value.w.length} guesses</span>
-          </div>
-
-        </PopoverTrigger>
-        {WordStats.renderHistoryEntry(value.w, attempt)}
-      </Popover>
-    }
-
-    return <AccordionItem value={value.w} class='border border-muted-foreground/20 rounded-none my-1'>
-      <AccordionTrigger
-        class='w-full text-left p-2 bg-muted/40 hover:bg-muted/75 transition-all items-center'
-        onClick={() => this.sidebar.setSelectedValue(value)}
-      >
-        <span class='font-semibold uppercase'>{value.w}</span>
-        <span class='text-sm text-muted-foreground ml-auto mr-2'>{value.h.length} attempts</span>
-      </AccordionTrigger>
-      <AccordionPrimitive.Content class='animate-accordion-up overflow-hidden text-sm transition-all data-[expanded]:animate-accordion-down p-2 space-y-1'>
-        <For each={value.h}>
-          {(attempt) => <Popover>
-            <PopoverTrigger class='w-full m-0 p-0'>
-              <div class='flex justify-between items-center bg-muted/20 hover:bg-muted/40 rounded-none p-2'>
-                <span>{attempt.h.length / value.w.length} guesses</span>
-                {
-                  attempt.k === KindEnum.Correct? <span class='text-sm font-semibold text-success-foreground'>Correct</span>:
-                  attempt.k === KindEnum.Failed? <span class='text-sm font-semibold text-error-foreground'>Failed</span>:
-                  <span class='text-sm font-semibold text-blue-500'>Revealed</span>
-                }
-              </div>
-            </PopoverTrigger>
-            <PopoverContent class='rounded-none'>
-              {WordStats.renderHistoryEntry(value.w, attempt)}
-            </PopoverContent>
-          </Popover>}
-        </For>
-      </AccordionPrimitive.Content>
-    </AccordionItem>
-  }
-
-  render() {
-    const stats = this.sidebar.stats
-    return <div class='flex flex-row gap-4 h-full'>
-      <div class='w-2/3'>
-        <Accordion class='w-full space-y-2' multiple>
-          <For each={stats.words}>
-            {this.renderValue.bind(this)}
-          </For>
-        </Accordion>
-      </div>
-      {this.sidebar.render()}
-    </div>
+    if (db) return db
+    await new Promise(resolve => setTimeout(resolve, 50))
   }
 }
 
-class StatsSidebar {
-  selectedValue: Accessor<Value | undefined>
-  setSelectedValue: Setter<Value | undefined>
-  stats: GameStats
-  soft: SettingsSoftProps
-  hard: SettingsHardProps
+export async function fetchStats(): Promise<GameStats> {
+  const db = await waitForDB()
+  let totalGames = 0
+  let totalWins = 0
+  let totalGuesses = 0
+  const words: Value[] = []
 
-  constructor(stats: GameStats) {
-    [this.selectedValue, this.setSelectedValue] = createSignal<Value | undefined>(undefined)
-    this.stats = stats
-
-    const {softStore, hardStore} = GetSettingsStore()
-    this.soft = softStore.get()!
-    this.hard = hardStore.get()!
-  }
-
-  static valueStats(selectedValue?: Value) {
-    if (!selectedValue) return
-
-    let wins: number = 0
-    let fails: number = 0
-    let reveals: number = 0
-    let avgGuesses: number = 0
-
-    for (const h of selectedValue.h) {
-      switch (h.k) {
-        case KindEnum.Correct:
-          wins += 1;
-          avgGuesses += h.h.length;
-          break;
-        case KindEnum.Failed:
-          fails += 1;
-          break;
-        case KindEnum.Revealed:
-          reveals += 1;
-          break;
+  for (let length = 3; length <= 20; length++) {
+    const records = await db.transaction(`w${length}` as const, 'readonly').objectStore(`w${length}` as const).getAll() as Value[]
+    for (const record of records) {
+      words.push(record)
+      totalGames += record.h.length
+      for (const history of record.h) {
+        if (history.k !== KindEnum.Correct) continue
+        totalWins++
+        totalGuesses += history.h.length / length
       }
     }
-
-    avgGuesses /= selectedValue.w.length * selectedValue.h.length
-    return {played: selectedValue.h.length, wins, fails, reveals, avgGuesses}
   }
 
-  render() {
-    const valueStats = createMemo(() => StatsSidebar.valueStats(this.selectedValue()))
-
-    function renderStat(heading: JSX.Element, value: JSX.Element) {
-      return <div class='p-2 border border-muted/50 text-center content-end'>
-        <h2 class='font-semibold text-muted-foreground'>{heading}</h2>
-        <p class='text-lg font-bold'>{value}</p>
-      </div>
-    }
-
-    return <div class='w-1/3 border border-muted-foreground/20 rounded-none p-4 bg-muted/10 overflow-scroll scrollbar-none h-full pb-10'>
-      <div class='grid grid-cols-1 md:grid-cols-4 border border-muted/50 mb-4 bg-muted/40'>
-        {renderStat('Total Games', this.stats.totalGames)}
-        {renderStat('Total Wins', this.stats.totalWins)}
-        {renderStat('Win Rate', (this.stats.totalGames ? 100 * this.stats.totalWins / this.stats.totalGames : 0).toFixed(1) + '%')}
-        {renderStat('Average Guesses', this.stats.averageGuesses.toFixed(2))}
-      </div>
-      <div class='flex flex-row items-center align-middle justify-center justify-items-center place-items-center place-content-center'>
-        <Show when={this.selectedValue()} fallback={<h2 class='text-xl font-bold mb-2 uppercase'>Detailed Stats</h2>}>
-          <h2 class='text-xl font-bold mb-2 uppercase mr-auto text-blue-500'>{this.selectedValue()!.w}</h2>
-          <ShareTrigger word={() => this.selectedValue()!.w} soft={this.soft} hard={this.hard} />
-        </Show>
-      </div>
-      <Show when={this.selectedValue() && valueStats()} fallback={<p>Select a word to see detailed stats.</p>}>
-        <div class='space-y-2'>
-          <div class='flex justify-between'><span>Times Played:</span> <strong>{valueStats()!.played}</strong></div>
-          <div class='flex justify-between'><span>Win Rate:</span> <strong>{((valueStats()!.wins / valueStats()!.played) * 100).toFixed(1)}%</strong></div>
-          <div class='flex justify-between'><span>Average Guesses (on win):</span> <strong>{valueStats()!.avgGuesses.toFixed(2)}</strong></div>
-          <hr class='border-muted-foreground/20 my-2' />
-          <h3 class='font-bold'>Outcomes:</h3>
-          <div class='flex justify-between text-success-foreground'><span>Correct:</span> <strong>{valueStats()!.wins}</strong></div>
-          <div class='flex justify-between text-error-foreground'><span>Failed:</span> <strong>{valueStats()!.fails}</strong></div>
-          <div class='flex justify-between text-blue-500'><span>Revealed:</span> <strong>{valueStats()!.reveals}</strong></div>
-        </div>
-      </Show>
-    </div>
-  }
+  words.sort((a, b) => Math.max(...b.h.map(h => h.t ?? 0)) - Math.max(...a.h.map(h => h.t ?? 0)))
+  return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, words}
 }
 
-export default function StatsPage() {
-  const [stats] = createResource(WordStats.fetchStats);
+export async function hasStats() {
+  return (await fetchStats()).totalGames > 0
+}
 
-  return <div class='mx-auto p-4 h-full w-full min-md:container'>
-    <div
-      class='absolute top-2 left-2 p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-    onClick={() => window.location.assign('../')}
-    >
-      <IconHome class='size-5' />
-    </div>
-    
-    <h1 class='text-2xl font-bold mb-4 ml-8'>Analytics</h1>
-    <Switch>
-      <Match when={stats.loading}>
-        <p>Loading stats...</p>
-      </Match>
-      <Match when={stats.error}>
-        <p class='text-error-foreground'>Error loading stats: {stats.error.message}</p>
-      </Match>
-      <Match when={stats()}>
-        {new WordStats(stats()!).render()}
-      </Match>
-    </Switch>
+function outcome(entry: HistoryEntry) {
+  if (entry.k === KindEnum.Correct) return ['Won', 'text-success-foreground']
+  if (entry.k === KindEnum.Failed) return ['Failed', 'text-error-foreground']
+  return ['Revealed', 'text-blue-500']
+}
+
+function renderHistoryEntry(word: string, entry: HistoryEntry) {
+  const guesses = []
+  for (let i = 0; i < entry.h.length; i += word.length) guesses.push(entry.h.substring(i, i + word.length))
+  return <div class='stats-guess-popover'><div class='stats-guess-board'>
+    <For each={guesses}>{guess => new Block(word.length, guess, calcDiff(word, guess)).render()}</For>
+  </div></div>
+}
+
+function SummaryStat({label, value}: {label: string, value: JSX.Element}) {
+  return <div class='stats-summary-item'>
+    <span class='stats-summary-label'>{label}</span>
+    <strong class='stats-summary-value'>{value}</strong>
   </div>
 }
 
-export function StatsPageTrigger(): JSX.Element {
-  return <Tooltip>
-    <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
-      <div
-        class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-        onClick={() => setP(Page.Stats)}
-      >
-        <ChartNoAxesCombined class='size-5 stroke-foreground' />
-      </div>
-    </TooltipTrigger>
-    <TooltipContent>Stats</TooltipContent>
-  </Tooltip>
+function WordHistory({value, selected, onSelect}: {value: Value, selected: Accessor<Value | undefined>, onSelect: (value: Value) => void}) {
+  if (value.h.length === 1) {
+    const attempt = value.h[0]
+    const [status, statusClass] = outcome(attempt)
+    return <Popover>
+      <PopoverTrigger class='stats-history-trigger'>
+        <button type='button' class='stats-history-row' data-selected={selected() === value ? '' : undefined} onClick={() => onSelect(value)}>
+          <span class='stats-word'>{value.w}</span>
+          <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses</span>
+          <span class={`stats-row-status ${statusClass}`}>{status}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
+    </Popover>
+  }
+
+  return <AccordionItem value={value.w} class='stats-history-group'>
+    <AccordionTrigger class='stats-history-row' onClick={() => onSelect(value)}>
+      <span class='stats-word'>{value.w}</span>
+      <span class='stats-row-meta'>{value.h.length} games</span>
+    </AccordionTrigger>
+    <AccordionPrimitive.Content class='stats-history-attempts'>
+      <For each={value.h}>{attempt => {
+        const [status, statusClass] = outcome(attempt)
+        return <Popover>
+          <PopoverTrigger class='stats-attempt-trigger'>
+            <button type='button' class='stats-attempt-row' onClick={() => onSelect(value)}>
+              <span>{attempt.h.length / value.w.length} guesses</span>
+              <span class={statusClass}>{status}</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
+        </Popover>
+      }}</For>
+    </AccordionPrimitive.Content>
+  </AccordionItem>
 }
 
+function DetailedStats({value}: {value: Value}) {
+  const {softStore, hardStore} = GetSettingsStore()
+  const soft = softStore.get()!
+  const hard = hardStore.get()!
+  const stats = createMemo(() => {
+    let wins = 0, fails = 0, reveals = 0, winningGuesses = 0
+    for (const history of value.h) {
+      if (history.k === KindEnum.Correct) {
+        wins++
+        winningGuesses += history.h.length / value.w.length
+      } else if (history.k === KindEnum.Failed) fails++
+      else reveals++
+    }
+    return {wins, fails, reveals, average: wins ? winningGuesses / wins : 0}
+  })
+
+  return <section class='stats-section stats-detail'>
+    <div class='stats-section-heading'>
+      <div>
+        <span class='stats-eyebrow'>Word</span>
+        <h2>{value.w}</h2>
+      </div>
+      <ShareTrigger word={() => value.w} soft={soft} hard={hard} />
+    </div>
+    <div class='stats-detail-grid'>
+      <SummaryStat label='Played' value={value.h.length} />
+      <SummaryStat label='Win rate' value={`${(stats().wins / value.h.length * 100).toFixed(1)}%`} />
+      <SummaryStat label='Avg. guesses' value={stats().average ? stats().average.toFixed(2) : '–'} />
+    </div>
+    <div class='stats-outcomes'>
+      <span><i class='stats-dot stats-dot-win' />Won <strong>{stats().wins}</strong></span>
+      <span><i class='stats-dot stats-dot-fail' />Failed <strong>{stats().fails}</strong></span>
+      <span><i class='stats-dot stats-dot-reveal' />Revealed <strong>{stats().reveals}</strong></span>
+    </div>
+  </section>
+}
+
+function StatsContent({stats}: {stats: GameStats}) {
+  const [selected, setSelected] = createSignal<Value | undefined>(stats.words[0])
+  return <div class='stats-content'>
+    <section class='stats-section'>
+      <div class='stats-section-heading'><div><span class='stats-eyebrow'>All time</span><h2>Summary</h2></div></div>
+      <div class='stats-summary-grid'>
+        <SummaryStat label='Games' value={stats.totalGames} />
+        <SummaryStat label='Wins' value={stats.totalWins} />
+        <SummaryStat label='Win rate' value={`${(stats.totalWins / stats.totalGames * 100).toFixed(1)}%`} />
+        <SummaryStat label='Avg. guesses' value={stats.averageGuesses.toFixed(2)} />
+      </div>
+    </section>
+
+    <div class='stats-columns'>
+      <section class='stats-section stats-history'>
+        <div class='stats-section-heading'><div><span class='stats-eyebrow'>History</span><h2>Played words</h2></div><span class='stats-count'>{stats.words.length}</span></div>
+        <Accordion class='stats-history-list' multiple>
+          <For each={stats.words}>{value => <WordHistory value={value} selected={selected} onSelect={setSelected} />}</For>
+        </Accordion>
+      </section>
+      <Show when={selected()}>{value => <DetailedStats value={value()} />}</Show>
+    </div>
+  </div>
+}
+
+export default function StatsPage() {
+  const [stats, {refetch}] = createResource(fetchStats)
+  const refresh = () => void refetch()
+  onMount(() => window.addEventListener('wordle:stats-change', refresh))
+  onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
+
+  return <main class='stats-page'>
+    <header class='stats-page-header'>
+      <button type='button' class='wordle-nav-button' onClick={() => setP(Page.Wordle)} aria-label='Back to Wordle'><IconHome class='size-5' /></button>
+      <h1>Statistics</h1>
+    </header>
+    <Switch>
+      <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
+      <Match when={stats.error}><p class='stats-state text-error-foreground'>Could not load statistics.</p></Match>
+      <Match when={stats() && stats()!.totalGames > 0}><StatsContent stats={stats()!} /></Match>
+      <Match when={stats() && stats()!.totalGames === 0}><p class='stats-state'>No statistics yet.</p></Match>
+    </Switch>
+  </main>
+}
+
+export function StatsPageTrigger(): JSX.Element {
+  const [visible, setVisible] = createSignal(false)
+  const refresh = () => void hasStats().then(setVisible).catch(() => setVisible(false))
+  onMount(() => {
+    refresh()
+    window.addEventListener('wordle:stats-change', refresh)
+  })
+  onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
+
+  return <Show when={visible()}>
+    <Tooltip>
+      <TooltipTrigger onClick={e => e.stopPropagation()}>
+        <button type='button' class='wordle-nav-button' onClick={() => setP(Page.Stats)} aria-label='Statistics'>
+          <ChartNoAxesCombined class='size-5 stroke-foreground' />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Stats</TooltipContent>
+    </Tooltip>
+  </Show>
+}

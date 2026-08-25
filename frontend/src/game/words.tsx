@@ -124,6 +124,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
 
   await store.put(record)
   store.transaction.commit()
+  window.dispatchEvent(new Event('wordle:stats-change'))
 }
 
 // Get all the words that have been done
