@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@800&family=Roboto:wght@100;300&display=swap');
+@import "tailwindcss";
+
+/* Error Page Swinging Light */
+.__error_page_swinging_light_parent {
+  @apply w-full h-full flex flex-col items-center;
+  --button: hsl(44, 0%, 70%);
+  --button-color: hsl(0, 0%, 4%);
+  --shadow: hsl(0, 0%, 0%);
+  --bg: hsl(53, 0%, 45%);
+  --header: hsl(53, 0%, 48%);
+  --lit-header: hsl(53, 0%, 90%);
+  --speed: 2s;
+
+  font-family: 'Roboto', sans-serif;
+  background: var(--bg);
+  perspective: 1200px;
+}
+
+@property --swing-x {
+  initial-value: 0;
+  inherits: false;
+  syntax: '<integer>';
+}
+
+@property --swing-y {
+  initial-value: 0;
+  inherits: false;
+  syntax: '<integer>';
+}
+
+.__error_page_swinging_light_text {
+  @apply m-0 mb-4 text-transparent;
+  animation: __error_page_swinging_light_swing var(--speed) infinite alternate ease-in-out;
+  font-size: clamp(5rem, 40vmin, 20rem);
+  font-family: 'Open Sans', sans-serif;
+  letter-spacing: 1rem;
+  transform: translate3d(0, 0, 0vmin);
+  --x: calc(50% + (var(--swing-x) * 0.5) * 1%);
+  background: radial-gradient(var(--lit-header), var(--header) 45%) var(--x) 100% / 200% 200%;
+  background-clip: text;
+  box-sizing: border-box;
+  transform-style: preserve-3d;
+}
+
+.__error_page_swinging_light_text::after {
+  animation: __error_page_swinging_light_swing var(--speed) infinite alternate ease-in-out;
+  content: 'Oops';
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--shadow);
+  filter: blur(1.5vmin);
+  transform: scale(1.05) translate3d(0, 12%, -10vmin) translate(calc((var(--swing-x, 0) * 0.05) * 1%), calc((var(--swing-y) * 0.05) * 1%));
+}
+
+.__error_page_swinging_light_cloak {
+  animation: __error_page_swinging_light_swing var(--speed) infinite alternate-reverse ease-in-out;
+  height: 100%;
+  width: 100%;
+  transform-origin: 50% 30%;
+  transform: rotate(calc(var(--swing-x) * -0.25deg));
+  background: radial-gradient(40% 40% at 50% 42%, transparent, black 35%);
+}
+
+.__error_page_swinging_light_cloak_wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+.__error_page_swinging_light_cloak_container {
+  height: 350vmax;
+  width:  350vmax;
+  position: absolute;
+  top: 50vmin;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+@keyframes __error_page_swinging_light_swing {
+  0% {
+    --swing-x: -100;
+    --swing-y: -100;
+  }
+  50% {
+    --swing-y: 0;
+  }
+  100% {
+    --swing-y: -100;
+    --swing-x: 100;
+  }
+}
+

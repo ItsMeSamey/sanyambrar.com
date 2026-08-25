@@ -1,0 +1,3 @@
+import * as D from '@kobalte/core/dialog'; import { splitProps, type ComponentProps } from 'solid-js'; import { cn } from '~/lib/utils'
+export const Dialog=D.Root; export const DialogTrigger=D.Trigger; export const DialogHeader=(p:ComponentProps<'div'>)=><div {...p}/>; export const DialogFooter=(p:ComponentProps<'div'>)=><div {...p}/>;
+export function DialogContent(props:ComponentProps<typeof D.Content>){const[l,o]=splitProps(props,['class']);return <D.Portal><D.Overlay class='fixed inset-0 z-50 bg-black/50'/><D.Content class={cn('fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 border bg-background shadow-lg',l.class)} {...o}/></D.Portal>}
