@@ -314,6 +314,10 @@ async function auditSource() {
   must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"'), "game navigation leaked .html suffixes");
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
+  const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
+  must(sharedCss.includes("--site-content-width:1080px"), "shared content width contract missing");
+  must(home.includes("width:min(var(--site-content-width,1080px),100%)"), "homepage must use shared content width");
+  must(blogCss.includes(".shell{width:min(var(--site-content-width,1080px),100%)") && blogCss.includes(".article{width:min(var(--site-content-width,1080px),100%)"), "blog must use shared content width");
   const viteConfig = await readFile(join(ROOT, "vite.config.ts"), "utf8");
   const webpackConfig = await readFile(join(ROOT, "keybr/webpack.config.js"), "utf8");
   const singleFilePlugin = await readFile(join(ROOT, "keybr/webpack-single-file.js"), "utf8");

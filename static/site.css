@@ -1,4 +1,4 @@
-:root{--site-selection:color-mix(in srgb,var(--site-accent,#787c7e) 32%,transparent)}
+:root{--site-content-width:1080px;--site-selection:color-mix(in srgb,var(--site-accent,#787c7e) 32%,transparent)}
 ::selection{background:var(--site-selection)!important;color:var(--site-fg,#121213)!important}
 html,body,*{scrollbar-width:none!important}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
