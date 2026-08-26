@@ -49,26 +49,4 @@
   });
   document.addEventListener('click', e => { if (e.target.closest('[data-open-search]')) open(); });
 
-  const bits = n => n.toString(2).padStart(8, '0');
-  const floatPanel = el => {
-    const input = el.querySelector('input'), out = el.querySelector('pre');
-    const update = () => {
-      const b = new ArrayBuffer(4), f = new Float32Array(b), u = new Uint32Array(b); f[0] = Number(input.value);
-      const x = u[0] >>> 0, sign = x >>> 31, exp = (x >>> 23) & 255, mant = x & 0x7fffff;
-      out.textContent = `${sign}  ${exp.toString(2).padStart(8,'0')}  ${mant.toString(2).padStart(23,'0')}\nsign       exponent                  mantissa\nhex  0x${x.toString(16).padStart(8,'0')}\nexp  ${exp} → ${exp === 0 ? 'subnormal/zero' : exp === 255 ? 'special' : exp - 127}`;
-    }; input.addEventListener('input', update); update();
-  };
-  const unicodePanel = el => {
-    const input = el.querySelector('textarea'), out = el.querySelector('pre'), enc = new TextEncoder();
-    const update = () => out.textContent = [...input.value].map(c => { const cp = c.codePointAt(0); return `${c === ' ' ? '␠' : c}  U+${cp.toString(16).toUpperCase().padStart(4,'0')}  ${[...enc.encode(c)].map(x=>x.toString(16).padStart(2,'0')).join(' ')}`; }).join('\n');
-    input.addEventListener('input', update); update();
-  };
-  const hashPanel = el => {
-    const inputs = [...el.querySelectorAll('input')], out = el.querySelector('pre'), enc = new TextEncoder(); let seq = 0;
-    const update = async () => { const mine = ++seq; const hs = await Promise.all(inputs.map(x => crypto.subtle.digest('SHA-256', enc.encode(x.value)).then(b => new Uint8Array(b)))); if (mine !== seq) return; let d = 0; for (let i=0;i<32;i++) d += bits(hs[0][i]^hs[1][i]).replace(/0/g,'').length; out.textContent = `${[...hs[0]].map(x=>x.toString(16).padStart(2,'0')).join('')}\n${[...hs[1]].map(x=>x.toString(16).padStart(2,'0')).join('')}\n\n${d} / 256 bits differ`; };
-    inputs.forEach(x => x.addEventListener('input', update)); update();
-  };
-  const mountLabs = () => document.querySelectorAll('[data-lab]:not([data-lab-mounted])').forEach(el => { el.dataset.labMounted = ''; ({float:floatPanel,unicode:unicodePanel,hash:hashPanel}[el.dataset.lab]?.(el)); });
-  mountLabs();
-  addEventListener('samey-pageload', mountLabs);
 })();

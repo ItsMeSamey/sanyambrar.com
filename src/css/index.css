@@ -1,4 +1,4 @@
-@import '../../static/shared/game-settings.css';
+@import '../shared/styles/game-settings.css';
 @import 'tailwindcss';
 
 @layer base {

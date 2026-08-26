@@ -1119,6 +1119,7 @@
     fetchPage(url).catch(() => {});
   };
   const mountSpa = () => {
+    if (document.documentElement.hasAttribute("data-solid-spa")) return;
     markInitialPageStyles();
     globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
     document.addEventListener("pointerover", event => { const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); }, { passive: true });

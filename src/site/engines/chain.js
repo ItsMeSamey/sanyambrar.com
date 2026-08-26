@@ -1,87 +1,4 @@
-<!doctype html>
-<html lang="en" data-spa data-home-href="./" data-site-kind="chain">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121213" media="(prefers-color-scheme: dark)">
-  <title>Chain Reaction · Sanyam Brar</title>
-  <script src="./appearance.generated.js"></script>
-  <script src="./theme.js"></script>
-  <link rel="stylesheet" href="./shared/game-settings.css">
-  <style id="samey-boot-style">.samey-boot{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;background:var(--site-bg,#fff);color:var(--site-fg,#121213)}.samey-boot>div{display:grid;place-items:center;gap:13px}.samey-boot-visual{width:58px;height:58px;display:grid;place-items:center}.samey-boot-visual .samey-cursor-loading{display:block!important;position:static;width:58px;height:58px;transform:none}.samey-boot span{color:var(--site-muted,#787c7e);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.14em}</style>
-  <style>
-    *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
-    button,input{font:inherit;color:inherit}
-    .chain-shell{position:relative;height:100dvh;background:var(--site-bg,#fff)}
-    .chain-stage{position:absolute;inset:0;min-width:0;min-height:0;display:grid;place-items:center;padding:52px 22px 18px;overflow:hidden;touch-action:none;user-select:none}
-    #chain-canvas{display:block;max-width:100%;max-height:100%;touch-action:none}
-    .chain-turn{position:fixed;top:var(--game-control-top);left:50%;z-index:38;height:var(--game-control-size);display:flex;align-items:center;gap:14px;color:var(--site-muted,#787c7e);font-size:11px;font-weight:700;letter-spacing:.08em;transform:translateX(-50%);pointer-events:none}
-    .chain-turn-item{display:flex;align-items:center;gap:7px;white-space:nowrap}
-    .chain-turn-item+ .chain-turn-item::before{content:"";width:1px;height:14px;margin-right:1px;background:var(--site-line,#d3d6da)}
-    .chain-turn-swatch{width:12px;height:12px;border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--site-fg,#121213) 22%,transparent)}
-    .chain-settings-trigger{position:fixed;top:var(--game-control-top);right:var(--game-control-right);z-index:39}
-    .chain-settings{visibility:hidden;pointer-events:none}
-    .chain-settings[data-open="true"]{visibility:visible;pointer-events:auto;animation:samey-control-expand 220ms cubic-bezier(.2,.8,.2,1)}
-    .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-    .chain-topbar{position:fixed;top:10px;left:50%;z-index:40;height:36px;max-width:calc(100% - 24px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;transform:translateX(-50%);color:var(--site-fg,#121213)}
-    .chain-title{justify-self:start;font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.07em;white-space:nowrap}
-    .chain-turn{position:static;transform:none;height:36px;justify-self:center}
-    .chain-top-actions{justify-self:end;display:flex;align-items:center;gap:2px}.chain-settings-trigger,.chain-appearance-trigger{position:static;top:auto;right:auto}
-    @media(max-width:520px){.chain-title{font-size:10px}.chain-topbar{grid-template-columns:auto 1fr auto}.chain-turn{justify-self:center;gap:8px;font-size:9px}.chain-turn-item{gap:5px}}
-    @media(max-width:640px){.chain-stage{padding:50px 12px 12px}}
-  </style>
-</head>
-<body>
-  <div id="samey-boot" class="samey-boot"><div><div id="samey-boot-visual" class="samey-boot-visual"></div><span>loading</span></div></div><script>document.getElementById('samey-boot-visual').innerHTML=globalThis.SameyLoadingSvg?.()||'';addEventListener('load',()=>{document.getElementById('samey-boot')?.remove();document.getElementById('samey-boot-style')?.remove()},{once:true})</script>
-  <div class="chain-shell">
-    <header id="chain-topbar" class="chain-topbar">
-      <strong class="chain-title">CHAIN REACTION</strong>
-      <div id="chain-turn" class="chain-turn" aria-hidden="true">
-        <span class="chain-turn-item"><span>YOU</span><span id="chain-you-swatch" class="chain-turn-swatch"></span></span>
-        <span class="chain-turn-item"><span>TURN</span><span id="chain-active-swatch" class="chain-turn-swatch"></span></span>
-      </div>
-      <div class="chain-top-actions">
-        <button class="game-settings-trigger chain-appearance-trigger" type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
-        </button>
-        <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
-        </button>
-      </div>
-    </header>
-    <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
-      <button id="chain-settings-close" type="button" class="game-settings-close" aria-label="Close settings">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-      <div class="game-settings-body">
-        <div class="game-settings-section-title">BOARD</div>
-        <label class="game-settings-slider" for="chain-rows">
-          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Rows</span><output id="chain-rows-value" class="game-settings-slider-value"></output></span>
-          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-rows" type="range" min="4" max="30" step="1"></span>
-        </label>
-        <label class="game-settings-slider" for="chain-cols">
-          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Columns</span><output id="chain-cols-value" class="game-settings-slider-value"></output></span>
-          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-cols" type="range" min="4" max="30" step="1"></span>
-        </label>
-        <label class="game-settings-slider" for="chain-enemies">
-          <span class="game-settings-slider-head"><span class="game-settings-slider-label">Enemies</span><output id="chain-enemies-value" class="game-settings-slider-value"></output></span>
-          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-enemies" type="range" min="1" max="5" step="1"></span>
-        </label>
-        <div class="game-settings-actions">
-          <button id="chain-new-game" class="game-settings-action" type="button">New Game</button>
-        </div>
-      </div>
-    </aside>
-    <main id="chain-stage" class="chain-stage">
-      <canvas id="chain-canvas" aria-label="Chain Reaction board"></canvas>
-      <div id="chain-status" class="sr-only" aria-live="polite"></div>
-    </main>
-  </div>
-<script>
-(() => {
+export function mountChain() {
   'use strict';
 
   const canvas = document.getElementById('chain-canvas');
@@ -101,6 +18,21 @@
   const rowsValue = document.getElementById('chain-rows-value');
   const colsValue = document.getElementById('chain-cols-value');
   const enemiesValue = document.getElementById('chain-enemies-value');
+  const openingView = document.getElementById('chain-opening');
+  const gameView = document.getElementById('chain-game');
+  const menuButton = document.getElementById('chain-menu-button');
+  const resumeCard = document.getElementById('chain-resume-card');
+  const resumeButton = document.getElementById('chain-resume');
+  const resumeEyebrow = document.getElementById('chain-resume-eyebrow');
+  const resumeTitle = document.getElementById('chain-resume-title');
+  const resumeCopy = document.getElementById('chain-resume-copy');
+  const resumeSpec = document.getElementById('chain-resume-spec');
+  const quickButton = document.getElementById('chain-quick');
+  const resultPanel = document.getElementById('chain-result');
+  const resultTitle = document.getElementById('chain-result-title');
+  const resultCopy = document.getElementById('chain-result-copy');
+  const playAgainButton = document.getElementById('chain-play-again');
+  const resultMenuButton = document.getElementById('chain-result-menu');
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
   const EMPTY = 0;
@@ -108,6 +40,7 @@
   const PLAYER_COLORS = ['', '#6aaa64', '#c95d63', '#6b8fd6', '#b07aa1', '#d2a94b', '#62a8a8'];
   const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
+  const GAME_KEY = 'samey.chain.game.v2';
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
@@ -140,6 +73,53 @@
 
   function saveConfig() {
     try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); } catch {}
+  }
+
+  function bytesToB64(bytes) {
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(out);
+  }
+
+  function b64ToBytes(text, expected) {
+    try {
+      const raw = atob(text || '');
+      if (raw.length !== expected) return null;
+      const out = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    } catch { return null; }
+  }
+
+  function readSavedGame() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
+      if (!saved || saved.v !== 2) return null;
+      const cfg = {
+        rows: clampInt(saved.r, ...limits.rows, defaults.rows),
+        cols: clampInt(saved.c, ...limits.cols, defaults.cols),
+        enemies: clampInt(saved.e, ...limits.enemies, defaults.enemies),
+      };
+      const count = cfg.rows * cfg.cols;
+      const b = b64ToBytes(saved.b, count), o = b64ToBytes(saved.o, count), enteredSaved = b64ToBytes(saved.p, cfg.enemies + 2);
+      if (!b || !o || !enteredSaved) return null;
+      for (let i = 0; i < count; i++) {
+        if (b[i] > 3 || o[i] > cfg.enemies + 1 || (!b[i] && o[i])) return null;
+      }
+      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: clampInt(saved.t, 1, cfg.enemies + 1, HUMAN), gameOver: !!saved.g, inGame: !!saved.i};
+    } catch { return null; }
+  }
+
+  function saveGameState(inGame = !gameView.hidden) {
+    if (!board || !owners || !entered) return;
+    try {
+      localStorage.setItem(GAME_KEY, JSON.stringify({
+        v:2,r:config.rows,c:config.cols,e:config.enemies,
+        b:bytesToB64(board),o:bytesToB64(owners),p:bytesToB64(entered),
+        t:turn,g:gameOver,i:inGame
+      }));
+    } catch {}
+    updateResumeCard();
   }
 
   function buildBoard() {
@@ -314,6 +294,8 @@
     locked = false;
     particles = [];
     updateStatus();
+    saveGameState(true);
+    showResult();
     requestDraw();
   }
 
@@ -394,6 +376,7 @@
     locked = false;
     turn = nextPlayer(owner);
     updateStatus();
+    saveGameState(true);
     requestDraw();
   }
 
@@ -421,7 +404,7 @@
     while (version === gameVersion && !gameOver && turn !== HUMAN && !locked) {
       const player = turn;
       const moves = legalMoves(player);
-      if (!moves.length) { entered[player] = 1; turn = nextPlayer(player); continue; }
+      if (!moves.length) { entered[player] = 1; turn = nextPlayer(player); saveGameState(true); continue; }
       await new Promise(resolve => setTimeout(resolve, 65 + Math.random() * 70));
       if (version !== gameVersion || gameOver || turn !== player || locked) return;
       const idx = moves[(Math.random() * moves.length) | 0];
@@ -455,15 +438,96 @@
     if (i >= 0) humanMove(i);
   });
 
-  function reset() {
+  function reset(nextConfig = config) {
     gameVersion++;
     particles = [];
+    config = {...nextConfig};
+    saveConfig();
     turn = HUMAN;
     locked = false;
     gameOver = false;
+    resultPanel.hidden = true;
     buildBoard();
+    syncSettings();
     updateStatus();
+    saveGameState(true);
     layout();
+  }
+
+  function restoreGame(saved) {
+    config = {...saved.config};
+    rows = config.rows;
+    cols = config.cols;
+    playerCount = config.enemies + 1;
+    buildBoard();
+    board.set(saved.board);
+    owners.set(saved.owners);
+    entered.set(saved.entered.subarray(0, entered.length));
+    turn = saved.turn;
+    gameOver = saved.gameOver;
+    locked = false;
+    particles = [];
+    syncSettings();
+    updateStatus();
+  }
+
+  function boardSummary(cfg = config) {
+    return `${cfg.rows} × ${cfg.cols} board · ${cfg.enemies} ${cfg.enemies === 1 ? 'enemy' : 'enemies'}`;
+  }
+
+  function updateResumeCard() {
+    const saved = readSavedGame();
+    if (!saved) {
+      resumeEyebrow.textContent = 'First match';
+      resumeTitle.textContent = 'Start playing';
+      resumeCopy.textContent = 'Begin with the current board settings.';
+      resumeSpec.textContent = boardSummary(config);
+      resumeButton.textContent = 'Start game';
+      resumeCard.classList.remove('chain-mode-card-primary');
+      return;
+    }
+    resumeCard.classList.add('chain-mode-card-primary');
+    resumeEyebrow.textContent = saved.gameOver ? 'Last match' : 'Current game';
+    resumeTitle.textContent = saved.gameOver ? (saved.turn === HUMAN ? 'You won' : 'Match complete') : 'Continue';
+    resumeCopy.textContent = saved.gameOver ? 'Replay the finished board or start another match.' : 'Resume exactly where the board was left.';
+    resumeSpec.textContent = boardSummary(saved.config);
+    resumeButton.textContent = saved.gameOver ? 'View board' : 'Continue game';
+  }
+
+  function showMenu() {
+    const wasInGame = !gameView.hidden;
+    if (wasInGame && locked) return;
+    if (wasInGame) gameVersion++;
+    setSettingsOpen(false);
+    resultPanel.hidden = true;
+    gameView.hidden = true;
+    openingView.hidden = false;
+    if (wasInGame || readSavedGame()) saveGameState(false);
+    updateResumeCard();
+  }
+
+  function showGame() {
+    openingView.hidden = true;
+    gameView.hidden = false;
+    saveGameState(true);
+    requestAnimationFrame(() => {
+      layout();
+      updateStatus();
+      if (gameOver) showResult();
+      else if (turn !== HUMAN) continueTurns();
+    });
+  }
+
+  function showResult() {
+    if (!gameOver || gameView.hidden) return;
+    resultTitle.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
+    resultCopy.textContent = `${boardSummary()} · The final cascade belongs to ${turn === HUMAN ? 'you' : `enemy ${turn - 1}`}.`;
+    resultPanel.hidden = false;
+  }
+
+  function startNewGame(nextConfig) {
+    reset(nextConfig);
+    showGame();
   }
 
   function setSettingsOpen(open) {
@@ -491,36 +555,70 @@
     for (const input of [rowsInput, colsInput, enemiesInput]) syncRangeProgress(input);
   }
 
-  function applySettings() {
-    config = {
+  function settingsFromControls() {
+    return {
       rows: clampInt(rowsInput.value, ...limits.rows, defaults.rows),
       cols: clampInt(colsInput.value, ...limits.cols, defaults.cols),
       enemies: clampInt(enemiesInput.value, ...limits.enemies, defaults.enemies),
     };
-    syncSettings();
-    saveConfig();
-    reset();
+  }
+
+  function previewSettings() {
+    rowsValue.value = rowsInput.value;
+    colsValue.value = colsInput.value;
+    enemiesValue.value = enemiesInput.value;
+    for (const input of [rowsInput, colsInput, enemiesInput]) syncRangeProgress(input);
   }
 
   settingsButton.addEventListener('click', () => setSettingsOpen(settingsButton.getAttribute('aria-expanded') !== 'true'));
   settingsClose.addEventListener('click', () => setSettingsOpen(false));
-  newGameButton.addEventListener('click', () => { reset(); setSettingsOpen(false); });
-  settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
-  document.addEventListener('pointerdown', e => {
-    if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
+  newGameButton.addEventListener('click', () => { const next = settingsFromControls(); setSettingsOpen(false); startNewGame(next); });
+  menuButton.addEventListener('click', showMenu);
+  resumeButton.addEventListener('click', () => {
+    const saved = readSavedGame();
+    if (saved) restoreGame(saved); else reset(config);
+    showGame();
   });
-  for (const input of [rowsInput, colsInput, enemiesInput]) input.addEventListener('input', applySettings);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') setSettingsOpen(false); });
+  quickButton.addEventListener('click', () => startNewGame(defaults));
+  document.querySelectorAll('.chain-preset').forEach(button => button.addEventListener('click', () => startNewGame({
+    rows: clampInt(button.dataset.rows, ...limits.rows, defaults.rows),
+    cols: clampInt(button.dataset.cols, ...limits.cols, defaults.cols),
+    enemies: clampInt(button.dataset.enemies, ...limits.enemies, defaults.enemies),
+  })));
+  playAgainButton.addEventListener('click', () => startNewGame(config));
+  resultMenuButton.addEventListener('click', showMenu);
+  settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
+  const onDocumentPointerDown = e => {
+    if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
+  };
+  document.addEventListener('pointerdown', onDocumentPointerDown);
+  for (const input of [rowsInput, colsInput, enemiesInput]) input.addEventListener('input', previewSettings);
+  const onDocumentKeyDown = e => { if (e.key === 'Escape') setSettingsOpen(false); };
+  document.addEventListener('keydown', onDocumentKeyDown);
 
-  syncSettings();
-  buildBoard();
-  updateStatus();
-  new ResizeObserver(layout).observe(stage);
-  window.addEventListener('sameyappearancechange', () => { orbCache.clear(); updateStatus(); requestDraw(); });
-  new MutationObserver(() => { orbCache.clear(); updateStatus(); requestDraw(); }).observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { orbCache.clear(); updateStatus(); requestDraw(); });
-  layout();
-})();
-</script>
-</body>
-</html>
+  const savedGame = readSavedGame();
+  if (savedGame) restoreGame(savedGame); else { buildBoard(); syncSettings(); updateStatus(); }
+  updateResumeCard();
+  const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); };
+  const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
+  resizeObserver.observe(stage);
+  window.addEventListener('sameyappearancechange', repaintTheme);
+  const themeObserver = new MutationObserver(repaintTheme);
+  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
+  const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+  scheme.addEventListener('change', repaintTheme);
+  if (savedGame?.inGame) showGame(); else showMenu();
+
+  return () => {
+    gameVersion++;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    particles = [];
+    resizeObserver.disconnect();
+    themeObserver.disconnect();
+    window.removeEventListener('sameyappearancechange', repaintTheme);
+    scheme.removeEventListener('change', repaintTheme);
+    document.removeEventListener('pointerdown', onDocumentPointerDown);
+    document.removeEventListener('keydown', onDocumentKeyDown);
+  };
+}

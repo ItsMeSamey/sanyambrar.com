@@ -1,4 +1,4 @@
-(() => {
+export function mountTools() {
   'use strict';
 
   const root = document.querySelector('.tools-view');
@@ -50,10 +50,11 @@
     setRoute(link.dataset.tool);
   });
 
-  const onPop = () => {
+  const onRouteChange = () => {
     if (/\/tools(?:\.html)?\/?$/.test(location.pathname)) render();
   };
-  addEventListener('popstate', onPop);
+  addEventListener('popstate', onRouteChange);
+  addEventListener('samey-solid-routechange', onRouteChange);
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
@@ -653,10 +654,11 @@
     });
   }
 
-  globalThis.SameyToolsDispose = () => {
-    try { disposeTool(); } catch {}
-    removeEventListener('popstate', onPop);
-  };
-  addEventListener('samey-pageleave', () => globalThis.SameyToolsDispose?.(), { once: true });
   render();
-})();
+  return () => {
+    try { disposeTool(); } catch {}
+    removeEventListener('popstate', onRouteChange);
+    removeEventListener('samey-solid-routechange', onRouteChange);
+    if (monacoThemeListener) removeEventListener('samey-themechange', monacoThemeListener);
+  };
+}

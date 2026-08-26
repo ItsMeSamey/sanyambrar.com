@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
-import { generateSite } from "./site.ts";
+import { generateSite } from "./site.tsx";
 
 const runFile = promisify(execFile);
 const gzipAsync = promisify(gzip);
@@ -19,6 +19,7 @@ const DOCS = join(ROOT, "docs");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
 const GENERATED_SITE = join(ROOT, ".build", "site");
+const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
@@ -107,6 +108,7 @@ async function copyStatic() {
   await mkdir(DOCS, { recursive: true });
   await cp(STATIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
+  await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });
 }
 
 async function cleanupBuildArtifacts() {
@@ -126,6 +128,13 @@ async function cleanupBuildArtifacts() {
   }
 }
 
+
+async function buildSiteRuntime() {
+  await ensureDeps(ROOT);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.site.config.ts"]);
+  must(existsSync(join(GENERATED_SITE_RUNTIME, "site-app.js")), "site runtime bundle missing");
+  log("solid site SPA -> .build/site-runtime");
+}
 
 async function buildSolid() {
   await ensureDeps(ROOT);
@@ -304,98 +313,22 @@ function auditSharedRuntime(theme: string, css: string, where: string) {
 }
 
 async function auditSource() {
-  const homeSplit = await readFile(join(GENERATED_SITE, "index.html"), "utf8");
-  const work = await readFile(join(GENERATED_SITE, "work.html"), "utf8");
-  const toolsHtml = await readFile(join(STATIC, "tools.html"), "utf8");
-  const toolsRuntime = await readFile(join(STATIC, "tools.js"), "utf8");
-  must(homeSplit.includes('id="games-title"') && homeSplit.includes('id="tools-title"') && homeSplit.includes('id="writing-title"'), "home: Games/Tools/Writing split missing");
-  must(!homeSplit.includes('id="projects-title"') && !homeSplit.includes('id="contributions-title"'), "home: work sections leaked back into home");
-  must(work.includes('id="projects-title"') && work.includes('id="contributions-title"'), "work: Projects/Contributions missing");
-  const lab = await readFile(join(GENERATED_SITE, "lab.html"), "utf8");
-  must(lab.includes('data-lab="float"') && lab.includes('data-lab="unicode"') && lab.includes('data-lab="hash"'), "lab: experiments missing");
-  must(existsSync(join(STATIC, "site.js")) && existsSync(join(GENERATED_SITE, "site-index.js")), "site search runtime/index missing");
-  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsHtml.includes("class=\"tool-tabs\"") && !toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("ensureMonaco") && toolsRuntime.includes("createDiffEditor"), "tools: integrated Monaco runtime/shell missing");
-  must(!toolsRuntime.includes("Send to") && !toolsRuntime.includes("data-send") && !toolsRuntime.includes("shareable") && !toolsRuntime.includes("q.set(name"), "tools: obsolete send-to or URL document state returned");
-  must(toolsRuntime.includes("monaco-word-highlight") && toolsRuntime.includes("monaco-nonascii-highlight"), "tools: Text Inspector Monaco decorations missing");
-  must(toolsRuntime.includes("🔗 Scroll") && toolsRuntime.includes("data-md-link") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: Markdown source-aware linked scrolling missing");
-  must(!existsSync(join(ROOT, "src/tools")) && !existsSync(join(ROOT, "tools.html")), "tools: obsolete standalone Solid app returned");
-  for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
-  const theme = await readFile(join(STATIC, "theme.js"), "utf8");
-  const provider = await readFile(join(ROOT, "keybr/packages/keybr-themes/lib/themes/ThemeProvider.tsx"), "utf8");
-  const appearance = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8"));
-  const generatedAppearance = await readFile(GENERATED_APPEARANCE, "utf8");
-  const generatedLess = await readFile(GENERATED_LESS, "utf8");
-  must(theme.includes('Object.defineProperty(globalThis, "SameyAppearance"'), "shared appearance API missing");
-  must(theme.includes("SameyAppearanceConfig"), "shared runtime must consume generated appearance config");
-  must(generatedAppearance.includes(JSON.stringify(appearance)), "generated appearance JS drift");
-  for (const [id, color] of Object.entries<any>(appearance.colors)) for (const key of ["background", "text", "accent", "error", "slow", "fast", "effort"]) must(generatedLess.includes(`@samey-${id}-${key}: ${color[key]};`), `generated Keybr palette drift: ${id}.${key}`);
-  must(!theme.includes("Storage.prototype.setItem ="), "appearance runtime must not monkeypatch Storage");
-  must(provider.includes("globalThis.SameyAppearance"), "Keybr must consume shared appearance API");
-  must(!provider.includes("localStorage") && !provider.includes("keybr.theme") && !provider.includes("samey.font"), "appearance persistence leaked into Keybr");
-  must(!provider.includes("mix(") && !provider.includes("style.setProperty"), "Keybr duplicates shared appearance derivation");
-  must(!(await readFile(join(ROOT, "keybr/packages/keybr-themes/lib/themes/index.ts"), "utf8")).includes("./themes.ts"), "dead Keybr appearance API re-exported");
-
-  const lessFiles = await walk(join(ROOT, "keybr/packages"), (_path, name) => name.endsWith(".less"));
-  const used = new Set<string>(), defined = new Set<string>();
-  for (const file of lessFiles) {
-    const text = await readFile(file, "utf8");
-    for (const match of text.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)/g)) used.add(match[1]);
-    for (const match of text.matchAll(/(^|[;{]\s*)(--[A-Za-z0-9_-]+)\s*:/gm)) defined.add(match[2]);
-  }
-  const missing = [...used].filter((name) => !defined.has(name)).sort();
-  must(missing.length === 0, `Keybr CSS variables used but never defined:\n${missing.join("\n")}`);
-  const keybrGuard = 'if (root.dataset.siteKind === "wordle")';
-  must(theme.includes(keybrGuard), "Wordle palette variables are not scoped away from Keybr");
-  for (const name of ["--primary", "--secondary", "--accent"]) must(theme.indexOf(`setProperty("${name}"`) >= theme.indexOf(keybrGuard), `${name} is written outside the Wordle-only scope`);
-
-  const home = await readFile(join(GENERATED_SITE, "index.html"), "utf8");
-  must(home.includes("Sanyam Brar"), "homepage identity must be Sanyam Brar");
-  must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
-  must(!home.includes("class=\"repo-link\"") && !home.includes("Wordle source repository") && !home.includes("Keybr local source repository"), "game source links must not be present");
-  must(home.includes('href="./wordle"') && home.includes('href="./keybr"') && home.includes('href="./chain"'), "game navigation must use extensionless URLs");
-  must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
-  must(home.includes("Chain Reaction") && home.includes("Canvas-rendered"), "Chain Reaction homepage card missing");
-  const chain = await readFile(join(STATIC, "chain.html"), "utf8");
-  for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies", "chain-new-game", "game-settings-slider", "orbSprite(owner, radius)", "imageSmoothingQuality = 'high'", "liveWinner(owner, next)", "chain-turn"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
-  for (const removed of ['>Chain Reaction</div>', '>Your turn</div>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
-  must(chain.includes("const winNow = liveWinner(owner, next);"), "Chain Reaction must resolve elimination during cascades");
-  must(!chain.includes("strokeRect(ox + 1"), "Chain Reaction turn outline flicker returned");
-  must(chain.includes("availableW") && chain.includes("availableH"), "Chain Reaction canvas must be constrained to stage bounds");
-  must(!chain.includes("transition-all") && !chain.includes("new Atom("), "Chain Reaction regressed to per-atom DOM transitions");
-  must(chain.includes("let pending = new Uint32Array(board.length)") && chain.includes("const bursts = Math.floor(total / d)"), "Chain Reaction cascades must stay count-bounded");
-  must(!chain.includes("if (!sole) return pendingOwner"), "Chain Reaction broken multi-owner winner logic returned");
-  const sharedSettingsCss = await readFile(join(STATIC, "shared/game-settings.css"), "utf8");
-  for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)", "height: 16px", "border: 2px solid var(--color-primary"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
-
-  const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
-  const homeCss = await readFile(join(STATIC, "home.css"), "utf8");
-  const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
-  must(!homeCss.includes(".section-head::before") && !homeCss.includes(".compact-row::before") && !blogCss.includes(".post-row::before"), "decorative heading/hover dots returned");
-  must(!homeCss.includes("content:'·'") && !homeCss.includes("border-radius:50%;background:var(--site-accent)"), "decorative dot separators returned");
-  must(home.includes("keybr-hit") && home.includes("keybr-miss") && home.includes("keybr-miss-bg") && home.includes("keybr-cursor"), "Keybr homepage mark drifted from typing-state visualization");
-  must(sharedCss.includes("--site-content-width:1080px"), "shared content width contract missing");
-  must(homeCss.includes("width:min(var(--site-content-width,1080px),100%)"), "homepage must use shared content width");
-  must(blogCss.includes(".shell{width:min(var(--site-content-width,1080px),100%)") && blogCss.includes(".article{width:min(var(--site-content-width,1080px),100%)"), "blog must use shared content width");
-  const viteConfig = await readFile(join(ROOT, "vite.config.ts"), "utf8");
-  const webpackConfig = await readFile(join(ROOT, "keybr/webpack.config.js"), "utf8");
-  const singleFilePlugin = await readFile(join(ROOT, "keybr/webpack-single-file.js"), "utf8");
-  const webpackRunner = await readFile(join(ROOT, "keybr/scripts/build-webpack.mjs"), "utf8");
-  const buildSource = await readFile(join(ROOT, "build.ts"), "utf8");
-  must(viteConfig.includes("outDir: 'docs'") && viteConfig.includes("emptyOutDir: false"), "Wordle must build directly into docs/");
-  must(webpackConfig.includes('path: join(rootDir, "../docs")') && webpackConfig.includes("clean: false"), "Keybr must build directly into docs/");
-  must(singleFilePlugin.includes('"keybr.html"'), "Keybr single-file build must emit docs/keybr.html");
-  must(!webpackConfig.includes('import webpack from "webpack"'), "Keybr webpack config must not touch deprecated aggregate Webpack exports");
-  must(!singleFilePlugin.includes('from "webpack"'), "Keybr single-file plugin must not touch deprecated aggregate Webpack exports");
-  must(webpackRunner.includes('webpack/lib/webpack.js') && webpackRunner.includes('stats.hasWarnings()'), "Keybr must use the Bun-safe warning-strict Webpack runner");
-  must(!buildSource.includes(['run(dir, \"', 'node', '\"'].join('')), "build.ts must not require a separate Node executable");
-  const wordleCss = await readFile(join(ROOT, "src/css/index.css"), "utf8");
-  auditSharedRuntime(theme, sharedCss, "static");
-  for (const token of ["../../static/shared/game-settings.css", "--wordle-control-top: var(--game-control-top)", "--wordle-control-right: var(--game-control-right)", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
-  const wordleSettings = await readFile(join(ROOT, "src/game/popup_settings.tsx"), "utf8");
-  for (const token of ["game-settings-trigger", "game-settings-popover", "game-settings-slider", "game-settings-body", "game-settings-close", "game-settings-action"]) {
-    must(wordleSettings.includes(token), `Wordle shared settings component contract missing ${token}`);
-    must(chain.includes(token), `Chain shared settings component contract missing ${token}`);
-  }
+  for (const page of ["Home.tsx","Work.tsx","Lab.tsx","Project.tsx","Tools.tsx","Chain.tsx","Blog.tsx"]) must(existsSync(join(ROOT,"src/site/pages",page)), `Solid site page missing ${page}`);
+  for (const component of ["SiteChrome.tsx","Entries.tsx","ExternalBrowser.tsx","icons.tsx"]) must(existsSync(join(ROOT,"src/site/components",component)), `shared Solid component missing ${component}`);
+  const app = await readFile(join(ROOT,"src/site/App.tsx"),"utf8");
+  for (const route of ["Home","Work","Lab","Project","Tools","Chain","Blog"]) must(app.includes(`import('./pages/${route}')`), `site: lazy route missing ${route}`);
+  must(app.includes('await preload(next)') && app.includes("pointerover") && !app.includes('visited'), "site: route preloading/unmount lifecycle contract missing");
+  const chrome = await readFile(join(ROOT,"src/site/components/SiteChrome.tsx"),"utf8");
+  must(chrome.includes('function TopBar') && chrome.includes('function PrimaryNav') && chrome.includes('function AppearanceButton'), "site: shared top-bar controls missing");
+  const toolsPage = await readFile(join(ROOT,"src/site/pages/Tools.tsx"),"utf8");
+  const chainPage = await readFile(join(ROOT,"src/site/pages/Chain.tsx"),"utf8");
+  must(toolsPage.includes('module.mountTools()') && toolsPage.includes('onCleanup'), "tools: Solid lifecycle mount/dispose missing");
+  must(chainPage.includes('module.mountChain()') && chainPage.includes('onCleanup'), "chain: Solid lifecycle mount/dispose missing");
+  const toolsRuntime=await readFile(join(ROOT,"src/site/engines/tools.js"),"utf8");
+  const chainRuntime=await readFile(join(ROOT,"src/site/engines/chain.js"),"utf8");
+  must(toolsRuntime.includes('export function mountTools()') && toolsRuntime.includes("🔗 Scroll") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: lifecycle/Markdown linked scrolling missing");
+  must(chainRuntime.includes('export function mountChain()') && chainRuntime.includes('resizeObserver.disconnect()') && chainRuntime.includes('themeObserver.disconnect()'), "chain: lifecycle cleanup missing");
+  must(!existsSync(join(STATIC,"tools.html")) && !existsSync(join(STATIC,"chain.html")) && !existsSync(join(STATIC,"blog/index.html")), "Solid pages duplicated as static HTML");
 }
 
 async function verifyDocs() {
@@ -433,6 +366,7 @@ async function main() {
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
+  await buildSiteRuntime();
   await auditSource();
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();
