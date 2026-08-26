@@ -40,8 +40,7 @@ export class SingleFilePlugin {
 <meta name="color-scheme" content="light dark">
 <title>keybr local</title>
 <style>${css}</style>
-<script src="./appearance.generated.js"></script>
-<script src="./theme.js"></script>
+<script src="./shared-runtime.js"></script>
 <style id="samey-boot-style">.samey-boot{position:fixed;inset:0;z-index:2147482000;display:grid;place-items:center;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,ui-sans-serif,system-ui)}.samey-boot>div{display:grid;place-items:center;gap:13px}.samey-boot-visual{width:58px;height:58px;display:grid;place-items:center}.samey-boot-visual .samey-cursor-loading{display:block!important;position:static;width:58px;height:58px;transform:none}.samey-boot span{color:var(--site-muted,#787c7e);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.14em}</style>
 </head>
 <body>

@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
-import { generateSite } from "./site.tsx";
+import { generateSite } from "./site.ts";
 
 const runFile = promisify(execFile);
 const gzipAsync = promisify(gzip);
@@ -17,9 +17,10 @@ const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "static");
 const DOCS = join(ROOT, "docs");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
-const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
 const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
+const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
+const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
@@ -66,7 +67,6 @@ async function generateAppearance() {
   }
   for (const [id, font] of Object.entries<any>(config.fonts)) must(font.label && font.stack, `appearance: incomplete font ${id}`);
 
-  await writeFile(GENERATED_APPEARANCE, `// Generated from static/shared/appearance.json. Do not edit.\nObject.defineProperty(globalThis, "SameyAppearanceConfig", { value: Object.freeze(${JSON.stringify(config)}), configurable: false, writable: false });\n`);
   const lines = ["// Generated from static/shared/appearance.json. Do not edit."];
   for (const [id, color] of Object.entries<any>(config.colors)) for (const key of ["background", "text", "accent", "error", "slow", "fast", "effort"]) lines.push(`@samey-${id}-${key}: ${color[key]};`);
   await writeFile(GENERATED_LESS, `${lines.join("\n")}\n`);
@@ -109,6 +109,9 @@ async function copyStatic() {
   await cp(STATIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });
+  await cp(GENERATED_SHARED_RUNTIME, DOCS, { recursive: true, force: true });
+  await mkdir(join(DOCS, "blog", "posts"), { recursive: true });
+  await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
 }
 
 async function cleanupBuildArtifacts() {
@@ -128,6 +131,26 @@ async function cleanupBuildArtifacts() {
   }
 }
 
+
+async function buildSharedRuntime() {
+  await ensureDeps(ROOT);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.shared.config.ts"]);
+  must(existsSync(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js")), "shared runtime bundle missing");
+  must(existsSync(join(GENERATED_SHARED_RUNTIME, "site.css")), "shared stylesheet bundle missing");
+  log("shared TypeScript runtime/CSS -> .build/shared-runtime");
+}
+
+async function buildBlogPost() {
+  await ensureDeps(ROOT);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.blog.config.ts"]);
+  const candidates = await walk(GENERATED_BLOG_POST, (_path, name) => name === "btop-mutex.html");
+  must(candidates.length === 1, `blog single-file build emitted ${candidates.length} btop-mutex.html files`);
+  if (candidates[0] !== join(GENERATED_BLOG_POST, "btop-mutex.html")) await rename(candidates[0], join(GENERATED_BLOG_POST, "btop-mutex.html"));
+  const html = await readFile(join(GENERATED_BLOG_POST, "btop-mutex.html"), "utf8");
+  must(/<style(?:\s|>)/i.test(html) && /<script(?:\s|>)/i.test(html), "blog single-file build did not inline page-local CSS/JS");
+  must(!html.includes("btop-lock.ts") && !html.includes("btop-mutex.css"), "blog page-local source references leaked into output");
+  log("blog page-local TypeScript/CSS -> inline HTML");
+}
 
 async function buildSiteRuntime() {
   await ensureDeps(ROOT);
@@ -235,7 +258,6 @@ const RUNTIME_REQUIRED = [
   'values="${frames.join(";")}"',
   'samey-app-preload',
   'samey-app-frame',
-  'A normal navigation is deliberately not used as a fallback',
   "requestAnimationFrame(renderCursorPosition)",
   "startNativeDrag",
   "isPlainSelectionDrag",
@@ -307,8 +329,8 @@ const RUNTIME_REMOVED = [
 ] as const;
 
 function auditSharedRuntime(theme: string, css: string, where: string) {
-  for (const token of RUNTIME_REQUIRED) must(theme.includes(token), `${where}/theme.js: missing runtime contract ${token}`);
-  for (const token of RUNTIME_REMOVED) must(!theme.includes(token), `${where}/theme.js: removed/stale runtime feature leaked back in: ${token}`);
+  for (const token of RUNTIME_REQUIRED) must(theme.includes(token), `${where}/shared-runtime.js: missing runtime contract ${token}`);
+  for (const token of RUNTIME_REMOVED) must(!theme.includes(token), `${where}/shared-runtime.js: removed/stale runtime feature leaked back in: ${token}`);
   for (const token of SHARED_CSS_REQUIRED) must(css.includes(token), `${where}/site.css: missing shared UI contract ${token}`);
 }
 
@@ -324,15 +346,19 @@ async function auditSource() {
   const chainPage = await readFile(join(ROOT,"src/site/pages/Chain.tsx"),"utf8");
   must(toolsPage.includes('module.mountTools()') && toolsPage.includes('onCleanup'), "tools: Solid lifecycle mount/dispose missing");
   must(chainPage.includes('module.mountChain()') && chainPage.includes('onCleanup'), "chain: Solid lifecycle mount/dispose missing");
-  const toolsRuntime=await readFile(join(ROOT,"src/site/engines/tools.js"),"utf8");
-  const chainRuntime=await readFile(join(ROOT,"src/site/engines/chain.js"),"utf8");
+  const toolsRuntime=await readFile(join(ROOT,"src/site/engines/tools.ts"),"utf8");
+  const chainRuntime=await readFile(join(ROOT,"src/site/engines/chain.ts"),"utf8");
   must(toolsRuntime.includes('export function mountTools()') && toolsRuntime.includes("🔗 Scroll") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: lifecycle/Markdown linked scrolling missing");
   must(chainRuntime.includes('export function mountChain()') && chainRuntime.includes('resizeObserver.disconnect()') && chainRuntime.includes('themeObserver.disconnect()'), "chain: lifecycle cleanup missing");
   must(!existsSync(join(STATIC,"tools.html")) && !existsSync(join(STATIC,"chain.html")) && !existsSync(join(STATIC,"blog/index.html")), "Solid pages duplicated as static HTML");
+  const sourceJs = [...await walk(join(ROOT, "src"), (_path, name) => name.endsWith(".js")), ...await walk(STATIC, (_path, name) => name.endsWith(".js"))];
+  must(sourceJs.length === 0, `JavaScript source files are forbidden; use TypeScript: ${sourceJs.map(path => relative(ROOT, path)).join(", ")}`);
+  for (const file of ["runtime.ts", "appearance.ts", "theme.ts", "site.ts"]) must(existsSync(join(ROOT, "src/shared", file)), `shared TypeScript runtime missing ${file}`);
+  must(existsSync(join(ROOT, "src/blog/btop-lock.ts")) && existsSync(join(ROOT, "src/blog/btop-mutex.css")), "blog page-local TS/CSS source missing");
 }
 
 async function verifyDocs() {
-  for (const file of ["index.html", "work.html", "lab.html", "projects/zhtml.html", "projects/reverb.html", "projects/oneserial.html", "projects/cnn.html", "keybr.html", "wordle.html", "chain.html", "tools.html", "theme.js", "site.js", "site-index.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
+  for (const file of ["index.html", "work.html", "lab.html", "projects/zhtml.html", "projects/reverb.html", "projects/oneserial.html", "projects/cnn.html", "keybr.html", "wordle.html", "chain.html", "tools.html", "shared-runtime.js", "site.css", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
   const keybr = await readFile(join(DOCS, "keybr.html"), "utf8"), wordle = await readFile(join(DOCS, "wordle.html"), "utf8");
   for (const [name, html] of [["keybr", keybr], ["wordle", wordle]] as const) must(!html.includes('manifest="appcache.manifest"'), `${name}: obsolete AppCache manifest`);
   must(!keybr.includes('<header class="site-header"'), "keybr: stale custom header emitted");
@@ -344,16 +370,15 @@ async function verifyDocs() {
   const pages = await walk(DOCS, (_path, name) => name.endsWith(".html"));
   for (const path of pages) {
     const html = await readFile(path, "utf8"), name = relative(DOCS, path);
-    must(/<script\s+src=["'][^"']*appearance\.generated\.js["']><\/script>/i.test(html), `${name}: missing generated appearance config`);
-    must(/<script\s+src=["'][^"']*theme\.js["']><\/script>/i.test(html), `${name}: missing shared theme/runtime script`);
+    must(/<script\s+(?:type=["']module["']\s+)?src=["'][^"']*shared-runtime\.js["']><\/script>/i.test(html), `${name}: missing shared TypeScript runtime bundle`);
     must(/data-home-href=|data-back-href=/i.test(html), `${name}: missing shared navigation metadata`);
     const raw = await readFile(path), gz = await gunzipAsync(await readFile(`${path}.gz`)), br = await unbrotliAsync(await readFile(`${path}.br`));
     must(Buffer.from(gz).equals(raw), `gzip drift: ${name}`);
     must(Buffer.from(br).equals(raw), `brotli drift: ${name}`);
   }
 
-  const theme = await readFile(join(DOCS, "theme.js"), "utf8"), css = await readFile(join(DOCS, "site.css"), "utf8");
-  auditSharedRuntime(theme, css, "docs");
+  const runtime = await readFile(join(DOCS, "shared-runtime.js"), "utf8"), css = await readFile(join(DOCS, "site.css"), "utf8");
+  auditSharedRuntime(runtime, css, "docs");
   const post = await readFile(join(DOCS, "blog/posts/btop-mutex.html"), "utf8");
   must(post.includes("<h1>btop's broken lock</h1>"), "blog post title drift");
   must(post.includes('<p class="dek">the mutex that wasn\'t</p>'), "blog post subtitle drift");
@@ -366,7 +391,7 @@ async function main() {
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
-  await buildSiteRuntime();
+  await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
   await auditSource();
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();

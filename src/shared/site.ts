@@ -1,6 +1,8 @@
+// @ts-nocheck
+import { searchIndex } from '../site/data.ts';
 (() => {
   const SCRIPT_ROOT = new URL('.', document.currentScript?.src || location.href);
-  const index = globalThis.SameySiteIndex || [];
+  const index = searchIndex;
   const norm = s => s.toLowerCase();
   const score = (item, q) => {
     const text = norm(`${item.title} ${item.kind} ${item.note} ${(item.tags || []).join(' ')}`);

@@ -1,0 +1,1932 @@
+(function() {
+	//#endregion
+	//#region src/shared/appearance.ts
+	Object.defineProperty(globalThis, "SameyAppearanceConfig", {
+		value: Object.freeze({
+			colors: {
+				"light": {
+					"label": "Light",
+					"tone": "light",
+					"background": "#ffffff",
+					"text": "#121213",
+					"accent": "#787c7e",
+					"error": "#ff3333",
+					"slow": "#cc0000",
+					"fast": "#60d788",
+					"effort": "#6699ff"
+				},
+				"clear-light": {
+					"label": "Clear light",
+					"tone": "light",
+					"background": "#faf9f8",
+					"text": "#202332",
+					"accent": "#355d82",
+					"error": "#c43d46",
+					"slow": "#aa2832",
+					"fast": "#267549",
+					"effort": "#365f9c"
+				},
+				"dark": {
+					"label": "Dark",
+					"tone": "dark",
+					"background": "#121213",
+					"text": "#f8f8f8",
+					"accent": "#a7a7a7",
+					"error": "#9b4545",
+					"slow": "#8c1818",
+					"fast": "#448154",
+					"effort": "#2d4a86"
+				},
+				"clear-dark": {
+					"label": "Clear dark",
+					"tone": "dark",
+					"background": "#303237",
+					"text": "#b0b4bd",
+					"accent": "#7c9fc4",
+					"error": "#e2848b",
+					"slow": "#e2848b",
+					"fast": "#69aa80",
+					"effort": "#80a1c5"
+				}
+			},
+			fonts: {
+				"sans-serif": {
+					"label": "Sans serif",
+					"stack": "system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif"
+				},
+				"serif": {
+					"label": "Serif",
+					"stack": "ui-serif,Georgia,Cambria,\"Times New Roman\",serif"
+				},
+				"monospace": {
+					"label": "Monospace",
+					"stack": "ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",monospace"
+				},
+				"cursive": {
+					"label": "Cursive",
+					"stack": "cursive"
+				}
+			}
+		}),
+		configurable: false,
+		writable: false
+	});
+	//#endregion
+	//#region src/shared/theme.ts
+	(() => {
+		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
+		const KEY = "keybr.theme";
+		const WORDLE_KEY = "ui-theme";
+		const FONT_KEY = "samey.font";
+		const config = globalThis.SameyAppearanceConfig;
+		if (config == null) throw new Error("Shared appearance config is not loaded");
+		const colors = config.colors;
+		const COLOR_IDS = [...Object.keys(colors), "custom"];
+		const FONT_IDS = Object.keys(config.fonts);
+		const colorLabels = {
+			system: "System",
+			...Object.fromEntries(Object.entries(colors).map(([id, value]) => [id, value.label]))
+		};
+		const fontLabels = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.label]));
+		const fontStacks = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.stack]));
+		const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+		const mix = (a, b, weight) => {
+			const rgb = (value) => [
+				1,
+				3,
+				5
+			].map((i) => parseInt(value.slice(i, i + 2), 16));
+			const aa = rgb(a), bb = rgb(b);
+			return "#" + aa.map((value, i) => Math.round(value * (1 - weight) + bb[i] * weight).toString(16).padStart(2, "0")).join("");
+		};
+		const hsl = (hex) => {
+			let [r, g, b] = [
+				1,
+				3,
+				5
+			].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+			const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+			if (max === min) return `0 0% ${+(l * 100).toFixed(2)}%`;
+			const d = max - min;
+			const s = l > .5 ? d / (2 - max - min) : d / (max + min);
+			return `${+((max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4) / 6 * 360).toFixed(2)} ${+(s * 100).toFixed(2)}% ${+(l * 100).toFixed(2)}%`;
+		};
+		const rawPrefs = () => {
+			try {
+				return JSON.parse(localStorage.getItem(KEY) || "null") || {};
+			} catch {
+				return {};
+			}
+		};
+		const readFont = () => {
+			try {
+				const value = localStorage.getItem(FONT_KEY);
+				if (FONT_IDS.includes(value)) return value;
+			} catch {}
+			const legacy = rawPrefs().font;
+			return FONT_IDS.includes(legacy) ? legacy : "sans-serif";
+		};
+		const migrateColor = (value) => {
+			if (value === "light-contrast") return "clear-light";
+			if (value === "dark-contrast") return "clear-dark";
+			if (value === "chocolate") return "dark";
+			if ([
+				"gray",
+				"yellow",
+				"garden",
+				"coffee",
+				"honey"
+			].includes(value)) return "light";
+			return value === "system" || COLOR_IDS.includes(value) ? value : "system";
+		};
+		const read = () => {
+			const raw = rawPrefs();
+			const selected = migrateColor(raw.color);
+			let color = selected;
+			if (color === "system") color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+			const font = readFont();
+			if (color !== "custom") return {
+				color,
+				selected: selected || "system",
+				font,
+				...colors[color],
+				custom: { ...colors[color] }
+			};
+			const custom = raw.custom || {};
+			const fallback = custom.tone === "dark" ? colors.dark : colors.light;
+			return {
+				color,
+				selected: "custom",
+				font,
+				tone: custom.tone === "dark" ? "dark" : "light",
+				background: validHex(custom.background) ? custom.background.toLowerCase() : fallback.background,
+				text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
+				accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
+				error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+				slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
+				fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
+				effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
+				custom: {
+					tone: custom.tone === "dark" ? "dark" : "light",
+					background: validHex(custom.background) ? custom.background.toLowerCase() : fallback.background,
+					text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
+					accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
+					error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+					slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
+					fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
+					effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort
+				}
+			};
+		};
+		const keybrCustomProperties = (theme) => {
+			const dark = theme.tone === "dark";
+			const primary = theme.background, secondary = theme.text, accent = theme.accent, error = theme.error;
+			const chartMix = dark ? .5 : 0;
+			return {
+				"--primary-d2": mix(primary, dark ? "#ffffff" : "#000000", .1),
+				"--primary-d1": mix(primary, dark ? "#ffffff" : "#000000", .05),
+				"--primary": primary,
+				"--primary-l1": mix(primary, dark ? "#000000" : "#ffffff", dark ? .02 : .03),
+				"--primary-l2": mix(primary, dark ? "#000000" : "#ffffff", dark ? .03 : .05),
+				"--secondary-d1": mix(secondary, dark ? "#ffffff" : "#000000", .1),
+				"--secondary": secondary,
+				"--secondary-l1": mix(secondary, dark ? "#000000" : "#ffffff", .1),
+				"--secondary-l2": mix(secondary, dark ? "#000000" : "#ffffff", .2),
+				"--secondary-f1": mix(secondary, primary, .2),
+				"--secondary-f2": mix(secondary, primary, .4),
+				"--accent-d2": mix(accent, "#000000", dark ? .1 : .2),
+				"--accent-d1": mix(accent, "#000000", dark ? .05 : .1),
+				"--accent": accent,
+				"--accent-l1": mix(accent, "#ffffff", dark ? .05 : .1),
+				"--accent-l2": mix(accent, "#ffffff", dark ? .1 : .2),
+				"--error-d1": mix(error, dark ? "#ffffff" : "#000000", .1),
+				"--error": error,
+				"--error-l1": mix(error, dark ? "#000000" : "#ffffff", .1),
+				"--shadow-color": dark ? "#00000088" : "#00000044",
+				"--slow-key-color": theme.slow,
+				"--fast-key-color": theme.fast,
+				"--effort-color": theme.effort,
+				"--textinput__color": secondary,
+				"--textinput--special__color": mix(secondary, primary, .5),
+				"--textinput--hit__color": mix(secondary, primary, .4),
+				"--textinput--miss__color": error,
+				"--Name-color": mix(secondary, "#ffffff", .2),
+				"--Value-color": mix(secondary, "#000000", .1),
+				"--Value--more__color": "#2a7e21",
+				"--Value--less__color": "#a1464e",
+				"--Chart-speed__color": mix("#6fb48c", primary, chartMix),
+				"--Chart-accuracy__color": mix("#ef522f", primary, chartMix),
+				"--Chart-complexity__color": mix("#ac71d0", primary, chartMix),
+				"--Chart-threshold__color": mix("#d2649a", primary, chartMix),
+				"--Chart-hist-h__color": mix("#5f6cb4", primary, chartMix),
+				"--Chart-hist-m__color": mix("#b43f3e", primary, chartMix),
+				"--Chart-hist-r__color": mix("#b140b4", primary, chartMix),
+				"--KeyboardKey-pointer__color": "#4ba0f2",
+				"--pinky-zone-color": mix("#8ec07c", primary, chartMix),
+				"--ring-zone-color": mix("#b8bb26", primary, chartMix),
+				"--middle-zone-color": mix("#fabd2f", primary, chartMix),
+				"--left-index-zone-color": mix("#83a698", primary, chartMix),
+				"--right-index-zone-color": mix("#d3869b", primary, chartMix),
+				"--thumb-zone-color": mix("#d66354", primary, chartMix),
+				"--syntax-keyword": dark ? "#5991cd" : "#56a1f4",
+				"--syntax-string": "#72b172",
+				"--syntax-number": dark ? "#b281d3" : "#763a9e",
+				"--syntax-comment": "#9f8484"
+			};
+		};
+		const KEYBR_CUSTOM_PROPERTIES = Object.keys(keybrCustomProperties(colors.light));
+		const nativeSetItem = Storage.prototype.setItem;
+		let notifying = false;
+		const notify = (theme) => {
+			if (notifying) return;
+			notifying = true;
+			dispatchEvent(new CustomEvent("samey-themechange", { detail: theme }));
+			notifying = false;
+		};
+		const apply = () => {
+			const theme = read();
+			const root = document.documentElement;
+			root.dataset.siteTheme = theme.color;
+			root.dataset.kbTheme = theme.tone;
+			root.dataset.font = theme.font;
+			root.dataset.color = theme.color;
+			root.classList.toggle("dark", theme.tone === "dark");
+			root.style.colorScheme = theme.tone;
+			const line = mix(theme.text, theme.background, theme.tone === "dark" ? .72 : .82);
+			const soft = mix(theme.text, theme.background, theme.tone === "dark" ? .9 : .96);
+			root.style.setProperty("--site-bg", theme.background);
+			root.style.setProperty("--site-fg", theme.text);
+			root.style.setProperty("--site-muted", mix(theme.text, theme.background, .42));
+			root.style.setProperty("--site-line", line);
+			root.style.setProperty("--site-soft", soft);
+			root.style.setProperty("--site-accent", theme.accent);
+			root.style.setProperty("--site-error", theme.error);
+			root.style.setProperty("--site-font", fontStacks[theme.font]);
+			if (root.dataset.siteKind === "keybr") {
+				for (const name of KEYBR_CUSTOM_PROPERTIES) root.style.removeProperty(name);
+				if (theme.color === "custom") for (const [name, value] of Object.entries(keybrCustomProperties(theme))) root.style.setProperty(name, value);
+			}
+			if (root.dataset.siteKind === "wordle") {
+				root.style.setProperty("--background", hsl(theme.background));
+				root.style.setProperty("--foreground", hsl(theme.text));
+				root.style.setProperty("--card", hsl(theme.background));
+				root.style.setProperty("--card-foreground", hsl(theme.text));
+				root.style.setProperty("--popover", hsl(theme.background));
+				root.style.setProperty("--popover-foreground", hsl(theme.text));
+				root.style.setProperty("--primary", hsl(theme.text));
+				root.style.setProperty("--primary-foreground", hsl(theme.background));
+				root.style.setProperty("--secondary", hsl(soft));
+				root.style.setProperty("--secondary-foreground", hsl(theme.text));
+				root.style.setProperty("--muted", hsl(soft));
+				root.style.setProperty("--muted-foreground", hsl(mix(theme.text, theme.background, .42)));
+				root.style.setProperty("--accent", hsl(soft));
+				root.style.setProperty("--accent-foreground", hsl(theme.text));
+				root.style.setProperty("--border", hsl(line));
+				root.style.setProperty("--input", hsl(line));
+				root.style.setProperty("--ring", hsl(theme.accent));
+				root.style.setProperty("--error-foreground", hsl(theme.error));
+				try {
+					nativeSetItem.call(localStorage, WORDLE_KEY, theme.tone);
+				} catch {}
+			}
+			document.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
+			document.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
+			notify(theme);
+			return theme;
+		};
+		const setPrefs = (patch) => {
+			if (Object.hasOwn(patch, "font")) nativeSetItem.call(localStorage, FONT_KEY, patch.font);
+			const themePatch = { ...patch };
+			delete themePatch.font;
+			if (Object.keys(themePatch).length > 0) {
+				const { font: _legacyFont, ...theme } = rawPrefs();
+				nativeSetItem.call(localStorage, KEY, JSON.stringify({
+					...theme,
+					...themePatch
+				}));
+			}
+			apply();
+		};
+		const appearance = Object.freeze({
+			get: read,
+			set: setPrefs,
+			apply,
+			themeIds: Object.freeze(["system", ...COLOR_IDS]),
+			fontIds: Object.freeze([...FONT_IDS])
+		});
+		Object.defineProperty(globalThis, "SameyAppearance", {
+			value: appearance,
+			configurable: false,
+			writable: false
+		});
+		const section = (title, items, attr) => `<div class="samey-panel-title">${title}</div>${Object.entries(items).map(([value, label]) => `<button type="button" ${attr}="${value}">${label}</button>`).join("")}`;
+		let appearancePanel = null;
+		let appearanceTrigger = null;
+		const positionAppearancePanel = (trigger) => {
+			if (!appearancePanel || !trigger) return;
+			const r = trigger.getBoundingClientRect();
+			const width = appearancePanel.offsetWidth || 176;
+			const left = Math.max(8, Math.min(innerWidth - width - 8, r.right - width));
+			appearancePanel.style.left = `${left}px`;
+			appearancePanel.style.top = `${Math.min(innerHeight - 8, r.bottom + 6)}px`;
+		};
+		const closeAppearance = () => {
+			if (!appearancePanel) return;
+			appearancePanel.hidden = true;
+			appearanceTrigger?.setAttribute("aria-expanded", "false");
+			appearanceTrigger = null;
+		};
+		const toggleAppearance = (trigger) => {
+			if (!appearancePanel) mountControls();
+			if (!appearancePanel) return;
+			if (!appearancePanel.hidden && appearanceTrigger === trigger) return closeAppearance();
+			appearanceTrigger?.setAttribute("aria-expanded", "false");
+			appearanceTrigger = trigger;
+			trigger.setAttribute("aria-expanded", "true");
+			appearancePanel.hidden = false;
+			positionAppearancePanel(trigger);
+		};
+		const mountControls = () => {
+			if (appearancePanel) return;
+			const panel = document.createElement("div");
+			panel.id = "samey-theme-panel";
+			panel.className = "samey-theme-panel";
+			panel.dataset.sameyRuntime = "";
+			panel.hidden = true;
+			panel.innerHTML = section("Theme", colorLabels, "data-theme-choice") + section("Font", fontLabels, "data-font-choice");
+			panel.addEventListener("click", (event) => {
+				const themeButton = event.target.closest("[data-theme-choice]");
+				if (themeButton) setPrefs({ color: themeButton.dataset.themeChoice });
+				const fontButton = event.target.closest("[data-font-choice]");
+				if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
+			});
+			document.body.append(panel);
+			appearancePanel = panel;
+			document.addEventListener("click", (event) => {
+				const trigger = event.target.closest?.("[data-samey-appearance]");
+				if (trigger) {
+					event.preventDefault();
+					event.stopPropagation();
+					toggleAppearance(trigger);
+					return;
+				}
+				if (!panel.contains(event.target)) closeAppearance();
+			});
+			addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
+			addEventListener("samey-pageleave", closeAppearance);
+			apply();
+		};
+		globalThis.SameyOpenAppearance = (trigger) => toggleAppearance(trigger);
+		const pushState = history.pushState.bind(history);
+		const replaceState = history.replaceState.bind(history);
+		const runtimeNode = (el) => {
+			el.dataset.sameyRuntime = "";
+			return el;
+		};
+		const normalizeExternalLinks = (root = document) => {
+			for (const link of root.querySelectorAll?.("a[href]") || []) {
+				let url;
+				try {
+					url = new URL(link.href, location.href);
+				} catch {
+					continue;
+				}
+				if (!/^https?:$/.test(url.protocol) || url.origin === location.origin) continue;
+				link.dataset.sameyExternal = url.href;
+				link.removeAttribute("target");
+				link.rel = "noopener noreferrer";
+			}
+		};
+		const observeExternalLinks = () => new MutationObserver((records) => {
+			for (const record of records) for (const node of record.addedNodes) {
+				if (!(node instanceof Element)) continue;
+				if (node.matches?.("a[href]")) normalizeExternalLinks(node.parentElement || document);
+				else normalizeExternalLinks(node);
+			}
+		}).observe(document.documentElement, {
+			subtree: true,
+			childList: true
+		});
+		const browserExpandIcon = "<path d=\"M8 3H3v5\"></path><path d=\"M16 3h5v5\"></path><path d=\"M8 21H3v-5\"></path><path d=\"M16 21h5v-5\"></path>";
+		const browserCollapseIcon = "<path d=\"M8 8H3V3\"></path><path d=\"M16 8h5V3\"></path><path d=\"M8 16H3v5\"></path><path d=\"M16 16h5v5\"></path>";
+		const setBrowserFullscreen = (browser, on) => {
+			browser.toggleAttribute("data-fullscreen", on);
+			const button = browser.querySelector("[data-browser-fullscreen]");
+			const icon = browser.querySelector("[data-browser-fullscreen-icon]");
+			if (icon) icon.innerHTML = on ? browserCollapseIcon : browserExpandIcon;
+			if (button) {
+				button.title = on ? "Exit fullscreen" : "Fullscreen";
+				button.setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+			}
+			const controls = browser.querySelector("[data-browser-controls]");
+			if (controls) {
+				controls.style.left = "";
+				controls.style.top = "";
+				controls.style.right = "";
+			}
+		};
+		const wireBrowser = (browser) => {
+			if (!(browser instanceof HTMLElement) || browser.dataset.browserWired != null) return;
+			browser.dataset.browserWired = "";
+			const url = browser.dataset.url;
+			const controls = browser.querySelector("[data-browser-controls]");
+			browser.querySelector("[data-browser-external]")?.addEventListener("click", () => {
+				if (url) open(url, "_blank", "noopener,noreferrer");
+			});
+			browser.querySelector("[data-browser-fullscreen]")?.addEventListener("click", () => setBrowserFullscreen(browser, !browser.hasAttribute("data-fullscreen")));
+			if (!controls) return;
+			let drag = null;
+			controls.addEventListener("pointerdown", (event) => {
+				if (!browser.hasAttribute("data-fullscreen") || event.target.closest("button")) return;
+				const rect = controls.getBoundingClientRect();
+				drag = {
+					id: event.pointerId,
+					x: event.clientX,
+					y: event.clientY,
+					left: rect.left,
+					top: rect.top,
+					width: rect.width,
+					height: rect.height
+				};
+				controls.setPointerCapture(event.pointerId);
+			});
+			controls.addEventListener("pointermove", (event) => {
+				if (!drag || drag.id !== event.pointerId) return;
+				const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+				if (Math.hypot(dx, dy) < 4 && !controls.hasAttribute("data-dragging")) return;
+				controls.dataset.dragging = "";
+				const margin = 8;
+				controls.style.right = "auto";
+				controls.style.left = `${Math.min(Math.max(margin, drag.left + dx), Math.max(margin, innerWidth - drag.width - margin))}px`;
+				controls.style.top = `${Math.min(Math.max(margin, drag.top + dy), Math.max(margin, innerHeight - drag.height - margin))}px`;
+			});
+			const finish = (event) => {
+				if (!drag || drag.id !== event.pointerId) return;
+				if (controls.hasPointerCapture(event.pointerId)) controls.releasePointerCapture(event.pointerId);
+				controls.removeAttribute("data-dragging");
+				drag = null;
+			};
+			controls.addEventListener("pointerup", finish);
+			controls.addEventListener("pointercancel", finish);
+		};
+		const wireInlineBrowsers = (root = document) => {
+			for (const browser of root.querySelectorAll?.("[data-inline-browser]") || []) wireBrowser(browser);
+		};
+		let externalBrowserBackdrop = null;
+		const closeExternalBrowser = () => {
+			if (!externalBrowserBackdrop) return;
+			externalBrowserBackdrop.remove();
+			externalBrowserBackdrop = null;
+			document.documentElement.removeAttribute("data-external-browser-open");
+		};
+		const openExternalBrowser = (href, title = "External site") => {
+			closeExternalBrowser();
+			const url = new URL(href, location.href);
+			if (url.hostname === "github.com" && !url.hash) url.hash = "readme";
+			const backdrop = runtimeNode(document.createElement("div"));
+			backdrop.className = "samey-external-browser-backdrop";
+			backdrop.innerHTML = `<section class="detail-browser" data-inline-browser data-url="${url.href.replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" aria-label="External site"><div class="detail-browser-controls" data-browser-controls aria-label="Embedded page controls"><button class="detail-browser-button" type="button" data-browser-external aria-label="Open in new tab" title="Open in new tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7"></path><path d="M10 14L21 3"></path><path d="M21 14v7H3V3h7"></path></svg></button><span class="detail-browser-divider" aria-hidden="true"></span><button class="detail-browser-button" type="button" data-browser-fullscreen aria-label="Enter fullscreen" title="Fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true" data-browser-fullscreen-icon>${browserExpandIcon}</svg></button></div><iframe src="${url.href.replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" title="${String(title).replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" referrerpolicy="strict-origin-when-cross-origin"></iframe></section>`;
+			backdrop.addEventListener("click", (event) => {
+				if (event.target === backdrop) closeExternalBrowser();
+			});
+			document.body.append(backdrop);
+			externalBrowserBackdrop = backdrop;
+			document.documentElement.dataset.externalBrowserOpen = "";
+			wireInlineBrowsers(backdrop);
+		};
+		const mountExternalBrowsers = () => {
+			wireInlineBrowsers();
+			document.addEventListener("click", (event) => {
+				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+				const link = event.target.closest?.("a[data-samey-external]");
+				if (!link) return;
+				event.preventDefault();
+				event.stopPropagation();
+				openExternalBrowser(link.dataset.sameyExternal, link.dataset.copyLabel || link.textContent?.trim() || "External site");
+			}, true);
+			document.addEventListener("keydown", (event) => {
+				if (event.key !== "Escape") return;
+				const fullscreen = document.querySelector(".detail-browser[data-fullscreen]");
+				if (fullscreen) {
+					setBrowserFullscreen(fullscreen, false);
+					return;
+				}
+				if (externalBrowserBackdrop) closeExternalBrowser();
+			});
+			addEventListener("samey-pageload", () => wireInlineBrowsers());
+			addEventListener("samey-pageleave", closeExternalBrowser);
+		};
+		let loadingSvgCache = "";
+		let loadingFramesCache = null;
+		const loadingGeometry = Object.freeze({
+			cx: 200,
+			cy: 200,
+			baseRadius: 140,
+			amplitude: 20,
+			waves: 6,
+			duration: 1.45,
+			zeroCrossingPower: .8,
+			points: 320,
+			frames: 61
+		});
+		const loadingFrames = () => {
+			if (loadingFramesCache) return loadingFramesCache;
+			const { cx, cy, baseRadius, amplitude, waves, zeroCrossingPower, points, frames } = loadingGeometry;
+			const paths = [];
+			for (let f = 0; f < frames; f++) {
+				const progress = f / (frames - 1);
+				const raw = Math.cos(progress * Math.PI * 2);
+				const multiplier = Math.sign(raw) * Math.pow(Math.abs(raw), zeroCrossingPower);
+				let d = "";
+				for (let i = 0; i <= points; i++) {
+					const angle = i / points * Math.PI * 2;
+					const radius = baseRadius + amplitude * multiplier * Math.sin(waves * angle);
+					const x = cx + radius * Math.cos(angle), y = cy + radius * Math.sin(angle);
+					d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
+				}
+				paths.push(d + "Z");
+			}
+			loadingFramesCache = paths;
+			return paths;
+		};
+		const loadingCursorSvg = () => {
+			if (loadingSvgCache) return loadingSvgCache;
+			const frames = loadingFrames();
+			const keyTimes = frames.map((_, index) => (index / (frames.length - 1)).toFixed(6)).join(";");
+			loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${frames[0]}"><animate attributeName="d" dur="${loadingGeometry.duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes}" values="${frames.join(";")}"/></path></svg>`;
+			return loadingSvgCache;
+		};
+		globalThis.SameyLoadingSvg = loadingCursorSvg;
+		const mountCursor = () => {
+			if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
+			const cursor = runtimeNode(document.createElement("div"));
+			cursor.id = "samey-cursor";
+			cursor.className = "samey-cursor";
+			cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M47.5 5.5 H78.5 V36.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;26 -26" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/><animate class="samey-cursor-link-fade" attributeName="opacity" values="1;0" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>${loadingCursorSvg()}`;
+			document.documentElement.classList.add("samey-custom-cursor");
+			document.body.append(cursor);
+			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
+			let loadingRaf = 0;
+			const animateLoadingPaths = (time) => {
+				if (!cursor.hasAttribute("data-loading")) {
+					loadingRaf = 0;
+					return;
+				}
+				const frames = loadingFrames();
+				const progress = time % (loadingGeometry.duration * 1e3) / (loadingGeometry.duration * 1e3);
+				loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
+				loadingRaf = requestAnimationFrame(animateLoadingPaths);
+			};
+			const setLoading = (loading) => {
+				cursor.toggleAttribute("data-loading", !!loading);
+				if (loading) {
+					cursor.removeAttribute("data-link");
+					cursor.removeAttribute("data-grab");
+					cursor.dataset.visible = "";
+				}
+				document.documentElement.toggleAttribute("data-site-loading", !!loading);
+				if (loading && !loadingRaf) loadingRaf = requestAnimationFrame(animateLoadingPaths);
+				if (!loading && loadingRaf) {
+					cancelAnimationFrame(loadingRaf);
+					loadingRaf = 0;
+				}
+			};
+			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
+			globalThis.SameyLoading = setLoading;
+			const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
+			const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
+			const wantsGrab = (target) => {
+				if (!(target instanceof Element)) return false;
+				if (target.closest(grabSelector)) return true;
+				const value = getComputedStyle(target).cursor;
+				return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
+			};
+			const linkTarget = (target) => target instanceof Element ? target.closest("a[href],area[href],[role=link]") : null;
+			const elementAt = (event) => {
+				if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return event.target instanceof Element ? event.target : null;
+				return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
+			};
+			const linkClick = cursor.querySelector(".samey-cursor-link-click");
+			const linkFade = cursor.querySelector(".samey-cursor-link-fade");
+			const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
+			const setGrabState = (grab) => {
+				const wasGrab = cursor.hasAttribute("data-grab");
+				cursor.toggleAttribute("data-grab", grab);
+				if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
+			};
+			const animateLinkClick = () => {
+				if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+				if (typeof linkClick?.beginElement === "function") linkClick.beginElement();
+				if (typeof linkFade?.beginElement === "function") linkFade.beginElement();
+			};
+			const holdLinkCursor = (event, link) => {
+				if (!link) return;
+				linkHandoffUntil = performance.now() + 240;
+				if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
+				setGrabState(false);
+				cursor.removeAttribute("data-grab");
+				cursor.dataset.link = "";
+				cursor.dataset.visible = "";
+			};
+			let nativeDragging = false;
+			let selectionDragging = false;
+			let selectionDragCandidate = false;
+			let selectionDragText = "";
+			let selectionStartX = 0, selectionStartY = 0;
+			let pressedGrab = false;
+			let pressedPointerId = null;
+			let lastX = 0, lastY = 0;
+			let pendingX = 0, pendingY = 0;
+			let cursorFrame = 0;
+			let linkHandoffUntil = 0;
+			let modifiedLinkPending = null;
+			let suppressModifiedClick = null;
+			const renderCursorPosition = () => {
+				cursorFrame = 0;
+				lastX = pendingX;
+				lastY = pendingY;
+				cursor.style.transform = `translate3d(${pendingX - 32}px,${pendingY - 32}px,0)`;
+				cursor.dataset.visible = "";
+			};
+			const placeXY = (x, y, immediate = false) => {
+				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+				pendingX = x;
+				pendingY = y;
+				if (immediate) {
+					if (cursorFrame) cancelAnimationFrame(cursorFrame);
+					renderCursorPosition();
+				} else if (!cursorFrame) cursorFrame = requestAnimationFrame(renderCursorPosition);
+			};
+			const place = (event, immediate = false) => placeXY(event.clientX, event.clientY, immediate);
+			const unshiftCursor = (grab) => {
+				if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+				(grab ? cursor.querySelector(".samey-cursor-grab") : cursor.querySelector(".samey-cursor-dot"))?.animate?.([{ transform: "translate(-8.4px,8.4px)" }, { transform: "translate(0,0)" }], {
+					duration: 65,
+					easing: "cubic-bezier(.2,.8,.2,1)"
+				});
+			};
+			const setMode = (target) => {
+				const wasLink = cursor.hasAttribute("data-link") && !cursor.hasAttribute("data-grab");
+				const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
+				const link = !grab && !!linkTarget(target);
+				setGrabState(grab);
+				cursor.toggleAttribute("data-link", link);
+				if (wasLink && !link) unshiftCursor(grab);
+			};
+			const refreshAt = (event) => {
+				if (nativeDragging) {
+					delete cursor.dataset.visible;
+					return;
+				}
+				if (selectionDragCandidate && event.buttons & 1) {
+					const dx = event.clientX - selectionStartX, dy = event.clientY - selectionStartY;
+					if (!selectionDragging && dx * dx + dy * dy >= 9) {
+						selectionDragging = true;
+						pressedGrab = true;
+					}
+				}
+				place(event);
+				setMode(elementAt(event));
+			};
+			document.addEventListener("pointermove", refreshAt, {
+				capture: true,
+				passive: true
+			});
+			document.addEventListener("pointerover", refreshAt, {
+				capture: true,
+				passive: true
+			});
+			const selectionAtPoint = (x, y, target) => {
+				if (!(target instanceof Element) || target.closest("a[href],area[href],img,[draggable=\"true\"],[data-grab-cursor]")) return false;
+				const selection = getSelection();
+				if (!selection || selection.isCollapsed || !selection.toString()) return false;
+				for (let i = 0; i < selection.rangeCount; i++) for (const rect of selection.getRangeAt(i).getClientRects()) if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return true;
+				return false;
+			};
+			const collapseSelectionAt = (x, y) => {
+				const selection = getSelection();
+				if (!selection) return;
+				const pos = document.caretPositionFromPoint?.(x, y);
+				if (pos) {
+					selection.collapse(pos.offsetNode, pos.offset);
+					return;
+				}
+				const range = document.caretRangeFromPoint?.(x, y);
+				if (range) {
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+			};
+			document.addEventListener("pointerdown", (event) => {
+				document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
+				document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
+				const actual = elementAt(event);
+				pressedPointerId = event.pointerId;
+				selectionDragCandidate = event.button === 0 && selectionAtPoint(event.clientX, event.clientY, actual);
+				if (selectionDragCandidate) {
+					event.preventDefault();
+					selectionDragText = getSelection()?.toString() || "";
+					selectionStartX = event.clientX;
+					selectionStartY = event.clientY;
+				}
+				pressedGrab = !!actual?.closest?.(pressedGrabSelector);
+				place(event, true);
+				setMode(actual);
+				const pressedLink = linkTarget(actual);
+				if (pressedLink && (event.ctrlKey || event.metaKey || event.button === 1)) {
+					event.preventDefault();
+					modifiedLinkPending = pressedLink;
+					suppressModifiedClick = pressedLink;
+					holdLinkCursor(event, pressedLink);
+					animateLinkClick();
+				}
+			}, true);
+			document.addEventListener("mousedown", (event) => {
+				if (selectionDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
+			}, true);
+			const editableAt = (target) => {
+				if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return target;
+				return target instanceof Element ? target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]") : null;
+			};
+			const dropSelectionText = (target) => {
+				const editable = editableAt(target);
+				if (!editable || !selectionDragText) return;
+				if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) {
+					const start = editable.selectionStart ?? editable.value.length;
+					const end = editable.selectionEnd ?? start;
+					editable.setRangeText(selectionDragText, start, end, "end");
+					editable.dispatchEvent(new InputEvent("input", {
+						bubbles: true,
+						inputType: "insertFromDrop",
+						data: selectionDragText
+					}));
+				} else {
+					editable.focus();
+					document.execCommand("insertText", false, selectionDragText);
+				}
+			};
+			document.addEventListener("pointerup", (event) => {
+				if (selectionDragging) dropSelectionText(elementAt(event));
+				else if (selectionDragCandidate) collapseSelectionAt(event.clientX, event.clientY);
+				selectionDragging = false;
+				selectionDragCandidate = false;
+				selectionDragText = "";
+				if (pressedPointerId === event.pointerId) {
+					pressedPointerId = null;
+					pressedGrab = false;
+				}
+				if (modifiedLinkPending instanceof HTMLAnchorElement && modifiedLinkPending.href) {
+					const link = modifiedLinkPending;
+					modifiedLinkPending = null;
+					holdLinkCursor(event, link);
+					window.open(link.href, "_blank", "noopener,noreferrer");
+				}
+				place(event, true);
+				setMode(elementAt(event));
+			}, true);
+			document.addEventListener("click", (event) => {
+				const link = event.button === 0 ? linkTarget(event.target) : null;
+				if (!link) return;
+				if (suppressModifiedClick === link) {
+					event.preventDefault();
+					suppressModifiedClick = null;
+					return;
+				}
+				holdLinkCursor(event, link);
+				animateLinkClick();
+			}, true);
+			document.addEventListener("auxclick", (event) => {
+				const link = event.button === 1 ? linkTarget(event.target) : null;
+				if (!link) return;
+				if (suppressModifiedClick === link) {
+					event.preventDefault();
+					suppressModifiedClick = null;
+					return;
+				}
+				event.preventDefault();
+				holdLinkCursor(event, link);
+				animateLinkClick();
+				if (link instanceof HTMLAnchorElement && link.href) window.open(link.href, "_blank", "noopener,noreferrer");
+			}, true);
+			const isPlainSelectionDrag = (event) => {
+				const target = event.target instanceof Element ? event.target : null;
+				if (!target || target.closest("a[href],area[href],img,[draggable=\"true\"],[data-grab-cursor]")) return false;
+				const selection = getSelection();
+				return !!selection && !selection.isCollapsed && !!selection.toString();
+			};
+			const startNativeDrag = (event, allowSelectionEmulation = false) => {
+				if (allowSelectionEmulation && isPlainSelectionDrag(event)) {
+					event.preventDefault();
+					nativeDragging = false;
+					selectionDragCandidate = false;
+					selectionDragging = true;
+					selectionDragText = getSelection()?.toString() || "";
+					pressedGrab = true;
+					cursor.removeAttribute("data-link");
+					setGrabState(true);
+					placeXY(lastX, lastY);
+					return;
+				}
+				nativeDragging = true;
+				selectionDragging = false;
+				selectionDragCandidate = false;
+				selectionDragText = "";
+				pressedGrab = false;
+				pressedPointerId = null;
+				setGrabState(false);
+				cursor.removeAttribute("data-link");
+				delete cursor.dataset.visible;
+			};
+			document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
+			document.addEventListener("dragenter", (event) => {
+				if (!selectionDragging) startNativeDrag(event);
+			}, true);
+			document.addEventListener("dragover", (event) => {
+				if (!nativeDragging && !selectionDragging) startNativeDrag(event);
+			}, true);
+			const stopDragging = (event) => {
+				nativeDragging = false;
+				selectionDragging = false;
+				selectionDragCandidate = false;
+				selectionDragText = "";
+				pressedGrab = false;
+				pressedPointerId = null;
+				modifiedLinkPending = null;
+				if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+					place(event);
+					setMode(elementAt(event));
+				} else {
+					setGrabState(false);
+					cursor.removeAttribute("data-link");
+				}
+			};
+			document.addEventListener("dragend", stopDragging, true);
+			document.addEventListener("drop", stopDragging, true);
+			addEventListener("pointercancel", stopDragging, true);
+			addEventListener("blur", stopDragging);
+			addEventListener("pointerout", (event) => {
+				if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) delete cursor.dataset.visible;
+			});
+		};
+		const editableTarget = (el) => {
+			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return el;
+			return el instanceof Element ? el.closest("[contenteditable=\"true\"], [contenteditable=\"plaintext-only\"]") : null;
+		};
+		const selectedText = () => getSelection()?.toString() || "";
+		const writeClipboard = async (text) => {
+			if (!text) return;
+			try {
+				await navigator.clipboard.writeText(text);
+			} catch {
+				const area = document.createElement("textarea");
+				area.value = text;
+				area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+				document.body.append(area);
+				area.select();
+				document.execCommand("copy");
+				area.remove();
+			}
+		};
+		const pasteInto = (el, text) => {
+			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+				el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end");
+				el.dispatchEvent(new InputEvent("input", {
+					bubbles: true,
+					inputType: "insertFromPaste",
+					data: text
+				}));
+			} else if (el?.isContentEditable) {
+				el.focus();
+				document.execCommand("insertText", false, text);
+			}
+		};
+		const linkCopyText = (link) => {
+			if (!(link instanceof HTMLAnchorElement)) return "";
+			const explicit = link.dataset.copyLabel?.trim();
+			if (explicit) return explicit;
+			const labelled = link.getAttribute("aria-label")?.trim() || link.title?.trim();
+			if (labelled) return labelled.replace(/^(Open|Go to|Visit)\s+/i, "").replace(/\s+(source repository)$/i, " source");
+			const named = link.querySelector(".project-name,.oss-name,.blog-name,.brand")?.textContent?.trim();
+			if (named) return named;
+			try {
+				const url = new URL(link.href, location.href);
+				return decodeURIComponent(url.pathname.split("/").filter(Boolean).pop() || url.hostname.replace(/^www\./, "")).replace(/\.html?$/i, "").replace(/[-_]+/g, " ") || url.hostname;
+			} catch {
+				return "Link";
+			}
+		};
+		const stampLinkCopyLabels = (root = document) => {
+			const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+			for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
+		};
+		stampLinkCopyLabels();
+		new MutationObserver((records) => {
+			for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) stampLinkCopyLabels(node);
+		}).observe(document.documentElement, {
+			childList: true,
+			subtree: true
+		});
+		const mountContextMenu = () => {
+			if (document.getElementById("samey-context-menu")) return;
+			const menu = runtimeNode(document.createElement("div"));
+			menu.id = "samey-context-menu";
+			menu.className = "samey-context-menu";
+			menu.hidden = true;
+			document.body.append(menu);
+			let target = null;
+			const close = () => {
+				menu.hidden = true;
+				menu.replaceChildren();
+			};
+			const add = (label, action, enabled = true, hint = "") => {
+				const button = document.createElement("button");
+				button.type = "button";
+				button.disabled = !enabled;
+				const text = document.createElement("span");
+				text.textContent = label;
+				button.append(text);
+				if (hint) {
+					const key = document.createElement("kbd");
+					key.textContent = hint;
+					button.append(key);
+				}
+				button.addEventListener("click", async () => {
+					close();
+					try {
+						await action();
+					} catch {}
+				});
+				menu.append(button);
+			};
+			const sep = () => {
+				const hr = document.createElement("hr");
+				menu.append(hr);
+			};
+			document.addEventListener("contextmenu", (event) => {
+				if (event.shiftKey) return;
+				event.preventDefault();
+				target = event.target;
+				menu.replaceChildren();
+				const link = target instanceof Element ? target.closest("a[href]") : null;
+				const image = target instanceof Element ? target.closest("img[src]") : null;
+				const selection = selectedText();
+				const editable = editableTarget(target);
+				if (selection) add("Copy", () => writeClipboard(selection), true, navigator.platform?.includes("Mac") ? "⌘C" : "Ctrl+C");
+				if (editable && selection) add("Cut", async () => {
+					await writeClipboard(selection);
+					document.execCommand("delete");
+				}, true, navigator.platform?.includes("Mac") ? "⌘X" : "Ctrl+X");
+				if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, navigator.platform?.includes("Mac") ? "⌘V" : "Ctrl+V");
+				add("Select all", () => {
+					if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) {
+						editable.focus();
+						editable.select();
+					} else if (editable) {
+						const range = document.createRange();
+						range.selectNodeContents(editable);
+						const sel = getSelection();
+						sel.removeAllRanges();
+						sel.addRange(range);
+					} else {
+						const range = document.createRange();
+						range.selectNodeContents(document.body);
+						const sel = getSelection();
+						sel.removeAllRanges();
+						sel.addRange(range);
+					}
+				}, true, navigator.platform?.includes("Mac") ? "⌘A" : "Ctrl+A");
+				if (selection && !editable) {
+					sep();
+					add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, "_blank", "noopener"));
+				}
+				if (link || image) {
+					sep();
+					if (link) {
+						add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
+						add("Copy link", () => writeClipboard(link.href));
+						add("Copy Markdown link", () => writeClipboard(`[${linkCopyText(link)}](${link.href})`));
+					}
+					if (image) {
+						add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
+						add("Copy image address", () => writeClipboard(image.src));
+						add("Save image", () => {
+							const a = document.createElement("a");
+							a.href = image.src;
+							a.download = image.alt || "image";
+							a.click();
+						});
+					}
+				}
+				sep();
+				add("Back", () => history.back(), history.length > 1);
+				add("Forward", () => history.forward());
+				add("Reload", () => location.reload(), true, navigator.platform?.includes("Mac") ? "⌘R" : "Ctrl+R");
+				add("Copy page link", () => writeClipboard(location.href));
+				add("Copy page title", () => writeClipboard(document.title));
+				add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
+				if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+				menu.hidden = false;
+				const rect = menu.getBoundingClientRect();
+				menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
+				menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
+			}, true);
+			document.addEventListener("pointerdown", (event) => {
+				if (!menu.hidden && !menu.contains(event.target)) close();
+			}, true);
+			addEventListener("blur", close);
+			addEventListener("resize", close);
+			addEventListener("scroll", close, true);
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "Escape") close();
+			});
+		};
+		const virtualBars = /* @__PURE__ */ new Map();
+		let virtualRaf = 0;
+		const scrollMetrics = (target) => target === document.scrollingElement ? {
+			top: scrollY,
+			size: innerHeight,
+			total: target.scrollHeight
+		} : {
+			top: target.scrollTop,
+			size: target.clientHeight,
+			total: target.scrollHeight
+		};
+		const setScroll = (target, top) => target === document.scrollingElement ? scrollTo({ top }) : target.scrollTop = top;
+		const virtualScrollerEligible = (target) => {
+			if (target === document.scrollingElement) return true;
+			if (!(target instanceof Element) || !target.isConnected || target.closest("[data-samey-runtime]")) return false;
+			const style = getComputedStyle(target);
+			if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= .001) return false;
+			const r = target.getBoundingClientRect();
+			if (r.width < 8 || r.height < 8 || style.pointerEvents === "none") return false;
+			return true;
+		};
+		const updateVirtualBars = () => {
+			virtualRaf = 0;
+			for (const [target, bar] of virtualBars) {
+				if (!virtualScrollerEligible(target)) {
+					bar.remove();
+					virtualBars.delete(target);
+					continue;
+				}
+				const { top, size, total } = scrollMetrics(target);
+				if (total <= size + 2) {
+					bar.hidden = true;
+					continue;
+				}
+				bar.hidden = false;
+				let height, y, x, topPx;
+				if (target === document.scrollingElement) {
+					height = innerHeight;
+					x = innerWidth - 7;
+					topPx = 0;
+				} else {
+					const r = target.getBoundingClientRect();
+					height = Math.max(18, r.height);
+					x = r.right - 7;
+					topPx = r.top;
+					if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) {
+						bar.hidden = true;
+						continue;
+					}
+				}
+				bar.style.cssText = `height:${height}px;left:${x}px;top:${topPx}px`;
+				const thumb = bar.firstElementChild;
+				const thumbH = Math.max(24, height * size / total);
+				y = (height - thumbH) * top / Math.max(1, total - size);
+				thumb.style.height = `${thumbH}px`;
+				thumb.style.transform = `translateY(${y}px)`;
+			}
+			updateVirtualXBars();
+		};
+		const scheduleVirtualBars = () => {
+			if (!virtualRaf) virtualRaf = requestAnimationFrame(updateVirtualBars);
+		};
+		const addVirtualBar = (target) => {
+			if (virtualBars.has(target)) return;
+			const bar = runtimeNode(document.createElement("div"));
+			bar.className = "samey-vscroll";
+			const thumb = document.createElement("div");
+			thumb.className = "samey-vscroll-thumb";
+			thumb.dataset.grabCursor = "";
+			bar.append(thumb);
+			document.body.append(bar);
+			let startY = 0, startTop = 0;
+			thumb.addEventListener("pointerdown", (event) => {
+				event.preventDefault();
+				thumb.setPointerCapture(event.pointerId);
+				startY = event.clientY;
+				startTop = scrollMetrics(target).top;
+			});
+			thumb.addEventListener("pointermove", (event) => {
+				if (!thumb.hasPointerCapture(event.pointerId)) return;
+				const { size, total } = scrollMetrics(target);
+				const track = bar.clientHeight, thumbH = thumb.clientHeight;
+				setScroll(target, startTop + (event.clientY - startY) * Math.max(1, total - size) / Math.max(1, track - thumbH));
+				scheduleVirtualBars();
+			});
+			bar.addEventListener("pointerdown", (event) => {
+				if (event.target === thumb) return;
+				const { size, total } = scrollMetrics(target);
+				const r = bar.getBoundingClientRect();
+				setScroll(target, (event.clientY - r.top) / r.height * Math.max(0, total - size));
+				scheduleVirtualBars();
+			});
+			target.addEventListener?.("scroll", scheduleVirtualBars, { passive: true });
+			virtualBars.set(target, bar);
+		};
+		const virtualXBars = /* @__PURE__ */ new Map();
+		const addVirtualXBar = (target) => {
+			if (virtualXBars.has(target)) return;
+			const bar = runtimeNode(document.createElement("div"));
+			bar.className = "samey-hscroll";
+			const thumb = document.createElement("div");
+			thumb.className = "samey-hscroll-thumb";
+			thumb.dataset.grabCursor = "";
+			bar.append(thumb);
+			document.body.append(bar);
+			let startX = 0, startLeft = 0;
+			thumb.addEventListener("pointerdown", (event) => {
+				event.preventDefault();
+				thumb.setPointerCapture(event.pointerId);
+				startX = event.clientX;
+				startLeft = target.scrollLeft;
+			});
+			thumb.addEventListener("pointermove", (event) => {
+				if (!thumb.hasPointerCapture(event.pointerId)) return;
+				const size = target.clientWidth, total = target.scrollWidth, track = bar.clientWidth, thumbW = thumb.clientWidth;
+				target.scrollLeft = startLeft + (event.clientX - startX) * Math.max(1, total - size) / Math.max(1, track - thumbW);
+				scheduleVirtualBars();
+			});
+			bar.addEventListener("pointerdown", (event) => {
+				if (event.target === thumb) return;
+				const r = bar.getBoundingClientRect();
+				target.scrollLeft = (event.clientX - r.left) / r.width * Math.max(0, target.scrollWidth - target.clientWidth);
+				scheduleVirtualBars();
+			});
+			target.addEventListener("scroll", scheduleVirtualBars, { passive: true });
+			virtualXBars.set(target, bar);
+		};
+		const updateVirtualXBars = () => {
+			for (const [target, bar] of virtualXBars) {
+				if (!virtualScrollerEligible(target)) {
+					bar.remove();
+					virtualXBars.delete(target);
+					continue;
+				}
+				if (target.scrollWidth <= target.clientWidth + 2) {
+					bar.hidden = true;
+					continue;
+				}
+				const r = target.getBoundingClientRect();
+				if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) {
+					bar.hidden = true;
+					continue;
+				}
+				bar.hidden = false;
+				const width = Math.max(18, r.width);
+				bar.style.cssText = `width:${width}px;left:${r.left}px;top:${r.bottom - 7}px`;
+				const thumb = bar.firstElementChild;
+				const thumbW = Math.max(24, width * target.clientWidth / target.scrollWidth);
+				const x = (width - thumbW) * target.scrollLeft / Math.max(1, target.scrollWidth - target.clientWidth);
+				thumb.style.width = `${thumbW}px`;
+				thumb.style.transform = `translateX(${x}px)`;
+			}
+		};
+		const considerVirtualScroller = (el) => {
+			if (!virtualScrollerEligible(el)) return;
+			const style = getComputedStyle(el);
+			if ((style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 2) addVirtualBar(el);
+			if ((style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 2) addVirtualXBar(el);
+		};
+		const scanVirtualScrollers = () => {
+			addVirtualBar(document.scrollingElement);
+			for (const el of document.querySelectorAll("body *:not([data-samey-runtime])")) considerVirtualScroller(el);
+			scheduleVirtualBars();
+		};
+		const mountVirtualScrollbars = () => {
+			scanVirtualScrollers();
+			let scanRaf = 0;
+			const pending = /* @__PURE__ */ new Set();
+			const scheduleTargets = (targets) => {
+				for (const target of targets) if (target instanceof Element && !target.closest("[data-samey-runtime]")) pending.add(target);
+				if (scanRaf) return;
+				scanRaf = requestAnimationFrame(() => {
+					scanRaf = 0;
+					for (const target of pending) {
+						considerVirtualScroller(target);
+						for (const el of target.querySelectorAll?.("*:not([data-samey-runtime])") || []) considerVirtualScroller(el);
+					}
+					pending.clear();
+					scheduleVirtualBars();
+				});
+			};
+			new MutationObserver((records) => {
+				const targets = [];
+				for (const record of records) {
+					targets.push(record.target);
+					for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
+				}
+				scheduleTargets(targets);
+				scheduleVirtualBars();
+			}).observe(document.body, {
+				subtree: true,
+				childList: true
+			});
+			new ResizeObserver(() => {
+				scheduleVirtualBars();
+				scheduleTargets([document.body]);
+			}).observe(document.documentElement);
+			addEventListener("resize", () => {
+				scheduleVirtualBars();
+				scheduleTargets([document.body]);
+			});
+			addEventListener("scroll", scheduleVirtualBars, true);
+		};
+		const APP_ROUTE = /\/(?:keybr|wordle|chain)(?:\.html)?\/?$/;
+		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
+		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
+		const pageCache = /* @__PURE__ */ new Map();
+		const reducedMotion = () => matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+		const setLoading = (value) => {
+			const on = !!value;
+			document.documentElement.toggleAttribute("data-site-loading", on);
+			dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+			document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
+		};
+		const syncHtmlData = (doc, baseUrl) => {
+			const keep = /* @__PURE__ */ new Set([
+				"data-site-theme",
+				"data-kb-theme",
+				"data-font",
+				"data-color",
+				"data-app-frame"
+			]);
+			for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
+			for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
+				let value = attr.value;
+				if ((attr.name === "data-home-href" || attr.name === "data-back-href") && value) value = new URL(value, baseUrl).href;
+				document.documentElement.setAttribute(attr.name, value);
+			}
+		};
+		const decompressionChoice = (() => {
+			if (typeof DecompressionStream !== "function") return null;
+			for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) try {
+				new DecompressionStream(format);
+				return {
+					format,
+					suffix
+				};
+			} catch {}
+			return null;
+		})();
+		const logicalPageUrl = (url) => {
+			const logical = new URL(url.href);
+			if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
+			else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
+			return logical;
+		};
+		const decodePageResponse = async (response, format) => {
+			if (!format) return response.text();
+			if (!response.body) throw new Error("compressed response has no body");
+			return new Response(response.body.pipeThrough(new DecompressionStream(format))).text();
+		};
+		const fetchPage = async (url) => {
+			const key = url.href;
+			if (pageCache.has(key)) return pageCache.get(key);
+			const task = (async () => {
+				const logical = logicalPageUrl(url);
+				const attempts = decompressionChoice && logical.pathname.endsWith(".html") ? [{
+					url: new URL(logical.pathname + decompressionChoice.suffix + logical.search, logical.origin),
+					format: decompressionChoice.format
+				}, {
+					url: logical,
+					format: null
+				}] : [{
+					url: logical,
+					format: null
+				}];
+				let response = null, format = null;
+				for (const attempt of attempts) {
+					const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
+					if (candidate.ok) {
+						response = candidate;
+						format = attempt.format;
+						break;
+					}
+				}
+				if (!response) throw new Error("page fetch failed");
+				const text = await decodePageResponse(response, format);
+				const doc = new DOMParser().parseFromString(text, "text/html");
+				const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
+				return {
+					doc,
+					baseUrl: new URL(baseTag || ".", logical.href),
+					responseUrl: logical.href
+				};
+			})();
+			pageCache.set(key, task);
+			try {
+				return await task;
+			} catch (error) {
+				pageCache.delete(key);
+				throw error;
+			}
+		};
+		const normalizePageUrls = (doc, baseUrl) => {
+			for (const el of doc.querySelectorAll("[href]")) {
+				const value = el.getAttribute("href");
+				if (!value || value.startsWith("#") || /^(?:mailto:|tel:|javascript:|data:)/i.test(value)) continue;
+				try {
+					el.setAttribute("href", new URL(value, baseUrl).href);
+				} catch {}
+			}
+			for (const el of doc.querySelectorAll("[src]")) {
+				const value = el.getAttribute("src");
+				if (!value || /^(?:data:|blob:)/i.test(value)) continue;
+				try {
+					el.setAttribute("src", new URL(value, baseUrl).href);
+				} catch {}
+			}
+		};
+		const runBodyScripts = (baseUrl) => {
+			for (const old of [...document.body.querySelectorAll("script")]) {
+				const fresh = document.createElement("script");
+				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
+				if (old.src || old.getAttribute("src")) fresh.src = new URL(old.getAttribute("src"), baseUrl).href;
+				else fresh.textContent = old.textContent;
+				old.replaceWith(fresh);
+			}
+		};
+		const clearPageBody = () => {
+			const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
+			for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
+			return runtimeAnchor;
+		};
+		const swapPage = (doc, baseUrl, url, replace) => {
+			try {
+				globalThis.SameyToolsDispose?.();
+				delete globalThis.SameyToolsDispose;
+			} catch {}
+			dispatchEvent(new Event("samey-pageleave"));
+			normalizePageUrls(doc, baseUrl);
+			document.querySelectorAll("head > [data-spa-page]").forEach((el) => el.remove());
+			for (const el of [...doc.head.children]) if (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") {
+				const copy = el.cloneNode(true);
+				copy.dataset.spaPage = "";
+				if (copy.tagName === "LINK") copy.href = new URL(el.getAttribute("href"), baseUrl).href;
+				document.head.append(copy);
+			}
+			const runtimeAnchor = clearPageBody();
+			for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
+			document.documentElement.removeAttribute("data-app-frame");
+			document.title = doc.title;
+			syncHtmlData(doc, baseUrl);
+			(replace ? replaceState : pushState)({}, "", url.href);
+			runBodyScripts(baseUrl);
+			apply();
+			scanVirtualScrollers();
+			if (!url.hash) scrollTo({
+				top: 0,
+				left: 0,
+				behavior: "instant"
+			});
+			else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
+			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
+		};
+		const frameDocument = ({ doc, baseUrl }) => {
+			const clone = doc.cloneNode(true);
+			let base = clone.querySelector("base");
+			if (!base) {
+				base = clone.createElement("base");
+				clone.head.prepend(base);
+			}
+			base.setAttribute("href", baseUrl.href);
+			return "<!doctype html>" + clone.documentElement.outerHTML;
+		};
+		const loadAppFrame = (url, replace, page) => new Promise((resolve, reject) => {
+			const preload = runtimeNode(document.createElement("div"));
+			preload.className = "samey-app-preload";
+			const frame = document.createElement("iframe");
+			frame.className = "samey-app-frame";
+			frame.title = "Application";
+			frame.srcdoc = frameDocument(page);
+			preload.append(frame);
+			document.body.append(preload);
+			const fail = () => {
+				preload.remove();
+				reject(/* @__PURE__ */ new Error("application load failed"));
+			};
+			frame.addEventListener("error", fail, { once: true });
+			frame.addEventListener("load", () => {
+				let frameDoc;
+				try {
+					frameDoc = frame.contentDocument;
+				} catch {}
+				const commit = () => {
+					try {
+						globalThis.SameyToolsDispose?.();
+						delete globalThis.SameyToolsDispose;
+					} catch {}
+					dispatchEvent(new Event("samey-pageleave"));
+					document.querySelectorAll("head > [data-spa-page]").forEach((el) => el.remove());
+					const runtimeAnchor = clearPageBody();
+					const shell = document.createElement("main");
+					shell.className = "samey-app-shell";
+					shell.append(frame);
+					document.body.insertBefore(shell, runtimeAnchor);
+					preload.remove();
+					document.documentElement.dataset.appFrame = "";
+					document.documentElement.dataset.siteKind = url.pathname.match(/(wordle|keybr|chain)/)?.[1] || "app";
+					document.documentElement.dataset.homeHref = new URL("./", SCRIPT_ROOT).href;
+					document.title = frameDoc?.title || document.title;
+					(replace ? replaceState : pushState)({}, "", url.href);
+					apply();
+					dispatchEvent(new CustomEvent("samey-pageload", { detail: {
+						url: url.href,
+						app: true
+					} }));
+				};
+				if (document.startViewTransition && !reducedMotion()) document.startViewTransition(commit).finished.finally(resolve);
+				else {
+					commit();
+					resolve();
+				}
+			}, { once: true });
+		});
+		const loadPage = async (href, { replace = false } = {}) => {
+			const url = new URL(href, location.href);
+			if (url.origin !== location.origin) {
+				location.href = url.href;
+				return;
+			}
+			setLoading(true);
+			try {
+				if (APP_ROUTE.test(url.pathname)) {
+					const page = await fetchPage(url);
+					await loadAppFrame(url, replace, page);
+				} else {
+					const { doc, baseUrl } = await fetchPage(url);
+					const commit = () => swapPage(doc, baseUrl, url, replace);
+					if (document.startViewTransition && !reducedMotion()) {
+						document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
+						await document.startViewTransition(commit).finished.catch(() => {});
+						delete document.documentElement.dataset.navDirection;
+					} else commit();
+				}
+			} catch {
+				const layer = document.getElementById("samey-loading-layer");
+				if (layer) {
+					layer.dataset.visible = "";
+					layer.querySelector("span")?.replaceChildren(document.createTextNode("load failed"));
+					setTimeout(() => {
+						layer.removeAttribute("data-visible");
+						layer.querySelector("span")?.replaceChildren(document.createTextNode("loading"));
+					}, 1200);
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
+		const shouldSpa = (url) => url.origin === location.origin;
+		const prefetch = (href) => {
+			const url = new URL(href, location.href);
+			if (!shouldSpa(url)) return;
+			fetchPage(url).catch(() => {});
+		};
+		const mountSpa = () => {
+			if (document.documentElement.hasAttribute("data-solid-spa")) return;
+			markInitialPageStyles();
+			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
+			document.addEventListener("pointerover", (event) => {
+				const a = event.target.closest?.("a[href]");
+				if (a && !a.target) prefetch(a.href);
+			}, { passive: true });
+			document.addEventListener("focusin", (event) => {
+				const a = event.target.closest?.("a[href]");
+				if (a && !a.target) prefetch(a.href);
+			});
+			document.addEventListener("click", (event) => {
+				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+				const a = event.target.closest?.("a[href]");
+				if (!a || a.target || a.hasAttribute("download")) return;
+				const url = new URL(a.href, location.href);
+				if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
+				event.preventDefault();
+				loadPage(url.href);
+			});
+			addEventListener("message", (event) => {
+				if (event.origin !== location.origin || event.source === window) return;
+				const message = event.data;
+				if (message?.type === "samey-navigate" && message.href) loadPage(message.href);
+			});
+			addEventListener("popstate", () => {
+				if (document.documentElement.dataset.siteKind === "tools" && /\/tools(?:\.html)?\/?$/.test(location.pathname)) return;
+				loadPage(location.href, { replace: true });
+			});
+		};
+		const sharedCss = document.createElement("link");
+		sharedCss.rel = "stylesheet";
+		sharedCss.href = new URL("site.css", SCRIPT_ROOT).href;
+		sharedCss.dataset.sameyShared = "";
+		document.head.append(sharedCss);
+		addEventListener("storage", (event) => {
+			if (event.key === KEY || event.key === FONT_KEY) apply();
+		});
+		matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+			const raw = rawPrefs();
+			if (!raw.color || raw.color === "system") apply();
+		});
+		apply();
+		const mountWordleErgonomics = () => {
+			if (document.documentElement.dataset.siteKind !== "wordle") return;
+			document.addEventListener("click", (event) => {
+				const label = event.target instanceof Element ? event.target.closest(".settings-switch-label") : null;
+				if (!label) return;
+				const control = label.closest(".settings-switch")?.querySelector("[data-kb-switch-control]");
+				if (!(control instanceof HTMLElement)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				control.click();
+			}, true);
+		};
+		const appearanceIconSvg = () => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12\"/></svg>";
+		const homeIconSvg = () => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z\"/></svg>";
+		const enhanceWordleChrome = () => {
+			if (document.documentElement.dataset.siteKind !== "wordle") return;
+			const nav = document.querySelector(".wordle-nav");
+			if (!nav) return;
+			const mode = nav.querySelector(".wordle-mode-switch");
+			if (!nav.querySelector(".wordle-nav-title")) {
+				const title = document.createElement("button");
+				title.type = "button";
+				title.className = "wordle-nav-title";
+				title.textContent = "WORDLE";
+				title.setAttribute("aria-label", "Choose Wordle mode");
+				title.addEventListener("click", () => mode?.click());
+				nav.prepend(title);
+			}
+			if (!nav.querySelector("[data-samey-appearance]")) {
+				const button = document.createElement("button");
+				button.type = "button";
+				button.className = "wordle-nav-button wordle-appearance-trigger";
+				button.dataset.sameyAppearance = "";
+				button.setAttribute("aria-label", "Appearance");
+				button.setAttribute("aria-expanded", "false");
+				button.innerHTML = appearanceIconSvg();
+				const settings = nav.querySelector(".settings-trigger,[aria-label=Settings]");
+				settings ? nav.insertBefore(button, settings) : nav.append(button);
+			}
+		};
+		const enhanceKeybrChrome = () => {
+			if (document.documentElement.dataset.siteKind !== "keybr") return;
+			const first = [...document.querySelectorAll("button[title]")].find((button) => /guided tour|reset the current lesson|switch the current interface/i.test(button.title));
+			const controls = first?.parentElement;
+			if (!first || !controls) return;
+			const make = (title, svg, click) => {
+				const button = first.cloneNode(false);
+				button.title = title;
+				button.setAttribute("aria-label", title);
+				button.innerHTML = svg();
+				button.addEventListener("click", click);
+				return button;
+			};
+			if (!controls.querySelector("[title=\"Home\"]")) controls.insertBefore(make("Home", homeIconSvg, () => {
+				const href = new URL("./", location.href).href;
+				if (window.parent !== window) parent.postMessage({
+					type: "samey-navigate",
+					href
+				}, location.origin);
+				else globalThis.SameyNavigate?.(href);
+			}), first);
+			if (!controls.querySelector("[title=\"Appearance\"]")) {
+				const button = make("Appearance", appearanceIconSvg, () => toggleAppearance(button));
+				controls.insertBefore(button, first);
+			}
+		};
+		const enhanceAppChrome = () => {
+			enhanceWordleChrome();
+			enhanceKeybrChrome();
+		};
+		let chromeScanQueued = false;
+		const queueChromeScan = () => {
+			if (chromeScanQueued) return;
+			chromeScanQueued = true;
+			requestAnimationFrame(() => {
+				chromeScanQueued = false;
+				enhanceAppChrome();
+			});
+		};
+		const observeAppChrome = () => new MutationObserver(queueChromeScan).observe(document.body, {
+			subtree: true,
+			childList: true
+		});
+		const mountRuntime = () => {
+			normalizeExternalLinks();
+			observeExternalLinks();
+			mountExternalBrowsers();
+			mountControls();
+			mountCursor();
+			mountContextMenu();
+			mountVirtualScrollbars();
+			mountSpa();
+			mountWordleErgonomics();
+			enhanceAppChrome();
+			observeAppChrome();
+		};
+		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
+		else mountRuntime();
+		if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
+	})();
+	//#endregion
+	//#region src/shared/catalog.ts
+	var TOOLS = [
+		{
+			id: "text",
+			label: "Text",
+			title: "Text Inspector",
+			note: "Word, character, line and Unicode inspection in one editor."
+		},
+		{
+			id: "base",
+			label: "Encode",
+			title: "Encode / Decode",
+			note: "Base64, URL, Base32, Base58, hex, binary and text encodings."
+		},
+		{
+			id: "diff",
+			label: "Diff",
+			title: "Live Diff",
+			note: "Fast live text diff with inline change highlighting."
+		},
+		{
+			id: "number",
+			label: "Numbers",
+			title: "Number Lab",
+			note: "Inspect and convert integers across bases 2–62."
+		},
+		{
+			id: "markdown",
+			label: "Markdown",
+			title: "Markdown",
+			note: "Live local Markdown editor and preview."
+		}
+	];
+	//#endregion
+	//#region src/site/data.ts
+	var games = [
+		{
+			title: "Wordle",
+			href: "/wordle",
+			kind: "Game",
+			note: "A Wordle clone.",
+			tags: ["solidjs", "word game"]
+		},
+		{
+			title: "Keybr",
+			href: "/keybr",
+			kind: "Game",
+			note: "A local-first fork of keybr.com.",
+			tags: ["typing", "local-first"]
+		},
+		{
+			title: "Chain Reaction",
+			href: "/chain",
+			kind: "Game",
+			note: "Canvas-rendered chain reaction with local AI.",
+			tags: [
+				"canvas",
+				"game",
+				"ai"
+			]
+		}
+	];
+	var tools = TOOLS.map((tool) => ({
+		title: tool.title,
+		href: `/tools?tool=${tool.id}`,
+		kind: "Tool",
+		note: tool.note
+	}));
+	var projects = [
+		{
+			title: "zhtml",
+			href: "/projects/zhtml",
+			kind: "Project",
+			note: "Throughput-oriented HTML parser in Zig.",
+			tags: [
+				"zig",
+				"parser",
+				"performance"
+			]
+		},
+		{
+			title: "Reverb",
+			href: "/projects/reverb",
+			kind: "Project",
+			note: "Android rolling audio recorder backed by an in-memory circular buffer.",
+			tags: [
+				"kotlin",
+				"android",
+				"audio"
+			]
+		},
+		{
+			title: "OneSerial",
+			href: "/projects/oneserial",
+			kind: "Project",
+			note: "Nested Zig data structures in one contiguous allocation.",
+			tags: [
+				"zig",
+				"serialization",
+				"memory"
+			]
+		},
+		{
+			title: "CNN",
+			href: "/projects/cnn",
+			kind: "Project",
+			note: "Convolutional network implemented from scratch in Zig.",
+			tags: [
+				"zig",
+				"ml",
+				"mnist"
+			]
+		}
+	];
+	var moreProjects = [{
+		title: "zxml",
+		href: "https://github.com/SmallThingz/zxml",
+		kind: "Project",
+		note: "Fast XML parsing with explicit memory management.",
+		tags: ["zig", "xml"]
+	}, {
+		title: "java debug shell",
+		href: "https://github.com/SmallThingz/java_debug_shell",
+		kind: "Project",
+		note: "Attach, inspect and evaluate inside a running JVM.",
+		tags: ["java", "jvm"]
+	}];
+	var posts = [{
+		title: "btop's broken lock",
+		href: "/blog/posts/btop-mutex.html",
+		kind: "Writing",
+		note: "the mutex that wasn't",
+		tags: [
+			"c++",
+			"concurrency",
+			"btop"
+		]
+	}];
+	var contributions = [
+		{
+			title: "aristocratos/btop · PR #1649",
+			href: "https://github.com/aristocratos/btop/pull/1649",
+			kind: "OSS",
+			note: "Data races, mutex-like locking and signal-safety fixes.",
+			tags: ["c++", "concurrency"]
+		},
+		{
+			title: "karlseguin/http.zig",
+			href: "https://github.com/karlseguin/http.zig",
+			kind: "OSS",
+			note: "Memory leak fixes, CORS performance and Zig build updates.",
+			tags: ["zig", "http"]
+		},
+		{
+			title: "gofiber/fiber",
+			href: "https://github.com/gofiber/fiber",
+			kind: "OSS",
+			note: "Route parameter binding and request-context lifecycle fixes.",
+			tags: ["go", "http"]
+		}
+	];
+	var labs = [
+		{
+			title: "IEEE-754 microscope",
+			href: "/lab#float",
+			kind: "Lab",
+			note: "Inspect sign, exponent and mantissa bits of a float32."
+		},
+		{
+			title: "Unicode lens",
+			href: "/lab#unicode",
+			kind: "Lab",
+			note: "Break text into code points and UTF-8 bytes."
+		},
+		{
+			title: "Hash avalanche",
+			href: "/lab#hash",
+			kind: "Lab",
+			note: "Compare SHA-256 bit flips from tiny input changes."
+		}
+	];
+	var searchIndex = [
+		...games,
+		...tools,
+		...posts,
+		...projects,
+		...moreProjects,
+		...contributions,
+		...labs,
+		{
+			title: "Home",
+			href: "/",
+			kind: "Page",
+			note: "Games, tools and writing."
+		},
+		{
+			title: "Work",
+			href: "/work",
+			kind: "Page",
+			note: "Projects and open-source contributions."
+		},
+		{
+			title: "Lab",
+			href: "/lab",
+			kind: "Page",
+			note: "Small technical experiments."
+		}
+	];
+	//#endregion
+	//#region src/shared/site.ts
+	(() => {
+		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
+		const index = searchIndex;
+		const norm = (s) => s.toLowerCase();
+		const score = (item, q) => {
+			const text = norm(`${item.title} ${item.kind} ${item.note} ${(item.tags || []).join(" ")}`);
+			const title = norm(item.title);
+			if (!q) return 1;
+			if (title === q) return 100;
+			if (title.startsWith(q)) return 70;
+			if (title.includes(q)) return 50;
+			const words = q.split(/\s+/).filter(Boolean);
+			return words.every((w) => text.includes(w)) ? 20 + words.length : 0;
+		};
+		let box, input, results, active = 0, visible = [];
+		const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K";
+		const syncShortcutLabels = () => document.querySelectorAll("[data-search-shortcut]").forEach((el) => {
+			el.textContent = shortcutLabel;
+		});
+		syncShortcutLabels();
+		addEventListener("samey-pageload", syncShortcutLabels);
+		const render = () => {
+			const q = norm(input.value.trim());
+			visible = index.map((item) => [item, score(item, q)]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1] || a[0].title.localeCompare(b[0].title)).slice(0, 9).map((x) => x[0]);
+			active = Math.min(active, Math.max(0, visible.length - 1));
+			results.innerHTML = visible.map((item, i) => `<a class="search-result${i === active ? " active" : ""}" href="${new URL(item.href, SCRIPT_ROOT).href}"><span><b>${item.title}</b><small>${item.note}</small></span><em>${item.kind}</em></a>`).join("") || "<div class=\"search-empty\">No match</div>";
+		};
+		const ensure = () => {
+			if (box) return;
+			box = document.createElement("div");
+			box.className = "site-search";
+			box.dataset.sameyRuntime = "";
+			box.hidden = true;
+			box.innerHTML = "<div class=\"site-search-backdrop\" data-close-search></div><div class=\"site-search-panel\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Search\"><div class=\"site-search-input\"><span>›</span><input autocomplete=\"off\" spellcheck=\"false\" placeholder=\"Search games, tools, writing, work…\"><kbd>esc</kbd></div><div class=\"site-search-results\"></div></div>";
+			document.body.append(box);
+			input = box.querySelector("input");
+			results = box.querySelector(".site-search-results");
+			input.addEventListener("input", () => {
+				active = 0;
+				render();
+			});
+			box.addEventListener("click", (e) => {
+				if (e.target.closest("[data-close-search]")) close();
+			});
+			input.addEventListener("keydown", (e) => {
+				if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+					e.preventDefault();
+					active = (active + (e.key === "ArrowDown" ? 1 : visible.length - 1)) % Math.max(visible.length, 1);
+					render();
+				}
+				if (e.key === "Enter" && visible[active]) {
+					e.preventDefault();
+					close();
+					const href = visible[active].href;
+					globalThis.SameyNavigate?.(href);
+				}
+			});
+		};
+		const open = () => {
+			ensure();
+			box.hidden = false;
+			active = 0;
+			input.value = "";
+			render();
+			requestAnimationFrame(() => input.focus());
+		};
+		const close = () => {
+			if (box) box.hidden = true;
+		};
+		addEventListener("keydown", (e) => {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault();
+				box && !box.hidden ? close() : open();
+			} else if (e.key === "Escape") close();
+		});
+		document.addEventListener("click", (e) => {
+			if (e.target.closest("[data-open-search]")) open();
+		});
+	})();
+	//#endregion
+})();

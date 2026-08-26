@@ -1,3 +1,5 @@
+// @ts-nocheck
+import './btop-mutex.css';
 (() => {
   const root = document.getElementById('cas-viz');
   if (root) {

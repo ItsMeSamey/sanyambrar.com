@@ -1,3 +1,4 @@
+// @ts-nocheck
 (() => {
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
   const KEY = "keybr.theme";

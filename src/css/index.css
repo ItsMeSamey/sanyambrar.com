@@ -1,4 +1,3 @@
-@import '../shared/styles/game-settings.css';
 @import 'tailwindcss';
 
 @layer base {
@@ -590,3 +589,9 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 @media(max-width:700px){.wordle-nav{width:calc(100% - 24px)!important}
 }
 @media(max-width:520px){.wordle-nav{width:calc(100% - 24px)!important}.wordle-nav-title{font-size:13px}.wordle-mode-switch{padding-inline:7px}}
+
+/* Final narrow-screen hardening. */
+.wordle-nav>*{min-width:0}
+.wordle-nav-title{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:380px){.wordle-nav{width:calc(100% - 12px)!important;gap:2px}.wordle-nav-title{font-size:12px;max-width:22vw}.wordle-mode-switch{max-width:24vw;font-size:.62rem}.wordle-nav-button,.settings-trigger{width:32px;height:32px}.wordle-key-row{gap:2px}.wordle-key-row-offset{padding-inline:3%}}
+@media(max-height:560px){.wordle-game-shell{padding-top:calc(var(--wordle-nav-height) + 3px);padding-bottom:4px;gap:3px}.wordle-key{height:clamp(2rem,8vh,2.75rem)}}

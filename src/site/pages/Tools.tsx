@@ -1,5 +1,4 @@
 import { onCleanup, onMount } from 'solid-js';
-import '../styles/tools.css';
 import { TOOLS } from '../../shared/catalog.ts';
 import { AppearanceButton, SearchButton, TopBar } from '../components/SiteChrome.tsx';
 
@@ -7,7 +6,7 @@ export function ToolsPage() {
   onMount(() => {
     let disposed = false;
     let dispose = () => {};
-    void import('../engines/tools.js').then(module => {
+    void import('../engines/tools.ts').then(module => {
       if (disposed) return;
       dispose = module.mountTools();
     });

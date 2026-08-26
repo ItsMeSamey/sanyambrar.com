@@ -36,7 +36,7 @@ button{cursor:pointer}
 .chain-settings{visibility:hidden;pointer-events:none}
 .chain-settings[data-open="true"]{visibility:visible;pointer-events:auto;animation:samey-control-expand 220ms cubic-bezier(.2,.8,.2,1)}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-.chain-topbar{position:fixed;top:10px;left:50%;z-index:40;height:36px;max-width:calc(100% - 24px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;transform:translateX(-50%);color:var(--site-fg,#121213)}
+.chain-topbar{position:fixed;top:10px;left:50%;z-index:40;width:min(calc(100% - 44px),1036px);height:36px;max-width:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;transform:translateX(-50%);color:var(--site-fg,#121213)}
 .chain-title{justify-self:start;min-height:34px;padding:0;border:0;background:transparent;font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.07em;white-space:nowrap;text-align:left}
 .chain-title:hover{opacity:.68}
 .chain-turn{justify-self:center}
@@ -53,3 +53,12 @@ button{cursor:pointer}
 @media(max-width:760px){.chain-mode-grid{grid-template-columns:1fr}.chain-mode-card{min-height:210px}.chain-opening{padding-inline:12px}}
 @media(max-width:520px){.chain-title{font-size:10px}.chain-topbar{grid-template-columns:auto 1fr auto}.chain-turn{justify-self:center;gap:8px;font-size:9px}.chain-turn-item{gap:5px}.chain-result-actions{grid-template-columns:1fr}}
 @media(max-width:640px){.chain-stage{padding:54px 12px 12px}}
+
+.chain-topbar,.chain-title,.chain-turn,.chain-top-actions,.chain-turn-item,.chain-result,.chain-result-actions,.chain-mode-card,.chain-mode-spec{min-width:0}
+.chain-title{overflow:hidden;text-overflow:ellipsis}
+.chain-mode-card h2,.chain-mode-card p,.chain-mode-spec,.chain-preset,.chain-result h2,.chain-result p{overflow-wrap:anywhere}
+.chain-result{max-height:calc(100dvh - 24px);overflow:auto}
+.chain-opening-inner{min-width:0}
+@media(max-width:700px){.chain-topbar{width:calc(100% - 24px)}}
+@media(max-width:520px){.chain-title{max-width:26vw}.chain-turn-item>span:first-child{font-size:0}.chain-turn-item>span:first-child::after{font-size:9px}.chain-turn-item:first-child>span:first-child::after{content:'YOU'}.chain-turn-item:last-child>span:first-child::after{content:'TURN'}}
+@media(max-width:380px){.chain-topbar{width:calc(100% - 12px);gap:4px}.chain-title{font-size:9px;letter-spacing:.04em;max-width:25vw}.chain-turn{gap:5px}.chain-turn-item{gap:3px}.chain-turn-swatch{width:10px;height:10px}.chain-top-actions{gap:0}.chain-opening{padding:54px 8px 20px}.chain-mode-card{padding:16px}.chain-result{width:calc(100% - 12px);padding:14px}}

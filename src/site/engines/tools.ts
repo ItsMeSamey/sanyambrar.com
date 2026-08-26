@@ -1,10 +1,11 @@
+// @ts-nocheck
 export function mountTools() {
   'use strict';
 
   const root = document.querySelector('.tools-view');
   const context = document.getElementById('tool-context');
   const tabs = document.querySelector('.tool-tabs');
-  if (!root || !context || !tabs) return;
+  if (!root || !context || !tabs) return () => {};
 
   const TOOLS = [
     ['text', 'Text', 'Text Inspector'],
@@ -196,7 +197,7 @@ export function mountTools() {
     const paint = () => {
       const text = model.getValue();
       const stats = textStats(text);
-      setContext(`<span><strong>${stats.words.toLocaleString()}</strong> words</span><span><strong>${stats.chars.toLocaleString()}</strong> chars</span><span${stats.nonAscii ? ' class="danger"' : ''}><strong>${stats.nonAscii.toLocaleString()}</strong> non-ASCII</span>`);
+      setContext(`<span><strong>${stats.words.toLocaleString()}</strong><span class="tool-stat-label"> words</span><span class="tool-stat-short">w</span></span><span><strong>${stats.chars.toLocaleString()}</strong><span class="tool-stat-label"> chars</span><span class="tool-stat-short">c</span></span><span${stats.nonAscii ? ' class="danger"' : ''}><strong>${stats.nonAscii.toLocaleString()}</strong> non-ASCII</span>`);
       const decorations = [];
       for (let lineNumber = 1; lineNumber <= model.getLineCount(); lineNumber++) {
         const line = model.getLineContent(lineNumber);
