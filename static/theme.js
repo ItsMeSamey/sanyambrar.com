@@ -340,6 +340,7 @@
     loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${paths[0]}"><animate attributeName="d" dur="${duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes.join(";")}" values="${paths.join(";")}"/></path></svg>`;
     return loadingSvgCache;
   };
+  globalThis.SameyLoadingSvg = loadingCursorSvg;
 
   const mountLoadingLayer = () => {
     if (document.getElementById("samey-loading-layer")) return;
@@ -975,7 +976,21 @@
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingLayer(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
+  const mountWordleErgonomics = () => {
+    if (document.documentElement.dataset.siteKind !== "wordle") return;
+    document.addEventListener("click", event => {
+      const label = event.target instanceof Element ? event.target.closest(".settings-switch-label") : null;
+      if (!label) return;
+      const row = label.closest(".settings-switch");
+      const control = row?.querySelector("[data-kb-switch-control]");
+      if (!(control instanceof HTMLElement)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      control.click();
+    }, true);
+  };
+
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingLayer(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

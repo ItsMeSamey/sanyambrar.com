@@ -18,5 +18,5 @@ export function SliderFill(props: ComponentProps<typeof S.Fill>) {
 
 export function SliderThumb(props: ComponentProps<typeof S.Thumb>) {
   const [local, rest] = splitProps(props, ['class'])
-  return <S.Thumb class={cn('block size-4 rounded-full border border-primary bg-background shadow-sm outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2', local.class)} {...rest} />
+  return <S.Thumb class={cn('block size-4 rounded-full border-2 border-primary bg-background opacity-0 shadow-none outline-none transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[dragging]:opacity-100', local.class)} {...rest} />
 }

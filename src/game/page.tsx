@@ -96,11 +96,13 @@ export class Block {
   public wordLength: number
   public word: string
   public mask: string
+  public liveValid: boolean
 
-  constructor(wordLength: number, word: string, mask: string) {
+  constructor(wordLength: number, word: string, mask: string, liveValid = false) {
     this.wordLength = wordLength
     this.word = word
     this.mask = mask
+    this.liveValid = liveValid
   }
 
   render() {
@@ -119,7 +121,7 @@ export class Block {
               this.mask[i()] === 'r' ? 'bg-red-700/50':
               this.mask[i()] === 'y' ? 'bg-yellow-500/70':
               this.mask[i()] === 'g' ? 'bg-green-600/60':
-              this.mask[i()] === 'b' ? 'bg-blue-600/60':
+              this.mask[i()] === 'b' ? (this.liveValid ? 'wordle-live-valid' : 'bg-blue-600/60'):
               'bg-transparent'
             )}
             style={{
@@ -380,7 +382,7 @@ export class WordleModel {
         </For>
         {(() => {
           const last = this.state.history.at(-1)!
-          this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).render() as HTMLDivElement
+          this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1], this.state.soft.fastInvalidate && !this.state.hard.allowAny && !this.state.state.showPopOver).render() as HTMLDivElement
           onMount(() => this.currentBlock.scrollIntoView({behavior: 'smooth', block: 'start'}))
           return this.currentBlock as JSX.Element
         })()}

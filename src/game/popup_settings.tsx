@@ -38,26 +38,23 @@ function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
   </Tooltip>
 }
 
-function SwitchContent(content: JSX.Element) {
+function SwitchContent(label: string, description: string) {
   return <>
     <SwitchControl>
       <SwitchThumb />
     </SwitchControl>
-
-    <SwitchLabel class='settings-switch-label'>
-      {content}
-    </SwitchLabel>
+    <SwitchLabel class='settings-switch-label' title={description}>{label}</SwitchLabel>
   </>
 }
 
 export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftProps, hard: SettingsHardProps, showWordLength: boolean}) {
   return <>
     <Switch class='settings-switch' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
-      {SwitchContent(TooltipWithContent('Allow Any Word', 'Allow any word to be used, even if not in the database.'))}
+      {SwitchContent('Allow Any Word', 'Allow any word to be used, even if not in the database.')}
     </Switch>
 
     <Switch class='settings-switch' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
-      {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
+      {SwitchContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).')}
     </Switch>
 
     <div class='game-settings-section-title'>ADVANCED</div>
