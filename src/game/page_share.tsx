@@ -39,9 +39,11 @@ export default function SharePage() {
     fastInvalidate,
   })
   const hard: SettingsHardProps = createMutable({
+    mode: 'advanced',
     wordLength: wordLength as WordLength,
     allowAny,
     maxTries,
+    disabledLetters: 0,
   })
 
   const all = WORDS['w' + wordLength]
@@ -54,7 +56,7 @@ export default function SharePage() {
   let isFirst = true
   const stateStore = new LocalstorageStore<WordLocalStorageState>(
     'none',
-    { word, history: [['', '']]},
+    { word, history: [['', '']], config: {...hard}},
     () => {throw new Error('Cannot Be Called')},
     (state: WordLocalStorageState) => {
       if (isFirst) {
@@ -72,7 +74,7 @@ export default function SharePage() {
       <div class='w-full' />
       <Settings soft={soft} hard={hard} showActive={false} showWordLength={false} />
     </nav>
-    {new WordleModel(soft, hard, stateStore).render()}
+    {new WordleModel(soft, hard, stateStore, () => {}, () => {}).render()}
   </div>
 }
 
@@ -93,14 +95,14 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
       <TooltipContent>Share</TooltipContent>
     </Tooltip>
     </DialogTrigger>
-    <DialogContent class='flex flex-col gap-2 p-4 bg-background rounded'>
-      <DialogHeader class='flex flex-row gap-2 items-center'>
-        Share <span class='text-blue-500 font-bold uppercase'>{props.word()}</span>
+    <DialogContent class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
+      <DialogHeader class='wordle-share-header flex flex-row gap-2 items-center'>
+        <span>Share</span> <span class='wordle-share-word text-blue-500 font-bold uppercase'>{props.word()}</span>
       </DialogHeader>
 
       <SettingsKnobs soft={soft} hard={hard} showWordLength={false} />
 
-      <DialogFooter class='flex flex-row gap-2 items-center mt-4'>
+      <DialogFooter class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button
           class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success duration-200 active:scale-90 transition-all'
           onClick={() => {

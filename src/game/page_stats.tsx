@@ -15,6 +15,9 @@ interface GameStats {
   totalGames: number
   totalWins: number
   averageGuesses: number
+  dailyGames: number
+  dailyWins: number
+  dailyAverageGuesses: number
   words: Value[]
 }
 
@@ -31,6 +34,9 @@ export async function fetchStats(): Promise<GameStats> {
   let totalGames = 0
   let totalWins = 0
   let totalGuesses = 0
+  let dailyGames = 0
+  let dailyWins = 0
+  let dailyGuesses = 0
   const words: Value[] = []
 
   for (let length = 3; length <= 20; length++) {
@@ -39,19 +45,28 @@ export async function fetchStats(): Promise<GameStats> {
       words.push(record)
       totalGames += record.h.length
       for (const history of record.h) {
+        if (history.o === 'daily') dailyGames++
         if (history.k !== KindEnum.Correct) continue
         totalWins++
         totalGuesses += history.h.length / length
+        if (history.o === 'daily') { dailyWins++; dailyGuesses += history.h.length / length }
       }
     }
   }
 
   words.sort((a, b) => Math.max(...b.h.map(h => h.t ?? 0)) - Math.max(...a.h.map(h => h.t ?? 0)))
-  return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, words}
+  return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, dailyGames, dailyWins, dailyAverageGuesses: dailyWins ? dailyGuesses / dailyWins : 0, words}
 }
 
 export async function hasStats() {
   return (await fetchStats()).totalGames > 0
+}
+
+function entryMeta(entry: HistoryEntry) {
+  const mode = entry.o ? entry.o[0].toUpperCase() + entry.o.slice(1) : 'Legacy'
+  const date = entry.q ? ` / ${entry.q}` : ''
+  const disabled = entry.d ? ` / ${entry.d} disabled` : ''
+  return `${mode}${date}${disabled}`
 }
 
 function outcome(entry: HistoryEntry) {
@@ -83,7 +98,7 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
       <PopoverTrigger class='stats-history-trigger'>
         <button type='button' class='stats-history-row' data-selected={selected() === value ? '' : undefined} onClick={() => onSelect(value)}>
           <span class='stats-word'>{value.w}</span>
-          <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses</span>
+          <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
           <span class={`stats-row-status ${statusClass}`}>{status}</span>
         </button>
       </PopoverTrigger>
@@ -102,7 +117,7 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
         return <Popover>
           <PopoverTrigger class='stats-attempt-trigger'>
             <button type='button' class='stats-attempt-row' onClick={() => onSelect(value)}>
-              <span>{attempt.h.length / value.w.length} guesses</span>
+              <span>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
               <span class={statusClass}>{status}</span>
             </button>
           </PopoverTrigger>
@@ -118,15 +133,16 @@ function DetailedStats({value}: {value: Value}) {
   const soft = softStore.get()!
   const hard = hardStore.get()!
   const stats = createMemo(() => {
-    let wins = 0, fails = 0, reveals = 0, winningGuesses = 0
+    let wins = 0, fails = 0, reveals = 0, winningGuesses = 0, daily = 0
     for (const history of value.h) {
+      if (history.o === 'daily') daily++
       if (history.k === KindEnum.Correct) {
         wins++
         winningGuesses += history.h.length / value.w.length
       } else if (history.k === KindEnum.Failed) fails++
       else reveals++
     }
-    return {wins, fails, reveals, average: wins ? winningGuesses / wins : 0}
+    return {wins, fails, reveals, daily, average: wins ? winningGuesses / wins : 0}
   })
 
   return <section class='stats-section stats-detail'>
@@ -146,6 +162,7 @@ function DetailedStats({value}: {value: Value}) {
       <span><i class='stats-dot stats-dot-win' />Won <strong>{stats().wins}</strong></span>
       <span><i class='stats-dot stats-dot-fail' />Failed <strong>{stats().fails}</strong></span>
       <span><i class='stats-dot stats-dot-reveal' />Revealed <strong>{stats().reveals}</strong></span>
+      <span class='stats-outcome-plain'>Daily entries <strong>{stats().daily}</strong></span>
     </div>
   </section>
 }
@@ -160,6 +177,16 @@ function StatsContent({stats}: {stats: GameStats}) {
         <SummaryStat label='Wins' value={stats.totalWins} />
         <SummaryStat label='Win rate' value={`${(stats.totalWins / stats.totalGames * 100).toFixed(1)}%`} />
         <SummaryStat label='Avg. guesses' value={stats.averageGuesses.toFixed(2)} />
+      </div>
+    </section>
+
+    <section class='stats-section stats-daily-section'>
+      <div class='stats-section-heading'><div><span class='stats-eyebrow'>Word of the day</span><h2>Daily record</h2></div></div>
+      <div class='stats-summary-grid'>
+        <SummaryStat label='Daily games' value={stats.dailyGames} />
+        <SummaryStat label='Daily wins' value={stats.dailyWins} />
+        <SummaryStat label='Win rate' value={stats.dailyGames ? `${(stats.dailyWins / stats.dailyGames * 100).toFixed(1)}%` : '–'} />
+        <SummaryStat label='Avg. guesses' value={stats.dailyWins ? stats.dailyAverageGuesses.toFixed(2) : '–'} />
       </div>
     </section>
 

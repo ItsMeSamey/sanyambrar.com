@@ -4,6 +4,7 @@ import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
 import bsearch from 'binary-search-bounds'
 import { SettingsHardProps } from './popup_settings'
+import type { GameMode } from './challenge'
 
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
 
@@ -19,6 +20,9 @@ export interface HistoryEntry {
   m: number // maxTries
   t: number // Timestamp
   h: string // Histories
+  o?: GameMode // mode (legacy rows omit this)
+  d?: number // disabled-letter count
+  q?: string // daily date
 }
 
 export interface Value {
@@ -120,6 +124,9 @@ export async function setDone(entry: {word: string, history: [string, string][]}
     m: hard.maxTries,
     t: Date.now(),
     h: entry.history.map(([w, _]) => w).join(''),
+    o: hard.mode,
+    d: hard.disabledLetters,
+    q: hard.mode === 'daily' ? hard.dailyDate : undefined,
   })
 
   await store.put(record)

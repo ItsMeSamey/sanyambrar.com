@@ -2,17 +2,13 @@
 ::selection{background:var(--site-selection)!important;color:var(--site-fg,#121213)!important}
 html,body,*{scrollbar-width:none!important}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}
-.samey-site-controls{position:fixed;top:10px;left:12px;right:auto;z-index:2147483000;display:flex;gap:2px;align-items:center}
-.samey-icon{appearance:none;border:0;background:transparent;color:var(--site-fg,#121213);width:36px;height:36px;padding:8px;display:grid;place-items:center;border-radius:3px}
-.samey-icon:hover,.samey-icon:focus-visible{background:var(--site-soft,#eee);outline:none}.samey-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.samey-theme-panel{position:absolute;left:0;top:42px;min-width:166px;padding:5px;background:var(--site-bg,#fff);color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 .5rem 2rem #0002}
+.samey-theme-panel{position:fixed;left:8px;top:50px;z-index:2147483600;min-width:166px;padding:5px;background:var(--site-bg,#fff);color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 .5rem 2rem #0002}
 .samey-theme-panel[hidden]{display:none}.samey-panel-title{padding:7px 9px 4px;color:var(--site-muted,#777);font:10px/1.2 var(--site-font,system-ui);text-transform:uppercase;letter-spacing:.08em}.samey-panel-title:not(:first-child){border-top:1px solid var(--site-line,#ddd);margin-top:4px;padding-top:10px}
 .samey-theme-panel button{width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:7px 9px;font:12px/1.3 var(--site-font,system-ui);display:flex;justify-content:space-between}.samey-theme-panel button:hover,.samey-theme-panel button[data-selected]{background:var(--site-soft,#eee)}.samey-theme-panel button[data-selected]::after{content:'✓';font-weight:700}
 .samey-cursor{position:fixed;left:0;top:0;width:64px;height:64px;pointer-events:none;z-index:2147483647;opacity:0;color:#fff;mix-blend-mode:difference;will-change:transform;transition:opacity .06s}.samey-cursor[data-visible]{opacity:1}.samey-cursor-dot{position:absolute;left:23.6px;top:23.6px;width:16.8px;height:16.8px;border-radius:50%;background:currentColor}.samey-cursor-grab,.samey-cursor-link{display:none;position:absolute;inset:0;width:64px;height:64px;overflow:visible}.samey-cursor-link{transform:translate(-8.4px,8.4px)}.samey-cursor-link-corner{transform-origin:0 0}.samey-cursor[data-grab] .samey-cursor-dot,.samey-cursor[data-link] .samey-cursor-dot{display:none}.samey-cursor[data-grab] .samey-cursor-grab{display:block}.samey-cursor[data-link]:not([data-grab]) .samey-cursor-link{display:block}
 .samey-context-menu{position:fixed;z-index:2147483600;min-width:210px;max-width:min(320px,calc(100vw - 16px));padding:5px;background:color-mix(in srgb,var(--site-bg,#fff) 94%,transparent);color:var(--site-fg,#121213);border:1px solid color-mix(in srgb,var(--site-line,#ddd) 86%,transparent);border-radius:8px;box-shadow:0 16px 48px #0005,0 2px 8px #0002;backdrop-filter:blur(18px) saturate(1.15)}.samey-context-menu[hidden]{display:none}.samey-context-menu button{display:flex;align-items:center;justify-content:space-between;gap:24px;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:7px 10px;border-radius:4px;font:12px/1.25 var(--site-font,system-ui)}.samey-context-menu kbd{color:var(--site-muted,#777);font:10px/1 var(--site-font,system-ui);white-space:nowrap}.samey-context-menu button:hover:not(:disabled),.samey-context-menu button:focus-visible{background:var(--site-soft,#eee);outline:none}.samey-context-menu button:disabled{opacity:.35}.samey-context-menu hr{border:0;border-top:1px solid var(--site-line,#ddd);margin:5px 3px}
 .samey-vscroll{position:fixed;width:7px;z-index:2147482500;pointer-events:auto}.samey-vscroll[hidden]{display:none}.samey-vscroll-thumb{position:absolute;left:1px;top:0;width:5px;min-height:24px;border-radius:5px;background:color-mix(in srgb,var(--site-fg,#121213) 38%,transparent);transition:width .08s,left .08s}.samey-vscroll:hover .samey-vscroll-thumb,.samey-vscroll-thumb:active{width:7px;left:0;background:color-mix(in srgb,var(--site-fg,#121213) 56%,transparent)}
 @media(pointer:fine){html.samey-custom-cursor,html.samey-custom-cursor *{cursor:none!important}}
-@media(max-width:520px){.samey-site-controls{top:8px;left:8px}}
 @media(prefers-reduced-motion:reduce){.samey-cursor,.samey-vscroll-thumb{transition:none!important}}
 .samey-hscroll{position:fixed;height:7px;z-index:2147482500;pointer-events:auto}.samey-hscroll[hidden]{display:none}.samey-hscroll-thumb{position:absolute;left:0;top:1px;height:5px;min-width:24px;border-radius:5px;background:color-mix(in srgb,var(--site-fg,#121213) 38%,transparent);transition:height .08s,top .08s}.samey-hscroll:hover .samey-hscroll-thumb,.samey-hscroll-thumb:active{height:7px;top:0;background:color-mix(in srgb,var(--site-fg,#121213) 56%,transparent)}
 
@@ -97,7 +93,6 @@ html[data-nav-direction=home]::view-transition-new(samey-page){animation:samey-p
 .samey-cursor-loading{display:none;position:absolute;inset:0;width:64px;height:64px;overflow:visible;transform:scale(.375);transform-origin:center}
 .samey-cursor[data-loading] .samey-cursor-dot,.samey-cursor[data-loading] .samey-cursor-grab,.samey-cursor[data-loading] .samey-cursor-link{display:none!important}
 .samey-cursor[data-loading] .samey-cursor-loading{display:block}
-html[data-site-loading] .samey-site-controls{pointer-events:none}
 
 /* More coherent shared surfaces. */
 .samey-icon,.game-settings-trigger,.game-settings-close{border-radius:var(--site-radius-small)}
@@ -111,10 +106,8 @@ html[data-site-loading] .samey-site-controls{pointer-events:none}
 }
 
 
-/* Loading is a visible state, never a blank document. */
-.samey-loading-layer{position:fixed;inset:0;z-index:2147483200;display:grid;place-items:center;pointer-events:none;background:color-mix(in srgb,var(--site-bg,#fff) 92%,transparent);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity 110ms ease,visibility 0s linear 110ms}.samey-loading-layer[data-visible]{opacity:1;visibility:visible;transition:opacity 110ms ease}.samey-loading-card{display:grid;place-items:center;gap:14px;min-width:180px;padding:24px 28px;border:1px solid color-mix(in srgb,var(--site-line,#ddd) 82%,transparent);border-radius:12px;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);box-shadow:0 18px 60px #0002}.samey-loading-card svg{width:58px;height:58px;color:var(--site-fg,#121213)}.samey-loading-card span{color:var(--site-muted,#777);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.13em}.samey-loading-card i{display:block;width:72px;height:1px;background:linear-gradient(90deg,transparent,var(--site-accent,#787c7e),transparent);animation:samey-loading-line .9s ease-in-out infinite}@keyframes samey-loading-line{50%{transform:scaleX(.38);opacity:.45}}
-@media(prefers-reduced-motion:reduce){.samey-loading-card i{animation:none}.samey-loading-layer{transition:none}}
-.samey-loading-card .samey-cursor-loading{display:block!important;position:static;inset:auto;width:58px;height:58px;transform:none;transform-origin:center}
+/* Full applications are lazy-loaded offscreen and swapped into this shell. The top-level document never unloads. */
+.samey-app-preload{position:fixed;inset:0;z-index:-1;visibility:hidden;pointer-events:none}.samey-app-preload iframe,.samey-app-shell iframe{display:block;width:100%;height:100%;border:0;background:var(--site-bg,#fff)}.samey-app-shell{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;background:var(--site-bg,#fff);z-index:1}html[data-app-frame] #samey-cursor{display:none!important}
 
 /* Slider geometry: fill endpoint and thumb share one center. Thumb only appears on intent. */
 .game-settings-slider [data-kb-slider-track]{position:relative!important;height:16px!important;border-radius:999px!important;overflow:visible!important}
@@ -125,7 +118,3 @@ html[data-site-loading] .samey-site-controls{pointer-events:none}
 .game-settings-slider:hover input[type=range]::-webkit-slider-thumb,.game-settings-slider input[type=range]:focus-visible::-webkit-slider-thumb,.game-settings-slider input[type=range]:active::-webkit-slider-thumb{opacity:1!important}
 .game-settings-slider input[type=range]::-moz-range-thumb{opacity:0!important}
 .game-settings-slider:hover input[type=range]::-moz-range-thumb,.game-settings-slider input[type=range]:focus-visible::-moz-range-thumb,.game-settings-slider input[type=range]:active::-moz-range-thumb{opacity:1!important}
-/* Fast-invalidate live candidates use a blue outline, not a filled tile. */
-.wordle-live-valid{background:transparent!important;border-color:#3b82f6!important;box-shadow:inset 0 0 0 1px #3b82f6}
-/* Compatibility for the currently deployed Wordle bundle; source uses .wordle-live-valid on rebuild. */
-html[data-site-kind=wordle] .wordle-board .bg-blue-600\/60{background:transparent!important;border-color:#3b82f6!important;box-shadow:inset 0 0 0 1px #3b82f6}

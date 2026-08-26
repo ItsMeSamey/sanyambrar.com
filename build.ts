@@ -181,7 +181,6 @@ async function compressHtml() {
 
 const SHARED_CSS_REQUIRED = [
   "::selection",
-  ".samey-site-controls",
   ".samey-context-menu",
   ".samey-cursor-grab",
   ".samey-cursor-link",
@@ -221,6 +220,13 @@ const RUNTIME_REQUIRED = [
   'values="1;0"',
   "linkClick.beginElement()",
   "linkFade.beginElement()",
+  'attributeName="d"',
+  'dur="${loadingGeometry.duration}s"',
+  'repeatCount="indefinite"',
+  'values="${frames.join(";")}"',
+  'samey-app-preload',
+  'samey-app-frame',
+  'A normal navigation is deliberately not used as a fallback',
   "requestAnimationFrame(renderCursorPosition)",
   "startNativeDrag",
   "isPlainSelectionDrag",
@@ -238,7 +244,6 @@ const RUNTIME_REQUIRED = [
   "topPx = 0",
   'link.target = "_blank"',
   'link.rel = "noopener noreferrer"',
-  "samey-site-controls",
   "samey-context-menu",
   "samey-cursor-grab",
   "samey-cursor-link",
@@ -256,10 +261,16 @@ const RUNTIME_REQUIRED = [
   "popstate",
   "X-Samey-SPA",
   "loadingCursorSvg",
-  "zeroCrossingPower = .8",
+  "zeroCrossingPower: .8",
+  "animateLoadingPaths",
   "const APP_ROUTE",
+  "loadAppFrame",
+  "samey-app-frame",
   "document.startViewTransition",
   "SameyNavigate",
+  "SameyOpenAppearance",
+  "enhanceWordleChrome",
+  "enhanceKeybrChrome",
   "samey-pageleave",
   "Copy",
   "Paste",
@@ -299,7 +310,10 @@ async function auditSource() {
   const lab = await readFile(join(GENERATED_SITE, "lab.html"), "utf8");
   must(lab.includes('data-lab="float"') && lab.includes('data-lab="unicode"') && lab.includes('data-lab="hash"'), "lab: experiments missing");
   must(existsSync(join(STATIC, "site.js")) && existsSync(join(GENERATED_SITE, "site-index.js")), "site search runtime/index missing");
-  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsHtml.includes("class=\"tool-tabs\"") && !toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("fastMyers"), "tools: integrated runtime/shell missing");
+  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsHtml.includes("class=\"tool-tabs\"") && !toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("ensureMonaco") && toolsRuntime.includes("createDiffEditor"), "tools: integrated Monaco runtime/shell missing");
+  must(!toolsRuntime.includes("Send to") && !toolsRuntime.includes("data-send") && !toolsRuntime.includes("shareable") && !toolsRuntime.includes("q.set(name"), "tools: obsolete send-to or URL document state returned");
+  must(toolsRuntime.includes("monaco-word-highlight") && toolsRuntime.includes("monaco-nonascii-highlight"), "tools: Text Inspector Monaco decorations missing");
+  must(toolsRuntime.includes("Linked scroll") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: Markdown source-aware linked scrolling missing");
   must(!existsSync(join(ROOT, "src/tools")) && !existsSync(join(ROOT, "tools.html")), "tools: obsolete standalone Solid app returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
   const theme = await readFile(join(STATIC, "theme.js"), "utf8");

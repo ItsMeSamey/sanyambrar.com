@@ -38,7 +38,7 @@
     box.addEventListener('click', e => { if (e.target.closest('[data-close-search]')) close(); });
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1); render(); }
-      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.href = href; }
+      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(); const href = visible[active].href; globalThis.SameyNavigate?.(href); }
     });
   };
   const open = () => { ensure(); box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus()); };

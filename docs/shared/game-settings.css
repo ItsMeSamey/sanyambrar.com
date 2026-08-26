@@ -121,3 +121,19 @@
 .game-settings-slider:hover input[type="range"]::-webkit-slider-thumb,.game-settings-slider input[type="range"]:focus-visible::-webkit-slider-thumb,.game-settings-slider input[type="range"]:active::-webkit-slider-thumb{opacity:1}
 .game-settings-slider input[type="range"]::-moz-range-thumb{opacity:0;transition:opacity 90ms ease}
 .game-settings-slider:hover input[type="range"]::-moz-range-thumb,.game-settings-slider input[type="range"]:focus-visible::-moz-range-thumb,.game-settings-slider input[type="range"]:active::-moz-range-thumb{opacity:1}
+
+/* Keep settings controls contained on narrow viewports and with enlarged text. */
+.game-settings-popover,
+.game-settings-body,
+.game-settings-body > *,
+.game-settings-slider,
+.game-settings-slider > *,
+.game-settings-actions,
+.game-settings-action { min-width: 0; }
+.game-settings-popover { overflow-x: hidden !important; overflow-y: auto !important; }
+.game-settings-body { max-width: 100%; }
+.game-settings-slider > div { gap: 8px; flex-wrap: wrap; }
+.game-settings-slider label,
+.game-settings-slider [data-kb-slider-label],
+.game-settings-slider [data-kb-slider-value-label] { min-width: 0; overflow-wrap: anywhere; }
+.game-settings-action { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

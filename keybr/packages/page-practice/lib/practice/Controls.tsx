@@ -6,6 +6,8 @@ import {
   mdiChartBar,
   mdiCog,
   mdiHelpCircleOutline,
+  mdiHomeOutline,
+  mdiThemeLightDark,
   mdiRedo,
   mdiUndo,
 } from "@mdi/js";
@@ -29,6 +31,20 @@ export const Controls = memo(function Controls({
   const { setView } = useView(views);
   return (
     <div id={names.controls} className={styles.controls}>
+      <IconButton
+        icon={<Icon shape={mdiHomeOutline} />}
+        title="Home"
+        onClick={() => {
+          const href = new URL("./", location.href).href;
+          if (window.parent !== window) parent.postMessage({ type: "samey-navigate", href }, location.origin);
+          else (globalThis as any).SameyNavigate?.(href);
+        }}
+      />
+      <IconButton
+        icon={<Icon shape={mdiThemeLightDark} />}
+        title="Appearance"
+        onClick={(event) => (globalThis as any).SameyOpenAppearance?.(event.currentTarget)}
+      />
       <IconButton
         icon={<Icon shape={mdiHelpCircleOutline} />}
         title={formatMessage({

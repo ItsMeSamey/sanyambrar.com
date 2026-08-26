@@ -4,31 +4,25 @@ import { createSignal, JSX, Show } from 'solid-js'
 import { IconSettings, IconX } from '~/components/icons'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
-
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
-import { untrack } from 'solid-js/web'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { WordLength } from './words'
 import { ActiveGames } from './popup_active_games'
+import type { GameMode } from './challenge'
 
-// Props that can be changed without a re-render
 export interface SettingsSoftProps {
-  // when this is set to true, latest word is revealed and then skipped
   reveal: boolean
-  // weather fast invalidation is enabled
   fastInvalidate: boolean
 }
 
-// Props that on change should trigger a re-render
 export interface SettingsHardProps {
-  // The length of the word
+  mode: GameMode
   wordLength: WordLength
-
-  // Allow any word, even if not in dictionary
   allowAny: boolean
-
-  // The max number of words that can be guessed
   maxTries: number
+  disabledLetters: number
+  dailyDate?: string
+  randomId?: string
 }
 
 function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
@@ -40,62 +34,48 @@ function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
 
 function SwitchContent(label: string, description: string) {
   return <>
-    <SwitchControl>
-      <SwitchThumb />
-    </SwitchControl>
+    <SwitchControl><SwitchThumb /></SwitchControl>
     <SwitchLabel class='settings-switch-label' title={description}>{label}</SwitchLabel>
   </>
 }
 
 export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftProps, hard: SettingsHardProps, showWordLength: boolean}) {
+  const advanced = () => hard.mode === 'advanced'
   return <>
-    <Switch class='settings-switch' onChange={allow => hard.allowAny = allow} defaultChecked={untrack(() => hard.allowAny)}>
-      {SwitchContent('Allow Any Word', 'Allow any word to be used, even if not in the database.')}
+    <Switch class='settings-switch' onChange={allow => soft.fastInvalidate = allow} checked={soft.fastInvalidate}>
+      {SwitchContent('Fast Invalidate', 'Marks each typed prefix as usable or impossible immediately.')}
     </Switch>
 
-    <Switch class='settings-switch' onChange={allow => soft.fastInvalidate = allow} defaultChecked={untrack(() => soft.fastInvalidate)}>
-      {SwitchContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).')}
-    </Switch>
+    <Show when={advanced()} fallback={
+      <div class='wordle-settings-fixed'>
+        <span>Automatic challenge</span>
+        <strong>{hard.wordLength} letters / {hard.maxTries === 1 ? '∞' : hard.maxTries} guesses / {hard.disabledLetters} disabled</strong>
+        <small>Daily and Random tune difficulty automatically. Use Advanced for manual controls.</small>
+      </div>
+    }>
+      <Switch class='settings-switch' onChange={allow => hard.allowAny = allow} checked={hard.allowAny}>
+        {SwitchContent('Allow Any Word', 'Allow guesses that are not in the dictionary.')}
+      </Switch>
 
-    <div class='game-settings-section-title'>ADVANCED</div>
+      <div class='game-settings-section-title'>ADVANCED</div>
 
-    <Show when={showWordLength}>
-      <Slider
-        minValue={3}
-        maxValue={20}
-        defaultValue={untrack(() => [hard.wordLength])}
-        getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
-        onChange={([len]) => hard.wordLength = len as WordLength}
-        class='game-settings-slider'
-      >
-        <div class='flex w-full justify-between'>
-          <SliderLabel>Word length</SliderLabel>
-          <SliderValueLabel />
-        </div>
-        <SliderTrack>
-          <SliderFill />
-          <SliderThumb />
-        </SliderTrack>
+      <Show when={showWordLength}>
+        <Slider minValue={3} maxValue={20} value={[hard.wordLength]} getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any} onChange={([len]) => hard.wordLength = len as WordLength} class='game-settings-slider'>
+          <div class='flex w-full justify-between'><SliderLabel>Word length</SliderLabel><SliderValueLabel /></div>
+          <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
+        </Slider>
+      </Show>
+
+      <Slider minValue={1} maxValue={50} value={[hard.maxTries]} getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1 ? 'INF' : params.values}</strong> as any} onChange={([len]) => hard.maxTries = len} class='game-settings-slider'>
+        <div class='flex w-full justify-between'><SliderLabel>Max guesses</SliderLabel><SliderValueLabel /></div>
+        <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
+      </Slider>
+
+      <Slider minValue={0} maxValue={12} value={[hard.disabledLetters]} getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any} onChange={([count]) => hard.disabledLetters = count} class='game-settings-slider'>
+        <div class='flex w-full justify-between'><SliderLabel>Disabled letters</SliderLabel><SliderValueLabel /></div>
+        <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
       </Slider>
     </Show>
-
-    <Slider
-      minValue={1}
-      maxValue={50}
-      defaultValue={untrack(() => [hard.maxTries])}
-      getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
-      onChange={([len]) => hard.maxTries = len}
-      class='game-settings-slider'
-    >
-      <div class='flex w-full justify-between'>
-        <SliderLabel>Max guesses</SliderLabel>
-        <SliderValueLabel />
-      </div>
-      <SliderTrack>
-        <SliderFill />
-        <SliderThumb />
-      </SliderTrack>
-    </Slider>
   </>
 }
 
@@ -107,27 +87,14 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
       <IconSettings class='size-5' />
     </PopoverTrigger>
     <PopoverContent class='game-settings-popover settings-popover border-muted'>
-      <button type='button' class='game-settings-close' onClick={() => setOpen(false)} aria-label='Close settings'>
-        <IconX />
-      </button>
-
+      <button type='button' class='game-settings-close' onClick={() => setOpen(false)} aria-label='Close settings'><IconX /></button>
       <div class='game-settings-body'>
         <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
-
         <div class='game-settings-actions'>
-        {TooltipWithContent(
-          <button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>
-            Reveal
-          </button>,
-          'Reveals and then skips the current word.'
-        )}
-        <Show when={showActive}>
-          <ActiveGames hard={hard} trigger={
-            <button type='button' class='game-settings-action'>
-              Active Games
-            </button>
-          }/>
-        </Show>
+          {TooltipWithContent(<button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>Reveal</button>, 'Reveals and ends the current game.')}
+          <Show when={showActive}>
+            <ActiveGames hard={hard} trigger={<button type='button' class='game-settings-action'>Active Games</button>} />
+          </Show>
         </div>
       </div>
     </PopoverContent>

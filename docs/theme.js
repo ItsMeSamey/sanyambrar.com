@@ -201,26 +201,6 @@
     return theme;
   };
 
-  const icon = (name) => name === "home"
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z"/></svg>'
-    : name === "back"
-      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h11"/></svg>'
-      : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
-
-  const navTarget = () => {
-    const root = document.documentElement;
-    if (root.dataset.siteKind === "wordle") {
-      const url = new URL(location.href);
-      if ((url.searchParams.get("p") || "0") !== "0") {
-        url.searchParams.set("p", "0");
-        url.searchParams.delete("v");
-        return { href: url.href, icon: "back", label: "Back to Wordle" };
-      }
-    }
-    if (root.dataset.backHref) return { href: root.dataset.backHref, icon: "back", label: "Back" };
-    return root.dataset.homeHref ? { href: root.dataset.homeHref, icon: "home", label: "Home" } : null;
-  };
-
   const setPrefs = (patch) => {
     if (Object.hasOwn(patch, "font")) {
       nativeSetItem.call(localStorage, FONT_KEY, patch.font);
@@ -244,59 +224,61 @@
   Object.defineProperty(globalThis, "SameyAppearance", { value: appearance, configurable: false, writable: false });
 
   const section = (title, items, attr) => `<div class="samey-panel-title">${title}</div>${Object.entries(items).map(([value, label]) => `<button type="button" ${attr}="${value}">${label}</button>`).join("")}`;
+  let appearancePanel = null;
+  let appearanceTrigger = null;
+  const positionAppearancePanel = (trigger) => {
+    if (!appearancePanel || !trigger) return;
+    const r = trigger.getBoundingClientRect();
+    const width = appearancePanel.offsetWidth || 176;
+    const left = Math.max(8, Math.min(innerWidth - width - 8, r.right - width));
+    appearancePanel.style.left = `${left}px`;
+    appearancePanel.style.top = `${Math.min(innerHeight - 8, r.bottom + 6)}px`;
+  };
+  const closeAppearance = () => {
+    if (!appearancePanel) return;
+    appearancePanel.hidden = true;
+    appearanceTrigger?.setAttribute("aria-expanded", "false");
+    appearanceTrigger = null;
+  };
+  const toggleAppearance = (trigger) => {
+    if (!appearancePanel) mountControls();
+    if (!appearancePanel) return;
+    if (!appearancePanel.hidden && appearanceTrigger === trigger) return closeAppearance();
+    appearanceTrigger?.setAttribute("aria-expanded", "false");
+    appearanceTrigger = trigger;
+    trigger.setAttribute("aria-expanded", "true");
+    appearancePanel.hidden = false;
+    positionAppearancePanel(trigger);
+  };
   const mountControls = () => {
-    if (document.getElementById("samey-site-controls")) return;
-    const host = document.createElement("div");
-    host.id = "samey-site-controls";
-    host.className = "samey-site-controls";
-    host.dataset.sameyRuntime = "";
-    const nav = navTarget();
-    if (nav) host.insertAdjacentHTML("beforeend", `<a class="samey-icon samey-nav" href="${nav.href}" aria-label="${nav.label}" title="${nav.label}" data-copy-label="${nav.label}">${icon(nav.icon)}</a>`);
-
-    host.insertAdjacentHTML("beforeend", `<button class="samey-icon" type="button" aria-label="Appearance" title="Appearance" aria-expanded="false">${icon("appearance")}</button>`);
+    if (appearancePanel) return;
     const panel = document.createElement("div");
+    panel.id = "samey-theme-panel";
     panel.className = "samey-theme-panel";
+    panel.dataset.sameyRuntime = "";
     panel.hidden = true;
     panel.innerHTML = section("Theme", colorLabels, "data-theme-choice") + section("Font", fontLabels, "data-font-choice");
-    host.append(panel);
-    const trigger = host.querySelector('.samey-icon[type="button"]');
-    trigger.addEventListener("click", () => {
-      panel.hidden = !panel.hidden;
-      trigger.setAttribute("aria-expanded", String(!panel.hidden));
-    });
     panel.addEventListener("click", (event) => {
       const themeButton = event.target.closest("[data-theme-choice]");
       if (themeButton) setPrefs({ color: themeButton.dataset.themeChoice });
       const fontButton = event.target.closest("[data-font-choice]");
       if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
     });
-    document.addEventListener("pointerdown", (event) => {
-      if (!host.contains(event.target)) {
-        panel.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
-      }
+    document.body.append(panel);
+    appearancePanel = panel;
+    document.addEventListener("click", (event) => {
+      const trigger = event.target.closest?.("[data-samey-appearance]");
+      if (trigger) { event.preventDefault(); event.stopPropagation(); toggleAppearance(trigger); return; }
+      if (!panel.contains(event.target)) closeAppearance();
     });
-    document.body.append(host);
+    addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
+    addEventListener("samey-pageleave", closeAppearance);
     apply();
   };
-
-  const refreshNav = () => {
-    const target = navTarget();
-    const el = document.querySelector("#samey-site-controls .samey-nav");
-    if (!el || !target) return;
-    el.href = target.href;
-    el.setAttribute("aria-label", target.label);
-    el.dataset.copyLabel = target.label;
-    el.title = target.label;
-    el.innerHTML = icon(target.icon);
-  };
+  globalThis.SameyOpenAppearance = (trigger) => toggleAppearance(trigger);
 
   const pushState = history.pushState.bind(history);
   const replaceState = history.replaceState.bind(history);
-  history.pushState = (...args) => { pushState(...args); dispatchEvent(new Event("samey-locationchange")); };
-  history.replaceState = (...args) => { replaceState(...args); dispatchEvent(new Event("samey-locationchange")); };
-  addEventListener("popstate", () => queueMicrotask(refreshNav));
-  addEventListener("samey-locationchange", () => queueMicrotask(refreshNav));
 
   const runtimeNode = (el) => { el.dataset.sameyRuntime = ""; return el; };
 
@@ -319,11 +301,12 @@
   }).observe(document.documentElement, { subtree: true, childList: true });
 
   let loadingSvgCache = "";
-  const loadingCursorSvg = () => {
-    if (loadingSvgCache) return loadingSvgCache;
-    const cx = 200, cy = 200, baseRadius = 140, amplitude = 20, waves = 6;
-    const duration = 1.45, zeroCrossingPower = .8, points = 320, frames = 61;
-    const paths = [], keyTimes = [];
+  let loadingFramesCache = null;
+  const loadingGeometry = Object.freeze({ cx: 200, cy: 200, baseRadius: 140, amplitude: 20, waves: 6, duration: 1.45, zeroCrossingPower: .8, points: 320, frames: 61 });
+  const loadingFrames = () => {
+    if (loadingFramesCache) return loadingFramesCache;
+    const { cx, cy, baseRadius, amplitude, waves, zeroCrossingPower, points, frames } = loadingGeometry;
+    const paths = [];
     for (let f = 0; f < frames; f++) {
       const progress = f / (frames - 1);
       const raw = Math.cos(progress * Math.PI * 2);
@@ -335,22 +318,19 @@
         const x = cx + radius * Math.cos(angle), y = cy + radius * Math.sin(angle);
         d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
       }
-      paths.push(d + "Z"); keyTimes.push(progress.toFixed(6));
+      paths.push(d + "Z");
     }
-    loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${paths[0]}"><animate attributeName="d" dur="${duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes.join(";")}" values="${paths.join(";")}"/></path></svg>`;
+    loadingFramesCache = paths;
+    return paths;
+  };
+  const loadingCursorSvg = () => {
+    if (loadingSvgCache) return loadingSvgCache;
+    const frames = loadingFrames();
+    const keyTimes = frames.map((_, index) => (index / (frames.length - 1)).toFixed(6)).join(";");
+    loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${frames[0]}"><animate attributeName="d" dur="${loadingGeometry.duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes}" values="${frames.join(";")}"/></path></svg>`;
     return loadingSvgCache;
   };
   globalThis.SameyLoadingSvg = loadingCursorSvg;
-
-  const mountLoadingLayer = () => {
-    if (document.getElementById("samey-loading-layer")) return;
-    const layer = runtimeNode(document.createElement("div"));
-    layer.id = "samey-loading-layer";
-    layer.className = "samey-loading-layer";
-    layer.setAttribute("aria-hidden", "true");
-    layer.innerHTML = `<div class="samey-loading-card">${loadingCursorSvg()}<span>loading</span><i></i></div>`;
-    document.body.append(layer);
-  };
 
   const mountCursor = () => {
     if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
@@ -360,10 +340,21 @@
     cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M47.5 5.5 H78.5 V36.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;26 -26" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/><animate class="samey-cursor-link-fade" attributeName="opacity" values="1;0" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>${loadingCursorSvg()}`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
+    const loadingPath = cursor.querySelector(".samey-cursor-loading path");
+    let loadingRaf = 0;
+    const animateLoadingPaths = (time) => {
+      if (!cursor.hasAttribute("data-loading")) { loadingRaf = 0; return; }
+      const frames = loadingFrames();
+      const progress = (time % (loadingGeometry.duration * 1000)) / (loadingGeometry.duration * 1000);
+      loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
+      loadingRaf = requestAnimationFrame(animateLoadingPaths);
+    };
     const setLoading = (loading) => {
       cursor.toggleAttribute("data-loading", !!loading);
       if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
+      if (loading && !loadingRaf) loadingRaf = requestAnimationFrame(animateLoadingPaths);
+      if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));
     globalThis.SameyLoading = setLoading;
@@ -862,11 +853,14 @@
   const setLoading = value => {
     const on = !!value;
     document.documentElement.toggleAttribute("data-site-loading", on);
-    document.getElementById("samey-loading-layer")?.toggleAttribute("data-visible", on);
     dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+    // Lazy navigation never covers the current page with a transient loading card.
+    // The existing page stays painted until the replacement is fully ready, while
+    // the cursor alone communicates pending work. This avoids flash/flicker entirely.
+    document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
   };
   const syncHtmlData = (doc, baseUrl) => {
-    const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color"]);
+    const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color","data-app-frame"]);
     for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
     for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
       let value = attr.value;
@@ -911,6 +905,11 @@
       old.replaceWith(fresh);
     }
   };
+  const clearPageBody = () => {
+    const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
+    for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
+    return runtimeAnchor;
+  };
   const swapPage = (doc, baseUrl, url, replace) => {
     try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
     dispatchEvent(new Event("samey-pageleave"));
@@ -923,45 +922,106 @@
         document.head.append(copy);
       }
     }
-    const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
-    for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
+    const runtimeAnchor = clearPageBody();
     for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
+    document.documentElement.removeAttribute("data-app-frame");
     document.title = doc.title; syncHtmlData(doc, baseUrl);
     (replace ? replaceState : pushState)({}, "", url.href);
-    runBodyScripts(baseUrl); apply(); refreshNav(); scanVirtualScrollers();
+    runBodyScripts(baseUrl); apply(); scanVirtualScrollers();
     if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
     else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
   };
+  const appFrameUrl = url => new URL(url.href);
+  const loadAppFrame = (url, replace, frameSource = url) => new Promise((resolve, reject) => {
+    const preload = runtimeNode(document.createElement("div"));
+    preload.className = "samey-app-preload";
+    const frame = document.createElement("iframe");
+    frame.className = "samey-app-frame";
+    frame.title = "Application";
+    frame.src = appFrameUrl(frameSource).href;
+    preload.append(frame);
+    document.body.append(preload);
+    const fail = () => { preload.remove(); reject(new Error("application load failed")); };
+    frame.addEventListener("error", fail, { once: true });
+    frame.addEventListener("load", () => {
+      let frameDoc;
+      try { frameDoc = frame.contentDocument; } catch {}
+      const commit = () => {
+        try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
+        dispatchEvent(new Event("samey-pageleave"));
+        document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
+        const runtimeAnchor = clearPageBody();
+        const shell = document.createElement("main");
+        shell.className = "samey-app-shell";
+        shell.append(frame);
+        document.body.insertBefore(shell, runtimeAnchor);
+        preload.remove();
+        document.documentElement.dataset.appFrame = "";
+        document.documentElement.dataset.siteKind = url.pathname.match(/(wordle|keybr|chain)/)?.[1] || "app";
+        document.documentElement.dataset.homeHref = new URL("./", SCRIPT_ROOT).href;
+        document.title = frameDoc?.title || document.title;
+        (replace ? replaceState : pushState)({}, "", url.href);
+        apply();
+        dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href, app: true } }));
+      };
+      if (document.startViewTransition && !reducedMotion()) {
+        const transition = document.startViewTransition(commit);
+        transition.finished.finally(resolve);
+      } else { commit(); resolve(); }
+    }, { once: true });
+  });
   const loadPage = async (href, { replace = false } = {}) => {
     const url = new URL(href, location.href);
-    if (url.origin !== location.origin || APP_ROUTE.test(url.pathname)) { location.href = url.href; return; }
+    if (url.origin !== location.origin) { location.href = url.href; return; }
     setLoading(true);
     try {
-      const { doc, baseUrl } = await fetchPage(url);
-      const commit = () => swapPage(doc, baseUrl, url, replace);
-      if (document.startViewTransition && !reducedMotion()) {
-        document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
-        const transition = document.startViewTransition(commit);
-        await transition.finished.catch(() => {});
-        delete document.documentElement.dataset.navDirection;
-      } else commit();
-    } catch { location.href = url.href; return; }
-    finally { setLoading(false); }
+      if (APP_ROUTE.test(url.pathname)) {
+        const { responseUrl } = await fetchPage(url);
+        await loadAppFrame(url, replace, new URL(responseUrl));
+      } else {
+        const { doc, baseUrl } = await fetchPage(url);
+        const commit = () => swapPage(doc, baseUrl, url, replace);
+        if (document.startViewTransition && !reducedMotion()) {
+          document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
+          const transition = document.startViewTransition(commit);
+          await transition.finished.catch(() => {});
+          delete document.documentElement.dataset.navDirection;
+        } else commit();
+      }
+    } catch {
+      // A normal navigation is deliberately not used as a fallback. Keep the current
+      // page alive and surface the failed lazy load instead of unloading the site.
+      const layer = document.getElementById("samey-loading-layer");
+      if (layer) {
+        layer.dataset.visible = "";
+        layer.querySelector("span")?.replaceChildren(document.createTextNode("load failed"));
+        setTimeout(() => { layer.removeAttribute("data-visible"); layer.querySelector("span")?.replaceChildren(document.createTextNode("loading")); }, 1200);
+      }
+    } finally { setLoading(false); }
   };
-  const shouldSpa = url => url.origin === location.origin && !APP_ROUTE.test(url.pathname);
-  const prefetch = href => { const url = new URL(href, location.href); if (shouldSpa(url)) fetchPage(url).catch(() => {}); };
+  const shouldSpa = url => url.origin === location.origin;
+  const prefetch = href => {
+    const url = new URL(href, location.href);
+    if (!shouldSpa(url)) return;
+    fetchPage(url).catch(() => {});
+  };
   const mountSpa = () => {
-    if (document.documentElement.dataset.spa === undefined) return;
     markInitialPageStyles();
     globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
     document.addEventListener("pointerover", event => { const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); }, { passive: true });
     document.addEventListener("focusin", event => { const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); });
-    document.addEventListener("click", (event) => {
+    document.addEventListener("click", event => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const a = event.target.closest?.("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
-      const url = new URL(a.href, location.href); if (!shouldSpa(url) || url.hash && url.pathname === location.pathname) return;
+      const url = new URL(a.href, location.href);
+      if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
       event.preventDefault(); loadPage(url.href);
+    });
+    addEventListener("message", event => {
+      if (event.origin !== location.origin || event.source === window) return;
+      const message = event.data;
+      if (message?.type === "samey-navigate" && message.href) loadPage(message.href);
     });
     addEventListener("popstate", () => {
       if (document.documentElement.dataset.siteKind === "tools" && /\/tools(?:\.html)?\/?$/.test(location.pathname)) return;
@@ -990,7 +1050,45 @@
     }, true);
   };
 
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingLayer(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); };
+  const appearanceIconSvg = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
+  const homeIconSvg = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z"/></svg>';
+  const enhanceWordleChrome = () => {
+    if (document.documentElement.dataset.siteKind !== "wordle") return;
+    const nav = document.querySelector(".wordle-nav");
+    if (!nav) return;
+    const mode = nav.querySelector(".wordle-mode-switch");
+    if (!nav.querySelector(".wordle-nav-title")) {
+      const title = document.createElement("button");
+      title.type = "button"; title.className = "wordle-nav-title"; title.textContent = "WORDLE"; title.setAttribute("aria-label", "Choose Wordle mode");
+      title.addEventListener("click", () => mode?.click()); nav.prepend(title);
+    }
+    if (!nav.querySelector("[data-samey-appearance]")) {
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "wordle-nav-button wordle-appearance-trigger"; button.dataset.sameyAppearance = ""; button.setAttribute("aria-label", "Appearance"); button.setAttribute("aria-expanded", "false"); button.innerHTML = appearanceIconSvg();
+      const settings = nav.querySelector(".settings-trigger,[aria-label=Settings]");
+      settings ? nav.insertBefore(button, settings) : nav.append(button);
+    }
+  };
+  const enhanceKeybrChrome = () => {
+    if (document.documentElement.dataset.siteKind !== "keybr") return;
+    const first = [...document.querySelectorAll("button[title]")].find(button => /guided tour|reset the current lesson|switch the current interface/i.test(button.title));
+    const controls = first?.parentElement;
+    if (!first || !controls) return;
+    const make = (title, svg, click) => {
+      const button = first.cloneNode(false); button.title = title; button.setAttribute("aria-label", title); button.innerHTML = svg(); button.addEventListener("click", click); return button;
+    };
+    if (!controls.querySelector('[title="Home"]')) controls.insertBefore(make("Home", homeIconSvg, () => {
+      const href = new URL("./", location.href).href;
+      if (window.parent !== window) parent.postMessage({ type: "samey-navigate", href }, location.origin); else globalThis.SameyNavigate?.(href);
+    }), first);
+    if (!controls.querySelector('[title="Appearance"]')) { const button = make("Appearance", appearanceIconSvg, () => toggleAppearance(button)); controls.insertBefore(button, first); }
+  };
+  const enhanceAppChrome = () => { enhanceWordleChrome(); enhanceKeybrChrome(); };
+  let chromeScanQueued = false;
+  const queueChromeScan = () => { if (chromeScanQueued) return; chromeScanQueued = true; requestAnimationFrame(() => { chromeScanQueued = false; enhanceAppChrome(); }); };
+  const observeAppChrome = () => new MutationObserver(queueChromeScan).observe(document.body, { subtree: true, childList: true });
+
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); enhanceAppChrome(); observeAppChrome(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
