@@ -81,6 +81,7 @@
       timer = null;
       play.textContent = 'Play';
     };
+    addEventListener('samey-pageleave', stop, { once: true });
 
     const paint = () => {
       const s = states[step];

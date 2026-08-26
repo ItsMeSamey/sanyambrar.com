@@ -299,7 +299,7 @@ async function auditSource() {
   const lab = await readFile(join(GENERATED_SITE, "lab.html"), "utf8");
   must(lab.includes('data-lab="float"') && lab.includes('data-lab="unicode"') && lab.includes('data-lab="hash"'), "lab: experiments missing");
   must(existsSync(join(STATIC, "site.js")) && existsSync(join(GENERATED_SITE, "site-index.js")), "site search runtime/index missing");
-  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("fast-myers-diff"), "tools: integrated runtime/shell missing");
+  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsHtml.includes("class=\"tool-tabs\"") && !toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("fastMyers"), "tools: integrated runtime/shell missing");
   must(!existsSync(join(ROOT, "src/tools")) && !existsSync(join(ROOT, "tools.html")), "tools: obsolete standalone Solid app returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
   const theme = await readFile(join(STATIC, "theme.js"), "utf8");
@@ -352,6 +352,9 @@ async function auditSource() {
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const homeCss = await readFile(join(STATIC, "home.css"), "utf8");
   const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
+  must(!homeCss.includes(".section-head::before") && !homeCss.includes(".compact-row::before") && !blogCss.includes(".post-row::before"), "decorative heading/hover dots returned");
+  must(!homeCss.includes("content:'·'") && !homeCss.includes("border-radius:50%;background:var(--site-accent)"), "decorative dot separators returned");
+  must(home.includes("keybr-hit") && home.includes("keybr-miss") && home.includes("keybr-miss-bg") && home.includes("keybr-cursor"), "Keybr homepage mark drifted from typing-state visualization");
   must(sharedCss.includes("--site-content-width:1080px"), "shared content width contract missing");
   must(homeCss.includes("width:min(var(--site-content-width,1080px),100%)"), "homepage must use shared content width");
   must(blogCss.includes(".shell{width:min(var(--site-content-width,1080px),100%)") && blogCss.includes(".article{width:min(var(--site-content-width,1080px),100%)"), "blog must use shared content width");

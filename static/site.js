@@ -14,6 +14,11 @@
   };
 
   let box, input, results, active = 0, visible = [];
+  const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K';
+  const syncShortcutLabels = () => document.querySelectorAll('[data-search-shortcut]').forEach(el => { el.textContent = shortcutLabel; });
+  syncShortcutLabels();
+  addEventListener('samey-pageload', syncShortcutLabels);
+
   const render = () => {
     const q = norm(input.value.trim());
     visible = index.map(item => [item, score(item, q)]).filter(x => x[1] > 0).sort((a,b) => b[1] - a[1] || a[0].title.localeCompare(b[0].title)).slice(0, 9).map(x => x[0]);

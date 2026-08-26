@@ -9,7 +9,6 @@
   <title>Chain Reaction · Sanyam Brar</title>
   <script src="./appearance.generated.js"></script>
   <script src="./theme.js"></script>
-  <link rel="stylesheet" href="./site.css">
   <link rel="stylesheet" href="./shared/game-settings.css">
   <style>
     *{box-sizing:border-box}
@@ -21,10 +20,10 @@
     .chain-turn{position:fixed;top:var(--game-control-top);left:50%;z-index:38;height:var(--game-control-size);display:flex;align-items:center;gap:14px;color:var(--site-muted,#787c7e);font-size:11px;font-weight:700;letter-spacing:.08em;transform:translateX(-50%);pointer-events:none}
     .chain-turn-item{display:flex;align-items:center;gap:7px;white-space:nowrap}
     .chain-turn-item+ .chain-turn-item::before{content:"";width:1px;height:14px;margin-right:1px;background:var(--site-line,#d3d6da)}
-    .chain-turn-dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px color-mix(in srgb,var(--site-fg,#121213) 28%,transparent)}
+    .chain-turn-swatch{width:12px;height:12px;border-radius:2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--site-fg,#121213) 22%,transparent)}
     .chain-settings-trigger{position:fixed;top:var(--game-control-top);right:var(--game-control-right);z-index:39}
-    .chain-settings{opacity:0;transform:translateY(-3px) scale(.99);transform-origin:top right;pointer-events:none;transition:opacity 90ms ease,transform 90ms ease}
-    .chain-settings[data-open="true"]{opacity:1;transform:none;pointer-events:auto}
+    .chain-settings{visibility:hidden;pointer-events:none}
+    .chain-settings[data-open="true"]{visibility:visible;pointer-events:auto;animation:samey-control-expand 220ms cubic-bezier(.2,.8,.2,1)}
     .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
     @media(max-width:640px){.chain-stage{padding:58px 12px 12px}}
   </style>
@@ -32,8 +31,8 @@
 <body>
   <div class="chain-shell">
     <div id="chain-turn" class="chain-turn" aria-hidden="true">
-      <span class="chain-turn-item"><span>YOU</span><span id="chain-you-dot" class="chain-turn-dot"></span></span>
-      <span class="chain-turn-item"><span>TURN</span><span id="chain-active-dot" class="chain-turn-dot"></span></span>
+      <span class="chain-turn-item"><span>YOU</span><span id="chain-you-swatch" class="chain-turn-swatch"></span></span>
+      <span class="chain-turn-item"><span>TURN</span><span id="chain-active-swatch" class="chain-turn-swatch"></span></span>
     </div>
     <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
@@ -46,15 +45,15 @@
         <div class="game-settings-section-title">BOARD</div>
         <label class="game-settings-slider" for="chain-rows">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Rows</span><output id="chain-rows-value" class="game-settings-slider-value"></output></span>
-          <input id="chain-rows" type="range" min="4" max="30" step="1">
+          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-rows" type="range" min="4" max="30" step="1"></span>
         </label>
         <label class="game-settings-slider" for="chain-cols">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Columns</span><output id="chain-cols-value" class="game-settings-slider-value"></output></span>
-          <input id="chain-cols" type="range" min="4" max="30" step="1">
+          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-cols" type="range" min="4" max="30" step="1"></span>
         </label>
         <label class="game-settings-slider" for="chain-enemies">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Enemies</span><output id="chain-enemies-value" class="game-settings-slider-value"></output></span>
-          <input id="chain-enemies" type="range" min="1" max="5" step="1">
+          <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"></span></span><input id="chain-enemies" type="range" min="1" max="5" step="1"></span>
         </label>
         <div class="game-settings-actions">
           <button id="chain-new-game" class="game-settings-action" type="button">New Game</button>
@@ -74,8 +73,8 @@
   const stage = document.getElementById('chain-stage');
   const statusEl = document.getElementById('chain-status');
   const turnEl = document.getElementById('chain-turn');
-  const youDot = document.getElementById('chain-you-dot');
-  const activeDot = document.getElementById('chain-active-dot');
+  const youSwatch = document.getElementById('chain-you-swatch');
+  const activeSwatch = document.getElementById('chain-active-swatch');
   const settingsButton = document.getElementById('chain-settings-button');
   const settingsPanel = document.getElementById('chain-settings');
   const settingsClose = document.getElementById('chain-settings-close');
@@ -233,7 +232,6 @@
 
   function draw(now) {
     frame = 0;
-    const bg = color('--site-bg', '#fff');
     const boardBg = color('--site-soft', '#f3f4f5');
     const line = color('--site-line', '#d3d6da');
     ctx.fillStyle = boardBg;
@@ -303,8 +301,8 @@
   }
 
   function updateStatus() {
-    youDot.style.backgroundColor = playerColor(HUMAN);
-    activeDot.style.backgroundColor = playerColor(turn || HUMAN);
+    youSwatch.style.backgroundColor = playerColor(HUMAN);
+    activeSwatch.style.backgroundColor = playerColor(turn || HUMAN);
     turnEl.setAttribute('aria-label', gameOver
       ? (turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`)
       : (turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`));
@@ -312,7 +310,6 @@
     else statusEl.textContent = turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`;
   }
 
-  function applyAtom(i, owner) { owners[i] = owner; board[i]++; }
 
   async function playMove(start, owner) {
     const version = gameVersion;
@@ -460,8 +457,11 @@
 
   function syncRangeProgress(input) {
     const min = Number(input.min), max = Number(input.max), value = Number(input.value);
-    const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
-    input.style.setProperty('--range-progress', `${pct}%`);
+    const ratio = max > min ? (value - min) / (max - min) : 0;
+    const width = input.getBoundingClientRect().width || input.clientWidth || 0;
+    const endpoint = width > 16 ? 8 + ratio * (width - 16) : ratio * width;
+    const shell = input.closest('.game-range-shell');
+    if (shell) shell.style.setProperty('--range-fill-width', `${Math.min(width, endpoint + 8)}px`);
   }
 
   function syncSettings() {

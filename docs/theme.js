@@ -318,14 +318,55 @@
     }
   }).observe(document.documentElement, { subtree: true, childList: true });
 
+  let loadingSvgCache = "";
+  const loadingCursorSvg = () => {
+    if (loadingSvgCache) return loadingSvgCache;
+    const cx = 200, cy = 200, baseRadius = 140, amplitude = 20, waves = 6;
+    const duration = 1.45, zeroCrossingPower = .8, points = 320, frames = 61;
+    const paths = [], keyTimes = [];
+    for (let f = 0; f < frames; f++) {
+      const progress = f / (frames - 1);
+      const raw = Math.cos(progress * Math.PI * 2);
+      const multiplier = Math.sign(raw) * Math.pow(Math.abs(raw), zeroCrossingPower);
+      let d = "";
+      for (let i = 0; i <= points; i++) {
+        const angle = i / points * Math.PI * 2;
+        const radius = baseRadius + amplitude * multiplier * Math.sin(waves * angle);
+        const x = cx + radius * Math.cos(angle), y = cy + radius * Math.sin(angle);
+        d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
+      }
+      paths.push(d + "Z"); keyTimes.push(progress.toFixed(6));
+    }
+    loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${paths[0]}"><animate attributeName="d" dur="${duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes.join(";")}" values="${paths.join(";")}"/></path></svg>`;
+    return loadingSvgCache;
+  };
+  globalThis.SameyLoadingSvg = loadingCursorSvg;
+
+  const mountLoadingLayer = () => {
+    if (document.getElementById("samey-loading-layer")) return;
+    const layer = runtimeNode(document.createElement("div"));
+    layer.id = "samey-loading-layer";
+    layer.className = "samey-loading-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.innerHTML = `<div class="samey-loading-card">${loadingCursorSvg()}<span>loading</span><i></i></div>`;
+    document.body.append(layer);
+  };
+
   const mountCursor = () => {
     if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M47.5 5.5 H78.5 V36.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;26 -26" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/><animate class="samey-cursor-link-fade" attributeName="opacity" values="1;0" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M47.5 5.5 H78.5 V36.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;26 -26" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/><animate class="samey-cursor-link-fade" attributeName="opacity" values="1;0" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>${loadingCursorSvg()}`;
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
+    const setLoading = (loading) => {
+      cursor.toggleAttribute("data-loading", !!loading);
+      if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; }
+      document.documentElement.toggleAttribute("data-site-loading", !!loading);
+    };
+    addEventListener("samey-loading", event => setLoading(!!event.detail));
+    globalThis.SameyLoading = setLoading;
 
     const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
     const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
@@ -442,6 +483,8 @@
       if (range) { selection.removeAllRanges(); selection.addRange(range); }
     };
     document.addEventListener("pointerdown", (event) => {
+      document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
+      document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
       const actual = elementAt(event);
       pressedPointerId = event.pointerId;
       selectionDragCandidate = event.button === 0 && selectionAtPoint(event.clientX, event.clientY, actual);
@@ -811,12 +854,54 @@
     addEventListener("scroll", scheduleVirtualBars, true);
   };
 
-  const SPA_EXCLUDE = /\/(?:keybr|wordle|tools)\.html$/;
+  const APP_ROUTE = /\/(?:keybr|wordle|chain)(?:\.html)?\/?$/;
   const pageStyleNodes = () => [...document.head.children].filter(el => (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) && !el.hasAttribute("data-samey-shared"));
   const markInitialPageStyles = () => pageStyleNodes().forEach(el => el.dataset.spaPage = "");
-  const syncHtmlData = (doc) => {
-    for (const key of [...document.documentElement.attributes].map(a => a.name).filter(name => name.startsWith("data-") && !["data-site-theme","data-kb-theme","data-font","data-color"].includes(name))) document.documentElement.removeAttribute(key);
-    for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) document.documentElement.setAttribute(attr.name, attr.value);
+  const pageCache = new Map();
+  const reducedMotion = () => matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const setLoading = value => {
+    const on = !!value;
+    document.documentElement.toggleAttribute("data-site-loading", on);
+    document.getElementById("samey-loading-layer")?.toggleAttribute("data-visible", on);
+    dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+  };
+  const syncHtmlData = (doc, baseUrl) => {
+    const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color"]);
+    for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
+    for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
+      let value = attr.value;
+      if ((attr.name === "data-home-href" || attr.name === "data-back-href") && value) value = new URL(value, baseUrl).href;
+      document.documentElement.setAttribute(attr.name, value);
+    }
+  };
+  const fetchPage = async url => {
+    const key = url.href;
+    if (pageCache.has(key)) return pageCache.get(key);
+    const task = (async () => {
+      let response = await fetch(url, { headers: { "X-Samey-SPA": "1" } });
+      if (!response.ok && !/\.[a-z0-9]+$/i.test(url.pathname) && !url.pathname.endsWith("/")) {
+        response = await fetch(new URL(url.pathname + ".html" + url.search + url.hash, url.origin), { headers: { "X-Samey-SPA": "1" } });
+      }
+      if (!response.ok) throw new Error(String(response.status));
+      const text = await response.text();
+      const doc = new DOMParser().parseFromString(text, "text/html");
+      const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
+      const baseUrl = new URL(baseTag || ".", response.url || url.href);
+      return { doc, baseUrl, responseUrl: response.url || url.href };
+    })();
+    pageCache.set(key, task);
+    try { return await task; } catch (error) { pageCache.delete(key); throw error; }
+  };
+  const normalizePageUrls = (doc, baseUrl) => {
+    for (const el of doc.querySelectorAll("[href]")) {
+      const value = el.getAttribute("href");
+      if (!value || value.startsWith("#") || /^(?:mailto:|tel:|javascript:|data:)/i.test(value)) continue;
+      try { el.setAttribute("href", new URL(value, baseUrl).href); } catch {}
+    }
+    for (const el of doc.querySelectorAll("[src]")) {
+      const value = el.getAttribute("src"); if (!value || /^(?:data:|blob:)/i.test(value)) continue;
+      try { el.setAttribute("src", new URL(value, baseUrl).href); } catch {}
+    }
   };
   const runBodyScripts = (baseUrl) => {
     for (const old of [...document.body.querySelectorAll("script")]) {
@@ -826,38 +911,62 @@
       old.replaceWith(fresh);
     }
   };
+  const swapPage = (doc, baseUrl, url, replace) => {
+    try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
+    dispatchEvent(new Event("samey-pageleave"));
+    normalizePageUrls(doc, baseUrl);
+    document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
+    for (const el of [...doc.head.children]) {
+      if (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) {
+        const copy = el.cloneNode(true); copy.dataset.spaPage = "";
+        if (copy.tagName === "LINK") copy.href = new URL(el.getAttribute("href"), baseUrl).href;
+        document.head.append(copy);
+      }
+    }
+    const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
+    for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
+    for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
+    document.title = doc.title; syncHtmlData(doc, baseUrl);
+    (replace ? replaceState : pushState)({}, "", url.href);
+    runBodyScripts(baseUrl); apply(); refreshNav(); scanVirtualScrollers();
+    if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
+    else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
+    dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
+  };
   const loadPage = async (href, { replace = false } = {}) => {
     const url = new URL(href, location.href);
-    if (url.origin !== location.origin || SPA_EXCLUDE.test(url.pathname)) { location.href = url.href; return; }
+    if (url.origin !== location.origin || APP_ROUTE.test(url.pathname)) { location.href = url.href; return; }
+    setLoading(true);
     try {
-      const response = await fetch(url, { headers: { "X-Samey-SPA": "1" } }); if (!response.ok) throw new Error(String(response.status));
-      const doc = new DOMParser().parseFromString(await response.text(), "text/html");
-      document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
-      for (const el of [...doc.head.children]) {
-        if (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) {
-          const copy = el.cloneNode(true); copy.dataset.spaPage = "";
-          if (copy.tagName === "LINK") copy.href = new URL(el.getAttribute("href"), url).href;
-          document.head.append(copy);
-        }
-      }
-      for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
-      for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), document.body.querySelector("[data-samey-runtime]"));
-      document.title = doc.title; syncHtmlData(doc);
-      (replace ? replaceState : pushState)({}, "", url.href);
-      runBodyScripts(url); apply(); refreshNav(); scanVirtualScrollers(); scrollTo(0, 0);
-      dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
-    } catch { location.href = url.href; }
+      const { doc, baseUrl } = await fetchPage(url);
+      const commit = () => swapPage(doc, baseUrl, url, replace);
+      if (document.startViewTransition && !reducedMotion()) {
+        document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
+        const transition = document.startViewTransition(commit);
+        await transition.finished.catch(() => {});
+        delete document.documentElement.dataset.navDirection;
+      } else commit();
+    } catch { location.href = url.href; return; }
+    finally { setLoading(false); }
   };
+  const shouldSpa = url => url.origin === location.origin && !APP_ROUTE.test(url.pathname);
+  const prefetch = href => { const url = new URL(href, location.href); if (shouldSpa(url)) fetchPage(url).catch(() => {}); };
   const mountSpa = () => {
     if (document.documentElement.dataset.spa === undefined) return;
     markInitialPageStyles();
+    globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
+    document.addEventListener("pointerover", event => { const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); }, { passive: true });
+    document.addEventListener("focusin", event => { const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); });
     document.addEventListener("click", (event) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const a = event.target.closest?.("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
-      const url = new URL(a.href, location.href); if (url.origin !== location.origin || SPA_EXCLUDE.test(url.pathname) || url.hash && url.pathname === location.pathname) return;
+      const url = new URL(a.href, location.href); if (!shouldSpa(url) || url.hash && url.pathname === location.pathname) return;
       event.preventDefault(); loadPage(url.href);
     });
-    addEventListener("popstate", () => loadPage(location.href, { replace: true }));
+    addEventListener("popstate", () => {
+      if (document.documentElement.dataset.siteKind === "tools" && /\/tools(?:\.html)?\/?$/.test(location.pathname)) return;
+      loadPage(location.href, { replace: true });
+    });
   };
 
   const sharedCss = document.createElement("link"); sharedCss.rel = "stylesheet"; sharedCss.href = new URL("site.css", SCRIPT_ROOT).href; sharedCss.dataset.sameyShared = ""; document.head.append(sharedCss);
@@ -867,7 +976,21 @@
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
+  const mountWordleErgonomics = () => {
+    if (document.documentElement.dataset.siteKind !== "wordle") return;
+    document.addEventListener("click", event => {
+      const label = event.target instanceof Element ? event.target.closest(".settings-switch-label") : null;
+      if (!label) return;
+      const row = label.closest(".settings-switch");
+      const control = row?.querySelector("[data-kb-switch-control]");
+      if (!(control instanceof HTMLElement)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      control.click();
+    }, true);
+  };
+
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingLayer(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-spa data-site-kind="tools" data-home-href="./">
+<html lang="en" data-spa data-site-kind="tools" data-site-page="tools" data-home-href="./">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -9,7 +9,26 @@
   <script src="./theme.js"></script>
   <script src="./site-index.js"></script>
   <script src="./site.js" defer></script>
+  <link rel="stylesheet" href="./home.css">
   <link rel="stylesheet" href="./tools.css">
 </head>
-<body><div id="tools-root" class="tools-app"><div class="tools-view" aria-live="polite"></div></div><script src="./tools.js"></script></body>
+<body class="tools-page">
+  <header class="top tools-top">
+    <a class="brand" href="./">Sanyam Brar</a>
+    <nav class="tool-tabs" aria-label="Tools">
+      <a href="./tools?tool=text" data-tool="text">Text</a>
+      <a href="./tools?tool=base" data-tool="base">Encode</a>
+      <a href="./tools?tool=diff" data-tool="diff">Diff</a>
+      <a href="./tools?tool=number" data-tool="number">Numbers</a>
+      <a href="./tools?tool=markdown" data-tool="markdown">Markdown</a>
+    </nav>
+    <div class="tool-context" id="tool-context" aria-live="polite"></div>
+    <nav class="top-nav tools-site-nav" aria-label="Primary">
+      <a href="./">Home</a><a href="./work">Work</a><a href="./lab">Lab</a>
+      <button class="search-trigger" type="button" data-open-search aria-label="Search"><kbd data-search-shortcut>Ctrl K</kbd></button>
+    </nav>
+  </header>
+  <main id="tools-root" class="tools-app"><div class="tools-view" aria-live="polite"></div></main>
+  <script src="./tools.js"></script>
+</body>
 </html>

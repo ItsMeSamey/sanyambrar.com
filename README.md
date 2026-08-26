@@ -8,7 +8,7 @@ A static portfolio that behaves like one application.
 
 The shared browser shell lives in `static/theme.js`, `static/site.js`, `static/site.css`, and `static/home.css`. It owns appearance, custom cursors, loading state, virtual scrollbars, context menus, search, internal navigation, prefetching, and View Transition page swaps. Internal pages, including `/tools`, are fetched lazily and swapped without unloading the shell. Only the heavyweight game applications (`/wordle`, `/chain`, `/keybr`) remain explicit application boundaries.
 
-`src/ui-kit/` contains the reusable Solid controls used by Wordle. Tools deliberately use the shared site runtime directly instead of maintaining a second application shell. `static/shared/game-settings.css` is the shared game-settings contract used by Wordle and Chain Reaction. Controls intentionally share geometry, focus behavior, pressed states, surfaces, motion timings, and theme tokens rather than maintaining app-specific visual systems.
+`src/ui-kit/` contains the reusable Solid controls used by Wordle. Tools use the shared site runtime directly: the normal site header is the only toolbar, tool selection lives inside that header, and tool-specific status/actions reuse the same row instead of creating nested or floating toolbars. `static/shared/game-settings.css` is the shared game-settings contract used by Wordle and Chain Reaction. Controls intentionally share geometry, focus behavior, pressed states, surfaces, motion timings, and theme tokens rather than maintaining app-specific visual systems.
 
 ## Site map
 
