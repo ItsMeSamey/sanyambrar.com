@@ -178,7 +178,6 @@
       words: text.match(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)?.length ?? 0,
       chars: [...text].length,
       bytes: new TextEncoder().encode(text).length,
-      lines: text ? text.split('\n').length : 0,
       nonAscii: [...text].filter(char => char.codePointAt(0) > 127).length,
     };
   }
@@ -196,7 +195,7 @@
     const paint = () => {
       const text = model.getValue();
       const stats = textStats(text);
-      setContext(`<span><strong>${stats.words.toLocaleString()}</strong> words</span><span>${stats.chars.toLocaleString()} chars</span><span>${stats.lines.toLocaleString()} lines</span><span${stats.nonAscii ? ' class="danger"' : ''}><strong>${stats.nonAscii.toLocaleString()}</strong> non-ASCII</span>`);
+      setContext(`<span><strong>${stats.words.toLocaleString()}</strong> words</span><span><strong>${stats.chars.toLocaleString()}</strong> chars</span><span${stats.nonAscii ? ' class="danger"' : ''}><strong>${stats.nonAscii.toLocaleString()}</strong> non-ASCII</span>`);
       const decorations = [];
       for (let lineNumber = 1; lineNumber <= model.getLineCount(); lineNumber++) {
         const line = model.getLineContent(lineNumber);
@@ -315,56 +314,90 @@
     return rot(text);
   };
 
+  const strictDecode = (format, text) => {
+    const raw = text.trim();
+    if (!raw) return '';
+    if (format === 'hex') {
+      const value = raw.replace(/^0x/i, '').replace(/\s/g, '');
+      if (!value || value.length % 2 || !/^[\da-f]+$/i.test(value)) throw Error('Invalid Hex');
+    } else if (format === 'base32') {
+      const value = raw.replace(/\s/g, '');
+      if (!/^[A-Z2-7]+={0,6}$/i.test(value) || /=[^=]/.test(value)) throw Error('Invalid Base32');
+    } else if (format === 'base64') {
+      const value = raw.replace(/\s/g, '');
+      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw Error('Invalid Base64');
+    } else if (format === 'base64url') {
+      const value = raw.replace(/\s/g, '');
+      if (!/^[A-Za-z0-9_-]+={0,2}$/.test(value)) throw Error('Invalid Base64URL');
+    } else if (format === 'binary') {
+      const value = raw.replace(/[\s_]/g, '');
+      if (!value || value.length % 8 || !/^[01]+$/.test(value)) throw Error('Invalid Binary');
+    }
+    return convert(format, raw, true);
+  };
+  const detectFormat = text => {
+    const raw = text.trim();
+    if (!raw) return null;
+    const candidates = ['hex', 'base32', 'base64', 'base64url', 'url'];
+    for (const format of candidates) {
+      try {
+        if (format === 'url') {
+          if (!/%[\da-f]{2}/i.test(raw)) continue;
+          const decoded = decodeURIComponent(raw);
+          if (decoded === raw) continue;
+          return format;
+        }
+        strictDecode(format, raw);
+        return format;
+      } catch {}
+    }
+    return null;
+  };
+
   async function baseTool() {
     loadingEditor();
     const monaco = await ensureMonaco();
     if (route() !== 'base') return;
-    let format = get('format', 'url');
     let mode = get('mode', 'decode') === 'encode' ? 'encode' : 'decode';
+    let selection = get('format', 'auto');
+    if (![...FORMATS.map(([value]) => value), 'auto'].includes(selection)) selection = 'auto';
     const initial = get('text', 'https%3A%2F%2Fsanyambrar.com%2Ftools%3Ftool%3Dbase');
-    root.innerHTML = `<section class="codec-flow"><div class="codec-input-stage"><div class="tool-pane-label">${mode === 'encode' ? 'Text to encode' : 'Encoded text'}</div><div id="codec-input" class="monaco-host"></div><div class="codec-action-row"><button class="codec-primary" type="button" data-codec-run>${mode === 'encode' ? 'ENCODE' : 'DECODE'}</button><span data-codec-status></span></div></div><section class="codec-result" id="codec-result"><header><div><span>Result</span><small data-codec-format-label></small></div><button type="button" data-codec-copy>Copy</button></header><div id="codec-output" class="monaco-host"></div></section></section>`;
+    root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><div class="codec-controls"><label>Mode <select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label>Format <select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><span class="codec-auto" data-codec-auto></span></div><div class="codec-grid"><section class="codec-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><section class="codec-pane"><header><span>Output</span><button type="button" data-codec-copy>Copy</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section></div><div class="codec-status" data-codec-status></div></div></section>`;
     const inputModel = monaco.editor.createModel(initial, 'plaintext');
     const outputModel = monaco.editor.createModel('', 'plaintext');
-    const inputEditor = monaco.editor.create(root.querySelector('#codec-input'), editorOptions('plaintext', { lineNumbers: 'off', folding: false, padding: { top: 26, bottom: 70 } }));
-    const outputEditor = monaco.editor.create(root.querySelector('#codec-output'), editorOptions('plaintext', { readOnly: true, lineNumbers: 'off', folding: false }));
+    const inputEditor = monaco.editor.create(root.querySelector('#codec-input'), editorOptions('plaintext', { lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
+    const outputEditor = monaco.editor.create(root.querySelector('#codec-output'), editorOptions('plaintext', { readOnly: true, lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
     inputEditor.setModel(inputModel); outputEditor.setModel(outputModel);
     const status = root.querySelector('[data-codec-status]');
-    const result = root.querySelector('#codec-result');
-    const runButton = root.querySelector('[data-codec-run]');
-    const setTopContext = () => {
-      setContext(`<span class="context-segment"><button type="button" data-codec-mode="decode"${mode === 'decode' ? ' data-active' : ''}>Decode</button><button type="button" data-codec-mode="encode"${mode === 'encode' ? ' data-active' : ''}>Encode</button></span><select data-codec-format aria-label="Encoding format">${FORMATS.map(([value, label]) => `<option value="${value}"${format === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-codec-swap>Swap</button>`);
-      context.querySelectorAll('[data-codec-mode]').forEach(button => button.onclick = () => { mode = button.dataset.codecMode; set('mode', mode); runButton.textContent = mode === 'encode' ? 'ENCODE' : 'DECODE'; root.querySelector('.tool-pane-label').textContent = mode === 'encode' ? 'Text to encode' : 'Encoded text'; setTopContext(); });
-      context.querySelector('[data-codec-format]').onchange = event => { format = event.target.value; set('format', format); setTopContext(); };
-      context.querySelector('[data-codec-swap]').onclick = () => {
-        if (!outputModel.getValue()) return;
-        inputModel.setValue(outputModel.getValue());
-        mode = mode === 'encode' ? 'decode' : 'encode';
-        set('mode', mode); set('text', inputModel.getValue());
-        runButton.textContent = mode === 'encode' ? 'ENCODE' : 'DECODE';
-        root.querySelector('.tool-pane-label').textContent = mode === 'encode' ? 'Text to encode' : 'Encoded text';
-        setTopContext();
-      };
-    };
-    const run = ({ scroll = true } = {}) => {
+    const autoLabel = root.querySelector('[data-codec-auto]');
+    const modeSelect = root.querySelector('[data-codec-mode]');
+    const formatSelect = root.querySelector('[data-codec-format]');
+    setContext('');
+    const paint = () => {
       const text = inputModel.getValue();
-      set('text', text); set('format', format); set('mode', mode);
+      set('text', text); set('mode', mode); set('format', selection);
+      let active = selection;
+      if (mode === 'decode' && selection === 'auto') active = detectFormat(text);
+      if (mode === 'encode' && selection === 'auto') active = 'base64';
+      autoLabel.innerHTML = selection === 'auto' ? (active ? `Detected <strong>${FORMATS.find(([value]) => value === active)?.[1] || active}</strong>` : 'No encoding detected') : '';
+      if (!text) { outputModel.setValue(''); status.textContent = ''; status.classList.remove('danger'); return; }
+      if (!active) { outputModel.setValue(''); status.textContent = 'Input does not match a supported encoding. Choose a format manually.'; status.classList.add('danger'); return; }
       try {
-        const output = convert(format, text, mode === 'decode');
+        const output = mode === 'decode' ? strictDecode(active, text) : convert(active, text, false);
         outputModel.setValue(output);
         status.textContent = `${[...text].length.toLocaleString()} → ${[...output].length.toLocaleString()} chars`;
         status.classList.remove('danger');
-        root.querySelector('[data-codec-format-label]').textContent = `${mode === 'decode' ? 'decoded from' : 'encoded as'} ${FORMATS.find(([value]) => value === format)?.[1] || format}`;
-        if (scroll) result.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         outputModel.setValue('');
         status.textContent = error?.message || String(error);
         status.classList.add('danger');
       }
     };
-    const sub = inputModel.onDidChangeContent(() => set('text', inputModel.getValue()));
-    runButton.onclick = () => run();
+    modeSelect.onchange = () => { mode = modeSelect.value; paint(); };
+    formatSelect.onchange = () => { selection = formatSelect.value; paint(); };
     root.querySelector('[data-codec-copy]').onclick = () => copy(outputModel.getValue());
-    setTopContext();
+    const sub = inputModel.onDidChangeContent(paint);
+    paint();
     disposeTool = () => { sub.dispose(); inputEditor.dispose(); outputEditor.dispose(); inputModel.dispose(); outputModel.dispose(); };
   }
 
@@ -393,7 +426,7 @@
     });
     diff.setModel({ original, modified });
     const setTopContext = () => {
-      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap>Swap</button><span data-diff-status>Live diff</span>`);
+      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap>Swap</button>`);
       context.querySelector('[data-diff-language]').onchange = event => {
         language = event.target.value; set('language', language);
         monaco.editor.setModelLanguage(original, language); monaco.editor.setModelLanguage(modified, language);
@@ -469,7 +502,7 @@
         caption.textContent = `${bitCount} bit${bitCount === 1 ? '' : 's'} · ${Math.ceil(bitCount / 8)} byte${Math.ceil(bitCount / 8) === 1 ? '' : 's'}`;
       }
       set('text', text); set('base', base); set('custom', custom);
-      setContext(value === null ? '<span class="danger">Invalid value</span>' : `<span><strong>${clean(text).replace(/^[-+]/, '').length}</strong> source digits</span>`);
+      setContext(value === null ? '<span class="danger">Invalid value</span>' : '');
     };
     input.oninput = () => { text = input.value; paint(); };
     sourceBase.oninput = () => { base = Math.min(62, Math.max(2, +sourceBase.value || 2)); paint(); };
@@ -595,7 +628,7 @@
     const paint = () => {
       const text = model.getValue(); set('text', text);
       output.innerHTML = markdown(text); rebuildMap();
-      setContext(`<span><strong>${[...text].length.toLocaleString()}</strong> chars</span><button type="button" data-md-link>${linked ? 'Linked scroll' : 'Independent scroll'}</button>`);
+      setContext(`<button type="button" data-md-link aria-pressed="${linked ? 'true' : 'false'}" title="Toggle linked scrolling">🔗 Scroll</button>`);
       context.querySelector('[data-md-link]').onclick = () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); paint(); if (linked) syncPreview(); };
       if (linked) syncPreview();
     };
