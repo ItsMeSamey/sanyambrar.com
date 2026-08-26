@@ -8,7 +8,7 @@ export const SliderValueLabel = S.ValueLabel
 
 export function SliderTrack(props: ComponentProps<typeof S.Track>) {
   const [local, rest] = splitProps(props, ['class'])
-  return <S.Track class={cn('relative h-1.5 w-full grow rounded-full bg-secondary', local.class)} {...rest} />
+  return <S.Track class={cn('relative h-4 w-full grow rounded-full bg-secondary', local.class)} {...rest} />
 }
 
 export function SliderFill(props: ComponentProps<typeof S.Fill>) {

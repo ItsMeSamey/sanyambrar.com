@@ -7,56 +7,35 @@ export enum Page {
   Wordle,
   Stats,
   Share,
-
   Error,
 }
 
-const pageState = new UrlSearchStore('p', Page.Wordle, (s) => (Number(s) as Page), String)
-
-const [page, setPage] = createSignal<Page>(pageState.get()!)
-export const selectP = createSelector(page)
+const pageState = new UrlSearchStore('p', Page.Wordle, value => Number(value) as Page, String)
+const [page, setPage] = createSignal<Page>(pageState.get() ?? Page.Wordle)
 
 export const p = page
-export function setP(val: Page) {
-  pageState.set(val)
-  setPage(val)
+export const selectP = createSelector(page)
+
+export function setP(value: Page) {
+  pageState.set(value)
+  setPage(value)
 }
 
-window.addEventListener('popstate', (e) => {
-  if (e.state && e.state.p !== undefined) {
-    e.preventDefault()
-    setPage(e.state.p)
-  } else {
-    const kv = window.location.search.substring(1).split('&').find((s) => s.startsWith(pageState.key))
-    console.log(kv)
-    if (kv !== undefined) {
-      e.preventDefault()
-      setPage(Number(kv.substring(pageState.key.length + 1)) as Page)
-    }
-  }
-})
+addEventListener('popstate', () => setPage(pageState.refresh() ?? Page.Wordle))
 
 class PageError {
-  err: any = new Error('Unknown Page')
-  page: Page = Page.Wordle
+  err: unknown = new Error('Unknown Page')
+  page = Page.Wordle
 
-  constructor() {}
-
-  _reset() {
-    setPage(this.page)
-  }
-
-  get reset() {
-    return this._reset.bind(this)
-  }
+  reset = () => setPage(this.page)
 }
 
 export const NoPageError = new PageError()
-export const pageError: PageError = new PageError()
-export function setPageError(err: any) {
+export const pageError = new PageError()
+
+export function setPageError(err: unknown) {
   console.error(err)
   pageError.err = err
   pageError.page = untrack(page)
   setPage(Page.Error)
 }
-

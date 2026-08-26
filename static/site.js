@@ -24,6 +24,7 @@
     if (box) return;
     box = document.createElement('div');
     box.className = 'site-search';
+    box.dataset.sameyRuntime = '';
     box.hidden = true;
     box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>';
     document.body.append(box);
@@ -32,7 +33,7 @@
     box.addEventListener('click', e => { if (e.target.closest('[data-close-search]')) close(); });
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1); render(); }
-      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); location.href = visible[active].href; }
+      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.href = href; }
     });
   };
   const open = () => { ensure(); box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus()); };
@@ -62,5 +63,7 @@
     const update = async () => { const mine = ++seq; const hs = await Promise.all(inputs.map(x => crypto.subtle.digest('SHA-256', enc.encode(x.value)).then(b => new Uint8Array(b)))); if (mine !== seq) return; let d = 0; for (let i=0;i<32;i++) d += bits(hs[0][i]^hs[1][i]).replace(/0/g,'').length; out.textContent = `${[...hs[0]].map(x=>x.toString(16).padStart(2,'0')).join('')}\n${[...hs[1]].map(x=>x.toString(16).padStart(2,'0')).join('')}\n\n${d} / 256 bits differ`; };
     inputs.forEach(x => x.addEventListener('input', update)); update();
   };
-  document.querySelectorAll('[data-lab]').forEach(el => ({float:floatPanel,unicode:unicodePanel,hash:hashPanel}[el.dataset.lab]?.(el)));
+  const mountLabs = () => document.querySelectorAll('[data-lab]:not([data-lab-mounted])').forEach(el => { el.dataset.labMounted = ''; ({float:floatPanel,unicode:unicodePanel,hash:hashPanel}[el.dataset.lab]?.(el)); });
+  mountLabs();
+  addEventListener('samey-pageload', mountLabs);
 })();

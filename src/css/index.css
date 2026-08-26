@@ -1,7 +1,5 @@
 @import '../../static/shared/game-settings.css';
 @import 'tailwindcss';
-@plugin 'tailwindcss-motion';
-@plugin 'tailwind-scrollbar';
 
 @layer base {
   :root {
@@ -331,3 +329,9 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
   .result-dialog { width: calc(100vw - 16px) !important; padding: 14px !important; }
 }
 
+
+
+/* Local motion primitives. Keeping these here avoids a site-wide animation plugin for two controls. */
+.wordle-invalid-wiggle{animation:wordle-invalid-wiggle 180ms cubic-bezier(.2,.8,.2,1)}
+@keyframes wordle-invalid-wiggle{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.wordle-share-trigger{display:grid;place-items:center;width:36px;height:36px;border-radius:5px;transition:transform 120ms cubic-bezier(.2,.8,.2,1),background-color 120ms ease}.wordle-share-trigger:hover{background:var(--color-muted)}.wordle-share-trigger:active{transform:scale(.965)}

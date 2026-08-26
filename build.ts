@@ -19,7 +19,7 @@ const DOCS = join(ROOT, "docs");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
 const GENERATED_SITE = join(ROOT, ".build", "site");
-const ALL = new Set(["solid", "keybr", "tools", "static"]);
+const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
 const invalidTargets = [...targets].filter((target) => !ALL.has(target));
@@ -138,12 +138,6 @@ async function buildSolid() {
 }
 
 
-async function buildTools() {
-  await ensureDeps(ROOT);
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"], { SAMEY_APP: "tools" });
-  must(existsSync(join(DOCS, "tools.html")), "Vite did not emit docs/tools.html");
-  log("tools -> docs/tools.html");
-}
 
 async function buildKeybr() {
   const dir = join(ROOT, "keybr");
@@ -191,6 +185,9 @@ const SHARED_CSS_REQUIRED = [
   ".samey-context-menu",
   ".samey-cursor-grab",
   ".samey-cursor-link",
+  ".samey-cursor-loading",
+  "::view-transition-old(samey-page)",
+  "samey-control-expand",
   ".samey-cursor-link{transform:translate(-8.4px,8.4px)}",
   ".samey-vscroll",
   ".samey-hscroll",
@@ -258,6 +255,12 @@ const RUNTIME_REQUIRED = [
   "history.pushState",
   "popstate",
   "X-Samey-SPA",
+  "loadingCursorSvg",
+  "zeroCrossingPower = .8",
+  "const APP_ROUTE",
+  "document.startViewTransition",
+  "SameyNavigate",
+  "samey-pageleave",
   "Copy",
   "Paste",
   "Select all",
@@ -288,16 +291,16 @@ function auditSharedRuntime(theme: string, css: string, where: string) {
 async function auditSource() {
   const homeSplit = await readFile(join(GENERATED_SITE, "index.html"), "utf8");
   const work = await readFile(join(GENERATED_SITE, "work.html"), "utf8");
-  const toolsHtml = await readFile(join(ROOT, "tools.html"), "utf8");
-  const toolsApp = await readFile(join(ROOT, "src/tools/App.tsx"), "utf8");
+  const toolsHtml = await readFile(join(STATIC, "tools.html"), "utf8");
+  const toolsRuntime = await readFile(join(STATIC, "tools.js"), "utf8");
   must(homeSplit.includes('id="games-title"') && homeSplit.includes('id="tools-title"') && homeSplit.includes('id="writing-title"'), "home: Games/Tools/Writing split missing");
   must(!homeSplit.includes('id="projects-title"') && !homeSplit.includes('id="contributions-title"'), "home: work sections leaked back into home");
   must(work.includes('id="projects-title"') && work.includes('id="contributions-title"'), "work: Projects/Contributions missing");
   const lab = await readFile(join(GENERATED_SITE, "lab.html"), "utf8");
   must(lab.includes('data-lab="float"') && lab.includes('data-lab="unicode"') && lab.includes('data-lab="hash"'), "lab: experiments missing");
   must(existsSync(join(STATIC, "site.js")) && existsSync(join(GENERATED_SITE, "site-index.js")), "site search runtime/index missing");
-  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsApp.includes("ToolShell") && toolsApp.includes("Button"), "tools: shared app shell/components missing");
-  must(!existsSync(join(ROOT, "tools/package.json")), "tools: duplicate package boundary returned");
+  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("fast-myers-diff"), "tools: integrated runtime/shell missing");
+  must(!existsSync(join(ROOT, "src/tools")) && !existsSync(join(ROOT, "tools.html")), "tools: obsolete standalone Solid app returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
   const theme = await readFile(join(STATIC, "theme.js"), "utf8");
   const provider = await readFile(join(ROOT, "keybr/packages/keybr-themes/lib/themes/ThemeProvider.tsx"), "utf8");
@@ -344,7 +347,7 @@ async function auditSource() {
   must(chain.includes("let pending = new Uint32Array(board.length)") && chain.includes("const bursts = Math.floor(total / d)"), "Chain Reaction cascades must stay count-bounded");
   must(!chain.includes("if (!sole) return pendingOwner"), "Chain Reaction broken multi-owner winner logic returned");
   const sharedSettingsCss = await readFile(join(STATIC, "shared/game-settings.css"), "utf8");
-  for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
+  for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)", "height: 16px", "border: 2px solid var(--color-primary"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
   const homeCss = await readFile(join(STATIC, "home.css"), "utf8");
@@ -405,7 +408,7 @@ async function verifyDocs() {
 }
 
 async function main() {
-  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, tools, static, or all)`);
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, static, or all)`);
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
@@ -415,7 +418,6 @@ async function main() {
   const jobs: Promise<void>[] = [];
   if (targets.has("solid")) jobs.push(buildSolid());
   if (targets.has("keybr")) jobs.push(buildKeybr());
-  if (targets.has("tools")) jobs.push(buildTools());
   await Promise.all(jobs);
   await compressHtml();
   if (fullBuild) {

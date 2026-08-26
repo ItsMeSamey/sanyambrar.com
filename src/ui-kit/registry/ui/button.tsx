@@ -1,3 +1,36 @@
-import type { JSX, ValidComponent } from 'solid-js'; import { splitProps } from 'solid-js'; import * as B from '@kobalte/core/button'; import type { PolymorphicProps } from '@kobalte/core/polymorphic'; import { cva, type VariantProps } from 'class-variance-authority'; import { cn } from '~/lib/utils'
-export const buttonVariants=cva('inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',{variants:{variant:{default:'bg-primary text-primary-foreground hover:bg-primary/90',outline:'border border-input hover:bg-accent',secondary:'bg-secondary text-secondary-foreground hover:bg-secondary/80',ghost:'hover:bg-accent',destructive:'bg-destructive text-destructive-foreground',link:'text-primary underline-offset-4 hover:underline'},size:{default:'h-10 px-4 py-2',sm:'h-9 px-3 text-xs',lg:'h-11 px-8',icon:'size-10'}},defaultVariants:{variant:'default',size:'default'}})
-type Props<T extends ValidComponent='button'>=B.ButtonRootProps<T>&VariantProps<typeof buttonVariants>&{class?:string;children?:JSX.Element}; export const Button=<T extends ValidComponent='button'>(props:PolymorphicProps<T,Props<T>>)=>{const[l,o]=splitProps(props as Props,['variant','size','class']);return <B.Root class={cn(buttonVariants({variant:l.variant,size:l.size}),l.class)} {...o}/>}
+import * as ButtonPrimitive from '@kobalte/core/button'
+import type { PolymorphicProps } from '@kobalte/core/polymorphic'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { splitProps, type JSX, type ValidComponent } from 'solid-js'
+import { cn } from '~/lib/utils'
+
+export const buttonVariants = cva(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium outline-none transition-[transform,background-color,border-color,color] duration-150 active:scale-[.965] focus-visible:ring-2 focus-visible:ring-ring/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        outline: 'border border-input bg-background hover:bg-accent',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 px-3 text-xs',
+        lg: 'h-11 px-8',
+        icon: 'size-10',
+      },
+    },
+    defaultVariants: { variant: 'default', size: 'default' },
+  },
+)
+
+type ButtonProps<T extends ValidComponent = 'button'> = ButtonPrimitive.ButtonRootProps<T> &
+  VariantProps<typeof buttonVariants> & { class?: string; children?: JSX.Element }
+
+export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, ButtonProps<T>>) => {
+  const [local, rest] = splitProps(props as ButtonProps, ['variant', 'size', 'class'])
+  return <ButtonPrimitive.Root class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)} {...rest} />
+}

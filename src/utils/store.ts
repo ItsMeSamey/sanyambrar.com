@@ -1,93 +1,88 @@
 'use strict'
 
-// This way we dont create a new object every time we assign to a functions
-function nothingFn(v: any) { return v }
+const storageChange = () => window.dispatchEvent(new Event('wordle:storage-change'))
 
 export class LocalstorageStore<T> {
-  key: string
-  from_string: ((s: string) => T)
-  to_string: ((t: T) => string | undefined)
+  readonly key: string
+  readonly fromString: (value: string) => T
+  readonly toString: (value: T) => string | undefined
   current_value: T | undefined
 
-  constructor(key: string, default_value?: T, from_string?: ((s: string) => T), to_string?: ((t: T) => string | undefined)) {
+  constructor(
+    key: string,
+    defaultValue?: T,
+    fromString: (value: string) => T = value => value as T,
+    toString: (value: T) => string | undefined = value => String(value),
+  ) {
     this.key = key
-    this.from_string = from_string ?? nothingFn as any
-    this.to_string = to_string ?? nothingFn as any
+    this.fromString = fromString
+    this.toString = toString
 
-    this.current_value = undefined
-    if (localStorage.getItem(key)) {
-      this.current_value = this.from_string(localStorage.getItem(key)!)
-    }
-    if (this.current_value === undefined && default_value !== undefined) {
-      this.set(default_value)
-    }
+    const raw = localStorage.getItem(key)
+    this.current_value = raw === null ? defaultValue : this.fromString(raw)
+    if (raw === null && defaultValue !== undefined) this.write(defaultValue)
   }
 
   get(): T | undefined {
     return this.current_value
   }
 
-  set(v: T | undefined) {
-    this.current_value = v
-    if (v === undefined) {
-      localStorage.removeItem(this.key)
-      window.dispatchEvent(new Event('wordle:storage-change'))
-      return
+  private write(value: T | undefined) {
+    if (value === undefined) localStorage.removeItem(this.key)
+    else {
+      const serialized = this.toString(value)
+      if (serialized === undefined) localStorage.removeItem(this.key)
+      else localStorage.setItem(this.key, serialized)
     }
+    storageChange()
+  }
 
-    const string = this.to_string(v)
-    if (string === undefined) {
-      localStorage.removeItem(this.key)
-      window.dispatchEvent(new Event('wordle:storage-change'))
-      return
-    }
-
-    localStorage.setItem(this.key, string)
-    window.dispatchEvent(new Event('wordle:storage-change'))
+  set(value: T | undefined) {
+    this.current_value = value
+    this.write(value)
   }
 }
 
 export class UrlSearchStore<T> {
-  key: string
-  from_string: ((s: string) => T)
-  to_string: ((t: T) => string)
+  readonly key: string
+  readonly defaultValue: T | undefined
+  readonly fromString: (value: string) => T
+  readonly toString: (value: T) => string
   current_value: T | undefined
 
-  constructor(key: string, default_value?: T, from_string?: ((s: string) => T), to_string?: ((t: T) => string)) {
+  constructor(
+    key: string,
+    defaultValue?: T,
+    fromString: (value: string) => T = value => value as T,
+    toString: (value: T) => string = value => String(value),
+  ) {
     this.key = key
-    this.from_string = from_string ?? nothingFn as any
-    this.to_string = to_string ?? nothingFn as any
-    this.current_value = undefined
+    this.defaultValue = defaultValue
+    this.fromString = fromString
+    this.toString = toString
+    this.current_value = this.readLocation()
+  }
 
-    if (window.location.search.length > 1) {
-      const kv = window.location.search.substring(1).split('&').find((s) => s.split('=', 1)[0] === key)
-      if (kv !== undefined) {
-        this.current_value = this.from_string(kv.substring(key.length + 1))
-      }
-    }
-    if (this.current_value === undefined && default_value !== undefined) {
-      this.set(default_value)
-    }
+  private readLocation(): T | undefined {
+    const raw = new URL(location.href).searchParams.get(this.key)
+    return raw === null ? this.defaultValue : this.fromString(raw)
+  }
+
+  refresh(): T | undefined {
+    return (this.current_value = this.readLocation())
   }
 
   get(): T | undefined {
     return this.current_value
   }
 
-  set(v: T | undefined) {
-    this.current_value = v
-    const filteredKeys = window.location.search.slice(1).split('&').filter((s) => s.length && s.split('=', 1)[0] !== this.key)
-    const url = new URL(window.location.href)
-    if (v === undefined) {
-      this.current_value = undefined
-      const newSearch = '?' + filteredKeys.join('&')
-      window.history.pushState({}, '', Object.assign(url, {search: newSearch}))
-    } else {
-      const historyObj: any= {}
-      historyObj[this.key] = this.current_value
+  set(value: T | undefined, { replace = false } = {}) {
+    this.current_value = value
+    const url = new URL(location.href)
+    if (value === undefined || value === this.defaultValue) url.searchParams.delete(this.key)
+    else url.searchParams.set(this.key, this.toString(value))
 
-      const newSearch = '?' + filteredKeys.concat([`${this.key}=${this.to_string(v)}`]).join('&')
-      window.history.pushState(historyObj, '', Object.assign(url, {search: newSearch}))
-    }
+    const state = { ...(history.state ?? {}), [this.key]: value }
+    history[replace ? 'replaceState' : 'pushState'](state, '', url)
   }
 }

@@ -1,32 +1,40 @@
 # Sanyam Brar
 
-One static portfolio, with two application workspaces only where the technology boundary is real.
+A static portfolio that behaves like one application.
+
+## Architecture
+
+`site.ts` is the content and page-generation source of truth for Home, Work, Lab, project pages, navigation metadata, and the static search index. `build.ts` builds into temporary state and publishes transactionally into `docs/`, including gzip/Brotli sidecars and source/runtime audits.
+
+The shared browser shell lives in `static/theme.js`, `static/site.js`, `static/site.css`, and `static/home.css`. It owns appearance, custom cursors, loading state, virtual scrollbars, context menus, search, internal navigation, prefetching, and View Transition page swaps. Internal pages, including `/tools`, are fetched lazily and swapped without unloading the shell. Only the heavyweight game applications (`/wordle`, `/chain`, `/keybr`) remain explicit application boundaries.
+
+`src/ui-kit/` contains the reusable Solid controls used by Wordle. Tools deliberately use the shared site runtime directly instead of maintaining a second application shell. `static/shared/game-settings.css` is the shared game-settings contract used by Wordle and Chain Reaction. Controls intentionally share geometry, focus behavior, pressed states, surfaces, motion timings, and theme tokens rather than maintaining app-specific visual systems.
+
+## Site map
 
 ```text
-site.ts             Home / Work / Lab / project-page generator + search index
-src/shared/         data shared by generated pages and Solid apps
-src/tools/          integrated Solid tools
-src/ui-kit/         UI primitives shared by Wordle and Tools
-src/game/           Wordle
-static/             hand-written shared runtime, CSS, Chain Reaction and blog
-keybr/              isolated React/Webpack application
-docs/               generated GitHub Pages tree
-build.ts            transactional build, audits, compression and verification
+Home
+  Games
+  Tools
+  Writing
+
+Work
+  Projects
+  Open-source contributions
+
+Lab
+  Small interactive experiments
+
+Projects
+  Focused detail pages
 ```
 
-Home contains Games, Tools and Writing. Work contains projects and open-source contributions. Lab contains small interactive technical experiments. `Ctrl/Cmd+K` searches across all of them.
+`Ctrl/Cmd+K` opens the site search/command palette. Internal static links are prefetched on intent and navigated through the shared shell. Tool state is URL-addressable and scoped per tool.
 
-Tools are part of the root Solid workspace. They share Solid, Tailwind, the UI kit, appearance runtime, TypeScript, Vite and one dependency graph with Wordle. Tool state is local-first and URL-addressable; switching tools does not leak query state between tools, and text can be passed directly between compatible tools with **Send to…**.
+## Build
 
-Keybr remains isolated because it is a distinct React/Webpack workspace. There is no second Tools package, lockfile, Vite config, Monaco runtime, or duplicate component library.
+```sh
+bun build.ts
+```
 
-Run `bun build.ts` for the complete build, or select `solid`, `tools`, `keybr`, and/or `static`. A full build:
-
-1. generates appearance data and the static site into temporary build state,
-2. audits source/runtime contracts,
-3. transactionally replaces `docs/`,
-4. builds Wordle, Tools and Keybr,
-5. generates the service worker,
-6. writes gzip/Brotli HTML sidecars,
-7. verifies every sidecar by decompression and byte equality,
-8. restores the previous `docs/` tree if anything fails.
+GitHub Pages publishes `docs/`. Wordle is the Vite/Solid build, Keybr remains its own React/Webpack application, Tools are a lightweight shared-runtime page, and Chain Reaction remains a deliberately small canvas application. Generated HTML is accompanied by byte-equivalent `.gz` and `.br` files.

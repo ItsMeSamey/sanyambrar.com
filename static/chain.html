@@ -9,7 +9,6 @@
   <title>Chain Reaction · Sanyam Brar</title>
   <script src="./appearance.generated.js"></script>
   <script src="./theme.js"></script>
-  <link rel="stylesheet" href="./site.css">
   <link rel="stylesheet" href="./shared/game-settings.css">
   <style>
     *{box-sizing:border-box}
@@ -23,8 +22,8 @@
     .chain-turn-item+ .chain-turn-item::before{content:"";width:1px;height:14px;margin-right:1px;background:var(--site-line,#d3d6da)}
     .chain-turn-dot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 1px color-mix(in srgb,var(--site-fg,#121213) 28%,transparent)}
     .chain-settings-trigger{position:fixed;top:var(--game-control-top);right:var(--game-control-right);z-index:39}
-    .chain-settings{opacity:0;transform:translateY(-3px) scale(.99);transform-origin:top right;pointer-events:none;transition:opacity 90ms ease,transform 90ms ease}
-    .chain-settings[data-open="true"]{opacity:1;transform:none;pointer-events:auto}
+    .chain-settings{visibility:hidden;pointer-events:none}
+    .chain-settings[data-open="true"]{visibility:visible;pointer-events:auto;animation:samey-control-expand 220ms cubic-bezier(.2,.8,.2,1)}
     .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
     @media(max-width:640px){.chain-stage{padding:58px 12px 12px}}
   </style>
@@ -233,7 +232,6 @@
 
   function draw(now) {
     frame = 0;
-    const bg = color('--site-bg', '#fff');
     const boardBg = color('--site-soft', '#f3f4f5');
     const line = color('--site-line', '#d3d6da');
     ctx.fillStyle = boardBg;
@@ -312,7 +310,6 @@
     else statusEl.textContent = turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`;
   }
 
-  function applyAtom(i, owner) { owners[i] = owner; board[i]++; }
 
   async function playMove(start, owner) {
     const version = gameVersion;

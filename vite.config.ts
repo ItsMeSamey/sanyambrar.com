@@ -6,7 +6,6 @@ import { ViteMinifyPlugin } from 'vite-plugin-minify'
 import path from 'node:path'
 import { rename, rm } from 'node:fs/promises'
 
-const tools=process.env.SAMEY_APP==='tools'
 export default defineConfig({
   publicDir: false,
   plugins: [
@@ -16,7 +15,6 @@ export default defineConfig({
     {
       name: 'app-output-name',
       async closeBundle() {
-        if(tools)return
         const app=path.resolve(import.meta.dirname,'docs/app.html'),wordle=path.resolve(import.meta.dirname,'docs/wordle.html')
         await rm(wordle,{force:true});await rename(app,wordle)
       },
@@ -39,7 +37,7 @@ export default defineConfig({
     outDir: 'docs',
     emptyOutDir: false,
     rollupOptions: {
-      input:path.resolve(import.meta.dirname,tools?'tools.html':'app.html'),
+      input:path.resolve(import.meta.dirname,'app.html'),
       checks: { pluginTimings: false },
     },
     minify: 'terser',

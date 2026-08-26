@@ -87,13 +87,8 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
   return <Dialog open={open()} onOpenChange={setOpen}>
     <DialogTrigger>
       <Tooltip>
-      <TooltipTrigger onClick={e => e.stopPropagation()} class='motion-preset-slide-up-right'>
-        <div
-          class='p-2 cursor-pointer hover:bg-muted/50 transition-all duration-300 rounded active:bg-muted-foreground/40 motion-rotate-in-45'
-          onClick={() => setOpen(true)}
-        >
-          <ShareIcon class='size-5 stroke-foreground' />
-        </div>
+      <TooltipTrigger onClick={e => { e.stopPropagation(); setOpen(true) }} class='wordle-share-trigger'>
+        <ShareIcon class='size-5 stroke-foreground' />
       </TooltipTrigger>
       <TooltipContent>Share</TooltipContent>
     </Tooltip>

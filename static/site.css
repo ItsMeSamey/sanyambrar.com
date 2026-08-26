@@ -18,3 +18,100 @@ html,body,*{scrollbar-width:none!important}
 
 .site-search[hidden]{display:none}.site-search{position:fixed;inset:0;z-index:2147483400}.site-search-backdrop{position:absolute;inset:0;background:#0007;backdrop-filter:blur(2px)}.site-search-panel{position:relative;width:min(620px,calc(100vw - 24px));margin:12vh auto 0;background:var(--site-bg);border:1px solid var(--site-line);border-radius:9px;box-shadow:0 24px 80px #0006;overflow:hidden}.site-search-input{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--site-line)}.site-search-input input{border:0;outline:0;background:transparent;color:inherit;font-size:15px}.site-search-input kbd{color:var(--site-muted);font-size:10px}.search-result{display:grid;grid-template-columns:1fr auto;gap:14px;padding:10px 14px;border-bottom:1px solid var(--site-line)}.search-result:last-child{border-bottom:0}.search-result.active,.search-result:hover{background:var(--site-soft)}.search-result b{display:block}.search-result small{display:block;color:var(--site-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.search-result em{font-style:normal;color:var(--site-muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.search-empty{padding:18px;color:var(--site-muted)}
 
+
+/* Unified interaction language */
+:root{
+  --site-control:36px;
+  --site-radius:8px;
+  --site-radius-small:5px;
+  --site-ease:cubic-bezier(.2,.8,.2,1);
+  --site-fast:120ms;
+  --site-medium:220ms;
+  --samey-dialog-origin-x:50vw;
+  --samey-dialog-origin-y:50vh;
+}
+button,[role=button],.samey-icon,.game-settings-action,.top-nav a,.compact-row,.card,.project{
+  -webkit-tap-highlight-color:transparent;
+}
+button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:transform var(--site-fast) var(--site-ease),background-color var(--site-fast) ease,border-color var(--site-fast) ease,color var(--site-fast) ease}
+button:not(:disabled):active,[role=button]:not([aria-disabled=true]):active{transform:scale(.965)}
+:focus-visible{outline:2px solid color-mix(in srgb,var(--site-accent,#787c7e) 72%,transparent);outline-offset:2px}
+
+/* Sliders are deliberately chunky: the rail and knob share the same diameter. */
+.game-settings-slider [data-kb-slider-track],
+.game-settings-slider input[type=range]::-webkit-slider-runnable-track,
+.game-settings-slider input[type=range]::-moz-range-track,
+.game-settings-slider input[type=range]::-moz-range-progress{height:16px!important;border-radius:999px!important}
+.game-settings-slider [data-kb-slider-track]{margin-inline:0!important;width:100%!important;overflow:visible;background:var(--color-secondary,var(--site-soft,#eee))!important}
+.game-settings-slider [data-kb-slider-fill]{height:16px!important;border-radius:999px!important}
+.game-settings-slider [role=slider],
+.game-settings-slider input[type=range]::-webkit-slider-thumb,
+.game-settings-slider input[type=range]::-moz-range-thumb{width:16px!important;height:16px!important;border-radius:50%!important;border:2px solid var(--color-primary,var(--site-fg,#121213))!important;background:var(--color-background,var(--site-bg,#fff))!important;box-shadow:none!important}
+.game-settings-slider [role=slider][data-orientation=horizontal]{top:50%!important;margin-top:-8px!important}
+.game-settings-slider input[type=range]{height:16px!important;margin:0!important;width:100%!important}
+.game-settings-slider input[type=range]::-webkit-slider-thumb{margin-top:0!important}
+
+/* Panels grow out of the control that opened them, rather than popping in as detached chrome. */
+@keyframes samey-control-expand{
+  from{opacity:.82;clip-path:inset(0 0 calc(100% - var(--game-control-size,36px)) calc(100% - var(--game-control-size,36px)) round 6px)}
+  to{opacity:1;clip-path:inset(0 0 0 0 round 6px)}
+}
+@keyframes samey-control-expand-left{
+  from{opacity:.82;clip-path:inset(0 calc(100% - var(--game-control-size,36px)) calc(100% - var(--game-control-size,36px)) 0 round 6px)}
+  to{opacity:1;clip-path:inset(0 0 0 0 round 6px)}
+}
+.game-settings-popover,
+.samey-theme-panel:not([hidden]){animation:samey-control-expand var(--site-medium) var(--site-ease);transform-origin:top right}
+.samey-theme-panel:not([hidden]){transform-origin:top left;--game-control-size:36px}
+
+/* Center dialogs originate from the last control press. */
+@keyframes samey-dialog-grow{
+  from{opacity:0;scale:.08}
+  55%{opacity:1}
+  to{opacity:1;scale:1}
+}
+body [role=dialog]:not(.site-search-panel){
+  transform-origin:calc(var(--samey-dialog-origin-x) - 50vw + 50%) calc(var(--samey-dialog-origin-y) - 50vh + 50%);
+  animation:samey-dialog-grow var(--site-medium) var(--site-ease);
+}
+.site-search-panel{transform-origin:calc(var(--samey-dialog-origin-x) - 50vw + 50%) calc(var(--samey-dialog-origin-y) - 12vh);animation:samey-search-grow var(--site-medium) var(--site-ease)}
+@keyframes samey-search-grow{from{opacity:0;transform:scale(.2);clip-path:inset(0 0 88% 88% round 8px)}to{opacity:1;transform:scale(1);clip-path:inset(0 round 8px)}}
+.site-search-backdrop{animation:samey-backdrop-in var(--site-medium) ease both}
+@keyframes samey-backdrop-in{from{opacity:0}to{opacity:1}}
+
+/* Navigation swaps are one continuous surface. */
+body>main{view-transition-name:samey-page}
+.top{view-transition-name:samey-top}
+::view-transition-group(samey-page){animation-duration:240ms;animation-timing-function:var(--site-ease)}
+::view-transition-old(samey-page){animation:samey-page-out 190ms var(--site-ease) both}
+::view-transition-new(samey-page){animation:samey-page-in 240ms var(--site-ease) both}
+::view-transition-old(samey-top),::view-transition-new(samey-top){animation-duration:160ms}
+@keyframes samey-page-out{to{opacity:0;transform:scale(.965);filter:blur(1px)}}
+@keyframes samey-page-in{from{opacity:0;transform:scale(.955);filter:blur(1px)}to{opacity:1;transform:scale(1);filter:none}}
+html[data-nav-direction=home]::view-transition-old(samey-page){animation:samey-page-home-out 200ms var(--site-ease) both}
+html[data-nav-direction=home]::view-transition-new(samey-page){animation:samey-page-home-in 250ms var(--site-ease) both}
+@keyframes samey-page-home-out{to{opacity:0;transform:scale(.92)}}
+@keyframes samey-page-home-in{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+
+/* Loading cursor: six-lobed sine circle supplied by the site runtime. */
+.samey-cursor-loading{display:none;position:absolute;inset:0;width:64px;height:64px;overflow:visible;transform:scale(.375);transform-origin:center}
+.samey-cursor[data-loading] .samey-cursor-dot,.samey-cursor[data-loading] .samey-cursor-grab,.samey-cursor[data-loading] .samey-cursor-link{display:none!important}
+.samey-cursor[data-loading] .samey-cursor-loading{display:block}
+html[data-site-loading] .samey-site-controls{pointer-events:none}
+
+/* More coherent shared surfaces. */
+.samey-icon,.game-settings-trigger,.game-settings-close{border-radius:var(--site-radius-small)}
+.samey-theme-panel,.samey-context-menu,.site-search-panel,.game-settings-popover{border-radius:var(--site-radius);border-color:color-mix(in srgb,var(--site-line,#ddd) 82%,transparent);box-shadow:0 18px 50px #0003,0 2px 8px #0001;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);backdrop-filter:blur(18px) saturate(1.08)}
+.site-search-input{min-height:52px}.search-result{min-height:54px;align-items:center}.search-result.active{box-shadow:inset 2px 0 var(--site-accent)}
+.samey-vscroll,.samey-hscroll{opacity:.72;transition:opacity var(--site-fast) ease}.samey-vscroll:hover,.samey-hscroll:hover{opacity:1}
+
+@media(prefers-reduced-motion:reduce){
+  .game-settings-popover,.samey-theme-panel:not([hidden]),body [role=dialog],.site-search-panel,.site-search-backdrop{animation:none!important}
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+}
+
+
+/* Loading is a visible state, never a blank document. */
+.samey-loading-layer{position:fixed;inset:0;z-index:2147483200;display:grid;place-items:center;pointer-events:none;background:color-mix(in srgb,var(--site-bg,#fff) 92%,transparent);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity 110ms ease,visibility 0s linear 110ms}.samey-loading-layer[data-visible]{opacity:1;visibility:visible;transition:opacity 110ms ease}.samey-loading-card{display:grid;place-items:center;gap:14px;min-width:180px;padding:24px 28px;border:1px solid color-mix(in srgb,var(--site-line,#ddd) 82%,transparent);border-radius:12px;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);box-shadow:0 18px 60px #0002}.samey-loading-card svg{width:58px;height:58px;color:var(--site-fg,#121213)}.samey-loading-card span{color:var(--site-muted,#777);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.13em}.samey-loading-card i{display:block;width:72px;height:1px;background:linear-gradient(90deg,transparent,var(--site-accent,#787c7e),transparent);animation:samey-loading-line .9s ease-in-out infinite}@keyframes samey-loading-line{50%{transform:scaleX(.38);opacity:.45}}
+@media(prefers-reduced-motion:reduce){.samey-loading-card i{animation:none}.samey-loading-layer{transition:none}}
+.samey-loading-card .samey-cursor-loading{display:block!important;position:static;inset:auto;width:58px;height:58px;transform:none;transform-origin:center}

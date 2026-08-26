@@ -293,8 +293,8 @@ export class WordleModel {
       const key = e.key.toUpperCase()
       if (key.length !== 1 || !ABCD.includes(key)) return
       if (last[0].length === this.state.hard.wordLength) {
-        this.currentBlock.classList.remove('motion-preset-wiggle')
-        setTimeout(() => this.currentBlock.classList.add('motion-preset-wiggle'), 0)
+        this.currentBlock.classList.remove('wordle-invalid-wiggle')
+        setTimeout(() => this.currentBlock.classList.add('wordle-invalid-wiggle'), 0)
         return
       }
 
@@ -374,7 +374,7 @@ export class WordleModel {
           </DrawerHeader>
         </DrawerContent>
       </Drawer>
-      <div class='wordle-board mx-auto scrollbar-thin scrollbar-track-muted/35 scrollbar-thumb-muted'>
+      <div class='wordle-board mx-auto'>
         <For each={this.state.history.length? this.state.history.slice(0, -1): []}>
           {([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}
         </For>

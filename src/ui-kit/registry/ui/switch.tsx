@@ -1,2 +1,22 @@
-import * as S from '@kobalte/core/switch'; import { splitProps, type ComponentProps } from 'solid-js'; import { cn } from '~/lib/utils'
-export const Switch=S.Root; export const SwitchLabel=S.Label; export function SwitchControl(props:ComponentProps<typeof S.Control>){const[l,o]=splitProps(props,['class']);return <S.Control class={cn('group inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-input data-[checked]:bg-primary',l.class)} {...o}/>} export function SwitchThumb(props:ComponentProps<typeof S.Thumb>){const[l,o]=splitProps(props,['class']);return <S.Thumb class={cn('pointer-events-none block size-5 rounded-full bg-background shadow transition-transform group-data-[checked]:translate-x-5',l.class)} {...o}/>} 
+import * as SwitchPrimitive from '@kobalte/core/switch'
+import { splitProps, type ComponentProps } from 'solid-js'
+import { cn } from '~/lib/utils'
+
+export const Switch = SwitchPrimitive.Root
+export const SwitchLabel = SwitchPrimitive.Label
+
+export function SwitchControl(props: ComponentProps<typeof SwitchPrimitive.Control>) {
+  const [local, rest] = splitProps(props, ['class'])
+  return <SwitchPrimitive.Control
+    class={cn('group inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-input bg-secondary p-0.5 transition-colors data-[checked]:border-primary data-[checked]:bg-primary', local.class)}
+    {...rest}
+  />
+}
+
+export function SwitchThumb(props: ComponentProps<typeof SwitchPrimitive.Thumb>) {
+  const [local, rest] = splitProps(props, ['class'])
+  return <SwitchPrimitive.Thumb
+    class={cn('pointer-events-none block size-3.5 rounded-full bg-background shadow-sm transition-transform duration-150 group-data-[checked]:translate-x-4', local.class)}
+    {...rest}
+  />
+}
