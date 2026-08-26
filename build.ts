@@ -242,7 +242,11 @@ const RUNTIME_REQUIRED = [
   "r.width < 8 || r.height < 8",
   "x = innerWidth - 7",
   "topPx = 0",
-  'link.target = "_blank"',
+  "link.dataset.sameyExternal",
+  "openExternalBrowser",
+  "DecompressionStream",
+  '["brotli", ".br"]',
+  '["gzip", ".gz"]',
   'link.rel = "noopener noreferrer"',
   "samey-context-menu",
   "samey-cursor-grab",
@@ -313,7 +317,7 @@ async function auditSource() {
   must(toolsHtml.includes("Tools · Sanyam Brar") && toolsHtml.includes("data-spa") && toolsHtml.includes("class=\"tool-tabs\"") && !toolsRuntime.includes("samey-tool-rail") && toolsRuntime.includes("ensureMonaco") && toolsRuntime.includes("createDiffEditor"), "tools: integrated Monaco runtime/shell missing");
   must(!toolsRuntime.includes("Send to") && !toolsRuntime.includes("data-send") && !toolsRuntime.includes("shareable") && !toolsRuntime.includes("q.set(name"), "tools: obsolete send-to or URL document state returned");
   must(toolsRuntime.includes("monaco-word-highlight") && toolsRuntime.includes("monaco-nonascii-highlight"), "tools: Text Inspector Monaco decorations missing");
-  must(toolsRuntime.includes("Linked scroll") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: Markdown source-aware linked scrolling missing");
+  must(toolsRuntime.includes("🔗 Scroll") && toolsRuntime.includes("data-md-link") && toolsRuntime.includes("sourceToPreview") && toolsRuntime.includes("previewToSource"), "tools: Markdown source-aware linked scrolling missing");
   must(!existsSync(join(ROOT, "src/tools")) && !existsSync(join(ROOT, "tools.html")), "tools: obsolete standalone Solid app returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
   const theme = await readFile(join(STATIC, "theme.js"), "utf8");

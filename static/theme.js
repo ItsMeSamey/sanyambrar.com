@@ -286,10 +286,10 @@
     for (const link of root.querySelectorAll?.('a[href]') || []) {
       let url;
       try { url = new URL(link.href, location.href); } catch { continue; }
-      if (url.hostname === "github.com" || url.hostname.endsWith(".github.com")) {
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-      }
+      if (!/^https?:$/.test(url.protocol) || url.origin === location.origin) continue;
+      link.dataset.sameyExternal = url.href;
+      link.removeAttribute("target");
+      link.rel = "noopener noreferrer";
     }
   };
   const observeExternalLinks = () => new MutationObserver((records) => {
@@ -299,6 +299,89 @@
       else normalizeExternalLinks(node);
     }
   }).observe(document.documentElement, { subtree: true, childList: true });
+  const browserExpandIcon = '<path d="M8 3H3v5"></path><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path><path d="M16 21h5v-5"></path>';
+  const browserCollapseIcon = '<path d="M8 8H3V3"></path><path d="M16 8h5V3"></path><path d="M8 16H3v5"></path><path d="M16 16h5v5"></path>';
+  const setBrowserFullscreen = (browser, on) => {
+    browser.toggleAttribute("data-fullscreen", on);
+    const button = browser.querySelector("[data-browser-fullscreen]");
+    const icon = browser.querySelector("[data-browser-fullscreen-icon]");
+    if (icon) icon.innerHTML = on ? browserCollapseIcon : browserExpandIcon;
+    if (button) {
+      button.title = on ? "Exit fullscreen" : "Fullscreen";
+      button.setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
+    }
+    const controls = browser.querySelector("[data-browser-controls]");
+    if (controls) { controls.style.left = ""; controls.style.top = ""; controls.style.right = ""; }
+  };
+  const wireBrowser = browser => {
+    if (!(browser instanceof HTMLElement) || browser.dataset.browserWired != null) return;
+    browser.dataset.browserWired = "";
+    const url = browser.dataset.url;
+    const controls = browser.querySelector("[data-browser-controls]");
+    browser.querySelector("[data-browser-external]")?.addEventListener("click", () => { if (url) open(url, "_blank", "noopener,noreferrer"); });
+    browser.querySelector("[data-browser-fullscreen]")?.addEventListener("click", () => setBrowserFullscreen(browser, !browser.hasAttribute("data-fullscreen")));
+    if (!controls) return;
+    let drag = null;
+    controls.addEventListener("pointerdown", event => {
+      if (!browser.hasAttribute("data-fullscreen") || event.target.closest("button")) return;
+      const rect = controls.getBoundingClientRect();
+      drag = { id:event.pointerId, x:event.clientX, y:event.clientY, left:rect.left, top:rect.top, width:rect.width, height:rect.height };
+      controls.setPointerCapture(event.pointerId);
+    });
+    controls.addEventListener("pointermove", event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+      if (Math.hypot(dx, dy) < 4 && !controls.hasAttribute("data-dragging")) return;
+      controls.dataset.dragging = "";
+      const margin = 8;
+      controls.style.right = "auto";
+      controls.style.left = `${Math.min(Math.max(margin, drag.left + dx), Math.max(margin, innerWidth - drag.width - margin))}px`;
+      controls.style.top = `${Math.min(Math.max(margin, drag.top + dy), Math.max(margin, innerHeight - drag.height - margin))}px`;
+    });
+    const finish = event => {
+      if (!drag || drag.id !== event.pointerId) return;
+      if (controls.hasPointerCapture(event.pointerId)) controls.releasePointerCapture(event.pointerId);
+      controls.removeAttribute("data-dragging"); drag = null;
+    };
+    controls.addEventListener("pointerup", finish); controls.addEventListener("pointercancel", finish);
+  };
+  const wireInlineBrowsers = (root = document) => { for (const browser of root.querySelectorAll?.("[data-inline-browser]") || []) wireBrowser(browser); };
+  let externalBrowserBackdrop = null;
+  const closeExternalBrowser = () => {
+    if (!externalBrowserBackdrop) return;
+    externalBrowserBackdrop.remove(); externalBrowserBackdrop = null;
+    document.documentElement.removeAttribute("data-external-browser-open");
+  };
+  const openExternalBrowser = (href, title = "External site") => {
+    closeExternalBrowser();
+    const url = new URL(href, location.href);
+    if (url.hostname === "github.com" && !url.hash) url.hash = "readme";
+    const backdrop = runtimeNode(document.createElement("div"));
+    backdrop.className = "samey-external-browser-backdrop";
+    backdrop.innerHTML = `<section class="detail-browser" data-inline-browser data-url="${url.href.replaceAll('&','&amp;').replaceAll('"','&quot;')}" aria-label="External site"><div class="detail-browser-controls" data-browser-controls aria-label="Embedded page controls"><button class="detail-browser-button" type="button" data-browser-external aria-label="Open in new tab" title="Open in new tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7"></path><path d="M10 14L21 3"></path><path d="M21 14v7H3V3h7"></path></svg></button><span class="detail-browser-divider" aria-hidden="true"></span><button class="detail-browser-button" type="button" data-browser-fullscreen aria-label="Enter fullscreen" title="Fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true" data-browser-fullscreen-icon>${browserExpandIcon}</svg></button></div><iframe src="${url.href.replaceAll('&','&amp;').replaceAll('"','&quot;')}" title="${String(title).replaceAll('&','&amp;').replaceAll('"','&quot;')}" referrerpolicy="strict-origin-when-cross-origin"></iframe></section>`;
+    backdrop.addEventListener("click", event => { if (event.target === backdrop) closeExternalBrowser(); });
+    document.body.append(backdrop); externalBrowserBackdrop = backdrop;
+    document.documentElement.dataset.externalBrowserOpen = "";
+    wireInlineBrowsers(backdrop);
+  };
+  const mountExternalBrowsers = () => {
+    wireInlineBrowsers();
+    document.addEventListener("click", event => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest?.("a[data-samey-external]");
+      if (!link) return;
+      event.preventDefault(); event.stopPropagation();
+      openExternalBrowser(link.dataset.sameyExternal, link.dataset.copyLabel || link.textContent?.trim() || "External site");
+    }, true);
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      const fullscreen = document.querySelector(".detail-browser[data-fullscreen]");
+      if (fullscreen) { setBrowserFullscreen(fullscreen, false); return; }
+      if (externalBrowserBackdrop) closeExternalBrowser();
+    });
+    addEventListener("samey-pageload", () => wireInlineBrowsers());
+    addEventListener("samey-pageleave", closeExternalBrowser);
+  };
 
   let loadingSvgCache = "";
   let loadingFramesCache = null;
@@ -868,20 +951,43 @@
       document.documentElement.setAttribute(attr.name, value);
     }
   };
+  const decompressionChoice = (() => {
+    if (typeof DecompressionStream !== "function") return null;
+    for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) {
+      try { new DecompressionStream(format); return { format, suffix }; } catch {}
+    }
+    return null;
+  })();
+  const logicalPageUrl = url => {
+    const logical = new URL(url.href);
+    if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
+    else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
+    return logical;
+  };
+  const decodePageResponse = async (response, format) => {
+    if (!format) return response.text();
+    if (!response.body) throw new Error("compressed response has no body");
+    return new Response(response.body.pipeThrough(new DecompressionStream(format))).text();
+  };
   const fetchPage = async url => {
     const key = url.href;
     if (pageCache.has(key)) return pageCache.get(key);
     const task = (async () => {
-      let response = await fetch(url, { headers: { "X-Samey-SPA": "1" } });
-      if (!response.ok && !/\.[a-z0-9]+$/i.test(url.pathname) && !url.pathname.endsWith("/")) {
-        response = await fetch(new URL(url.pathname + ".html" + url.search + url.hash, url.origin), { headers: { "X-Samey-SPA": "1" } });
+      const logical = logicalPageUrl(url);
+      const attempts = decompressionChoice && logical.pathname.endsWith(".html")
+        ? [{ url: new URL(logical.pathname + decompressionChoice.suffix + logical.search, logical.origin), format: decompressionChoice.format }, { url: logical, format: null }]
+        : [{ url: logical, format: null }];
+      let response = null, format = null;
+      for (const attempt of attempts) {
+        const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
+        if (candidate.ok) { response = candidate; format = attempt.format; break; }
       }
-      if (!response.ok) throw new Error(String(response.status));
-      const text = await response.text();
+      if (!response) throw new Error("page fetch failed");
+      const text = await decodePageResponse(response, format);
       const doc = new DOMParser().parseFromString(text, "text/html");
       const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
-      const baseUrl = new URL(baseTag || ".", response.url || url.href);
-      return { doc, baseUrl, responseUrl: response.url || url.href };
+      const baseUrl = new URL(baseTag || ".", logical.href);
+      return { doc, baseUrl, responseUrl: logical.href };
     })();
     pageCache.set(key, task);
     try { return await task; } catch (error) { pageCache.delete(key); throw error; }
@@ -932,14 +1038,20 @@
     else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
   };
-  const appFrameUrl = url => new URL(url.href);
-  const loadAppFrame = (url, replace, frameSource = url) => new Promise((resolve, reject) => {
+  const frameDocument = ({ doc, baseUrl }) => {
+    const clone = doc.cloneNode(true);
+    let base = clone.querySelector("base");
+    if (!base) { base = clone.createElement("base"); clone.head.prepend(base); }
+    base.setAttribute("href", baseUrl.href);
+    return "<!doctype html>" + clone.documentElement.outerHTML;
+  };
+  const loadAppFrame = (url, replace, page) => new Promise((resolve, reject) => {
     const preload = runtimeNode(document.createElement("div"));
     preload.className = "samey-app-preload";
     const frame = document.createElement("iframe");
     frame.className = "samey-app-frame";
     frame.title = "Application";
-    frame.src = appFrameUrl(frameSource).href;
+    frame.srcdoc = frameDocument(page);
     preload.append(frame);
     document.body.append(preload);
     const fail = () => { preload.remove(); reject(new Error("application load failed")); };
@@ -977,8 +1089,8 @@
     setLoading(true);
     try {
       if (APP_ROUTE.test(url.pathname)) {
-        const { responseUrl } = await fetchPage(url);
-        await loadAppFrame(url, replace, new URL(responseUrl));
+        const page = await fetchPage(url);
+        await loadAppFrame(url, replace, page);
       } else {
         const { doc, baseUrl } = await fetchPage(url);
         const commit = () => swapPage(doc, baseUrl, url, replace);
@@ -1088,7 +1200,7 @@
   const queueChromeScan = () => { if (chromeScanQueued) return; chromeScanQueued = true; requestAnimationFrame(() => { chromeScanQueued = false; enhanceAppChrome(); }); };
   const observeAppChrome = () => new MutationObserver(queueChromeScan).observe(document.body, { subtree: true, childList: true });
 
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); enhanceAppChrome(); observeAppChrome(); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountExternalBrowsers(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); enhanceAppChrome(); observeAppChrome(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
