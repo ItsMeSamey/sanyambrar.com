@@ -98,6 +98,7 @@ export class Block {
 interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; suggested: string }
 export interface WordLocalStorageState {
   word: string
+  wordIndex?: number
   history: [string, string][]
   disabled?: string
   config?: SettingsHardProps
@@ -129,6 +130,9 @@ class GameState {
       stored.config = {...hard}
       this.stateStore.set(stored)
     }
+    // Rewrite legacy plaintext-answer state through the compact serializer.
+    // Daily games need only the date; random/advanced games persist a word-list index.
+    this.stateStore.set(stored)
 
     this.history = createMutable<[string, string][]>(stored.history)
     const lastColors = ((stored.history.at(-1) ?? ['', ''])![1] || '').split('')
@@ -319,12 +323,6 @@ export class WordleModel {
         </DrawerContent>
       </Drawer>
 
-      <div class='wordle-challenge-bar'>
-        <div><strong>{modeTitle()}</strong><Show when={this.state.hard.dailyDate}><span>{this.state.hard.dailyDate}</span></Show></div>
-        <span>{this.state.hard.wordLength} letters / {this.state.hard.maxTries === 1 ? '∞' : this.state.hard.maxTries} guesses</span>
-        <Show when={this.state.disabled.length}><span class='wordle-disabled-list'>Disabled: {this.state.disabled.toUpperCase().split('').join(' ')}</span></Show>
-      </div>
-
       <div class='wordle-board mx-auto'>
         <For each={this.state.history.length ? this.state.history.slice(0, -1) : []}>{([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}</For>
         {(() => {
@@ -343,7 +341,37 @@ this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).rend
 }
 
 function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextRandom: () => void, onChooseMode: () => void) {
-  const stateStore = new LocalstorageStore<WordLocalStorageState>(gameStorageKey(hard), {word: '', history: [['', '']], config: {...hard}}, JSON.parse, JSON.stringify)
+  const fromStorage = (raw: string): WordLocalStorageState => {
+    const stored = JSON.parse(raw) as WordLocalStorageState
+    const config = stored.config ?? hard
+    if (!stored.word) {
+      if (config.mode === 'daily' && config.dailyDate) {
+        stored.word = getDailyChallenge(config.dailyDate).word
+      } else if (Number.isInteger(stored.wordIndex)) {
+        stored.word = WORDS['w' + config.wordLength][stored.wordIndex!] ?? ''
+      }
+    }
+    return stored
+  }
+  const toStorage = (state: WordLocalStorageState): string => {
+    const stored: Partial<WordLocalStorageState> = {...state}
+    const config = stored.config ?? hard
+    if (config.mode === 'daily') {
+      delete stored.wordIndex
+    } else if (stored.word) {
+      const words = WORDS['w' + config.wordLength]
+      const index = bsearch.eq(words, stored.word.toLowerCase(), (a, b) => a === b ? 0 : a < b ? -1 : 1)
+      if (index >= 0) stored.wordIndex = index
+    }
+    delete stored.word
+    return JSON.stringify(stored)
+  }
+  const stateStore = new LocalstorageStore<WordLocalStorageState>(
+    gameStorageKey(hard),
+    {word: '', history: [['', '']], config: {...hard}},
+    fromStorage,
+    toStorage,
+  )
   return new WordleModel(soft, hard, stateStore, onNextRandom, onChooseMode).render()
 }
 
@@ -386,11 +414,47 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
   </main>
 }
 
+type ResumeLocation =
+  | {v: 2; mode: 'daily'; dailyDate: string}
+  | {v: 2; mode: 'random'; randomId: string; wordLength: SettingsHardProps['wordLength']; maxTries: number; disabledLetters: number; allowAny: boolean}
+  | {v: 2; mode: 'advanced'; wordLength: SettingsHardProps['wordLength']; maxTries: number; disabledLetters: number; allowAny: boolean}
+
+function readResumeLocation(raw: string | null): SettingsHardProps | undefined {
+  if (!raw) return undefined
+  try {
+    const saved = JSON.parse(raw) as ResumeLocation
+    if (saved?.v !== 2) return undefined
+    if (saved.mode === 'daily' && saved.dailyDate) return getDailyChallenge(saved.dailyDate)
+    if (saved.mode === 'random' && saved.randomId && Number.isInteger(saved.wordLength)) return {...saved}
+    if (saved.mode === 'advanced' && Number.isInteger(saved.wordLength)) return {...saved}
+  } catch {}
+  return undefined
+}
+
+function writeResumeLocation(key: string, config: ChallengeConfig) {
+  if (config.mode === 'daily') {
+    localStorage.setItem(key, JSON.stringify({v: 2, mode: 'daily', dailyDate: config.dailyDate ?? localDateKey()} satisfies ResumeLocation))
+    return
+  }
+  const common = {wordLength: config.wordLength, maxTries: config.maxTries, disabledLetters: config.disabledLetters, allowAny: config.allowAny}
+  if (config.mode === 'random') {
+    localStorage.setItem(key, JSON.stringify({v: 2, mode: 'random', randomId: config.randomId!, ...common} satisfies ResumeLocation))
+    return
+  }
+  localStorage.setItem(key, JSON.stringify({v: 2, mode: 'advanced', ...common} satisfies ResumeLocation))
+}
+
 export default function Wordle() {
+  const locationKey = 'game.wordle.location'
+  const savedLocation = localStorage.getItem(locationKey)
   const {softStore, hardStore} = GetSettingsStore()
-  const hard = createMutable(hardStore.get()!)
+  const savedHard = hardStore.get()!
+  const legacyLocation = savedHard.mode === 'daily' ? `d:${savedHard.dailyDate ?? localDateKey()}` : savedHard.mode === 'random' ? `r:${savedHard.randomId ?? ''}` : 'a'
+  const resumeConfig = readResumeLocation(savedLocation) ?? (savedLocation === legacyLocation ? savedHard : undefined)
+  if (resumeConfig) writeResumeLocation(locationKey, resumeConfig)
+  const hard = createMutable(resumeConfig ?? savedHard)
   const soft = createMutable(softStore.get()!)
-  const [showOpening, setShowOpening] = createSignal(true)
+  const [showOpening, setShowOpening] = createSignal(!resumeConfig)
   const [dailyDate, setDailyDate] = createSignal(hard.dailyDate ?? localDateKey())
 
   createEffect(() => hardStore.set({...hard}))
@@ -408,6 +472,7 @@ export default function Wordle() {
     hard.dailyDate = config.dailyDate
     hard.randomId = config.randomId
     soft.reveal = false
+    writeResumeLocation(locationKey, config)
     setShowOpening(false)
   })
 
@@ -418,7 +483,7 @@ export default function Wordle() {
     try { saved = {...saved, ...JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}'), mode: 'advanced'} } catch {}
     applyConfig(saved)
   }
-  const chooseMode = () => { setDailyDate(hard.dailyDate ?? localDateKey()); setShowOpening(true) }
+  const chooseMode = () => { localStorage.removeItem(locationKey); setDailyDate(hard.dailyDate ?? localDateKey()); setShowOpening(true) }
   const gameKey = () => gameStorageKey({...hard})
 
   return <>
