@@ -7,7 +7,6 @@ import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueL
 
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import { untrack } from 'solid-js/web'
-import { Button } from '~/registry/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { WordLength } from './words'
 import { ActiveGames } from './popup_active_games'
@@ -61,7 +60,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
       {SwitchContent(TooltipWithContent('Fast Invalidate', 'Fast invalidation of incorrect input (for words that are not in db).'))}
     </Switch>
 
-    <div class='game-settings-section-title settings-section-title'>ADVANCED</div>
+    <div class='game-settings-section-title'>ADVANCED</div>
 
     <Show when={showWordLength}>
       <Slider
@@ -70,7 +69,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
         defaultValue={untrack(() => [hard.wordLength])}
         getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any}
         onChange={([len]) => hard.wordLength = len as WordLength}
-        class='game-settings-slider settings-slider'
+        class='game-settings-slider'
       >
         <div class='flex w-full justify-between'>
           <SliderLabel>Word length</SliderLabel>
@@ -89,7 +88,7 @@ export function SettingsKnobs({soft, hard, showWordLength}: {soft: SettingsSoftP
       defaultValue={untrack(() => [hard.maxTries])}
       getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1? 'INF': params.values}</strong> as any}
       onChange={([len]) => hard.maxTries = len}
-      class='game-settings-slider settings-slider'
+      class='game-settings-slider'
     >
       <div class='flex w-full justify-between'>
         <SliderLabel>Max guesses</SliderLabel>
@@ -111,25 +110,25 @@ export default function Settings({soft, hard, showActive, showWordLength}: {soft
       <IconSettings class='size-5' />
     </PopoverTrigger>
     <PopoverContent class='game-settings-popover settings-popover border-muted'>
-      <button type='button' class='wordle-nav-button game-settings-close settings-close' onClick={() => setOpen(false)} aria-label='Close settings'>
-        <IconX class='size-5 stroke-red-500' />
+      <button type='button' class='game-settings-close' onClick={() => setOpen(false)} aria-label='Close settings'>
+        <IconX />
       </button>
 
-      <div class='game-settings-body settings-body'>
+      <div class='game-settings-body'>
         <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} />
 
-        <div class='game-settings-actions settings-actions flex flex-wrap gap-2'>
+        <div class='game-settings-actions'>
         {TooltipWithContent(
-          <Button class='bg-warning text-warning-foreground hover:bg-warning-foreground hover:text-warning transition-colors duration-300' onClick={() => soft.reveal = true}>
+          <button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>
             Reveal
-          </Button>,
+          </button>,
           'Reveals and then skips the current word.'
         )}
         <Show when={showActive}>
           <ActiveGames hard={hard} trigger={
-            <Button class='bg-info text-info-foreground hover:bg-info-foreground hover:text-info transition-colors duration-300'>
+            <button type='button' class='game-settings-action'>
               Active Games
-            </Button>
+            </button>
           }/>
         </Show>
         </div>

@@ -17,7 +17,7 @@ const STATIC = join(ROOT, "static");
 const DOCS = join(ROOT, "docs");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
-const ALL = new Set(["solid", "keybr", "static"]);
+const ALL = new Set(["solid", "keybr", "tools", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
 const invalidTargets = [...targets].filter((target) => !ALL.has(target));
@@ -134,6 +134,14 @@ async function buildSolid() {
   log("solid -> docs/wordle.html");
 }
 
+
+async function buildTools() {
+  await ensureDeps(ROOT);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"], { SAMEY_APP: "tools" });
+  must(existsSync(join(DOCS, "tools.html")), "Vite did not emit docs/tools.html");
+  log("tools -> docs/tools.html");
+}
+
 async function buildKeybr() {
   const dir = join(ROOT, "keybr");
   await ensureDeps(dir);
@@ -235,8 +243,6 @@ const RUNTIME_REQUIRED = [
   "samey-cursor-grab",
   "samey-cursor-link",
   "a[href],area[href],[role=link]",
-  "M42 0 H84 V42",
-  "M54 -2 H90 V34",
   'stroke-width="11"',
   "linkHandoffUntil",
   'window.open(link.href, "_blank", "noopener,noreferrer")',
@@ -277,6 +283,15 @@ function auditSharedRuntime(theme: string, css: string, where: string) {
 }
 
 async function auditSource() {
+  const homeSplit = await readFile(join(STATIC, "index.html"), "utf8");
+  const work = await readFile(join(STATIC, "work.html"), "utf8");
+  const toolsHtml = await readFile(join(ROOT, "tools.html"), "utf8");
+  const toolsApp = await readFile(join(ROOT, "src/tools/App.tsx"), "utf8");
+  must(homeSplit.includes('id="games-title"') && homeSplit.includes('id="tools-title"') && homeSplit.includes('id="blog-title"'), "home: Games/Tools/Blog split missing");
+  must(!homeSplit.includes('id="projects-title"') && !homeSplit.includes('id="contributions-title"'), "home: work sections leaked back into home");
+  must(work.includes('id="projects-title"') && work.includes('id="contributions-title"'), "work: Projects/Contributions missing");
+  must(toolsHtml.includes("Tools · Sanyam Brar") && toolsApp.includes("ToolShell") && toolsApp.includes("Button"), "tools: shared app shell/components missing");
+  must(!existsSync(join(ROOT, "tools/package.json")), "tools: duplicate package boundary returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
   const theme = await readFile(join(STATIC, "theme.js"), "utf8");
   const provider = await readFile(join(ROOT, "keybr/packages/keybr-themes/lib/themes/ThemeProvider.tsx"), "utf8");
@@ -326,9 +341,10 @@ async function auditSource() {
   for (const token of [".game-settings-popover", ".game-settings-slider", ".game-settings-action", "::-webkit-slider-thumb", "[data-popper-positioner]:has(> .game-settings-popover)"]) must(sharedSettingsCss.includes(token), `shared game settings contract missing ${token}`);
 
   const sharedCss = await readFile(join(STATIC, "site.css"), "utf8");
+  const homeCss = await readFile(join(STATIC, "home.css"), "utf8");
   const blogCss = await readFile(join(STATIC, "blog/blog.css"), "utf8");
   must(sharedCss.includes("--site-content-width:1080px"), "shared content width contract missing");
-  must(home.includes("width:min(var(--site-content-width,1080px),100%)"), "homepage must use shared content width");
+  must(homeCss.includes("width:min(var(--site-content-width,1080px),100%)"), "homepage must use shared content width");
   must(blogCss.includes(".shell{width:min(var(--site-content-width,1080px),100%)") && blogCss.includes(".article{width:min(var(--site-content-width,1080px),100%)"), "blog must use shared content width");
   const viteConfig = await readFile(join(ROOT, "vite.config.ts"), "utf8");
   const webpackConfig = await readFile(join(ROOT, "keybr/webpack.config.js"), "utf8");
@@ -346,7 +362,10 @@ async function auditSource() {
   auditSharedRuntime(theme, sharedCss, "static");
   for (const token of ["../../static/shared/game-settings.css", "--wordle-control-top: var(--game-control-top)", "--wordle-control-right: var(--game-control-right)", "animation: result-pop .04s ease-out"]) must(wordleCss.includes(token), `Wordle control/reveal contract missing ${token}`);
   const wordleSettings = await readFile(join(ROOT, "src/game/popup_settings.tsx"), "utf8");
-  for (const token of ["game-settings-trigger", "game-settings-popover", "game-settings-slider", "game-settings-body"]) must(wordleSettings.includes(token), `Wordle shared settings component contract missing ${token}`);
+  for (const token of ["game-settings-trigger", "game-settings-popover", "game-settings-slider", "game-settings-body", "game-settings-close", "game-settings-action"]) {
+    must(wordleSettings.includes(token), `Wordle shared settings component contract missing ${token}`);
+    must(chain.includes(token), `Chain shared settings component contract missing ${token}`);
+  }
 }
 
 async function verifyDocs() {
@@ -380,7 +399,7 @@ async function verifyDocs() {
 }
 
 async function main() {
-  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, static, or all)`);
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, tools, static, or all)`);
   await generateAppearance();
   await auditSource();
   await beginDocsTransaction();
@@ -388,6 +407,7 @@ async function main() {
   const jobs: Promise<void>[] = [];
   if (targets.has("solid")) jobs.push(buildSolid());
   if (targets.has("keybr")) jobs.push(buildKeybr());
+  if (targets.has("tools")) jobs.push(buildTools());
   await Promise.all(jobs);
   await compressHtml();
   if (fullBuild) {

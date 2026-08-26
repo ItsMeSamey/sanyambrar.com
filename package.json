@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --open /app.html",
-    "build": "node --experimental-strip-types ./build.ts",
-    "build:solid": "node --experimental-strip-types ./build.ts solid",
-    "build:keybr": "node --experimental-strip-types ./build.ts keybr"
+    "build": "bun build.ts",
+    "build:solid": "bun build.ts solid",
+    "build:keybr": "bun build.ts keybr",
+    "build:tools": "bun build.ts tools"
   },
   "dependencies": {
     "@kobalte/core": "^0.13.13",

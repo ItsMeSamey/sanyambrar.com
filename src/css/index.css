@@ -331,4 +331,3 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
   .result-dialog { width: calc(100vw - 16px) !important; padding: 14px !important; }
 }
 
-.settings-actions > * { min-width: 0; flex: 1 1 150px; }
