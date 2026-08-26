@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { brotliCompress, brotliDecompress, constants, gzip, gunzip } from "node:zlib";
+import { generateSite } from "./site.ts";
 
 const runFile = promisify(execFile);
 const gzipAsync = promisify(gzip);
@@ -17,6 +18,7 @@ const STATIC = join(ROOT, "static");
 const DOCS = join(ROOT, "docs");
 const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_APPEARANCE = join(STATIC, "appearance.generated.js");
+const GENERATED_SITE = join(ROOT, ".build", "site");
 const ALL = new Set(["solid", "keybr", "tools", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
@@ -104,6 +106,7 @@ async function rollbackDocsTransaction() {
 async function copyStatic() {
   await mkdir(DOCS, { recursive: true });
   await cp(STATIC, DOCS, { recursive: true, force: true });
+  await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
 }
 
 async function cleanupBuildArtifacts() {
@@ -283,13 +286,16 @@ function auditSharedRuntime(theme: string, css: string, where: string) {
 }
 
 async function auditSource() {
-  const homeSplit = await readFile(join(STATIC, "index.html"), "utf8");
-  const work = await readFile(join(STATIC, "work.html"), "utf8");
+  const homeSplit = await readFile(join(GENERATED_SITE, "index.html"), "utf8");
+  const work = await readFile(join(GENERATED_SITE, "work.html"), "utf8");
   const toolsHtml = await readFile(join(ROOT, "tools.html"), "utf8");
   const toolsApp = await readFile(join(ROOT, "src/tools/App.tsx"), "utf8");
-  must(homeSplit.includes('id="games-title"') && homeSplit.includes('id="tools-title"') && homeSplit.includes('id="blog-title"'), "home: Games/Tools/Blog split missing");
+  must(homeSplit.includes('id="games-title"') && homeSplit.includes('id="tools-title"') && homeSplit.includes('id="writing-title"'), "home: Games/Tools/Writing split missing");
   must(!homeSplit.includes('id="projects-title"') && !homeSplit.includes('id="contributions-title"'), "home: work sections leaked back into home");
   must(work.includes('id="projects-title"') && work.includes('id="contributions-title"'), "work: Projects/Contributions missing");
+  const lab = await readFile(join(GENERATED_SITE, "lab.html"), "utf8");
+  must(lab.includes('data-lab="float"') && lab.includes('data-lab="unicode"') && lab.includes('data-lab="hash"'), "lab: experiments missing");
+  must(existsSync(join(STATIC, "site.js")) && existsSync(join(GENERATED_SITE, "site-index.js")), "site search runtime/index missing");
   must(toolsHtml.includes("Tools · Sanyam Brar") && toolsApp.includes("ToolShell") && toolsApp.includes("Button"), "tools: shared app shell/components missing");
   must(!existsSync(join(ROOT, "tools/package.json")), "tools: duplicate package boundary returned");
   for (const lock of ["bun.lock", "keybr/bun.lock"]) must(existsSync(join(ROOT, lock)), `missing frozen dependency lock: ${lock}`);
@@ -321,13 +327,13 @@ async function auditSource() {
   must(theme.includes(keybrGuard), "Wordle palette variables are not scoped away from Keybr");
   for (const name of ["--primary", "--secondary", "--accent"]) must(theme.indexOf(`setProperty("${name}"`) >= theme.indexOf(keybrGuard), `${name} is written outside the Wordle-only scope`);
 
-  const home = await readFile(join(STATIC, "index.html"), "utf8");
+  const home = await readFile(join(GENERATED_SITE, "index.html"), "utf8");
   must(home.includes("Sanyam Brar"), "homepage identity must be Sanyam Brar");
   must(!home.includes("Systems / backend / performance"), "deprecated homepage role label is still present");
   must(!home.includes("class=\"repo-link\"") && !home.includes("Wordle source repository") && !home.includes("Keybr local source repository"), "game source links must not be present");
   must(home.includes('href="./wordle"') && home.includes('href="./keybr"') && home.includes('href="./chain"'), "game navigation must use extensionless URLs");
   must(!home.includes('href="./wordle.html"') && !home.includes('href="./keybr.html"') && !home.includes('href="./chain.html"'), "game navigation leaked .html suffixes");
-  must(home.includes("Chain Reaction") && home.includes("canvas renderer"), "Chain Reaction homepage card missing");
+  must(home.includes("Chain Reaction") && home.includes("Canvas-rendered"), "Chain Reaction homepage card missing");
   const chain = await readFile(join(STATIC, "chain.html"), "utf8");
   for (const token of ["Uint8Array", "requestAnimationFrame", "legalMoves(owner)", "board[i] === 0 || owners[i] === owner", "chain-settings-button", "chain-enemies", "chain-new-game", "game-settings-slider", "orbSprite(owner, radius)", "imageSmoothingQuality = 'high'", "liveWinner(owner, next)", "chain-turn"]) must(chain.includes(token), `Chain Reaction contract missing ${token}`);
   for (const removed of ['>Chain Reaction</div>', '>Your turn</div>']) must(!chain.includes(removed), `Chain Reaction obsolete chrome returned: ${removed}`);
@@ -369,7 +375,7 @@ async function auditSource() {
 }
 
 async function verifyDocs() {
-  for (const file of ["index.html", "keybr.html", "wordle.html", "chain.html", "theme.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
+  for (const file of ["index.html", "work.html", "lab.html", "projects/zhtml.html", "projects/reverb.html", "projects/oneserial.html", "projects/cnn.html", "keybr.html", "wordle.html", "chain.html", "tools.html", "theme.js", "site.js", "site-index.js", "sw.js", "blog/index.html", "blog/posts/btop-mutex.html"]) must(existsSync(join(DOCS, file)), `missing docs/${file}`);
   const keybr = await readFile(join(DOCS, "keybr.html"), "utf8"), wordle = await readFile(join(DOCS, "wordle.html"), "utf8");
   for (const [name, html] of [["keybr", keybr], ["wordle", wordle]] as const) must(!html.includes('manifest="appcache.manifest"'), `${name}: obsolete AppCache manifest`);
   must(!keybr.includes('<header class="site-header"'), "keybr: stale custom header emitted");
@@ -401,6 +407,8 @@ async function verifyDocs() {
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, tools, static, or all)`);
   await generateAppearance();
+  await rm(GENERATED_SITE, { recursive: true, force: true });
+  await generateSite(GENERATED_SITE);
   await auditSource();
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();

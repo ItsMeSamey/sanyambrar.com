@@ -46,11 +46,11 @@
         <div class="game-settings-section-title">BOARD</div>
         <label class="game-settings-slider" for="chain-rows">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Rows</span><output id="chain-rows-value" class="game-settings-slider-value"></output></span>
-          <input id="chain-rows" type="range" min="4" max="14" step="1">
+          <input id="chain-rows" type="range" min="4" max="30" step="1">
         </label>
         <label class="game-settings-slider" for="chain-cols">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Columns</span><output id="chain-cols-value" class="game-settings-slider-value"></output></span>
-          <input id="chain-cols" type="range" min="4" max="12" step="1">
+          <input id="chain-cols" type="range" min="4" max="30" step="1">
         </label>
         <label class="game-settings-slider" for="chain-enemies">
           <span class="game-settings-slider-head"><span class="game-settings-slider-label">Enemies</span><output id="chain-enemies-value" class="game-settings-slider-value"></output></span>
@@ -91,6 +91,7 @@
   const EMPTY = 0;
   const HUMAN = 1;
   const PLAYER_COLORS = ['', '#6aaa64', '#c95d63', '#6b8fd6', '#b07aa1', '#d2a94b', '#62a8a8'];
+  const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
   let config = loadConfig();
   let rows = config.rows;
@@ -115,9 +116,9 @@
     try {
       const saved = JSON.parse(localStorage.getItem('samey.chain.settings') || '{}');
       return {
-        rows: clampInt(saved.rows, 4, 14, defaults.rows),
-        cols: clampInt(saved.cols, 4, 12, defaults.cols),
-        enemies: clampInt(saved.enemies, 1, 5, defaults.enemies),
+        rows: clampInt(saved.rows, ...limits.rows, defaults.rows),
+        cols: clampInt(saved.cols, ...limits.cols, defaults.cols),
+        enemies: clampInt(saved.enemies, ...limits.enemies, defaults.enemies),
       };
     } catch { return {...defaults}; }
   }
@@ -475,9 +476,9 @@
 
   function applySettings() {
     config = {
-      rows: clampInt(rowsInput.value, 4, 14, defaults.rows),
-      cols: clampInt(colsInput.value, 4, 12, defaults.cols),
-      enemies: clampInt(enemiesInput.value, 1, 5, defaults.enemies),
+      rows: clampInt(rowsInput.value, ...limits.rows, defaults.rows),
+      cols: clampInt(colsInput.value, ...limits.cols, defaults.cols),
+      enemies: clampInt(enemiesInput.value, ...limits.enemies, defaults.enemies),
     };
     syncSettings();
     saveConfig();

@@ -1,16 +1,32 @@
 # Sanyam Brar
 
-The root Solid workspace now owns both Wordle and Tools. They share Solid, Tailwind, the UI kit, the appearance runtime, TypeScript, Vite and one dependency graph. Keybr remains isolated because it is a separate React/Webpack workspace. Hand-written pages and shared browser assets live under `static/`; GitHub Pages publishes `docs/`.
+One static portfolio, with two application workspaces only where the technology boundary is real.
 
 ```text
-src/          Solid apps + shared UI kit
-src/tools/    integrated browser tools
-static/       home/work/blog + shared site runtime/appearance
-keybr/        isolated Keybr workspace
-build.ts      generation, builds, compression, verification
-docs/         generated GitHub Pages tree
+site.ts             Home / Work / Lab / project-page generator + search index
+src/shared/         data shared by generated pages and Solid apps
+src/tools/          integrated Solid tools
+src/ui-kit/         UI primitives shared by Wordle and Tools
+src/game/           Wordle
+static/             hand-written shared runtime, CSS, Chain Reaction and blog
+keybr/              isolated React/Webpack application
+docs/               generated GitHub Pages tree
+build.ts            transactional build, audits, compression and verification
 ```
 
-Build everything with `bun build.ts`, or select `solid`, `tools`, `keybr`, and/or `static`. A full build generates shared appearance data, audits source invariants, builds the apps, generates the service worker, writes `.html.gz` and `.html.br` sidecars, and verifies decompression byte-for-byte.
+Home contains Games, Tools and Writing. Work contains projects and open-source contributions. Lab contains small interactive technical experiments. `Ctrl/Cmd+K` searches across all of them.
 
-If dependencies are absent or stale, `build.ts` uses Bun with the frozen root or Keybr lockfile. Tools deliberately have no second package, lockfile, Vite config, Monaco runtime, or duplicated component library.
+Tools are part of the root Solid workspace. They share Solid, Tailwind, the UI kit, appearance runtime, TypeScript, Vite and one dependency graph with Wordle. Tool state is local-first and URL-addressable; switching tools does not leak query state between tools, and text can be passed directly between compatible tools with **Send to…**.
+
+Keybr remains isolated because it is a distinct React/Webpack workspace. There is no second Tools package, lockfile, Vite config, Monaco runtime, or duplicate component library.
+
+Run `bun build.ts` for the complete build, or select `solid`, `tools`, `keybr`, and/or `static`. A full build:
+
+1. generates appearance data and the static site into temporary build state,
+2. audits source/runtime contracts,
+3. transactionally replaces `docs/`,
+4. builds Wordle, Tools and Keybr,
+5. generates the service worker,
+6. writes gzip/Brotli HTML sidecars,
+7. verifies every sidecar by decompression and byte equality,
+8. restores the previous `docs/` tree if anything fails.

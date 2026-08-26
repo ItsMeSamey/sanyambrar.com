@@ -13,7 +13,6 @@
   "dependencies": {
     "@kobalte/core": "^0.13.13",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^26.2.0",
     "binary-search-bounds": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "idb": "^8.0.3",
@@ -24,7 +23,8 @@
     "tailwindcss": "^4.3.3",
     "tailwindcss-motion": "^1.1.1",
     "vite-plugin-minify": "^2.1.0",
-    "vite-plugin-singlefile": "^2.3.3"
+    "vite-plugin-singlefile": "^2.3.3",
+    "@types/node": "^26.2.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
