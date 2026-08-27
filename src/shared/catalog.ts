@@ -3,7 +3,6 @@ export type ToolInfo={id:ToolId;label:string;title:string;note:string};
 
 export const SITE_NAV=[
   {label:'Work',href:'/work'},
-  {label:'Lab',href:'/lab'},
 ] as const;
 
 export const TOOLS:readonly ToolInfo[]=[

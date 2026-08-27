@@ -14,6 +14,7 @@ import bsearch from 'binary-search-bounds'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey } from './challenge'
+import { HomeBrand, WordleMark } from '../shared/components/Brand.tsx'
 
 type WordleStringState = 'g' | 'y' | 'r'
 type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | 'BACKSPACE'
@@ -488,10 +489,14 @@ export default function Wordle() {
 
   return <>
     <nav class='wordle-nav absolute items-center top-0'>
-      <button type='button' class='wordle-nav-title' onClick={chooseMode} aria-label='Choose Wordle mode'>WORDLE</button>
-      <button type='button' class='wordle-mode-switch' onClick={chooseMode}>{hard.mode === 'daily' ? 'Daily' : hard.mode === 'random' ? 'Random' : 'Advanced'}</button>
+      <Show when={!showOpening()} fallback={<HomeBrand class='wordle-home-brand'/>}>
+        <button type='button' class='wordle-nav-title wordle-logo-button' onClick={chooseMode} aria-label='Choose Wordle mode'><WordleMark class='wordle-logo'/></button>
+      </Show>
+      <Show when={!showOpening()}>
+        <button type='button' class='wordle-mode-switch' onClick={chooseMode}>{hard.mode === 'daily' ? 'Daily' : hard.mode === 'random' ? 'Random' : 'Advanced'}</button>
+      </Show>
       <div class='wordle-nav-spacer' />
-      <StatsPageTrigger />
+      <Show when={!showOpening()}><StatsPageTrigger /></Show>
       <button type='button' class='wordle-nav-button wordle-appearance-trigger' data-samey-appearance aria-label='Appearance' aria-expanded='false'>
         <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12'/></svg>
       </button>

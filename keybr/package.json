@@ -11,10 +11,9 @@
   ],
   "scripts": {
     "clean": "rm -rf dist node_modules",
-    "build": "bun ./scripts/check-workspaces.mjs && NODE_ENV=production bun ./scripts/build-webpack.mjs",
-    "build:dev": "bun ./scripts/check-workspaces.mjs && NODE_ENV=development bun ./scripts/build-webpack.mjs",
-    "dev": "bun ./scripts/check-workspaces.mjs && NODE_ENV=development bun ./scripts/build-webpack.mjs --watch",
-    "check:workspaces": "bun ./scripts/check-workspaces.mjs"
+    "build": "NODE_ENV=production bun ./scripts/build-webpack.mjs",
+    "build:dev": "NODE_ENV=development bun ./scripts/build-webpack.mjs",
+    "dev": "NODE_ENV=development bun ./scripts/build-webpack.mjs --watch"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
@@ -28,12 +27,11 @@
     "css-minimizer-webpack-plugin": "^8.0.0",
     "less": "^4.9.0",
     "less-loader": "^13.0.0",
-    "mini-css-extract-plugin": "^2.10.1",
-    "terser-webpack-plugin": "^5.4.0",
+    "mini-css-extract-plugin": "^2.10.2",
+    "terser-webpack-plugin": "^5.6.1",
     "ts-loader": "^9.6.2",
     "typescript": "^6.0.3",
-    "webpack": "^5.109.2",
-    "webpack-cli": "^7.2.2"
+    "webpack": "^5.109.2"
   },
   "description": "A local-only, frontend-only adaptive typing trainer derived from keybr.com.",
   "packageManager": "bun@1.2.20",

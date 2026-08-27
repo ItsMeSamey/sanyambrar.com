@@ -62,3 +62,17 @@ button{cursor:pointer}
 @media(max-width:700px){.chain-topbar{width:calc(100% - 24px)}}
 @media(max-width:520px){.chain-title{max-width:26vw}.chain-turn-item>span:first-child{font-size:0}.chain-turn-item>span:first-child::after{font-size:9px}.chain-turn-item:first-child>span:first-child::after{content:'YOU'}.chain-turn-item:last-child>span:first-child::after{content:'TURN'}}
 @media(max-width:380px){.chain-topbar{width:calc(100% - 12px);gap:4px}.chain-title{font-size:9px;letter-spacing:.04em;max-width:25vw}.chain-turn{gap:5px}.chain-turn-item{gap:3px}.chain-turn-swatch{width:10px;height:10px}.chain-top-actions{gap:0}.chain-opening{padding:54px 8px 20px}.chain-mode-card{padding:16px}.chain-result{width:calc(100% - 12px);padding:14px}}
+
+/* Portfolio identity on the game picker; game identity once a match is open. */
+.chain-opening-topbar{position:absolute;top:10px;left:50%;z-index:40;width:min(calc(100% - 44px),1036px);height:36px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;transform:translateX(-50%)}
+.chain-home-brand{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;height:36px;color:var(--site-fg,#121213);text-decoration:none;font-weight:760;letter-spacing:-.025em;white-space:nowrap}
+.chain-home-brand .home-brand-name{position:relative;overflow:hidden;text-overflow:ellipsis}
+.chain-home-brand .home-brand-name::after{content:"";position:absolute;left:0;right:100%;bottom:-3px;height:1px;background:currentColor;transition:right 140ms ease}
+.chain-home-brand .home-brand-cue{padding:3px 5px;border:1px solid var(--site-line,#d3d6da);border-radius:4px;color:var(--site-muted,#787c7e);font-size:.55rem;line-height:1;letter-spacing:.1em}
+.chain-home-brand:hover .home-brand-name::after,.chain-home-brand:focus-visible .home-brand-name::after{right:0}.chain-home-brand:hover .home-brand-cue,.chain-home-brand:focus-visible .home-brand-cue{color:var(--site-fg);border-color:currentColor}
+.chain-opening-actions{justify-self:end;display:flex;align-items:center}.chain-opening-actions .chain-appearance-trigger{position:static}
+.chain-logo-button{display:flex;align-items:center;max-width:none;overflow:visible}
+.chain-header-logo{display:flex;align-items:center;gap:5px;font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.05em}
+.chain-header-logo svg{width:44px;height:18px;overflow:visible}.chain-header-logo .chain-link,.chain-header-logo .chain-burst{fill:none;stroke:var(--site-line,#d3d6da);stroke-width:2;stroke-linecap:square}.chain-header-logo .chain-cell{stroke:var(--site-bg,#fff);stroke-width:1.5}.chain-header-logo .chain-cell-a{fill:#6aaa64}.chain-header-logo .chain-cell-core{fill:#c9b458}.chain-header-logo .chain-cell-b{fill:#d46a6a}
+@media(max-width:700px){.chain-opening-topbar{width:calc(100% - 24px)}}
+@media(max-width:420px){.chain-opening-topbar{width:calc(100% - 16px)}.chain-home-brand{font-size:.86rem;gap:6px}.chain-home-brand .home-brand-cue{font-size:.5rem}.chain-header-logo{font-size:8px;gap:3px}.chain-header-logo svg{width:36px}}

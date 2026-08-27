@@ -34,6 +34,7 @@ export function mountTools() {
 
   let disposeTool = () => {};
   let monacoPromise;
+  let ensureLanguage = async () => {};
   let monacoThemeListener = null;
 
   const setContext = html => { context.innerHTML = html || ''; };
@@ -56,23 +57,6 @@ export function mountTools() {
   };
   addEventListener('popstate', onRouteChange);
   addEventListener('samey-solid-routechange', onRouteChange);
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const existing = [...document.scripts].find(script => script.src === src);
-      if (existing) {
-        if (globalThis.require?.config || existing.dataset.loaded) resolve();
-        else existing.addEventListener('load', resolve, { once: true });
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.addEventListener('load', () => { script.dataset.loaded = '1'; resolve(); }, { once: true });
-      script.addEventListener('error', reject, { once: true });
-      document.head.append(script);
-    });
-  }
 
   function siteMonacoTheme(monaco) {
     const style = getComputedStyle(document.documentElement);
@@ -123,24 +107,17 @@ export function mountTools() {
   }
 
   function ensureMonaco() {
-    if (globalThis.monaco?.editor) {
-      siteMonacoTheme(globalThis.monaco);
-      return Promise.resolve(globalThis.monaco);
-    }
     if (monacoPromise) return monacoPromise;
-    const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs';
-    monacoPromise = loadScript(`${base}/loader.js`).then(() => new Promise((resolve, reject) => {
-      globalThis.require.config({ paths: { vs: base } });
-      globalThis.MonacoEnvironment = globalThis.MonacoEnvironment || {};
-      globalThis.require(['vs/editor/editor.main'], () => {
-        siteMonacoTheme(globalThis.monaco);
-        if (!monacoThemeListener) {
-          monacoThemeListener = () => siteMonacoTheme(globalThis.monaco);
-          addEventListener('samey-themechange', monacoThemeListener);
-        }
-        resolve(globalThis.monaco);
-      }, reject);
-    }));
+    monacoPromise = import('../monaco.ts').then(module => {
+      const { monaco } = module;
+      ensureLanguage = module.ensureMonacoLanguage;
+      siteMonacoTheme(monaco);
+      if (!monacoThemeListener) {
+        monacoThemeListener = () => siteMonacoTheme(monaco);
+        addEventListener('samey-themechange', monacoThemeListener);
+      }
+      return monaco;
+    });
     return monacoPromise;
   }
 
@@ -412,6 +389,8 @@ export function mountTools() {
     const left = get('left', get('text', 'Hello World\n\nThis is the original text.'));
     const right = get('right', 'Hello World\n\nThis is the modified text.');
     let language = get('language', 'plaintext');
+    await ensureLanguage(language);
+    if (route() !== 'diff') return;
     root.innerHTML = '<section class="diff-monaco"><div id="diff-editor" class="monaco-host"></div></section>';
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
@@ -429,8 +408,10 @@ export function mountTools() {
     diff.setModel({ original, modified });
     const setTopContext = () => {
       setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap>Swap</button>`);
-      context.querySelector('[data-diff-language]').onchange = event => {
+      context.querySelector('[data-diff-language]').onchange = async event => {
         language = event.target.value; set('language', language);
+        await ensureLanguage(language);
+        if (route() !== 'diff') return;
         monaco.editor.setModelLanguage(original, language); monaco.editor.setModelLanguage(modified, language);
       };
       context.querySelector('[data-diff-swap]').onclick = () => {
@@ -575,6 +556,8 @@ export function mountTools() {
   async function markdownTool() {
     loadingEditor();
     const monaco = await ensureMonaco();
+    if (route() !== 'markdown') return;
+    await ensureLanguage('markdown');
     if (route() !== 'markdown') return;
     const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Live local preview\n- Source-aware linked scrolling');
     let linked = localGet('markdown', 'linked', '1') !== '0';

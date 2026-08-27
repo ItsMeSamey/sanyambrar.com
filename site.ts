@@ -8,7 +8,6 @@ export async function generateSite(root:string){
   await Promise.all([
     writeFile(join(root,'index.html'),shell('Sanyam Brar','home')),
     writeFile(join(root,'work.html'),shell('Work · Sanyam Brar','work')),
-    writeFile(join(root,'lab.html'),shell('Lab · Sanyam Brar','lab')),
     writeFile(join(root,'tools.html'),shell('Tools · Sanyam Brar','tools')),
     writeFile(join(root,'chain.html'),shell('Chain Reaction','chain')),
     writeFile(join(root,'blog','index.html'),shell('Writing · Sanyam Brar','blog','../')),

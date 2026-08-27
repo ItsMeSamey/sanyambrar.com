@@ -595,3 +595,17 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-nav-title{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:380px){.wordle-nav{width:calc(100% - 12px)!important;gap:2px}.wordle-nav-title{font-size:12px;max-width:22vw}.wordle-mode-switch{max-width:24vw;font-size:.62rem}.wordle-nav-button,.settings-trigger{width:32px;height:32px}.wordle-key-row{gap:2px}.wordle-key-row-offset{padding-inline:3%}}
 @media(max-height:560px){.wordle-game-shell{padding-top:calc(var(--wordle-nav-height) + 3px);padding-bottom:4px;gap:3px}.wordle-key{height:clamp(2rem,8vh,2.75rem)}}
+
+/* Game header identity. The landing screen belongs to the portfolio; the game
+   identity only takes over after a challenge has been selected. */
+.wordle-home-brand{display:inline-flex;align-items:center;gap:8px;min-width:0;height:36px;color:var(--color-foreground);text-decoration:none;font-weight:760;letter-spacing:-.025em;white-space:nowrap}
+.wordle-home-brand span{position:relative}
+.wordle-home-brand span::after{content:"";position:absolute;left:0;right:100%;bottom:-3px;height:1px;background:currentColor;transition:right 140ms ease}
+.wordle-home-brand small{padding:3px 5px;border:1px solid var(--color-border);border-radius:4px;color:var(--color-muted-foreground);font-size:.55rem;line-height:1;letter-spacing:.1em}
+.wordle-home-brand:hover span::after,.wordle-home-brand:focus-visible span::after{right:0}
+.wordle-home-brand:hover small,.wordle-home-brand:focus-visible small{color:var(--color-foreground);border-color:currentColor}
+.wordle-logo{display:flex;align-items:center;gap:2px;padding:0;border:0;background:transparent}
+.wordle-logo i{display:grid;place-items:center;width:22px;height:22px;color:#fff;background:#6aaa64;font:850 9px/1 var(--site-font,system-ui);font-style:normal}
+.wordle-logo i:nth-child(2),.wordle-logo i:nth-child(5){background:#c9b458}.wordle-logo i:nth-child(3){background:#787c7e}
+.wordle-logo:hover{opacity:.86}
+@media(max-width:520px){.wordle-home-brand{font-size:.86rem;gap:6px}.wordle-home-brand small{font-size:.5rem}.wordle-logo{gap:1px}.wordle-logo i{width:19px;height:19px;font-size:8px}}

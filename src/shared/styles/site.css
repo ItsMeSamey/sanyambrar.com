@@ -75,19 +75,9 @@ body [role=dialog]:not(.site-search-panel){
 .site-search-backdrop{animation:samey-backdrop-in var(--site-medium) ease both}
 @keyframes samey-backdrop-in{from{opacity:0}to{opacity:1}}
 
-/* Navigation swaps are one continuous surface. */
-body>main{view-transition-name:samey-page}
-.top{view-transition-name:samey-top}
-::view-transition-group(samey-page){animation-duration:240ms;animation-timing-function:var(--site-ease)}
-::view-transition-old(samey-page){animation:samey-page-out 190ms var(--site-ease) both}
-::view-transition-new(samey-page){animation:samey-page-in 240ms var(--site-ease) both}
-::view-transition-old(samey-top),::view-transition-new(samey-top){animation-duration:160ms}
-@keyframes samey-page-out{to{opacity:0;transform:scale(.965);filter:blur(1px)}}
-@keyframes samey-page-in{from{opacity:0;transform:scale(.955);filter:blur(1px)}to{opacity:1;transform:scale(1);filter:none}}
-html[data-nav-direction=home]::view-transition-old(samey-page){animation:samey-page-home-out 200ms var(--site-ease) both}
-html[data-nav-direction=home]::view-transition-new(samey-page){animation:samey-page-home-in 250ms var(--site-ease) both}
-@keyframes samey-page-home-out{to{opacity:0;transform:scale(.92)}}
-@keyframes samey-page-home-in{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+/* Route transitions are driven from the SPA with the Web Animations API.
+   Keeping the timing in one JS path avoids browser-specific View Transition failures. */
+.site-route{will-change:opacity,transform}
 
 /* Loading cursor: six-lobed sine circle supplied by the site runtime. */
 .samey-cursor-loading{display:none;position:absolute;inset:0;width:64px;height:64px;overflow:visible;transform:scale(.375);transform-origin:center}
@@ -102,7 +92,6 @@ html[data-nav-direction=home]::view-transition-new(samey-page){animation:samey-p
 
 @media(prefers-reduced-motion:reduce){
   .game-settings-popover,.samey-theme-panel:not([hidden]),body [role=dialog],.site-search-panel,.site-search-backdrop{animation:none!important}
-  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
 }
 
 
@@ -118,3 +107,9 @@ html[data-nav-direction=home]::view-transition-new(samey-page){animation:samey-p
 .game-settings-slider:hover input[type=range]::-webkit-slider-thumb,.game-settings-slider input[type=range]:focus-visible::-webkit-slider-thumb,.game-settings-slider input[type=range]:active::-webkit-slider-thumb{opacity:1!important}
 .game-settings-slider input[type=range]::-moz-range-thumb{opacity:0!important}
 .game-settings-slider:hover input[type=range]::-moz-range-thumb,.game-settings-slider input[type=range]:focus-visible::-moz-range-thumb,.game-settings-slider input[type=range]:active::-moz-range-thumb{opacity:1!important}
+
+/* Solid SPA root geometry. */
+html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
+#site-root,#solid-site-app{width:100%}
+.site-route{width:100%;min-width:0;min-height:100dvh}
+.site-route.tools-page,.site-route.site-page-chain{height:100dvh;min-height:0;overflow:hidden}

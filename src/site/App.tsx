@@ -4,7 +4,6 @@ import { details } from './data';
 const loaders = {
   home: () => import('./pages/Home'),
   work: () => import('./pages/Work'),
-  lab: () => import('./pages/Lab'),
   tools: () => import('./pages/Tools'),
   chain: () => import('./pages/Chain'),
   project: () => import('./pages/Project'),
@@ -13,7 +12,6 @@ const loaders = {
 
 const Home = lazy(() => loaders.home().then(m => ({ default: m.Home })));
 const Work = lazy(() => loaders.work().then(m => ({ default: m.Work })));
-const Lab = lazy(() => loaders.lab().then(m => ({ default: m.Lab })));
 const Tools = lazy(() => loaders.tools().then(m => ({ default: m.ToolsPage })));
 const Chain = lazy(() => loaders.chain().then(m => ({ default: m.ChainPage })));
 const Project = lazy(() => loaders.project().then(m => ({ default: m.ProjectPage })));
@@ -27,7 +25,6 @@ function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
   if (path === '/' || /\/index$/.test(path)) return { key: 'home', kind: 'home' };
   if (/\/work$/.test(path)) return { key: 'work', kind: 'work' };
-  if (/\/lab$/.test(path)) return { key: 'lab', kind: 'lab' };
   if (/\/tools$/.test(path)) return { key: 'tools', kind: 'tools' };
   if (/\/chain$/.test(path)) return { key: 'chain', kind: 'chain' };
   if (/\/blog(?:\/index)?$/.test(path)) return { key: 'blog', kind: 'blog' };
@@ -39,6 +36,35 @@ function routeFromUrl(url: URL): Route | null {
 const isStandaloneApp = (url: URL) => /\/(?:wordle|keybr)(?:\.html)?\/?$/.test(url.pathname);
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
 const preload = (route: Route) => loaders[route.kind]();
+
+const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+async function animateRouteSwap(commit: () => void, homeward = false) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const oldRoute = document.querySelector<HTMLElement>('.site-route');
+  if (reduced || !oldRoute?.animate) { commit(); return; }
+
+  const out = oldRoute.animate(
+    homeward
+      ? [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.94)' }]
+      : [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'translateY(-4px) scale(.982)' }],
+    { duration: 130, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
+  );
+  try { await out.finished; } catch {}
+  out.cancel();
+  commit();
+  await nextFrame();
+
+  const newRoute = document.querySelector<HTMLElement>('.site-route');
+  if (!newRoute?.animate) return;
+  const enter = newRoute.animate(
+    homeward
+      ? [{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1)' }]
+      : [{ opacity: 0, transform: 'translateY(6px) scale(.975)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }],
+    { duration: 210, easing: 'cubic-bezier(.22,1,.36,1)' },
+  );
+  try { await enter.finished; } catch {}
+}
 
 export function App() {
   const initial = routeFromUrl(new URL(location.href)) || { key: 'home', kind: 'home' as const };
@@ -55,14 +81,13 @@ export function App() {
     else delete document.documentElement.dataset.backHref;
     document.title = next.kind === 'home' ? 'Sanyam Brar'
       : next.kind === 'work' ? 'Work · Sanyam Brar'
-      : next.kind === 'lab' ? 'Lab · Sanyam Brar'
       : next.kind === 'tools' ? 'Tools · Sanyam Brar'
       : next.kind === 'chain' ? 'Chain Reaction'
       : next.kind === 'blog' ? 'Writing · Sanyam Brar'
       : `${details[next.slug!]?.title || 'Project'} · Sanyam Brar`;
   };
 
-  const finishNavigation = (next: Route, url: URL, replace: boolean) => {
+  const commitNavigation = (next: Route, url: URL, replace: boolean) => {
     dispatchEvent(new Event('samey-pageleave'));
     setRoute(next);
     syncDocument(next);
@@ -73,6 +98,15 @@ export function App() {
       else scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
       dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } }));
     });
+  };
+
+  const finishNavigation = async (next: Route, url: URL, replace: boolean) => {
+    document.documentElement.dataset.navDirection = next.kind === 'home' ? 'home' : 'forward';
+    try {
+      await animateRouteSwap(() => commitNavigation(next, url, replace), next.kind === 'home');
+    } finally {
+      delete document.documentElement.dataset.navDirection;
+    }
   };
 
   const navigate = async (href: string, replace = false) => {
@@ -90,7 +124,7 @@ export function App() {
     try {
       await preload(next);
       if (id !== navigationId) return;
-      finishNavigation(next, url, replace);
+      await finishNavigation(next, url, replace);
     } catch (error) {
       if (id === navigationId) dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: url.href, error } }));
     } finally {
@@ -127,12 +161,26 @@ export function App() {
       const next = routeFromUrl(new URL(location.href));
       if (!next) return;
       const id = ++navigationId;
-      void preload(next).then(() => {
+      document.documentElement.dataset.solidLoading = '';
+      void preload(next).then(async () => {
         if (id !== navigationId) return;
-        dispatchEvent(new Event('samey-pageleave'));
-        setRoute(next);
-        syncDocument(next);
-        queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })));
+        document.documentElement.dataset.navDirection = next.kind === 'home' ? 'home' : 'forward';
+        try {
+          await animateRouteSwap(() => {
+            dispatchEvent(new Event('samey-pageleave'));
+            setRoute(next);
+            syncDocument(next);
+            queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })));
+          }, next.kind === 'home');
+        } finally {
+          delete document.documentElement.dataset.navDirection;
+          if (id === navigationId) delete document.documentElement.dataset.solidLoading;
+        }
+      }).catch(error => {
+        if (id === navigationId) {
+          delete document.documentElement.dataset.solidLoading;
+          dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: location.href, error } }));
+        }
       });
     };
 
@@ -154,7 +202,6 @@ export function App() {
       <Switch>
         <Match when={route().kind === 'home'}><div class="site-route site-standard"><Home /></div></Match>
         <Match when={route().kind === 'work'}><div class="site-route site-standard"><Work /></div></Match>
-        <Match when={route().kind === 'lab'}><div class="site-route site-standard"><Lab /></div></Match>
         <Match when={route().kind === 'tools'}><div class="site-route tools-page"><Tools /></div></Match>
         <Match when={route().kind === 'chain'}><div class="site-route site-page-chain"><Chain /></div></Match>
         <Match when={route().kind === 'blog'}><div class="site-route site-standard"><Blog /></div></Match>

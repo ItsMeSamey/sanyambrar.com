@@ -4,7 +4,7 @@ A static portfolio that behaves like one application.
 
 ## Architecture
 
-`site.ts` is the content and page-generation source of truth for Home, Work, Lab, project pages, navigation metadata, and the static search index. `build.ts` builds into temporary state and publishes transactionally into `docs/`, including gzip/Brotli sidecars and source/runtime audits.
+`site.ts` is the content and page-generation source of truth for Home, Work, project pages, navigation metadata, and the static search index. `build.ts` builds into temporary state and publishes transactionally into `docs/`, including gzip/Brotli sidecars.
 
 The shared browser shell lives in `src/shared/runtime.ts`, `src/shared/theme.ts`, `src/shared/site.ts`, and `src/shared/styles/site.css`. It owns appearance, custom cursors, loading state, virtual scrollbars, context menus, search, internal navigation, prefetching, and View Transition page swaps. Internal pages, including `/tools`, are fetched lazily and swapped without unloading the shell. Heavy game applications (`/wordle`, `/chain`, `/keybr`) are also lazy-loaded into an isolated same-origin app frame, so navigating to a game does not unload the top-level site document.
 
@@ -22,7 +22,6 @@ Work
   Projects
   Open-source contributions
 
-Lab
   Small interactive experiments
 
 Projects

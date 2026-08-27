@@ -1800,26 +1800,6 @@
 			tags: ["go", "http"]
 		}
 	];
-	var labs = [
-		{
-			title: "IEEE-754 microscope",
-			href: "/lab#float",
-			kind: "Lab",
-			note: "Inspect sign, exponent and mantissa bits of a float32."
-		},
-		{
-			title: "Unicode lens",
-			href: "/lab#unicode",
-			kind: "Lab",
-			note: "Break text into code points and UTF-8 bytes."
-		},
-		{
-			title: "Hash avalanche",
-			href: "/lab#hash",
-			kind: "Lab",
-			note: "Compare SHA-256 bit flips from tiny input changes."
-		}
-	];
 	var searchIndex = [
 		...games,
 		...tools,
@@ -1827,7 +1807,6 @@
 		...projects,
 		...moreProjects,
 		...contributions,
-		...labs,
 		{
 			title: "Home",
 			href: "/",
@@ -1839,12 +1818,6 @@
 			href: "/work",
 			kind: "Page",
 			note: "Projects and open-source contributions."
-		},
-		{
-			title: "Lab",
-			href: "/lab",
-			kind: "Page",
-			note: "Small technical experiments."
 		}
 	];
 	//#endregion
