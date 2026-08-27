@@ -1,7 +1,6 @@
 import { TOOLS } from '../../shared/catalog.ts';
-import { HomeBrand } from '../../shared/components/Brand.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
-import { PrimaryNav, TopBar } from '../components/SiteChrome.tsx';
+import { TopBar } from '../../shared/components/TopBar.tsx';
 
 function ToolTabs() {
   return <nav class="tool-tabs" aria-label="Tools">{TOOLS.map(tool =>
@@ -15,11 +14,7 @@ export function ToolsPage() {
     load={() => import('../engines/tools.ts')}
     mount={module => module.mountTools()}
   >
-    <TopBar class="tools-top" brand={<HomeBrand class="tools-home-brand"/>}>
-      <ToolTabs/>
-      <div class="tool-context" id="tool-context" aria-live="polite"/>
-      <PrimaryNav class="top-nav tools-site-nav"/>
-    </TopBar>
+    <TopBar contextClass="tools-topbar-context" context={<><ToolTabs/><div class="tool-context" id="tool-context" aria-live="polite"/></>}/>
     <main id="tools-root" class="tools-app"><div class="tools-view" aria-live="polite"/></main>
   </EngineBoundary>;
 }

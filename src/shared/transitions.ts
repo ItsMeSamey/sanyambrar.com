@@ -1,7 +1,26 @@
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const twoFrames = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+const twoFrames = async () => { await nextFrame(); await nextFrame(); };
 
 type Direction = 'forward' | 'back';
+
+/** One motion contract for every page/view swap in the site. */
+export const PAGE_TRANSITION = {
+  // One timing knob for Solid routes, standalone root swaps, and mounted game views.
+  duration: 260,
+  leaveRatio: 180 / 260,
+  enterEasing: 'cubic-bezier(.22,1,.36,1)',
+  leaveEasing: 'cubic-bezier(.4,0,.2,1)',
+  opacity: .15,
+  clip: 'inset(4% 4% round 12px)',
+  forwardScale: .955,
+  backScale: .985,
+  leaveScale: 1.02,
+} as const;
+
+const leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
+
+const startScale = (direction: Direction) => `scale(${direction === 'back' ? PAGE_TRANSITION.backScale : PAGE_TRANSITION.forwardScale})`;
 
 function snapshotElement(element: HTMLElement) {
   const rect = element.getBoundingClientRect();
@@ -13,6 +32,7 @@ function snapshotElement(element: HTMLElement) {
   shell.style.setProperty('--snapshot-left', `${rect.left}px`);
   shell.style.setProperty('--snapshot-width', `${rect.width}px`);
   shell.style.setProperty('--snapshot-height', `${rect.height}px`);
+
   const clone = element.cloneNode(true) as HTMLElement;
   clone.removeAttribute('id');
   clone.querySelectorAll<HTMLElement>('[id]').forEach(node => node.removeAttribute('id'));
@@ -22,13 +42,10 @@ function snapshotElement(element: HTMLElement) {
     node.removeAttribute('aria-describedby');
   });
 
-  // cloneNode() does not preserve live form state, scroll positions, or canvas
-  // pixels. Copy them so transitions never flash stale/blank content.
   const originals = [element, ...element.querySelectorAll<HTMLElement>('*')];
   const copies = [clone, ...clone.querySelectorAll<HTMLElement>('*')];
-  for (let index = 0; index < Math.min(originals.length, copies.length); index++) {
-    const source = originals[index];
-    const target = copies[index];
+  for (let i = 0; i < Math.min(originals.length, copies.length); i++) {
+    const source = originals[i], target = copies[i];
     target.scrollTop = source.scrollTop;
     target.scrollLeft = source.scrollLeft;
     if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
@@ -37,7 +54,7 @@ function snapshotElement(element: HTMLElement) {
     else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
     else if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
       target.width = source.width; target.height = source.height;
-      try { target.getContext('2d')?.drawImage(source, 0, 0) } catch {}
+      try { target.getContext('2d')?.drawImage(source, 0, 0); } catch {}
     }
   }
   shell.append(clone);
@@ -45,93 +62,61 @@ function snapshotElement(element: HTMLElement) {
   return shell;
 }
 
+function primeIncoming(element: HTMLElement, direction: Direction) {
+  element.style.opacity = String(PAGE_TRANSITION.opacity);
+  element.style.transform = startScale(direction);
+  element.style.clipPath = PAGE_TRANSITION.clip;
+}
+
+function animateIncoming(element: HTMLElement, direction: Direction) {
+  return element.animate([
+    { opacity: PAGE_TRANSITION.opacity, transform: startScale(direction), clipPath: PAGE_TRANSITION.clip },
+    { opacity: 1, transform: 'scale(1)', clipPath: 'inset(0 round 0)' },
+  ], { duration: PAGE_TRANSITION.duration, easing: PAGE_TRANSITION.enterEasing, fill: 'both' });
+}
+
+function animateOutgoing(element: HTMLElement) {
+  return element.animate([
+    { opacity: 1, transform: 'scale(1)' },
+    { opacity: 0, transform: `scale(${PAGE_TRANSITION.leaveScale})` },
+  ], { duration: leaveDuration(), easing: PAGE_TRANSITION.leaveEasing, fill: 'both' });
+}
+
+function clearIncoming(element: HTMLElement) {
+  element.style.opacity = '';
+  element.style.transform = '';
+  element.style.clipPath = '';
+  element.style.pointerEvents = '';
+}
+
 export async function animateRootSwap(current: HTMLElement | null, commit: () => void | Promise<void>, next: () => HTMLElement | null, direction: Direction = 'forward') {
-  if (!current || reducedMotion() || !current.animate) {
-    await commit();
-    return;
-  }
+  if (!current || reducedMotion() || !current.animate) { await commit(); return; }
   const snapshot = snapshotElement(current);
-  try {
-    await commit();
-  } catch (error) {
-    snapshot.remove();
-    throw error;
-  }
-  // Solid and the standalone app loaders can commit DOM work in a microtask.
-  // Querying immediately can return the outgoing node, which makes the route
-  // appear to have no transition at all. Give the renderer one microtask and
-  // one frame to expose the new root before starting the enter animation.
+  try { await commit(); } catch (error) { snapshot.remove(); throw error; }
+
   await Promise.resolve();
   let incoming = next();
-  if (!incoming || incoming === current || !incoming.isConnected) {
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-    incoming = next();
-  }
-  const fromClip = direction === 'back' ? 'inset(3% 3% round 10px)' : 'inset(5% 5% round 12px)';
-  const fromScale = direction === 'back' ? 'scale(.985)' : 'scale(.955)';
-  // Apply the first frame before yielding to rAF. Otherwise the newly mounted
-  // root can paint once at full opacity, which reads as a white/dark flash.
-  if (incoming) {
-    incoming.style.opacity = '0.18';
-    incoming.style.transform = fromScale;
-    incoming.style.clipPath = fromClip;
-  }
+  if (!incoming || incoming === current || !incoming.isConnected) { await nextFrame(); incoming = next(); }
+  if (incoming) primeIncoming(incoming, direction);
   await twoFrames();
-  const incomingAnimation = incoming?.animate?.(
-    [
-      { opacity: 0.18, transform: fromScale, clipPath: fromClip },
-      { opacity: 1, transform: 'scale(1)', clipPath: 'inset(0 round 0)' },
-    ],
-    { duration: 260, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' },
-  );
-  const outgoingAnimation = snapshot.animate(
-    [
-      { opacity: 1, transform: 'scale(1)' },
-      { opacity: 0, transform: direction === 'back' ? 'scale(1.018)' : 'scale(1.025)' },
-    ],
-    { duration: 190, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
-  );
-  await Promise.allSettled([outgoingAnimation.finished, incomingAnimation?.finished ?? Promise.resolve()]);
+
+  const enter = incoming?.animate ? animateIncoming(incoming, direction) : undefined;
+  const leave = animateOutgoing(snapshot);
+  await Promise.allSettled([leave.finished, enter?.finished ?? Promise.resolve()]);
   snapshot.remove();
-  incomingAnimation?.cancel();
-  if (incoming) { incoming.style.opacity = ''; incoming.style.transform = ''; incoming.style.clipPath = ''; }
+  enter?.cancel();
+  if (incoming) clearIncoming(incoming);
 }
 
 export async function animateMountedViewSwap(from: HTMLElement, to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
-  if (reducedMotion() || !from.animate || !to.animate) {
-    commit();
-    from.hidden = true;
-    to.hidden = false;
-    return;
-  }
-  const startTransform = direction === 'back' ? 'scale(.985)' : 'scale(.955)';
-  const startClip = 'inset(4% 4% round 12px)';
-  // Prime the incoming view before it becomes paintable. Relying on the first
-  // Web Animations keyframe alone can expose one full-opacity frame on fast
-  // compositors, which is the transition flash seen on game/menu swaps.
-  to.style.opacity = '0.15';
-  to.style.transform = startTransform;
-  to.style.clipPath = startClip;
+  if (reducedMotion() || !from.animate || !to.animate) { commit(); from.hidden = true; to.hidden = false; return; }
+  primeIncoming(to, direction);
   to.style.pointerEvents = 'none';
   to.hidden = false;
   commit();
-  const enter = to.animate(
-    [
-      { opacity: 0.15, transform: startTransform, clipPath: startClip },
-      { opacity: 1, transform: 'scale(1)', clipPath: 'inset(0 round 0)' },
-    ],
-    { duration: 260, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' },
-  );
-  const leave = from.animate(
-    [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.02)' }],
-    { duration: 180, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
-  );
+  const enter = animateIncoming(to, direction);
+  const leave = animateOutgoing(from);
   await Promise.allSettled([enter.finished, leave.finished]);
   from.hidden = true;
-  enter.cancel();
-  leave.cancel();
-  to.style.opacity = '';
-  to.style.transform = '';
-  to.style.clipPath = '';
-  to.style.pointerEvents = '';
+  enter.cancel(); leave.cancel(); clearIncoming(to);
 }

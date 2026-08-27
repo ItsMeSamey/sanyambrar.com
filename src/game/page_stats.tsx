@@ -11,7 +11,9 @@ import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { HomeIconLink, WordleMark } from '../shared/components/Brand.tsx'
+import { WordleMark } from '../shared/components/Brand.tsx'
+import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
+import { SmartLink } from '../shared/components/NavLink.tsx'
 
 interface GameStats {
   totalGames: number
@@ -222,11 +224,7 @@ export default function StatsPage() {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <main class='stats-page'>
-    <nav class='wordle-subpage-nav'>
-      <button type='button' class='wordle-logo-button' onClick={() => setP(Page.Wordle)} aria-label='Back to Wordle'><WordleMark class='wordle-logo'/></button>
-      <HomeIconLink class='wordle-home-icon'/><span class='wordle-subpage-title'>Statistics</span><div class='wordle-nav-spacer'/>
-      <button type='button' class='wordle-nav-button wordle-appearance-trigger' data-samey-appearance aria-label='Appearance' aria-expanded='false'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12'/></svg></button>
-    </nav>
+    <TopBar start={<SmartLink class='wordle-home-link' href='/' aria-label='Sanyam Brar · Home'><WordleMark class='wordle-logo'/></SmartLink>} contextClass='wordle-topbar-context' context={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>

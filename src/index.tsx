@@ -1,6 +1,5 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
-import { ColorModeProvider, ColorModeScript, createLocalStorageManager } from '@kobalte/core'
 import { ErrorBoundary, Match, Switch } from 'solid-js'
 import StatsPage from './game/page_stats'
 
@@ -12,9 +11,7 @@ import Wordle from './game/page'
 import { Toaster } from '~/registry/ui/toast'
 
 const disposeWordle = render(function() {
-  const storageManager = createLocalStorageManager('ui-theme')
-  return <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
-    <ColorModeScript storageType={storageManager.type} />
+  return <>
     <Toaster class='wordle-toaster' />
 
     <div id='wordle-root'>
@@ -32,8 +29,8 @@ const disposeWordle = render(function() {
       </div>
     </div>
 
-  </ColorModeProvider>
-}, document.body)
+  </>
+}, document.getElementById('wordle-app-mount')!)
 
 
 ;(globalThis as any).SameyWordleDispose = () => { disposeWordle(); delete (globalThis as any).SameyWordleDispose }

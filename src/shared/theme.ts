@@ -4,7 +4,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 (() => {
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
   const KEY = "keybr.theme";
-  const WORDLE_KEY = "ui-theme";
   const FONT_KEY = "samey.font";
   const config = globalThis.SameyAppearanceConfig;
   if (config == null) throw new Error("Shared appearance config is not loaded");
@@ -195,7 +194,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       root.style.setProperty("--input", hsl(line));
       root.style.setProperty("--ring", hsl(theme.accent));
       root.style.setProperty("--error-foreground", hsl(theme.error));
-      try { nativeSetItem.call(localStorage, WORDLE_KEY, theme.tone); } catch {}
     }
 
     document.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
@@ -851,47 +849,20 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       document.documentElement.setAttribute(attr.name, value);
     }
   };
-  const decompressionChoices = (() => {
-    if (typeof DecompressionStream !== "function") return [];
-    const supported = [];
-    for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) {
-      try { new DecompressionStream(format); supported.push({ format, suffix }); } catch {}
-    }
-    return supported;
-  })();
   const logicalPageUrl = url => {
     const logical = new URL(url.href);
     if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
     else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
     return logical;
   };
-  const decodePageResponse = async (response, format) => {
-    if (!format) return response.text();
-    if (!response.body) throw new Error("compressed response has no body");
-    return new Response(response.body.pipeThrough(new DecompressionStream(format))).text();
-  };
   const fetchPage = async url => {
     const key = url.href;
     if (pageCache.has(key)) return pageCache.get(key);
     const task = (async () => {
       const logical = logicalPageUrl(url);
-      const attempts = logical.pathname.endsWith(".html")
-        ? [...decompressionChoices.map(choice => ({ url: new URL(logical.pathname + choice.suffix + logical.search, logical.origin), format: choice.format })), { url: logical, format: null }]
-        : [{ url: logical, format: null }];
-      let text = null;
-      for (const attempt of attempts) {
-        try {
-          const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
-          if (!candidate.ok) continue;
-          text = await decodePageResponse(candidate, attempt.format);
-          break;
-        } catch {
-          // Fetching and decoding are one attempt. If a compressed response is
-          // malformed or the browser's decompressor rejects it, try HTML next.
-        }
-      }
-      if (text === null) throw new Error("page fetch failed");
-      const doc = new DOMParser().parseFromString(text, "text/html");
+      const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
+      if (!response.ok) throw new Error("page fetch failed");
+      const doc = new DOMParser().parseFromString(await response.text(), "text/html");
       const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
       const baseUrl = new URL(baseTag || ".", logical.href);
       return { doc, baseUrl, responseUrl: logical.href };
@@ -969,7 +940,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     // animate, otherwise Keybr waits out the root timeout and appears to hang
     // or snap in with no transition.
     if (document.documentElement.dataset.siteKind === 'keybr') return document.getElementById('app');
-    return document.querySelector('#solid-site-app,#wordle-root,.site-route');
+    if (document.documentElement.hasAttribute('data-static-article')) return document.querySelector('.article-route');
+    return document.querySelector('#solid-site-app,#wordle-root,.site-route,.article-route');
   };
   const waitForDestinationRoot = async () => {
     for (let i = 0; i < 90; i++) {
@@ -1026,13 +998,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     fetchPage(url).catch(() => {});
   };
   globalThis.SameyPreloadPage = prefetch;
+  let documentNavigationMounted = false;
   const mountSpa = () => {
-    if (document.documentElement.hasAttribute("data-solid-spa") || document.documentElement.hasAttribute("data-static-article")) return;
-    markInitialPageStyles();
+    if (document.documentElement.hasAttribute("data-solid-spa")) return;
     globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
+    if (documentNavigationMounted) return;
+    documentNavigationMounted = true;
+    markInitialPageStyles();
     document.addEventListener("pointerover", event => { if (document.documentElement.hasAttribute("data-solid-spa")) return; const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); }, { passive: true });
     document.addEventListener("focusin", event => { if (document.documentElement.hasAttribute("data-solid-spa")) return; const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); });
     document.addEventListener("click", event => {
+      if (document.documentElement.hasAttribute("data-solid-spa")) return;
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const a = event.target.closest?.("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
@@ -1051,7 +1027,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); addEventListener("samey-pageload", mountSpa); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

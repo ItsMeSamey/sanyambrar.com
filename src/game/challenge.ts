@@ -1,7 +1,6 @@
 'use strict'
 
-import { WORDS } from './words/words'
-import type { WordLength } from './words'
+import { wordAt, wordCount, type WordLength } from './word-list'
 
 export type GameMode = 'daily' | 'random' | 'advanced'
 
@@ -95,16 +94,16 @@ function wordQuality(word: string): boolean {
 }
 
 function seededWord(wordLength: WordLength, seed: string): string {
-  const words = WORDS['w' + wordLength]
+  const count = wordCount(wordLength)
   const random = seeded(seed)
-  const start = Math.floor(random() * words.length)
+  const start = Math.floor(random() * count)
   // Deterministic quality pass avoids many pathological dictionary entries while
   // still guaranteeing a result from the existing word list.
-  for (let offset = 0; offset < Math.min(words.length, 512); offset++) {
-    const candidate = words[(start + offset * 7919) % words.length]
+  for (let offset = 0; offset < Math.min(count, 512); offset++) {
+    const candidate = wordAt(wordLength, (start + offset * 7919) % count)!
     if (wordQuality(candidate)) return candidate
   }
-  return words[start]
+  return wordAt(wordLength, start)!
 }
 
 export function disabledLettersForWord(word: string, count: number, seed: string): string {
@@ -219,8 +218,7 @@ export function parseChallenge(raw: string | null): UrlChallenge | undefined {
   const wordIndex = parseHex(a), wordLength = parseHex(b), maxTries = parseHex(c), disabledLetters = parseHex(d)
   if (wordIndex === undefined || wordLength === undefined || maxTries === undefined || disabledLetters === undefined) return undefined
   if (wordLength < 3 || wordLength > 20 || maxTries < 1 || maxTries > 50 || disabledLetters > 12) return undefined
-  const words = WORDS['w' + wordLength]
-  if (!words || wordIndex >= words.length) return undefined
+  if (wordIndex >= wordCount(wordLength as WordLength)) return undefined
   return {
     hard: {
       mode: mode === 'r' ? 'random' : 'advanced',

@@ -18,21 +18,32 @@ export function SearchButton() {
   </button>;
 }
 
-export function TopBar(props:{class?:string; brandClass?:string; brandHref?:string; brand?:JSX.Element; children?:JSX.Element}) {
-  return <header class={`top site-topbar${props.class ? ` ${props.class}` : ''}`}>
-    {props.brand ?? <HomeBrand class={props.brandClass ? `${props.brandClass} home-brand-link` : 'brand home-brand-link'} href={props.brandHref || '/'}/>} 
-    {props.children}
-  </header>;
-}
-
-export function PrimaryNav(props:{active?:string; class?:string; search?:boolean}) {
-  return <nav class={`${props.class || 'top-nav'} site-topbar-nav`} aria-label="Primary">
-    {SITE_NAV.map(item => <SmartLink href={item.href} aria-current={item.label.toLowerCase() === props.active ? 'page' : undefined}>{item.label}</SmartLink>)}
+export function PrimaryNav() {
+  return <nav class="top-nav site-topbar-nav" aria-label="Primary">
+    {SITE_NAV.map(item => <SmartLink href={item.href}>{item.label}</SmartLink>)}
     <AppearanceButton/>
-    {props.search !== false && <SearchButton/>}
+    <SearchButton/>
   </nav>;
 }
 
-export function SiteHeader(props:{active?:string}) {
-  return <TopBar><PrimaryNav active={props.active}/></TopBar>;
+/**
+ * The only site top bar implementation.
+ * Pages customize content through slots, never by creating another header/bar.
+ */
+export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string}) {
+  return <header class="top site-topbar">
+    <div class="site-topbar-inner site-topbar-inner-contained">
+      <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
+      <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
+      <PrimaryNav/>
+    </div>
+  </header>;
+}
+
+export function BackLink(props:{id?:string;href?:string;onClick?:JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;class?:string;children:JSX.Element}) {
+  const className = `backline${props.class ? ` ${props.class}` : ''}`;
+  const content = <><span class="backline-mark" aria-hidden="true">{'<'}</span><span>{props.children}</span></>;
+  return props.href
+    ? <SmartLink id={props.id} class={className} href={props.href}>{content}</SmartLink>
+    : <button id={props.id} class={className} type="button" onClick={props.onClick}>{content}</button>;
 }

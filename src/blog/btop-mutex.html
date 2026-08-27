@@ -8,11 +8,12 @@
   <title>btop's broken lock · Sanyam Brar</title>
   <link vite-ignore rel="stylesheet" href="../../site.css" data-samey-shared>
   <script vite-ignore src="../../shared-runtime.js"></script>
-  <script type="module" src="./btop-lock.ts"></script>
+  <script type="module" src="./shell.tsx"></script>
 </head>
 <body>
-  <div data-site-topbar data-active="blog"></div>
-  <main>
+  <div class="article-route site-route">
+    <div id="article-chrome"></div>
+    <main>
     <header class="article-head">
       <h1>btop's broken lock</h1>
       <p class="dek">the mutex that wasn't</p>
@@ -331,6 +332,7 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
     <p>If you use btop, contribute in whatever way fits. Fix an issue. Reproduce a crash. Run a sanitizer build. Review a concurrency change. Improve a test. Sponsor the project.</p>
 
     <p>I started with a crash I could barely reproduce. A year later, following the sanitizer reports and the synchronization around them led to the broken lock and the races in #1042.</p>
-  </main>
+    </main>
+  </div>
 </body>
 </html>

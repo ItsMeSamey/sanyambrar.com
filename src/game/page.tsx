@@ -8,12 +8,14 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { binarySearch, calcDiff, getGuessWord, getRandomWord, hasPrefix, KindEnum, setDone } from './words'
-import { WORDS } from './words/words'
+import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
+import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
-import { HomeBrand, HomeIconLink, WordleMark } from '../shared/components/Brand.tsx'
+import { WordleMark } from '../shared/components/Brand.tsx'
+import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
+import { SmartLink } from '../shared/components/NavLink.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
@@ -116,12 +118,10 @@ export interface WordLocalStorageState {
 }
 
 class GameState {
-  allWords: string[]
   state: CurrentState
   history: [string, string][]
 
   constructor(public soft: SettingsSoftProps, public hard: SettingsHardProps, public stateStore: LocalstorageStore<WordLocalStorageState>) {
-    this.allWords = WORDS['w' + hard.wordLength]
     const stored = this.stateStore.current_value!
 
     if (!stored.word) {
@@ -130,10 +130,10 @@ class GameState {
         stored.word = daily.word
         stored.disabled = daily.disabled
       } else {
-        if (Number.isInteger(hard.wordIndex)) stored.word = this.allWords[hard.wordIndex!] ?? ''
+        if (Number.isInteger(hard.wordIndex)) stored.word = wordAt(hard.wordLength, hard.wordIndex!) ?? ''
         if (!stored.word) {
           stored.word = getRandomWord(hard.wordLength)
-          hard.wordIndex = this.allWords.indexOf(stored.word)
+          hard.wordIndex = binarySearch(hard.wordLength, stored.word)
         }
         stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       }
@@ -168,7 +168,7 @@ class GameState {
   isFinished() { return this.stateStore.current_value!.done !== undefined }
 
   existsPrefix(prefix: string) {
-    return hasPrefix(this.allWords, prefix)
+    return hasPrefix(this.hard.wordLength, prefix)
   }
 
   persist() {
@@ -365,7 +365,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       if (config.mode === 'daily' && config.dailyDate) {
         stored.word = getDailyChallenge(config.dailyDate, config.dailyVersion ?? DAILY_CHALLENGE_VERSION).word
       } else if (Number.isInteger(stored.wordIndex)) {
-        stored.word = WORDS['w' + config.wordLength][stored.wordIndex!] ?? ''
+        stored.word = wordAt(config.wordLength, stored.wordIndex!) ?? ''
       }
     }
     return stored
@@ -376,8 +376,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     if (config.mode === 'daily') {
       delete stored.wordIndex
     } else if (stored.word) {
-      const words = WORDS['w' + config.wordLength]
-      const index = binarySearch(words, stored.word.toLowerCase())
+      const index = binarySearch(config.wordLength, stored.word.toLowerCase())
       if (index >= 0) stored.wordIndex = index
     }
     delete stored.word
@@ -415,20 +414,20 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
   const preview = () => getDailyChallenge(date())
   return <main class='wordle-opening'>
     <div class='wordle-opening-inner'>
-      <WordleMark class='wordle-opening-mark' />
+      <h1>Pick a game.</h1>
       <div class='wordle-mode-grid'>
         <section class='wordle-mode-card wordle-mode-card-primary'>
-          <h2>Daily</h2>
+          <h2>Daily</h2><p>New words, daily.</p>
           <label class='wordle-date-control'><span>Date</span><input type='date' value={date()} max={localDateKey()} onInput={e => setDate(e.currentTarget.value)} /></label>
           <div class='wordle-mode-spec'>{preview().wordLength} letters · {preview().maxTries} guesses · {preview().disabledLetters} disabled</div>
           <button class='wordle-mode-action' onClick={startDaily}>Play</button>
         </section>
         <section class='wordle-mode-card'>
-          <h2>Random</h2>
+          <h2>Random</h2><p>You never know what to expect.</p>
           <button class='wordle-mode-action' onClick={startRandom}>Play</button>
         </section>
         <section class='wordle-mode-card'>
-          <h2>Advanced</h2>
+          <h2>Advanced</h2><p>Unparalleled customization.</p>
           <button class='wordle-mode-action' onClick={startAdvanced}>Configure</button>
         </section>
       </div>
@@ -450,14 +449,16 @@ function setChallengeQuery(config: SettingsHardProps | undefined, fastInvalidate
 
 function materializeChallenge(config: ChallengeConfig): SettingsHardProps {
   if (config.mode === 'daily') return {...config, dailyVersion: config.dailyVersion ?? DAILY_CHALLENGE_VERSION}
-  const words = WORDS['w' + config.wordLength]
-  const wordIndex = Number.isInteger(config.wordIndex) ? config.wordIndex! : Math.floor(Math.random() * words.length)
+  const wordIndex = Number.isInteger(config.wordIndex) ? config.wordIndex! : Math.floor(Math.random() * wordCount(config.wordLength))
   return {...config, wordIndex, randomId: config.mode === 'random' ? (config.randomId ?? `url-${wordIndex.toString(16)}`) : undefined}
 }
 
 function WordleModeMark(props:{mode: SettingsHardProps['mode']}) {
   const label = () => props.mode === 'daily' ? 'DAILY' : props.mode === 'random' ? 'RANDOM' : 'ADVANCED'
-  return <span class='wordle-mode-mark' aria-label={`${label()} mode`}>{label().split('').map(letter => <i>{letter}</i>)}</span>
+  return <span class='wordle-mode-mark' aria-label={`${label()} mode`}>
+    <span class='wordle-mode-mark-full' aria-hidden='true'>{label().split('').map(letter => <i>{letter}</i>)}</span>
+    <i class='wordle-mode-mark-compact' aria-hidden='true'>{label()[0]}</i>
+  </span>
 }
 
 export default function Wordle() {
@@ -537,21 +538,11 @@ export default function Wordle() {
   }
   const gameKey = () => gameStorageKey({...hard})
 
+  const wordleIdentity = () => <SmartLink class='wordle-home-link' href='/' aria-label='Sanyam Brar · Home'><WordleMark class='wordle-logo'/></SmartLink>
+  const gameContext = () => <><BackLink onClick={chooseMode}>Modes</BackLink><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
+
   return <>
-    <nav class='wordle-nav absolute items-center top-0'>
-      <Show when={!showOpening()} fallback={<HomeBrand class='wordle-home-brand'/>}>
-        <button type='button' class='wordle-nav-title wordle-logo-button' onClick={chooseMode} aria-label='Choose Wordle mode'><WordleMark class='wordle-logo'/></button><HomeIconLink class='wordle-home-icon'/>
-      </Show>
-      <Show when={!showOpening()}>
-        <button type='button' class='wordle-mode-switch' onClick={chooseMode} aria-label='Change Wordle mode'><WordleModeMark mode={hard.mode}/></button>
-      </Show>
-      <div class='wordle-nav-spacer' />
-      <Show when={!showOpening()}><StatsPageTrigger /></Show>
-      <button type='button' class='wordle-nav-button wordle-appearance-trigger' data-samey-appearance aria-label='Appearance' aria-expanded='false'>
-        <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12'/></svg>
-      </button>
-      <Show when={!showOpening()}>{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</Show>
-    </nav>
+    <TopBar start={!showOpening() ? wordleIdentity() : undefined} contextClass='wordle-topbar-context' context={!showOpening() ? gameContext() : undefined}/>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       <For each={[gameKey()]}>{() => RenderWordleModel({...hard}, soft, nextChallenge, chooseMode)}</For>
     </Show>

@@ -67,16 +67,6 @@ const preloadUrl = (url: URL) => {
   if (next) void preload(next);
 };
 
-async function animateStandaloneExit() {
-  const route = document.querySelector<HTMLElement>('.site-route');
-  if (!route || matchMedia('(prefers-reduced-motion: reduce)').matches || !route.animate) return;
-  const animation = route.animate(
-    [{ opacity: 1, transform: 'scale(1)' }, { opacity: .72, transform: 'scale(.985)' }],
-    { duration: 120, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
-  );
-  try { await animation.finished; } catch {}
-}
-
 async function animateRouteSwap(commit: () => void, homeward = false) {
   await animateRootSwap(
     document.querySelector<HTMLElement>('.site-route'),
@@ -155,7 +145,6 @@ export function App() {
       setLoading(true);
       try {
         if (pageSwap) { await pageSwap(url.href, { replace }); return; }
-        await animateStandaloneExit();
         location.assign(url.href);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'The game could not be loaded.';
@@ -169,7 +158,17 @@ export function App() {
       return;
     }
     const next = routeFromUrl(url);
-    if (!next) { location.href = url.href; return; }
+    if (!next) {
+      const pageSwap = (globalThis as typeof globalThis & { SameyPageSwapNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyPageSwapNavigate;
+      setLoading(true);
+      try {
+        if (pageSwap) await pageSwap(url.href, {replace});
+        else location.assign(url.href);
+      } catch (error) {
+        setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.'});
+      } finally { setLoading(false); }
+      return;
+    }
     const id = ++navigationId;
     setLoading(true);
     try {
@@ -215,13 +214,7 @@ export function App() {
       if (!anchor || anchor.target || anchor.hasAttribute('download') || anchor.closest('.tool-tabs')) return;
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
-      if (isStandaloneApp(url)) {
-        event.preventDefault();
-        void navigate(url.href);
-        return;
-      }
-      const next = routeFromUrl(url);
-      if (!next && !sameDocumentHash(url)) return;
+      if (sameDocumentHash(url)) return;
       event.preventDefault();
       void navigate(url.href);
     };

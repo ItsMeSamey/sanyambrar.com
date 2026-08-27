@@ -7,9 +7,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '~/registry/ui/button'
 import { createMutable, unwrap } from 'solid-js/store'
-import { WORDS } from './words/words'
 import { showError } from '../utils/toast'
-import { WordLength, binarySearch } from './words'
+import { binarySearch, type WordLength } from './word-list'
 import { challengeUrl } from './challenge'
 
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
@@ -42,7 +41,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
           onClick={async () => {
             const wlen = props.word().length
             if (idx === -1) {
-              idx = binarySearch(WORDS['w' + wlen], props.word().toLowerCase())
+              idx = binarySearch(wlen as WordLength, props.word().toLowerCase())
 
               if (idx === -1) {
                 return showError(new Error('Word not found in the database'))

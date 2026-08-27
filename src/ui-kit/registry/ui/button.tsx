@@ -1,6 +1,4 @@
-import * as ButtonPrimitive from '@kobalte/core/button'
-import type { PolymorphicProps } from '@kobalte/core/polymorphic'
-import { splitProps, type JSX, type ValidComponent } from 'solid-js'
+import { splitProps, type JSX } from 'solid-js'
 import { cx } from '~/lib/classes'
 
 type Variant = 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link'
@@ -11,11 +9,9 @@ const variantClass: Record<Variant, string> = {
 }
 const sizeClass: Record<Size, string> = { default: 'ui-button-md', sm: 'ui-button-sm', lg: 'ui-button-lg', icon: 'ui-button-icon' }
 
-type ButtonProps<T extends ValidComponent = 'button'> = ButtonPrimitive.ButtonRootProps<T> & {
-  variant?: Variant; size?: Size; class?: string; children?: JSX.Element
-}
+type ButtonProps = JSX.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
 
-export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, ButtonProps<T>>) => {
-  const [local, rest] = splitProps(props as ButtonProps, ['variant', 'size', 'class'])
-  return <ButtonPrimitive.Root class={cx('ui-button', variantClass[local.variant ?? 'default'], sizeClass[local.size ?? 'default'], local.class)} {...rest} />
+export function Button(props: ButtonProps) {
+  const [local, rest] = splitProps(props, ['variant', 'size', 'class', 'type'])
+  return <button type={local.type ?? 'button'} class={cx('ui-button', variantClass[local.variant ?? 'default'], sizeClass[local.size ?? 'default'], local.class)} {...rest}/>
 }

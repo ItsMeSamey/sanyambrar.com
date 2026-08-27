@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
+import solid from 'vite-plugin-solid';
 import path from 'node:path';
 
 export default defineConfig({
   publicDir: false,
   plugins: [
+    solid(),
     viteSingleFile({ removeViteModuleLoader: true }),
   ],
   build: {

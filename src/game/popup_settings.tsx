@@ -6,7 +6,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { WordLength } from './words'
+import type { WordLength } from './word-list'
 import { ActiveGames } from './popup_active_games'
 import type { GameMode } from './challenge'
 

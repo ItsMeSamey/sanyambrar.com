@@ -4,12 +4,9 @@ import { cp, mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "nod
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
-import { brotliCompress, constants, gzip } from "node:zlib";
 import { generateSite } from "./site.ts";
 
 const runFile = promisify(execFile);
-const gzipAsync = promisify(gzip);
-const brotliAsync = promisify(brotliCompress);
 
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "static");
@@ -111,6 +108,32 @@ async function walk(root: string, accept: (path: string, name: string) => boolea
   };
   if (existsSync(root)) await visit(root);
   return files.sort();
+}
+
+async function verifySourceArchitecture() {
+  const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
+  const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
+  const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="top site-topbar">'));
+  must(topBarImplementations.length === 1 && relative(ROOT, topBarImplementations[0][0]) === "src/shared/components/TopBar.tsx",
+    `architecture: expected exactly one TopBar implementation, found ${topBarImplementations.map(([path]) => relative(ROOT, path)).join(", ") || "none"}`);
+
+  const retiredBars = ["tools-subbar", "wordle-context-bar", "chain-context-bar", "article-back-wrap"];
+  for (const name of retiredBars) {
+    const hits = sources.filter(([, text]) => text.includes(name)).map(([path]) => relative(ROOT, path));
+    must(hits.length === 0, `architecture: retired duplicate bar ${name} remains in ${hits.join(", ")}`);
+  }
+
+  const transitions = await readFile(join(ROOT, "src/shared/transitions.ts"), "utf8");
+  must(/duration:\s*\d+/.test(transitions) && !/enterDuration:|leaveDuration:/.test(transitions),
+    "architecture: page transition timing must come from PAGE_TRANSITION.duration");
+  must((await readFile(join(ROOT, "src/site/App.tsx"), "utf8")).includes("animateRootSwap"),
+    "architecture: Solid routes must use the shared transition runtime");
+  must((await readFile(join(ROOT, "src/game/page.tsx"), "utf8")).includes("animateRootSwap"),
+    "architecture: Wordle views must use the shared transition runtime");
+  must((await readFile(join(ROOT, "src/site/engines/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
+    "architecture: Chain views must use the shared transition runtime");
+  must((await readFile(join(ROOT, "keybr/packages/keybr-widget/lib/components/view/ViewSwitch.tsx"), "utf8")).includes("SameyAnimateLocalSwap"),
+    "architecture: Keybr views must use the shared transition runtime");
 }
 
 
@@ -233,22 +256,15 @@ async function generateServiceWorker() {
   await writeFile(join(DOCS, "sw.js"), source);
 }
 
-async function compressHtml() {
-  const pages = await walk(DOCS, (_path, name) => name.endsWith(".html"));
-  await Promise.all(pages.map(async (page) => {
-    const input = await readFile(page);
-    const [gz, br] = await Promise.all([
-      gzipAsync(input, { level: 9, mtime: 0 } as any),
-      brotliAsync(input, { params: { [constants.BROTLI_PARAM_QUALITY]: 9, [constants.BROTLI_PARAM_MODE]: constants.BROTLI_MODE_TEXT } }),
-    ]);
-    await Promise.all([writeFile(`${page}.gz`, gz), writeFile(`${page}.br`, br)]);
-  }));
+async function removeCompressionSidecars() {
   const sidecars = await walk(DOCS, (_path, name) => /\.html\.(?:gz|br)$/.test(name));
-  await Promise.all(sidecars.map(async (sidecar) => { if (!existsSync(sidecar.replace(/\.(?:gz|br)$/, ""))) await unlink(sidecar); }));
+  await Promise.all(sidecars.map(path => unlink(path)));
+  if (sidecars.length) log(`removed ${sidecars.length} obsolete HTML compression sidecars`);
 }
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, static, or all)`);
+  await verifySourceArchitecture();
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
@@ -259,7 +275,7 @@ async function main() {
   if (targets.has("solid")) jobs.push(buildSolid());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
-  await compressHtml();
+  await removeCompressionSidecars();
   if (targets.has("static")) await generateServiceWorker();
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");
 }

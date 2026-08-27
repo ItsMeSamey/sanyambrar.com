@@ -2,18 +2,6 @@
 import { searchIndex } from '../site/data.ts';
 (() => {
   const SCRIPT_ROOT = new URL('.', document.currentScript?.src || location.href);
-  const mountStaticTopBars = () => {
-    document.querySelectorAll<HTMLElement>('[data-site-topbar]').forEach(host => {
-      if (host.dataset.mounted !== undefined) return;
-      const home = new URL(document.documentElement.dataset.homeHref || host.closest('html')?.getAttribute('data-home-href') || '/', location.href);
-      const href = (path: string) => new URL(path.replace(/^\//, ''), home).href;
-      const active = host.dataset.active || '';
-      host.outerHTML = `<header class="top site-topbar"><a class="brand home-brand-link" href="${home.href}" aria-label="Sanyam Brar · Home"><span class="home-brand-name">Sanyam Brar</span><span class="home-brand-cue" aria-hidden="true">HOME</span></a><nav class="top-nav site-topbar-nav" aria-label="Primary"><a href="${home.href}"${active === 'home' ? ' aria-current="page"' : ''}>Home</a><a href="${href('work')}"${active === 'work' ? ' aria-current="page"' : ''}>Work</a><a href="${href('blog')}"${active === 'blog' ? ' aria-current="page"' : ''}>Writing</a><button class="top-icon site-topbar-icon" type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">◐</button><button class="search-trigger site-topbar-search" type="button" data-open-search aria-label="Search"><span class="site-topbar-search-icon" aria-hidden="true">⌕</span><kbd data-search-shortcut>Ctrl K</kbd></button></nav></header>`;
-    });
-  };
-  mountStaticTopBars();
-  addEventListener('samey-pageload', mountStaticTopBars);
-
   const index = searchIndex;
   const norm = s => s.toLowerCase();
   const score = (item, q) => {

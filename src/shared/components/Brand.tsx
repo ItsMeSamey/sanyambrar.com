@@ -3,12 +3,7 @@ import { SmartLink } from './NavLink.tsx';
 export function HomeBrand(props:{class?:string;href?:string}) {
   return <SmartLink class={props.class ?? 'home-brand-link'} href={props.href ?? '/'} aria-label="Sanyam Brar · Home">
     <span class="home-brand-name">Sanyam Brar</span>
-    <span class="home-brand-cue" aria-hidden="true">HOME</span>
   </SmartLink>;
-}
-
-export function HomeIconLink(props:{class?:string;href?:string}) {
-  return <SmartLink class={props.class ?? 'home-icon-link'} href={props.href ?? '/'} aria-label="Home">HOME</SmartLink>;
 }
 
 export function WordleMark(props:{class?:string}) {
