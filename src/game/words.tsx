@@ -2,11 +2,33 @@
 
 import { IDBPDatabase, openDB } from 'idb'
 import { WORDS } from './words/words.ts'
-import bsearch from 'binary-search-bounds'
 import { SettingsHardProps } from './popup_settings'
 import type { GameMode } from './challenge'
 
 export type WordLength = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
+
+
+export function binarySearch(words: readonly string[], value: string): number {
+  let lo = 0, hi = words.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1
+    const word = words[mid]
+    if (word === value) return mid
+    if (word < value) lo = mid + 1
+    else hi = mid - 1
+  }
+  return -1
+}
+
+export function hasPrefix(words: readonly string[], prefix: string): boolean {
+  let lo = 0, hi = words.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if (words[mid] < prefix) lo = mid + 1
+    else hi = mid
+  }
+  return lo < words.length && words[lo].startsWith(prefix)
+}
 
 export enum KindEnum {
   Correct = 0,
@@ -102,7 +124,7 @@ export function calcDiff(word: string, guess: string): string {
 // Gets and returns the record of the word if it exists in db
 export function getGuessWord(guess: string): boolean {
   if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
-  return -1 !== bsearch.eq(WORDS['w' + guess.length], guess.toLowerCase(), (a, b) => a === b? 0: a < b? -1: 1)
+  return binarySearch(WORDS['w' + guess.length], guess.toLowerCase()) !== -1
 }
 
 // Get a random word of length wlen

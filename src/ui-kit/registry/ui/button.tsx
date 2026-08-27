@@ -1,36 +1,21 @@
 import * as ButtonPrimitive from '@kobalte/core/button'
 import type { PolymorphicProps } from '@kobalte/core/polymorphic'
-import { cva, type VariantProps } from 'class-variance-authority'
 import { splitProps, type JSX, type ValidComponent } from 'solid-js'
-import { cn } from '~/lib/utils'
+import { cx } from '~/lib/classes'
 
-export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium outline-none transition-[transform,background-color,border-color,color] duration-150 active:scale-[.965] focus-visible:ring-2 focus-visible:ring-ring/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        outline: 'border border-input bg-background hover:bg-accent',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        link: 'text-primary underline-offset-4 hover:underline',
-      },
-      size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 px-3 text-xs',
-        lg: 'h-11 px-8',
-        icon: 'size-10',
-      },
-    },
-    defaultVariants: { variant: 'default', size: 'default' },
-  },
-)
+type Variant = 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link'
+type Size = 'default' | 'sm' | 'lg' | 'icon'
+const variantClass: Record<Variant, string> = {
+  default: 'ui-button-default', outline: 'ui-button-outline', secondary: 'ui-button-secondary',
+  ghost: 'ui-button-ghost', destructive: 'ui-button-destructive', link: 'ui-button-link',
+}
+const sizeClass: Record<Size, string> = { default: 'ui-button-md', sm: 'ui-button-sm', lg: 'ui-button-lg', icon: 'ui-button-icon' }
 
-type ButtonProps<T extends ValidComponent = 'button'> = ButtonPrimitive.ButtonRootProps<T> &
-  VariantProps<typeof buttonVariants> & { class?: string; children?: JSX.Element }
+type ButtonProps<T extends ValidComponent = 'button'> = ButtonPrimitive.ButtonRootProps<T> & {
+  variant?: Variant; size?: Size; class?: string; children?: JSX.Element
+}
 
 export const Button = <T extends ValidComponent = 'button'>(props: PolymorphicProps<T, ButtonProps<T>>) => {
   const [local, rest] = splitProps(props as ButtonProps, ['variant', 'size', 'class'])
-  return <ButtonPrimitive.Root class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)} {...rest} />
+  return <ButtonPrimitive.Root class={cx('ui-button', variantClass[local.variant ?? 'default'], sizeClass[local.size ?? 'default'], local.class)} {...rest} />
 }

@@ -1,8 +1,6 @@
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
-import tailwindcss from '@tailwindcss/vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
-import { ViteMinifyPlugin } from 'vite-plugin-minify'
 import path from 'node:path'
 import { rename, rm } from 'node:fs/promises'
 
@@ -10,7 +8,6 @@ export default defineConfig({
   publicDir: false,
   plugins: [
     solid(),
-    tailwindcss(),
     viteSingleFile({ removeViteModuleLoader: true }),
     {
       name: 'app-output-name',
@@ -19,18 +16,6 @@ export default defineConfig({
         await rm(wordle,{force:true});await rename(app,wordle)
       },
     },
-    ViteMinifyPlugin({
-      collapseBooleanAttributes: true,
-      collapseInlineTagWhitespace: true,
-      collapseWhitespace: true,
-      decodeEntities: true,
-      keepClosingSlash: true,
-      minifyCSS: true,
-      minifyJS: true,
-      sortAttributes: true,
-      sortClassName: true,
-      useShortDoctype: true,
-    }),
   ],
   resolve: { alias: { '~': path.resolve(import.meta.dirname, './src/ui-kit/') } },
   build: {

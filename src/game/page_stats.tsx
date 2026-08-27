@@ -1,6 +1,6 @@
 'use strict'
 
-import { BarChart3 } from 'lucide-solid'
+import BarChart3 from 'lucide-solid/icons/chart-no-axes-column'
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'

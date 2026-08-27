@@ -1,6 +1,6 @@
 'use strict'
 
-import { ShareIcon } from 'lucide-solid'
+import ShareIcon from 'lucide-solid/icons/share'
 import { Accessor, createSignal, JSX } from 'solid-js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog'
@@ -8,9 +8,8 @@ import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_set
 import { Button } from '~/registry/ui/button'
 import { createMutable, unwrap } from 'solid-js/store'
 import { WORDS } from './words/words'
-import bsearch from 'binary-search-bounds'
 import { showError } from '../utils/toast'
-import { WordLength } from './words'
+import { WordLength, binarySearch } from './words'
 import { challengeUrl } from './challenge'
 
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
@@ -43,10 +42,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
           onClick={async () => {
             const wlen = props.word().length
             if (idx === -1) {
-              idx = bsearch.eq(WORDS['w' + wlen], props.word().toLowerCase(), (a, b) => {
-                if (a === b) return 0
-                return a < b? -1: 1
-              })
+              idx = binarySearch(WORDS['w' + wlen], props.word().toLowerCase())
 
               if (idx === -1) {
                 return showError(new Error('Word not found in the database'))

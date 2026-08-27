@@ -8,9 +8,8 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { showError } from '../utils/toast'
 import { LocalstorageStore } from '../utils/store'
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
+import { binarySearch, calcDiff, getGuessWord, getRandomWord, hasPrefix, KindEnum, setDone } from './words'
 import { WORDS } from './words/words'
-import bsearch from 'binary-search-bounds'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
@@ -169,7 +168,7 @@ class GameState {
   isFinished() { return this.stateStore.current_value!.done !== undefined }
 
   existsPrefix(prefix: string) {
-    return -1 !== bsearch.eq(this.allWords, prefix, (a, b) => a.startsWith(b) ? 0 : a < b ? -1 : 1)
+    return hasPrefix(this.allWords, prefix)
   }
 
   persist() {
@@ -378,7 +377,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       delete stored.wordIndex
     } else if (stored.word) {
       const words = WORDS['w' + config.wordLength]
-      const index = bsearch.eq(words, stored.word.toLowerCase(), (a, b) => a === b ? 0 : a < b ? -1 : 1)
+      const index = binarySearch(words, stored.word.toLowerCase())
       if (index >= 0) stored.wordIndex = index
     }
     delete stored.word

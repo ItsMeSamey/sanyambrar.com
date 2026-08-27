@@ -15,7 +15,7 @@ const disposeWordle = render(function() {
   const storageManager = createLocalStorageManager('ui-theme')
   return <ColorModeProvider initialColorMode='system' disableTransitionOnChange={false} storageManager={storageManager}>
     <ColorModeScript storageType={storageManager.type} />
-    <Toaster class='max-sm:left-0' />
+    <Toaster class='wordle-toaster' />
 
     <div id='wordle-root'>
       <div id='wordle-view-root'>
