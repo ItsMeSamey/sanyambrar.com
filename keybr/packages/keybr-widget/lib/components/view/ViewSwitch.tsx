@@ -40,8 +40,12 @@ export function ViewSwitch({ views }: { readonly views: ViewMap }) {
   return (
     <ViewContext.Provider
       value={{
-        setView: (name, props = {}) => {
-          setView([name, props]);
+        setView: (nextName, props = {}) => {
+          const commit = () => setView([nextName, props]);
+          const root = document.getElementById('keybr-root');
+          const animate = (globalThis as any).SameyAnimateLocalSwap;
+          if (root && animate) void animate(root, commit, nextName === 'practice' ? 'back' : 'forward');
+          else commit();
         },
       }}
     >

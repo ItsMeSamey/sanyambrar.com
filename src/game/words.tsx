@@ -23,6 +23,7 @@ export interface HistoryEntry {
   o?: GameMode // mode (legacy rows omit this)
   d?: number // disabled-letter count
   q?: string // daily date
+  v?: number // daily generator version (legacy rows imply v1)
 }
 
 export interface Value {
@@ -127,6 +128,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
     o: hard.mode,
     d: hard.disabledLetters,
     q: hard.mode === 'daily' ? hard.dailyDate : undefined,
+    v: hard.mode === 'daily' ? hard.dailyVersion : undefined,
   })
 
   await store.put(record)

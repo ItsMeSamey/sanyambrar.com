@@ -72,6 +72,81 @@
 		writable: false
 	});
 	//#endregion
+	//#region src/shared/transitions.ts
+	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+	var twoFrames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+	function snapshotElement(element) {
+		const rect = element.getBoundingClientRect();
+		const shell = document.createElement("div");
+		shell.className = "samey-route-snapshot";
+		shell.setAttribute("aria-hidden", "true");
+		shell.inert = true;
+		shell.style.setProperty("--snapshot-top", `${rect.top}px`);
+		shell.style.setProperty("--snapshot-left", `${rect.left}px`);
+		shell.style.setProperty("--snapshot-width", `${rect.width}px`);
+		shell.style.setProperty("--snapshot-height", `${rect.height}px`);
+		const clone = element.cloneNode(true);
+		clone.removeAttribute("id");
+		clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
+		clone.querySelectorAll("[aria-controls],[aria-labelledby],[aria-describedby]").forEach((node) => {
+			node.removeAttribute("aria-controls");
+			node.removeAttribute("aria-labelledby");
+			node.removeAttribute("aria-describedby");
+		});
+		shell.append(clone);
+		document.body.append(shell);
+		return shell;
+	}
+	async function animateRootSwap(current, commit, next, direction = "forward") {
+		if (!current || reducedMotion() || !current.animate) {
+			await commit();
+			return;
+		}
+		const snapshot = snapshotElement(current);
+		await commit();
+		const incoming = next();
+		const fromClip = direction === "back" ? "inset(3% 3% round 10px)" : "inset(5% 5% round 12px)";
+		const fromScale = direction === "back" ? "scale(.985)" : "scale(.955)";
+		if (incoming) {
+			incoming.style.opacity = "0.18";
+			incoming.style.transform = fromScale;
+			incoming.style.clipPath = fromClip;
+		}
+		await twoFrames();
+		const incomingAnimation = incoming?.animate?.([{
+			opacity: .18,
+			transform: fromScale,
+			clipPath: fromClip
+		}, {
+			opacity: 1,
+			transform: "scale(1)",
+			clipPath: "inset(0 round 0)"
+		}], {
+			duration: 260,
+			easing: "cubic-bezier(.22,1,.36,1)",
+			fill: "both"
+		});
+		const outgoingAnimation = snapshot.animate([{
+			opacity: 1,
+			transform: "scale(1)"
+		}, {
+			opacity: 0,
+			transform: direction === "back" ? "scale(1.018)" : "scale(1.025)"
+		}], {
+			duration: 190,
+			easing: "cubic-bezier(.4,0,.2,1)",
+			fill: "both"
+		});
+		await Promise.allSettled([outgoingAnimation.finished, incomingAnimation?.finished ?? Promise.resolve()]);
+		snapshot.remove();
+		incomingAnimation?.cancel();
+		if (incoming) {
+			incoming.style.opacity = "";
+			incoming.style.transform = "";
+			incoming.style.clipPath = "";
+		}
+	}
+	//#endregion
 	//#region src/shared/theme.ts
 	(() => {
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
@@ -324,11 +399,19 @@
 		let appearanceTrigger = null;
 		const positionAppearancePanel = (trigger) => {
 			if (!appearancePanel || !trigger) return;
+			const margin = 8;
+			const gap = 6;
 			const r = trigger.getBoundingClientRect();
 			const width = appearancePanel.offsetWidth || 176;
-			const left = Math.max(8, Math.min(innerWidth - width - 8, r.right - width));
+			const height = appearancePanel.offsetHeight || 0;
+			const left = Math.max(margin, Math.min(innerWidth - width - margin, r.right - width));
+			const below = r.bottom + gap;
+			const above = r.top - gap - height;
+			const top = below + height <= innerHeight - margin ? below : Math.max(margin, above);
 			appearancePanel.style.left = `${left}px`;
-			appearancePanel.style.top = `${Math.min(innerHeight - 8, r.bottom + 6)}px`;
+			appearancePanel.style.top = `${top}px`;
+			appearancePanel.style.maxHeight = `${Math.max(80, innerHeight - top - margin)}px`;
+			appearancePanel.style.overflowY = "auto";
 		};
 		const closeAppearance = () => {
 			if (!appearancePanel) return;
@@ -1137,7 +1220,6 @@
 		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
 		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
 		const pageCache = /* @__PURE__ */ new Map();
-		const reducedMotion = () => matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 		const setLoading = (value) => {
 			const on = !!value;
 			document.documentElement.toggleAttribute("data-site-loading", on);
@@ -1158,16 +1240,17 @@
 				document.documentElement.setAttribute(attr.name, value);
 			}
 		};
-		const decompressionChoice = (() => {
-			if (typeof DecompressionStream !== "function") return null;
+		const decompressionChoices = (() => {
+			if (typeof DecompressionStream !== "function") return [];
+			const supported = [];
 			for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) try {
 				new DecompressionStream(format);
-				return {
+				supported.push({
 					format,
 					suffix
-				};
+				});
 			} catch {}
-			return null;
+			return supported;
 		})();
 		const logicalPageUrl = (url) => {
 			const logical = new URL(url.href);
@@ -1185,10 +1268,10 @@
 			if (pageCache.has(key)) return pageCache.get(key);
 			const task = (async () => {
 				const logical = logicalPageUrl(url);
-				const attempts = decompressionChoice && logical.pathname.endsWith(".html") ? [{
-					url: new URL(logical.pathname + decompressionChoice.suffix + logical.search, logical.origin),
-					format: decompressionChoice.format
-				}, {
+				const attempts = logical.pathname.endsWith(".html") ? [...decompressionChoices.map((choice) => ({
+					url: new URL(logical.pathname + choice.suffix + logical.search, logical.origin),
+					format: choice.format
+				})), {
 					url: logical,
 					format: null
 				}] : [{
@@ -1268,6 +1351,15 @@
 				globalThis.SameyToolsDispose?.();
 				delete globalThis.SameyToolsDispose;
 			} catch {}
+			try {
+				globalThis.SameySolidDispose?.();
+			} catch {}
+			try {
+				globalThis.SameyWordleDispose?.();
+			} catch {}
+			try {
+				globalThis.SameyKeybrDispose?.();
+			} catch {}
 			dispatchEvent(new Event("samey-pageleave"));
 			normalizePageUrls(doc, baseUrl);
 			document.querySelectorAll("head > [data-spa-page]").forEach((el) => el.remove());
@@ -1284,6 +1376,7 @@
 			(replace ? replaceState : pushState)({}, "", url.href);
 			runBodyScripts(baseUrl);
 			runHeadScripts(doc, baseUrl);
+			queueMicrotask(() => globalThis.SameyMountSolid?.());
 			apply();
 			scanVirtualScrollers();
 			if (!url.hash) scrollTo({
@@ -1294,6 +1387,14 @@
 			else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
 			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
 		};
+		const destinationRoot = () => document.querySelector("#solid-site-app,#wordle-root,#keybr-root,.site-route");
+		const waitForDestinationRoot = async () => {
+			for (let i = 0; i < 90; i++) {
+				const root = destinationRoot();
+				if (root && (root.childElementCount > 0 || root.id === "keybr-root")) return;
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+			}
+		};
 		const loadPage = async (href, { replace = false } = {}) => {
 			const url = new URL(href, location.href);
 			if (url.origin !== location.origin) {
@@ -1303,38 +1404,12 @@
 			setLoading(true);
 			try {
 				const { doc, baseUrl } = await fetchPage(url);
-				const commit = () => swapPage(doc, baseUrl, url, replace);
-				if (document.startViewTransition && !reducedMotion()) {
-					document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
-					await document.startViewTransition(commit).finished.catch(() => {});
-					delete document.documentElement.dataset.navDirection;
-				} else if (!reducedMotion() && document.body?.animate) {
-					const leave = document.body.animate([{
-						opacity: 1,
-						transform: "translateY(0) scale(1)"
-					}, {
-						opacity: 0,
-						transform: "translateY(-5px) scale(.985)"
-					}], {
-						duration: 140,
-						easing: "cubic-bezier(.4,0,.2,1)",
-						fill: "both"
-					});
-					await leave.finished.catch(() => {});
-					leave.cancel();
-					commit();
-					await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-					await document.body.animate([{
-						opacity: 0,
-						transform: "translateY(7px) scale(.975)"
-					}, {
-						opacity: 1,
-						transform: "translateY(0) scale(1)"
-					}], {
-						duration: 230,
-						easing: "cubic-bezier(.22,1,.36,1)"
-					}).finished.catch(() => {});
-				} else commit();
+				const current = destinationRoot();
+				const commit = async () => {
+					swapPage(doc, baseUrl, url, replace);
+					await waitForDestinationRoot();
+				};
+				await animateRootSwap(current, commit, destinationRoot, url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "back" : "forward");
 			} catch {
 				if (replace) location.replace(url.href);
 				else location.assign(url.href);
@@ -1342,6 +1417,8 @@
 				setLoading(false);
 			}
 		};
+		globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
+		globalThis.SameyAnimateLocalSwap = (root, commit, direction = "forward") => animateRootSwap(root, commit, () => root, direction);
 		const shouldSpa = (url) => url.origin === location.origin;
 		const prefetch = (href) => {
 			const url = new URL(href, location.href);
@@ -1384,85 +1461,6 @@
 			if (!raw.color || raw.color === "system") apply();
 		});
 		apply();
-		const mountWordleErgonomics = () => {
-			if (document.documentElement.dataset.siteKind !== "wordle") return;
-			document.addEventListener("click", (event) => {
-				const label = event.target instanceof Element ? event.target.closest(".settings-switch-label") : null;
-				if (!label) return;
-				const control = label.closest(".settings-switch")?.querySelector("[data-kb-switch-control]");
-				if (!(control instanceof HTMLElement)) return;
-				event.preventDefault();
-				event.stopPropagation();
-				control.click();
-			}, true);
-		};
-		const appearanceIconSvg = () => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12\"/></svg>";
-		const homeIconSvg = () => "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z\"/></svg>";
-		const enhanceWordleChrome = () => {
-			if (document.documentElement.dataset.siteKind !== "wordle") return;
-			const nav = document.querySelector(".wordle-nav");
-			if (!nav) return;
-			const mode = nav.querySelector(".wordle-mode-switch");
-			if (!nav.querySelector(".wordle-nav-title")) {
-				const title = document.createElement("button");
-				title.type = "button";
-				title.className = "wordle-nav-title";
-				title.textContent = "WORDLE";
-				title.setAttribute("aria-label", "Choose Wordle mode");
-				title.addEventListener("click", () => mode?.click());
-				nav.prepend(title);
-			}
-			if (!nav.querySelector("[data-samey-appearance]")) {
-				const button = document.createElement("button");
-				button.type = "button";
-				button.className = "wordle-nav-button wordle-appearance-trigger";
-				button.dataset.sameyAppearance = "";
-				button.setAttribute("aria-label", "Appearance");
-				button.setAttribute("aria-expanded", "false");
-				button.innerHTML = appearanceIconSvg();
-				const settings = nav.querySelector(".settings-trigger,[aria-label=Settings]");
-				settings ? nav.insertBefore(button, settings) : nav.append(button);
-			}
-		};
-		const enhanceKeybrChrome = () => {
-			if (document.documentElement.dataset.siteKind !== "keybr") return;
-			const first = [...document.querySelectorAll("button[title]")].find((button) => /guided tour|reset the current lesson|switch the current interface/i.test(button.title));
-			const controls = first?.parentElement;
-			if (!first || !controls) return;
-			const make = (title, svg, click) => {
-				const button = first.cloneNode(false);
-				button.title = title;
-				button.setAttribute("aria-label", title);
-				button.innerHTML = svg();
-				button.addEventListener("click", click);
-				return button;
-			};
-			if (!controls.querySelector("[title=\"Home\"]")) controls.insertBefore(make("Home", homeIconSvg, () => {
-				const href = new URL("./", location.href).href;
-				globalThis.SameyNavigate?.(href);
-			}), first);
-			if (!controls.querySelector("[title=\"Appearance\"]")) {
-				const button = make("Appearance", appearanceIconSvg, () => toggleAppearance(button));
-				controls.insertBefore(button, first);
-			}
-		};
-		const enhanceAppChrome = () => {
-			enhanceWordleChrome();
-			enhanceKeybrChrome();
-		};
-		let chromeScanQueued = false;
-		const queueChromeScan = () => {
-			if (chromeScanQueued) return;
-			chromeScanQueued = true;
-			requestAnimationFrame(() => {
-				chromeScanQueued = false;
-				enhanceAppChrome();
-			});
-		};
-		const observeAppChrome = () => new MutationObserver(queueChromeScan).observe(document.body, {
-			subtree: true,
-			childList: true
-		});
 		const mountRuntime = () => {
 			normalizeExternalLinks();
 			observeExternalLinks();
@@ -1471,9 +1469,6 @@
 			mountContextMenu();
 			mountVirtualScrollbars();
 			mountSpa();
-			mountWordleErgonomics();
-			enhanceAppChrome();
-			observeAppChrome();
 		};
 		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
 		else mountRuntime();

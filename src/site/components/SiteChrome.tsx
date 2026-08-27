@@ -1,6 +1,7 @@
 import type { JSX } from 'solid-js';
 import { SITE_NAV } from '../../shared/catalog.ts';
 import { AppearanceIcon } from './icons.tsx';
+import { HomeBrand } from '../../shared/components/Brand.tsx';
 
 export function AppearanceButton(props:{class?:string}) {
   return <button class={props.class || 'top-icon'} type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false"><AppearanceIcon/></button>;
@@ -12,7 +13,7 @@ export function SearchButton() {
 
 export function TopBar(props:{class?:string; brandClass?:string; brandHref?:string; brand?:JSX.Element; children?:JSX.Element}) {
   return <header class={`top${props.class ? ` ${props.class}` : ''}`}>
-    {props.brand ?? <a class={props.brandClass || 'brand'} href={props.brandHref || '/'}>Sanyam Brar</a>}
+    {props.brand ?? <HomeBrand class={props.brandClass ? `${props.brandClass} home-brand-link` : 'brand home-brand-link'} href={props.brandHref || '/'}/>}
     {props.children}
   </header>;
 }

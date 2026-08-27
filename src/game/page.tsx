@@ -13,8 +13,9 @@ import { WORDS } from './words/words'
 import bsearch from 'binary-search-bounds'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
-import { ChallengeConfig, createRandomChallenge, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey } from './challenge'
-import { HomeBrand, WordleMark } from '../shared/components/Brand.tsx'
+import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
+import { HomeBrand, HomeIconLink, WordleMark } from '../shared/components/Brand.tsx'
+import { animateRootSwap } from '../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
 type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | 'BACKSPACE'
@@ -55,9 +56,18 @@ class Keyboard {
               type='button'
               disabled={isDisabled}
               aria-label={isDisabled ? `${key} disabled for this game` : key}
-              onmousedown={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keydown', evObj))}
-              onmouseup={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
-              onmouseleave={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
+              onpointerdown={e => {
+                if (isDisabled) return
+                e.preventDefault()
+                e.currentTarget.setPointerCapture?.(e.pointerId)
+                document.dispatchEvent(new KeyboardEvent('keydown', evObj))
+              }}
+              onpointerup={e => {
+                if (isDisabled) return
+                document.dispatchEvent(new KeyboardEvent('keyup', evObj))
+                if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+              }}
+              onpointercancel={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
               class={'wordle-key text-center content-center rounded transition-all will-change-transform ' + (
                 key.length === 1 ? '' : 'wordle-key-wide ' 
               ) + (
@@ -117,17 +127,21 @@ class GameState {
 
     if (!stored.word) {
       if (hard.mode === 'daily') {
-        const daily = getDailyChallenge(hard.dailyDate ?? localDateKey())
+        const daily = getDailyChallenge(hard.dailyDate ?? localDateKey(), hard.dailyVersion ?? DAILY_CHALLENGE_VERSION)
         stored.word = daily.word
         stored.disabled = daily.disabled
       } else {
-        stored.word = getRandomWord(hard.wordLength)
-        stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, `${gameStorageKey(hard)}:${Date.now()}:${Math.random()}`)
+        if (Number.isInteger(hard.wordIndex)) stored.word = this.allWords[hard.wordIndex!] ?? ''
+        if (!stored.word) {
+          stored.word = getRandomWord(hard.wordLength)
+          hard.wordIndex = this.allWords.indexOf(stored.word)
+        }
+        stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       }
       stored.config = {...hard}
       this.stateStore.set(stored)
     } else if (stored.disabled === undefined) {
-      stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, `${gameStorageKey(hard)}:${stored.word}`)
+      stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       stored.config = {...hard}
       this.stateStore.set(stored)
     }
@@ -210,26 +224,13 @@ class GameState {
     this.state.suggested = next
   }
 
-  resetState() {
-    if (this.soft.reveal) this.soft.reveal = false
-    this.history.length = 0
-    this.history.push(['', ''])
-    this.state.keyboard = structuredClone(defaultKeyboardState)
-    this.state.suggested = ''
-    const word = getRandomWord(this.hard.wordLength)
-    this.stateStore.current_value!.word = word
-    this.stateStore.current_value!.disabled = disabledLettersForWord(word, this.hard.disabledLetters, `${gameStorageKey(this.hard)}:${Date.now()}:${Math.random()}`)
-    this.stateStore.current_value!.done = undefined
-    this.persist()
-    this.state.showPopOver = false
-  }
 }
 
 export class WordleModel {
   state: GameState
   currentBlock: HTMLDivElement = undefined as any
 
-  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>, private onNextRandom: () => void, private onChooseMode: () => void) {
+  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>, private onNextChallenge: () => void, private onChooseMode: () => void) {
     this.state = new GameState(soft, hard, stateStore)
   }
 
@@ -241,6 +242,9 @@ export class WordleModel {
   }
 
   handleKeyDown(e: KeyboardEvent) {
+    const target = e.target instanceof Element ? e.target : null
+    const interactive = target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"], [role="slider"], [role="switch"]')
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || interactive) return
     batch(() => {
       if (this.state.isFinished()) return
       const last = this.state.history.at(-1)!
@@ -289,8 +293,21 @@ export class WordleModel {
 
     const handleKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
     const handleKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
-    onMount(() => { document.addEventListener('keydown', handleKeyDown); document.addEventListener('keyup', handleKeyUp) })
-    onCleanup(() => { document.removeEventListener('keydown', handleKeyDown); document.removeEventListener('keyup', handleKeyUp) })
+    const clearPressed = () => {
+      for (const key of Object.keys(this.state.state.keyboard) as Keys[]) this.state.state.keyboard[key].pressed = false
+    }
+    onMount(() => {
+      document.addEventListener('keydown', handleKeyDown)
+      document.addEventListener('keyup', handleKeyUp)
+      window.addEventListener('blur', clearPressed)
+      document.addEventListener('visibilitychange', clearPressed)
+    })
+    onCleanup(() => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', clearPressed)
+      document.removeEventListener('visibilitychange', clearPressed)
+    })
 
     const modeTitle = () => this.state.hard.mode === 'daily' ? 'Word of the day' : this.state.hard.mode === 'random' ? 'Random' : 'Advanced'
 
@@ -314,8 +331,8 @@ export class WordleModel {
                 </DrawerDescription>
                 <div class='result-board'><For each={this.state.history}>{([word, mask]) => new Block(this.state.hard.wordLength, word, mask || calcDiff(answer, word)).render()}</For></div>
                 <div class='result-actions'>
-                  <Show when={this.state.hard.mode === 'random'}><button onClick={this.onNextRandom}>Next random</button></Show>
-                  <Show when={this.state.hard.mode === 'advanced'}><button onClick={() => this.state.resetState()}>Play again</button></Show>
+                  <Show when={this.state.hard.mode === 'random'}><button onClick={this.onNextChallenge}>Next random</button></Show>
+                  <Show when={this.state.hard.mode === 'advanced'}><button onClick={this.onNextChallenge}>Play again</button></Show>
                   <button class='result-secondary' onClick={this.onChooseMode}>{this.state.hard.mode === 'daily' ? 'Choose another day' : 'Change mode'}</button>
                 </div>
               </>
@@ -341,13 +358,13 @@ this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).rend
   }
 }
 
-function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextRandom: () => void, onChooseMode: () => void) {
+function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextChallenge: () => void, onChooseMode: () => void) {
   const fromStorage = (raw: string): WordLocalStorageState => {
     const stored = JSON.parse(raw) as WordLocalStorageState
     const config = stored.config ?? hard
     if (!stored.word) {
       if (config.mode === 'daily' && config.dailyDate) {
-        stored.word = getDailyChallenge(config.dailyDate).word
+        stored.word = getDailyChallenge(config.dailyDate, config.dailyVersion ?? DAILY_CHALLENGE_VERSION).word
       } else if (Number.isInteger(stored.wordIndex)) {
         stored.word = WORDS['w' + config.wordLength][stored.wordIndex!] ?? ''
       }
@@ -367,13 +384,23 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     delete stored.word
     return JSON.stringify(stored)
   }
+  const storageKey = gameStorageKey(hard)
+  if (hard.mode === 'daily' && (hard.dailyVersion ?? DAILY_CHALLENGE_VERSION) === 1 && hard.dailyDate && !localStorage.getItem(storageKey)) {
+    const legacyKey = `game.wordle.daily.${hard.dailyDate}`
+    const legacy = localStorage.getItem(legacyKey)
+    if (legacy) {
+      localStorage.setItem(storageKey, legacy)
+      localStorage.removeItem(legacyKey)
+      window.dispatchEvent(new Event('wordle:storage-change'))
+    }
+  }
   const stateStore = new LocalstorageStore<WordLocalStorageState>(
-    gameStorageKey(hard),
+    storageKey,
     {word: '', history: [['', '']], config: {...hard}},
     fromStorage,
     toStorage,
   )
-  return new WordleModel(soft, hard, stateStore, onNextRandom, onChooseMode).render()
+  return new WordleModel(soft, hard, stateStore, onNextChallenge, onChooseMode).render()
 }
 
 export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
@@ -381,7 +408,7 @@ export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftPr
   const daily = getDailyChallenge(today)
   return {
     softStore: new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {reveal: false, fastInvalidate: true}, JSON.parse, val => JSON.stringify(val, (k, v) => ['reveal'].includes(k) ? undefined : v)),
-    hardStore: new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {...daily}, JSON.parse, JSON.stringify),
+    hardStore: new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {...daily}, JSON.parse, value => JSON.stringify(value, (key, item) => ['dailyDate', 'dailyVersion', 'randomId', 'wordIndex'].includes(key) ? undefined : item)),
   }
 }
 
@@ -389,7 +416,7 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
   const preview = () => getDailyChallenge(date())
   return <main class='wordle-opening'>
     <div class='wordle-opening-inner'>
-      <div class='wordle-mark' aria-hidden='true'><i>W</i><i>O</i><i>R</i><i>D</i><i>S</i></div>
+      <WordleMark class='wordle-opening-mark' />
       <h1>Pick a game.</h1>
       <p class='wordle-opening-lede'>Daily is deterministic. Random tunes itself every game. Advanced exposes the knobs.</p>
       <div class='wordle-mode-grid'>
@@ -415,95 +442,124 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
   </main>
 }
 
-type ResumeLocation =
-  | {v: 2; mode: 'daily'; dailyDate: string}
-  | {v: 2; mode: 'random'; randomId: string; wordLength: SettingsHardProps['wordLength']; maxTries: number; disabledLetters: number; allowAny: boolean}
-  | {v: 2; mode: 'advanced'; wordLength: SettingsHardProps['wordLength']; maxTries: number; disabledLetters: number; allowAny: boolean}
-
-function readResumeLocation(raw: string | null): SettingsHardProps | undefined {
-  if (!raw) return undefined
-  try {
-    const saved = JSON.parse(raw) as ResumeLocation
-    if (saved?.v !== 2) return undefined
-    if (saved.mode === 'daily' && saved.dailyDate) return getDailyChallenge(saved.dailyDate)
-    if (saved.mode === 'random' && saved.randomId && Number.isInteger(saved.wordLength)) return {...saved}
-    if (saved.mode === 'advanced' && Number.isInteger(saved.wordLength)) return {...saved}
-  } catch {}
-  return undefined
+function setChallengeQuery(config: SettingsHardProps | undefined, fastInvalidate: boolean, replace = true) {
+  const url = new URL(location.href)
+  url.searchParams.delete('p')
+  url.searchParams.delete('v')
+  if (!config) url.searchParams.delete(GAME_QUERY)
+  else {
+    const value = serializeChallenge(config, fastInvalidate)
+    if (value) url.searchParams.set(GAME_QUERY, value)
+  }
+  history[replace ? 'replaceState' : 'pushState'](history.state, '', url)
 }
 
-function writeResumeLocation(key: string, config: ChallengeConfig) {
-  if (config.mode === 'daily') {
-    localStorage.setItem(key, JSON.stringify({v: 2, mode: 'daily', dailyDate: config.dailyDate ?? localDateKey()} satisfies ResumeLocation))
-    return
-  }
-  const common = {wordLength: config.wordLength, maxTries: config.maxTries, disabledLetters: config.disabledLetters, allowAny: config.allowAny}
-  if (config.mode === 'random') {
-    localStorage.setItem(key, JSON.stringify({v: 2, mode: 'random', randomId: config.randomId!, ...common} satisfies ResumeLocation))
-    return
-  }
-  localStorage.setItem(key, JSON.stringify({v: 2, mode: 'advanced', ...common} satisfies ResumeLocation))
+function materializeChallenge(config: ChallengeConfig): SettingsHardProps {
+  if (config.mode === 'daily') return {...config, dailyVersion: config.dailyVersion ?? DAILY_CHALLENGE_VERSION}
+  const words = WORDS['w' + config.wordLength]
+  const wordIndex = Number.isInteger(config.wordIndex) ? config.wordIndex! : Math.floor(Math.random() * words.length)
+  return {...config, wordIndex, randomId: config.mode === 'random' ? (config.randomId ?? `url-${wordIndex.toString(16)}`) : undefined}
+}
+
+function WordleModeMark(props:{mode: SettingsHardProps['mode']}) {
+  const label = () => props.mode === 'daily' ? 'DAILY' : props.mode === 'random' ? 'RANDOM' : 'ADVANCED'
+  return <span class='wordle-mode-mark' aria-label={`${label()} mode`}>{label().split('').map(letter => <i>{letter}</i>)}</span>
 }
 
 export default function Wordle() {
-  const locationKey = 'game.wordle.location'
-  const savedLocation = localStorage.getItem(locationKey)
   const {softStore, hardStore} = GetSettingsStore()
   const savedHard = hardStore.get()!
-  const legacyLocation = savedHard.mode === 'daily' ? `d:${savedHard.dailyDate ?? localDateKey()}` : savedHard.mode === 'random' ? `r:${savedHard.randomId ?? ''}` : 'a'
-  const resumeConfig = readResumeLocation(savedLocation) ?? (savedLocation === legacyLocation ? savedHard : undefined)
-  if (resumeConfig) writeResumeLocation(locationKey, resumeConfig)
-  const hard = createMutable(resumeConfig ?? savedHard)
-  const soft = createMutable(softStore.get()!)
-  const [showOpening, setShowOpening] = createSignal(!resumeConfig)
+  const savedSoft = softStore.get()!
+  const urlChallenge = parseChallenge(new URL(location.href).searchParams.get(GAME_QUERY))
+  const initialHard = urlChallenge?.hard ?? savedHard
+  const hard = createMutable({...initialHard})
+  const soft = createMutable({...savedSoft, fastInvalidate: urlChallenge?.fastInvalidate ?? savedSoft.fastInvalidate})
+  const [showOpening, setShowOpening] = createSignal(!urlChallenge)
   const [dailyDate, setDailyDate] = createSignal(hard.dailyDate ?? localDateKey())
 
   createEffect(() => hardStore.set({...hard}))
   createEffect(() => softStore.set({...soft}))
   createEffect(() => {
-    if (hard.mode === 'advanced') localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...hard, dailyDate: undefined, randomId: undefined}))
+    if (hard.mode === 'advanced') localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...hard, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
+  })
+  createEffect(() => {
+    if (!showOpening()) setChallengeQuery(hard, soft.fastInvalidate, true)
   })
 
-  const applyConfig = (config: ChallengeConfig) => batch(() => {
+  const commitConfig = (raw: ChallengeConfig) => batch(() => {
+    const config = materializeChallenge(raw)
     hard.mode = config.mode
     hard.wordLength = config.wordLength
     hard.maxTries = config.maxTries
     hard.disabledLetters = config.disabledLetters
     hard.allowAny = config.allowAny
     hard.dailyDate = config.dailyDate
+    hard.dailyVersion = config.dailyVersion
     hard.randomId = config.randomId
+    hard.wordIndex = config.wordIndex
     soft.reveal = false
-    writeResumeLocation(locationKey, config)
+    setChallengeQuery(hard, soft.fastInvalidate, true)
     setShowOpening(false)
   })
+  const swapWordleView = (commit: () => void, direction: 'forward' | 'back') => animateRootSwap(
+    document.getElementById('wordle-root'),
+    commit,
+    () => document.getElementById('wordle-root'),
+    direction,
+  )
+  const applyConfig = (config: ChallengeConfig) => swapWordleView(() => commitConfig(config), 'forward')
 
-  const startDaily = () => applyConfig(getDailyChallenge(dailyDate()))
-  const startRandom = () => applyConfig(createRandomChallenge())
+  const startDaily = () => void applyConfig(getDailyChallenge(dailyDate()))
+  const startRandom = () => void applyConfig(createRandomChallenge())
   const startAdvanced = () => {
     let saved: SettingsHardProps = {mode: 'advanced', wordLength: 6, maxTries: 6, disabledLetters: 0, allowAny: false}
     try { saved = {...saved, ...JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}'), mode: 'advanced'} } catch {}
-    applyConfig(saved)
+    void applyConfig({...saved, wordIndex: undefined})
   }
-  const chooseMode = () => { localStorage.removeItem(locationKey); setDailyDate(hard.dailyDate ?? localDateKey()); setShowOpening(true) }
+  const nextChallenge = () => {
+    const next: ChallengeConfig = hard.mode === 'random'
+      ? createRandomChallenge()
+      : {...hard, mode: 'advanced', dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}
+    void swapWordleView(() => commitConfig(next), 'forward')
+  }
+  const chooseMode = () => {
+    void swapWordleView(() => {
+      setChallengeQuery(undefined, soft.fastInvalidate, true)
+      setDailyDate(hard.dailyDate ?? localDateKey())
+      setShowOpening(true)
+    }, 'back')
+  }
+  const updateAdvancedSetting = (patch: Partial<SettingsHardProps>) => {
+    if (hard.mode !== 'advanced') return
+    const next: SettingsHardProps = {...hard, ...patch, mode: 'advanced'}
+    if (patch.wordLength !== undefined && patch.wordLength !== hard.wordLength) next.wordIndex = undefined
+    // Every hard-setting combination identifies a distinct challenge. Keep the
+    // current word where it remains valid, but materialize a fresh word when the
+    // word length itself changes.
+    void swapWordleView(() => commitConfig(next), 'forward')
+  }
+  const selectActiveGame = (config: SettingsHardProps) => {
+    void swapWordleView(() => commitConfig(config), 'forward')
+  }
   const gameKey = () => gameStorageKey({...hard})
 
   return <>
     <nav class='wordle-nav absolute items-center top-0'>
       <Show when={!showOpening()} fallback={<HomeBrand class='wordle-home-brand'/>}>
-        <button type='button' class='wordle-nav-title wordle-logo-button' onClick={chooseMode} aria-label='Choose Wordle mode'><WordleMark class='wordle-logo'/></button>
+        <button type='button' class='wordle-nav-title wordle-logo-button' onClick={chooseMode} aria-label='Choose Wordle mode'><WordleMark class='wordle-logo'/></button><HomeIconLink class='wordle-home-icon'/>
       </Show>
       <Show when={!showOpening()}>
-        <button type='button' class='wordle-mode-switch' onClick={chooseMode}>{hard.mode === 'daily' ? 'Daily' : hard.mode === 'random' ? 'Random' : 'Advanced'}</button>
+        <button type='button' class='wordle-mode-switch' onClick={chooseMode} aria-label='Change Wordle mode'><WordleModeMark mode={hard.mode}/></button>
       </Show>
       <div class='wordle-nav-spacer' />
       <Show when={!showOpening()}><StatsPageTrigger /></Show>
       <button type='button' class='wordle-nav-button wordle-appearance-trigger' data-samey-appearance aria-label='Appearance' aria-expanded='false'>
         <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12'/></svg>
       </button>
-      <Show when={!showOpening()}>{Settings({soft, hard, showActive: true, showWordLength: true})}</Show>
+      <Show when={!showOpening()}>{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</Show>
     </nav>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
-      <For each={[gameKey()]}>{() => RenderWordleModel({...hard}, soft, startRandom, chooseMode)}</For>
+      <For each={[gameKey()]}>{() => RenderWordleModel({...hard}, soft, nextChallenge, chooseMode)}</For>
     </Show>
   </>
 }

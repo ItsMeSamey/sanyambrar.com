@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { animateMountedViewSwap } from '../../shared/transitions.ts';
 export function mountChain() {
   'use strict';
 
@@ -54,6 +55,7 @@ export function mountChain() {
   let frame = 0;
   let particles = [];
   let gameVersion = 0;
+  let menuRequested = false;
   const orbCache = new Map();
 
   function clampInt(value, min, max, fallback) {
@@ -104,10 +106,17 @@ export function mountChain() {
       const count = cfg.rows * cfg.cols;
       const b = b64ToBytes(saved.b, count), o = b64ToBytes(saved.o, count), enteredSaved = b64ToBytes(saved.p, cfg.enemies + 2);
       if (!b || !o || !enteredSaved) return null;
-      for (let i = 0; i < count; i++) {
-        if (b[i] > 3 || o[i] > cfg.enemies + 1 || (!b[i] && o[i])) return null;
+      const maxPlayer = cfg.enemies + 1;
+      const savedTurn = Number(saved.t);
+      if (!Number.isInteger(savedTurn) || savedTurn < 1 || savedTurn > maxPlayer) return null;
+      for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+        const i = r * cfg.cols + c;
+        const d = (r > 0 ? 1 : 0) + (r + 1 < cfg.rows ? 1 : 0) + (c > 0 ? 1 : 0) + (c + 1 < cfg.cols ? 1 : 0);
+        if (b[i] >= d || o[i] > maxPlayer || (!b[i] && o[i]) || (b[i] && !o[i])) return null;
+        if (o[i]) enteredSaved[o[i]] = 1;
       }
-      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: clampInt(saved.t, 1, cfg.enemies + 1, HUMAN), gameOver: !!saved.g, inGame: !!saved.i};
+      enteredSaved[0] = 0;
+      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver: !!saved.g, inGame: !!saved.i};
     } catch { return null; }
   }
 
@@ -158,7 +167,6 @@ export function mountChain() {
     cssH = Math.min(availableH, rows * cell + gap);
     canvas.style.width = cssW + 'px';
     canvas.style.height = cssH + 'px';
-    topbar.style.width = cssW + 'px';
     canvas.width = Math.max(1, Math.round(cssW * dpr));
     canvas.height = Math.max(1, Math.round(cssH * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -298,6 +306,10 @@ export function mountChain() {
     saveGameState(true);
     showResult();
     requestDraw();
+    if (menuRequested) {
+      menuRequested = false;
+      queueMicrotask(showMenu);
+    }
   }
 
   function updateStatus() {
@@ -379,6 +391,10 @@ export function mountChain() {
     updateStatus();
     saveGameState(true);
     requestDraw();
+    if (menuRequested) {
+      menuRequested = false;
+      showMenu();
+    }
   }
 
   function legalMoves(owner) {
@@ -433,11 +449,13 @@ export function mountChain() {
     return r * cols + c;
   }
 
-  canvas.addEventListener('pointerdown', e => {
+  const onCanvasPointerDown = e => {
     if (e.button !== 0) return;
+    e.preventDefault();
     const i = cellFromEvent(e);
-    if (i >= 0) humanMove(i);
-  });
+    if (i >= 0) void humanMove(i);
+  };
+  canvas.addEventListener('pointerdown', onCanvasPointerDown);
 
   function reset(nextConfig = config) {
     gameVersion++;
@@ -497,33 +515,61 @@ export function mountChain() {
 
   function showMenu() {
     const wasInGame = !gameView.hidden;
-    if (wasInGame && locked) return;
-    if (wasInGame) gameVersion++;
-    setSettingsOpen(false);
-    resultPanel.hidden = true;
-    gameView.hidden = true;
-    openingView.hidden = false;
-    if (wasInGame || readSavedGame()) saveGameState(false);
-    updateResumeCard();
+    if (wasInGame && locked) {
+      menuRequested = true;
+      statusEl.textContent = 'Finishing cascade before opening the game menu';
+      return;
+    }
+    menuRequested = false;
+    const commit = () => {
+      if (wasInGame) gameVersion++;
+      setSettingsOpen(false);
+      resultPanel.hidden = true;
+      if (wasInGame || readSavedGame()) saveGameState(false);
+      updateResumeCard();
+    };
+    if (wasInGame) {
+      void animateMountedViewSwap(gameView, openingView, commit, 'back');
+    } else {
+      commit();
+      gameView.hidden = true;
+      openingView.hidden = false;
+    }
   }
 
   function showGame() {
-    openingView.hidden = true;
-    gameView.hidden = false;
-    saveGameState(true);
-    requestAnimationFrame(() => {
-      layout();
-      updateStatus();
-      if (gameOver) showResult();
-      else if (turn !== HUMAN) continueTurns();
-    });
+    menuRequested = false;
+    const wasInMenu = !openingView.hidden;
+    const commit = () => {
+      saveGameState(true);
+      requestAnimationFrame(() => {
+        layout();
+        updateStatus();
+        if (gameOver) showResult();
+        else if (turn !== HUMAN) continueTurns();
+      });
+    };
+    if (wasInMenu) {
+      void animateMountedViewSwap(openingView, gameView, commit, 'forward');
+    } else {
+      openingView.hidden = true;
+      gameView.hidden = false;
+      commit();
+    }
   }
 
   function showResult() {
     if (!gameOver || gameView.hidden) return;
     resultTitle.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
     resultCopy.textContent = `${boardSummary()} · The final cascade belongs to ${turn === HUMAN ? 'you' : `enemy ${turn - 1}`}.`;
+    const wasHidden = resultPanel.hidden;
     resultPanel.hidden = false;
+    if (wasHidden && resultPanel.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      resultPanel.animate(
+        [{opacity:0, transform:'translate(-50%,-48%) scale(.97)'},{opacity:1, transform:'translate(-50%,-50%) scale(1)'}],
+        {duration:180, easing:'cubic-bezier(.22,1,.36,1)'}
+      );
+    }
   }
 
   function startNewGame(nextConfig) {
@@ -531,10 +577,27 @@ export function mountChain() {
     showGame();
   }
 
+  function positionSettings() {
+    const r = settingsButton.getBoundingClientRect();
+    const viewportGap = 8;
+    const width = Math.min(settingsPanel.offsetWidth || 360, innerWidth - viewportGap * 2);
+    const naturalHeight = Math.min(settingsPanel.scrollHeight || 420, innerHeight - viewportGap * 2);
+    const left = Math.max(viewportGap, Math.min(innerWidth - width - viewportGap, r.right - width));
+    const below = r.bottom + 6;
+    const above = r.top - naturalHeight - 6;
+    const top = below + naturalHeight <= innerHeight - viewportGap
+      ? below
+      : Math.max(viewportGap, above);
+    settingsPanel.style.left = `${left}px`;
+    settingsPanel.style.top = `${top}px`;
+    settingsPanel.style.maxHeight = `${Math.max(120, innerHeight - top - viewportGap)}px`;
+  }
+
   function setSettingsOpen(open) {
     settingsPanel.dataset.open = String(open);
     settingsPanel.setAttribute('aria-hidden', String(!open));
     settingsButton.setAttribute('aria-expanded', String(open));
+    if (open) requestAnimationFrame(positionSettings);
   }
 
   function syncRangeProgress(input) {
@@ -543,7 +606,7 @@ export function mountChain() {
     const width = input.getBoundingClientRect().width || input.clientWidth || 0;
     const endpoint = width > 16 ? 8 + ratio * (width - 16) : ratio * width;
     const shell = input.closest('.game-range-shell');
-    if (shell) shell.style.setProperty('--range-fill-width', `${Math.min(width, endpoint + 8)}px`);
+    if (shell) shell.style.setProperty('--range-fill-width', `${Math.min(width, endpoint)}px`);
   }
 
   function syncSettings() {
@@ -601,9 +664,11 @@ export function mountChain() {
   if (savedGame) restoreGame(savedGame); else { buildBoard(); syncSettings(); updateStatus(); }
   updateResumeCard();
   const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); };
+  const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); };
+  addEventListener('resize', positionSettingsOnResize, {passive:true});
   const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
   resizeObserver.observe(stage);
-  window.addEventListener('sameyappearancechange', repaintTheme);
+  window.addEventListener('samey-themechange', repaintTheme);
   const themeObserver = new MutationObserver(repaintTheme);
   themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
   const scheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -615,11 +680,14 @@ export function mountChain() {
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     particles = [];
+    menuRequested = false;
+    removeEventListener('resize', positionSettingsOnResize);
     resizeObserver.disconnect();
     themeObserver.disconnect();
-    window.removeEventListener('sameyappearancechange', repaintTheme);
+    window.removeEventListener('samey-themechange', repaintTheme);
     scheme.removeEventListener('change', repaintTheme);
     document.removeEventListener('pointerdown', onDocumentPointerDown);
     document.removeEventListener('keydown', onDocumentKeyDown);
+    canvas.removeEventListener('pointerdown', onCanvasPointerDown);
   };
 }

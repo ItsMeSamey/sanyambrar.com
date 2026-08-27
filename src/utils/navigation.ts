@@ -2,11 +2,11 @@
 
 import { createSelector, createSignal, untrack } from 'solid-js'
 import { UrlSearchStore } from './store'
+import { animateRootSwap } from '../shared/transitions.ts'
 
 export enum Page {
   Wordle,
   Stats,
-  Share,
   Error,
 }
 
@@ -16,12 +16,23 @@ const [page, setPage] = createSignal<Page>(pageState.get() ?? Page.Wordle)
 export const p = page
 export const selectP = createSelector(page)
 
-export function setP(value: Page) {
+function commitPage(value: Page) {
   pageState.set(value)
   setPage(value)
 }
 
-addEventListener('popstate', () => setPage(pageState.refresh() ?? Page.Wordle))
+export function setP(value: Page) {
+  if (value === page()) return
+  const current = document.getElementById('wordle-view-root')
+  void animateRootSwap(current, () => commitPage(value), () => document.getElementById('wordle-view-root'), value === Page.Wordle ? 'back' : 'forward')
+}
+
+addEventListener('popstate', () => {
+  const value = pageState.refresh() ?? Page.Wordle
+  if (value === page()) return
+  const current = document.getElementById('wordle-view-root')
+  void animateRootSwap(current, () => { setPage(value) }, () => document.getElementById('wordle-view-root'), value === Page.Wordle ? 'back' : 'forward')
+})
 
 class PageError {
   err: unknown = new Error('Unknown Page')

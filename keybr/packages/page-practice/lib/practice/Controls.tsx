@@ -31,19 +31,24 @@ export const Controls = memo(function Controls({
   const { setView } = useView(views);
   return (
     <div id={names.controls} className={styles.controls}>
-      <IconButton
-        icon={<Icon shape={mdiHomeOutline} />}
-        title="Home"
+      <button
+        type="button"
+        className={styles.portfolioHome}
+        title="Sanyam Brar · Home"
+        aria-label="Sanyam Brar · Home"
         onClick={() => {
           const href = new URL("./", location.href).href;
-          if (window.parent !== window) parent.postMessage({ type: "samey-navigate", href }, location.origin);
-          else (globalThis as any).SameyNavigate?.(href);
+          const navigate = (globalThis as any).SameyNavigate;
+          if (navigate) void navigate(href);
+          else location.assign(href);
         }}
-      />
+      >
+        <span>Sanyam Brar</span><Icon shape={mdiHomeOutline} />
+      </button>
       <IconButton
         icon={<Icon shape={mdiThemeLightDark} />}
         title="Appearance"
-        onClick={(event) => (globalThis as any).SameyOpenAppearance?.(event.currentTarget)}
+        onClick={(event) => { event.stopPropagation(); (globalThis as any).SameyOpenAppearance?.(event.currentTarget); }}
       />
       <IconButton
         icon={<Icon shape={mdiHelpCircleOutline} />}
@@ -85,9 +90,7 @@ export const Controls = memo(function Controls({
           id: "local.statistics.description",
           defaultMessage: "Show your local typing statistics.",
         })}
-        onClick={() => {
-          setView("statistics");
-        }}
+        onClick={() => setView("statistics")}
       />
       <IconButton
         icon={<Icon shape={mdiCog} />}
@@ -96,9 +99,7 @@ export const Controls = memo(function Controls({
           defaultMessage:
             "Change lesson settings, configure language, keyboard layout, etc.",
         })}
-        onClick={() => {
-          setView("settings");
-        }}
+        onClick={() => setView("settings")}
       />
     </div>
   );

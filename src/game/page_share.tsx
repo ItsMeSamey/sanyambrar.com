@@ -1,82 +1,17 @@
 'use strict'
 
-import { ShareIcon } from 'lucide-solid';
+import { ShareIcon } from 'lucide-solid'
 import { Accessor, createSignal, JSX } from 'solid-js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog';
-import Settings, { SettingsKnobs } from './popup_settings';
-import { Button } from '~/registry/ui/button';
-import { createMutable, unwrap } from 'solid-js/store';
-import { SettingsHardProps, SettingsSoftProps } from './popup_settings';
-import { WORDS } from './words/words';
-import bsearch from 'binary-search-bounds';
-import { Page, setPageError } from '../utils/navigation';
-import { showError } from '../utils/toast';
-import { LocalstorageStore, UrlSearchStore } from '../utils/store';
-import { WordLength } from './words';
-import { WordleModel, WordLocalStorageState } from './page';
-
-export default function SharePage() {
-  const valueStore = new UrlSearchStore('v', '')
-  const value = valueStore.get()
-  if (!value) {
-    setPageError(new Error('No value provided'))
-    return
-  }
-
-  const [flags, ...rest] = value.split(',')
-  const fastInvalidate = flags.charAt(0) === 't'
-  const allowAny = flags.charAt(1) === 't'
-  const [idx, wordLength, maxTries] = rest.slice(0, 3).map(s => parseInt(s, 36))
-
-  if (wordLength < 3 || wordLength > 20 || maxTries < 1 || maxTries > 50) {
-    setPageError(new Error('Invalid value provided'))
-    return
-  }
-
-  const soft: SettingsSoftProps = createMutable({
-    reveal: false,
-    fastInvalidate,
-  })
-  const hard: SettingsHardProps = createMutable({
-    mode: 'advanced',
-    wordLength: wordLength as WordLength,
-    allowAny,
-    maxTries,
-    disabledLetters: 0,
-  })
-
-  const all = WORDS['w' + wordLength]
-  if (idx < 0 || idx >= all.length) {
-    setPageError(new Error('Invalid word index'))
-    return
-  }
-  const word = all[idx]
-
-  let isFirst = true
-  const stateStore = new LocalstorageStore<WordLocalStorageState>(
-    'none',
-    { word, history: [['', '']], config: {...hard}},
-    () => {throw new Error('Cannot Be Called')},
-    (state: WordLocalStorageState) => {
-      if (isFirst) {
-        isFirst = false
-        return undefined
-      }
-      stateStore.current_value!.word = word
-      stateStore.current_value!.history = state.history
-      return undefined
-    }
-  )
-
-  return <div class='mx-auto p-4 h-full w-full min-md:container'>
-    <nav class='flex flex-row p-2 w-full absolute items-end top-0 left-0'>
-      <div class='w-full' />
-      <Settings soft={soft} hard={hard} showActive={false} showWordLength={false} />
-    </nav>
-    {new WordleModel(soft, hard, stateStore, () => {}, () => {}).render()}
-  </div>
-}
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog'
+import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
+import { Button } from '~/registry/ui/button'
+import { createMutable, unwrap } from 'solid-js/store'
+import { WORDS } from './words/words'
+import bsearch from 'binary-search-bounds'
+import { showError } from '../utils/toast'
+import { WordLength } from './words'
+import { challengeUrl } from './challenge'
 
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
@@ -105,7 +40,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
       <DialogFooter class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button
           class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success duration-200 active:scale-90 transition-all'
-          onClick={() => {
+          onClick={async () => {
             const wlen = props.word().length
             if (idx === -1) {
               idx = bsearch.eq(WORDS['w' + wlen], props.word().toLowerCase(), (a, b) => {
@@ -118,11 +53,26 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
               }
             }
 
-            const btos = (b: boolean) => (b? 't': 'f')
-            const serialized = `${btos(soft.fastInvalidate)}${btos(hard.allowAny)},${idx.toString(36)},${wlen.toString(36)},${hard.maxTries.toString(16)}`
-            navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?p=${Page.Share}&v=${serialized}`)
-            setCopyButtonText('Copied!')
-            setTimeout(() => setCopyButtonText('Copy'), 1000)
+            const config: SettingsHardProps = {...hard, wordLength: wlen as WordLength, wordIndex: idx}
+            const url = challengeUrl(config, soft.fastInvalidate)
+            if (!url) return showError(new Error('Could not create share URL'))
+            try {
+              if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url.href)
+              else {
+                const input = document.createElement('textarea')
+                input.value = url.href
+                input.style.position = 'fixed'
+                input.style.opacity = '0'
+                document.body.append(input)
+                input.select()
+                if (!document.execCommand('copy')) throw new Error('Copy failed')
+                input.remove()
+              }
+              setCopyButtonText('Copied!')
+              setTimeout(() => setCopyButtonText('Copy'), 1000)
+            } catch (error) {
+              showError(error instanceof Error ? error : new Error('Could not copy share URL'))
+            }
           }}
         >
           {copyButtonText()}

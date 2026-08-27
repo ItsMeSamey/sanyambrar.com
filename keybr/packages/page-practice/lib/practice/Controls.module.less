@@ -3,3 +3,21 @@
   inset-inline-end: 0;
   inset-block-start: 0;
 }
+
+.portfolioHome {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  margin-inline-end: 0.25rem;
+  padding: 0 0.55rem;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.portfolioHome svg { width: 1.05rem; height: 1.05rem; opacity: .66; }
+.portfolioHome:hover svg, .portfolioHome:focus-visible svg { opacity: 1; }
+@media (max-width: 560px) { .portfolioHome span { display: none; } .portfolioHome { padding-inline: .4rem; } }

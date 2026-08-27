@@ -12,15 +12,21 @@ export interface ChallengeConfig {
   disabledLetters: number
   allowAny: boolean
   dailyDate?: string
+  dailyVersion?: number
   randomId?: string
+  wordIndex?: number
 }
 
 export interface DailyChallenge extends ChallengeConfig {
   mode: 'daily'
   dailyDate: string
+  dailyVersion: number
   word: string
   disabled: string
 }
+
+export const DAILY_CHALLENGE_VERSION = 1
+export const LEGACY_DAILY_CHALLENGE_VERSION = 1
 
 const AUTO_LENGTHS: WordLength[] = [3, 4, 5, 6, 7, 8, 9, 10]
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
@@ -112,7 +118,9 @@ export function disabledLettersForWord(word: string, count: number, seed: string
   return available.slice(0, Math.max(0, Math.min(count, available.length))).sort().join('')
 }
 
-export function getDailyChallenge(date: string): DailyChallenge {
+function getDailyChallengeV1(date: string): DailyChallenge {
+  // Version 1 intentionally preserves the original daily seed strings exactly.
+  // Future daily generators must get a new version instead of changing these seeds.
   const random = seeded(`samey-wordle/daily/config/${date}`)
   const wordLength = weightedAutoLength(random)
   const difficulty = autoDifficulty(wordLength)
@@ -120,12 +128,22 @@ export function getDailyChallenge(date: string): DailyChallenge {
   return {
     mode: 'daily',
     dailyDate: date,
+    dailyVersion: 1,
     wordLength,
     ...difficulty,
     allowAny: false,
     word,
     disabled: disabledLettersForWord(word, difficulty.disabledLetters, `samey-wordle/daily/disabled/${date}/${word}`),
   }
+}
+
+export function isDailyChallengeVersion(version: number): boolean {
+  return version === 1
+}
+
+export function getDailyChallenge(date: string, version = DAILY_CHALLENGE_VERSION): DailyChallenge {
+  if (version === 1) return getDailyChallengeV1(date)
+  throw new RangeError(`Unsupported daily challenge version: ${version}`)
 }
 
 export function createRandomChallenge(): ChallengeConfig {
@@ -135,7 +153,85 @@ export function createRandomChallenge(): ChallengeConfig {
 }
 
 export function gameStorageKey(config: ChallengeConfig): string {
-  if (config.mode === 'daily') return `game.wordle.daily.${config.dailyDate}`
-  if (config.mode === 'random') return `game.wordle.random.${config.randomId}`
-  return `game.wordle.advanced.${config.allowAny ? 'any.' : ''}${config.wordLength}.${config.maxTries}.${config.disabledLetters}`
+  if (config.mode === 'daily') return `game.wordle.daily.${(config.dailyVersion ?? DAILY_CHALLENGE_VERSION).toString(16)}.${config.dailyDate ?? localDateKey()}`
+  const word = Number.isInteger(config.wordIndex) ? `.${config.wordIndex!.toString(16)}` : ''
+  if (config.mode === 'random') return `game.wordle.random.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
+  return `game.wordle.advanced.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
+}
+
+
+export interface UrlChallenge {
+  hard: ChallengeConfig
+  fastInvalidate: boolean
+}
+
+export const GAME_QUERY = 'g'
+export const DEFAULT_FAST_INVALIDATE = true
+export const DEFAULT_ALLOW_ANY = false
+
+function parseHex(value: string | undefined): number | undefined {
+  if (!value || !/^[0-9a-f]+$/i.test(value)) return undefined
+  const parsed = Number.parseInt(value, 16)
+  return Number.isSafeInteger(parsed) ? parsed : undefined
+}
+
+function challengeFlags(fastInvalidate: boolean, allowAny: boolean): string {
+  if (fastInvalidate === DEFAULT_FAST_INVALIDATE && allowAny === DEFAULT_ALLOW_ANY) return ''
+  return `${fastInvalidate ? 't' : 'f'}${allowAny ? 't' : 'f'}`
+}
+
+export function serializeChallenge(config: ChallengeConfig, fastInvalidate: boolean): string | undefined {
+  const flags = challengeFlags(fastInvalidate, config.allowAny)
+  if (config.mode === 'daily') return `${flags},d,${(config.dailyVersion ?? DAILY_CHALLENGE_VERSION).toString(16)},${config.dailyDate ?? localDateKey()}`
+  if (!Number.isInteger(config.wordIndex)) return undefined
+  const mode = config.mode === 'random' ? 'r' : 'a'
+  return [flags, mode, config.wordIndex!.toString(16), config.wordLength.toString(16), config.maxTries.toString(16), config.disabledLetters.toString(16)].join(',')
+}
+
+export function parseChallenge(raw: string | null): UrlChallenge | undefined {
+  if (!raw) return undefined
+  const parts = raw.split(',')
+  const [flags = '', mode, a, b, c, d] = parts
+  if (flags && !/^[tf]{1,2}$/.test(flags)) return undefined
+  const fastInvalidate = flags[0] ? flags[0] === 't' : DEFAULT_FAST_INVALIDATE
+  const allowAny = flags[1] ? flags[1] === 't' : DEFAULT_ALLOW_ANY
+  if (mode === 'd') {
+    // Legacy daily links omitted the generator version. They are permanently
+    // interpreted as v1 so links copied before versioning never change meaning.
+    if (parts.length === 3) {
+      if (!a || !/^\d{4}-\d{2}-\d{2}$/.test(a)) return undefined
+      return {hard: getDailyChallenge(a, LEGACY_DAILY_CHALLENGE_VERSION), fastInvalidate}
+    }
+    if (parts.length !== 4) return undefined
+    const version = parseHex(a)
+    const date = b
+    if (version === undefined || !isDailyChallengeVersion(version) || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined
+    return {hard: getDailyChallenge(date, version), fastInvalidate}
+  }
+  if ((mode !== 'r' && mode !== 'a') || parts.length !== 6) return undefined
+  const wordIndex = parseHex(a), wordLength = parseHex(b), maxTries = parseHex(c), disabledLetters = parseHex(d)
+  if (wordIndex === undefined || wordLength === undefined || maxTries === undefined || disabledLetters === undefined) return undefined
+  if (wordLength < 3 || wordLength > 20 || maxTries < 1 || maxTries > 50 || disabledLetters > 12) return undefined
+  const words = WORDS['w' + wordLength]
+  if (!words || wordIndex >= words.length) return undefined
+  return {
+    hard: {
+      mode: mode === 'r' ? 'random' : 'advanced',
+      wordLength: wordLength as WordLength,
+      maxTries,
+      disabledLetters,
+      allowAny,
+      wordIndex,
+      randomId: mode === 'r' ? `url-${wordIndex.toString(16)}-${wordLength.toString(16)}-${maxTries.toString(16)}-${disabledLetters.toString(16)}-${allowAny ? 1 : 0}` : undefined,
+    },
+    fastInvalidate,
+  }
+}
+
+export function challengeUrl(config: ChallengeConfig, fastInvalidate: boolean): URL | undefined {
+  const value = serializeChallenge(config, fastInvalidate)
+  if (!value) return undefined
+  const base = /^https?:$/.test(location.protocol) ? new URL('/wordle', location.origin) : new URL('https://sanyambrar.com/wordle')
+  base.searchParams.set(GAME_QUERY, value)
+  return base
 }

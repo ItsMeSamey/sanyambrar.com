@@ -1,10 +1,16 @@
-export function HomeBrand(props:{class?:string;href?:string;cue?:boolean}) {
-  return <a class={props.class ?? 'home-brand-link'} href={props.href ?? '/'} aria-label='Sanyam Brar home page'>
+export function HomeBrand(props:{class?:string;href?:string}) {
+  return <a class={props.class ?? 'home-brand-link'} href={props.href ?? '/'} aria-label='Sanyam Brar · Home'>
     <span class='home-brand-name'>Sanyam Brar</span>
-    {props.cue !== false && <small class='home-brand-cue'>HOME</small>}
+    <svg class='home-brand-icon' viewBox='0 0 24 24' aria-hidden='true'><path d='M3.5 10.5 12 3.75l8.5 6.75'/><path d='M5.5 9.25V20h13V9.25'/><path d='M9.5 20v-6h5v6'/></svg>
   </a>;
 }
 
+
+export function HomeIconLink(props:{class?:string;href?:string}) {
+  return <a class={props.class ?? 'home-icon-link'} href={props.href ?? '/'} aria-label='Sanyam Brar · Home' title='Home'>
+    <svg viewBox='0 0 24 24' aria-hidden='true'><path d='M3.5 10.5 12 3.75l8.5 6.75'/><path d='M5.5 9.25V20h13V9.25'/><path d='M9.5 20v-6h5v6'/></svg>
+  </a>
+}
 export function WordleMark(props:{class?:string}) {
   return <span class={props.class ?? 'game-title game-wordle'} aria-label='Wordle'>
     {'WORDLE'.split('').map(letter => <i>{letter}</i>)}

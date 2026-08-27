@@ -15,7 +15,9 @@ export function main(): void {
   if (element == null) {
     throw new Error("Missing #app root element");
   }
-  createRoot(element).render(
+  const root = createRoot(element);
+  (globalThis as any).SameyKeybrDispose = () => { root.unmount(); delete (globalThis as any).SameyKeybrDispose; };
+  root.render(
     <ThemeProvider>
       <Bootstrap />
     </ThemeProvider>,

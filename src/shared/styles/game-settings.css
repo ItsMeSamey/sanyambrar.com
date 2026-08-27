@@ -23,19 +23,10 @@
 .game-settings-trigger svg,
 .game-settings-close svg { width: 20px; height: 20px; display: block; }
 
-[data-popper-positioner]:has(> .game-settings-popover) {
-  position: fixed !important;
-  top: var(--game-control-top) !important;
-  right: var(--game-control-right) !important;
-  bottom: auto !important;
-  left: auto !important;
-  min-width: 0 !important;
-  transform: none !important;
-}
+/* Kobalte/Popper owns Wordle positioning so the panel follows the actual
+   settings trigger inside constrained game headers. Chain computes its fixed
+   position from its own trigger. */
 .game-settings-popover {
-  position: fixed;
-  top: var(--game-control-top);
-  right: var(--game-control-right);
   z-index: 40;
   width: min(var(--game-settings-width), calc(100vw - 24px));
   max-height: calc(100dvh - 22px);
@@ -47,13 +38,8 @@
   background: var(--color-popover, var(--site-bg, #fff));
   box-shadow: 0 12px 32px rgba(0,0,0,.18);
 }
-[data-popper-positioner] > .game-settings-popover {
-  position: relative !important;
-  top: auto !important;
-  right: auto !important;
-  left: auto !important;
-  transform: none !important;
-}
+[data-popper-positioner] > .game-settings-popover { position: relative !important; }
+.chain-settings.game-settings-popover { position: fixed; top: 0; left: 0; right: auto; }
 .game-settings-close {
   position: absolute;
   top: 0;
@@ -78,12 +64,12 @@
 /* Kobalte slider primitives used by Wordle. */
 .game-settings-slider [role=slider] { touch-action: none; }
 .game-settings-slider [role=slider][data-orientation=horizontal] { top: 50%; margin-top: -.5rem; }
-.game-settings-slider [data-kb-slider-track] { height: 16px; margin-inline: 0; width: 100%; border-radius: 999px; }
+.game-settings-slider [data-kb-slider-track] { height: 16px; margin-inline: 0; width: 100%; border-radius: 0; }
 
 /* Native range equivalent used by lightweight games. The visible fill is separate from
    the input so its rounded endpoint can share the thumb's exact center. */
 .game-range-shell { position: relative; display: block; width: 100%; height: 16px; }
-.game-range-track { position: absolute; inset: 0; height: 16px; border-radius: 999px; overflow: hidden; background: var(--color-secondary, var(--site-soft, #f3f4f5)); pointer-events: none; }
+.game-range-track { position: absolute; inset: 0; height: 16px; border-radius: 0; overflow: hidden; background: var(--color-secondary, var(--site-soft, #f3f4f5)); pointer-events: none; }
 .game-range-fill { display: block; width: var(--range-fill-width, 16px); height: 16px; border-radius: 999px; background: var(--color-primary, var(--site-fg, #121213)); }
 .game-settings-slider input[type="range"] {
   position: absolute; inset: 0; width: 100%; height: 16px; margin: 0; padding: 0; border: 0; appearance: none; -webkit-appearance: none; background: transparent; accent-color: var(--color-primary, var(--site-fg, #121213));
@@ -117,11 +103,6 @@
   .game-settings-body { padding: 46px 12px 12px; }
 }
 
-.game-settings-slider input[type="range"]::-webkit-slider-thumb{opacity:0;transition:opacity 90ms ease}
-.game-settings-slider:hover input[type="range"]::-webkit-slider-thumb,.game-settings-slider input[type="range"]:focus-visible::-webkit-slider-thumb,.game-settings-slider input[type="range"]:active::-webkit-slider-thumb{opacity:1}
-.game-settings-slider input[type="range"]::-moz-range-thumb{opacity:0;transition:opacity 90ms ease}
-.game-settings-slider:hover input[type="range"]::-moz-range-thumb,.game-settings-slider input[type="range"]:focus-visible::-moz-range-thumb,.game-settings-slider input[type="range"]:active::-moz-range-thumb{opacity:1}
-
 /* Keep settings controls contained on narrow viewports and with enlarged text. */
 .game-settings-popover,
 .game-settings-body,
@@ -137,3 +118,10 @@
 .game-settings-slider [data-kb-slider-label],
 .game-settings-slider [data-kb-slider-value-label] { min-width: 0; overflow-wrap: anywhere; }
 .game-settings-action { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+
+/* The knob is always visible. Only the outer rail ends are rounded; the moving fill endpoint is square beneath the knob. */
+.game-range-fill{border-radius:0}
+.game-settings-slider [data-kb-slider-fill]{border-radius:0}
+.game-settings-slider [role=slider],
+.game-settings-slider input[type="range"]::-webkit-slider-thumb,
+.game-settings-slider input[type="range"]::-moz-range-thumb{opacity:1!important}

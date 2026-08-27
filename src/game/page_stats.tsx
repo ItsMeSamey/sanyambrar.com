@@ -6,10 +6,12 @@ import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
 import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
-import { Block, GetSettingsStore } from './page'
+import { Block } from './page'
 import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
 import { ShareTrigger } from './page_share'
+import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
+import { HomeIconLink, WordleMark } from '../shared/components/Brand.tsx'
 
 interface GameStats {
   totalGames: number
@@ -129,9 +131,20 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
 }
 
 function DetailedStats({value}: {value: Value}) {
-  const {softStore, hardStore} = GetSettingsStore()
-  const soft = softStore.get()!
-  const hard = hardStore.get()!
+  const latest = () => value.h.reduce((best, entry) => (entry.t ?? 0) >= (best?.t ?? -1) ? entry : best, value.h[0])
+  const shareSoft: SettingsSoftProps = {reveal: false, fastInvalidate: true}
+  const shareHard = (): SettingsHardProps => {
+    const entry = latest()
+    return {
+      mode: entry?.o ?? 'advanced',
+      wordLength: value.w.length as SettingsHardProps['wordLength'],
+      allowAny: entry?.a ?? false,
+      maxTries: entry?.m ?? 6,
+      disabledLetters: entry?.d ?? 0,
+      dailyDate: entry?.o === 'daily' ? entry.q : undefined,
+      dailyVersion: entry?.o === 'daily' ? (entry.v ?? 1) : undefined,
+    }
+  }
   const stats = createMemo(() => {
     let wins = 0, fails = 0, reveals = 0, winningGuesses = 0, daily = 0
     for (const history of value.h) {
@@ -151,7 +164,7 @@ function DetailedStats({value}: {value: Value}) {
         <span class='stats-eyebrow'>Word</span>
         <h2>{value.w}</h2>
       </div>
-      <ShareTrigger word={() => value.w} soft={soft} hard={hard} />
+      <ShareTrigger word={() => value.w} soft={shareSoft} hard={shareHard()} />
     </div>
     <div class='stats-detail-grid'>
       <SummaryStat label='Played' value={value.h.length} />
@@ -209,9 +222,12 @@ export default function StatsPage() {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <main class='stats-page'>
-    <header class='stats-page-header'>
-      <h1>Statistics</h1>
-    </header>
+    <nav class='wordle-subpage-nav'>
+      <button type='button' class='wordle-logo-button' onClick={() => setP(Page.Wordle)} aria-label='Back to Wordle'><WordleMark class='wordle-logo'/></button>
+      <HomeIconLink class='wordle-home-icon'/><span class='wordle-subpage-title'>Statistics</span><div class='wordle-nav-spacer'/>
+      <button type='button' class='wordle-nav-button wordle-appearance-trigger' data-samey-appearance aria-label='Appearance' aria-expanded='false'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12'/></svg></button>
+    </nav>
+    <header class='stats-page-header'><h1>Statistics</h1></header>
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
       <Match when={stats.error}><p class='stats-state text-error-foreground'>Could not load statistics.</p></Match>

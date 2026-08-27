@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { animateRootSwap } from './transitions.ts';
 (() => {
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
   const KEY = "keybr.theme";
@@ -229,11 +230,21 @@
   let appearanceTrigger = null;
   const positionAppearancePanel = (trigger) => {
     if (!appearancePanel || !trigger) return;
+    const margin = 8;
+    const gap = 6;
     const r = trigger.getBoundingClientRect();
     const width = appearancePanel.offsetWidth || 176;
-    const left = Math.max(8, Math.min(innerWidth - width - 8, r.right - width));
+    const height = appearancePanel.offsetHeight || 0;
+    const left = Math.max(margin, Math.min(innerWidth - width - margin, r.right - width));
+    const below = r.bottom + gap;
+    const above = r.top - gap - height;
+    const top = below + height <= innerHeight - margin
+      ? below
+      : Math.max(margin, above);
     appearancePanel.style.left = `${left}px`;
-    appearancePanel.style.top = `${Math.min(innerHeight - 8, r.bottom + 6)}px`;
+    appearancePanel.style.top = `${top}px`;
+    appearancePanel.style.maxHeight = `${Math.max(80, innerHeight - top - margin)}px`;
+    appearancePanel.style.overflowY = "auto";
   };
   const closeAppearance = () => {
     if (!appearancePanel) return;
@@ -867,12 +878,13 @@
       document.documentElement.setAttribute(attr.name, value);
     }
   };
-  const decompressionChoice = (() => {
-    if (typeof DecompressionStream !== "function") return null;
+  const decompressionChoices = (() => {
+    if (typeof DecompressionStream !== "function") return [];
+    const supported = [];
     for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) {
-      try { new DecompressionStream(format); return { format, suffix }; } catch {}
+      try { new DecompressionStream(format); supported.push({ format, suffix }); } catch {}
     }
-    return null;
+    return supported;
   })();
   const logicalPageUrl = url => {
     const logical = new URL(url.href);
@@ -890,8 +902,8 @@
     if (pageCache.has(key)) return pageCache.get(key);
     const task = (async () => {
       const logical = logicalPageUrl(url);
-      const attempts = decompressionChoice && logical.pathname.endsWith(".html")
-        ? [{ url: new URL(logical.pathname + decompressionChoice.suffix + logical.search, logical.origin), format: decompressionChoice.format }, { url: logical, format: null }]
+      const attempts = logical.pathname.endsWith(".html")
+        ? [...decompressionChoices.map(choice => ({ url: new URL(logical.pathname + choice.suffix + logical.search, logical.origin), format: choice.format })), { url: logical, format: null }]
         : [{ url: logical, format: null }];
       let text = null;
       for (const attempt of attempts) {
@@ -953,6 +965,9 @@
   };
   const swapPage = (doc, baseUrl, url, replace) => {
     try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
+    try { globalThis.SameySolidDispose?.(); } catch {}
+    try { globalThis.SameyWordleDispose?.(); } catch {}
+    try { globalThis.SameyKeybrDispose?.(); } catch {}
     dispatchEvent(new Event("samey-pageleave"));
     normalizePageUrls(doc, baseUrl);
     document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
@@ -969,10 +984,19 @@
     (replace ? replaceState : pushState)({}, "", url.href);
     runBodyScripts(baseUrl);
     runHeadScripts(doc, baseUrl);
+    queueMicrotask(() => globalThis.SameyMountSolid?.());
     apply(); scanVirtualScrollers();
     if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
     else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
+  };
+  const destinationRoot = () => document.querySelector('#solid-site-app,#wordle-root,#keybr-root,.site-route');
+  const waitForDestinationRoot = async () => {
+    for (let i = 0; i < 90; i++) {
+      const root = destinationRoot();
+      if (root && (root.childElementCount > 0 || root.id === 'keybr-root')) return;
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
   };
   const loadPage = async (href, { replace = false } = {}) => {
     const url = new URL(href, location.href);
@@ -980,33 +1004,17 @@
     setLoading(true);
     try {
       const { doc, baseUrl } = await fetchPage(url);
-      const commit = () => swapPage(doc, baseUrl, url, replace);
-      if (document.startViewTransition && !reducedMotion()) {
-        document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
-        const transition = document.startViewTransition(commit);
-        await transition.finished.catch(() => {});
-        delete document.documentElement.dataset.navDirection;
-      } else if (!reducedMotion() && document.body?.animate) {
-        const leave = document.body.animate(
-          [{ opacity: 1, transform: "translateY(0) scale(1)" }, { opacity: 0, transform: "translateY(-5px) scale(.985)" }],
-          { duration: 140, easing: "cubic-bezier(.4,0,.2,1)", fill: "both" },
-        );
-        await leave.finished.catch(() => {});
-        leave.cancel();
-        commit();
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        const enter = document.body.animate(
-          [{ opacity: 0, transform: "translateY(7px) scale(.975)" }, { opacity: 1, transform: "translateY(0) scale(1)" }],
-          { duration: 230, easing: "cubic-bezier(.22,1,.36,1)" },
-        );
-        await enter.finished.catch(() => {});
-      } else commit();
+      const current = destinationRoot();
+      const commit = async () => { swapPage(doc, baseUrl, url, replace); await waitForDestinationRoot(); };
+      await animateRootSwap(current, commit, destinationRoot, url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
     } catch {
       // Navigation must remain functional even if the lazy/compressed path fails.
       // Fall back to the browser rather than swallowing an ordinary click.
       if (replace) location.replace(url.href); else location.assign(url.href);
     } finally { setLoading(false); }
   };
+  globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
+  globalThis.SameyAnimateLocalSwap = (root, commit, direction = 'forward') => animateRootSwap(root, commit, () => root, direction);
   const shouldSpa = url => url.origin === location.origin;
   const prefetch = href => {
     const url = new URL(href, location.href);
@@ -1038,59 +1046,7 @@
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountWordleErgonomics = () => {
-    if (document.documentElement.dataset.siteKind !== "wordle") return;
-    document.addEventListener("click", event => {
-      const label = event.target instanceof Element ? event.target.closest(".settings-switch-label") : null;
-      if (!label) return;
-      const row = label.closest(".settings-switch");
-      const control = row?.querySelector("[data-kb-switch-control]");
-      if (!(control instanceof HTMLElement)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      control.click();
-    }, true);
-  };
-
-  const appearanceIconSvg = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>';
-  const homeIconSvg = () => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1z"/></svg>';
-  const enhanceWordleChrome = () => {
-    if (document.documentElement.dataset.siteKind !== "wordle") return;
-    const nav = document.querySelector(".wordle-nav");
-    if (!nav) return;
-    const mode = nav.querySelector(".wordle-mode-switch");
-    if (!nav.querySelector(".wordle-nav-title")) {
-      const title = document.createElement("button");
-      title.type = "button"; title.className = "wordle-nav-title"; title.textContent = "WORDLE"; title.setAttribute("aria-label", "Choose Wordle mode");
-      title.addEventListener("click", () => mode?.click()); nav.prepend(title);
-    }
-    if (!nav.querySelector("[data-samey-appearance]")) {
-      const button = document.createElement("button");
-      button.type = "button"; button.className = "wordle-nav-button wordle-appearance-trigger"; button.dataset.sameyAppearance = ""; button.setAttribute("aria-label", "Appearance"); button.setAttribute("aria-expanded", "false"); button.innerHTML = appearanceIconSvg();
-      const settings = nav.querySelector(".settings-trigger,[aria-label=Settings]");
-      settings ? nav.insertBefore(button, settings) : nav.append(button);
-    }
-  };
-  const enhanceKeybrChrome = () => {
-    if (document.documentElement.dataset.siteKind !== "keybr") return;
-    const first = [...document.querySelectorAll("button[title]")].find(button => /guided tour|reset the current lesson|switch the current interface/i.test(button.title));
-    const controls = first?.parentElement;
-    if (!first || !controls) return;
-    const make = (title, svg, click) => {
-      const button = first.cloneNode(false); button.title = title; button.setAttribute("aria-label", title); button.innerHTML = svg(); button.addEventListener("click", click); return button;
-    };
-    if (!controls.querySelector('[title="Home"]')) controls.insertBefore(make("Home", homeIconSvg, () => {
-      const href = new URL("./", location.href).href;
-      globalThis.SameyNavigate?.(href);
-    }), first);
-    if (!controls.querySelector('[title="Appearance"]')) { const button = make("Appearance", appearanceIconSvg, () => toggleAppearance(button)); controls.insertBefore(button, first); }
-  };
-  const enhanceAppChrome = () => { enhanceWordleChrome(); enhanceKeybrChrome(); };
-  let chromeScanQueued = false;
-  const queueChromeScan = () => { if (chromeScanQueued) return; chromeScanQueued = true; requestAnimationFrame(() => { chromeScanQueued = false; enhanceAppChrome(); }); };
-  const observeAppChrome = () => new MutationObserver(queueChromeScan).observe(document.body, { subtree: true, childList: true });
-
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); mountWordleErgonomics(); enhanceAppChrome(); observeAppChrome(); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

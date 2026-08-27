@@ -1,4 +1,5 @@
 import { Match, Suspense, Switch, createSignal, lazy, onCleanup, onMount } from 'solid-js';
+import { animateRootSwap } from '../shared/transitions.ts';
 import { details } from './data';
 
 const loaders = {
@@ -37,44 +38,23 @@ const isStandaloneApp = (url: URL) => /\/(?:wordle|keybr)(?:\.html)?\/?$/.test(u
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
 const preload = (route: Route) => loaders[route.kind]();
 
-const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-
 async function animateStandaloneExit() {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const route = document.querySelector<HTMLElement>('.site-route');
-  if (!route?.animate) return;
+  if (!route || matchMedia('(prefers-reduced-motion: reduce)').matches || !route.animate) return;
   const animation = route.animate(
-    [{ opacity: 1, transform: 'translateY(0) scale(1)' }, { opacity: 0, transform: 'translateY(-5px) scale(.985)' }],
-    { duration: 150, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
+    [{ opacity: 1, transform: 'scale(1)' }, { opacity: .72, transform: 'scale(.985)' }],
+    { duration: 120, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
   );
   try { await animation.finished; } catch {}
 }
 
 async function animateRouteSwap(commit: () => void, homeward = false) {
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const oldRoute = document.querySelector<HTMLElement>('.site-route');
-  if (reduced || !oldRoute?.animate) { commit(); return; }
-
-  const out = oldRoute.animate(
-    homeward
-      ? [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.94)' }]
-      : [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'translateY(-4px) scale(.982)' }],
-    { duration: 130, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
+  await animateRootSwap(
+    document.querySelector<HTMLElement>('.site-route'),
+    commit,
+    () => document.querySelector<HTMLElement>('.site-route'),
+    homeward ? 'back' : 'forward',
   );
-  try { await out.finished; } catch {}
-  out.cancel();
-  commit();
-  await nextFrame();
-
-  const newRoute = document.querySelector<HTMLElement>('.site-route');
-  if (!newRoute?.animate) return;
-  const enter = newRoute.animate(
-    homeward
-      ? [{ opacity: 0, transform: 'scale(.9)' }, { opacity: 1, transform: 'scale(1)' }]
-      : [{ opacity: 0, transform: 'translateY(6px) scale(.975)' }, { opacity: 1, transform: 'translateY(0) scale(1)' }],
-    { duration: 210, easing: 'cubic-bezier(.22,1,.36,1)' },
-  );
-  try { await enter.finished; } catch {}
 }
 
 export function App() {
@@ -124,6 +104,8 @@ export function App() {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     if (isStandaloneApp(url)) {
+      const pageSwap = (globalThis as typeof globalThis & { SameyPageSwapNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyPageSwapNavigate;
+      if (pageSwap) { await pageSwap(url.href, { replace }); return; }
       document.documentElement.dataset.navDirection = 'forward';
       try { await animateStandaloneExit(); } finally { location.assign(url.href); }
       return;
