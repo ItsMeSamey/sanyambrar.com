@@ -33,6 +33,7 @@ export function mountTools() {
   const copy = value => navigator.clipboard?.writeText(value).catch(() => {});
 
   let disposeTool = () => {};
+  let renderGeneration = 0;
   let monacoPromise;
   let ensureLanguage = async () => {};
   let monacoThemeListener = null;
@@ -45,12 +46,13 @@ export function mountTools() {
     render();
   };
 
-  tabs.addEventListener('click', event => {
+  const onTabClick = event => {
     const link = event.target.closest('[data-tool]');
     if (!link) return;
     event.preventDefault();
     setRoute(link.dataset.tool);
-  });
+  };
+  tabs.addEventListener('click', onTabClick);
 
   const onRouteChange = () => {
     if (/\/tools(?:\.html)?\/?$/.test(location.pathname)) render();
@@ -117,6 +119,9 @@ export function mountTools() {
         addEventListener('samey-themechange', monacoThemeListener);
       }
       return monaco;
+    }).catch(error => {
+      monacoPromise = undefined;
+      throw error;
     });
     return monacoPromise;
   }
@@ -152,6 +157,8 @@ export function mountTools() {
     setContext('');
   }
 
+  const currentRender = generation => generation === renderGeneration;
+
   function textStats(text) {
     return {
       words: text.match(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)?.length ?? 0,
@@ -161,10 +168,10 @@ export function mountTools() {
     };
   }
 
-  async function textTool() {
+  async function textTool(generation) {
     loadingEditor();
     const monaco = await ensureMonaco();
-    if (route() !== 'text') return;
+    if (!currentRender(generation) || route() !== 'text') return;
     const value = get('text', 'Hello World! Café résumé naïve\n你好世界！\nEmoji: 🎉🚀💡');
     root.innerHTML = '<section class="tool-one-pane"><div id="text-editor" class="monaco-host"></div></section>';
     const model = monaco.editor.createModel(value, 'plaintext');
@@ -200,7 +207,7 @@ export function mountTools() {
   const td = new TextDecoder('utf-8', { fatal: true });
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   const B88 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;=?@[]^_{|}~';
-  const b2s = bytes => String.fromCharCode(...bytes);
+  const b2s = bytes => { let out = ''; for (let offset = 0; offset < bytes.length; offset += 0x8000) out += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000)); return out; };
   const s2b = text => Uint8Array.from(text, char => char.charCodeAt(0));
   const bxE = (bytes, alphabet) => {
     if (!bytes.length) return '';
@@ -333,10 +340,10 @@ export function mountTools() {
     return null;
   };
 
-  async function baseTool() {
+  async function baseTool(generation) {
     loadingEditor();
     const monaco = await ensureMonaco();
-    if (route() !== 'base') return;
+    if (!currentRender(generation) || route() !== 'base') return;
     let mode = get('mode', 'decode') === 'encode' ? 'encode' : 'decode';
     let selection = get('format', 'auto');
     if (![...FORMATS.map(([value]) => value), 'auto'].includes(selection)) selection = 'auto';
@@ -382,15 +389,15 @@ export function mountTools() {
 
   const LANGUAGES = [['plaintext', 'Plain text'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'], ['json', 'JSON'], ['html', 'HTML'], ['css', 'CSS'], ['markdown', 'Markdown'], ['python', 'Python'], ['rust', 'Rust'], ['go', 'Go'], ['java', 'Java'], ['cpp', 'C++'], ['c', 'C'], ['shell', 'Shell'], ['sql', 'SQL'], ['yaml', 'YAML'], ['xml', 'XML']];
 
-  async function diffTool() {
+  async function diffTool(generation) {
     loadingEditor();
     const monaco = await ensureMonaco();
-    if (route() !== 'diff') return;
+    if (!currentRender(generation) || route() !== 'diff') return;
     const left = get('left', get('text', 'Hello World\n\nThis is the original text.'));
     const right = get('right', 'Hello World\n\nThis is the modified text.');
     let language = get('language', 'plaintext');
     await ensureLanguage(language);
-    if (route() !== 'diff') return;
+    if (!currentRender(generation) || route() !== 'diff') return;
     root.innerHTML = '<section class="diff-monaco"><div id="diff-editor" class="monaco-host"></div></section>';
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
@@ -403,7 +410,7 @@ export function mountTools() {
       renderIndicators: true,
       renderOverviewRuler: false,
       diffAlgorithm: 'advanced',
-      useInlineViewWhenSpaceIsLimited: false,
+      useInlineViewWhenSpaceIsLimited: true,
     });
     diff.setModel({ original, modified });
     const setTopContext = () => {
@@ -411,7 +418,7 @@ export function mountTools() {
       context.querySelector('[data-diff-language]').onchange = async event => {
         language = event.target.value; set('language', language);
         await ensureLanguage(language);
-        if (route() !== 'diff') return;
+        if (!currentRender(generation) || route() !== 'diff') return;
         monaco.editor.setModelLanguage(original, language); monaco.editor.setModelLanguage(modified, language);
       };
       context.querySelector('[data-diff-swap]').onclick = () => {
@@ -471,38 +478,95 @@ export function mountTools() {
     const caption = root.querySelector('#bit-caption');
     const error = root.querySelector('#number-error');
     let value = null;
-    const reps = () => value === null ? [] : [['Binary', 2, fmt(value, 2), 4], ['Octal', 8, fmt(value, 8), 3], ['Decimal', 10, fmt(value, 10), 3], ['Hexadecimal', 16, fmt(value, 16), 4], [`Base ${custom}`, custom, fmt(value, custom), 4]];
-    const paint = () => {
-      try { value = parseN(text, base); error.hidden = true; } catch (err) { value = null; error.hidden = false; error.textContent = err?.message || String(err); }
+
+    const definitions = () => [
+      ['binary', 'Binary', 2, 4],
+      ['octal', 'Octal', 8, 3],
+      ['decimal', 'Decimal', 10, 3],
+      ['hex', 'Hexadecimal', 16, 4],
+      ['custom', `Base ${custom}`, custom, 4],
+    ];
+    const buildCards = () => {
+      grid.innerHTML = definitions().map(([key, label, radix]) => `<label class="number-card" data-number-card="${key}"><header><span>${label}</span><small>base ${radix}</small></header><input data-number-radix="${radix}" spellcheck="false"><button type="button" data-copy-number>Copy</button></label>`).join('');
+    };
+    const updateCards = activeField => {
+      for (const [key, label, radix, group] of definitions()) {
+        const card = grid.querySelector(`[data-number-card="${key}"]`);
+        if (!card) continue;
+        card.querySelector('header span').textContent = label;
+        card.querySelector('header small').textContent = `base ${radix}`;
+        const field = card.querySelector('[data-number-radix]');
+        field.dataset.numberRadix = String(radix);
+        const raw = value === null ? '' : fmt(value, radix);
+        if (field !== activeField) field.value = value === null ? '' : grouped(raw, group);
+        const copyButton = card.querySelector('[data-copy-number]');
+        copyButton.dataset.copyNumber = raw;
+        copyButton.disabled = value === null;
+      }
+    };
+    const paint = activeField => {
+      try {
+        value = parseN(text, base);
+        error.hidden = true;
+        error.textContent = '';
+      } catch (err) {
+        value = null;
+        error.hidden = false;
+        error.textContent = err?.message || String(err);
+      }
       root.querySelectorAll('[data-base]').forEach(button => button.toggleAttribute('data-active', +button.dataset.base === base));
-      grid.innerHTML = reps().map(([label, radix, raw, group]) => `<label class="number-card"><header><span>${label}</span><small>base ${radix}</small></header><input data-number-radix="${radix}" value="${esc(grouped(raw, group))}" spellcheck="false"><button type="button" data-copy-number="${esc(raw)}">Copy</button></label>`).join('');
-      if (value === null) { bits.innerHTML = ''; caption.textContent = ''; }
-      else {
+      updateCards(activeField);
+      if (value === null) {
+        bits.innerHTML = '';
+        caption.textContent = '';
+      } else {
         const abs = value < 0n ? -value : value;
         const bitCount = Math.max(1, abs.toString(2).length);
         const raw = abs.toString(2).padStart(Math.ceil(bitCount / 4) * 4, '0');
         bits.innerHTML = (raw.match(/.{1,4}/g) || []).map(group => `<code>${group}</code>`).join('');
         caption.textContent = `${bitCount} bit${bitCount === 1 ? '' : 's'} · ${Math.ceil(bitCount / 8)} byte${Math.ceil(bitCount / 8) === 1 ? '' : 's'}`;
       }
-      set('text', text); set('base', base); set('custom', custom);
+      set('text', text);
+      set('base', base);
+      set('custom', custom);
       setContext(value === null ? '<span class="danger">Invalid value</span>' : '');
     };
+
+    buildCards();
     input.oninput = () => { text = input.value; paint(); };
-    sourceBase.oninput = () => { base = Math.min(62, Math.max(2, +sourceBase.value || 2)); paint(); };
-    customBase.oninput = () => { custom = Math.min(62, Math.max(2, +customBase.value || 2)); paint(); };
+    sourceBase.onchange = () => {
+      base = Math.min(62, Math.max(2, +sourceBase.value || 2));
+      sourceBase.value = String(base);
+      paint();
+    };
+    customBase.onchange = () => {
+      custom = Math.min(62, Math.max(2, +customBase.value || 2));
+      customBase.value = String(custom);
+      paint();
+    };
     root.querySelector('.radix-choices').onclick = event => {
       const button = event.target.closest('[data-base]');
       if (!button) return;
-      base = +button.dataset.base; sourceBase.value = base; paint();
+      base = +button.dataset.base;
+      sourceBase.value = String(base);
+      paint();
     };
     grid.addEventListener('input', event => {
       const field = event.target.closest('[data-number-radix]');
       if (!field) return;
-      base = +field.dataset.numberRadix; text = clean(field.value); sourceBase.value = base; input.value = text; paint();
+      base = +field.dataset.numberRadix;
+      text = clean(field.value);
+      sourceBase.value = String(base);
+      input.value = text;
+      paint(field);
+    });
+    grid.addEventListener('change', event => {
+      const field = event.target.closest('[data-number-radix]');
+      if (field) paint();
     });
     grid.addEventListener('click', event => {
       const button = event.target.closest('[data-copy-number]');
-      if (button) copy(button.dataset.copyNumber);
+      if (button && !button.disabled) copy(button.dataset.copyNumber);
     });
     paint();
     disposeTool = () => {};
@@ -553,12 +617,12 @@ export function mountTools() {
     return out.join('') || '<p></p>';
   }
 
-  async function markdownTool() {
+  async function markdownTool(generation) {
     loadingEditor();
     const monaco = await ensureMonaco();
-    if (route() !== 'markdown') return;
+    if (!currentRender(generation) || route() !== 'markdown') return;
     await ensureLanguage('markdown');
-    if (route() !== 'markdown') return;
+    if (!currentRender(generation) || route() !== 'markdown') return;
     const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Live local preview\n- Source-aware linked scrolling');
     let linked = localGet('markdown', 'linked', '1') !== '0';
     root.innerHTML = '<section class="markdown-tool"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><article id="md-output" class="markdown-preview"></article></section>';
@@ -625,13 +689,15 @@ export function mountTools() {
   }
 
   function render() {
+    const generation = ++renderGeneration;
     try { disposeTool(); } catch {}
     disposeTool = () => {};
     syncTabs();
     const tool = route();
     const run = ({ text: textTool, base: baseTool, diff: diffTool, number: numberTool, markdown: markdownTool })[tool] || textTool;
     document.title = `${TOOLS.find(([id]) => id === tool)?.[2] || 'Tools'} · Sanyam Brar`;
-    Promise.resolve(run()).catch(error => {
+    Promise.resolve(run(generation)).catch(error => {
+      if (!currentRender(generation)) return;
       root.innerHTML = `<div class="tool-fatal"><strong>Editor failed to load.</strong><span>${esc(error?.message || String(error))}</span><button type="button">Retry</button></div>`;
       root.querySelector('button').onclick = render;
       setContext('');
@@ -640,7 +706,9 @@ export function mountTools() {
 
   render();
   return () => {
+    renderGeneration++;
     try { disposeTool(); } catch {}
+    tabs.removeEventListener('click', onTabClick);
     removeEventListener('popstate', onRouteChange);
     removeEventListener('samey-solid-routechange', onRouteChange);
     if (monacoThemeListener) removeEventListener('samey-themechange', monacoThemeListener);

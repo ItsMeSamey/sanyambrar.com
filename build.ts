@@ -250,10 +250,8 @@ async function main() {
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
   await compressHtml();
-  if (fullBuild) {
-    await generateServiceWorker();
-    log("build complete; docs/ is the GitHub Pages site root");
-  }
+  if (targets.has("static")) await generateServiceWorker();
+  if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");
 }
 
 try {

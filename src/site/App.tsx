@@ -194,6 +194,7 @@ export function App() {
       document.removeEventListener('focusin', prefetch);
       removeEventListener('popstate', pop);
       delete (globalThis as typeof globalThis & { SameySolidNavigate?: typeof navigate }).SameySolidNavigate;
+      delete (globalThis as typeof globalThis & { SameyNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyNavigate;
     });
   });
 

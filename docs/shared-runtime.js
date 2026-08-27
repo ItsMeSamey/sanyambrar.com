@@ -472,6 +472,18 @@
 		const wireInlineBrowsers = (root = document) => {
 			for (const browser of root.querySelectorAll?.("[data-inline-browser]") || []) wireBrowser(browser);
 		};
+		const clampBrowserControls = (browser) => {
+			if (!(browser instanceof HTMLElement) || !browser.hasAttribute("data-fullscreen")) return;
+			const controls = browser.querySelector("[data-browser-controls]");
+			if (!(controls instanceof HTMLElement) || !controls.style.left) return;
+			const rect = controls.getBoundingClientRect(), margin = 8;
+			controls.style.left = `${Math.min(Math.max(margin, rect.left), Math.max(margin, innerWidth - rect.width - margin))}px`;
+			controls.style.top = `${Math.min(Math.max(margin, rect.top), Math.max(margin, innerHeight - rect.height - margin))}px`;
+			controls.style.right = "auto";
+		};
+		addEventListener("resize", () => {
+			for (const browser of document.querySelectorAll("[data-inline-browser][data-fullscreen]")) clampBrowserControls(browser);
+		});
 		let externalBrowserBackdrop = null;
 		const closeExternalBrowser = () => {
 			if (!externalBrowserBackdrop) return;
@@ -497,6 +509,7 @@
 		const mountExternalBrowsers = () => {
 			wireInlineBrowsers();
 			document.addEventListener("click", (event) => {
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 				const link = event.target.closest?.("a[data-samey-external]");
 				if (!link) return;
@@ -1243,7 +1256,7 @@
 			});
 			addEventListener("scroll", scheduleVirtualBars, true);
 		};
-		const APP_ROUTE = /\/(?:keybr|wordle|chain)(?:\.html)?\/?$/;
+		const APP_ROUTE = /\/(?:keybr|wordle)(?:\.html)?\/?$/;
 		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
 		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
 		const pageCache = /* @__PURE__ */ new Map();
@@ -1307,14 +1320,14 @@
 					format: null
 				}];
 				let response = null, format = null;
-				for (const attempt of attempts) {
+				for (const attempt of attempts) try {
 					const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
 					if (candidate.ok) {
 						response = candidate;
 						format = attempt.format;
 						break;
 					}
-				}
+				} catch {}
 				if (!response) throw new Error("page fetch failed");
 				const text = await decodePageResponse(response, format);
 				const doc = new DOMParser().parseFromString(text, "text/html");
@@ -1358,6 +1371,20 @@
 				old.replaceWith(fresh);
 			}
 		};
+		const runHeadScripts = (doc, baseUrl) => {
+			document.head.querySelectorAll("script[data-spa-page-script]").forEach((script) => script.remove());
+			for (const old of [...doc.head.querySelectorAll("script")]) {
+				const source = old.getAttribute("src");
+				const resolved = source ? new URL(source, baseUrl).href : "";
+				if (resolved && /\/shared-runtime\.js(?:[?#]|$)/.test(resolved)) continue;
+				const fresh = document.createElement("script");
+				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
+				fresh.dataset.spaPageScript = "";
+				if (resolved) fresh.src = resolved;
+				else fresh.textContent = old.textContent;
+				document.head.append(fresh);
+			}
+		};
 		const clearPageBody = () => {
 			const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
 			for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
@@ -1384,6 +1411,7 @@
 			syncHtmlData(doc, baseUrl);
 			(replace ? replaceState : pushState)({}, "", url.href);
 			runBodyScripts(baseUrl);
+			runHeadScripts(doc, baseUrl);
 			apply();
 			scanVirtualScrollers();
 			if (!url.hash) scrollTo({
@@ -1429,7 +1457,7 @@
 						delete globalThis.SameyToolsDispose;
 					} catch {}
 					dispatchEvent(new Event("samey-pageleave"));
-					document.querySelectorAll("head > [data-spa-page]").forEach((el) => el.remove());
+					document.querySelectorAll("head > [data-spa-page], head > script[data-spa-page-script]").forEach((el) => el.remove());
 					const runtimeAnchor = clearPageBody();
 					const shell = document.createElement("main");
 					shell.className = "samey-app-shell";
@@ -1499,10 +1527,12 @@
 			markInitialPageStyles();
 			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
 			document.addEventListener("pointerover", (event) => {
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				const a = event.target.closest?.("a[href]");
 				if (a && !a.target) prefetch(a.href);
 			}, { passive: true });
 			document.addEventListener("focusin", (event) => {
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				const a = event.target.closest?.("a[href]");
 				if (a && !a.target) prefetch(a.href);
 			});
@@ -1516,12 +1546,13 @@
 				loadPage(url.href);
 			});
 			addEventListener("message", (event) => {
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				if (event.origin !== location.origin || event.source === window) return;
 				const message = event.data;
 				if (message?.type === "samey-navigate" && message.href) loadPage(message.href);
 			});
 			addEventListener("popstate", () => {
-				if (document.documentElement.dataset.siteKind === "tools" && /\/tools(?:\.html)?\/?$/.test(location.pathname)) return;
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				loadPage(location.href, { replace: true });
 			});
 		};
