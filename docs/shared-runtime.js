@@ -74,7 +74,25 @@
 	//#endregion
 	//#region src/shared/transitions.ts
 	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-	var twoFrames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+	var nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+	var twoFrames = async () => {
+		await nextFrame();
+		await nextFrame();
+	};
+	/** One motion contract for every page/view swap in the site. */
+	var PAGE_TRANSITION = {
+		duration: 260,
+		leaveRatio: 180 / 260,
+		enterEasing: "cubic-bezier(.22,1,.36,1)",
+		leaveEasing: "cubic-bezier(.4,0,.2,1)",
+		opacity: .15,
+		clip: "inset(4% 4% round 12px)",
+		forwardScale: .955,
+		backScale: .985,
+		leaveScale: 1.02
+	};
+	var leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
+	var startScale = (direction) => `scale(${direction === "back" ? PAGE_TRANSITION.backScale : PAGE_TRANSITION.forwardScale})`;
 	function snapshotElement(element) {
 		const rect = element.getBoundingClientRect();
 		const shell = document.createElement("div");
@@ -95,9 +113,8 @@
 		});
 		const originals = [element, ...element.querySelectorAll("*")];
 		const copies = [clone, ...clone.querySelectorAll("*")];
-		for (let index = 0; index < Math.min(originals.length, copies.length); index++) {
-			const source = originals[index];
-			const target = copies[index];
+		for (let i = 0; i < Math.min(originals.length, copies.length); i++) {
+			const source = originals[i], target = copies[i];
 			target.scrollTop = source.scrollTop;
 			target.scrollLeft = source.scrollLeft;
 			if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
@@ -117,6 +134,45 @@
 		document.body.append(shell);
 		return shell;
 	}
+	function primeIncoming(element, direction) {
+		element.style.opacity = String(PAGE_TRANSITION.opacity);
+		element.style.transform = startScale(direction);
+		element.style.clipPath = PAGE_TRANSITION.clip;
+	}
+	function animateIncoming(element, direction) {
+		return element.animate([{
+			opacity: PAGE_TRANSITION.opacity,
+			transform: startScale(direction),
+			clipPath: PAGE_TRANSITION.clip
+		}, {
+			opacity: 1,
+			transform: "scale(1)",
+			clipPath: "inset(0 round 0)"
+		}], {
+			duration: PAGE_TRANSITION.duration,
+			easing: PAGE_TRANSITION.enterEasing,
+			fill: "both"
+		});
+	}
+	function animateOutgoing(element) {
+		return element.animate([{
+			opacity: 1,
+			transform: "scale(1)"
+		}, {
+			opacity: 0,
+			transform: `scale(${PAGE_TRANSITION.leaveScale})`
+		}], {
+			duration: leaveDuration(),
+			easing: PAGE_TRANSITION.leaveEasing,
+			fill: "both"
+		});
+	}
+	function clearIncoming(element) {
+		element.style.opacity = "";
+		element.style.transform = "";
+		element.style.clipPath = "";
+		element.style.pointerEvents = "";
+	}
 	async function animateRootSwap(current, commit, next, direction = "forward") {
 		if (!current || reducedMotion() || !current.animate) {
 			await commit();
@@ -132,49 +188,17 @@
 		await Promise.resolve();
 		let incoming = next();
 		if (!incoming || incoming === current || !incoming.isConnected) {
-			await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+			await nextFrame();
 			incoming = next();
 		}
-		const fromClip = direction === "back" ? "inset(3% 3% round 10px)" : "inset(5% 5% round 12px)";
-		const fromScale = direction === "back" ? "scale(.985)" : "scale(.955)";
-		if (incoming) {
-			incoming.style.opacity = "0.18";
-			incoming.style.transform = fromScale;
-			incoming.style.clipPath = fromClip;
-		}
+		if (incoming) primeIncoming(incoming, direction);
 		await twoFrames();
-		const incomingAnimation = incoming?.animate?.([{
-			opacity: .18,
-			transform: fromScale,
-			clipPath: fromClip
-		}, {
-			opacity: 1,
-			transform: "scale(1)",
-			clipPath: "inset(0 round 0)"
-		}], {
-			duration: 260,
-			easing: "cubic-bezier(.22,1,.36,1)",
-			fill: "both"
-		});
-		const outgoingAnimation = snapshot.animate([{
-			opacity: 1,
-			transform: "scale(1)"
-		}, {
-			opacity: 0,
-			transform: direction === "back" ? "scale(1.018)" : "scale(1.025)"
-		}], {
-			duration: 190,
-			easing: "cubic-bezier(.4,0,.2,1)",
-			fill: "both"
-		});
-		await Promise.allSettled([outgoingAnimation.finished, incomingAnimation?.finished ?? Promise.resolve()]);
+		const enter = incoming?.animate ? animateIncoming(incoming, direction) : void 0;
+		const leave = animateOutgoing(snapshot);
+		await Promise.allSettled([leave.finished, enter?.finished ?? Promise.resolve()]);
 		snapshot.remove();
-		incomingAnimation?.cancel();
-		if (incoming) {
-			incoming.style.opacity = "";
-			incoming.style.transform = "";
-			incoming.style.clipPath = "";
-		}
+		enter?.cancel();
+		if (incoming) clearIncoming(incoming);
 	}
 	//#endregion
 	//#region src/shared/loadingSvg.ts
@@ -182,8 +206,8 @@
 		size: 64,
 		cx: 32,
 		cy: 32,
-		baseRadius: 9.4,
-		amplitude: 2.2,
+		baseRadius: 8.4,
+		amplitude: 1.35,
 		waves: 6,
 		duration: .72,
 		zeroCrossingPower: .72,
@@ -220,7 +244,6 @@
 	(() => {
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
 		const KEY = "keybr.theme";
-		const WORDLE_KEY = "ui-theme";
 		const FONT_KEY = "samey.font";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
@@ -429,9 +452,6 @@
 				root.style.setProperty("--input", hsl(line));
 				root.style.setProperty("--ring", hsl(theme.accent));
 				root.style.setProperty("--error-foreground", hsl(theme.error));
-				try {
-					nativeSetItem.call(localStorage, WORDLE_KEY, theme.tone);
-				} catch {}
 			}
 			document.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
 			document.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
@@ -1275,53 +1295,20 @@
 				document.documentElement.setAttribute(attr.name, value);
 			}
 		};
-		const decompressionChoices = (() => {
-			if (typeof DecompressionStream !== "function") return [];
-			const supported = [];
-			for (const [format, suffix] of [["brotli", ".br"], ["gzip", ".gz"]]) try {
-				new DecompressionStream(format);
-				supported.push({
-					format,
-					suffix
-				});
-			} catch {}
-			return supported;
-		})();
 		const logicalPageUrl = (url) => {
 			const logical = new URL(url.href);
 			if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
 			else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
 			return logical;
 		};
-		const decodePageResponse = async (response, format) => {
-			if (!format) return response.text();
-			if (!response.body) throw new Error("compressed response has no body");
-			return new Response(response.body.pipeThrough(new DecompressionStream(format))).text();
-		};
 		const fetchPage = async (url) => {
 			const key = url.href;
 			if (pageCache.has(key)) return pageCache.get(key);
 			const task = (async () => {
 				const logical = logicalPageUrl(url);
-				const attempts = logical.pathname.endsWith(".html") ? [...decompressionChoices.map((choice) => ({
-					url: new URL(logical.pathname + choice.suffix + logical.search, logical.origin),
-					format: choice.format
-				})), {
-					url: logical,
-					format: null
-				}] : [{
-					url: logical,
-					format: null
-				}];
-				let text = null;
-				for (const attempt of attempts) try {
-					const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
-					if (!candidate.ok) continue;
-					text = await decodePageResponse(candidate, attempt.format);
-					break;
-				} catch {}
-				if (text === null) throw new Error("page fetch failed");
-				const doc = new DOMParser().parseFromString(text, "text/html");
+				const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
+				if (!response.ok) throw new Error("page fetch failed");
+				const doc = new DOMParser().parseFromString(await response.text(), "text/html");
 				const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
 				return {
 					doc,
@@ -1424,7 +1411,8 @@
 		};
 		const destinationRoot = () => {
 			if (document.documentElement.dataset.siteKind === "keybr") return document.getElementById("app");
-			return document.querySelector("#solid-site-app,#wordle-root,.site-route");
+			if (document.documentElement.hasAttribute("data-static-article")) return document.querySelector(".article-route");
+			return document.querySelector("#solid-site-app,#wordle-root,.site-route,.article-route");
 		};
 		const waitForDestinationRoot = async () => {
 			for (let i = 0; i < 90; i++) {
@@ -1487,10 +1475,13 @@
 			fetchPage(url).catch(() => {});
 		};
 		globalThis.SameyPreloadPage = prefetch;
+		let documentNavigationMounted = false;
 		const mountSpa = () => {
-			if (document.documentElement.hasAttribute("data-solid-spa") || document.documentElement.hasAttribute("data-static-article")) return;
-			markInitialPageStyles();
+			if (document.documentElement.hasAttribute("data-solid-spa")) return;
 			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
+			if (documentNavigationMounted) return;
+			documentNavigationMounted = true;
+			markInitialPageStyles();
 			document.addEventListener("pointerover", (event) => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				const a = event.target.closest?.("a[href]");
@@ -1502,6 +1493,7 @@
 				if (a && !a.target) prefetch(a.href);
 			});
 			document.addEventListener("click", (event) => {
+				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 				const a = event.target.closest?.("a[href]");
 				if (!a || a.target || a.hasAttribute("download")) return;
@@ -1531,6 +1523,7 @@
 			mountContextMenu();
 			mountVirtualScrollbars();
 			mountSpa();
+			addEventListener("samey-pageload", mountSpa);
 		};
 		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
 		else mountRuntime();
@@ -1722,17 +1715,6 @@
 	//#region src/shared/site.ts
 	(() => {
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
-		const mountStaticTopBars = () => {
-			document.querySelectorAll("[data-site-topbar]").forEach((host) => {
-				if (host.dataset.mounted !== void 0) return;
-				const home = new URL(document.documentElement.dataset.homeHref || host.closest("html")?.getAttribute("data-home-href") || "/", location.href);
-				const href = (path) => new URL(path.replace(/^\//, ""), home).href;
-				const active = host.dataset.active || "";
-				host.outerHTML = `<header class="top site-topbar"><a class="brand home-brand-link" href="${home.href}" aria-label="Sanyam Brar · Home"><span class="home-brand-name">Sanyam Brar</span><span class="home-brand-cue" aria-hidden="true">HOME</span></a><nav class="top-nav site-topbar-nav" aria-label="Primary"><a href="${home.href}"${active === "home" ? " aria-current=\"page\"" : ""}>Home</a><a href="${href("work")}"${active === "work" ? " aria-current=\"page\"" : ""}>Work</a><a href="${href("blog")}"${active === "blog" ? " aria-current=\"page\"" : ""}>Writing</a><button class="top-icon site-topbar-icon" type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">◐</button><button class="search-trigger site-topbar-search" type="button" data-open-search aria-label="Search"><span class="site-topbar-search-icon" aria-hidden="true">⌕</span><kbd data-search-shortcut>Ctrl K</kbd></button></nav></header>`;
-			});
-		};
-		mountStaticTopBars();
-		addEventListener("samey-pageload", mountStaticTopBars);
 		const index = searchIndex;
 		const norm = (s) => s.toLowerCase();
 		const score = (item, q) => {

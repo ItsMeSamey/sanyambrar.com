@@ -16,6 +16,7 @@ const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
 const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
+const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
@@ -123,6 +124,16 @@ async function verifySourceArchitecture() {
     must(hits.length === 0, `architecture: retired duplicate bar ${name} remains in ${hits.join(", ")}`);
   }
 
+  const viteConfigs = await Promise.all(
+    ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts"]
+      .map(async name => [name, await readFile(join(ROOT, name), "utf8")] as const),
+  );
+  const wordleVite = viteConfigs[0][1];
+  must(!wordleVite.includes("closeBundle") && wordleVite.includes(".build/wordle"),
+    "architecture: Wordle Vite build must stage output privately; build.ts owns publication");
+  for (const [name, text] of viteConfigs)
+    must(!text.includes("rollupOptions"), `architecture: ${name} uses deprecated Vite rollupOptions`);
+
   const transitions = await readFile(join(ROOT, "src/shared/transitions.ts"), "utf8");
   must(/duration:\s*\d+/.test(transitions) && !/enterDuration:|leaveDuration:/.test(transitions),
     "architecture: page transition timing must come from PAGE_TRANSITION.duration");
@@ -227,7 +238,17 @@ async function buildSolid() {
     run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
     run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"]),
   ]);
-  must(existsSync(join(DOCS, "wordle.html")), "Vite did not emit docs/wordle.html");
+
+  // Keep Vite's output-name semantics out of the deployment contract. Vite 8
+  // runs closeBundle before its Rolldown writer is necessarily visible on disk,
+  // so renaming app.html from a closeBundle hook races the output write. Build
+  // into a private directory, then publish the single HTML artifact ourselves.
+  const html = await walk(GENERATED_WORDLE, (_path, name) => name.endsWith(".html"));
+  must(html.length === 1, `Wordle build emitted ${html.length} HTML files`);
+  await mkdir(DOCS, { recursive: true });
+  await rm(join(DOCS, "wordle.html"), { force: true });
+  await rename(html[0], join(DOCS, "wordle.html"));
+  must(existsSync(join(DOCS, "wordle.html")), "Wordle publish did not emit docs/wordle.html");
   log("solid -> docs/wordle.html");
 }
 

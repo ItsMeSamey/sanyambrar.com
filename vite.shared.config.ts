@@ -15,7 +15,7 @@ export default defineConfig({
       formats: ['iife'],
       fileName: () => 'shared-runtime.js',
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         assetFileNames: asset => asset.name?.endsWith('.css') ? 'site.css' : '[name]-[hash][extname]',
       },
