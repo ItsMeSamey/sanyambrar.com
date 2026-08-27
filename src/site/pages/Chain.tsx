@@ -11,7 +11,7 @@ function Slider(props:{id:string;label:string;min:number;max:number}) {
   </label>;
 }
 
-const ChainIdentity = () => <SmartLink class="chain-home-link" href="/" aria-label="Sanyam Brar · Home"><ChainMark class="chain-header-logo"/></SmartLink>;
+const ChainIdentity = () => <SmartLink class="chain-home-link" href="/chain" aria-label="Chain Reaction"><ChainMark class="chain-header-logo"/></SmartLink>;
 
 export function ChainPage() {
   return <EngineBoundary label="Chain Reaction" load={() => import('../engines/chain.ts')} mount={module => module.mountChain()}>
@@ -54,10 +54,10 @@ export function ChainPage() {
             <span class="chain-turn-item"><span>YOU</span><span id="chain-you-swatch" class="chain-turn-swatch"/></span>
             <span class="chain-turn-item"><span>TURN</span><span id="chain-active-swatch" class="chain-turn-swatch"/></span>
           </div>
-          <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings"><SettingsIcon/><span>Settings</span></button>
+          <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings"><SettingsIcon/></button>
         </>}/>
         <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
-          <button id="chain-settings-close" type="button" class="game-settings-close chain-settings-close" aria-label="Close settings"><CloseIcon/><span>Close</span></button>
+          <button id="chain-settings-close" type="button" class="game-settings-close chain-settings-close" aria-label="Close settings"><CloseIcon/></button>
           <div class="game-settings-body">
             <div class="game-settings-section-title">BOARD</div>
             <Slider id="chain-rows" label="Rows" min={4} max={30}/>

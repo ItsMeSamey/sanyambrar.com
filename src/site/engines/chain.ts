@@ -617,13 +617,14 @@ export function mountChain() {
     const naturalHeight = Math.min(settingsPanel.scrollHeight || 420, innerHeight - viewportGap * 2);
     const left = Math.max(viewportGap, Math.min(innerWidth - width - viewportGap, r.right - width));
     const below = r.bottom + 6;
-    const above = r.top - naturalHeight - 6;
-    const top = below + naturalHeight <= innerHeight - viewportGap
-      ? below
-      : Math.max(viewportGap, above);
+    const opensBelow = below + naturalHeight <= innerHeight - viewportGap || r.top < innerHeight - r.bottom;
+    const top = opensBelow ? below : Math.max(viewportGap, r.top - naturalHeight - 6);
+    const availableHeight = opensBelow ? innerHeight - top - viewportGap : r.top - viewportGap * 2;
+    settingsPanel.dataset.side = opensBelow ? 'bottom' : 'top';
+    settingsPanel.style.transformOrigin = opensBelow ? 'top right' : 'bottom right';
     settingsPanel.style.left = `${left}px`;
     settingsPanel.style.top = `${top}px`;
-    settingsPanel.style.maxHeight = `${Math.max(120, innerHeight - top - viewportGap)}px`;
+    settingsPanel.style.maxHeight = `${Math.max(120, availableHeight)}px`;
   }
 
   function setSettingsOpen(open) {
