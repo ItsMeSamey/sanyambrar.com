@@ -61,13 +61,14 @@ export class Progress {
     while (true) {
       const { length } = this.#results;
       if (length < results.length) {
-        for (const result of results.slice(length, length + 100)) {
-          this.append(result);
+        const end = Math.min(length + 1000, results.length);
+        for (let i = length; i < end; i++) {
+          this.append(results[i]);
         }
         if (listener != null) {
-          listener({ total: results.length, current: length });
+          listener({ total: results.length, current: end });
         }
-        yield null; // Yield to the browser event loop, unfreeze the UI.
+        yield null; // Yield to the browser event loop without one timer per 100 results.
       } else {
         break;
       }
