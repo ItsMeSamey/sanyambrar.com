@@ -32,21 +32,6 @@ export const Controls = memo(function Controls({
   return (
     <div id={names.controls} className={styles.controls}>
       <IconButton
-        icon={<Icon shape={mdiHome} />}
-        title="Home"
-        onClick={() => {
-          const href = new URL("./", location.href).href;
-          const navigate = (globalThis as any).SameyNavigate;
-          if (navigate) void navigate(href);
-          else location.assign(href);
-        }}
-      />
-      <IconButton
-        icon={<Icon shape={mdiThemeLightDark} />}
-        title="Appearance"
-        onClick={(event) => { event.stopPropagation(); (globalThis as any).SameyOpenAppearance?.(event.currentTarget); }}
-      />
-      <IconButton
         icon={<Icon shape={mdiHelpCircleOutline} />}
         title={formatMessage({
           id: "practice.widget.showTour.description",
@@ -79,6 +64,21 @@ export const Controls = memo(function Controls({
           defaultMessage: "Switch the current interface layout.",
         })}
         onClick={onChangeView}
+      />
+      <IconButton
+        icon={<Icon shape={mdiHome} />}
+        title="Home"
+        onClick={() => {
+          const href = new URL("./", location.href).href;
+          const navigate = (globalThis as any).SameyNavigate;
+          if (navigate) void navigate(href);
+          else location.assign(href);
+        }}
+      />
+      <IconButton
+        icon={<Icon shape={mdiThemeLightDark} />}
+        title="Appearance"
+        onClick={(event) => { event.stopPropagation(); (globalThis as any).SameyOpenAppearance?.(event.currentTarget); }}
       />
       <IconButton
         icon={<Icon shape={mdiChartBar} />}
