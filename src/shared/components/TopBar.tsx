@@ -5,9 +5,9 @@ import { SITE_NAV } from '../catalog.ts';
 import { HomeBrand } from './Brand.tsx';
 import { SmartLink } from './NavLink.tsx';
 
-export function AppearanceButton(props:{class?:string}) {
+export function AppearanceButton(props:{class?:string;label?:string}) {
   return <button class={`${props.class || 'top-icon'} site-topbar-icon`} type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">
-    <MoonStar aria-hidden="true"/>
+    <MoonStar aria-hidden="true"/>{props.label && <span class="site-topbar-icon-label">{props.label}</span>}
   </button>;
 }
 

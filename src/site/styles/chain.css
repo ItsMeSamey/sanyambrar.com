@@ -71,7 +71,6 @@ body.site-chain-active{margin:0;width:100%;height:100%;overflow:hidden;backgroun
 .chain-header-logo svg{width:44px;height:18px;overflow:visible}.chain-header-logo .chain-link,.chain-header-logo .chain-burst{fill:none;stroke:var(--site-line,#d3d6da);stroke-width:2;stroke-linecap:square}.chain-header-logo .chain-cell{stroke:var(--site-bg,#fff);stroke-width:1.5}.chain-header-logo .chain-cell-a{fill:#6aaa64}.chain-header-logo .chain-cell-core{fill:#c9b458}.chain-header-logo .chain-cell-b{fill:#d46a6a}
 @media(max-width:700px){.chain-opening-topbar{width:calc(100% - 24px)}}
 @media(max-width:420px){.chain-opening-topbar{width:calc(100% - 16px)}.chain-home-brand{font-size:.86rem;gap:6px}.chain-home-brand .home-brand-cue{font-size:.5rem}.chain-header-logo{font-size:8px;gap:3px}.chain-header-logo svg{width:36px}}
-.chain-home-brand .home-brand-icon{width:15px;height:15px;opacity:.62}
 .chain-home-brand .home-brand-cue{display:none!important}
 .chain-home-icon{display:grid;place-items:center;width:28px;height:28px;color:var(--site-fg);text-decoration:none;border-radius:4px;margin-left:4px}
 .chain-home-icon:hover,.chain-home-icon:focus-visible{background:var(--site-soft)}
@@ -87,3 +86,22 @@ body.site-chain-active{margin:0;width:100%;height:100%;overflow:hidden;backgroun
 .chain-opening-mark{display:flex;align-items:center;gap:10px;width:max-content;max-width:100%;margin-bottom:20px;font:850 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em}
 .chain-opening-mark svg{width:76px;height:30px;overflow:visible}.chain-opening-mark .chain-link,.chain-opening-mark .chain-burst{fill:none;stroke:var(--site-line,#d3d6da);stroke-width:2;stroke-linecap:square}.chain-opening-mark .chain-cell{stroke:var(--site-bg,#fff);stroke-width:1.5}.chain-opening-mark .chain-cell-a{fill:#6aaa64}.chain-opening-mark .chain-cell-core{fill:#c9b458}.chain-opening-mark .chain-cell-b{fill:#d46a6a}
 @media(max-width:420px){.chain-opening-mark{gap:7px;font-size:11px}.chain-opening-mark svg{width:58px;height:24px}}
+
+/* Chain uses a reaction-field background, not Wordle's graph-paper surface. */
+.chain-shell{--chain-glow:color-mix(in srgb,#6aaa64 13%,transparent);background:radial-gradient(circle at 18% 20%,var(--chain-glow),transparent 28rem),radial-gradient(circle at 82% 78%,color-mix(in srgb,#6b8fd6 11%,transparent),transparent 30rem),var(--site-bg,#fff)}
+.chain-opening{background:transparent}
+.chain-opening-inner{width:min(100%,860px)}
+.chain-opening h1{margin:0 0 22px;font-size:clamp(2rem,6vw,4rem);letter-spacing:-.055em}
+.chain-opening-lede{display:none}
+.chain-mode-grid{grid-template-columns:1.2fr .9fr .9fr}
+.chain-mode-card{min-height:220px;background:color-mix(in srgb,var(--site-bg,#fff) 90%,transparent);backdrop-filter:blur(10px)}
+.chain-mode-card p:empty{display:none}
+.chain-home-icon{width:auto!important;height:28px!important;padding:0 7px!important;margin-left:4px;border-left:1px solid var(--site-line,#d3d6da);border-radius:0!important;color:var(--site-muted,#787c7e)!important;font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em}
+.chain-home-icon svg{display:none!important}
+.chain-home-icon:hover,.chain-home-icon:focus-visible{color:var(--site-fg,#121213)!important;background:transparent!important}
+.chain-logo-button{gap:8px}
+.chain-action-label{display:inline;font:750 10px/1 var(--site-font,system-ui);letter-spacing:0;text-transform:none}
+.chain-top-actions .game-settings-trigger{width:auto;min-width:36px;padding-inline:8px;gap:6px}
+.chain-top-actions .game-settings-trigger svg{width:16px;height:16px}
+@media(max-width:760px){.chain-mode-grid{grid-template-columns:1fr}.chain-mode-card{min-height:150px}}
+@media(max-width:520px){.chain-top-actions .game-settings-trigger{padding-inline:6px}.chain-home-icon{padding-inline:5px!important}.chain-action-label{font-size:9px}}

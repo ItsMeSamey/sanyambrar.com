@@ -177,6 +177,45 @@
 		}
 	}
 	//#endregion
+	//#region src/shared/loadingSvg.ts
+	var loadingGeometry = Object.freeze({
+		size: 64,
+		cx: 32,
+		cy: 32,
+		baseRadius: 9.4,
+		amplitude: 2.2,
+		waves: 6,
+		duration: .72,
+		zeroCrossingPower: .72,
+		points: 96,
+		frames: 25
+	});
+	var framesCache;
+	function generateLoadingFrames() {
+		if (framesCache) return framesCache;
+		const { cx, cy, baseRadius, amplitude, waves, zeroCrossingPower, points, frames } = loadingGeometry;
+		framesCache = Array.from({ length: frames }, (_, frame) => {
+			const progress = frame / (frames - 1);
+			const raw = Math.cos(progress * Math.PI * 2);
+			const multiplier = Math.sign(raw) * Math.pow(Math.abs(raw), zeroCrossingPower);
+			let d = "";
+			for (let i = 0; i <= points; i++) {
+				const angle = i / points * Math.PI * 2;
+				const radius = baseRadius + amplitude * multiplier * Math.sin(waves * angle);
+				const x = cx + radius * Math.cos(angle);
+				const y = cy + radius * Math.sin(angle);
+				d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
+			}
+			return d + "Z";
+		});
+		return framesCache;
+	}
+	function generateAnimatedSineCircleSvg() {
+		const paths = generateLoadingFrames();
+		const keyTimes = paths.map((_, i) => (i / (paths.length - 1)).toFixed(6)).join(";");
+		return `<svg class="samey-cursor-loading" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="${paths[0]}"><animate attributeName="d" dur="${loadingGeometry.duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes}" values="${paths.join(";")}"/></path></svg>`;
+	}
+	//#endregion
 	//#region src/shared/theme.ts
 	(() => {
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
@@ -520,46 +559,8 @@
 			subtree: true,
 			childList: true
 		});
-		let loadingSvgCache = "";
-		let loadingFramesCache = null;
-		const loadingGeometry = Object.freeze({
-			cx: 200,
-			cy: 200,
-			baseRadius: 140,
-			amplitude: 20,
-			waves: 6,
-			duration: 1.45,
-			zeroCrossingPower: .8,
-			points: 320,
-			frames: 61
-		});
-		const loadingFrames = () => {
-			if (loadingFramesCache) return loadingFramesCache;
-			const { cx, cy, baseRadius, amplitude, waves, zeroCrossingPower, points, frames } = loadingGeometry;
-			const paths = [];
-			for (let f = 0; f < frames; f++) {
-				const progress = f / (frames - 1);
-				const raw = Math.cos(progress * Math.PI * 2);
-				const multiplier = Math.sign(raw) * Math.pow(Math.abs(raw), zeroCrossingPower);
-				let d = "";
-				for (let i = 0; i <= points; i++) {
-					const angle = i / points * Math.PI * 2;
-					const radius = baseRadius + amplitude * multiplier * Math.sin(waves * angle);
-					const x = cx + radius * Math.cos(angle), y = cy + radius * Math.sin(angle);
-					d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
-				}
-				paths.push(d + "Z");
-			}
-			loadingFramesCache = paths;
-			return paths;
-		};
-		const loadingCursorSvg = () => {
-			if (loadingSvgCache) return loadingSvgCache;
-			const frames = loadingFrames();
-			const keyTimes = frames.map((_, index) => (index / (frames.length - 1)).toFixed(6)).join(";");
-			loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${frames[0]}"><animate attributeName="d" dur="${loadingGeometry.duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes}" values="${frames.join(";")}"/></path></svg>`;
-			return loadingSvgCache;
-		};
+		const loadingFrames = generateLoadingFrames;
+		const loadingCursorSvg = generateAnimatedSineCircleSvg;
 		globalThis.SameyLoadingSvg = loadingCursorSvg;
 		const mountCursor = () => {
 			if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
@@ -570,14 +571,14 @@
 			document.documentElement.classList.add("samey-custom-cursor");
 			document.body.append(cursor);
 			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
-			let loadingRaf = 0;
+			let loadingRaf = 0, loadingStarted = 0;
 			const animateLoadingPaths = (time) => {
 				if (!cursor.hasAttribute("data-loading")) {
 					loadingRaf = 0;
 					return;
 				}
 				const frames = loadingFrames();
-				const progress = time % (loadingGeometry.duration * 1e3) / (loadingGeometry.duration * 1e3);
+				const progress = (time - loadingStarted) % (loadingGeometry.duration * 1e3) / (loadingGeometry.duration * 1e3);
 				loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
 				loadingRaf = requestAnimationFrame(animateLoadingPaths);
 			};
@@ -589,7 +590,11 @@
 					cursor.dataset.visible = "";
 				}
 				document.documentElement.toggleAttribute("data-site-loading", !!loading);
-				if (loading && !loadingRaf) loadingRaf = requestAnimationFrame(animateLoadingPaths);
+				if (loading && !loadingRaf) {
+					loadingStarted = performance.now();
+					loadingPath?.setAttribute("d", loadingFrames()[0]);
+					loadingRaf = requestAnimationFrame(animateLoadingPaths);
+				}
 				if (!loading && loadingRaf) {
 					cancelAnimationFrame(loadingRaf);
 					loadingRaf = 0;
@@ -1723,7 +1728,7 @@
 				const home = new URL(document.documentElement.dataset.homeHref || host.closest("html")?.getAttribute("data-home-href") || "/", location.href);
 				const href = (path) => new URL(path.replace(/^\//, ""), home).href;
 				const active = host.dataset.active || "";
-				host.outerHTML = `<header class="top site-topbar"><a class="brand home-brand-link" href="${home.href}" aria-label="Sanyam Brar · Home"><span>Sanyam Brar</span><svg class="home-brand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 3.75l8.5 6.75"/><path d="M5.5 9.25V20h13V9.25"/><path d="M9.5 20v-6h5v6"/></svg></a><nav class="top-nav site-topbar-nav" aria-label="Primary"><a href="${home.href}"${active === "home" ? " aria-current=\"page\"" : ""}>Home</a><a href="${href("work")}"${active === "work" ? " aria-current=\"page\"" : ""}>Work</a><a href="${href("blog")}"${active === "blog" ? " aria-current=\"page\"" : ""}>Writing</a><button class="top-icon site-topbar-icon" type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">◐</button><button class="search-trigger site-topbar-search" type="button" data-open-search aria-label="Search"><span class="site-topbar-search-icon" aria-hidden="true">⌕</span><kbd data-search-shortcut>Ctrl K</kbd></button></nav></header>`;
+				host.outerHTML = `<header class="top site-topbar"><a class="brand home-brand-link" href="${home.href}" aria-label="Sanyam Brar · Home"><span class="home-brand-name">Sanyam Brar</span><span class="home-brand-cue" aria-hidden="true">HOME</span></a><nav class="top-nav site-topbar-nav" aria-label="Primary"><a href="${home.href}"${active === "home" ? " aria-current=\"page\"" : ""}>Home</a><a href="${href("work")}"${active === "work" ? " aria-current=\"page\"" : ""}>Work</a><a href="${href("blog")}"${active === "blog" ? " aria-current=\"page\"" : ""}>Writing</a><button class="top-icon site-topbar-icon" type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">◐</button><button class="search-trigger site-topbar-search" type="button" data-open-search aria-label="Search"><span class="site-topbar-search-icon" aria-hidden="true">⌕</span><kbd data-search-shortcut>Ctrl K</kbd></button></nav></header>`;
 			});
 		};
 		mountStaticTopBars();

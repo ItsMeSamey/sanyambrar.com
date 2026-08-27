@@ -7,7 +7,6 @@ export function mountChain() {
   const stage = document.getElementById('chain-stage');
   const statusEl = document.getElementById('chain-status');
   const turnEl = document.getElementById('chain-turn');
-  const topbar = document.getElementById('chain-topbar');
   const youSwatch = document.getElementById('chain-you-swatch');
   const activeSwatch = document.getElementById('chain-active-swatch');
   const settingsButton = document.getElementById('chain-settings-button');
@@ -35,7 +34,7 @@ export function mountChain() {
   const resultCopy = document.getElementById('chain-result-copy');
   const playAgainButton = document.getElementById('chain-play-again');
   const resultMenuButton = document.getElementById('chain-result-menu');
-  if (!canvas || !stage || !statusEl || !turnEl || !topbar || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !settingsClose || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
+  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !settingsClose || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 

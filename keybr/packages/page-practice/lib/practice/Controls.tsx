@@ -6,7 +6,7 @@ import {
   mdiChartBar,
   mdiCog,
   mdiHelpCircleOutline,
-  mdiHomeOutline,
+  mdiHome,
   mdiThemeLightDark,
   mdiRedo,
   mdiUndo,
@@ -31,20 +31,16 @@ export const Controls = memo(function Controls({
   const { setView } = useView(views);
   return (
     <div id={names.controls} className={styles.controls}>
-      <button
-        type="button"
-        className={styles.portfolioHome}
+      <IconButton
+        icon={<Icon shape={mdiHome} />}
         title="Home"
-        aria-label="Home"
         onClick={() => {
           const href = new URL("./", location.href).href;
           const navigate = (globalThis as any).SameyNavigate;
           if (navigate) void navigate(href);
           else location.assign(href);
         }}
-      >
-        <Icon shape={mdiHomeOutline} />
-      </button>
+      />
       <IconButton
         icon={<Icon shape={mdiThemeLightDark} />}
         title="Appearance"

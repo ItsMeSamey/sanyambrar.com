@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { animateRootSwap } from './transitions.ts';
+import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry } from './loadingSvg.ts';
 (() => {
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
   const KEY = "keybr.theme";
@@ -311,36 +312,8 @@ import { animateRootSwap } from './transitions.ts';
       else normalizeExternalLinks(node);
     }
   }).observe(document.documentElement, { subtree: true, childList: true });
-  let loadingSvgCache = "";
-  let loadingFramesCache = null;
-  const loadingGeometry = Object.freeze({ cx: 200, cy: 200, baseRadius: 140, amplitude: 20, waves: 6, duration: 1.45, zeroCrossingPower: .8, points: 320, frames: 61 });
-  const loadingFrames = () => {
-    if (loadingFramesCache) return loadingFramesCache;
-    const { cx, cy, baseRadius, amplitude, waves, zeroCrossingPower, points, frames } = loadingGeometry;
-    const paths = [];
-    for (let f = 0; f < frames; f++) {
-      const progress = f / (frames - 1);
-      const raw = Math.cos(progress * Math.PI * 2);
-      const multiplier = Math.sign(raw) * Math.pow(Math.abs(raw), zeroCrossingPower);
-      let d = "";
-      for (let i = 0; i <= points; i++) {
-        const angle = i / points * Math.PI * 2;
-        const radius = baseRadius + amplitude * multiplier * Math.sin(waves * angle);
-        const x = cx + radius * Math.cos(angle), y = cy + radius * Math.sin(angle);
-        d += `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
-      }
-      paths.push(d + "Z");
-    }
-    loadingFramesCache = paths;
-    return paths;
-  };
-  const loadingCursorSvg = () => {
-    if (loadingSvgCache) return loadingSvgCache;
-    const frames = loadingFrames();
-    const keyTimes = frames.map((_, index) => (index / (frames.length - 1)).toFixed(6)).join(";");
-    loadingSvgCache = `<svg class="samey-cursor-loading" viewBox="0 0 400 400" width="64" height="64" aria-hidden="true"><path fill="currentColor" d="${frames[0]}"><animate attributeName="d" dur="${loadingGeometry.duration}s" repeatCount="indefinite" calcMode="linear" keyTimes="${keyTimes}" values="${frames.join(";")}"/></path></svg>`;
-    return loadingSvgCache;
-  };
+  const loadingFrames = generateLoadingFrames;
+  const loadingCursorSvg = generateAnimatedSineCircleSvg;
   globalThis.SameyLoadingSvg = loadingCursorSvg;
 
   const mountCursor = () => {
@@ -352,11 +325,11 @@ import { animateRootSwap } from './transitions.ts';
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(cursor);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
-    let loadingRaf = 0;
+    let loadingRaf = 0, loadingStarted = 0;
     const animateLoadingPaths = (time) => {
       if (!cursor.hasAttribute("data-loading")) { loadingRaf = 0; return; }
       const frames = loadingFrames();
-      const progress = (time % (loadingGeometry.duration * 1000)) / (loadingGeometry.duration * 1000);
+      const progress = ((time - loadingStarted) % (loadingGeometry.duration * 1000)) / (loadingGeometry.duration * 1000);
       loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
       loadingRaf = requestAnimationFrame(animateLoadingPaths);
     };
@@ -364,7 +337,7 @@ import { animateRootSwap } from './transitions.ts';
       cursor.toggleAttribute("data-loading", !!loading);
       if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
-      if (loading && !loadingRaf) loadingRaf = requestAnimationFrame(animateLoadingPaths);
+      if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));

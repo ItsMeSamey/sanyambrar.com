@@ -416,25 +416,20 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
   return <main class='wordle-opening'>
     <div class='wordle-opening-inner'>
       <WordleMark class='wordle-opening-mark' />
-      <h1>Pick a game.</h1>
-      <p class='wordle-opening-lede'>Daily is deterministic. Random tunes itself every game. Advanced exposes the knobs.</p>
       <div class='wordle-mode-grid'>
         <section class='wordle-mode-card wordle-mode-card-primary'>
-          <span class='wordle-mode-eyebrow'>DAILY</span><h2>Word of the day</h2>
-          <p>Same challenge for the same local calendar date, including word, length, guesses, and disabled letters.</p>
-          <label class='wordle-date-control'>Date<input type='date' value={date()} max={localDateKey()} onInput={e => setDate(e.currentTarget.value)} /></label>
-          <div class='wordle-mode-spec'>{preview().wordLength} letters / {preview().maxTries} guesses / {preview().disabledLetters} disabled</div>
-          <button class='wordle-mode-action' onClick={startDaily}>Play {date() === localDateKey() ? 'today' : date()}</button>
+          <h2>Daily</h2>
+          <label class='wordle-date-control'><span>Date</span><input type='date' value={date()} max={localDateKey()} onInput={e => setDate(e.currentTarget.value)} /></label>
+          <div class='wordle-mode-spec'>{preview().wordLength} letters · {preview().maxTries} guesses · {preview().disabledLetters} disabled</div>
+          <button class='wordle-mode-action' onClick={startDaily}>Play</button>
         </section>
         <section class='wordle-mode-card'>
-          <span class='wordle-mode-eyebrow'>AUTOMATIC</span><h2>Random</h2>
-          <p>Each new game chooses a fresh word length and a matching difficulty profile.</p>
-          <button class='wordle-mode-action' onClick={startRandom}>Start random</button>
+          <h2>Random</h2>
+          <button class='wordle-mode-action' onClick={startRandom}>Play</button>
         </section>
         <section class='wordle-mode-card'>
-          <span class='wordle-mode-eyebrow'>CUSTOM</span><h2>Advanced</h2>
-          <p>Word length, guess limit, disabled-letter count, and dictionary rules are all configurable.</p>
-          <button class='wordle-mode-action' onClick={startAdvanced}>Open advanced</button>
+          <h2>Advanced</h2>
+          <button class='wordle-mode-action' onClick={startAdvanced}>Configure</button>
         </section>
       </div>
     </div>

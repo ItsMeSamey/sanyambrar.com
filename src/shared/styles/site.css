@@ -105,8 +105,6 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 /* Home identity is visibly navigational everywhere. */
 .home-brand-link,.brand.home-brand-link{display:inline-flex;align-items:center;gap:7px;min-width:0;color:inherit;text-decoration:none}
 .home-brand-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.home-brand-icon{flex:0 0 auto;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.62;transition:opacity var(--site-fast) ease,transform var(--site-fast) var(--site-ease)}
-.home-brand-link:hover .home-brand-icon,.home-brand-link:focus-visible .home-brand-icon{opacity:1;transform:translateY(-1px)}
 .samey-route-snapshot{position:fixed;z-index:2147482000;top:var(--snapshot-top);left:var(--snapshot-left);width:var(--snapshot-width);height:var(--snapshot-height);overflow:hidden;pointer-events:none;contain:paint;background:var(--site-bg,#fff);transform-origin:center;will-change:opacity,transform}
 .samey-route-snapshot>*{width:100%!important;min-height:100%!important;margin:0!important}
 
@@ -118,8 +116,6 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 .home-icon-link{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;color:inherit;text-decoration:none;border-radius:var(--site-radius-small)}
 .home-icon-link:hover,.home-icon-link:focus-visible{background:var(--site-soft,#eee)}
-.home-icon-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.72}
-.home-icon-link:hover svg,.home-icon-link:focus-visible svg{opacity:1}
 
 
 /* Shared application top bar. Every Solid page uses the same geometry and controls. */
@@ -156,3 +152,9 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 /* The thumb owns the right-hand circular endpoint. Never draw a second circle under it. */
 .game-settings-slider [data-kb-slider-fill],
 .game-settings-slider input[type=range]::-moz-range-progress{border-radius:999px 0 0 999px!important}
+
+/* Destination cues without a redundant house glyph. */
+.home-brand-link{display:inline-flex;align-items:baseline;gap:7px}
+.home-brand-cue{color:var(--site-muted,#787c7e);font:800 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;opacity:.58}
+.home-brand-link:hover .home-brand-cue,.home-brand-link:focus-visible .home-brand-cue{color:var(--site-fg,#121213);opacity:1}
+.site-topbar-icon-label{font:750 10px/1 var(--site-font,system-ui)}
