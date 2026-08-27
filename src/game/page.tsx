@@ -13,9 +13,7 @@ import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
-import { WordleMark } from '../shared/components/Brand.tsx'
 import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
-import { SmartLink } from '../shared/components/NavLink.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
@@ -453,12 +451,15 @@ function materializeChallenge(config: ChallengeConfig): SettingsHardProps {
   return {...config, wordIndex, randomId: config.mode === 'random' ? (config.randomId ?? `url-${wordIndex.toString(16)}`) : undefined}
 }
 
+function WordleTextMark(props:{label:string;ariaLabel?:string}) {
+  return <span class='wordle-mode-mark' aria-label={props.ariaLabel ?? props.label}>
+    <span class='wordle-mode-mark-full' aria-hidden='true'>{props.label.split('').map(letter => <i>{letter}</i>)}</span>
+  </span>
+}
+
 function WordleModeMark(props:{mode: SettingsHardProps['mode']}) {
   const label = () => props.mode === 'daily' ? 'DAILY' : props.mode === 'random' ? 'RANDOM' : 'ADVANCED'
-  return <span class='wordle-mode-mark' aria-label={`${label()} mode`}>
-    <span class='wordle-mode-mark-full' aria-hidden='true'>{label().split('').map(letter => <i>{letter}</i>)}</span>
-    <i class='wordle-mode-mark-compact' aria-hidden='true'>{label()[0]}</i>
-  </span>
+  return <WordleTextMark label={label()} ariaLabel={`${label()} mode`}/>
 }
 
 export default function Wordle() {
@@ -538,11 +539,11 @@ export default function Wordle() {
   }
   const gameKey = () => gameStorageKey({...hard})
 
-  const wordleIdentity = () => <SmartLink class='wordle-home-link' href='/' aria-label='Sanyam Brar · Home'><WordleMark class='wordle-logo'/></SmartLink>
-  const gameContext = () => <><BackLink onClick={chooseMode}>Modes</BackLink><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
+  const gameContext = () => <><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
+  const modesBack = () => <BackLink onClick={chooseMode} class='wordle-modes-back'><WordleTextMark label='MODES' ariaLabel='Modes'/></BackLink>
 
   return <>
-    <TopBar start={!showOpening() ? wordleIdentity() : undefined} contextClass='wordle-topbar-context' context={!showOpening() ? gameContext() : undefined}/>
+    <TopBar start={!showOpening() ? modesBack() : undefined} contextClass='wordle-topbar-context' context={!showOpening() ? gameContext() : undefined}/>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       <For each={[gameKey()]}>{() => RenderWordleModel({...hard}, soft, nextChallenge, chooseMode)}</For>
     </Show>

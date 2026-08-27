@@ -1,11 +1,10 @@
 'use strict'
 
-import { createEffect, createSignal, JSX, Show } from 'solid-js'
+import { createEffect, createSignal, Show } from 'solid-js'
 import { IconSettings, IconX } from '~/components/icons'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueLabel } from '~/registry/ui/slider'
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import type { WordLength } from './word-list'
 import { ActiveGames } from './popup_active_games'
 import type { GameMode } from './challenge'
@@ -25,13 +24,6 @@ export interface SettingsHardProps {
   dailyVersion?: number
   randomId?: string
   wordIndex?: number
-}
-
-function TooltipWithContent(trigger: JSX.Element, content: JSX.Element) {
-  return <Tooltip>
-    <TooltipTrigger>{trigger}</TooltipTrigger>
-    <TooltipContent>{content}</TooltipContent>
-  </Tooltip>
 }
 
 function SwitchContent(label: string, description: string) {
@@ -88,7 +80,7 @@ export function SettingsKnobs({soft, hard, showWordLength, onHardChange}: {soft:
 export default function Settings({soft, hard, showActive, showWordLength, onHardChange, onSelectActiveGame}: {soft: SettingsSoftProps, hard: SettingsHardProps, showActive: boolean, showWordLength: boolean, onHardChange?: (patch: Partial<SettingsHardProps>) => void, onSelectActiveGame?: (config: SettingsHardProps) => void}) {
   const [open, setOpen] = createSignal(false)
 
-  return <Popover open={open()} onOpenChange={setOpen}>
+  return <Popover open={open()} onOpenChange={setOpen} placement='bottom-end' gutter={6} flip='top-end'>
     <PopoverTrigger class='wordle-nav-button game-settings-trigger settings-trigger' aria-label='Settings'>
       <IconSettings class='size-5' />
     </PopoverTrigger>
@@ -97,7 +89,7 @@ export default function Settings({soft, hard, showActive, showWordLength, onHard
       <div class='game-settings-body'>
         <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} onHardChange={onHardChange} />
         <div class='game-settings-actions'>
-          {TooltipWithContent(<button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>Reveal</button>, 'Reveals and ends the current game.')}
+          <button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>Reveal</button>
           <Show when={showActive}>
             <ActiveGames hard={hard} onSelect={onSelectActiveGame} trigger={<button type='button' class='game-settings-action'>Active Games</button>} />
           </Show>

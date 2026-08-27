@@ -2,10 +2,8 @@
 
 import BarChart3 from 'lucide-solid/icons/chart-no-axes-column'
 import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
-import { Accordion as AccordionPrimitive } from '@kobalte/core/accordion'
-import { Accordion, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Block } from './page'
 import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
@@ -99,12 +97,10 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
     const attempt = value.h[0]
     const [status, statusClass] = outcome(attempt)
     return <Popover>
-      <PopoverTrigger class='stats-history-trigger'>
-        <button type='button' class='stats-history-row' data-selected={selected() === value ? '' : undefined} onClick={() => onSelect(value)}>
-          <span class='stats-word'>{value.w}</span>
-          <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
-          <span class={`stats-row-status ${statusClass}`}>{status}</span>
-        </button>
+      <PopoverTrigger class='stats-history-trigger stats-history-row' data-selected={selected() === value ? '' : undefined} onClick={() => onSelect(value)}>
+        <span class='stats-word'>{value.w}</span>
+        <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
+        <span class={`stats-row-status ${statusClass}`}>{status}</span>
       </PopoverTrigger>
       <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
     </Popover>
@@ -115,20 +111,18 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
       <span class='stats-word'>{value.w}</span>
       <span class='stats-row-meta'>{value.h.length} games</span>
     </AccordionTrigger>
-    <AccordionPrimitive.Content class='stats-history-attempts'>
+    <AccordionContent class='stats-history-attempts'>
       <For each={value.h}>{attempt => {
         const [status, statusClass] = outcome(attempt)
         return <Popover>
-          <PopoverTrigger class='stats-attempt-trigger'>
-            <button type='button' class='stats-attempt-row' onClick={() => onSelect(value)}>
-              <span>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
-              <span class={statusClass}>{status}</span>
-            </button>
+          <PopoverTrigger class='stats-attempt-trigger stats-attempt-row' onClick={() => onSelect(value)}>
+            <span>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
+            <span class={statusClass}>{status}</span>
           </PopoverTrigger>
           <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
         </Popover>
       }}</For>
-    </AccordionPrimitive.Content>
+    </AccordionContent>
   </AccordionItem>
 }
 
@@ -245,13 +239,8 @@ export function StatsPageTrigger(): JSX.Element {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <Show when={visible()}>
-    <Tooltip>
-      <TooltipTrigger onClick={e => e.stopPropagation()}>
-        <button type='button' class='wordle-nav-button' onClick={() => setP(Page.Stats)} aria-label='Statistics'>
-          <BarChart3 class='size-5 stroke-foreground' />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>Stats</TooltipContent>
-    </Tooltip>
+    <button type='button' class='wordle-nav-button' onClick={e => { e.stopPropagation(); setP(Page.Stats) }} aria-label='Statistics'>
+      <BarChart3 class='size-5 stroke-foreground' />
+    </button>
   </Show>
 }
