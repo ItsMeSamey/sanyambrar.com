@@ -1297,7 +1297,8 @@
 		};
 		const logicalPageUrl = (url) => {
 			const logical = new URL(url.href);
-			if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
+			if (logical.pathname === "/blog") logical.pathname = "/blog/index.html";
+			else if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
 			else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
 			return logical;
 		};
