@@ -31,7 +31,7 @@
     "terser-webpack-plugin": "^5.6.1",
     "ts-loader": "^9.6.2",
     "typescript": "^6.0.3",
-    "webpack": "^5.109.2"
+    "webpack": "^5.110.0"
   },
   "description": "A local-only, frontend-only adaptive typing trainer derived from keybr.com.",
   "packageManager": "bun@1.2.20",
