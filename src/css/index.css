@@ -243,12 +243,12 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .stats-detail { position: sticky; top: 0; container-type: inline-size; }
 .stats-detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stats-outcomes { display: grid; gap: 10px; padding: 14px 16px; border-top: 1px solid var(--color-border); }
-.stats-outcomes span { display: grid; grid-template-columns: 8px 1fr auto; gap: 9px; align-items: center; color: var(--color-muted-foreground); font-size: .82rem; }
+.stats-outcomes span { display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 9px; align-items: center; color: var(--color-muted-foreground); font-size: .82rem; }
 .stats-outcomes strong { color: var(--color-foreground); font-variant-numeric: tabular-nums; }
-.stats-dot { width: 8px; height: 8px; border-radius: 50%; }
-.stats-dot-win { background: var(--color-success-foreground); }
-.stats-dot-fail { background: var(--color-error-foreground); }
-.stats-dot-reveal { background: #3b82f6; }
+.stats-outcome-key { display:inline-grid;place-items:center;min-height:22px;padding:0 6px;border:1px solid var(--color-border);border-radius:3px;font:800 .62rem/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em; }
+.stats-outcome-win { color: var(--color-success-foreground); }
+.stats-outcome-fail { color: var(--color-error-foreground); }
+.stats-outcome-reveal { color: #3b82f6; }
 .stats-guess-popover { max-width: min(92vw, 520px); max-height: 52dvh; overflow: auto; }
 .stats-guess-board { display: grid; gap: 4px; padding: 8px; background: var(--color-background); border: 1px solid var(--color-border); }
 .stats-state { padding: 34px 16px; color: var(--color-muted-foreground); text-align: center; border: 1px solid var(--color-border); }

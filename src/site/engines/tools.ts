@@ -30,7 +30,17 @@ export function mountTools() {
   const get = (name, fallback = '') => localGet(route(), name, fallback);
   const set = (name, value) => localSet(route(), name, value);
   const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-  const copy = value => navigator.clipboard?.writeText(value).catch(() => {});
+  const copy = async value => {
+    try {
+      if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(String(value)); return true; }
+      const field = document.createElement('textarea');
+      field.value = String(value); field.setAttribute('readonly', '');
+      field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.append(field); field.select();
+      const ok = document.execCommand('copy'); field.remove();
+      return ok;
+    } catch { return false; }
+  };
 
   let disposeTool = () => {};
   let renderGeneration = 0;
@@ -48,7 +58,7 @@ export function mountTools() {
 
   const onTabClick = event => {
     const link = event.target.closest('[data-tool]');
-    if (!link) return;
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     setRoute(link.dataset.tool);
   };
@@ -282,7 +292,7 @@ export function mountTools() {
   const convert = (format, text, decode = false) => {
     if (format === 'base64') return decode ? td.decode(s2b(atob(text.replace(/\s/g, '')))) : btoa(b2s(te.encode(text)));
     if (format === 'base64url') {
-      if (decode) { let value = text.replace(/-/g, '+').replace(/_/g, '/'); value += '='.repeat((4 - value.length % 4) % 4); return td.decode(s2b(atob(value))); }
+      if (decode) { let value = text.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/'); value += '='.repeat((4 - value.length % 4) % 4); return td.decode(s2b(atob(value))); }
       return btoa(b2s(te.encode(text))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
     if (format === 'base32') return decode ? td.decode(b32D(text)) : b32E(te.encode(text));
@@ -309,6 +319,10 @@ export function mountTools() {
     } else if (format === 'base32') {
       const value = raw.replace(/\s/g, '');
       if (!/^[A-Z2-7]+={0,6}$/i.test(value) || /=[^=]/.test(value)) throw Error('Invalid Base32');
+      const body = value.replace(/=+$/, '');
+      if (![0, 2, 4, 5, 7].includes(body.length % 8)) throw Error('Invalid Base32');
+      const decoded = b32D(value);
+      if (b32E(decoded).replace(/=+$/, '') !== body.toUpperCase()) throw Error('Invalid Base32');
     } else if (format === 'base64') {
       const value = raw.replace(/\s/g, '');
       if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw Error('Invalid Base64');

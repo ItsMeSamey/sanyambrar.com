@@ -120,3 +120,39 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .home-icon-link:hover,.home-icon-link:focus-visible{background:var(--site-soft,#eee)}
 .home-icon-link svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.72}
 .home-icon-link:hover svg,.home-icon-link:focus-visible svg{opacity:1}
+
+
+/* Shared application top bar. Every Solid page uses the same geometry and controls. */
+.site-topbar{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0;height:64px;border-bottom:1px solid var(--site-line,#d3d6da);background:var(--site-bg,#fff);color:var(--site-fg,#121213)}
+.site-topbar-nav{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0}
+.site-topbar-nav>a,.site-topbar-search,.site-topbar-icon{box-sizing:border-box;display:inline-grid;place-items:center;min-height:34px;border:0;border-radius:6px;background:transparent;color:var(--site-muted,#787c7e);text-decoration:none}
+.site-topbar-nav>a{padding:8px 10px}.site-topbar-search{padding:5px 8px}.site-topbar-icon{width:34px;height:34px;padding:7px}
+.site-topbar-nav>a:hover,.site-topbar-nav>a:focus-visible,.site-topbar-nav>a[aria-current=page],.site-topbar-search:hover,.site-topbar-search:focus-visible,.site-topbar-icon:hover,.site-topbar-icon:focus-visible{background:var(--site-soft,#eee);color:var(--site-fg,#121213)}
+.site-topbar-nav>a[aria-current=page]{box-shadow:inset 0 -2px var(--site-accent,#787c7e)}
+.site-topbar-icon svg{width:18px;height:18px}.site-topbar-search{grid-auto-flow:column;gap:6px}.site-topbar-search-icon{width:15px;height:15px;opacity:.72}.site-topbar-search kbd{display:inline-flex;align-items:center;height:24px;padding:0 7px;border:1px solid var(--site-line,#d3d6da);border-radius:5px;color:inherit;background:color-mix(in srgb,var(--site-bg,#fff) 75%,var(--site-soft,#eee));font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(max-width:700px){.site-topbar{height:56px}.site-topbar-search{width:34px;padding:7px}.site-topbar-search-icon{width:18px;height:18px}.site-topbar-search kbd{display:none}}
+
+/* Visible, recoverable async failures instead of blank or permanently-loading pages. */
+.site-route-loading{min-height:180px;display:grid;place-items:center;color:var(--site-muted,#787c7e);font:600 11px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;text-transform:uppercase;letter-spacing:.08em}
+.site-route-error,.samey-load-error{position:fixed;z-index:2147483300;right:14px;bottom:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;width:min(560px,calc(100vw - 28px));padding:12px 13px;border:1px solid var(--site-line,#d3d6da);border-radius:8px;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);color:var(--site-fg,#121213);box-shadow:0 16px 48px #0004;backdrop-filter:blur(18px)}
+.site-route-error>div:first-child,.samey-load-error>div:first-child{display:grid;gap:3px;min-width:0}.site-route-error strong,.samey-load-error strong{font-size:12px}.site-route-error span,.samey-load-error span{min-width:0;color:var(--site-muted,#787c7e);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.site-route-error-actions,.samey-load-error-actions{display:flex;align-items:center;gap:5px}.site-route-error button,.site-route-error a,.samey-load-error button,.samey-load-error a,.site-fatal-error button,.site-fatal-error a{min-height:32px;padding:0 10px;border:1px solid var(--site-line,#d3d6da);border-radius:6px;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font:600 11px/1 var(--site-font,system-ui);text-decoration:none;display:inline-flex;align-items:center}.site-route-error button.quiet,.samey-load-error [data-dismiss]{color:var(--site-muted,#787c7e);border-color:transparent;background:transparent}
+.site-fatal-error{min-height:240px;display:grid;place-items:center;align-content:center;gap:8px;padding:24px;color:var(--site-fg,#121213);text-align:center}.site-fatal-error>span{max-width:60ch;color:var(--site-muted,#787c7e);overflow-wrap:anywhere}.site-fatal-error>div{display:flex;gap:6px;margin-top:5px}
+@media(max-width:560px){.site-route-error,.samey-load-error{grid-template-columns:1fr;gap:9px}.site-route-error-actions,.samey-load-error-actions{flex-wrap:wrap}}
+@media(max-width:700px){
+  .site-standard .site-topbar-search{width:34px;padding:7px;margin-left:0}
+  .site-standard .site-topbar-search kbd{display:none}
+  .site-standard .site-topbar-search .site-topbar-search-icon{display:block;width:18px;height:18px}
+}
+
+/* Imperative engines are lazy, but failure must never look like an empty page. */
+.engine-state{position:fixed;z-index:2147483200;left:50%;bottom:14px;translate:-50% 0;max-width:min(520px,calc(100vw - 28px));padding:9px 12px;border:1px solid var(--site-line,#d3d6da);border-radius:7px;background:color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);color:var(--site-muted,#787c7e);box-shadow:0 12px 40px #0003;backdrop-filter:blur(14px);font:600 11px/1.35 var(--site-font,system-ui)}
+.engine-state-loading{pointer-events:none;text-transform:uppercase;letter-spacing:.07em}
+.engine-state-error{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;color:var(--site-fg,#121213)}
+.engine-state-error span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--site-muted,#787c7e)}
+.engine-state-error button{min-height:30px;padding:0 10px;border:1px solid var(--site-line,#d3d6da);border-radius:6px;background:var(--site-bg,#fff);color:inherit}
+@media(max-width:560px){.engine-state-error{grid-template-columns:1fr auto}.engine-state-error span{grid-column:1/-1;grid-row:2}}
+
+/* The thumb owns the right-hand circular endpoint. Never draw a second circle under it. */
+.game-settings-slider [data-kb-slider-fill],
+.game-settings-slider input[type=range]::-moz-range-progress{border-radius:999px 0 0 999px!important}

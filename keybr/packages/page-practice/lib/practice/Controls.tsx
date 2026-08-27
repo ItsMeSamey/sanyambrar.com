@@ -34,8 +34,8 @@ export const Controls = memo(function Controls({
       <button
         type="button"
         className={styles.portfolioHome}
-        title="Sanyam Brar · Home"
-        aria-label="Sanyam Brar · Home"
+        title="Home"
+        aria-label="Home"
         onClick={() => {
           const href = new URL("./", location.href).href;
           const navigate = (globalThis as any).SameyNavigate;
@@ -43,7 +43,7 @@ export const Controls = memo(function Controls({
           else location.assign(href);
         }}
       >
-        <span>Sanyam Brar</span><Icon shape={mdiHomeOutline} />
+        <Icon shape={mdiHomeOutline} />
       </button>
       <IconButton
         icon={<Icon shape={mdiThemeLightDark} />}

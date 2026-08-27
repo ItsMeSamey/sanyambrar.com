@@ -93,6 +93,26 @@
 			node.removeAttribute("aria-labelledby");
 			node.removeAttribute("aria-describedby");
 		});
+		const originals = [element, ...element.querySelectorAll("*")];
+		const copies = [clone, ...clone.querySelectorAll("*")];
+		for (let index = 0; index < Math.min(originals.length, copies.length); index++) {
+			const source = originals[index];
+			const target = copies[index];
+			target.scrollTop = source.scrollTop;
+			target.scrollLeft = source.scrollLeft;
+			if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
+				target.value = source.value;
+				target.checked = source.checked;
+			} else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
+			else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
+			else if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
+				target.width = source.width;
+				target.height = source.height;
+				try {
+					target.getContext("2d")?.drawImage(source, 0, 0);
+				} catch {}
+			}
+		}
 		shell.append(clone);
 		document.body.append(shell);
 		return shell;
@@ -103,8 +123,18 @@
 			return;
 		}
 		const snapshot = snapshotElement(current);
-		await commit();
-		const incoming = next();
+		try {
+			await commit();
+		} catch (error) {
+			snapshot.remove();
+			throw error;
+		}
+		await Promise.resolve();
+		let incoming = next();
+		if (!incoming || incoming === current || !incoming.isConnected) {
+			await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+			incoming = next();
+		}
 		const fromClip = direction === "back" ? "inset(3% 3% round 10px)" : "inset(5% 5% round 12px)";
 		const fromScale = direction === "back" ? "scale(.985)" : "scale(.955)";
 		if (incoming) {
@@ -1387,13 +1417,36 @@
 			else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
 			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
 		};
-		const destinationRoot = () => document.querySelector("#solid-site-app,#wordle-root,#keybr-root,.site-route");
+		const destinationRoot = () => {
+			if (document.documentElement.dataset.siteKind === "keybr") return document.getElementById("app");
+			return document.querySelector("#solid-site-app,#wordle-root,.site-route");
+		};
 		const waitForDestinationRoot = async () => {
 			for (let i = 0; i < 90; i++) {
 				const root = destinationRoot();
-				if (root && (root.childElementCount > 0 || root.id === "keybr-root")) return;
+				if (root && root.childElementCount > 0) return root;
 				await new Promise((resolve) => requestAnimationFrame(resolve));
 			}
+			throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount.`);
+		};
+		const dismissLoadError = () => document.getElementById("samey-load-error")?.remove();
+		const showLoadError = (url, error, retry) => {
+			dismissLoadError();
+			const panel = runtimeNode(document.createElement("aside"));
+			panel.id = "samey-load-error";
+			panel.className = "samey-load-error";
+			panel.setAttribute("role", "alert");
+			const message = error instanceof Error ? error.message : "The page could not be loaded.";
+			panel.innerHTML = `<div><strong>Page failed to load</strong><span></span></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
+			panel.querySelector("span").textContent = message;
+			const normal = panel.querySelector("a");
+			normal.href = url.href;
+			panel.querySelector("[data-retry]").addEventListener("click", () => {
+				dismissLoadError();
+				retry();
+			});
+			panel.querySelector("[data-dismiss]").addEventListener("click", dismissLoadError);
+			document.body.append(panel);
 		};
 		const loadPage = async (href, { replace = false } = {}) => {
 			const url = new URL(href, location.href);
@@ -1401,6 +1454,7 @@
 				location.href = url.href;
 				return;
 			}
+			dismissLoadError();
 			setLoading(true);
 			try {
 				const { doc, baseUrl } = await fetchPage(url);
@@ -1408,11 +1462,13 @@
 				const commit = async () => {
 					swapPage(doc, baseUrl, url, replace);
 					await waitForDestinationRoot();
+					document.getElementById("samey-boot")?.remove();
+					document.getElementById("samey-boot-style")?.remove();
 				};
 				await animateRootSwap(current, commit, destinationRoot, url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "back" : "forward");
-			} catch {
-				if (replace) location.replace(url.href);
-				else location.assign(url.href);
+			} catch (error) {
+				showLoadError(url, error, () => loadPage(url.href, { replace }));
+				throw error;
 			} finally {
 				setLoading(false);
 			}
@@ -1425,6 +1481,7 @@
 			if (!shouldSpa(url)) return;
 			fetchPage(url).catch(() => {});
 		};
+		globalThis.SameyPreloadPage = prefetch;
 		const mountSpa = () => {
 			if (document.documentElement.hasAttribute("data-solid-spa") || document.documentElement.hasAttribute("data-static-article")) return;
 			markInitialPageStyles();
@@ -1446,11 +1503,11 @@
 				const url = new URL(a.href, location.href);
 				if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
 				event.preventDefault();
-				loadPage(url.href);
+				loadPage(url.href).catch(() => {});
 			});
 			addEventListener("popstate", () => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				loadPage(location.href, { replace: true });
+				loadPage(location.href, { replace: true }).catch(() => {});
 			});
 		};
 		addEventListener("storage", (event) => {

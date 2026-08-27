@@ -172,9 +172,9 @@ function DetailedStats({value}: {value: Value}) {
       <SummaryStat label='Avg. guesses' value={stats().average ? stats().average.toFixed(2) : '–'} />
     </div>
     <div class='stats-outcomes'>
-      <span><i class='stats-dot stats-dot-win' />Won <strong>{stats().wins}</strong></span>
-      <span><i class='stats-dot stats-dot-fail' />Failed <strong>{stats().fails}</strong></span>
-      <span><i class='stats-dot stats-dot-reveal' />Revealed <strong>{stats().reveals}</strong></span>
+      <span><b class='stats-outcome-key stats-outcome-win'>WON</b><span>Won</span><strong>{stats().wins}</strong></span>
+      <span><b class='stats-outcome-key stats-outcome-fail'>FAIL</b><span>Failed</span><strong>{stats().fails}</strong></span>
+      <span><b class='stats-outcome-key stats-outcome-reveal'>SHOW</b><span>Revealed</span><strong>{stats().reveals}</strong></span>
       <span class='stats-outcome-plain'>Daily entries <strong>{stats().daily}</strong></span>
     </div>
   </section>

@@ -21,6 +21,25 @@ function snapshotElement(element: HTMLElement) {
     node.removeAttribute('aria-labelledby');
     node.removeAttribute('aria-describedby');
   });
+
+  // cloneNode() does not preserve live form state, scroll positions, or canvas
+  // pixels. Copy them so transitions never flash stale/blank content.
+  const originals = [element, ...element.querySelectorAll<HTMLElement>('*')];
+  const copies = [clone, ...clone.querySelectorAll<HTMLElement>('*')];
+  for (let index = 0; index < Math.min(originals.length, copies.length); index++) {
+    const source = originals[index];
+    const target = copies[index];
+    target.scrollTop = source.scrollTop;
+    target.scrollLeft = source.scrollLeft;
+    if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
+      target.value = source.value; target.checked = source.checked;
+    } else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
+    else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
+    else if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
+      target.width = source.width; target.height = source.height;
+      try { target.getContext('2d')?.drawImage(source, 0, 0) } catch {}
+    }
+  }
   shell.append(clone);
   document.body.append(shell);
   return shell;
@@ -32,8 +51,22 @@ export async function animateRootSwap(current: HTMLElement | null, commit: () =>
     return;
   }
   const snapshot = snapshotElement(current);
-  await commit();
-  const incoming = next();
+  try {
+    await commit();
+  } catch (error) {
+    snapshot.remove();
+    throw error;
+  }
+  // Solid and the standalone app loaders can commit DOM work in a microtask.
+  // Querying immediately can return the outgoing node, which makes the route
+  // appear to have no transition at all. Give the renderer one microtask and
+  // one frame to expose the new root before starting the enter animation.
+  await Promise.resolve();
+  let incoming = next();
+  if (!incoming || incoming === current || !incoming.isConnected) {
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    incoming = next();
+  }
   const fromClip = direction === 'back' ? 'inset(3% 3% round 10px)' : 'inset(5% 5% round 12px)';
   const fromScale = direction === 'back' ? 'scale(.985)' : 'scale(.955)';
   // Apply the first frame before yielding to rAF. Otherwise the newly mounted

@@ -10,7 +10,8 @@ export enum Page {
   Error,
 }
 
-const pageState = new UrlSearchStore('p', Page.Wordle, value => Number(value) as Page, String)
+const parsePage = (value: string): Page => value === String(Page.Stats) ? Page.Stats : Page.Wordle
+const pageState = new UrlSearchStore('p', Page.Wordle, parsePage, String)
 const [page, setPage] = createSignal<Page>(pageState.get() ?? Page.Wordle)
 
 export const p = page

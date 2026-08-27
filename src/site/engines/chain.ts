@@ -35,7 +35,9 @@ export function mountChain() {
   const resultCopy = document.getElementById('chain-result-copy');
   const playAgainButton = document.getElementById('chain-play-again');
   const resultMenuButton = document.getElementById('chain-result-menu');
+  if (!canvas || !stage || !statusEl || !turnEl || !topbar || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !settingsClose || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  if (!ctx) return () => {};
 
   const EMPTY = 0;
   const HUMAN = 1;
@@ -53,6 +55,7 @@ export function mountChain() {
   let gameOver = false;
   let cssW = 0, cssH = 0, cell = 0, ox = 0, oy = 0, dpr = 1;
   let frame = 0;
+  let focusCell = 0;
   let particles = [];
   let gameVersion = 0;
   let menuRequested = false;
@@ -256,6 +259,15 @@ export function mountChain() {
       for (const [dx,dy] of atomOffsets(count, atomR)) drawOrb(cx + dx, cy + dy, owners[i], atomR);
     }
 
+    if (!gameOver && document.activeElement === canvas && focusCell >= 0 && focusCell < board.length) {
+      const [fx, fy] = center(focusCell);
+      ctx.save();
+      ctx.strokeStyle = color('--site-accent', '#6aaa64');
+      ctx.lineWidth = 2;
+      ctx.strokeRect(fx - cell / 2 + 2, fy - cell / 2 + 2, Math.max(0, cell - 4), Math.max(0, cell - 4));
+      ctx.restore();
+    }
+
     if (particles.length) {
       let alive = false;
       for (const p of particles) {
@@ -443,7 +455,7 @@ export function mountChain() {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left - ox;
     const y = e.clientY - rect.top - oy;
-    if (x < 0 || y < 0) return -1;
+    if (x < 0 || y < 0 || x >= cols * cell || y >= rows * cell) return -1;
     const c = Math.floor(x / cell), r = Math.floor(y / cell);
     if (c < 0 || c >= cols || r < 0 || r >= rows) return -1;
     return r * cols + c;
@@ -453,9 +465,28 @@ export function mountChain() {
     if (e.button !== 0) return;
     e.preventDefault();
     const i = cellFromEvent(e);
-    if (i >= 0) void humanMove(i);
+    if (i >= 0) { focusCell = i; canvas.focus({preventScroll:true}); requestDraw(); void humanMove(i); }
   };
+  const onCanvasKeyDown = e => {
+    if (gameView.hidden || !board.length) return;
+    const row = Math.floor(focusCell / cols), col = focusCell % cols;
+    let next = focusCell;
+    if (e.key === 'ArrowLeft') next = row * cols + Math.max(0, col - 1);
+    else if (e.key === 'ArrowRight') next = row * cols + Math.min(cols - 1, col + 1);
+    else if (e.key === 'ArrowUp') next = Math.max(0, row - 1) * cols + col;
+    else if (e.key === 'ArrowDown') next = Math.min(rows - 1, row + 1) * cols + col;
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void humanMove(focusCell); return; }
+    else if (e.key === 'Home') next = row * cols;
+    else if (e.key === 'End') next = row * cols + cols - 1;
+    else return;
+    e.preventDefault(); focusCell = next; requestDraw();
+  };
+  const onCanvasFocus = () => requestDraw();
+  const onCanvasBlur = () => requestDraw();
   canvas.addEventListener('pointerdown', onCanvasPointerDown);
+  canvas.addEventListener('keydown', onCanvasKeyDown);
+  canvas.addEventListener('focus', onCanvasFocus);
+  canvas.addEventListener('blur', onCanvasBlur);
 
   function reset(nextConfig = config) {
     gameVersion++;
@@ -467,6 +498,7 @@ export function mountChain() {
     gameOver = false;
     resultPanel.hidden = true;
     buildBoard();
+    focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     syncSettings();
     updateStatus();
     saveGameState(true);
@@ -484,6 +516,8 @@ export function mountChain() {
     entered.set(saved.entered.subarray(0, entered.length));
     turn = saved.turn;
     gameOver = saved.gameOver;
+    if (!gameOver && entered[turn] && !hasCells(turn)) turn = nextPlayer(turn);
+    focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     locked = false;
     particles = [];
     syncSettings();
@@ -561,7 +595,7 @@ export function mountChain() {
   function showResult() {
     if (!gameOver || gameView.hidden) return;
     resultTitle.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
-    resultCopy.textContent = `${boardSummary()} · The final cascade belongs to ${turn === HUMAN ? 'you' : `enemy ${turn - 1}`}.`;
+    resultCopy.textContent = `${boardSummary()} · The board belongs to ${turn === HUMAN ? 'you' : `enemy ${turn - 1}`}.`;
     const wasHidden = resultPanel.hidden;
     resultPanel.hidden = false;
     if (wasHidden && resultPanel.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -689,5 +723,8 @@ export function mountChain() {
     document.removeEventListener('pointerdown', onDocumentPointerDown);
     document.removeEventListener('keydown', onDocumentKeyDown);
     canvas.removeEventListener('pointerdown', onCanvasPointerDown);
+    canvas.removeEventListener('keydown', onCanvasKeyDown);
+    canvas.removeEventListener('focus', onCanvasFocus);
+    canvas.removeEventListener('blur', onCanvasBlur);
   };
 }

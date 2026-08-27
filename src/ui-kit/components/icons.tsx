@@ -1,6 +1,8 @@
-import { splitProps, type ComponentProps } from 'solid-js'
+import Settings from 'lucide-solid/icons/settings'
+import X from 'lucide-solid/icons/x'
+import type { ComponentProps } from 'solid-js'
 import { cn } from '~/lib/utils'
+
 type P = ComponentProps<'svg'>
-const Icon=(props:P)=>{const[,rest]=splitProps(props,['class']);return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class={cn('size-4',props.class)} {...rest}/>}
-export const IconSettings=(p:P)=><Icon {...p}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 9 19.35a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.07 14H3v-4h.09A1.7 1.7 0 0 0 4.65 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63 1.7 1.7 0 0 0 10 3.07V3h4v.09A1.7 1.7 0 0 0 15 4.65a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.93 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></Icon>
-export const IconX=(p:P)=><Icon {...p}><path d="M18 6 6 18M6 6l12 12"/></Icon>
+export const IconSettings = (props: P) => <Settings {...props} class={cn('size-4', props.class)} aria-hidden={props['aria-label'] ? undefined : 'true'} />
+export const IconX = (props: P) => <X {...props} class={cn('size-4', props.class)} aria-hidden={props['aria-label'] ? undefined : 'true'} />

@@ -18,9 +18,21 @@ export class LocalstorageStore<T> {
     this.fromString = fromString
     this.toString = toString
 
-    const raw = localStorage.getItem(key)
-    this.current_value = raw === null ? defaultValue : this.fromString(raw)
-    if (raw === null && defaultValue !== undefined) this.write(defaultValue)
+    let raw: string | null = null
+    try { raw = localStorage.getItem(key) } catch {}
+    if (raw === null) {
+      this.current_value = defaultValue
+      if (defaultValue !== undefined) this.write(defaultValue)
+      return
+    }
+    try {
+      this.current_value = this.fromString(raw)
+    } catch {
+      // Corrupt or stale persisted state must never make the app unbootable.
+      this.current_value = defaultValue
+      if (defaultValue !== undefined) this.write(defaultValue)
+      else { try { localStorage.removeItem(this.key) } catch {} }
+    }
   }
 
   get(): T | undefined {
@@ -28,12 +40,14 @@ export class LocalstorageStore<T> {
   }
 
   private write(value: T | undefined) {
-    if (value === undefined) localStorage.removeItem(this.key)
-    else {
-      const serialized = this.toString(value)
-      if (serialized === undefined) localStorage.removeItem(this.key)
-      else localStorage.setItem(this.key, serialized)
-    }
+    try {
+      if (value === undefined) localStorage.removeItem(this.key)
+      else {
+        const serialized = this.toString(value)
+        if (serialized === undefined) localStorage.removeItem(this.key)
+        else localStorage.setItem(this.key, serialized)
+      }
+    } catch {}
     storageChange()
   }
 

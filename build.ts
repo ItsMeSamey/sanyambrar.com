@@ -134,6 +134,16 @@ async function rollbackDocsTransaction() {
 
 async function copyStatic() {
   await mkdir(DOCS, { recursive: true });
+  // A partial static build updates an existing docs tree. Remove every output
+  // owned by the Solid/static pipeline first, otherwise content-hashed Vite
+  // chunks and deleted routes accumulate forever. Standalone Wordle/Keybr
+  // artifacts are intentionally preserved unless their own target is built.
+  const owned = [
+    "index.html", "work.html", "tools.html", "chain.html",
+    "blog", "projects", "site-app.js", "site-chunks", "assets",
+    "site.css", "shared-runtime.js",
+  ];
+  await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
   await cp(STATIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });

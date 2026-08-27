@@ -990,27 +990,58 @@ import { animateRootSwap } from './transitions.ts';
     else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
   };
-  const destinationRoot = () => document.querySelector('#solid-site-app,#wordle-root,#keybr-root,.site-route');
+  const destinationRoot = () => {
+    // Keybr's application root is the upstream #app element. Keeping this
+    // knowledge here is important: page swaps need a real incoming root to
+    // animate, otherwise Keybr waits out the root timeout and appears to hang
+    // or snap in with no transition.
+    if (document.documentElement.dataset.siteKind === 'keybr') return document.getElementById('app');
+    return document.querySelector('#solid-site-app,#wordle-root,.site-route');
+  };
   const waitForDestinationRoot = async () => {
     for (let i = 0; i < 90; i++) {
       const root = destinationRoot();
-      if (root && (root.childElementCount > 0 || root.id === 'keybr-root')) return;
+      if (root && root.childElementCount > 0) return root;
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
+    throw new Error(`The ${document.documentElement.dataset.siteKind || 'destination'} application did not mount.`);
+  };
+  const dismissLoadError = () => document.getElementById("samey-load-error")?.remove();
+  const showLoadError = (url, error, retry) => {
+    dismissLoadError();
+    const panel = runtimeNode(document.createElement("aside"));
+    panel.id = "samey-load-error";
+    panel.className = "samey-load-error";
+    panel.setAttribute("role", "alert");
+    const message = error instanceof Error ? error.message : "The page could not be loaded.";
+    panel.innerHTML = `<div><strong>Page failed to load</strong><span></span></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
+    panel.querySelector("span").textContent = message;
+    const normal = panel.querySelector("a");
+    normal.href = url.href;
+    panel.querySelector("[data-retry]").addEventListener("click", () => { dismissLoadError(); void retry(); });
+    panel.querySelector("[data-dismiss]").addEventListener("click", dismissLoadError);
+    document.body.append(panel);
   };
   const loadPage = async (href, { replace = false } = {}) => {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.href = url.href; return; }
+    dismissLoadError();
     setLoading(true);
     try {
       const { doc, baseUrl } = await fetchPage(url);
       const current = destinationRoot();
-      const commit = async () => { swapPage(doc, baseUrl, url, replace); await waitForDestinationRoot(); };
+      const commit = async () => {
+        swapPage(doc, baseUrl, url, replace);
+        await waitForDestinationRoot();
+        // Boot overlays listen to window.load on direct navigation, but that
+        // event has already happened during an in-document root swap.
+        document.getElementById("samey-boot")?.remove();
+        document.getElementById("samey-boot-style")?.remove();
+      };
       await animateRootSwap(current, commit, destinationRoot, url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
-    } catch {
-      // Navigation must remain functional even if the lazy/compressed path fails.
-      // Fall back to the browser rather than swallowing an ordinary click.
-      if (replace) location.replace(url.href); else location.assign(url.href);
+    } catch (error) {
+      showLoadError(url, error, () => loadPage(url.href, { replace }));
+      throw error;
     } finally { setLoading(false); }
   };
   globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
@@ -1021,6 +1052,7 @@ import { animateRootSwap } from './transitions.ts';
     if (!shouldSpa(url)) return;
     fetchPage(url).catch(() => {});
   };
+  globalThis.SameyPreloadPage = prefetch;
   const mountSpa = () => {
     if (document.documentElement.hasAttribute("data-solid-spa") || document.documentElement.hasAttribute("data-static-article")) return;
     markInitialPageStyles();
@@ -1032,11 +1064,11 @@ import { animateRootSwap } from './transitions.ts';
       const a = event.target.closest?.("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
       if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
-      event.preventDefault(); loadPage(url.href);
+      event.preventDefault(); void loadPage(url.href).catch(() => {});
     });
     addEventListener("popstate", () => {
       if (document.documentElement.hasAttribute("data-solid-spa")) return;
-      loadPage(location.href, { replace: true });
+      void loadPage(location.href, { replace: true }).catch(() => {});
     });
   };
 
