@@ -91,7 +91,7 @@ export default function Settings({soft, hard, showActive, showWordLength, onHard
         <div class='game-settings-actions'>
           <button type='button' class='game-settings-action' onClick={() => soft.reveal = true}>Reveal</button>
           <Show when={showActive}>
-            <ActiveGames hard={hard} onSelect={onSelectActiveGame} trigger={<button type='button' class='game-settings-action'>Active Games</button>} />
+            <ActiveGames hard={hard} onSelect={onSelectActiveGame} />
           </Show>
         </div>
       </div>

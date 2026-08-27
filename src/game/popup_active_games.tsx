@@ -61,7 +61,7 @@ export function getActiveGames(): ActiveGame[] {
   return games.sort((a, b) => a.config.mode.localeCompare(b.config.mode) || a.config.wordLength - b.config.wordLength || a.config.maxTries - b.config.maxTries)
 }
 
-export function ActiveGames({hard, trigger, onSelect}: {hard: SettingsHardProps, trigger: JSX.Element, onSelect?: (config: SettingsHardProps) => void}): JSX.Element {
+export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect?: (config: SettingsHardProps) => void}): JSX.Element {
   const [open, setOpen] = createSignal(false)
   const [games, setGames] = createSignal(getActiveGames())
   const refresh = () => setGames(getActiveGames())
@@ -77,7 +77,7 @@ export function ActiveGames({hard, trigger, onSelect}: {hard: SettingsHardProps,
 
   return <Show when={games().length > 0}>
     <Dialog open={open()} onOpenChange={value => { if (value) refresh(); setOpen(value) }}>
-      <DialogTrigger>{trigger}</DialogTrigger>
+      <DialogTrigger as='button' type='button' class='game-settings-action'>Active Games</DialogTrigger>
       <DialogContent class='active-games-dialog'>
         <Show when={open()}>
           <div class='active-games-header'><strong>Active games</strong><span>{games().length}</span></div>
