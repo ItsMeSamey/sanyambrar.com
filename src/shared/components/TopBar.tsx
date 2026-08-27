@@ -18,9 +18,9 @@ export function SearchButton() {
   </button>;
 }
 
-export function PrimaryNav() {
+export function PrimaryNav(props:{showWork?:boolean;activeHref?:string}) {
   return <nav class="top-nav site-topbar-nav" aria-label="Primary">
-    {SITE_NAV.map(item => <SmartLink href={item.href}>{item.label}</SmartLink>)}
+    {props.showWork && SITE_NAV.map(item => <SmartLink href={item.href} aria-current={props.activeHref === item.href ? 'page' : undefined}>{item.label}</SmartLink>)}
     <AppearanceButton/>
     <SearchButton/>
   </nav>;
@@ -30,12 +30,12 @@ export function PrimaryNav() {
  * The only site top bar implementation.
  * Pages customize content through slots, never by creating another header/bar.
  */
-export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string}) {
+export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;showWork?:boolean;activeHref?:string}) {
   return <header class="top site-topbar">
     <div class="site-topbar-inner site-topbar-inner-contained">
       <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
       <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
-      <PrimaryNav/>
+      <PrimaryNav showWork={props.showWork} activeHref={props.activeHref}/>
     </div>
   </header>;
 }
