@@ -1,6 +1,8 @@
 // @ts-nocheck
 import './btop-mutex.css';
+import { highlightBlogCode } from './highlight-code.ts';
 (() => {
+  highlightBlogCode();
   const root = document.getElementById('cas-viz');
   if (root) {
     const $ = (id) => document.getElementById(id);

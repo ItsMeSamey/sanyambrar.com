@@ -19,3 +19,12 @@
 
 /* Shared TopBar is rendered by src/blog/shell.tsx. */
 .blog-head{margin-bottom:30px}.blog-head h1{margin:0;font-size:38px;line-height:1;letter-spacing:-.045em}.blog-head p{margin:10px 0 0;color:var(--muted);font-size:14px}.post-row{position:relative;padding-inline:8px;transition:background-color 120ms ease,transform 150ms cubic-bezier(.2,.8,.2,1)}.post-row:hover{background:var(--soft);transform:translateX(3px)}.controls button,.mode-switch button,.cas-progress button{transition:transform 120ms cubic-bezier(.2,.8,.2,1),background-color 120ms ease,border-color 120ms ease}.controls button:active,.mode-switch button:active,.cas-progress button:active{transform:scale(.96)}
+
+/* Static C++ highlighting: tiny local tokenizer, no editor/runtime dependency. */
+.article-route .syn-keyword{color:var(--syntax-keyword);font-weight:650}
+.article-route .syn-type,.article-route .syn-namespace{color:color-mix(in srgb,var(--syntax-keyword) 72%,var(--syntax-number))}
+.article-route .syn-constant,.article-route .syn-number{color:var(--syntax-number)}
+.article-route .syn-string{color:var(--syntax-string)}
+.article-route .syn-comment{color:var(--syntax-comment);font-style:italic}
+.article-route .syn-function{color:var(--blog-link)}
+.article-route .syn-preproc{color:var(--blog-accent)}
