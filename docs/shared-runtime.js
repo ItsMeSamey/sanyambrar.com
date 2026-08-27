@@ -392,8 +392,8 @@
 					continue;
 				}
 				if (!/^https?:$/.test(url.protocol) || url.origin === location.origin) continue;
-				link.dataset.sameyExternal = url.href;
-				link.removeAttribute("target");
+				delete link.dataset.sameyExternal;
+				link.target = "_blank";
 				link.rel = "noopener noreferrer";
 			}
 		};
@@ -407,128 +407,6 @@
 			subtree: true,
 			childList: true
 		});
-		const browserExpandIcon = "<path d=\"M8 3H3v5\"></path><path d=\"M16 3h5v5\"></path><path d=\"M8 21H3v-5\"></path><path d=\"M16 21h5v-5\"></path>";
-		const browserCollapseIcon = "<path d=\"M8 8H3V3\"></path><path d=\"M16 8h5V3\"></path><path d=\"M8 16H3v5\"></path><path d=\"M16 16h5v5\"></path>";
-		const setBrowserFullscreen = (browser, on) => {
-			browser.toggleAttribute("data-fullscreen", on);
-			const button = browser.querySelector("[data-browser-fullscreen]");
-			const icon = browser.querySelector("[data-browser-fullscreen-icon]");
-			if (icon) icon.innerHTML = on ? browserCollapseIcon : browserExpandIcon;
-			if (button) {
-				button.title = on ? "Exit fullscreen" : "Fullscreen";
-				button.setAttribute("aria-label", on ? "Exit fullscreen" : "Enter fullscreen");
-			}
-			const controls = browser.querySelector("[data-browser-controls]");
-			if (controls) {
-				controls.style.left = "";
-				controls.style.top = "";
-				controls.style.right = "";
-			}
-		};
-		const wireBrowser = (browser) => {
-			if (!(browser instanceof HTMLElement) || browser.dataset.browserWired != null) return;
-			browser.dataset.browserWired = "";
-			const url = browser.dataset.url;
-			const controls = browser.querySelector("[data-browser-controls]");
-			browser.querySelector("[data-browser-external]")?.addEventListener("click", () => {
-				if (url) open(url, "_blank", "noopener,noreferrer");
-			});
-			browser.querySelector("[data-browser-fullscreen]")?.addEventListener("click", () => setBrowserFullscreen(browser, !browser.hasAttribute("data-fullscreen")));
-			if (!controls) return;
-			let drag = null;
-			controls.addEventListener("pointerdown", (event) => {
-				if (!browser.hasAttribute("data-fullscreen") || event.target.closest("button")) return;
-				const rect = controls.getBoundingClientRect();
-				drag = {
-					id: event.pointerId,
-					x: event.clientX,
-					y: event.clientY,
-					left: rect.left,
-					top: rect.top,
-					width: rect.width,
-					height: rect.height
-				};
-				controls.setPointerCapture(event.pointerId);
-			});
-			controls.addEventListener("pointermove", (event) => {
-				if (!drag || drag.id !== event.pointerId) return;
-				const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-				if (Math.hypot(dx, dy) < 4 && !controls.hasAttribute("data-dragging")) return;
-				controls.dataset.dragging = "";
-				const margin = 8;
-				controls.style.right = "auto";
-				controls.style.left = `${Math.min(Math.max(margin, drag.left + dx), Math.max(margin, innerWidth - drag.width - margin))}px`;
-				controls.style.top = `${Math.min(Math.max(margin, drag.top + dy), Math.max(margin, innerHeight - drag.height - margin))}px`;
-			});
-			const finish = (event) => {
-				if (!drag || drag.id !== event.pointerId) return;
-				if (controls.hasPointerCapture(event.pointerId)) controls.releasePointerCapture(event.pointerId);
-				controls.removeAttribute("data-dragging");
-				drag = null;
-			};
-			controls.addEventListener("pointerup", finish);
-			controls.addEventListener("pointercancel", finish);
-		};
-		const wireInlineBrowsers = (root = document) => {
-			for (const browser of root.querySelectorAll?.("[data-inline-browser]") || []) wireBrowser(browser);
-		};
-		const clampBrowserControls = (browser) => {
-			if (!(browser instanceof HTMLElement) || !browser.hasAttribute("data-fullscreen")) return;
-			const controls = browser.querySelector("[data-browser-controls]");
-			if (!(controls instanceof HTMLElement) || !controls.style.left) return;
-			const rect = controls.getBoundingClientRect(), margin = 8;
-			controls.style.left = `${Math.min(Math.max(margin, rect.left), Math.max(margin, innerWidth - rect.width - margin))}px`;
-			controls.style.top = `${Math.min(Math.max(margin, rect.top), Math.max(margin, innerHeight - rect.height - margin))}px`;
-			controls.style.right = "auto";
-		};
-		addEventListener("resize", () => {
-			for (const browser of document.querySelectorAll("[data-inline-browser][data-fullscreen]")) clampBrowserControls(browser);
-		});
-		let externalBrowserBackdrop = null;
-		const closeExternalBrowser = () => {
-			if (!externalBrowserBackdrop) return;
-			externalBrowserBackdrop.remove();
-			externalBrowserBackdrop = null;
-			document.documentElement.removeAttribute("data-external-browser-open");
-		};
-		const openExternalBrowser = (href, title = "External site") => {
-			closeExternalBrowser();
-			const url = new URL(href, location.href);
-			if (url.hostname === "github.com" && !url.hash) url.hash = "readme";
-			const backdrop = runtimeNode(document.createElement("div"));
-			backdrop.className = "samey-external-browser-backdrop";
-			backdrop.innerHTML = `<section class="detail-browser" data-inline-browser data-url="${url.href.replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" aria-label="External site"><div class="detail-browser-controls" data-browser-controls aria-label="Embedded page controls"><button class="detail-browser-button" type="button" data-browser-external aria-label="Open in new tab" title="Open in new tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7"></path><path d="M10 14L21 3"></path><path d="M21 14v7H3V3h7"></path></svg></button><span class="detail-browser-divider" aria-hidden="true"></span><button class="detail-browser-button" type="button" data-browser-fullscreen aria-label="Enter fullscreen" title="Fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true" data-browser-fullscreen-icon>${browserExpandIcon}</svg></button></div><iframe src="${url.href.replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" title="${String(title).replaceAll("&", "&amp;").replaceAll("\"", "&quot;")}" referrerpolicy="strict-origin-when-cross-origin"></iframe></section>`;
-			backdrop.addEventListener("click", (event) => {
-				if (event.target === backdrop) closeExternalBrowser();
-			});
-			document.body.append(backdrop);
-			externalBrowserBackdrop = backdrop;
-			document.documentElement.dataset.externalBrowserOpen = "";
-			wireInlineBrowsers(backdrop);
-		};
-		const mountExternalBrowsers = () => {
-			wireInlineBrowsers();
-			document.addEventListener("click", (event) => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-				const link = event.target.closest?.("a[data-samey-external]");
-				if (!link) return;
-				event.preventDefault();
-				event.stopPropagation();
-				openExternalBrowser(link.dataset.sameyExternal, link.dataset.copyLabel || link.textContent?.trim() || "External site");
-			}, true);
-			document.addEventListener("keydown", (event) => {
-				if (event.key !== "Escape") return;
-				const fullscreen = document.querySelector(".detail-browser[data-fullscreen]");
-				if (fullscreen) {
-					setBrowserFullscreen(fullscreen, false);
-					return;
-				}
-				if (externalBrowserBackdrop) closeExternalBrowser();
-			});
-			addEventListener("samey-pageload", () => wireInlineBrowsers());
-			addEventListener("samey-pageleave", closeExternalBrowser);
-		};
 		let loadingSvgCache = "";
 		let loadingFramesCache = null;
 		const loadingGeometry = Object.freeze({
@@ -1256,7 +1134,6 @@
 			});
 			addEventListener("scroll", scheduleVirtualBars, true);
 		};
-		const APP_ROUTE = /\/(?:keybr|wordle)(?:\.html)?\/?$/;
 		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
 		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
 		const pageCache = /* @__PURE__ */ new Map();
@@ -1272,8 +1149,7 @@
 				"data-site-theme",
 				"data-kb-theme",
 				"data-font",
-				"data-color",
-				"data-app-frame"
+				"data-color"
 			]);
 			for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
 			for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
@@ -1319,17 +1195,14 @@
 					url: logical,
 					format: null
 				}];
-				let response = null, format = null;
+				let text = null;
 				for (const attempt of attempts) try {
 					const candidate = await fetch(attempt.url, { headers: { "X-Samey-SPA": "1" } });
-					if (candidate.ok) {
-						response = candidate;
-						format = attempt.format;
-						break;
-					}
+					if (!candidate.ok) continue;
+					text = await decodePageResponse(candidate, attempt.format);
+					break;
 				} catch {}
-				if (!response) throw new Error("page fetch failed");
-				const text = await decodePageResponse(response, format);
+				if (text === null) throw new Error("page fetch failed");
 				const doc = new DOMParser().parseFromString(text, "text/html");
 				const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
 				return {
@@ -1406,7 +1279,6 @@
 			}
 			const runtimeAnchor = clearPageBody();
 			for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
-			document.documentElement.removeAttribute("data-app-frame");
 			document.title = doc.title;
 			syncHtmlData(doc, baseUrl);
 			(replace ? replaceState : pushState)({}, "", url.href);
@@ -1422,66 +1294,6 @@
 			else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
 			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
 		};
-		const frameDocument = ({ doc, baseUrl }) => {
-			const clone = doc.cloneNode(true);
-			let base = clone.querySelector("base");
-			if (!base) {
-				base = clone.createElement("base");
-				clone.head.prepend(base);
-			}
-			base.setAttribute("href", baseUrl.href);
-			return "<!doctype html>" + clone.documentElement.outerHTML;
-		};
-		const loadAppFrame = (url, replace, page) => new Promise((resolve, reject) => {
-			const preload = runtimeNode(document.createElement("div"));
-			preload.className = "samey-app-preload";
-			const frame = document.createElement("iframe");
-			frame.className = "samey-app-frame";
-			frame.title = "Application";
-			frame.srcdoc = frameDocument(page);
-			preload.append(frame);
-			document.body.append(preload);
-			const fail = () => {
-				preload.remove();
-				reject(/* @__PURE__ */ new Error("application load failed"));
-			};
-			frame.addEventListener("error", fail, { once: true });
-			frame.addEventListener("load", () => {
-				let frameDoc;
-				try {
-					frameDoc = frame.contentDocument;
-				} catch {}
-				const commit = () => {
-					try {
-						globalThis.SameyToolsDispose?.();
-						delete globalThis.SameyToolsDispose;
-					} catch {}
-					dispatchEvent(new Event("samey-pageleave"));
-					document.querySelectorAll("head > [data-spa-page], head > script[data-spa-page-script]").forEach((el) => el.remove());
-					const runtimeAnchor = clearPageBody();
-					const shell = document.createElement("main");
-					shell.className = "samey-app-shell";
-					shell.append(frame);
-					document.body.insertBefore(shell, runtimeAnchor);
-					preload.remove();
-					document.documentElement.dataset.appFrame = "";
-					document.documentElement.dataset.siteKind = url.pathname.match(/(wordle|keybr|chain)/)?.[1] || "app";
-					document.documentElement.dataset.homeHref = new URL("./", SCRIPT_ROOT).href;
-					document.title = frameDoc?.title || document.title;
-					(replace ? replaceState : pushState)({}, "", url.href);
-					apply();
-					dispatchEvent(new CustomEvent("samey-pageload", { detail: {
-						url: url.href,
-						app: true
-					} }));
-				};
-				if (document.startViewTransition && !reducedMotion()) document.startViewTransition(commit).finished.finally(resolve);
-				else {
-					commit();
-					resolve();
-				}
-			}, { once: true });
-		});
 		const loadPage = async (href, { replace = false } = {}) => {
 			const url = new URL(href, location.href);
 			if (url.origin !== location.origin) {
@@ -1490,28 +1302,42 @@
 			}
 			setLoading(true);
 			try {
-				if (APP_ROUTE.test(url.pathname)) {
-					const page = await fetchPage(url);
-					await loadAppFrame(url, replace, page);
-				} else {
-					const { doc, baseUrl } = await fetchPage(url);
-					const commit = () => swapPage(doc, baseUrl, url, replace);
-					if (document.startViewTransition && !reducedMotion()) {
-						document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
-						await document.startViewTransition(commit).finished.catch(() => {});
-						delete document.documentElement.dataset.navDirection;
-					} else commit();
-				}
+				const { doc, baseUrl } = await fetchPage(url);
+				const commit = () => swapPage(doc, baseUrl, url, replace);
+				if (document.startViewTransition && !reducedMotion()) {
+					document.documentElement.dataset.navDirection = url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "home" : "forward";
+					await document.startViewTransition(commit).finished.catch(() => {});
+					delete document.documentElement.dataset.navDirection;
+				} else if (!reducedMotion() && document.body?.animate) {
+					const leave = document.body.animate([{
+						opacity: 1,
+						transform: "translateY(0) scale(1)"
+					}, {
+						opacity: 0,
+						transform: "translateY(-5px) scale(.985)"
+					}], {
+						duration: 140,
+						easing: "cubic-bezier(.4,0,.2,1)",
+						fill: "both"
+					});
+					await leave.finished.catch(() => {});
+					leave.cancel();
+					commit();
+					await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+					await document.body.animate([{
+						opacity: 0,
+						transform: "translateY(7px) scale(.975)"
+					}, {
+						opacity: 1,
+						transform: "translateY(0) scale(1)"
+					}], {
+						duration: 230,
+						easing: "cubic-bezier(.22,1,.36,1)"
+					}).finished.catch(() => {});
+				} else commit();
 			} catch {
-				const layer = document.getElementById("samey-loading-layer");
-				if (layer) {
-					layer.dataset.visible = "";
-					layer.querySelector("span")?.replaceChildren(document.createTextNode("load failed"));
-					setTimeout(() => {
-						layer.removeAttribute("data-visible");
-						layer.querySelector("span")?.replaceChildren(document.createTextNode("loading"));
-					}, 1200);
-				}
+				if (replace) location.replace(url.href);
+				else location.assign(url.href);
 			} finally {
 				setLoading(false);
 			}
@@ -1523,7 +1349,7 @@
 			fetchPage(url).catch(() => {});
 		};
 		const mountSpa = () => {
-			if (document.documentElement.hasAttribute("data-solid-spa")) return;
+			if (document.documentElement.hasAttribute("data-solid-spa") || document.documentElement.hasAttribute("data-static-article")) return;
 			markInitialPageStyles();
 			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
 			document.addEventListener("pointerover", (event) => {
@@ -1545,22 +1371,11 @@
 				event.preventDefault();
 				loadPage(url.href);
 			});
-			addEventListener("message", (event) => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				if (event.origin !== location.origin || event.source === window) return;
-				const message = event.data;
-				if (message?.type === "samey-navigate" && message.href) loadPage(message.href);
-			});
 			addEventListener("popstate", () => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				loadPage(location.href, { replace: true });
 			});
 		};
-		const sharedCss = document.createElement("link");
-		sharedCss.rel = "stylesheet";
-		sharedCss.href = new URL("site.css", SCRIPT_ROOT).href;
-		sharedCss.dataset.sameyShared = "";
-		document.head.append(sharedCss);
 		addEventListener("storage", (event) => {
 			if (event.key === KEY || event.key === FONT_KEY) apply();
 		});
@@ -1624,11 +1439,7 @@
 			};
 			if (!controls.querySelector("[title=\"Home\"]")) controls.insertBefore(make("Home", homeIconSvg, () => {
 				const href = new URL("./", location.href).href;
-				if (window.parent !== window) parent.postMessage({
-					type: "samey-navigate",
-					href
-				}, location.origin);
-				else globalThis.SameyNavigate?.(href);
+				globalThis.SameyNavigate?.(href);
 			}), first);
 			if (!controls.querySelector("[title=\"Appearance\"]")) {
 				const button = make("Appearance", appearanceIconSvg, () => toggleAppearance(button));
@@ -1655,7 +1466,6 @@
 		const mountRuntime = () => {
 			normalizeExternalLinks();
 			observeExternalLinks();
-			mountExternalBrowsers();
 			mountControls();
 			mountCursor();
 			mountContextMenu();
@@ -1907,7 +1717,8 @@
 					e.preventDefault();
 					close();
 					const href = visible[active].href;
-					globalThis.SameyNavigate?.(href);
+					if (globalThis.SameyNavigate) globalThis.SameyNavigate(href);
+					else location.assign(href);
 				}
 			});
 		};

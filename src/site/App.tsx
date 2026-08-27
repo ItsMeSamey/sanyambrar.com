@@ -39,6 +39,17 @@ const preload = (route: Route) => loaders[route.kind]();
 
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
+async function animateStandaloneExit() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const route = document.querySelector<HTMLElement>('.site-route');
+  if (!route?.animate) return;
+  const animation = route.animate(
+    [{ opacity: 1, transform: 'translateY(0) scale(1)' }, { opacity: 0, transform: 'translateY(-5px) scale(.985)' }],
+    { duration: 150, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both' },
+  );
+  try { await animation.finished; } catch {}
+}
+
 async function animateRouteSwap(commit: () => void, homeward = false) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const oldRoute = document.querySelector<HTMLElement>('.site-route');
@@ -111,7 +122,12 @@ export function App() {
 
   const navigate = async (href: string, replace = false) => {
     const url = new URL(href, location.href);
-    if (url.origin !== location.origin || isStandaloneApp(url)) { location.href = url.href; return; }
+    if (url.origin !== location.origin) { location.assign(url.href); return; }
+    if (isStandaloneApp(url)) {
+      document.documentElement.dataset.navDirection = 'forward';
+      try { await animateStandaloneExit(); } finally { location.assign(url.href); }
+      return;
+    }
     if (sameDocumentHash(url)) {
       if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
       document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
@@ -126,7 +142,10 @@ export function App() {
       if (id !== navigationId) return;
       await finishNavigation(next, url, replace);
     } catch (error) {
-      if (id === navigationId) dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: url.href, error } }));
+      if (id === navigationId) {
+        dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: url.href, error } }));
+        if (replace) location.replace(url.href); else location.assign(url.href);
+      }
     } finally {
       if (id === navigationId) delete document.documentElement.dataset.solidLoading;
     }
@@ -143,7 +162,12 @@ export function App() {
       const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null;
       if (!anchor || anchor.target || anchor.hasAttribute('download') || anchor.closest('.tool-tabs')) return;
       const url = new URL(anchor.href, location.href);
-      if (url.origin !== location.origin || isStandaloneApp(url)) return;
+      if (url.origin !== location.origin) return;
+      if (isStandaloneApp(url)) {
+        event.preventDefault();
+        void navigate(url.href);
+        return;
+      }
       const next = routeFromUrl(url);
       if (!next && !sameDocumentHash(url)) return;
       event.preventDefault();

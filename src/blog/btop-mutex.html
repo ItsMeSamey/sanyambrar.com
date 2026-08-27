@@ -1,17 +1,18 @@
 <!doctype html>
-<html lang="en" data-spa data-home-href="../../" data-back-href="../">
+<html lang="en" data-static-article data-home-href="../../" data-back-href="../">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="How a broken atomic lock in btop admitted multiple owners, why relaxed atomics did not synchronize the UI and runner threads, and what I changed in PR #1649.">
   <title>btop's broken lock · Sanyam Brar</title>
+  <link vite-ignore rel="stylesheet" href="../../site.css" data-samey-shared>
   <script vite-ignore src="../../shared-runtime.js"></script>
   <script type="module" src="./btop-lock.ts"></script>
 </head>
 <body>
   <header class="top"><a class="brand" href="../../">Sanyam Brar</a><nav class="top-nav" aria-label="Primary"><a href="../../" aria-current="page">Home</a><a href="../../work">Work</a><button class="search-trigger" type="button" data-open-search aria-label="Search"><kbd data-search-shortcut>Ctrl K</kbd></button></nav></header>
-  <main class="article">
+  <main>
     <header class="article-head">
       <h1>btop's broken lock</h1>
       <p class="dek">the mutex that wasn't</p>

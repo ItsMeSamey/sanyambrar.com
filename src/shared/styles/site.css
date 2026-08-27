@@ -95,8 +95,6 @@ body [role=dialog]:not(.site-search-panel){
 }
 
 
-/* Full applications are lazy-loaded offscreen and swapped into this shell. The top-level document never unloads. */
-.samey-app-preload{position:fixed;inset:0;z-index:-1;visibility:hidden;pointer-events:none}.samey-app-preload iframe,.samey-app-shell iframe{display:block;width:100%;height:100%;border:0;background:var(--site-bg,#fff)}.samey-app-shell{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;margin:0!important;padding:0!important;overflow:hidden!important;background:var(--site-bg,#fff);z-index:1}html[data-app-frame] #samey-cursor{display:none!important}
 
 /* Slider geometry: fill endpoint and thumb share one center. Thumb only appears on intent. */
 .game-settings-slider [data-kb-slider-track]{position:relative!important;height:16px!important;border-radius:999px!important;overflow:visible!important}
@@ -113,3 +111,11 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 #site-root,#solid-site-app{width:100%}
 .site-route{width:100%;min-width:0;min-height:100dvh}
 .site-route.tools-page,.site-route.site-page-chain{height:100dvh;min-height:0;overflow:hidden}
+
+/* Cross-document transitions cover Solid SPA <-> standalone Wordle/Keybr. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:140ms cubic-bezier(.4,0,.2,1) both samey-page-leave}
+::view-transition-new(root){animation:240ms cubic-bezier(.22,1,.36,1) both samey-page-enter}
+@keyframes samey-page-leave{to{opacity:0;transform:translateY(-5px) scale(.985)}}
+@keyframes samey-page-enter{from{opacity:0;transform:translateY(7px) scale(.975)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation-duration:1ms!important}}
