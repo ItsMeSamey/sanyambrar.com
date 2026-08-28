@@ -278,14 +278,20 @@
 			const s = l > .5 ? d / (2 - max - min) : d / (max + min);
 			return `${+((max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4) / 6 * 360).toFixed(2)} ${+(s * 100).toFixed(2)}% ${+(l * 100).toFixed(2)}%`;
 		};
+		let volatileThemePrefs = {};
+		let volatileFont;
 		const rawPrefs = () => {
+			let stored = {};
 			try {
-				return JSON.parse(localStorage.getItem(KEY) || "null") || {};
-			} catch {
-				return {};
-			}
+				stored = JSON.parse(localStorage.getItem(KEY) || "null") || {};
+			} catch {}
+			return {
+				...stored,
+				...volatileThemePrefs
+			};
 		};
 		const readFont = () => {
+			if (FONT_IDS.includes(volatileFont)) return volatileFont;
 			try {
 				const value = localStorage.getItem(FONT_KEY);
 				if (FONT_IDS.includes(value)) return value;
@@ -459,15 +465,26 @@
 			return theme;
 		};
 		const setPrefs = (patch) => {
-			if (Object.hasOwn(patch, "font")) nativeSetItem.call(localStorage, FONT_KEY, patch.font);
+			if (Object.hasOwn(patch, "font")) try {
+				nativeSetItem.call(localStorage, FONT_KEY, patch.font);
+				volatileFont = void 0;
+			} catch {
+				volatileFont = patch.font;
+			}
 			const themePatch = { ...patch };
 			delete themePatch.font;
 			if (Object.keys(themePatch).length > 0) {
 				const { font: _legacyFont, ...theme } = rawPrefs();
-				nativeSetItem.call(localStorage, KEY, JSON.stringify({
+				const next = {
 					...theme,
 					...themePatch
-				}));
+				};
+				try {
+					nativeSetItem.call(localStorage, KEY, JSON.stringify(next));
+					volatileThemePrefs = {};
+				} catch {
+					volatileThemePrefs = next;
+				}
 			}
 			apply();
 		};
@@ -594,6 +611,7 @@
 			document.documentElement.classList.add("samey-custom-cursor");
 			document.body.append(linkFill, cursor);
 			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
+			loadingPath?.querySelector("animate")?.remove();
 			let loadingRaf = 0, loadingStarted = 0;
 			let refreshCursorMode = () => {};
 			const animateLoadingPaths = (time) => {
@@ -778,7 +796,7 @@
 					}
 				}
 				place(event);
-				setMode(elementAt(event));
+				setMode(event.target instanceof Element ? event.target : elementAt(event));
 			};
 			document.addEventListener("pointermove", refreshAt, {
 				capture: true,
@@ -957,6 +975,7 @@
 				pressedGrab = false;
 				pressedPointerId = null;
 				modifiedLinkPending = null;
+				suppressModifiedClick = null;
 				if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
 					place(event);
 					setMode(elementAt(event));
@@ -990,9 +1009,12 @@
 				area.value = text;
 				area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
 				document.body.append(area);
-				area.select();
-				document.execCommand("copy");
-				area.remove();
+				try {
+					area.select();
+					document.execCommand("copy");
+				} finally {
+					area.remove();
+				}
 			}
 		};
 		const pasteInto = (el, text) => {
@@ -1351,6 +1373,14 @@
 			});
 			addEventListener("scroll", scheduleVirtualBars, true);
 		};
+		const hashTarget = (url) => {
+			if (!url.hash) return "";
+			try {
+				return decodeURIComponent(url.hash.slice(1));
+			} catch {
+				return url.hash.slice(1);
+			}
+		};
 		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
 		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
 		const pageCache = /* @__PURE__ */ new Map();
@@ -1376,7 +1406,7 @@
 		};
 		const logicalPageUrl = (url) => {
 			const logical = new URL(url.href);
-			if (logical.pathname === "/blog") logical.pathname = "/blog/index.html";
+			if (logical.pathname.endsWith("/blog")) logical.pathname += "/index.html";
 			else if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
 			else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
 			return logical;
@@ -1448,6 +1478,7 @@
 			for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
 			return runtimeAnchor;
 		};
+		let currentPagePath = location.pathname;
 		const swapPage = (doc, baseUrl, url, replace) => {
 			try {
 				globalThis.SameyToolsDispose?.();
@@ -1475,6 +1506,7 @@
 			for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
 			document.title = doc.title;
 			syncHtmlData(doc, baseUrl);
+			currentPagePath = url.pathname;
 			(replace ? replaceState : pushState)({}, "", url.href);
 			runBodyScripts(baseUrl);
 			runHeadScripts(doc, baseUrl);
@@ -1486,7 +1518,7 @@
 				left: 0,
 				behavior: "instant"
 			});
-			else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
+			else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
 			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
 		};
 		const destinationRoot = () => {
@@ -1521,16 +1553,28 @@
 			panel.querySelector("[data-dismiss]").addEventListener("click", dismissLoadError);
 			document.body.append(panel);
 		};
-		const loadPage = async (href, { replace = false } = {}) => {
+		let pageNavigationId = 0;
+		const cancelPageNavigation = () => {
+			pageNavigationId++;
+			setLoading(false);
+		};
+		globalThis.SameyCancelPageSwap = cancelPageNavigation;
+		const loadPage = async (href, { replace = false, force = false } = {}) => {
+			const id = ++pageNavigationId;
 			const url = new URL(href, location.href);
 			if (url.origin !== location.origin) {
 				location.href = url.href;
 				return;
 			}
 			dismissLoadError();
+			if (!force && url.href === location.href) {
+				setLoading(false);
+				return;
+			}
 			setLoading(true);
 			try {
 				const { doc, baseUrl } = await fetchPage(url);
+				if (id !== pageNavigationId) return;
 				const current = destinationRoot();
 				const commit = async () => {
 					swapPage(doc, baseUrl, url, replace);
@@ -1540,10 +1584,14 @@
 				};
 				await animateRootSwap(current, commit, destinationRoot, url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "back" : "forward");
 			} catch (error) {
-				showLoadError(url, error, () => loadPage(url.href, { replace }));
+				if (id !== pageNavigationId) return;
+				showLoadError(url, error, () => loadPage(url.href, {
+					replace,
+					force
+				}));
 				throw error;
 			} finally {
-				setLoading(false);
+				if (id === pageNavigationId) setLoading(false);
 			}
 		};
 		globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
@@ -1583,8 +1631,11 @@
 				loadPage(url.href).catch(() => {});
 			});
 			addEventListener("popstate", () => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				loadPage(location.href, { replace: true }).catch(() => {});
+				if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
+				loadPage(location.href, {
+					replace: true,
+					force: true
+				}).catch(() => {});
 			});
 		};
 		addEventListener("storage", (event) => {
@@ -1807,7 +1858,7 @@
 			const words = q.split(/\s+/).filter(Boolean);
 			return words.every((w) => text.includes(w)) ? 20 + words.length : 0;
 		};
-		let box, input, results, active = 0, visible = [];
+		let box, input, results, opener, active = 0, visible = [];
 		const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K";
 		const syncShortcutLabels = () => document.querySelectorAll("[data-search-shortcut]").forEach((el) => {
 			el.textContent = shortcutLabel;
@@ -1835,7 +1886,8 @@
 				render();
 			});
 			box.addEventListener("click", (e) => {
-				if (e.target.closest("[data-close-search]")) close();
+				if (e.target.closest("a.search-result")) close(false);
+				else if (e.target.closest("[data-close-search]")) close();
 			});
 			input.addEventListener("keydown", (e) => {
 				if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -1845,24 +1897,30 @@
 				}
 				if (e.key === "Enter" && visible[active]) {
 					e.preventDefault();
-					close();
+					close(false);
 					const href = visible[active].href;
 					if (globalThis.SameyNavigate) globalThis.SameyNavigate(href);
 					else location.assign(href);
 				}
 			});
 		};
-		const open = () => {
+		const open = (trigger) => {
 			ensure();
+			opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null;
 			box.hidden = false;
 			active = 0;
 			input.value = "";
 			render();
 			requestAnimationFrame(() => input.focus());
 		};
-		const close = () => {
-			if (box) box.hidden = true;
+		const close = (restoreFocus = true) => {
+			if (!box || box.hidden) return;
+			box.hidden = true;
+			const target = opener;
+			opener = null;
+			if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus());
 		};
+		addEventListener("samey-pageleave", () => close(false));
 		addEventListener("keydown", (e) => {
 			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
 				e.preventDefault();
@@ -1870,7 +1928,8 @@
 			} else if (e.key === "Escape") close();
 		});
 		document.addEventListener("click", (e) => {
-			if (e.target.closest("[data-open-search]")) open();
+			const trigger = e.target.closest("[data-open-search]");
+			if (trigger) open(trigger);
 		});
 	})();
 	//#endregion
