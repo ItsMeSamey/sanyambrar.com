@@ -182,6 +182,46 @@ ${keybrViewSwitch}`;
     "architecture: Chain views must use the shared transition runtime");
   must(keybrSolidRuntime.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
+
+  // UX contracts that are easy to regress because desktop and narrow layouts
+  // intentionally diverge. Keep these assertions close to the build so every
+  // published archive verifies the requested navigation/editing behavior.
+  const wordlePage = await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8");
+  const wordleStats = await readFile(join(ROOT, "src/games/wordle/page_stats.tsx"), "utf8");
+  const wordleStyle = await readFile(join(ROOT, "src/games/wordle/style.css"), "utf8");
+  must(wordlePage.includes("context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span>"),
+    "ux: Wordle opening screen must expose Statistics directly");
+  must(wordleStats.includes("<TopBar start={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>") && !wordleStats.includes("HomeBrand"),
+    "ux: Wordle Statistics must have one back control to the Wordle picker");
+  must(wordleStyle.includes(".result-board{width:min(92vw,620px)"),
+    "ux: Wordle completion recap board must retain a substantial width");
+
+  const chainPage = await readFile(join(ROOT, "src/games/chain/Chain.tsx"), "utf8");
+  const chainEngine = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
+  const chainLogo = await readFile(join(ROOT, "src/shared/components/ChainLogo.tsx"), "utf8");
+  must(chainPage.includes('id="chain-stats-button"') && chainPage.includes('id="chain-stats"') && chainEngine.includes("samey.chain.stats.v1"),
+    "ux: Chain Reaction must expose persistent statistics");
+  must(chainPage.includes('id="chain-stats-back"') && chainLogo.includes("const BACK_ROWS"),
+    "ux: Chain Statistics must use the Chain back mark");
+
+  const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
+  const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
+  must(toolsSource.includes("monaco.editor.create(root.querySelector('#diff-original')") && toolsSource.includes("monaco.editor.create(root.querySelector('#diff-modified')"),
+    "ux: both Diff sides must remain ordinary editable editors");
+  must(toolsStyle.includes('@media(max-width:700px){.diff-panes,.diff-tool[data-layout="split"] .diff-panes{grid-template-columns:1fr;grid-template-rows:1fr 1fr}') &&
+    toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
+    "ux: narrow Diff and Markdown combined views must stack top-to-bottom");
+  must(!toolsStyle.includes('.text-stat strong{display:none}') &&
+    toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:#6b8fd6}') &&
+    toolsStyle.includes('.text-stat:nth-child(3) b,.text-stat:nth-child(3) strong{color:var(--site-error)}'),
+    "ux: mobile text counts must remain visible with word/non-ASCII colors");
+  must(toolsStyle.includes('.tool-select-item{width:100%;padding:0 10px!important;text-align:left!important;justify-items:start}'),
+    "ux: narrow tool selector entries must be left-aligned without excess inset");
+
+  const sharedSite = await readFile(join(ROOT, "src/shared/site.ts"), "utf8");
+  must(sharedSite.includes("destination.textContent = external ? '↗' : newPage ? '→' : ''") &&
+    sharedSite.includes("window.open(targetUrl.href, '_blank', 'noopener,noreferrer')"),
+    "ux: search must distinguish external destinations for click and keyboard activation");
 }
 
 

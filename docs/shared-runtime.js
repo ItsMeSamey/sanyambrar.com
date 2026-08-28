@@ -2156,10 +2156,11 @@
 				render();
 			} else if (event.key === "Enter" && visible[active]) {
 				event.preventDefault();
-				const href = new URL(visible[active].href, SCRIPT_ROOT).href;
+				const targetUrl = new URL(visible[active].href, SCRIPT_ROOT);
 				close(false);
-				if (api.SameyNavigate) api.SameyNavigate(href);
-				else location.assign(href);
+				if (targetUrl.origin !== location.origin) window.open(targetUrl.href, "_blank", "noopener,noreferrer");
+				else if (api.SameyNavigate) api.SameyNavigate(targetUrl.href);
+				else location.assign(targetUrl.href);
 			}
 		});
 	}
