@@ -202,7 +202,7 @@ function StatsContent({stats}: {stats: GameStats}) {
           <For each={stats.words}>{value => <WordHistory value={value} selected={selected} onSelect={setSelected} />}</For>
         </Accordion>
       </section>
-      <Show when={selected()}>{value => <DetailedStats value={value()} />}</Show>
+      <Show when={selected()} keyed>{value => <DetailedStats value={value} />}</Show>
     </div>
   </div>
 }

@@ -140,13 +140,13 @@ class GameState {
       stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       stored.config = {...hard}
     }
+
     const lastColors = ((stored.history.at(-1) ?? ['', ''])![1] || '').split('')
     if (stored.done === undefined && lastColors.length === hard.wordLength) {
       if (lastColors.every(s => s === 'g')) stored.done = KindEnum.Correct
       else if (lastColors.every(s => s === 'b')) stored.done = KindEnum.Revealed
       else if (hard.maxTries !== 1 && stored.history.length >= hard.maxTries) stored.done = KindEnum.Failed
     }
-
     // One write per mount migrates legacy plaintext state and persists inferred completion.
     this.stateStore.set(stored)
     this.history = createMutable<[string, string][]>(stored.history)
@@ -356,11 +356,11 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
   const fromStorage = (raw: string): WordLocalStorageState => {
     const stored = JSON.parse(raw) as WordLocalStorageState
     if (!stored || typeof stored !== 'object' || !Array.isArray(stored.history) || stored.history.length === 0 ||
-        stored.history.some(row => !Array.isArray(row) || row.length !== 2 || typeof row[0] !== 'string' || typeof row[1] !== 'string') ||
-        (stored.word !== undefined && typeof stored.word !== 'string') ||
-        (stored.wordIndex !== undefined && (!Number.isInteger(stored.wordIndex) || stored.wordIndex < 0)) ||
-        (stored.disabled !== undefined && typeof stored.disabled !== 'string') ||
-        (stored.done !== undefined && ![KindEnum.Correct, KindEnum.Failed, KindEnum.Revealed].includes(stored.done))) {
+      stored.history.some(row => !Array.isArray(row) || row.length !== 2 || typeof row[0] !== 'string' || typeof row[1] !== 'string') ||
+      (stored.word !== undefined && typeof stored.word !== 'string') ||
+      (stored.wordIndex !== undefined && (!Number.isInteger(stored.wordIndex) || stored.wordIndex < 0)) ||
+      (stored.disabled !== undefined && typeof stored.disabled !== 'string') ||
+      (stored.done !== undefined && ![KindEnum.Correct, KindEnum.Failed, KindEnum.Revealed].includes(stored.done))) {
       throw new Error('Invalid saved Wordle state')
     }
     const savedConfig = (stored as {config?: unknown}).config
@@ -369,11 +369,9 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     }
     // Fill fields that did not exist in older saves from the current challenge.
     const config = {...hard, ...(savedConfig as Partial<SettingsHardProps> | undefined)}
-    if (!['daily', 'random', 'advanced'].includes(config.mode) ||
-        !Number.isInteger(config.wordLength) || config.wordLength < 3 || config.wordLength > 20 ||
-        !Number.isInteger(config.maxTries) || config.maxTries < 1 || config.maxTries > 50 ||
-        !Number.isInteger(config.disabledLetters) || config.disabledLetters < 0 || config.disabledLetters > 12 ||
-        typeof config.allowAny !== 'boolean') {
+    if (!['daily', 'random', 'advanced'].includes(config.mode) || !Number.isInteger(config.wordLength) || config.wordLength < 3 || config.wordLength > 20 ||
+      !Number.isInteger(config.maxTries) || config.maxTries < 1 || config.maxTries > 50 ||
+      !Number.isInteger(config.disabledLetters) || config.disabledLetters < 0 || config.disabledLetters > 12 || typeof config.allowAny !== 'boolean') {
       throw new Error('Invalid saved Wordle config')
     }
     stored.config = config
