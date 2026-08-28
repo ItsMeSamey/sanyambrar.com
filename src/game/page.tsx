@@ -73,8 +73,8 @@ class Keyboard {
                 isDisabled ? 'wordle-key-disabled ' :
                 this.state[char as Keys].state === 'g' ? 'bg-green-600/60 ' :
                 this.state[char as Keys].state === 'y' ? 'bg-yellow-500/70 ' :
-                this.state[char as Keys].state === 'r' ? 'bg-red-700/50 ' : 'bg-muted '
-              ) + (!isDisabled && key.length === 1 && this.suggested.includes(key.toLowerCase()) ? 'wordle-key-suggested ' : '') + (this.state[char as Keys].pressed ? 'scale-105 invert' : '')}
+                this.state[char as Keys].state === 'r' ? 'bg-red-700/50 ' : 'wordle-key-neutral '
+              ) + (!isDisabled && key.length === 1 && this.suggested.includes(key.toLowerCase()) ? 'wordle-key-suggested ' : '') + (this.state[char as Keys].pressed ? 'wordle-key-pressed' : '')}
             >{char}</button>
           })}
         </div>

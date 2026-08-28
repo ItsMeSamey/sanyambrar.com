@@ -319,9 +319,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg><svg class="samey-cursor-link" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><g transform="translate(23.6 23.6) scale(.2)"><path d="M42 0 H84 V42 A42 42 0 1 1 42 0 Z" fill="currentColor"/><path class="samey-cursor-link-corner" d="M47.5 5.5 H78.5 V36.5" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="square" stroke-linejoin="miter"><animateTransform class="samey-cursor-link-click" attributeName="transform" type="translate" values="0 0;26 -26" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/><animate class="samey-cursor-link-fade" attributeName="opacity" values="1;0" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></path></g></svg>${loadingCursorSvg()}`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
+    const linkFill = runtimeNode(document.createElement("div"));
+    linkFill.className = "samey-cursor-link-fill";
+    linkFill.hidden = true;
     document.documentElement.classList.add("samey-custom-cursor");
-    document.body.append(cursor);
+    document.body.append(linkFill, cursor);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
     let loadingRaf = 0, loadingStarted = 0;
     const animateLoadingPaths = (time) => {
@@ -333,7 +336,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const setLoading = (loading) => {
       cursor.toggleAttribute("data-loading", !!loading);
-      if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; }
+      if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; linkFill.hidden = true; }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
@@ -354,18 +357,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return event.target instanceof Element ? event.target : null;
       return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
     };
-    const linkClick = cursor.querySelector(".samey-cursor-link-click");
-    const linkFade = cursor.querySelector(".samey-cursor-link-fade");
     const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
     const setGrabState = (grab) => {
       const wasGrab = cursor.hasAttribute("data-grab");
       cursor.toggleAttribute("data-grab", grab);
       if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
-    };
-    const animateLinkClick = () => {
-      if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-      if (typeof linkClick?.beginElement === "function") linkClick.beginElement();
-      if (typeof linkFade?.beginElement === "function") linkFade.beginElement();
     };
     const holdLinkCursor = (event, link) => {
       if (!link) return;
@@ -403,21 +399,72 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       else if (!cursorFrame) cursorFrame = requestAnimationFrame(renderCursorPosition);
     };
     const place = (event, immediate = false) => placeXY(event.clientX, event.clientY, immediate);
-    const unshiftCursor = (grab) => {
-      if (matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-      const visual = grab ? cursor.querySelector(".samey-cursor-grab") : cursor.querySelector(".samey-cursor-dot");
-      visual?.animate?.(
-        [{ transform: "translate(-8.4px,8.4px)" }, { transform: "translate(0,0)" }],
-        { duration: 65, easing: "cubic-bezier(.2,.8,.2,1)" },
-      );
+    const fillDot = 16.8;
+    let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0;
+    let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
+    let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
+    const linkRect = (link) => {
+      const rects = [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+      return rects.find(rect => pendingX >= rect.left && pendingX <= rect.right && pendingY >= rect.top && pendingY <= rect.bottom)
+        ?? link.getBoundingClientRect();
     };
+    const updateFillGoal = () => {
+      if (!fillTarget?.isConnected) return setFillTarget(null);
+      const rect = linkRect(fillTarget);
+      const insetX = Math.min(8, Math.max(2, rect.width * .04));
+      const insetY = Math.min(6, Math.max(1, rect.height * .12));
+      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      const nx = Math.max(-1, Math.min(1, (pendingX - cx) / Math.max(1, rect.width / 2)));
+      const ny = Math.max(-1, Math.min(1, (pendingY - cy) / Math.max(1, rect.height / 2)));
+      wantedFillW = Math.max(fillDot, rect.width - insetX * 2);
+      wantedFillH = Math.max(fillDot, rect.height - insetY * 2);
+      wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
+      wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
+    };
+    const renderFill = () => {
+      fillFrame = 0;
+      const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      const posEase = reduced ? 1 : .38, sizeEase = reduced ? 1 : .25;
+      fillX += (wantedFillX - fillX) * posEase;
+      fillY += (wantedFillY - fillY) * posEase;
+      fillW += (wantedFillW - fillW) * sizeEase;
+      fillH += (wantedFillH - fillH) * sizeEase;
+      linkFill.style.width = `${fillW}px`;
+      linkFill.style.height = `${fillH}px`;
+      linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0)`;
+      if (fillCollapsing) { wantedFillX = pendingX; wantedFillY = pendingY; }
+      const done = Math.abs(fillX - wantedFillX) < .5 && Math.abs(fillY - wantedFillY) < .5
+        && Math.abs(fillW - wantedFillW) < .5 && Math.abs(fillH - wantedFillH) < .5;
+      if (fillCollapsing && done) {
+        fillVisible = fillCollapsing = false;
+        linkFill.hidden = true;
+      } else if (!done) fillFrame = requestAnimationFrame(renderFill);
+    };
+    const ensureFillFrame = () => { if (!fillFrame) fillFrame = requestAnimationFrame(renderFill); };
+    function setFillTarget(link) {
+      if (cursor.hasAttribute("data-loading")) { fillTarget = null; fillVisible = fillCollapsing = false; linkFill.hidden = true; return; }
+      if (!link) {
+        fillTarget = null;
+        if (!fillVisible) return;
+        fillCollapsing = true;
+        wantedFillX = pendingX; wantedFillY = pendingY; wantedFillW = wantedFillH = fillDot;
+        ensureFillFrame();
+        return;
+      }
+      if (!fillVisible) {
+        fillX = wantedFillX = pendingX; fillY = wantedFillY = pendingY; fillW = fillH = fillDot;
+        fillVisible = true; linkFill.hidden = false;
+      }
+      fillTarget = link; fillCollapsing = false; linkFill.hidden = false;
+      updateFillGoal();
+      ensureFillFrame();
+    }
     const setMode = (target) => {
-      const wasLink = cursor.hasAttribute("data-link") && !cursor.hasAttribute("data-grab");
       const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
-      const link = !grab && !!linkTarget(target);
+      const link = grab ? null : linkTarget(target);
       setGrabState(grab);
-      cursor.toggleAttribute("data-link", link);
-      if (wasLink && !link) unshiftCursor(grab);
+      cursor.toggleAttribute("data-link", !!link);
+      setFillTarget(link);
     };
     const refreshAt = (event) => {
       if (nativeDragging) { delete cursor.dataset.visible; return; }
@@ -436,6 +483,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 
     document.addEventListener("pointermove", refreshAt, { capture: true, passive: true });
     document.addEventListener("pointerover", refreshAt, { capture: true, passive: true });
+    addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true, capture: true });
+    addEventListener("resize", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true });
     const selectionAtPoint = (x, y, target) => {
       if (!(target instanceof Element) || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
       const selection = getSelection();
@@ -475,7 +524,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         modifiedLinkPending = pressedLink;
         suppressModifiedClick = pressedLink;
         holdLinkCursor(event, pressedLink);
-        animateLinkClick();
       }
     }, true);
     document.addEventListener("mousedown", (event) => {
@@ -523,7 +571,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         return;
       }
       holdLinkCursor(event, link);
-      animateLinkClick();
     }, true);
     document.addEventListener("auxclick", (event) => {
       const link = event.button === 1 ? linkTarget(event.target) : null;
@@ -535,7 +582,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
       event.preventDefault();
       holdLinkCursor(event, link);
-      animateLinkClick();
       if (link instanceof HTMLAnchorElement && link.href) window.open(link.href, "_blank", "noopener,noreferrer");
     }, true);
     const isPlainSelectionDrag = (event) => {
@@ -553,6 +599,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         selectionDragText = getSelection()?.toString() || "";
         pressedGrab = true;
         cursor.removeAttribute("data-link");
+        setFillTarget(null);
         setGrabState(true);
         placeXY(lastX, lastY);
         return;
@@ -565,6 +612,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = null;
       setGrabState(false);
       cursor.removeAttribute("data-link");
+      setFillTarget(null);
       delete cursor.dataset.visible;
     };
     document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
@@ -579,13 +627,13 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = null;
       modifiedLinkPending = null;
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
-      else { setGrabState(false); cursor.removeAttribute("data-link"); }
+      else { setGrabState(false); cursor.removeAttribute("data-link"); setFillTarget(null); }
     };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
     addEventListener("blur", stopDragging);
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) delete cursor.dataset.visible; });
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) { delete cursor.dataset.visible; setFillTarget(null); } });
   };
 
   const editableTarget = (el) => {
