@@ -1040,12 +1040,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   let pageNavigationId = 0;
   const cancelPageNavigation = () => { pageNavigationId++; setLoading(false); };
   globalThis.SameyCancelPageSwap = cancelPageNavigation;
-  const loadPage = async (href, { replace = false } = {}) => {
+  const loadPage = async (href, { replace = false, force = false } = {}) => {
     const id = ++pageNavigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.href = url.href; return; }
     dismissLoadError();
-    if (url.href === location.href) { setLoading(false); return; }
+    if (!force && url.href === location.href) { setLoading(false); return; }
     setLoading(true);
     try {
       const { doc, baseUrl } = await fetchPage(url);
@@ -1062,7 +1062,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       await animateRootSwap(current, commit, destinationRoot, url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
     } catch (error) {
       if (id !== pageNavigationId) return;
-      showLoadError(url, error, () => loadPage(url.href, { replace }));
+      showLoadError(url, error, () => loadPage(url.href, { replace, force }));
       throw error;
     } finally {
       if (id === pageNavigationId) setLoading(false);
@@ -1096,7 +1096,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     });
     addEventListener("popstate", () => {
       if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
-      void loadPage(location.href, { replace: true }).catch(() => {});
+      void loadPage(location.href, { replace: true, force: true }).catch(() => {});
     });
   };
 

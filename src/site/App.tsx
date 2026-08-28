@@ -59,6 +59,9 @@ const setLoading = (value: boolean) => {
 };
 const cancelSharedPageSwap = () =>
   (globalThis as typeof globalThis & { SameyCancelPageSwap?: () => void }).SameyCancelPageSwap?.();
+type PageSwapNavigate = (href: string, opts?: { replace?: boolean; force?: boolean }) => Promise<void>;
+const pageSwapNavigate = () =>
+  (globalThis as typeof globalThis & { SameyPageSwapNavigate?: PageSwapNavigate }).SameyPageSwapNavigate;
 const preloadUrl = (url: URL) => {
   if (url.origin !== location.origin) return;
   if (isStandaloneApp(url)) {
@@ -146,7 +149,7 @@ export function App() {
     setNavigationError(null);
     if (url.href === location.href) { setLoading(false); return; }
     if (isStandaloneApp(url)) {
-      const pageSwap = (globalThis as typeof globalThis & { SameyPageSwapNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyPageSwapNavigate;
+      const pageSwap = pageSwapNavigate();
       setLoading(true);
       try {
         if (pageSwap) { await pageSwap(url.href, { replace }); return; }
@@ -165,7 +168,7 @@ export function App() {
     }
     const next = routeFromUrl(url);
     if (!next) {
-      const pageSwap = (globalThis as typeof globalThis & { SameyPageSwapNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyPageSwapNavigate;
+      const pageSwap = pageSwapNavigate();
       setLoading(true);
       try {
         if (pageSwap) await pageSwap(url.href, {replace});
@@ -229,7 +232,15 @@ export function App() {
       const url = new URL(location.href);
       const next = routeFromUrl(url);
       setNavigationError(null);
-      if (!next) { setLoading(false); return; }
+      if (!next) {
+        const pageSwap = pageSwapNavigate();
+        if (!pageSwap) { location.reload(); return; }
+        setLoading(true);
+        void pageSwap(url.href, {replace: true, force: true}).catch(error => {
+          if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be restored.'});
+        }).finally(() => { if (id === navigationId) setLoading(false); });
+        return;
+      }
       if (next.key === route().key) {
         setLoading(false);
         syncDocument(next);
