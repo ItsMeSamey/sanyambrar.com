@@ -1,7 +1,7 @@
 'use strict'
 
 import BarChart3 from 'lucide-solid/icons/chart-no-axes-column'
-import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { Accessor, createEffect, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
@@ -176,34 +176,39 @@ function DetailedStats({value}: {value: Value}) {
   </section>
 }
 
-function StatsContent({stats}: {stats: GameStats}) {
-  const [selected, setSelected] = createSignal<Value | undefined>(stats.words[0])
+function StatsContent(props: {stats: GameStats}) {
+  const [selected, setSelected] = createSignal<Value | undefined>()
+  createEffect(() => {
+    const words = props.stats.words
+    const current = selected()
+    if (!current || !words.includes(current)) setSelected(words[0])
+  })
   return <div class='stats-content'>
     <section class='stats-section'>
       <div class='stats-section-heading'><div><span class='stats-eyebrow'>All time</span><h2>Summary</h2></div></div>
       <div class='stats-summary-grid'>
-        <SummaryStat label='Games' value={stats.totalGames} />
-        <SummaryStat label='Wins' value={stats.totalWins} />
-        <SummaryStat label='Win rate' value={`${(stats.totalWins / stats.totalGames * 100).toFixed(1)}%`} />
-        <SummaryStat label='Avg. guesses' value={stats.averageGuesses.toFixed(2)} />
+        <SummaryStat label='Games' value={props.stats.totalGames} />
+        <SummaryStat label='Wins' value={props.stats.totalWins} />
+        <SummaryStat label='Win rate' value={`${(props.stats.totalWins / props.stats.totalGames * 100).toFixed(1)}%`} />
+        <SummaryStat label='Avg. guesses' value={props.stats.averageGuesses.toFixed(2)} />
       </div>
     </section>
 
     <section class='stats-section'>
       <div class='stats-section-heading'><div><span class='stats-eyebrow'>Word of the day</span><h2>Daily record</h2></div></div>
       <div class='stats-summary-grid'>
-        <SummaryStat label='Daily games' value={stats.dailyGames} />
-        <SummaryStat label='Daily wins' value={stats.dailyWins} />
-        <SummaryStat label='Win rate' value={stats.dailyGames ? `${(stats.dailyWins / stats.dailyGames * 100).toFixed(1)}%` : '–'} />
-        <SummaryStat label='Avg. guesses' value={stats.dailyWins ? stats.dailyAverageGuesses.toFixed(2) : '–'} />
+        <SummaryStat label='Daily games' value={props.stats.dailyGames} />
+        <SummaryStat label='Daily wins' value={props.stats.dailyWins} />
+        <SummaryStat label='Win rate' value={props.stats.dailyGames ? `${(props.stats.dailyWins / props.stats.dailyGames * 100).toFixed(1)}%` : '–'} />
+        <SummaryStat label='Avg. guesses' value={props.stats.dailyWins ? props.stats.dailyAverageGuesses.toFixed(2) : '–'} />
       </div>
     </section>
 
     <div class='stats-columns'>
       <section class='stats-section stats-history'>
-        <div class='stats-section-heading'><div><span class='stats-eyebrow'>History</span><h2>Played words</h2></div><span class='stats-count'>{stats.words.length}</span></div>
+        <div class='stats-section-heading'><div><span class='stats-eyebrow'>History</span><h2>Played words</h2></div><span class='stats-count'>{props.stats.words.length}</span></div>
         <Accordion class='stats-history-list' multiple>
-          <For each={stats.words}>{value => <WordHistory value={value} selected={selected} onSelect={setSelected} />}</For>
+          <For each={props.stats.words}>{value => <WordHistory value={value} selected={selected} onSelect={setSelected} />}</For>
         </Accordion>
       </section>
       <Show when={selected()} keyed>{value => <DetailedStats value={value} />}</Show>
