@@ -28,6 +28,8 @@ const offlineNavigation = async request => {
   } else if (!url.pathname.split('/').pop()?.includes('.')) {
     const htmlPage = await caches.match(new URL(url.pathname + '.html', url.origin));
     if (htmlPage) return htmlPage;
+    const directoryIndex = await caches.match(new URL(url.pathname + '/index.html', url.origin));
+    if (directoryIndex) return directoryIndex;
   }
   return caches.match(new URL('index.html', ROOT));
 };
@@ -38,8 +40,11 @@ self.addEventListener('fetch', event => {
     event.respondWith((async () => {
       try {
         const response = await fetch(event.request);
-        if (response.ok) (await caches.open(CACHE)).put(event.request, response.clone());
-        return response;
+        if (response.ok) {
+          (await caches.open(CACHE)).put(event.request, response.clone());
+          return response;
+        }
+        return (await offlineNavigation(event.request)) || response;
       } catch { return offlineNavigation(event.request); }
     })());
     return;
