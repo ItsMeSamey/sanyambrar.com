@@ -9,7 +9,7 @@
   --lit-header: hsl(53, 0%, 90%);
   --speed: 2s;
 
-  font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--site-font, system-ui);
   background: var(--bg);
   perspective: 1200px;
 }

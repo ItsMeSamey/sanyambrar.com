@@ -91,7 +91,7 @@ button { cursor: pointer; }
 .lesson-text {
   width: 100%;
   min-height: 2.4em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--site-font, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace);
   font-size: clamp(16px, 1.55vw, 36px);
   font-weight: 400;
   font-kerning: none;

@@ -24,6 +24,11 @@ export function mountTool(toolId, root) {
   const get = (name, fallback = '') => localGet(route(), name, fallback);
   const set = (name, value) => localSet(route(), name, value);
   const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const icon = name => ({
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  })[name] || '';
   const copy = async value => {
     try {
       if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(String(value)); return true; }
@@ -45,8 +50,10 @@ export function mountTool(toolId, root) {
 
   const setContext = html => { context.innerHTML = html || ''; };
 
+  const siteFont = () => getComputedStyle(document.documentElement).getPropertyValue('--site-font').trim() || 'system-ui';
   function siteMonacoTheme(monaco) {
     const style = getComputedStyle(document.documentElement);
+    const fontFamily = siteFont();
     const bg = style.getPropertyValue('--site-bg').trim() || '#0d1117';
     const fg = style.getPropertyValue('--site-fg').trim() || '#e6edf3';
     const muted = style.getPropertyValue('--site-muted').trim() || '#8b949e';
@@ -91,6 +98,7 @@ export function mountTool(toolId, root) {
       },
     });
     monaco.editor.setTheme('samey-site');
+    for (const editor of monaco.editor.getEditors()) editor.updateOptions({ fontFamily });
   }
 
   function ensureMonaco() {
@@ -120,6 +128,7 @@ export function mountTool(toolId, root) {
     lineNumbersMinChars: 3,
     glyphMargin: false,
     folding: true,
+    fontFamily: siteFont(),
     fontSize: 14,
     lineHeight: 22,
     fontLigatures: true,
@@ -172,7 +181,7 @@ export function mountTool(toolId, root) {
     const paint = () => {
       const text = model.getValue();
       const stats = textStats(text);
-      setContext(`<span><strong>${stats.words.toLocaleString()}</strong><span class="tool-stat-label"> words</span><span class="tool-stat-short">w</span></span><span><strong>${stats.chars.toLocaleString()}</strong><span class="tool-stat-label"> chars</span><span class="tool-stat-short">c</span></span><span${stats.nonAscii ? ' class="danger"' : ''}><strong>${stats.nonAscii.toLocaleString()}</strong> non-ASCII</span>`);
+      setContext(`<span class="text-tool-stats"><span class="text-stat"><b>W</b><strong>${stats.words.toLocaleString()}</strong><span>words</span></span><span class="text-stat"><b>X</b><strong>${stats.chars.toLocaleString()}</strong><span>chars</span></span><span class="text-stat"><b>A</b><strong>${stats.nonAscii.toLocaleString()}</strong><span>non-ASCII</span></span></span>`);
       const decorations = [];
       for (let lineNumber = 1; lineNumber <= model.getLineCount(); lineNumber++) {
         const line = model.getLineContent(lineNumber);
@@ -341,8 +350,9 @@ export function mountTool(toolId, root) {
     let mode = get('mode', 'decode') === 'encode' ? 'encode' : 'decode';
     let selection = get('format', 'auto');
     if (![...FORMATS.map(([value]) => value), 'auto'].includes(selection)) selection = 'auto';
+    let separateLines = get('lines', '0') === '1';
     const initial = get('text', 'https%3A%2F%2Fsanyambrar.com%2Ftools%3Ftool%3Dbase');
-    root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto detect</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy>Copy</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="codec-status" data-codec-status></div></div></section>`;
+    root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto detect</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><button class="codec-line-toggle" type="button" data-codec-lines role="switch" aria-checked="${separateLines}"><span class="codec-switch-track" aria-hidden="true"><span></span></span><span>Per line</span></button><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy aria-label="Copy output" title="Copy output">${icon('copy')}</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="codec-status" data-codec-status></div></div></section>`;
     const inputModel = monaco.editor.createModel(initial, 'plaintext');
     const outputModel = monaco.editor.createModel('', 'plaintext');
     const inputEditor = monaco.editor.create(root.querySelector('#codec-input'), editorOptions('plaintext', { lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
@@ -352,20 +362,32 @@ export function mountTool(toolId, root) {
     const autoLabel = root.querySelector('[data-codec-auto]');
     const modeSelect = root.querySelector('[data-codec-mode]');
     const formatSelect = root.querySelector('[data-codec-format]');
+    const linesToggle = root.querySelector('[data-codec-lines]');
     setContext('');
-    const paint = () => {
-      const text = inputModel.getValue();
-      set('text', text); set('mode', mode); set('format', selection);
+    const transform = (text, lineNumber = 0) => {
       let active = selection;
       if (mode === 'decode' && selection === 'auto') active = detectFormat(text);
       if (mode === 'encode' && selection === 'auto') active = 'base64';
-      autoLabel.innerHTML = selection === 'auto' ? (active ? `Detected <strong>${FORMATS.find(([value]) => value === active)?.[1] || active}</strong>` : 'No encoding detected') : '';
+      if (!active) throw Error(`${lineNumber ? `Line ${lineNumber}: ` : ''}input does not match a supported encoding`);
+      try { return mode === 'decode' ? strictDecode(active, text) : convert(active, text, false); }
+      catch (error) { throw Error(`${lineNumber ? `Line ${lineNumber}: ` : ''}${error?.message || String(error)}`); }
+    };
+    const paint = () => {
+      const text = inputModel.getValue();
+      set('text', text); set('mode', mode); set('format', selection); set('lines', separateLines ? '1' : '0');
+      linesToggle.setAttribute('aria-checked', String(separateLines));
+      let active = selection;
+      if (!separateLines && mode === 'decode' && selection === 'auto') active = detectFormat(text);
+      if (!separateLines && mode === 'encode' && selection === 'auto') active = 'base64';
+      autoLabel.innerHTML = selection === 'auto' ? (separateLines ? 'Detecting <strong>per line</strong>' : active ? `Detected <strong>${FORMATS.find(([value]) => value === active)?.[1] || active}</strong>` : 'No encoding detected') : '';
       if (!text) { outputModel.setValue(''); status.textContent = ''; status.classList.remove('danger'); return; }
-      if (!active) { outputModel.setValue(''); status.textContent = 'Input does not match a supported encoding. Choose a format manually.'; status.classList.add('danger'); return; }
       try {
-        const output = mode === 'decode' ? strictDecode(active, text) : convert(active, text, false);
+        const output = separateLines
+          ? text.split(/\r?\n/).map((line, index) => line ? transform(line, index + 1) : '').join('\n')
+          : transform(text);
         outputModel.setValue(output);
-        status.textContent = `${[...text].length.toLocaleString()} → ${[...output].length.toLocaleString()} chars`;
+        const suffix = separateLines ? ` · ${text.split(/\r?\n/).length.toLocaleString()} lines` : '';
+        status.textContent = `${[...text].length.toLocaleString()} → ${[...output].length.toLocaleString()} chars${suffix}`;
         status.classList.remove('danger');
       } catch (error) {
         outputModel.setValue('');
@@ -375,6 +397,7 @@ export function mountTool(toolId, root) {
     };
     modeSelect.onchange = () => { mode = modeSelect.value; paint(); };
     formatSelect.onchange = () => { selection = formatSelect.value; paint(); };
+    linesToggle.onclick = () => { separateLines = !separateLines; paint(); };
     root.querySelector('[data-codec-copy]').onclick = () => copy(outputModel.getValue());
     const sub = inputModel.onDidChangeContent(paint);
     paint();
@@ -401,14 +424,19 @@ export function mountTool(toolId, root) {
       originalEditable: true,
       enableSplitViewResizing: true,
       ignoreTrimWhitespace: false,
-      renderIndicators: true,
+      renderIndicators: false,
+      renderMarginRevertIcon: false,
+      renderGutterMenu: false,
+      folding: false,
+      lineDecorationsWidth: 0,
+      renderLineHighlight: 'none',
       renderOverviewRuler: false,
       diffAlgorithm: 'advanced',
       useInlineViewWhenSpaceIsLimited: true,
     });
     diff.setModel({ original, modified });
     const setTopContext = () => {
-      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap>Swap</button>`);
+      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
       context.querySelector('[data-diff-language]').onchange = async event => {
         language = event.target.value; set('language', language);
         await ensureLanguage(language);
@@ -481,7 +509,7 @@ export function mountTool(toolId, root) {
       ['custom', `Base ${custom}`, custom, 4],
     ];
     const buildCards = () => {
-      grid.innerHTML = definitions().map(([key, label, radix]) => `<div class="number-card" data-number-card="${key}"><header><span>${label}</span><small>base ${radix}</small></header><input data-number-radix="${radix}" aria-label="${label}" spellcheck="false"><button type="button" data-copy-number>Copy</button></div>`).join('');
+      grid.innerHTML = definitions().map(([key, label, radix]) => `<div class="number-card" data-number-card="${key}"><header><span>${label}</span><small>base ${radix}</small></header><input data-number-radix="${radix}" aria-label="${label}" spellcheck="false"><button type="button" data-copy-number aria-label="Copy value" title="Copy value">${icon('copy')}</button></div>`).join('');
     };
     const updateCards = activeField => {
       for (const [key, label, radix, group] of definitions()) {
@@ -627,7 +655,7 @@ export function mountTool(toolId, root) {
     const paint = () => {
       const text = model.getValue(); set('text', text);
       output.innerHTML = renderMarkdown(text); rebuildMap();
-      setContext(`<button type="button" data-md-link aria-pressed="${linked ? 'true' : 'false'}" title="Toggle linked scrolling">🔗 Scroll</button>`);
+      setContext(`<button type="button" data-md-link aria-pressed="${linked ? 'true' : 'false'}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>`);
       context.querySelector('[data-md-link]').onclick = () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); paint(); if (linked) syncPreview(); };
       if (linked) syncPreview();
     };
