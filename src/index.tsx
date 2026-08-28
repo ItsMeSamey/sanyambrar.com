@@ -5,7 +5,7 @@ import StatsPage from './game/page_stats'
 
 import './css/index.css'
 
-import { NoPageError, Page, selectP } from './utils/navigation'
+import { disposePageNavigation, NoPageError, Page, selectP } from './utils/navigation'
 import ErrorPage from './pages/error_page'
 import Wordle from './game/page'
 import { Toaster } from '~/registry/ui/toast'
@@ -33,4 +33,8 @@ const disposeWordle = render(function() {
 }, document.getElementById('wordle-app-mount')!)
 
 
-;(globalThis as any).SameyWordleDispose = () => { disposeWordle(); delete (globalThis as any).SameyWordleDispose }
+;(globalThis as any).SameyWordleDispose = () => {
+  disposePageNavigation()
+  disposeWordle()
+  delete (globalThis as any).SameyWordleDispose
+}

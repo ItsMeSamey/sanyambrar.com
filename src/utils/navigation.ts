@@ -28,12 +28,17 @@ export function setP(value: Page) {
   void animateRootSwap(current, () => commitPage(value), () => document.getElementById('wordle-view-root'), value === Page.Wordle ? 'back' : 'forward')
 }
 
-addEventListener('popstate', () => {
+const onPopState = () => {
   const value = pageState.refresh() ?? Page.Wordle
   if (value === page()) return
   const current = document.getElementById('wordle-view-root')
   void animateRootSwap(current, () => { setPage(value) }, () => document.getElementById('wordle-view-root'), value === Page.Wordle ? 'back' : 'forward')
-})
+}
+addEventListener('popstate', onPopState)
+
+export function disposePageNavigation() {
+  removeEventListener('popstate', onPopState)
+}
 
 class PageError {
   err: unknown = new Error('Unknown Page')
