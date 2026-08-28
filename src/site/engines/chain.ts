@@ -370,6 +370,10 @@ export function mountChain() {
     // unbounded JS queue during large reactions.
     let pending = new Uint32Array(board.length);
     pending[start] = 1;
+    // Chip-firing on this closed grid has no sink, so some high-density states
+    // can cycle forever. Only start tracking states after the cascade has a
+    // sole winner; normal multi-player cascades pay no signature cost.
+    const winningStates = new Set<string>();
 
     while (!gameOver) {
       const next = new Uint32Array(board.length);
@@ -409,6 +413,13 @@ export function mountChain() {
       let hasNext = false;
       for (let i = 0; i < next.length; i++) if (next[i]) { hasNext = true; break; }
       if (!hasNext) break;
+
+      const winNow = liveWinner(owner, next);
+      if (winNow) {
+        const signature = `${bytesToB64(board)}:${bytesToB64(new Uint8Array(next.buffer))}`;
+        if (winningStates.has(signature)) { finishGame(winNow); return; }
+        winningStates.add(signature);
+      }
 
       if (transfers.length) {
         particles = transfers;
