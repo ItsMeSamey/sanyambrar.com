@@ -1028,6 +1028,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.href = url.href; return; }
     dismissLoadError();
+    if (url.href === location.href) { setLoading(false); return; }
     setLoading(true);
     try {
       const { doc, baseUrl } = await fetchPage(url);

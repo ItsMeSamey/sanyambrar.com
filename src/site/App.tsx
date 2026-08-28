@@ -141,6 +141,7 @@ export function App() {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     setNavigationError(null);
+    if (url.href === location.href) { setLoading(false); return; }
     if (isStandaloneApp(url)) {
       const pageSwap = (globalThis as typeof globalThis & { SameyPageSwapNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void> }).SameyPageSwapNavigate;
       setLoading(true);
