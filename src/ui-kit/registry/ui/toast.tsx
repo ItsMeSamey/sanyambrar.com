@@ -15,7 +15,7 @@ export function showToast(options: ToastOptions) {
 export function Toaster(props: { class?: string }) {
   return <div class={cx('samey-toaster', props.class)} aria-live='polite'>
     <For each={items()}>{item =>
-      <div class='samey-toast'>
+      <div class='samey-toast' data-variant={item.variant}>
         {item.title && <strong class='samey-toast-title'>{item.title}</strong>}
         {item.description && <div class='samey-toast-description'>{item.description}</div>}
       </div>

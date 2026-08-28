@@ -57,9 +57,10 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
                 input.style.position = 'fixed'
                 input.style.opacity = '0'
                 document.body.append(input)
-                input.select()
-                if (!document.execCommand('copy')) throw new Error('Copy failed')
-                input.remove()
+                try {
+                  input.select()
+                  if (!document.execCommand('copy')) throw new Error('Copy failed')
+                } finally { input.remove() }
               }
               setCopyButtonText('Copied!')
               setTimeout(() => setCopyButtonText('Copy'), 1000)

@@ -358,6 +358,8 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .samey-switch-control[data-checked] .samey-switch-thumb { transform: translateX(1rem); }
 .samey-toaster { position: fixed; right: .75rem; top: .75rem; z-index: 100; display: flex; width: min(360px, calc(100vw - 24px)); flex-direction: column; gap: .5rem; }
 .samey-toast { padding: .75rem; border: 1px solid var(--color-border); border-radius: .5rem; background: color-mix(in srgb, var(--color-background) 95%, transparent); color: var(--color-foreground); box-shadow: 0 10px 25px rgb(0 0 0 / 18%); backdrop-filter: blur(12px); }
+.samey-toast[data-variant="error"] { border-color: color-mix(in srgb, var(--color-error-foreground) 60%, var(--color-border)); }
+.samey-toast[data-variant="error"] .samey-toast-title { color: var(--color-error-foreground); }
 .samey-toast-title { font-size: .875rem; }
 .samey-toast-description { margin-top: .125rem; color: var(--color-muted-foreground); font-size: .875rem; }
 
