@@ -5,7 +5,7 @@ import {
 } from "@keybr/keyboard";
 import { type Letter, PhoneticModel } from "@keybr/phonetic-model";
 import { LCG, type RNGStream } from "@keybr/rand";
-import { type KeyStatsMap, type Result, ResultGroups } from "@keybr/result";
+import { type KeyStatsMap, type Result } from "@keybr/result";
 import { type Settings } from "@keybr/settings";
 import { type StyledText } from "@keybr/textinput";
 import { type LessonKeys } from "./key.ts";
@@ -30,9 +30,8 @@ export abstract class Lesson {
   }
 
   filter(results: readonly Result[]): readonly Result[] {
-    return ResultGroups.byLayoutFamily(results).get(
-      KeyboardOptions.from(this.settings).layout.family,
-    );
+    const family = KeyboardOptions.from(this.settings).layout.family;
+    return results.filter(({ layout }) => layout.family === family);
   }
 
   abstract get letters(): readonly Letter[];
