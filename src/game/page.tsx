@@ -383,6 +383,33 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     const config = {...hard, ...(savedConfig as Partial<SettingsHardProps> | undefined)}
     if (!isChallengeConfig(config)) throw new Error('Invalid saved Wordle config')
     stored.config = config
+
+    const lastIndex = stored.history.length - 1
+    for (let index = 0; index < stored.history.length; index++) {
+      const [guess, mask] = stored.history[index]
+      const last = index === lastIndex
+      if (guess.length > config.wordLength || (mask && (guess.length !== config.wordLength || mask.length !== config.wordLength))) {
+        throw new Error('Invalid saved Wordle history')
+      }
+      if (!last && (guess.length !== config.wordLength || !/^[gyr]+$/.test(mask))) throw new Error('Invalid saved Wordle history')
+      if (last && mask && !/^(?:[gyr]+|b+)$/.test(mask)) throw new Error('Invalid saved Wordle history')
+      if (!last && mask.includes('b')) throw new Error('Invalid saved Wordle history')
+    }
+    if (config.maxTries !== 1 && stored.history.length > config.maxTries) throw new Error('Invalid saved Wordle history')
+
+    const last = stored.history.at(-1)!
+    const solved = last[1] === 'g'.repeat(config.wordLength)
+    const revealed = last[1] === 'b'.repeat(config.wordLength)
+    if (stored.done === KindEnum.Correct && !solved || stored.done === KindEnum.Revealed && !revealed ||
+      stored.done === KindEnum.Failed && (config.maxTries === 1 || stored.history.length !== config.maxTries || solved || revealed)) {
+      throw new Error('Invalid saved Wordle completion')
+    }
+    if (stored.done === undefined && last[1] && !solved && !revealed && (config.maxTries === 1 || stored.history.length < config.maxTries)) {
+      // A crash between evaluating a valid guess and appending the next blank row
+      // should resume at the next guess instead of reopening a full, uneditable row.
+      stored.history.push(['', ''])
+    }
+
     if (!stored.word) {
       if (config.mode === 'daily' && config.dailyDate) {
         stored.word = getDailyChallenge(config.dailyDate, config.dailyVersion ?? DAILY_CHALLENGE_VERSION).word
