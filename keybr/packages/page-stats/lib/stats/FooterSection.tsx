@@ -175,11 +175,16 @@ function resultIdentity(result: Result): string {
 }
 
 function download(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.setAttribute("href", URL.createObjectURL(blob));
+  a.setAttribute("href", url);
   a.setAttribute("download", name);
   a.setAttribute("hidden", "");
   document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  try {
+    a.click();
+  } finally {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 }
