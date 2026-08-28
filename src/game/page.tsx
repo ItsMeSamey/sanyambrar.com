@@ -148,8 +148,10 @@ class GameState {
         stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       }
       stored.config = {...hard}
-    } else if (stored.disabled === undefined) {
-      stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
+    } else if (stored.disabled === undefined || hard.mode === 'daily') {
+      stored.disabled = hard.mode === 'daily'
+        ? getDailyChallenge(hard.dailyDate ?? localDateKey(), hard.dailyVersion ?? DAILY_CHALLENGE_VERSION).disabled
+        : disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       stored.config = {...hard}
     }
 
