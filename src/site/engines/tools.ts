@@ -68,8 +68,9 @@ export function mountTools() {
   };
   tabs.addEventListener('click', onTabClick);
 
+  let renderedTool = '';
   const onRouteChange = () => {
-    if (/\/tools(?:\.html)?\/?$/.test(location.pathname)) render();
+    if (/\/tools(?:\.html)?\/?$/.test(location.pathname) && route() !== renderedTool) render();
   };
   addEventListener('popstate', onRouteChange);
   addEventListener('samey-solid-routechange', onRouteChange);
@@ -712,6 +713,7 @@ export function mountTools() {
     disposeTool = () => {};
     syncTabs();
     const tool = route();
+    renderedTool = tool;
     const run = ({ text: textTool, base: baseTool, diff: diffTool, number: numberTool, markdown: markdownTool })[tool] || textTool;
     document.title = `${TOOLS.find(([id]) => id === tool)?.[2] || 'Tools'} · Sanyam Brar`;
     Promise.resolve(run(generation)).catch(error => {
