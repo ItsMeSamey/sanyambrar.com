@@ -595,6 +595,7 @@
 			document.body.append(linkFill, cursor);
 			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
 			let loadingRaf = 0, loadingStarted = 0;
+			let refreshCursorMode = () => {};
 			const animateLoadingPaths = (time) => {
 				if (!cursor.hasAttribute("data-loading")) {
 					loadingRaf = 0;
@@ -608,7 +609,6 @@
 			const setLoading = (loading) => {
 				cursor.toggleAttribute("data-loading", !!loading);
 				if (loading) {
-					cursor.removeAttribute("data-link");
 					cursor.removeAttribute("data-grab");
 					cursor.dataset.visible = "";
 					linkFill.hidden = true;
@@ -623,6 +623,7 @@
 					cancelAnimationFrame(loadingRaf);
 					loadingRaf = 0;
 				}
+				if (!loading) refreshCursorMode();
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
 			globalThis.SameyLoading = setLoading;
@@ -651,7 +652,6 @@
 				if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
 				setGrabState(false);
 				cursor.removeAttribute("data-grab");
-				cursor.dataset.link = "";
 				cursor.dataset.visible = "";
 			};
 			let nativeDragging = false;
@@ -762,9 +762,9 @@
 				const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
 				const link = grab ? null : linkTarget(target);
 				setGrabState(grab);
-				cursor.toggleAttribute("data-link", !!link);
 				setFillTarget(link);
 			};
+			refreshCursorMode = () => cursor.hasAttribute("data-visible") ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
 			const refreshAt = (event) => {
 				if (nativeDragging) {
 					delete cursor.dataset.visible;
@@ -803,6 +803,7 @@
 					ensureFillFrame();
 				}
 			}, { passive: true });
+			addEventListener("samey-pageleave", () => setFillTarget(null));
 			const selectionAtPoint = (x, y, target) => {
 				if (!(target instanceof Element) || target.closest("a[href],area[href],img,[draggable=\"true\"],[data-grab-cursor]")) return false;
 				const selection = getSelection();
@@ -926,7 +927,6 @@
 					selectionDragging = true;
 					selectionDragText = getSelection()?.toString() || "";
 					pressedGrab = true;
-					cursor.removeAttribute("data-link");
 					setFillTarget(null);
 					setGrabState(true);
 					placeXY(lastX, lastY);
@@ -939,7 +939,6 @@
 				pressedGrab = false;
 				pressedPointerId = null;
 				setGrabState(false);
-				cursor.removeAttribute("data-link");
 				setFillTarget(null);
 				delete cursor.dataset.visible;
 			};
@@ -963,7 +962,6 @@
 					setMode(elementAt(event));
 				} else {
 					setGrabState(false);
-					cursor.removeAttribute("data-link");
 					setFillTarget(null);
 				}
 			};

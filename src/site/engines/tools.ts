@@ -49,7 +49,10 @@ export function mountTools() {
   let monacoThemeListener = null;
 
   const setContext = html => { context.innerHTML = html || ''; };
-  const syncTabs = () => tabs.querySelectorAll('[data-tool]').forEach(link => link.toggleAttribute('aria-current', link.dataset.tool === route()));
+  const syncTabs = () => tabs.querySelectorAll('[data-tool]').forEach(link => {
+    if (link.dataset.tool === route()) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
   const setRoute = tool => {
     if (!valid.has(tool) || tool === route()) return;
     history.pushState(null, '', `${location.pathname}?tool=${encodeURIComponent(tool)}`);

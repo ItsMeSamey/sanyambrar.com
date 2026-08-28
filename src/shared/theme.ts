@@ -327,6 +327,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.body.append(linkFill, cursor);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
     let loadingRaf = 0, loadingStarted = 0;
+    let refreshCursorMode = () => {};
     const animateLoadingPaths = (time) => {
       if (!cursor.hasAttribute("data-loading")) { loadingRaf = 0; return; }
       const frames = loadingFrames();
@@ -336,10 +337,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const setLoading = (loading) => {
       cursor.toggleAttribute("data-loading", !!loading);
-      if (loading) { cursor.removeAttribute("data-link"); cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; linkFill.hidden = true; }
+      if (loading) { cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; linkFill.hidden = true; }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
+      if (!loading) refreshCursorMode();
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));
     globalThis.SameyLoading = setLoading;
@@ -369,7 +371,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
       setGrabState(false);
       cursor.removeAttribute("data-grab");
-      cursor.dataset.link = "";
       cursor.dataset.visible = "";
     };
 
@@ -463,9 +464,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
       const link = grab ? null : linkTarget(target);
       setGrabState(grab);
-      cursor.toggleAttribute("data-link", !!link);
       setFillTarget(link);
     };
+    refreshCursorMode = () => cursor.hasAttribute("data-visible")
+      ? setMode(document.elementFromPoint(pendingX, pendingY))
+      : setFillTarget(null);
     const refreshAt = (event) => {
       if (nativeDragging) { delete cursor.dataset.visible; return; }
       if (selectionDragCandidate && (event.buttons & 1)) {
@@ -485,6 +488,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.addEventListener("pointerover", refreshAt, { capture: true, passive: true });
     addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true, capture: true });
     addEventListener("resize", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true });
+    addEventListener("samey-pageleave", () => setFillTarget(null));
     const selectionAtPoint = (x, y, target) => {
       if (!(target instanceof Element) || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
       const selection = getSelection();
@@ -598,7 +602,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         selectionDragging = true;
         selectionDragText = getSelection()?.toString() || "";
         pressedGrab = true;
-        cursor.removeAttribute("data-link");
         setFillTarget(null);
         setGrabState(true);
         placeXY(lastX, lastY);
@@ -611,7 +614,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedGrab = false;
       pressedPointerId = null;
       setGrabState(false);
-      cursor.removeAttribute("data-link");
       setFillTarget(null);
       delete cursor.dataset.visible;
     };
@@ -627,7 +629,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = null;
       modifiedLinkPending = null;
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
-      else { setGrabState(false); cursor.removeAttribute("data-link"); setFillTarget(null); }
+      else { setGrabState(false); setFillTarget(null); }
     };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
