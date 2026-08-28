@@ -8,6 +8,7 @@ import {
   createSignal,
   onCleanup,
   onMount,
+  untrack,
   type Component,
 } from "solid-js";
 import { render } from "solid-js/web";
@@ -48,6 +49,8 @@ import {
   WordListLesson,
   type Lesson as LessonInstance,
 } from "@keybr/lesson";
+import { Syntax } from "@keybr/code";
+import { Book } from "@keybr/content";
 import { schedule } from "@keybr/lang";
 import { loadContent } from "@keybr/content-books";
 import { loadWordList } from "@keybr/content-words";
@@ -138,6 +141,7 @@ const App: Component = () => {
   const [settings, setSettings] = createSignal(loadSettings());
   const [historyReady, setHistoryReady] = createSignal(false);
   const [historyEpoch, setHistoryEpoch] = createSignal(0);
+  const [engineRevision, setEngineRevision] = createSignal(0);
   const [historyRevision, setHistoryRevision] = createSignal(0);
   const [loadState, setLoadState] = createSignal<LoadState>({ type: "loading", total: 0, current: 0 });
   const [input, setInput] = createSignal<TextInput | null>(null, { equals: false });
@@ -148,6 +152,7 @@ const App: Component = () => {
   const [helpOpen, setHelpOpen] = createSignal(false);
   const [fullscreen, setFullscreen] = createSignal(Boolean(document.fullscreenElement));
   let loadController: AbortController | null = null;
+  let settingsDirty = false;
   let lastKeyTime = 0;
 
   const currentEngine = createMemo(() => {
@@ -157,6 +162,10 @@ const App: Component = () => {
 
   const setView = (next: View) => {
     if (next === view()) return;
+    if (next === "practice" && settingsDirty) {
+      settingsDirty = false;
+      setEngineRevision((v) => v + 1);
+    }
     const commit = () => setViewSignal(next);
     const root = document.getElementById("app");
     const animate = (globalThis as any).SameyAnimateLocalSwap;
@@ -166,6 +175,7 @@ const App: Component = () => {
 
   const updateSettings = (next: Settings) => {
     storeSettings(next);
+    settingsDirty = true;
     setSettings(next);
   };
 
@@ -307,9 +317,10 @@ const App: Component = () => {
   });
 
   createEffect(() => {
-    const currentSettings = settings();
+    engineRevision();
     historyEpoch();
     if (!historyReady()) return;
+    const currentSettings = untrack(settings);
 
     loadController?.abort();
     const controller = new AbortController();
@@ -693,35 +704,91 @@ const SettingsView: Component<{
             const selected = [...LessonType.ALL].find((item) => item.id === event.currentTarget.value) ?? LessonType.GUIDED;
             set(lessonProps.type, selected);
           }}>
-            <option value="guided">Guided</option>
-            <option value="wordlist">Word list</option>
-            <option value="custom">Custom text</option>
-            <option value="numbers">Numbers</option>
-            <option value="code">Code</option>
+            <For each={[...LessonType.ALL]}>{(item) => <option value={item.id}>{lessonTypeName(item)}</option>}</For>
           </select>
         </label>
+
+        <Show when={type() === LessonType.WORDLIST}>
+          <label class="field-column"><span>Word list size <b>{props.settings.get(lessonProps.wordList.wordListSize)}</b></span>
+            <input type="range" min={lessonProps.wordList.wordListSize.min} max={lessonProps.wordList.wordListSize.max} step="10" value={props.settings.get(lessonProps.wordList.wordListSize)} onChange={(event) => set(lessonProps.wordList.wordListSize, Number(event.currentTarget.value))} />
+          </label>
+          <Toggle label="Long words only" checked={props.settings.get(lessonProps.wordList.longWordsOnly)} onChange={(value) => set(lessonProps.wordList.longWordsOnly, value)} />
+        </Show>
+
+        <Show when={type() === LessonType.BOOKS}>
+          <label class="field-row"><span>Book</span>
+            <select value={props.settings.get(lessonProps.books.book).id} onChange={(event) => {
+              const book = Book.ALL.get(event.currentTarget.value);
+              props.onChange(props.settings.set(lessonProps.books.book, book).set(lessonProps.books.paragraphIndex, 0));
+            }}>
+              <For each={[...Book.ALL]}>{(book) => <option value={book.id}>{book.title}</option>}</For>
+            </select>
+          </label>
+          <Toggle label="Remove punctuation" checked={props.settings.get(lessonProps.books.lettersOnly)} onChange={(value) => set(lessonProps.books.lettersOnly, value)} />
+          <Toggle label="Lowercase" checked={props.settings.get(lessonProps.books.lowercase)} onChange={(value) => set(lessonProps.books.lowercase, value)} />
+        </Show>
 
         <Show when={type() === LessonType.CUSTOM}>
           <label class="field-column"><span>Custom text</span>
             <textarea rows="5" value={props.settings.get(lessonProps.customText.content)} onChange={(event) => set(lessonProps.customText.content, event.currentTarget.value)} />
           </label>
+          <Toggle label="Remove punctuation" checked={props.settings.get(lessonProps.customText.lettersOnly)} onChange={(value) => set(lessonProps.customText.lettersOnly, value)} />
+          <Toggle label="Lowercase" checked={props.settings.get(lessonProps.customText.lowercase)} onChange={(value) => set(lessonProps.customText.lowercase, value)} />
+          <Toggle label="Randomize words" checked={props.settings.get(lessonProps.customText.randomize)} onChange={(value) => set(lessonProps.customText.randomize, value)} />
         </Show>
 
-        <label class="field-column"><span>Target speed <b>{Math.round(props.settings.get(lessonProps.targetSpeed) / 5)} wpm</b></span>
-          <input type="range" min="15" max="150" value={props.settings.get(lessonProps.targetSpeed) / 5} onInput={(event) => set(lessonProps.targetSpeed, Number(event.currentTarget.value) * 5)} />
-        </label>
+        <Show when={type() === LessonType.CODE}>
+          <label class="field-row"><span>Syntax</span>
+            <select value={props.settings.get(lessonProps.code.syntax).id} onChange={(event) => set(lessonProps.code.syntax, Syntax.ALL.get(event.currentTarget.value))}>
+              <For each={[...Syntax.ALL]}>{(syntax) => <option value={syntax.id}>{syntax.name}</option>}</For>
+            </select>
+          </label>
+          <For each={[...props.settings.get(lessonProps.code.syntax).flags]}>{(flag) =>
+            <Toggle label={flag[0].toUpperCase() + flag.slice(1)} checked={props.settings.get(lessonProps.code.flags).includes(flag)} onChange={(checked) => {
+              const flags = new Set(props.settings.get(lessonProps.code.flags));
+              if (checked) flags.add(flag); else flags.delete(flag);
+              set(lessonProps.code.flags, [...flags]);
+            }} />
+          }</For>
+        </Show>
 
-        <label class="field-column"><span>Lesson length</span>
-          <input type="range" min="0" max="1" step="0.05" value={props.settings.get(lessonProps.length)} onInput={(event) => set(lessonProps.length, Number(event.currentTarget.value))} />
-        </label>
+        <Show when={type() === LessonType.NUMBERS}>
+          <Toggle label="Benford distribution" checked={props.settings.get(lessonProps.numbers.benford)} onChange={(value) => set(lessonProps.numbers.benford, value)} />
+        </Show>
+
+        <Show when={type() !== LessonType.CODE && type() !== LessonType.NUMBERS}>
+          <label class="field-column"><span>Target speed <b>{Math.round(props.settings.get(lessonProps.targetSpeed) / 5)} wpm</b></span>
+            <input type="range" min="15" max="150" value={props.settings.get(lessonProps.targetSpeed) / 5} onChange={(event) => set(lessonProps.targetSpeed, Number(event.currentTarget.value) * 5)} />
+          </label>
+          <label class="field-column"><span>Lesson length <b>{Math.round(props.settings.get(lessonProps.length) * 100)}%</b></span>
+            <input type="range" min="0" max="1" step="0.05" value={props.settings.get(lessonProps.length)} onChange={(event) => set(lessonProps.length, Number(event.currentTarget.value))} />
+          </label>
+        </Show>
 
         <Show when={type() === LessonType.GUIDED}>
-          <label class="field-column"><span>Alphabet size</span>
-            <input type="range" min="0" max="1" step="0.05" value={props.settings.get(lessonProps.guided.alphabetSize)} onInput={(event) => set(lessonProps.guided.alphabetSize, Number(event.currentTarget.value))} />
+          <label class="field-column"><span>Alphabet size <b>{Math.round(props.settings.get(lessonProps.guided.alphabetSize) * 100)}%</b></span>
+            <input type="range" min="0" max="1" step="0.05" value={props.settings.get(lessonProps.guided.alphabetSize)} onChange={(event) => set(lessonProps.guided.alphabetSize, Number(event.currentTarget.value))} />
           </label>
           <Toggle label="Natural words" checked={props.settings.get(lessonProps.guided.naturalWords)} onChange={(value) => set(lessonProps.guided.naturalWords, value)} />
+          <Toggle label="Keyboard order" checked={props.settings.get(lessonProps.guided.keyboardOrder)} onChange={(value) => set(lessonProps.guided.keyboardOrder, value)} />
           <Toggle label="Recover weak keys" checked={props.settings.get(lessonProps.guided.recoverKeys)} onChange={(value) => set(lessonProps.guided.recoverKeys, value)} />
         </Show>
+
+        <Show when={type() === LessonType.GUIDED || type() === LessonType.WORDLIST}>
+          <label class="field-column"><span>Repeat each word <b>{props.settings.get(lessonProps.repeatWords)}×</b></span>
+            <input type="range" min={lessonProps.repeatWords.min} max={lessonProps.repeatWords.max} step="1" value={props.settings.get(lessonProps.repeatWords)} onChange={(event) => set(lessonProps.repeatWords, Number(event.currentTarget.value))} />
+          </label>
+          <label class="field-column"><span>Capital letters <b>{Math.round(props.settings.get(lessonProps.capitals) * 100)}%</b></span>
+            <input type="range" min="0" max="1" step="0.01" value={props.settings.get(lessonProps.capitals)} onChange={(event) => set(lessonProps.capitals, Number(event.currentTarget.value))} />
+          </label>
+          <label class="field-column"><span>Punctuation <b>{Math.round(props.settings.get(lessonProps.punctuators) * 100)}%</b></span>
+            <input type="range" min="0" max="1" step="0.01" value={props.settings.get(lessonProps.punctuators)} onChange={(event) => set(lessonProps.punctuators, Number(event.currentTarget.value))} />
+          </label>
+        </Show>
+
+        <label class="field-column"><span>Daily goal <b>{props.settings.get(lessonProps.dailyGoal) === 0 ? "Off" : `${props.settings.get(lessonProps.dailyGoal)} min`}</b></span>
+          <input type="range" min="0" max="120" step="5" value={props.settings.get(lessonProps.dailyGoal)} onChange={(event) => set(lessonProps.dailyGoal, Number(event.currentTarget.value))} />
+        </label>
 
         <Toggle label="Stop on errors" checked={props.settings.get(textInputProps.stopOnError)} onChange={(value) => set(textInputProps.stopOnError, value)} />
         <Toggle label="Forgive adjacent errors" checked={props.settings.get(textInputProps.forgiveErrors)} onChange={(value) => set(textInputProps.forgiveErrors, value)} />
@@ -729,6 +796,18 @@ const SettingsView: Component<{
     </section>
   );
 };
+
+function lessonTypeName(type: LessonType): string {
+  switch (type) {
+    case LessonType.GUIDED: return "Guided";
+    case LessonType.WORDLIST: return "Word list";
+    case LessonType.BOOKS: return "Books";
+    case LessonType.CUSTOM: return "Custom text";
+    case LessonType.CODE: return "Code";
+    case LessonType.NUMBERS: return "Numbers";
+    default: return type.id;
+  }
+}
 
 function Toggle(props: { readonly label: string; readonly checked: boolean; readonly onChange: (value: boolean) => void }) {
   return (
