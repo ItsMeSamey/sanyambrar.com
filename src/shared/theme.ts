@@ -902,7 +902,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   };
   const logicalPageUrl = url => {
     const logical = new URL(url.href);
-    if (logical.pathname === "/blog") logical.pathname = "/blog/index.html";
+    if (logical.pathname.endsWith("/blog")) logical.pathname += "/index.html";
     else if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
     else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
     return logical;
@@ -959,6 +959,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
     return runtimeAnchor;
   };
+  let currentPagePath = location.pathname;
   const swapPage = (doc, baseUrl, url, replace) => {
     try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
     try { globalThis.SameySolidDispose?.(); } catch {}
@@ -977,6 +978,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const runtimeAnchor = clearPageBody();
     for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
     document.title = doc.title; syncHtmlData(doc, baseUrl);
+    currentPagePath = url.pathname;
     (replace ? replaceState : pushState)({}, "", url.href);
     runBodyScripts(baseUrl);
     runHeadScripts(doc, baseUrl);
@@ -1074,7 +1076,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       event.preventDefault(); void loadPage(url.href).catch(() => {});
     });
     addEventListener("popstate", () => {
-      if (document.documentElement.hasAttribute("data-solid-spa")) return;
+      if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
       void loadPage(location.href, { replace: true }).catch(() => {});
     });
   };
