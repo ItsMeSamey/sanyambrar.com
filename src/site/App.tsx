@@ -50,6 +50,10 @@ function routeFromUrl(url: URL): Route | null {
 
 const isStandaloneApp = (url: URL) => /\/(?:wordle|keybr)(?:\.html)?\/?$/.test(url.pathname);
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
+const hashTarget = (url: URL) => {
+  if (!url.hash) return '';
+  try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); }
+};
 const preload = (route: Route) => loadModule(route.kind);
 const setLoading = (value: boolean) => {
   const api = globalThis as typeof globalThis & { SameyLoading?: (loading: boolean) => void };
@@ -126,7 +130,7 @@ export function App() {
     if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
     queueMicrotask(() => {
-      if (url.hash) document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
+      if (url.hash) document.getElementById(hashTarget(url))?.scrollIntoView();
       else scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
       dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } }));
     });
@@ -163,7 +167,7 @@ export function App() {
     if (sameDocumentHash(url)) {
       setLoading(false);
       if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
-      document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
+      document.getElementById(hashTarget(url))?.scrollIntoView();
       return;
     }
     const next = routeFromUrl(url);

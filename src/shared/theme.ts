@@ -894,6 +894,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     addEventListener("scroll", scheduleVirtualBars, true);
   };
 
+  const hashTarget = url => { if (!url.hash) return ""; try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); } };
   const pageStyleNodes = () => [...document.head.children].filter(el => (el.tagName === "STYLE" || (el.tagName === "LINK" && el.rel === "stylesheet")) && !el.hasAttribute("data-samey-shared"));
   const markInitialPageStyles = () => pageStyleNodes().forEach(el => el.dataset.spaPage = "");
   const pageCache = new Map();
@@ -1001,7 +1002,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     queueMicrotask(() => globalThis.SameyMountSolid?.());
     apply(); scanVirtualScrollers();
     if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
-    else queueMicrotask(() => document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView());
+    else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
   };
   const destinationRoot = () => {
