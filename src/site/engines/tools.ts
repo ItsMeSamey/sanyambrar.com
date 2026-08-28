@@ -43,6 +43,7 @@ export function mountTools() {
   };
 
   let disposeTool = () => {};
+  let disposed = false;
   let renderGeneration = 0;
   let monacoPromise;
   let ensureLanguage = async () => {};
@@ -127,7 +128,7 @@ export function mountTools() {
       const { monaco } = module;
       ensureLanguage = module.ensureMonacoLanguage;
       siteMonacoTheme(monaco);
-      if (!monacoThemeListener) {
+      if (!disposed && !monacoThemeListener) {
         monacoThemeListener = () => siteMonacoTheme(monaco);
         addEventListener('samey-themechange', monacoThemeListener);
       }
@@ -723,6 +724,7 @@ export function mountTools() {
 
   render();
   return () => {
+    disposed = true;
     renderGeneration++;
     try { disposeTool(); } catch {}
     tabs.removeEventListener('click', onTabClick);
