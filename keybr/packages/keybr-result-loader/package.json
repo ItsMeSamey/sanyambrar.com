@@ -3,11 +3,5 @@
   "name": "@keybr/result-loader",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/debug": "workspace:*",
-    "@keybr/result": "workspace:*",
-    "@keybr/result-io": "workspace:*",
-    "react": "^19.2.4"
-  }
+  "main": "lib/index.ts"
 }

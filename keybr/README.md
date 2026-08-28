@@ -1,76 +1,56 @@
 # keybr local
 
-A local-only, frontend-only fork of [keybr.com](https://www.keybr.com/).
+A local-only, frontend-only typing trainer derived from [keybr.com](https://www.keybr.com/).
 
-This fork keeps the adaptive typing trainer, keyboard layouts, lesson modes, local statistics, and settings. It removes the hosted-service parts: accounts, authentication, public profiles, remote sync, high scores, multiplayer, checkout, server rendering, the Node HTTP/WebSocket backend, and the SQL/user-data persistence layers.
+The portfolio build keeps the useful adaptive engine, layouts, lesson generators, local statistics, and persistence, but replaces the original application shell with a small SolidJS frontend built by Vite. React, React DOM, React Intl, Webpack, Less, server rendering, accounts, multiplayer, payments, remote sync, and backend persistence are not part of this app.
 
-## What remains
-
-- Adaptive guided lessons and per-key learning statistics.
-- Word, book, custom text, number, and code lesson support.
-- Keyboard layouts and typing languages from the original project.
-- Practice settings and local statistics/charts.
-- Settings stored in `localStorage`.
-- Typing history stored in IndexedDB (`history`).
-- Light, dark, high-contrast variants, and a persistent custom color theme; no bundled web fonts or decorative theme assets.
-
-No typing history or settings are sent to a server by this application.
-
-## Requirements
-
-Install [Bun](https://bun.sh/) 1.2.20 or newer.
-
-```sh
-bun install
-```
-
-There is no npm workflow or `package-lock.json` in this fork.
-
-## Build
-
-```sh
-bun run build
-```
-
-The production build intentionally emits exactly one file:
-
-```text
-dist/index.html
-```
-
-JavaScript, CSS, phonetic-model data, sounds, and other runtime assets are inlined into that HTML file. Webpack is configured to fail the build if another emitted asset survives the final bundling step.
-
-For an unminified/watch build:
-
-```sh
-bun run dev
-```
-
-## Run locally
-
-Build with `bun run build`, then open or host `dist/index.html` with any static-file server. The repository contains no application server.
-
-## Data model
-
-There is intentionally no user identity. One browser profile is one local typing profile.
+## Architecture
 
 ```text
 Browser
-  ├─ React SPA
+  ├─ SolidJS UI
   │   ├─ Practice
-  │   └─ Statistics
+  │   ├─ Statistics
+  │   └─ Settings
+  ├─ keybr core modules
+  │   ├─ adaptive lessons
+  │   ├─ keyboard layouts
+  │   ├─ phonetic models / word lists
+  │   └─ result statistics
   ├─ localStorage
   │   └─ settings
   └─ IndexedDB
       └─ typing history
 ```
 
-Clearing site data deletes the local history/settings. There is no cloud recovery or cross-device synchronization.
+The retained `packages/` directories are framework-free core modules. The Solid app lives in `src/`.
 
-## Validation note
+## Build
 
-The refactor is designed for Bun and a browser-only Webpack target. The source tree can be statically validated without the removed backend. If you change build dependencies, run `bun install` followed by `bun run build`; the single-file plugin will reject accidental extra output files.
+The portfolio root owns dependencies and publication:
+
+```sh
+bun build.ts keybr
+```
+
+Vite builds `keybr/index.html` through `keybr/vite.config.ts`, inlines JavaScript, CSS, compressed phonetic models, and word/book data into one staged HTML file, and `build.ts` publishes it as:
+
+```text
+docs/keybr.html
+```
+
+For local Keybr development from the repository root:
+
+```sh
+bun --cwd keybr run dev
+```
+
+No separate Keybr dependency installation is required.
+
+## Local data
+
+Settings stay in `localStorage`. Typing results stay in IndexedDB. Neither is sent to a server. Clearing site data removes both.
 
 ## Origin and license
 
-Derived from `aradzie/keybr.com` by Aliaksandr Radzivanovich and contributors. The original project and this derivative are distributed under the GNU Affero General Public License v3.0; see `LICENSE`.
+Derived from `aradzie/keybr.com` by Aliaksandr Radzivanovich and contributors. The original project and this derivative are distributed under GNU AGPL v3; see `LICENSE`.

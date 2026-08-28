@@ -3,12 +3,5 @@
   "name": "@keybr/phonetic-model-loader",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/debug": "workspace:*",
-    "@keybr/keyboard": "workspace:*",
-    "@keybr/pages-shared": "workspace:*",
-    "@keybr/phonetic-model": "workspace:*",
-    "react": "^19.2.4"
-  }
+  "main": "lib/index.ts"
 }

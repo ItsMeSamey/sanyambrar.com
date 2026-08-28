@@ -3,9 +3,5 @@
   "name": "@keybr/content-words",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/content": "workspace:*",
-    "@keybr/keyboard": "workspace:*"
-  }
+  "main": "lib/index.ts"
 }

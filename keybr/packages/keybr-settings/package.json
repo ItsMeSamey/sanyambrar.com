@@ -3,9 +3,5 @@
   "name": "@keybr/settings",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/lang": "workspace:*",
-    "react": "^19.2.4"
-  }
+  "main": "lib/index.ts"
 }
