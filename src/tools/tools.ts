@@ -143,12 +143,18 @@ export function mountTool(toolId, root) {
 
   const currentRender = generation => generation === renderGeneration;
 
+  const te = new TextEncoder();
   function textStats(text) {
+    let chars = 0, nonAscii = 0;
+    for (const char of text) {
+      chars++;
+      if (char.codePointAt(0) > 127) nonAscii++;
+    }
     return {
       words: text.match(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)?.length ?? 0,
-      chars: [...text].length,
-      bytes: new TextEncoder().encode(text).length,
-      nonAscii: [...text].filter(char => char.codePointAt(0) > 127).length,
+      chars,
+      bytes: te.encode(text).length,
+      nonAscii,
     };
   }
 
@@ -187,7 +193,6 @@ export function mountTool(toolId, root) {
     disposeTool = () => { sub.dispose(); editor.dispose(); model.dispose(); };
   }
 
-  const te = new TextEncoder();
   const td = new TextDecoder('utf-8', { fatal: true });
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   const B88 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;=?@[]^_{|}~';

@@ -327,12 +327,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const cursor = runtimeNode(document.createElement("div"));
     cursor.id = "samey-cursor";
     cursor.className = "samey-cursor";
-    cursor.innerHTML = `<span class="samey-cursor-dot"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
+    cursor.innerHTML = `<span class="samey-cursor-dot"></span><span class="samey-cursor-text"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
     const linkFill = runtimeNode(document.createElement("div"));
     linkFill.className = "samey-cursor-link-fill";
     linkFill.hidden = true;
+    const dragPreview = runtimeNode(document.createElement("div"));
+    dragPreview.className = "samey-drag-preview";
+    dragPreview.hidden = true;
     document.documentElement.classList.add("samey-custom-cursor");
-    document.body.append(linkFill, cursor);
+    document.body.append(linkFill, dragPreview, cursor);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
     // The reusable loading SVG carries SMIL for standalone boot screens. The
     // cursor advances the same path explicitly, so disable the duplicate SVG
@@ -349,7 +352,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const setLoading = (loading) => {
       cursor.toggleAttribute("data-loading", !!loading);
-      if (loading) { cursor.removeAttribute("data-grab"); cursor.dataset.visible = ""; linkFill.hidden = true; }
+      if (loading) { cursor.removeAttribute("data-grab"); cursor.removeAttribute("data-text"); cursor.dataset.visible = ""; linkFill.hidden = true; }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
@@ -372,9 +375,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
     };
     const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
+    const setTextState = (text) => cursor.toggleAttribute("data-text", !!text);
     const setGrabState = (grab) => {
       const wasGrab = cursor.hasAttribute("data-grab");
       cursor.toggleAttribute("data-grab", grab);
+      if (grab) setTextState(false);
       if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
     };
     const holdLinkCursor = (event, link) => {
@@ -412,6 +417,37 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       else if (!cursorFrame) cursorFrame = requestAnimationFrame(renderCursorPosition);
     };
     const place = (event, immediate = false) => placeXY(event.clientX, event.clientY, immediate);
+    let dragPreviewW = 0, dragPreviewH = 0;
+    const placeDragPreview = (x, y) => {
+      if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
+      const gap = 17;
+      const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x + gap));
+      const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y + gap));
+      dragPreview.style.transform = `translate3d(${px}px,${py}px,0)`;
+    };
+    const compactDragText = (value, max = 76) => {
+      const text = String(value || "").replace(/\s+/g, " ").trim();
+      return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+    };
+    const showDragPreview = (kind, value, x = pendingX, y = pendingY) => {
+      const text = compactDragText(value);
+      if (!text) { dragPreview.hidden = true; return; }
+      dragPreview.dataset.kind = kind;
+      dragPreview.textContent = text;
+      dragPreview.hidden = false;
+      dragPreviewW = dragPreview.offsetWidth;
+      dragPreviewH = dragPreview.offsetHeight;
+      placeDragPreview(x, y);
+    };
+    const hideDragPreview = () => { dragPreview.hidden = true; delete dragPreview.dataset.kind; dragPreview.textContent = ""; };
+    const linkDragLabel = (link) => {
+      const label = compactDragText(link?.textContent || link?.getAttribute?.("aria-label") || link?.title || "", 56);
+      try {
+        const url = new URL(link.href, location.href);
+        const host = url.origin === location.origin ? url.pathname : url.hostname.replace(/^www\./, "");
+        return label ? `${label} · ${host}` : host;
+      } catch { return label || "Link"; }
+    };
     const fillDot = 16.8;
     let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0;
     let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
@@ -471,10 +507,32 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       updateFillGoal();
       ensureFillFrame();
     }
+    const textInput = (target) => target instanceof HTMLTextAreaElement
+      || target instanceof HTMLInputElement && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(target.type);
+    const wantsText = (target) => {
+      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[data-grab-cursor]')) return false;
+      if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
+      const style = getComputedStyle(target);
+      if (style.userSelect === "none") return false;
+      if (style.cursor === "text" || style.cursor === "vertical-text") return true;
+      if (!target.textContent?.trim()) return false;
+      const pos = document.caretPositionFromPoint?.(pendingX, pendingY);
+      const fallback = pos ? null : document.caretRangeFromPoint?.(pendingX, pendingY);
+      const node = pos?.offsetNode ?? fallback?.startContainer;
+      const caretOffset = pos?.offset ?? fallback?.startOffset;
+      if (!(node instanceof Text) || !target.contains(node.parentElement) || !node.data || caretOffset == null) return false;
+      const range = document.createRange();
+      const offset = Math.max(0, Math.min(node.length - 1, caretOffset === node.length ? caretOffset - 1 : caretOffset));
+      range.setStart(node, offset);
+      range.setEnd(node, Math.min(node.length, offset + 1));
+      const rect = range.getBoundingClientRect();
+      return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
+    };
     const setMode = (target) => {
       const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
       const link = grab ? null : linkTarget(target);
       setGrabState(grab);
+      setTextState(!grab && !link && wantsText(target));
       setFillTarget(link);
     };
     refreshCursorMode = () => cursor.hasAttribute("data-visible")
@@ -487,9 +545,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         if (!selectionDragging && dx * dx + dy * dy >= 9) {
           selectionDragging = true;
           pressedGrab = true;
+          showDragPreview("text", selectionDragText, event.clientX, event.clientY);
         }
       }
       place(event);
+      if (selectionDragging) placeDragPreview(event.clientX, event.clientY);
       // pointermove/pointerover are already browser hit-tested. Avoid a second
       // elementFromPoint() query on the hottest cursor path; captured drags are
       // covered by the explicit pressed/drag state above.
@@ -570,6 +630,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       selectionDragging = false;
       selectionDragCandidate = false;
       selectionDragText = "";
+      hideDragPreview();
       if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
       if (modifiedLinkPending instanceof HTMLAnchorElement && modifiedLinkPending.href) {
         const link = modifiedLinkPending;
@@ -618,6 +679,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         pressedGrab = true;
         setFillTarget(null);
         setGrabState(true);
+        showDragPreview("text", selectionDragText, event.clientX || lastX, event.clientY || lastY);
         placeXY(lastX, lastY);
         return;
       }
@@ -628,12 +690,29 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedGrab = false;
       pressedPointerId = null;
       setGrabState(false);
+      setTextState(false);
       setFillTarget(null);
+      const link = linkTarget(event.target);
+      if (link) {
+        showDragPreview("link", linkDragLabel(link), event.clientX || lastX, event.clientY || lastY);
+        try {
+          if (event.dataTransfer) {
+            event.dataTransfer.setDragImage(dragPreview, 0, 0);
+            requestAnimationFrame(() => { if (nativeDragging) hideDragPreview(); });
+          }
+        } catch {}
+      } else hideDragPreview();
       delete cursor.dataset.visible;
     };
     document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
-    document.addEventListener("dragenter", (event) => { if (!selectionDragging) startNativeDrag(event); }, true);
-    document.addEventListener("dragover", (event) => { if (!nativeDragging && !selectionDragging) startNativeDrag(event); }, true);
+    document.addEventListener("dragenter", (event) => { if (!nativeDragging && !selectionDragging) startNativeDrag(event); }, true);
+    document.addEventListener("dragover", (event) => {
+      if (!nativeDragging && !selectionDragging) startNativeDrag(event);
+      if (!dragPreview.hidden) placeDragPreview(event.clientX || lastX, event.clientY || lastY);
+    }, true);
+    document.addEventListener("drag", (event) => {
+      if (nativeDragging && !dragPreview.hidden && (event.clientX || event.clientY)) placeDragPreview(event.clientX, event.clientY);
+    }, true);
     const stopDragging = (event) => {
       nativeDragging = false;
       selectionDragging = false;
@@ -643,8 +722,9 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = null;
       modifiedLinkPending = null;
       suppressModifiedClick = null;
+      hideDragPreview();
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
-      else { setGrabState(false); setFillTarget(null); }
+      else { setGrabState(false); setTextState(false); setFillTarget(null); }
     };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
