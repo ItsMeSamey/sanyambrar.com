@@ -18,16 +18,16 @@
   --secondary-l2: color-mix(in srgb, var(--secondary) 80%, var(--primary));
   --secondary-f1: color-mix(in srgb, var(--primary) 20%, var(--secondary));
   --secondary-f2: color-mix(in srgb, var(--primary) 40%, var(--secondary));
-  --accent-d2: color-mix(in srgb, var(--accent) 80%, #000);
-  --accent-d1: color-mix(in srgb, var(--accent) 90%, #000);
-  --accent-l1: color-mix(in srgb, var(--accent) 90%, #fff);
-  --accent-l2: color-mix(in srgb, var(--accent) 80%, #fff);
-  --error-d1: color-mix(in srgb, var(--error) 90%, #000);
-  --error-l1: color-mix(in srgb, var(--error) 90%, #fff);
-  --shadow-color: #00000044;
-  --slow-key-color: color-mix(in srgb, var(--error) 82%, var(--primary));
-  --fast-key-color: color-mix(in srgb, var(--accent) 78%, var(--primary));
-  --effort-color: color-mix(in srgb, var(--accent) 55%, var(--secondary));
+  --accent-d2: color-mix(in srgb, var(--accent) 80%, var(--secondary));
+  --accent-d1: color-mix(in srgb, var(--accent) 90%, var(--secondary));
+  --accent-l1: color-mix(in srgb, var(--accent) 90%, var(--primary));
+  --accent-l2: color-mix(in srgb, var(--accent) 80%, var(--primary));
+  --error-d1: color-mix(in srgb, var(--error) 90%, var(--secondary));
+  --error-l1: color-mix(in srgb, var(--error) 90%, var(--primary));
+  --shadow-color: color-mix(in srgb, var(--secondary) 27%, transparent);
+  --slow-key-color: var(--site-slow-color, var(--error));
+  --fast-key-color: var(--site-fast-color, var(--accent));
+  --effort-color: var(--site-effort-color, var(--accent));
 
   --background-color: var(--primary);
   --background-image: none;
@@ -62,24 +62,24 @@
   --KeyboardKey-button--depressed__color: var(--secondary);
   --KeyboardKey-symbol__color: var(--secondary);
   --KeyboardKey-symbol--depressed__color: var(--primary);
-  --KeyboardKey-symbol--dead__color: #cc0000;
-  --KeyboardKey-symbol--ligature__color: #6666ff;
-  --KeyboardKey-pointer__color: #4ba0f2;
-  --pinky-zone-color: color-mix(in srgb, var(--primary) 0%, #8ec07c);
-  --ring-zone-color: color-mix(in srgb, var(--primary) 0%, #b8bb26);
-  --middle-zone-color: color-mix(in srgb, var(--primary) 0%, #fabd2f);
-  --left-index-zone-color: color-mix(in srgb, var(--primary) 0%, #83a698);
-  --right-index-zone-color: color-mix(in srgb, var(--primary) 0%, #d3869b);
-  --thumb-zone-color: color-mix(in srgb, var(--primary) 0%, #d66354);
+  --KeyboardKey-symbol--dead__color: var(--site-error, var(--error));
+  --KeyboardKey-symbol--ligature__color: var(--site-effort-color, var(--accent));
+  --KeyboardKey-pointer__color: var(--site-accent, var(--accent));
+  --pinky-zone-color: var(--site-fast-color, var(--accent));
+  --ring-zone-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) 55%, var(--site-accent, var(--accent)));
+  --middle-zone-color: var(--site-accent, var(--accent));
+  --left-index-zone-color: var(--site-effort-color, var(--accent));
+  --right-index-zone-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) 55%, var(--site-error, var(--error)));
+  --thumb-zone-color: var(--site-error, var(--error));
 
   --Chart-frame__color: var(--primary-d2);
-  --Chart-speed__color: #6fb48c;
-  --Chart-accuracy__color: #ef522f;
-  --Chart-complexity__color: #ac71d0;
-  --Chart-threshold__color: #d2649a;
-  --Chart-hist-h__color: #5f6cb4;
-  --Chart-hist-m__color: #b43f3e;
-  --Chart-hist-r__color: #b140b4;
+  --Chart-speed__color: var(--site-fast-color, var(--accent));
+  --Chart-accuracy__color: var(--site-error, var(--error));
+  --Chart-complexity__color: var(--site-effort-color, var(--accent));
+  --Chart-threshold__color: var(--site-accent, var(--accent));
+  --Chart-hist-h__color: var(--site-effort-color, var(--accent));
+  --Chart-hist-m__color: var(--site-error, var(--error));
+  --Chart-hist-r__color: color-mix(in srgb, var(--site-error, var(--error)) 50%, var(--site-effort-color, var(--accent)));
 
   --DailyGoal-bar__color: var(--primary-l2);
   --DailyGoal-frame__color: var(--primary-d2);
@@ -95,8 +95,8 @@
 
   --Name-color: var(--secondary-l2);
   --Value-color: var(--secondary-d1);
-  --Value--more__color: #2a7e21;
-  --Value--less__color: #a1464e;
+  --Value--more__color: var(--site-fast-color, var(--accent));
+  --Value--less__color: var(--site-slow-color, var(--error));
 
   --Button__color: var(--primary-l2);
   --Button__background-color: var(--accent);
@@ -121,16 +121,16 @@
   --Popup__background-color: var(--background-color);
   --Popup__box-shadow: 0 0.5rem 3rem var(--shadow-color);
   --Popup--small__box-shadow: 0 0 1rem var(--shadow-color);
-  --Spotlight__background-color: #00000033;
+  --Spotlight__background-color: color-mix(in srgb, var(--secondary) 20%, transparent);
   --Spotlight__border-color: var(--secondary-l2);
   --Spotlight-marker__shadow-color: var(--shadow-color);
   --Surface__box-shadow: none;
   --Surface__backdrop-filter: none;
 
-  --syntax-keyword: #56a1f4;
-  --syntax-string: #72b172;
-  --syntax-number: #763a9e;
-  --syntax-comment: #9f8484;
+  --syntax-keyword: var(--site-accent, var(--accent));
+  --syntax-string: var(--site-fast-color, var(--accent));
+  --syntax-number: var(--site-effort-color, var(--accent));
+  --syntax-comment: var(--site-muted, var(--secondary-f2));
 
   font-family: var(--default-font-family);
   font-size: 8px;
@@ -139,22 +139,7 @@
 }
 
 html[data-site-theme="dark"], html[data-color="dark"], html[data-color="clear-dark"] {
-  --shadow-color: #00000088;
-  --pinky-zone-color: color-mix(in srgb, var(--primary) 50%, #8ec07c);
-  --ring-zone-color: color-mix(in srgb, var(--primary) 50%, #b8bb26);
-  --middle-zone-color: color-mix(in srgb, var(--primary) 50%, #fabd2f);
-  --left-index-zone-color: color-mix(in srgb, var(--primary) 50%, #83a698);
-  --right-index-zone-color: color-mix(in srgb, var(--primary) 50%, #d3869b);
-  --thumb-zone-color: color-mix(in srgb, var(--primary) 50%, #d66354);
-  --Chart-speed__color: color-mix(in srgb, var(--primary) 50%, #6fb48c);
-  --Chart-accuracy__color: color-mix(in srgb, var(--primary) 50%, #ef522f);
-  --Chart-complexity__color: color-mix(in srgb, var(--primary) 50%, #ac71d0);
-  --Chart-threshold__color: color-mix(in srgb, var(--primary) 50%, #d2649a);
-  --Chart-hist-h__color: color-mix(in srgb, var(--primary) 50%, #5f6cb4);
-  --Chart-hist-m__color: color-mix(in srgb, var(--primary) 50%, #b43f3e);
-  --Chart-hist-r__color: color-mix(in srgb, var(--primary) 50%, #b140b4);
-  --syntax-keyword: #5991cd;
-  --syntax-number: #b281d3;
+  --shadow-color: color-mix(in srgb, var(--secondary) 48%, transparent);
 }
 
 html[data-font="sans-serif"] { --default-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --header-font-family: var(--default-font-family); --value-font-family: var(--default-font-family); --monospace-font-family: var(--default-font-family); }

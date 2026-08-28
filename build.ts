@@ -198,14 +198,23 @@ ${keybrViewSwitch}`;
     "ux: Wordle subpages must render boxed <WORDLE cells and completion must not render a recap board");
   must(wordleBrand.includes("colors:readonly string[]") && wordleBrand.includes("props.colors[index % props.colors.length]"),
     "architecture: Wordle text rendering must be centralized and accept per-cell colors");
+  must(wordleStyle.includes("--wordle-key-neutral: color-mix(in srgb,var(--site-fg") &&
+    wordleStyle.includes("var(--site-fast-color") && wordleStyle.includes("var(--site-effort-color") &&
+    wordleStyle.includes(".stats-page") && wordleStyle.includes("var(--color-background)") &&
+    wordleStyle.includes(".wordle-key-pressed{filter:none") && !wordleStyle.includes("filter:invert(1)"),
+    "ux: Wordle keyboard, game states, and subpage surfaces must derive from the site theme");
 
   const chainPage = await readFile(join(ROOT, "src/games/chain/Chain.tsx"), "utf8");
   const chainEngine = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
   const chainLogo = await readFile(join(ROOT, "src/shared/components/ChainLogo.tsx"), "utf8");
-  must(chainPage.includes('id="chain-stats-button"') && chainPage.includes('id="chain-stats"') && chainEngine.includes("samey.chain.stats.v1"),
+  must(chainPage.includes('id="chain-stats-button"') && chainPage.includes('id="chain-stats"') && chainEngine.includes("samey.chain.stats.v2"),
     "ux: Chain Reaction must expose persistent statistics");
   must(chainPage.includes('id="chain-stats-back"') && chainLogo.includes("const BACK_ROWS"),
     "ux: Chain Statistics must use the Chain back mark");
+  must(chainPage.includes('id="chain-replay-canvas"') && chainPage.includes('id="chain-replay-play"') &&
+    chainEngine.includes("moveHistory.push(encodeMove(owner, start))") && chainEngine.includes("buildReplayFrames") &&
+    chainEngine.includes("LEGACY_STATS_KEY"),
+    "ux: Chain statistics must persist player move locations and replay completed matches");
   must(chainEngine.includes("const PAGE_QUERY = 'p'") && chainEngine.includes("addEventListener('popstate', onPopState)") && chainEngine.includes("url.searchParams.set(PAGE_QUERY, page)"),
     "ux: Chain subpages must round-trip through query-string history");
   must(keybrViewSwitch.includes('searchParams.get("p")') && keybrViewSwitch.includes('history.pushState') && keybrViewSwitch.includes('addEventListener("popstate", onPopState)'),
@@ -217,6 +226,18 @@ ${keybrViewSwitch}`;
     keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
     keybrTabList.includes("const selectedIndex = () => props.selectedIndex ?? 0"),
     "ux: Keybr settings must keep draft state, lesson loading, and selected tabs reactive");
+  const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
+  must(keybrStyle.includes("--KeyboardKey-symbol--dead__color: var(--site-error") &&
+    keybrStyle.includes("--Chart-speed__color: var(--site-fast-color") &&
+    keybrStyle.includes("--syntax-number: var(--site-effort-color"),
+    "ux: Keybr semantic colors must derive from the shared site theme");
+  const keybrScreenStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/Screen.module.css"), "utf8");
+  const keybrTabStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/tablist/TabList.module.css"), "utf8");
+  const keybrFieldListStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/fieldlist/FieldList.module.css"), "utf8");
+  must(keybrScreenStyle.includes("inline-size: min(70rem, 100%)") && keybrScreenStyle.includes("min-inline-size: 0") &&
+    keybrTabStyle.includes("@media (max-width: 600px)") && keybrTabStyle.includes("min-inline-size: 0") &&
+    keybrFieldListStyle.includes("@media (max-width: 600px)") && keybrFieldListStyle.includes("flex-wrap: wrap"),
+    "ux: Keybr practice/settings/statistics and form rows must fit phone widths");
   must(chainLogo.includes("'0101'") && chainLogo.match(/'1110'/g)?.length === 2 && chainLogo.includes("const gap = 2"),
     "ux: Chain back mark must use the requested 4x4 bitmap and two-cell gap");
   must(chainLogo.includes("var(--site-bg") && chainLogo.includes("samey-themechange") &&
@@ -238,9 +259,16 @@ ${keybrViewSwitch}`;
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
     "ux: narrow Diff and Markdown combined views must stack top-to-bottom");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
-    toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:#6b8fd6}') &&
+    toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
     toolsStyle.includes('.text-stat:nth-child(3) b,.text-stat:nth-child(3) strong{color:var(--site-error)}'),
     "ux: mobile text counts must remain visible with word/non-ASCII colors");
+  must(toolsStyle.includes("var(--site-effort-color") && toolsStyle.includes("var(--site-fast-color") &&
+    toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')"),
+    "ux: Tools highlights and Diff colors must derive from the shared theme");
+  must(toolsStyle.includes('.number-input-pane>input{box-sizing:border-box;width:100%') &&
+    toolsStyle.includes('.number-options input{box-sizing:border-box;width:100%') &&
+    toolsStyle.includes('.number-card input{box-sizing:border-box;min-width:0;width:100%'),
+    "ux: Number Lab inputs must include their padding inside mobile width constraints");
   must(toolsStyle.includes('.tool-select-item{width:100%;padding:0 10px!important;text-align:left!important;justify-items:start}'),
     "ux: narrow tool selector entries must be left-aligned without excess inset");
 

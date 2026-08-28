@@ -1,8 +1,11 @@
 /* Generated from the original Keybr Less module. */
 .screen {
   position: relative;
-  min-inline-size: 60rem;
+  box-sizing: border-box;
+  inline-size: min(70rem, 100%);
+  min-inline-size: 0;
   max-inline-size: 70rem;
   margin-inline: auto;
   margin-block: 2rem;
+  padding-inline: clamp(1rem, 3vw, 2rem);
 }

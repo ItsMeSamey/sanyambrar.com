@@ -41,7 +41,16 @@ export function mountChain() {
   const statRate = document.getElementById('chain-stat-rate');
   const statLargest = document.getElementById('chain-stat-largest');
   const statRecent = document.getElementById('chain-stat-recent');
-  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent) return () => {};
+  const replayPanel = document.getElementById('chain-replay');
+  const replayCanvas = document.getElementById('chain-replay-canvas');
+  const replayTitle = document.getElementById('chain-replay-title');
+  const replayCopy = document.getElementById('chain-replay-copy');
+  const replayClose = document.getElementById('chain-replay-close');
+  const replayPrev = document.getElementById('chain-replay-prev');
+  const replayPlay = document.getElementById('chain-replay-play');
+  const replayNext = document.getElementById('chain-replay-next');
+  const replayStatus = document.getElementById('chain-replay-status');
+  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent || !replayPanel || !replayCanvas || !replayTitle || !replayCopy || !replayClose || !replayPrev || !replayPlay || !replayNext || !replayStatus) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 
@@ -49,8 +58,10 @@ export function mountChain() {
   const HUMAN = 1;
   const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
-  const GAME_KEY = 'samey.chain.game.v2';
-  const STATS_KEY = 'samey.chain.stats.v1';
+  const GAME_KEY = 'samey.chain.game.v3';
+  const LEGACY_GAME_KEY = 'samey.chain.game.v2';
+  const STATS_KEY = 'samey.chain.stats.v2';
+  const LEGACY_STATS_KEY = 'samey.chain.stats.v1';
   const PAGE_QUERY = 'p';
   const PAGE_MENU = 'menu';
   const PAGE_GAME = 'game';
@@ -70,6 +81,13 @@ export function mountChain() {
   let gameVersion = 0;
   let pendingPage = null;
   let resultRecorded = false;
+  let moveHistory = [];
+  let replayComplete = true;
+  let replayEntry = null;
+  let replayFrames = [];
+  let replayIndex = 0;
+  let replayTimer = 0;
+  const replayCtx = replayCanvas.getContext('2d', { alpha: false });
   const orbCache = new Map();
 
   function pageFromLocation() {
@@ -121,10 +139,26 @@ export function mountChain() {
     } catch { return null; }
   }
 
+  function decodeMove(value, count, maxPlayer) {
+    const encoded = Number(value);
+    if (!Number.isInteger(encoded) || encoded < 1024) return null;
+    const owner = Math.floor(encoded / 1024);
+    const index = encoded % 1024;
+    if (owner < 1 || owner > maxPlayer || index < 0 || index >= count) return null;
+    return {owner, index};
+  }
+
+  const encodeMove = (owner, index) => owner * 1024 + index;
+
   function readSavedGame() {
     try {
-      const saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
-      if (!saved || saved.v !== 2) return null;
+      let saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
+      let legacy = false;
+      if (!saved) {
+        saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || 'null');
+        legacy = true;
+      }
+      if (!saved || (!legacy && saved.v !== 3) || (legacy && saved.v !== 2)) return null;
       const readInt = (value, [min, max]) => {
         const n = Number(value);
         return Number.isInteger(n) && n >= min && n <= max ? n : null;
@@ -162,14 +196,24 @@ export function mountChain() {
       if (gameOver) {
         if (!allEntered || sole <= EMPTY || savedTurn !== sole) return null;
       } else if (allEntered && sole > EMPTY) {
-        // A valid stable board with one remaining player is necessarily over.
-        // Repair older/interrupted saves that reached the final board before the
-        // game-over flag was persisted.
         gameOver = true;
         savedTurn = sole;
       }
       if (saved.i !== true && saved.i !== false) return null;
-      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver, inGame: saved.i};
+      const moves = [];
+      let historyComplete = !legacy && saved.q !== false;
+      if (!legacy && Array.isArray(saved.m)) {
+        for (const encoded of saved.m) {
+          const move = decodeMove(encoded, count, maxPlayer);
+          if (!move) { historyComplete = false; break; }
+          moves.push(encoded);
+        }
+      } else if (!legacy) {
+        historyComplete = false;
+      } else {
+        historyComplete = false;
+      }
+      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver, inGame: saved.i, moves, replayComplete: historyComplete};
     } catch { return null; }
   }
 
@@ -177,21 +221,65 @@ export function mountChain() {
     if (!board || !owners || !entered) return;
     try {
       localStorage.setItem(GAME_KEY, JSON.stringify({
-        v:2,r:config.rows,c:config.cols,e:config.enemies,
+        v:3,r:config.rows,c:config.cols,e:config.enemies,
         b:bytesToB64(board),o:bytesToB64(owners),p:bytesToB64(entered),
-        t:turn,g:gameOver,i:inGame
+        t:turn,g:gameOver,i:inGame,m:moveHistory,q:replayComplete
       }));
+      localStorage.removeItem(LEGACY_GAME_KEY);
     } catch {}
     updateResumeCard();
-  renderStats();
+    renderStats();
+  }
+
+  function emptyStats() { return {games:0,wins:0,largest:0,recent:[]}; }
+
+  function normalizeStats(value) {
+    if (!value || typeof value !== 'object') return emptyStats();
+    const recent = [];
+    if (Array.isArray(value.recent)) for (const raw of value.recent.slice(0, 30)) {
+      const r = clampInt(raw?.r, ...limits.rows, 0), c = clampInt(raw?.c, ...limits.cols, 0), e = clampInt(raw?.e, ...limits.enemies, 0);
+      if (!r || !c || !e) continue;
+      const count = r * c, maxPlayer = e + 1;
+      let moves = null;
+      if (Array.isArray(raw.m)) {
+        const parsed = [];
+        let valid = true;
+        for (const encoded of raw.m) {
+          if (!decodeMove(encoded, count, maxPlayer)) { valid = false; break; }
+          parsed.push(Number(encoded));
+        }
+        if (valid && parsed.length) moves = parsed;
+      }
+      recent.push({
+        t: Number.isFinite(Number(raw.t)) ? Number(raw.t) : Date.now(),
+        w: raw.w === true,
+        r, c, e,
+        x: Number.isInteger(Number(raw.x)) && Number(raw.x) >= 1 && Number(raw.x) <= maxPlayer ? Number(raw.x) : (raw.w === true ? HUMAN : 0),
+        m: moves,
+      });
+    }
+    return {
+      games: Math.max(0, Number(value.games) || 0),
+      wins: Math.max(0, Number(value.wins) || 0),
+      largest: Math.max(0, Number(value.largest) || 0),
+      recent,
+    };
   }
 
   function loadStats() {
     try {
-      const value = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
-      if (!value || typeof value !== 'object') throw 0;
-      return {games: Math.max(0, Number(value.games) || 0), wins: Math.max(0, Number(value.wins) || 0), largest: Math.max(0, Number(value.largest) || 0), recent: Array.isArray(value.recent) ? value.recent.slice(0, 30) : []};
-    } catch { return {games:0,wins:0,largest:0,recent:[]}; }
+      const current = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
+      if (current) return normalizeStats(current);
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_STATS_KEY) || 'null');
+      return normalizeStats(legacy);
+    } catch { return emptyStats(); }
+  }
+
+  function persistStats(stats) {
+    try {
+      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+      localStorage.removeItem(LEGACY_STATS_KEY);
+    } catch {}
   }
 
   function recordResult(winner) {
@@ -201,10 +289,19 @@ export function mountChain() {
     stats.games++;
     if (winner === HUMAN) stats.wins++;
     stats.largest = Math.max(stats.largest, config.rows * config.cols);
-    stats.recent.unshift({t:Date.now(),w:winner===HUMAN,r:config.rows,c:config.cols,e:config.enemies});
+    stats.recent.unshift({
+      t:Date.now(),w:winner===HUMAN,r:config.rows,c:config.cols,e:config.enemies,x:winner,
+      m: replayComplete && moveHistory.length ? moveHistory.slice() : null,
+    });
     stats.recent = stats.recent.slice(0,30);
-    try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch {}
+    persistStats(stats);
     renderStats();
+  }
+
+  function stopReplay(resetLabel = true) {
+    if (replayTimer) clearInterval(replayTimer);
+    replayTimer = 0;
+    if (resetLabel) replayPlay.textContent = 'Play';
   }
 
   function renderStats() {
@@ -213,8 +310,200 @@ export function mountChain() {
     statWins.textContent = String(stats.wins);
     statRate.textContent = stats.games ? `${(stats.wins / stats.games * 100).toFixed(1)}%` : '–';
     statLargest.textContent = stats.largest ? `${stats.largest} cells` : '–';
-    if (!stats.recent.length) { statRecent.innerHTML = '<div class="chain-stat-empty">No completed matches yet.</div>'; return; }
-    statRecent.innerHTML = stats.recent.map(entry => `<div class="chain-stat-row"><span>${entry.r} × ${entry.c} · ${entry.e} ${entry.e===1?'enemy':'enemies'}</span><strong data-win="${entry.w}">${entry.w?'WIN':'LOSS'}</strong><time>${new Date(entry.t).toLocaleDateString()}</time></div>`).join('');
+    statRecent.replaceChildren();
+    if (!stats.recent.length) {
+      const empty = document.createElement('div');
+      empty.className = 'chain-stat-empty';
+      empty.textContent = 'No completed matches yet.';
+      statRecent.append(empty);
+      return;
+    }
+    for (const entry of stats.recent) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'chain-stat-row chain-stat-row-button';
+      const main = document.createElement('span');
+      main.className = 'chain-stat-row-main';
+      main.textContent = `${entry.r} × ${entry.c} · ${entry.e} ${entry.e===1?'enemy':'enemies'}`;
+      const meta = document.createElement('small');
+      meta.className = 'chain-stat-row-meta';
+      meta.textContent = entry.m?.length ? `${entry.m.length} moves recorded` : 'Legacy match · replay unavailable';
+      main.append(meta);
+      const outcome = document.createElement('strong');
+      outcome.dataset.win = String(entry.w);
+      outcome.textContent = entry.w ? 'WIN' : 'LOSS';
+      const date = document.createElement('time');
+      date.dateTime = new Date(entry.t).toISOString();
+      date.textContent = new Date(entry.t).toLocaleDateString();
+      const replay = document.createElement('span');
+      replay.className = 'chain-stat-row-replay';
+      replay.textContent = entry.m?.length ? 'Replay ›' : 'No replay';
+      row.append(main, outcome, date, replay);
+      if (entry.m?.length) row.addEventListener('click', () => openReplay(entry));
+      else row.disabled = true;
+      statRecent.append(row);
+    }
+  }
+
+  function topologyFor(cfg) {
+    const count = cfg.rows * cfg.cols;
+    const degrees = new Uint8Array(count);
+    const links = Array.from({length: count}, () => []);
+    for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
+      const i = r * cfg.cols + c;
+      if (r) links[i].push(i - cfg.cols);
+      if (c) links[i].push(i - 1);
+      if (c + 1 < cfg.cols) links[i].push(i + 1);
+      if (r + 1 < cfg.rows) links[i].push(i + cfg.cols);
+      degrees[i] = links[i].length;
+    }
+    return {degrees, links};
+  }
+
+  function replayWinner(model, owner, pending = null) {
+    for (let p = 1; p <= model.playerCount; p++) if (!model.entered[p]) return EMPTY;
+    const live = new Uint8Array(model.playerCount + 1);
+    for (let i = 0; i < model.board.length; i++) if (model.board[i]) live[model.owners[i]] = 1;
+    if (pending) for (let i = 0; i < pending.length; i++) if (pending[i]) { live[owner] = 1; break; }
+    let sole = EMPTY;
+    for (let p = 1; p <= model.playerCount; p++) {
+      if (!model.entered[p] || !live[p]) continue;
+      if (sole) return EMPTY;
+      sole = p;
+    }
+    return sole;
+  }
+
+  function applyReplayMove(model, encoded) {
+    const move = decodeMove(encoded, model.board.length, model.playerCount);
+    if (!move) return false;
+    model.entered[move.owner] = 1;
+    let pending = new Uint32Array(model.board.length);
+    pending[move.index] = 1;
+    const winningStates = new Set();
+    for (let guard = 0; guard < 20000; guard++) {
+      const next = new Uint32Array(model.board.length);
+      let any = false;
+      for (let i = 0; i < pending.length; i++) {
+        const incoming = pending[i];
+        if (!incoming) continue;
+        any = true;
+        const total = model.board[i] + incoming;
+        const d = model.degrees[i];
+        const bursts = Math.floor(total / d);
+        const remainder = total - bursts * d;
+        model.board[i] = remainder;
+        model.owners[i] = remainder ? move.owner : EMPTY;
+        if (bursts) for (const n of model.links[i]) next[n] += bursts;
+      }
+      if (!any) break;
+      let hasNext = false;
+      for (let i = 0; i < next.length; i++) if (next[i]) { hasNext = true; break; }
+      if (!hasNext) break;
+      const winner = replayWinner(model, move.owner, next);
+      if (winner) {
+        const signature = `${bytesToB64(model.board)}:${bytesToB64(new Uint8Array(next.buffer))}`;
+        if (winningStates.has(signature)) break;
+        winningStates.add(signature);
+      }
+      pending = next;
+    }
+    return true;
+  }
+
+  function buildReplayFrames(entry) {
+    const cfg = {rows:entry.r, cols:entry.c, enemies:entry.e};
+    const topology = topologyFor(cfg);
+    const model = {
+      cfg,
+      playerCount: cfg.enemies + 1,
+      board: new Uint8Array(cfg.rows * cfg.cols),
+      owners: new Uint8Array(cfg.rows * cfg.cols),
+      entered: new Uint8Array(cfg.enemies + 2),
+      degrees: topology.degrees,
+      links: topology.links,
+    };
+    const frames = [{board:model.board.slice(),owners:model.owners.slice(),move:null}];
+    for (const encoded of entry.m || []) {
+      const move = decodeMove(encoded, model.board.length, model.playerCount);
+      if (!move || !applyReplayMove(model, encoded)) break;
+      frames.push({board:model.board.slice(),owners:model.owners.slice(),move});
+    }
+    return frames;
+  }
+
+  function drawReplay() {
+    if (!replayCtx || replayPanel.hidden || !replayEntry || !replayFrames.length) return;
+    const cfg = replayEntry;
+    const rect = replayCanvas.parentElement.getBoundingClientRect();
+    const maxW = Math.max(180, Math.min(680, rect.width - 24));
+    const maxH = Math.max(180, Math.min(innerHeight * .44, 520));
+    const cellSize = Math.max(4, Math.floor(Math.min(maxW / cfg.c, maxH / cfg.r)));
+    const w = cfg.c * cellSize + 2, h = cfg.r * cellSize + 2;
+    const scale = Math.min(devicePixelRatio || 1, 2.5);
+    replayCanvas.style.width = `${w}px`;
+    replayCanvas.style.height = `${h}px`;
+    replayCanvas.width = Math.max(1, Math.round(w * scale));
+    replayCanvas.height = Math.max(1, Math.round(h * scale));
+    replayCtx.setTransform(scale,0,0,scale,0,0);
+    replayCtx.fillStyle = color('--site-soft', '#f3f4f5');
+    replayCtx.fillRect(0,0,w,h);
+    replayCtx.strokeStyle = color('--site-line', '#d3d6da');
+    replayCtx.lineWidth = 1;
+    replayCtx.beginPath();
+    for (let c = 0; c <= cfg.c; c++) { const x = 1 + c * cellSize; replayCtx.moveTo(x,1); replayCtx.lineTo(x,1 + cfg.r * cellSize); }
+    for (let r = 0; r <= cfg.r; r++) { const y = 1 + r * cellSize; replayCtx.moveTo(1,y); replayCtx.lineTo(1 + cfg.c * cellSize,y); }
+    replayCtx.stroke();
+    const frameData = replayFrames[replayIndex];
+    const radius = Math.max(2.2, Math.min(8.5, cellSize * .13));
+    for (let i = 0; i < frameData.board.length; i++) {
+      const count = frameData.board[i];
+      if (!count) continue;
+      const cx = 1 + (i % cfg.c + .5) * cellSize;
+      const cy = 1 + (Math.floor(i / cfg.c) + .5) * cellSize;
+      replayCtx.fillStyle = playerColor(frameData.owners[i]);
+      for (const [dx,dy] of atomOffsets(count, radius)) {
+        replayCtx.beginPath(); replayCtx.arc(cx+dx,cy+dy,radius,0,Math.PI*2); replayCtx.fill();
+      }
+    }
+    replayPrev.disabled = replayIndex <= 0;
+    replayNext.disabled = replayIndex >= replayFrames.length - 1;
+    replayStatus.value = `Move ${replayIndex} / ${Math.max(0,replayFrames.length-1)}`;
+  }
+
+  function setReplayIndex(next) {
+    replayIndex = Math.max(0, Math.min(replayFrames.length - 1, next));
+    drawReplay();
+  }
+
+  function openReplay(entry) {
+    stopReplay();
+    replayEntry = entry;
+    replayFrames = buildReplayFrames(entry);
+    replayIndex = 0;
+    replayTitle.textContent = entry.w ? 'Winning match' : 'Match replay';
+    replayCopy.textContent = `${entry.r} × ${entry.c} board · ${entry.e} ${entry.e===1?'enemy':'enemies'} · ${entry.m.length} moves`;
+    replayPanel.hidden = false;
+    requestAnimationFrame(() => { drawReplay(); replayPanel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}); });
+  }
+
+  function closeReplay() {
+    stopReplay();
+    replayPanel.hidden = true;
+    replayEntry = null;
+    replayFrames = [];
+    replayIndex = 0;
+  }
+
+  function toggleReplay() {
+    if (replayTimer) { stopReplay(); return; }
+    if (replayIndex >= replayFrames.length - 1) replayIndex = 0;
+    replayPlay.textContent = 'Pause';
+    replayTimer = window.setInterval(() => {
+      if (replayIndex >= replayFrames.length - 1) { stopReplay(); return; }
+      setReplayIndex(replayIndex + 1);
+    }, 460);
+    drawReplay();
   }
 
   function buildBoard() {
@@ -256,7 +545,7 @@ export function mountChain() {
       'color-mix(in srgb, var(--site-fg, #121213) 58%, var(--site-accent, #6aaa64))',
       'color-mix(in srgb, var(--site-muted, #787c7e) 62%, var(--site-accent, #6aaa64))',
     ];
-    return resolvedColor(themed[player] || `hsl(${(player * 67) % 360} 72% 54%)`, '#6aaa64');
+    return resolvedColor(themed[player] || 'var(--site-accent)', color('--site-accent', '#787c7e'));
   };
 
   function layout() {
@@ -319,17 +608,19 @@ export function mountChain() {
     g.imageSmoothingQuality = 'high';
     const c = size / 2;
     const gradient = g.createRadialGradient(c - radius*.34, c - radius*.38, radius*.08, c, c, radius*1.04);
-    gradient.addColorStop(0, mixColor(base, 'rgb(255 255 255)', .55));
-    gradient.addColorStop(.32, mixColor(base, 'rgb(255 255 255)', .16));
+    const themeBg = color('--site-bg', '#fff');
+    const themeFg = color('--site-fg', '#121213');
+    gradient.addColorStop(0, mixColor(base, themeBg, .55));
+    gradient.addColorStop(.32, mixColor(base, themeBg, .16));
     gradient.addColorStop(.74, base);
-    gradient.addColorStop(1, mixColor(base, 'rgb(0 0 0)', .30));
-    g.shadowColor = 'rgba(0,0,0,.18)';
+    gradient.addColorStop(1, mixColor(base, themeFg, .30));
+    g.shadowColor = resolvedColor('color-mix(in srgb,var(--site-fg) 18%,transparent)', 'rgba(0,0,0,.18)');
     g.shadowBlur = Math.max(1.5, radius * .22);
     g.shadowOffsetY = Math.max(.5, radius * .08);
     g.fillStyle = gradient;
     g.beginPath(); g.arc(c, c, radius, 0, Math.PI * 2); g.fill();
     g.shadowColor = 'transparent';
-    g.strokeStyle = mixColor(base, 'rgb(0 0 0)', .18);
+    g.strokeStyle = mixColor(base, themeFg, .18);
     g.lineWidth = Math.max(.65, radius * .07);
     g.stroke();
     orbCache.set(key, sprite);
@@ -446,6 +737,7 @@ export function mountChain() {
   async function playMove(start, owner) {
     const version = gameVersion;
     locked = true;
+    moveHistory.push(encodeMove(owner, start));
     entered[owner] = 1;
 
     // Aggregate pending atoms per cell. A cascade wave is therefore O(board size)
@@ -616,6 +908,8 @@ export function mountChain() {
     locked = false;
     gameOver = false;
     resultRecorded = false;
+    moveHistory = [];
+    replayComplete = true;
     resultPanel.hidden = true;
     buildBoard();
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
@@ -637,6 +931,8 @@ export function mountChain() {
     turn = saved.turn;
     gameOver = saved.gameOver;
     resultRecorded = saved.gameOver;
+    moveHistory = Array.isArray(saved.moves) ? saved.moves.slice() : [];
+    replayComplete = saved.replayComplete === true;
     if (!gameOver && entered[turn] && !hasCells(turn)) turn = nextPlayer(turn);
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     locked = false;
@@ -713,6 +1009,7 @@ export function mountChain() {
 
   function showGame(syncUrl = true) {
     pendingPage = null;
+    closeReplay();
     if (syncUrl) writePage(PAGE_GAME);
     statsView.hidden = true;
     const wasInMenu = !openingView.hidden;
@@ -841,6 +1138,10 @@ export function mountChain() {
   resultMenuButton.addEventListener('click', showMenu);
   statsButton.addEventListener('click', showStats);
   statsBackButton.addEventListener('click', showMenu);
+  replayClose.addEventListener('click', closeReplay);
+  replayPrev.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex - 1); });
+  replayNext.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex + 1); });
+  replayPlay.addEventListener('click', toggleReplay);
   settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
   const onDocumentPointerDown = e => {
     if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
@@ -860,8 +1161,8 @@ export function mountChain() {
     else showMenu(false);
   };
   addEventListener('popstate', onPopState);
-  const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); };
-  const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); };
+  const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); drawReplay(); };
+  const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); drawReplay(); };
   addEventListener('resize', positionSettingsOnResize, {passive:true});
   const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
   resizeObserver.observe(stage);
@@ -877,6 +1178,7 @@ export function mountChain() {
 
   return () => {
     gameVersion++;
+    stopReplay();
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     particles = [];

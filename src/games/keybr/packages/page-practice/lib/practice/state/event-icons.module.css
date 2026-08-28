@@ -6,6 +6,6 @@
 }
 
 .trophy {
-  fill: #ffd700;
-  stroke: #dabf2c;
+  fill: var(--site-fast-color, var(--accent));
+  stroke: var(--site-accent, var(--accent));
 }

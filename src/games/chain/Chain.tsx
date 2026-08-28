@@ -58,6 +58,19 @@ export function ChainPage() {
             <div><span>Largest board</span><strong id="chain-stat-largest">–</strong></div>
           </div>
           <section class="chain-stats-history"><div class="chain-stats-heading"><h2>Recent matches</h2></div><div id="chain-stat-recent" class="chain-stat-recent"/></section>
+          <section id="chain-replay" class="chain-replay" hidden>
+            <div class="chain-replay-head">
+              <div><span class="chain-mode-eyebrow">Replay</span><h2 id="chain-replay-title">Match replay</h2><p id="chain-replay-copy"/></div>
+              <button id="chain-replay-close" class="chain-replay-close" type="button">Close</button>
+            </div>
+            <div class="chain-replay-stage"><canvas id="chain-replay-canvas" aria-label="Chain Reaction match replay"/></div>
+            <div class="chain-replay-controls">
+              <button id="chain-replay-prev" type="button">Previous</button>
+              <button id="chain-replay-play" type="button">Play</button>
+              <button id="chain-replay-next" type="button">Next</button>
+              <output id="chain-replay-status">Move 0 / 0</output>
+            </div>
+          </section>
         </main>
       </section>
 

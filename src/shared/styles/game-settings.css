@@ -33,7 +33,7 @@
   border-radius: 6px;
   color: var(--color-popover-foreground, var(--site-fg, #121213));
   background: var(--color-popover, var(--site-bg, #fff));
-  box-shadow: 0 12px 32px rgba(0,0,0,.18);
+  box-shadow: 0 12px 32px color-mix(in srgb,var(--site-fg,#121213) 18%,transparent);
 }
 [data-popper-positioner] > .game-settings-popover { position: relative !important; }
 .chain-settings.game-settings-popover { position: fixed; top: 0; left: 0; right: auto; }

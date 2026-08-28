@@ -1,7 +1,7 @@
 /* Generated from the original Keybr Less module. */
 .root {
   box-sizing: content-box;
-  inline-size: 50rem;
+  inline-size: min(50rem, 100%);
   margin-inline: auto;
   margin-block: 2rem;
   padding-inline: 0;

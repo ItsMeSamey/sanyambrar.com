@@ -55,6 +55,8 @@ export function mountTool(toolId, root) {
     const soft = style.getPropertyValue('--site-soft').trim() || '#161b22';
     const accent = style.getPropertyValue('--site-accent').trim() || '#58a6ff';
     const error = style.getPropertyValue('--site-error').trim() || '#f85149';
+    const fast = style.getPropertyValue('--site-fast-color').trim() || accent;
+    const effort = style.getPropertyValue('--site-effort-color').trim() || accent;
     const dark = document.documentElement.classList.contains('dark') || document.documentElement.dataset.kbTheme === 'dark';
     monaco.editor.defineTheme('samey-site', {
       base: dark ? 'vs-dark' : 'vs',
@@ -80,10 +82,10 @@ export function mountTool(toolId, root) {
         'editorIndentGuide.activeBackground1': muted,
         'editorWhitespace.foreground': line,
         'editorError.foreground': error,
-        'diffEditor.insertedTextBackground': '#3fb95042',
-        'diffEditor.removedTextBackground': '#f8514942',
-        'diffEditor.insertedLineBackground': '#3fb95018',
-        'diffEditor.removedLineBackground': '#f8514918',
+        'diffEditor.insertedTextBackground': `${fast}42`,
+        'diffEditor.removedTextBackground': `${error}42`,
+        'diffEditor.insertedLineBackground': `${fast}18`,
+        'diffEditor.removedLineBackground': `${error}18`,
         'diffEditor.diagonalFill': line,
         'scrollbar.shadow': '#00000000',
         'scrollbarSlider.background': `${muted}55`,

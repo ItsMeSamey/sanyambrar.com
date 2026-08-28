@@ -89,7 +89,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const keybrCustomProperties = (theme) => {
     const dark = theme.tone === "dark";
     const primary = theme.background, secondary = theme.text, accent = theme.accent, error = theme.error;
-    const chartMix = dark ? .5 : 0;
     return {
       "--primary-d2": mix(primary, dark ? "#ffffff" : "#000000", .1),
       "--primary-d1": mix(primary, dark ? "#ffffff" : "#000000", .05),
@@ -118,28 +117,30 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       "--textinput--special__color": mix(secondary, primary, .5),
       "--textinput--hit__color": mix(secondary, primary, .4),
       "--textinput--miss__color": error,
-      "--Name-color": mix(secondary, "#ffffff", .2),
-      "--Value-color": mix(secondary, "#000000", .1),
-      "--Value--more__color": "#2a7e21",
-      "--Value--less__color": "#a1464e",
-      "--Chart-speed__color": mix("#6fb48c", primary, chartMix),
-      "--Chart-accuracy__color": mix("#ef522f", primary, chartMix),
-      "--Chart-complexity__color": mix("#ac71d0", primary, chartMix),
-      "--Chart-threshold__color": mix("#d2649a", primary, chartMix),
-      "--Chart-hist-h__color": mix("#5f6cb4", primary, chartMix),
-      "--Chart-hist-m__color": mix("#b43f3e", primary, chartMix),
-      "--Chart-hist-r__color": mix("#b140b4", primary, chartMix),
-      "--KeyboardKey-pointer__color": "#4ba0f2",
-      "--pinky-zone-color": mix("#8ec07c", primary, chartMix),
-      "--ring-zone-color": mix("#b8bb26", primary, chartMix),
-      "--middle-zone-color": mix("#fabd2f", primary, chartMix),
-      "--left-index-zone-color": mix("#83a698", primary, chartMix),
-      "--right-index-zone-color": mix("#d3869b", primary, chartMix),
-      "--thumb-zone-color": mix("#d66354", primary, chartMix),
-      "--syntax-keyword": dark ? "#5991cd" : "#56a1f4",
-      "--syntax-string": "#72b172",
-      "--syntax-number": dark ? "#b281d3" : "#763a9e",
-      "--syntax-comment": "#9f8484",
+      "--Name-color": mix(secondary, primary, .2),
+      "--Value-color": mix(secondary, primary, .1),
+      "--Value--more__color": theme.fast,
+      "--Value--less__color": theme.slow,
+      "--Chart-speed__color": theme.fast,
+      "--Chart-accuracy__color": theme.error,
+      "--Chart-complexity__color": theme.effort,
+      "--Chart-threshold__color": theme.accent,
+      "--Chart-hist-h__color": theme.effort,
+      "--Chart-hist-m__color": theme.error,
+      "--Chart-hist-r__color": mix(theme.error, theme.effort, .5),
+      "--KeyboardKey-pointer__color": theme.accent,
+      "--KeyboardKey-symbol--dead__color": theme.error,
+      "--KeyboardKey-symbol--ligature__color": theme.effort,
+      "--pinky-zone-color": theme.fast,
+      "--ring-zone-color": mix(theme.fast, theme.accent, .45),
+      "--middle-zone-color": theme.accent,
+      "--left-index-zone-color": theme.effort,
+      "--right-index-zone-color": mix(theme.effort, theme.error, .45),
+      "--thumb-zone-color": theme.error,
+      "--syntax-keyword": theme.accent,
+      "--syntax-string": theme.fast,
+      "--syntax-number": theme.effort,
+      "--syntax-comment": mix(secondary, primary, .42),
     };
   };
   const KEYBR_CUSTOM_PROPERTIES = Object.keys(keybrCustomProperties(colors.light));
@@ -171,6 +172,9 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     root.style.setProperty("--site-soft", soft);
     root.style.setProperty("--site-accent", theme.accent);
     root.style.setProperty("--site-error", theme.error);
+    root.style.setProperty("--site-slow-color", theme.slow);
+    root.style.setProperty("--site-fast-color", theme.fast);
+    root.style.setProperty("--site-effort-color", theme.effort);
     root.style.setProperty("--site-font", fontStacks[theme.font]);
 
     if (root.dataset.siteKind === "keybr") {
@@ -198,7 +202,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       root.style.setProperty("--border", hsl(line));
       root.style.setProperty("--input", hsl(line));
       root.style.setProperty("--ring", hsl(theme.accent));
+      root.style.setProperty("--info", hsl(mix(theme.effort, theme.background, .82)));
+      root.style.setProperty("--info-foreground", hsl(theme.effort));
+      root.style.setProperty("--success", hsl(mix(theme.fast, theme.background, .82)));
+      root.style.setProperty("--success-foreground", hsl(theme.fast));
+      root.style.setProperty("--warning", hsl(mix(theme.accent, theme.background, .82)));
+      root.style.setProperty("--warning-foreground", hsl(theme.accent));
+      root.style.setProperty("--error", hsl(mix(theme.error, theme.background, .84)));
       root.style.setProperty("--error-foreground", hsl(theme.error));
+      root.style.setProperty("--destructive", hsl(theme.error));
+      root.style.setProperty("--destructive-foreground", hsl(theme.background));
+      root.style.setProperty("--wordle-key-neutral", mix(theme.text, theme.background, theme.tone === "dark" ? .78 : .74));
     }
 
     document.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));

@@ -17,3 +17,14 @@
 .root:not(:last-child) {
   margin-block-end: 1rem;
 }
+
+@media (max-width: 600px) {
+  .root {
+    flex-wrap: wrap;
+  }
+
+  .root > * {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+}
