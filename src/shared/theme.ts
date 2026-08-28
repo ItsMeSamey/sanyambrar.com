@@ -1018,13 +1018,16 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     panel.querySelector("[data-dismiss]").addEventListener("click", dismissLoadError);
     document.body.append(panel);
   };
+  let pageNavigationId = 0;
   const loadPage = async (href, { replace = false } = {}) => {
+    const id = ++pageNavigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.href = url.href; return; }
     dismissLoadError();
     setLoading(true);
     try {
       const { doc, baseUrl } = await fetchPage(url);
+      if (id !== pageNavigationId) return;
       const current = destinationRoot();
       const commit = async () => {
         swapPage(doc, baseUrl, url, replace);
@@ -1036,9 +1039,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       };
       await animateRootSwap(current, commit, destinationRoot, url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
     } catch (error) {
+      if (id !== pageNavigationId) return;
       showLoadError(url, error, () => loadPage(url.href, { replace }));
       throw error;
-    } finally { setLoading(false); }
+    } finally {
+      if (id === pageNavigationId) setLoading(false);
+    }
   };
   globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
   globalThis.SameyAnimateLocalSwap = (root, commit, direction = 'forward') => animateRootSwap(root, commit, () => root, direction);
