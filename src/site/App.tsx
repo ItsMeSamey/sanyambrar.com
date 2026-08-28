@@ -57,6 +57,8 @@ const setLoading = (value: boolean) => {
   else dispatchEvent(new CustomEvent('samey-loading', { detail: value }));
   document.documentElement.toggleAttribute('data-solid-loading', value);
 };
+const cancelSharedPageSwap = () =>
+  (globalThis as typeof globalThis & { SameyCancelPageSwap?: () => void }).SameyCancelPageSwap?.();
 const preloadUrl = (url: URL) => {
   if (url.origin !== location.origin) return;
   if (isStandaloneApp(url)) {
@@ -140,6 +142,7 @@ export function App() {
     const id = ++navigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
+    cancelSharedPageSwap();
     setNavigationError(null);
     if (url.href === location.href) { setLoading(false); return; }
     if (isStandaloneApp(url)) {
@@ -222,6 +225,7 @@ export function App() {
     };
     const pop = () => {
       const id = ++navigationId;
+      cancelSharedPageSwap();
       const url = new URL(location.href);
       const next = routeFromUrl(url);
       setNavigationError(null);

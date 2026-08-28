@@ -1030,6 +1030,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.body.append(panel);
   };
   let pageNavigationId = 0;
+  const cancelPageNavigation = () => { pageNavigationId++; setLoading(false); };
+  globalThis.SameyCancelPageSwap = cancelPageNavigation;
   const loadPage = async (href, { replace = false } = {}) => {
     const id = ++pageNavigationId;
     const url = new URL(href, location.href);
