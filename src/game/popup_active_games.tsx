@@ -53,7 +53,13 @@ function readActiveGame(key: string): ActiveGame | undefined {
     if (!Array.isArray(value?.history) || value.history.length <= 1) return
     const config = readConfig(key, value)
     if (!isChallengeConfig(config) || value.done !== undefined) return
-    return {key, config, history: value.history.slice(0, -1)}
+    const current = value.history.at(-1)!
+    const played = value.history.slice(0, -1)
+    if (played.some(row => !Array.isArray(row) || row.length !== 2 || typeof row[0] !== 'string' || typeof row[1] !== 'string' ||
+      row[0].length !== config.wordLength || row[1].length !== config.wordLength || !/^[gyr]+$/.test(row[1])) ||
+      !Array.isArray(current) || current.length !== 2 || typeof current[0] !== 'string' || typeof current[1] !== 'string' ||
+      current[0].length > config.wordLength || current[1] !== '') return
+    return {key, config, history: played}
   } catch {}
 }
 
