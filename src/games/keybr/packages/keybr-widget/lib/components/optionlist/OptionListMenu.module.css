@@ -1,0 +1,53 @@
+/* Generated from the original Keybr Less module. */
+.root {
+  display: block;
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  inset-block-start: 100%;
+  z-index: 1;
+  list-style: none;
+  max-block-size: 20rem;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--MenuItem--selected__background-color)
+    var(--MenuItem__background-color);
+  scrollbar-width: auto;
+  box-shadow: var(--Popup__box-shadow);
+  cursor: pointer;
+}
+
+.item {
+  
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  display: block;
+  block-size: 2rem;
+  margin: 0;
+  padding: 0;
+  padding-inline: 1.5rem;
+  padding-block: 0;
+  color: var(--MenuItem__color);
+  background-color: var(--MenuItem__background-color);
+  line-height: 2rem;
+}
+
+.item:hover {
+  color: var(--MenuItem--hover__color);
+  background-color: var(--MenuItem--hover__background-color);
+}
+
+.item_selected {
+  color: var(--MenuItem--selected__color);
+  background-color: var(--MenuItem--selected__background-color);
+}
+
+.item_selected:hover {
+  color: var(--MenuItem--selected__color);
+  background-color: var(--MenuItem--selected__background-color);
+}

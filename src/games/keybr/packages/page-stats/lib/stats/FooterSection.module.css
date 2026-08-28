@@ -1,0 +1,9 @@
+/* Generated from the original Keybr Less module. */
+.footer {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  padding-inline: 0;
+  padding-block: 2rem;
+  background-image: linear-gradient(transparent, var(--background-color) 32%);
+}

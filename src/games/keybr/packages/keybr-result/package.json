@@ -3,5 +3,5 @@
   "name": "@keybr/result",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts"
+  "main": "lib/ported-index.ts"
 }

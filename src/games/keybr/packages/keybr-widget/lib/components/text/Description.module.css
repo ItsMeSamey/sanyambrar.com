@@ -1,0 +1,8 @@
+/* Generated from the original Keybr Less module. */
+.root {
+  color: var(--text-color-f1);
+}
+
+.root:not(:last-child) {
+  margin-block-end: 2rem;
+}

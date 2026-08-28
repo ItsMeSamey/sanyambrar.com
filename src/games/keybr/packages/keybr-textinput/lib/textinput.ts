@@ -8,11 +8,7 @@ import {
   splitStyledText,
   type StyledText,
 } from "./chars.ts";
-export type TextInputSettings = {
-  readonly stopOnError: boolean;
-  readonly forgiveErrors: boolean;
-  readonly spaceSkipsWords: boolean;
-};
+import { type TextInputSettings } from "./settings.ts";
 
 export enum Feedback {
   Succeeded,

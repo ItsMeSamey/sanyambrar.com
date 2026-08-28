@@ -1,0 +1,13 @@
+/* Generated from the original Keybr Less module. */
+.cell {
+  display: inline-block;
+  background-color: var(--Calendar-cell--background-color);
+  cursor: default;
+}
+
+.item {
+  display: inline-block;
+  inline-size: 4rem;
+  padding-block: 0.25rem;
+  text-align: center;
+}

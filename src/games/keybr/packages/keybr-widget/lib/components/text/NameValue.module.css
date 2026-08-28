@@ -1,0 +1,40 @@
+/* Generated from the original Keybr Less module. */
+.nameValue {
+  
+  white-space: nowrap;
+
+  display: inline-block;
+}
+
+.name {
+  
+  white-space: nowrap;
+
+  display: inline-block;
+  color: var(--Name-color);
+}
+
+.value {
+  
+  white-space: nowrap;
+
+  display: inline-block;
+  color: var(--Value-color);
+  font-family: var(--value-font-family);
+}
+
+.value_more {
+  color: var(--Value--more__color);
+}
+
+.value_less {
+  color: var(--Value--less__color);
+}
+
+.nameValue + .nameValue {
+  margin-inline-start: 0.4rem;
+}
+
+.name + .value {
+  margin-inline-start: 0.2rem;
+}

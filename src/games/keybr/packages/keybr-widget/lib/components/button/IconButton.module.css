@@ -1,0 +1,30 @@
+/* Generated from the original Keybr Less module. */
+.root {
+  
+  outline: none;
+
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  min-inline-size: 2rem;
+  min-block-size: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: var(--text-color);
+  background: none;
+  line-height: 2rem;
+  cursor: pointer;
+}
+
+.root:focus-visible {
+  
+  outline: 1px dotted var(--text-color);
+
+}
+
+.disabled {
+  
+  opacity: 0.7;
+
+}

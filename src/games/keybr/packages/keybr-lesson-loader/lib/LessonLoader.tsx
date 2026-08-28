@@ -1,0 +1,71 @@
+import { loadContent } from "@keybr/content-books";
+import { loadWordList } from "@keybr/content-words";
+import { KeyboardOptions, useKeyboard } from "@keybr/keyboard";
+import {
+  BooksLesson,
+  CodeLesson,
+  CustomTextLesson,
+  GuidedLesson,
+  type Lesson,
+  lessonProps,
+  LessonType,
+  NumbersLesson,
+  WordListLesson,
+} from "@keybr/lesson";
+import { LoadingProgress } from "@keybr/pages-shared";
+import { type PhoneticModel } from "@keybr/phonetic-model";
+import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
+import { useSettings } from "@keybr/settings";
+import { createResource, Show, type JSX } from "solid-js";
+
+export function LessonLoader(props: {
+  readonly children: (result: Lesson) => JSX.Element;
+  readonly fallback?: JSX.Element;
+}) {
+  const { settings } = useSettings();
+  return (
+    <PhoneticModelLoader language={KeyboardOptions.from(settings).language}>
+      {(model) => <Loader model={model} fallback={props.fallback}>{props.children}</Loader>}
+    </PhoneticModelLoader>
+  );
+}
+
+function Loader(props: {
+  readonly model: PhoneticModel;
+  readonly children: (result: Lesson) => JSX.Element;
+  readonly fallback?: JSX.Element;
+}) {
+  const { settings } = useSettings();
+  const keyboard = useKeyboard();
+  const [lesson] = createResource(
+    () => ({
+      type: settings.get(lessonProps.type),
+      language: KeyboardOptions.from(settings).language,
+      book: settings.get(lessonProps.books.book),
+      model: props.model,
+    }),
+    async ({ type, language, book, model }) => {
+      switch (type) {
+        case LessonType.GUIDED:
+          return new GuidedLesson(settings, keyboard, model, await loadWordList(language));
+        case LessonType.WORDLIST:
+          return new WordListLesson(settings, keyboard, model, await loadWordList(language));
+        case LessonType.BOOKS:
+          return new BooksLesson(settings, keyboard, model, { book, content: await loadContent(book) });
+        case LessonType.CUSTOM:
+          return new CustomTextLesson(settings, keyboard, model);
+        case LessonType.CODE:
+          return new CodeLesson(settings, keyboard, model);
+        case LessonType.NUMBERS:
+          return new NumbersLesson(settings, keyboard, model);
+        default:
+          throw new Error(`Unknown lesson type: ${String(type)}`);
+      }
+    },
+  );
+  return (
+    <Show when={lesson()} fallback={props.fallback ?? <LoadingProgress />}>
+      {(value) => props.children(value())}
+    </Show>
+  );
+}

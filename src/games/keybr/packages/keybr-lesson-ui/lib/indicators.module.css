@@ -1,0 +1,24 @@
+/* Generated from the original Keybr Less module. */
+.row {
+  display: flex;
+  align-items: baseline;
+  padding-block-start: 0.4rem;
+}
+
+.name {
+  
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  inline-size: 10rem;
+  padding-inline-end: 1rem;
+  text-align: end;
+}
+
+.value {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+}

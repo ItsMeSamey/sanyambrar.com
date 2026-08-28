@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "@keybr/widget",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@keybr/color": "workspace:*",
+    "@keybr/lang": "workspace:*",
+    "@mdi/js": "^7.4.47",
+    "clsx": "^2.1.1"
+  }
+}

@@ -1,0 +1,230 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@keybr/widget": [
+        "packages/keybr-widget/lib/index.ts"
+      ],
+      "@keybr/widget/*": [
+        "packages/keybr-widget/*"
+      ],
+      "@keybr/phonetic-model-loader": [
+        "packages/keybr-phonetic-model-loader/lib/ported-index.ts"
+      ],
+      "@keybr/phonetic-model-loader/*": [
+        "packages/keybr-phonetic-model-loader/*"
+      ],
+      "@keybr/intl": [
+        "packages/keybr-intl/lib/index.ts"
+      ],
+      "@keybr/intl/*": [
+        "packages/keybr-intl/*"
+      ],
+      "@keybr/rand": [
+        "packages/keybr-rand/lib/index.ts"
+      ],
+      "@keybr/rand/*": [
+        "packages/keybr-rand/*"
+      ],
+      "@keybr/lang": [
+        "packages/keybr-lang/lib/index.ts"
+      ],
+      "@keybr/lang/*": [
+        "packages/keybr-lang/*"
+      ],
+      "@keybr/textinput-ui": [
+        "packages/keybr-textinput-ui/lib/index.ts"
+      ],
+      "@keybr/textinput-ui/*": [
+        "packages/keybr-textinput-ui/*"
+      ],
+      "@keybr/content-books": [
+        "packages/keybr-content-books/lib/index.ts"
+      ],
+      "@keybr/content-books/*": [
+        "packages/keybr-content-books/*"
+      ],
+      "@keybr/lesson": [
+        "packages/keybr-lesson/lib/index.ts"
+      ],
+      "@keybr/lesson/*": [
+        "packages/keybr-lesson/*"
+      ],
+      "@keybr/textinput-events": [
+        "packages/keybr-textinput-events/lib/index.ts"
+      ],
+      "@keybr/textinput-events/*": [
+        "packages/keybr-textinput-events/*"
+      ],
+      "@keybr/textinput-sounds": [
+        "packages/keybr-textinput-sounds/lib/index.ts"
+      ],
+      "@keybr/textinput-sounds/*": [
+        "packages/keybr-textinput-sounds/*"
+      ],
+      "@keybr/settings": [
+        "packages/keybr-settings/lib/ported-index.ts"
+      ],
+      "@keybr/settings/*": [
+        "packages/keybr-settings/*"
+      ],
+      "@keybr/keyboard": [
+        "packages/keybr-keyboard/lib/ported-index.ts"
+      ],
+      "@keybr/keyboard/*": [
+        "packages/keybr-keyboard/*"
+      ],
+      "@keybr/themes": [
+        "packages/keybr-themes/lib/index.ts"
+      ],
+      "@keybr/themes/*": [
+        "packages/keybr-themes/*"
+      ],
+      "@keybr/settings-loader": [
+        "packages/keybr-settings-loader/lib/index.ts"
+      ],
+      "@keybr/settings-loader/*": [
+        "packages/keybr-settings-loader/*"
+      ],
+      "@keybr/phonetic-model": [
+        "packages/keybr-phonetic-model/lib/ported-index.ts"
+      ],
+      "@keybr/phonetic-model/*": [
+        "packages/keybr-phonetic-model/*"
+      ],
+      "@keybr/app": [
+        "packages/keybr-app/lib/index.ts"
+      ],
+      "@keybr/app/*": [
+        "packages/keybr-app/*"
+      ],
+      "@keybr/keyboard-ui": [
+        "packages/keybr-keyboard-ui/lib/index.ts"
+      ],
+      "@keybr/keyboard-ui/*": [
+        "packages/keybr-keyboard-ui/*"
+      ],
+      "@keybr/math": [
+        "packages/keybr-math/lib/index.ts"
+      ],
+      "@keybr/math/*": [
+        "packages/keybr-math/*"
+      ],
+      "@keybr/solid-compat": [
+        "packages/keybr-solid-compat/lib/index.ts"
+      ],
+      "@keybr/solid-compat/*": [
+        "packages/keybr-solid-compat/*"
+      ],
+      "@keybr/debug": [
+        "packages/keybr-debug/lib/index.ts"
+      ],
+      "@keybr/debug/*": [
+        "packages/keybr-debug/*"
+      ],
+      "@keybr/content-words": [
+        "packages/keybr-content-words/lib/index.ts"
+      ],
+      "@keybr/content-words/*": [
+        "packages/keybr-content-words/*"
+      ],
+      "@keybr/color": [
+        "packages/keybr-color/lib/index.ts"
+      ],
+      "@keybr/color/*": [
+        "packages/keybr-color/*"
+      ],
+      "@keybr/lesson-ui": [
+        "packages/keybr-lesson-ui/lib/index.ts"
+      ],
+      "@keybr/lesson-ui/*": [
+        "packages/keybr-lesson-ui/*"
+      ],
+      "@keybr/unicode": [
+        "packages/keybr-unicode/lib/index.ts"
+      ],
+      "@keybr/unicode/*": [
+        "packages/keybr-unicode/*"
+      ],
+      "@keybr/chart": [
+        "packages/keybr-chart/lib/index.ts"
+      ],
+      "@keybr/chart/*": [
+        "packages/keybr-chart/*"
+      ],
+      "@keybr/textinput": [
+        "packages/keybr-textinput/lib/ported-index.ts"
+      ],
+      "@keybr/textinput/*": [
+        "packages/keybr-textinput/*"
+      ],
+      "@keybr/pages-shared": [
+        "packages/keybr-pages-shared/lib/index.ts"
+      ],
+      "@keybr/pages-shared/*": [
+        "packages/keybr-pages-shared/*"
+      ],
+      "@keybr/lesson-loader": [
+        "packages/keybr-lesson-loader/lib/index.ts"
+      ],
+      "@keybr/lesson-loader/*": [
+        "packages/keybr-lesson-loader/*"
+      ],
+      "@keybr/page-stats": [
+        "packages/page-stats/lib/index.ts"
+      ],
+      "@keybr/page-stats/*": [
+        "packages/page-stats/*"
+      ],
+      "@keybr/result-loader": [
+        "packages/keybr-result-loader/lib/ported-index.ts"
+      ],
+      "@keybr/result-loader/*": [
+        "packages/keybr-result-loader/*"
+      ],
+      "@keybr/result": [
+        "packages/keybr-result/lib/ported-index.ts"
+      ],
+      "@keybr/result/*": [
+        "packages/keybr-result/*"
+      ],
+      "@keybr/page-practice": [
+        "packages/page-practice/lib/index.ts"
+      ],
+      "@keybr/page-practice/*": [
+        "packages/page-practice/*"
+      ],
+      "@keybr/result-io": [
+        "packages/keybr-result-io/lib/index.ts"
+      ],
+      "@keybr/result-io/*": [
+        "packages/keybr-result-io/*"
+      ],
+      "@keybr/code": [
+        "packages/keybr-code/lib/index.ts"
+      ],
+      "@keybr/code/*": [
+        "packages/keybr-code/*"
+      ],
+      "@keybr/content": [
+        "packages/keybr-content/lib/ported-index.ts"
+      ],
+      "@keybr/content/*": [
+        "packages/keybr-content/*"
+      ]
+    },
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "src/**/*.d.ts"
+  ]
+}

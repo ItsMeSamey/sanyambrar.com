@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "name": "@keybr/app",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@keybr/debug": "workspace:*",
+    "@keybr/intl": "workspace:*",
+    "@keybr/page-practice": "workspace:*",
+    "@keybr/pages-shared": "workspace:*",
+    "@keybr/result-loader": "workspace:*",
+    "@keybr/settings-loader": "workspace:*",
+    "@keybr/themes": "workspace:*",
+    "@keybr/widget": "workspace:*"
+  },
+  "main": "lib/index.ts"
+}

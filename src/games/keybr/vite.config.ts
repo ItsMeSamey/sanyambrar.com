@@ -49,6 +49,7 @@ export default defineConfig(({ mode }) => ({
   resolve: { alias: workspaceAliases },
   plugins: [compressedAssets(), solid(), viteSingleFile()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
+  css: { modules: { localsConvention: "camelCase" } },
   build: {
     outDir: resolve(root, "../../../.build/keybr"),
     emptyOutDir: true,

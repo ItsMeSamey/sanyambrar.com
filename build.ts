@@ -147,8 +147,22 @@ async function verifySourceArchitecture() {
   const keybrDeps = { ...(keybrPackage.dependencies || {}), ...(keybrPackage.devDependencies || {}) };
   must(!("react" in keybrDeps) && !("react-dom" in keybrDeps) && !("react-intl" in keybrDeps), "architecture: Keybr must not depend on React");
   must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
+  const keybrPackagesDir = join(ROOT, "src/games/keybr/packages");
+  for (const entry of await readdir(keybrPackagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const file = join(keybrPackagesDir, entry.name, "package.json");
+    if (!existsSync(file)) continue;
+    const pkg = JSON.parse(await readFile(file, "utf8"));
+    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}), ...(pkg.peerDependencies || {}) };
+    must(!("react" in deps) && !("react-dom" in deps) && !("react-intl" in deps), `architecture: ${relative(ROOT, file)} must not depend on React`);
+  }
   const keybrEntry = await readFile(join(ROOT, "src/games/keybr/src/main.tsx"), "utf8");
-  must(keybrEntry.includes('from "solid-js"') && keybrEntry.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
+  const keybrApp = await readFile(join(ROOT, "src/games/keybr/packages/keybr-app/lib/App.tsx"), "utf8");
+  const keybrViewSwitch = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/view/ViewSwitch.tsx"), "utf8");
+  const keybrSolidRuntime = `${keybrEntry}
+${keybrApp}
+${keybrViewSwitch}`;
+  must(keybrSolidRuntime.includes('from "solid-js"') && keybrSolidRuntime.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
   must(!sources.some(([, text]) => /@mdi\/|material-symbol|material-icons/.test(text)),
     "architecture: UI icons must use Lucide rather than mixed Material/MDI sets");
   const wordleVite = viteConfigs[0][1];
@@ -166,7 +180,7 @@ async function verifySourceArchitecture() {
     "architecture: Wordle views must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
     "architecture: Chain views must use the shared transition runtime");
-  must(keybrEntry.includes("SameyAnimateLocalSwap"),
+  must(keybrSolidRuntime.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
 }
 

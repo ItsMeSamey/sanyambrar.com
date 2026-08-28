@@ -1,0 +1,15 @@
+/* Generated from the original Keybr Less module. */
+.fadeIn {
+  animation: fadeIn 0.3s;
+}
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale3d(0.3, 0.3, 0.3);
+  }
+  to {
+    opacity: 1;
+  }
+}

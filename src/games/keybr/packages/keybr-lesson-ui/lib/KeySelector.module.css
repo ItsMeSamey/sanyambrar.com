@@ -1,0 +1,13 @@
+/* Generated from the original Keybr Less module. */
+.root {
+  
+  outline: none;
+
+}
+
+.root:focus-visible {
+  
+  outline: 1px dotted var(--text-color);
+
+  outline-offset: 2px;
+}

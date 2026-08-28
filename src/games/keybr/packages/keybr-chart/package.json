@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "name": "@keybr/chart",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "dependencies": {
+    "@keybr/intl": "workspace:*",
+    "@keybr/keyboard": "workspace:*",
+    "@keybr/keyboard-ui": "workspace:*",
+    "@keybr/lesson": "workspace:*",
+    "@keybr/lesson-ui": "workspace:*",
+    "@keybr/math": "workspace:*",
+    "@keybr/result": "workspace:*",
+    "@keybr/settings": "workspace:*",
+    "@keybr/themes": "workspace:*",
+    "@keybr/widget": "workspace:*"
+  }
+}

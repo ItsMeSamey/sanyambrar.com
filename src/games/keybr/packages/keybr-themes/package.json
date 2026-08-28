@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "@keybr/themes",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "lib/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@keybr/color": "workspace:*",
+    "@keybr/widget": "workspace:*",
+    "clsx": "^2.1.1"
+  }
+}

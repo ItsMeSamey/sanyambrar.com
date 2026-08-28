@@ -1,0 +1,11 @@
+/* Generated from the original Keybr Less module. */
+.root {
+  color: var(--text-color);
+  text-decoration: underline;
+}
+
+.disabled {
+  
+  opacity: 0.7;
+
+}
