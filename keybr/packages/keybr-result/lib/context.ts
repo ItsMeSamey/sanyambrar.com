@@ -3,6 +3,7 @@ import { type Result } from "./result.ts";
 
 export type ResultContextProps = {
   readonly results: readonly Result[];
+  readonly revision: number;
   readonly appendResults: (newResults: readonly Result[]) => void;
   readonly clearResults: () => void;
 };

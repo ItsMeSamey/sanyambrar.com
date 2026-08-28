@@ -1,5 +1,5 @@
 import { type Result, ResultContext } from "@keybr/result";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { ErrorAlert } from "@keybr/debug";
 import { type ResultStorage } from "./storage.ts";
 
@@ -12,17 +12,23 @@ export function ResultProvider({
   readonly initialResults: readonly Result[];
   readonly children: ReactNode;
 }): ReactNode {
-  const [results, setResults] = useState(initialResults);
+  const results = useRef<Result[]>([...initialResults]);
+  const [revision, setRevision] = useState(0);
   return (
     <ResultContext.Provider
       value={{
-        results,
+        results: results.current,
+        revision,
         appendResults: (newResults) => {
-          setResults((results) => [...results, ...newResults]);
+          for (const result of newResults) {
+            results.current.push(result);
+          }
+          setRevision((revision) => revision + 1);
           storage.append(newResults).catch(catchError);
         },
         clearResults: () => {
-          setResults([]);
+          results.current = [];
+          setRevision((revision) => revision + 1);
           storage.clear().catch(catchError);
         },
       }}

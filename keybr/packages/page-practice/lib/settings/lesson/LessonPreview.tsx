@@ -21,7 +21,7 @@ export function LessonPreview({
 }): ReactNode {
   const { formatMessage } = useIntl();
   const { settings } = useSettings();
-  const { results } = useResults();
+  const { results, revision } = useResults();
   const { lessonKeys, textInput } = useMemo(() => {
     const lessonKeys = lesson.update(
       makeKeyStatsMap(lesson.letters, lesson.filter(results)),
@@ -31,7 +31,7 @@ export function LessonPreview({
       toTextInputSettings(settings),
     );
     return { lessonKeys, textInput };
-  }, [settings, lesson, results]);
+  }, [settings, lesson, results, revision]);
   return (
     <FieldSet
       legend={formatMessage({
