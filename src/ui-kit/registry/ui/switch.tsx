@@ -8,7 +8,7 @@ export const SwitchLabel = SwitchPrimitive.Label
 export function SwitchControl(props: ComponentProps<typeof SwitchPrimitive.Control>) {
   const [local, rest] = splitProps(props, ['class'])
   return <SwitchPrimitive.Control
-    class={cx('group inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-input bg-secondary p-0.5 transition-colors data-[checked]:border-primary data-[checked]:bg-primary', local.class)}
+    class={cx('samey-switch-control', local.class)}
     {...rest}
   />
 }
@@ -16,7 +16,7 @@ export function SwitchControl(props: ComponentProps<typeof SwitchPrimitive.Contr
 export function SwitchThumb(props: ComponentProps<typeof SwitchPrimitive.Thumb>) {
   const [local, rest] = splitProps(props, ['class'])
   return <SwitchPrimitive.Thumb
-    class={cx('pointer-events-none block size-3.5 rounded-full bg-background shadow-sm transition-transform duration-150 group-data-[checked]:translate-x-4', local.class)}
+    class={cx('samey-switch-thumb', local.class)}
     {...rest}
   />
 }

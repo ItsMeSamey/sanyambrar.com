@@ -344,6 +344,23 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-share-footer button { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 .samey-popover:has(.stats-guess-popover) { max-width: calc(100vw - 12px); overflow-x: hidden; }
 
+/* Semantic Kobalte primitives. These replace retired Tailwind utilities. */
+.samey-dialog-overlay { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 50%); }
+.samey-dialog { position: fixed; left: 50%; top: 50%; z-index: 51; width: min(100%, 32rem); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); transform: translate(-50%, -50%); overflow: auto; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-foreground); box-shadow: 0 10px 25px rgb(0 0 0 / 18%); }
+.samey-popover { z-index: 50; padding: 1rem; border: 1px solid var(--color-border); border-radius: .375rem; background: var(--color-popover); color: var(--color-popover-foreground); box-shadow: 0 8px 22px rgb(0 0 0 / 16%); }
+.samey-tooltip { z-index: 60; padding: .375rem .625rem; border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent); border-radius: .375rem; background: var(--color-foreground); color: var(--color-background); box-shadow: 0 8px 22px rgb(0 0 0 / 18%); font-size: .75rem; }
+.samey-slider-track { position: relative; width: 100%; height: 1rem; flex-grow: 1; overflow: hidden; border-radius: 999px; background: var(--color-secondary); }
+.samey-slider-fill { position: absolute; height: 100%; border-radius: inherit; background: var(--color-primary); }
+.samey-slider-thumb { display: block; width: 1rem; height: 1rem; border: 2px solid var(--color-primary); border-radius: 50%; outline: none; background: var(--color-background); box-shadow: none; }
+.samey-switch-control { display: inline-flex; width: 2.25rem; height: 1.25rem; flex-shrink: 0; align-items: center; padding: .125rem; border: 1px solid var(--color-input); border-radius: 999px; background: var(--color-secondary); transition: background-color 150ms ease, border-color 150ms ease; }
+.samey-switch-control[data-checked] { border-color: var(--color-primary); background: var(--color-primary); }
+.samey-switch-thumb { display: block; width: .875rem; height: .875rem; pointer-events: none; border-radius: 50%; background: var(--color-background); box-shadow: 0 1px 2px rgb(0 0 0 / 12%); transform: translateX(0); transition: transform 150ms ease; }
+.samey-switch-control[data-checked] .samey-switch-thumb { transform: translateX(1rem); }
+.samey-toaster { position: fixed; right: .75rem; top: .75rem; z-index: 100; display: flex; width: min(360px, calc(100vw - 24px)); flex-direction: column; gap: .5rem; }
+.samey-toast { padding: .75rem; border: 1px solid var(--color-border); border-radius: .5rem; background: color-mix(in srgb, var(--color-background) 95%, transparent); color: var(--color-foreground); box-shadow: 0 10px 25px rgb(0 0 0 / 18%); backdrop-filter: blur(12px); }
+.samey-toast-title { font-size: .875rem; }
+.samey-toast-description { margin-top: .125rem; color: var(--color-muted-foreground); font-size: .875rem; }
+
 /* Small local utility set used by Wordle. Keep this explicit instead of shipping Tailwind. */
 .fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}
 .flex-row{flex-direction:row}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-items-center{justify-items:center}.grow{flex-grow:1}.shrink-0{flex-shrink:0}

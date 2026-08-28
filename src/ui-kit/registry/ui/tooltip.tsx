@@ -9,7 +9,7 @@ export function TooltipContent(props: ComponentProps<typeof TooltipPrimitive.Con
   const [local, rest] = splitProps(props, ['class'])
   return <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
-      class={cx('z-50 rounded-md border border-border/40 bg-foreground px-2.5 py-1.5 text-xs text-background shadow-lg', local.class)}
+      class={cx('samey-tooltip', local.class)}
       {...rest}
     />
   </TooltipPrimitive.Portal>
