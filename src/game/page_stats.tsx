@@ -44,8 +44,8 @@ export async function fetchStats(): Promise<GameStats> {
         if (history.o === 'daily') dailyGames++
         if (history.k !== KindEnum.Correct) continue
         totalWins++
-        totalGuesses += history.h.length / length
-        if (history.o === 'daily') { dailyWins++; dailyGuesses += history.h.length / length }
+        totalGuesses += history.h.length / record.w.length
+        if (history.o === 'daily') { dailyWins++; dailyGuesses += history.h.length / record.w.length }
       }
     }
   }
@@ -56,10 +56,8 @@ export async function fetchStats(): Promise<GameStats> {
 
 export async function hasStats() {
   const db = await getReadyDB()
-  for (let length = 3; length <= 20; length++) {
-    if (await db.count(`w${length}` as const)) return true
-  }
-  return false
+  const counts = await Promise.all(Array.from({length: 18}, (_, index) => db.count(`w${index + 3}` as const)))
+  return counts.some(Boolean)
 }
 
 function entryMeta(entry: HistoryEntry) {
