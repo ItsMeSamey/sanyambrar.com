@@ -650,7 +650,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     catch {
       const area = document.createElement("textarea");
       area.value = text; area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
-      document.body.append(area); area.select(); document.execCommand("copy"); area.remove();
+      document.body.append(area);
+      try { area.select(); document.execCommand("copy"); } finally { area.remove(); }
     }
   };
   const pasteInto = (el, text) => {

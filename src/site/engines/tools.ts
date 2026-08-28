@@ -36,9 +36,9 @@ export function mountTools() {
       const field = document.createElement('textarea');
       field.value = String(value); field.setAttribute('readonly', '');
       field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-      document.body.append(field); field.select();
-      const ok = document.execCommand('copy'); field.remove();
-      return ok;
+      document.body.append(field);
+      try { field.select(); return document.execCommand('copy'); }
+      finally { field.remove(); }
     } catch { return false; }
   };
 
