@@ -63,6 +63,7 @@ function useLoader(model: PhoneticModel): Lesson | null {
   const [result, setResult] = useState<Lesson | null>(null);
 
   useEffect(() => {
+    setResult(null);
     let didCancel = false;
 
     const load = async (): Promise<void> => {
