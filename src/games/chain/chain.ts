@@ -538,14 +538,14 @@ export function mountChain() {
   const playerColor = player => {
     const themed = [
       '',
-      'var(--site-accent, #6aaa64)',
-      'var(--site-error, #c95d63)',
-      'color-mix(in srgb, var(--site-accent, #6aaa64) 52%, var(--site-fg, #121213))',
-      'color-mix(in srgb, var(--site-error, #c95d63) 58%, var(--site-accent, #6aaa64))',
-      'color-mix(in srgb, var(--site-fg, #121213) 58%, var(--site-accent, #6aaa64))',
-      'color-mix(in srgb, var(--site-muted, #787c7e) 62%, var(--site-accent, #6aaa64))',
+      'var(--site-fast-color, #16a34a)',
+      'var(--site-error, #dc2626)',
+      'var(--site-effort-color, #2563eb)',
+      'var(--site-warning-color, #d4a72c)',
+      'color-mix(in srgb, var(--site-effort-color, #2563eb) 58%, var(--site-fast-color, #16a34a))',
+      'color-mix(in srgb, var(--site-error, #dc2626) 58%, var(--site-effort-color, #2563eb))',
     ];
-    return resolvedColor(themed[player] || 'var(--site-accent)', color('--site-accent', '#787c7e'));
+    return resolvedColor(themed[player] || 'var(--site-effort-color)', color('--site-effort-color', '#2563eb'));
   };
 
   function layout() {

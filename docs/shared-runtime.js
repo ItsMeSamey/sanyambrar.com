@@ -9,11 +9,12 @@
 					"tone": "light",
 					"background": "#ffffff",
 					"text": "#121213",
-					"accent": "#787c7e",
-					"error": "#ff3333",
-					"slow": "#cc0000",
-					"fast": "#60d788",
-					"effort": "#6699ff"
+					"accent": "#2563eb",
+					"error": "#dc2626",
+					"warning": "#d4a72c",
+					"slow": "#dc2626",
+					"fast": "#16a34a",
+					"effort": "#2563eb"
 				},
 				"clear-light": {
 					"label": "Clear light",
@@ -22,6 +23,7 @@
 					"text": "#202332",
 					"accent": "#355d82",
 					"error": "#c43d46",
+					"warning": "#a66b12",
 					"slow": "#aa2832",
 					"fast": "#267549",
 					"effort": "#365f9c"
@@ -31,11 +33,12 @@
 					"tone": "dark",
 					"background": "#121213",
 					"text": "#f8f8f8",
-					"accent": "#a7a7a7",
-					"error": "#9b4545",
-					"slow": "#8c1818",
-					"fast": "#448154",
-					"effort": "#2d4a86"
+					"accent": "#60a5fa",
+					"error": "#f87171",
+					"warning": "#facc15",
+					"slow": "#ef4444",
+					"fast": "#4ade80",
+					"effort": "#60a5fa"
 				},
 				"clear-dark": {
 					"label": "Clear dark",
@@ -44,6 +47,7 @@
 					"text": "#b0b4bd",
 					"accent": "#7c9fc4",
 					"error": "#e2848b",
+					"warning": "#d9bd68",
 					"slow": "#e2848b",
 					"fast": "#69aa80",
 					"effort": "#80a1c5"
@@ -336,6 +340,7 @@
 				text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
 				accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
 				error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+				warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
 				slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
 				fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
 				effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
@@ -345,6 +350,7 @@
 					text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
 					accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
 					error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+					warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
 					slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
 					fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
 					effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort
@@ -435,6 +441,7 @@
 			root.style.setProperty("--site-soft", soft);
 			root.style.setProperty("--site-accent", theme.accent);
 			root.style.setProperty("--site-error", theme.error);
+			root.style.setProperty("--site-warning-color", theme.warning);
 			root.style.setProperty("--site-slow-color", theme.slow);
 			root.style.setProperty("--site-fast-color", theme.fast);
 			root.style.setProperty("--site-effort-color", theme.effort);
@@ -465,8 +472,8 @@
 				root.style.setProperty("--info-foreground", hsl(theme.effort));
 				root.style.setProperty("--success", hsl(mix(theme.fast, theme.background, .82)));
 				root.style.setProperty("--success-foreground", hsl(theme.fast));
-				root.style.setProperty("--warning", hsl(mix(theme.accent, theme.background, .82)));
-				root.style.setProperty("--warning-foreground", hsl(theme.accent));
+				root.style.setProperty("--warning", hsl(mix(theme.warning, theme.background, .82)));
+				root.style.setProperty("--warning-foreground", hsl(theme.warning));
 				root.style.setProperty("--error", hsl(mix(theme.error, theme.background, .84)));
 				root.style.setProperty("--error-foreground", hsl(theme.error));
 				root.style.setProperty("--destructive", hsl(theme.error));
@@ -800,11 +807,18 @@
 			const ensureFillFrame = () => {
 				if (!fillFrame) fillFrame = requestAnimationFrame(renderFill);
 			};
+			const hideFillImmediate = () => {
+				fillTarget = null;
+				fillVisible = fillCollapsing = false;
+				if (fillFrame) {
+					cancelAnimationFrame(fillFrame);
+					fillFrame = 0;
+				}
+				linkFill.hidden = true;
+			};
 			function setFillTarget(link) {
 				if (cursor.hasAttribute("data-loading")) {
-					fillTarget = null;
-					fillVisible = fillCollapsing = false;
-					linkFill.hidden = true;
+					hideFillImmediate();
 					return;
 				}
 				if (!link) {
@@ -843,8 +857,9 @@
 				"submit"
 			].includes(target.type);
 			const wantsText = (target) => {
-				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[data-grab-cursor]")) return false;
+				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[data-grab-cursor],[data-cursor-round]")) return false;
 				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]")) return true;
+				if (target.closest("[data-text-cursor-zone]")) return true;
 				const style = getComputedStyle(target);
 				if (style.userSelect === "none") return false;
 				if (style.cursor === "text" || style.cursor === "vertical-text") return true;
@@ -1122,6 +1137,7 @@
 			document.addEventListener("contextmenu", (event) => {
 				if (event.shiftKey) return;
 				event.preventDefault();
+				document.querySelector(".samey-cursor-link-fill")?.setAttribute("hidden", "");
 				target = event.target;
 				menu.replaceChildren();
 				const link = target instanceof Element ? target.closest("a[href]") : null;

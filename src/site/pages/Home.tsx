@@ -38,7 +38,7 @@ function WritingSplit() {
         <span class="home-writing-chevron" aria-hidden="true">›</span>
       </SmartLink>)}
     </nav>
-    <article class="home-writing-detail">
+    <article class="home-writing-detail" data-text-cursor-zone>
       <div>
         <div class="home-writing-kicker">{writingPreview.kicker}</div>
         <time>{writingPreview.date}</time>

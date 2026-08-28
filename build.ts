@@ -199,6 +199,7 @@ ${keybrViewSwitch}`;
   must(wordleBrand.includes("colors:readonly string[]") && wordleBrand.includes("props.colors[index % props.colors.length]"),
     "architecture: Wordle text rendering must be centralized and accept per-cell colors");
   must(wordleStyle.includes("--wordle-key-neutral: color-mix(in srgb,var(--site-fg") &&
+    wordleStyle.includes("var(--site-error") && wordleStyle.includes("var(--site-warning-color") &&
     wordleStyle.includes("var(--site-fast-color") && wordleStyle.includes("var(--site-effort-color") &&
     wordleStyle.includes(".stats-page") && wordleStyle.includes("var(--color-background)") &&
     wordleStyle.includes(".wordle-key-pressed{filter:none") && !wordleStyle.includes("filter:invert(1)"),
@@ -277,9 +278,22 @@ ${keybrViewSwitch}`;
     sharedSite.includes("window.open(targetUrl.href, '_blank', 'noopener,noreferrer')"),
     "ux: search must distinguish external destinations for click and keyboard activation");
   const sharedTheme = await readFile(join(ROOT, "src/shared/theme.ts"), "utf8");
+  const appearanceConfig = await readFile(join(ROOT, "src/static/shared/appearance.json"), "utf8");
+  must(appearanceConfig.includes('"warning":"#d4a72c"') && appearanceConfig.includes('"warning":"#facc15"') &&
+    sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warning)') &&
+    wordleBrand.includes("var(--site-warning-color") && wordleBrand.includes("var(--site-error") &&
+    wordleStyle.includes(".wordle-state-r { background: color-mix(in srgb, var(--site-error") &&
+    wordleStyle.includes(".wordle-state-y { background: color-mix(in srgb, var(--site-warning-color"),
+    "ux: built-in themes and Wordle states must retain explicit red/yellow/green/blue semantics");
   must(sharedTheme.includes("setDragImage(dragPreview, Math.round(dragPreviewW / 2), Math.round(dragPreviewH / 2))") &&
+    sharedTheme.includes("target.closest('[data-text-cursor-zone]')") && sharedTheme.includes("samey-cursor-link-fill") &&
     !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
-    "ux: text/link dragging must stay native and center the custom drag image on the pointer");
+    "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
+  const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
+  must(sharedCss.includes(".samey-context-menu{position:fixed;z-index:2147483646") &&
+    sharedCss.includes(".samey-cursor-link-fill{position:fixed") && sharedCss.includes("z-index:2147483645") &&
+    blogSource.includes("<main data-text-cursor-zone>") && homeSource.includes('home-writing-detail" data-text-cursor-zone'),
+    "ux: prose cursor zones must cover Writing surfaces and context menus must layer above link inversion but below the cursor");
 }
 
 

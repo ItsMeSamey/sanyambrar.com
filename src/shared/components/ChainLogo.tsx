@@ -82,7 +82,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
     text: resolveColor('var(--site-fg, #121213)', '#121213'),
     grid: resolveColor('var(--site-line, #d3d6da)', '#d3d6da'),
     red: resolveColor('var(--site-error, #cf6469)', '#cf6469'),
-    blue: resolveColor('var(--site-accent, #6e86c8)', '#6e86c8'),
+    blue: resolveColor('var(--site-effort-color, #2563eb)', '#2563eb'),
   });
   let palette = readPalette();
 

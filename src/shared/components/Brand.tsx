@@ -7,8 +7,8 @@ export function HomeBrand(props:{class?:string;href?:string}) {
   </SmartLink>;
 }
 
-export const WORDLE_WORDMARK_COLORS = ['var(--site-fast-color, #60d788)', 'var(--site-accent, #787c7e)', 'var(--site-muted, #787c7e)', 'var(--site-fast-color, #60d788)', 'var(--site-accent, #787c7e)', 'var(--site-fast-color, #60d788)'] as const;
-export const WORDLE_BACK_COLORS = ['var(--site-error, #cf6469)', ...WORDLE_WORDMARK_COLORS] as const;
+export const WORDLE_WORDMARK_COLORS = ['var(--site-fast-color, #16a34a)', 'var(--site-warning-color, #d4a72c)', 'var(--site-error, #dc2626)', 'var(--site-fast-color, #16a34a)', 'var(--site-effort-color, #2563eb)', 'var(--site-warning-color, #d4a72c)'] as const;
+export const WORDLE_BACK_COLORS = ['var(--site-error, #dc2626)', ...WORDLE_WORDMARK_COLORS] as const;
 
 /** Render arbitrary text using Wordle-style cells. Callers may provide one color per cell. */
 export function WordleMark(props:{text:string;colors:readonly string[];class?:string;ariaLabel?:string}) {

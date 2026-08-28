@@ -70,6 +70,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
       accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
       error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+      warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
       slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
       fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
       effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
@@ -79,6 +80,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
         accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
         error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
+        warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
         slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
         fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
         effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
@@ -172,6 +174,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     root.style.setProperty("--site-soft", soft);
     root.style.setProperty("--site-accent", theme.accent);
     root.style.setProperty("--site-error", theme.error);
+    root.style.setProperty("--site-warning-color", theme.warning);
     root.style.setProperty("--site-slow-color", theme.slow);
     root.style.setProperty("--site-fast-color", theme.fast);
     root.style.setProperty("--site-effort-color", theme.effort);
@@ -206,8 +209,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       root.style.setProperty("--info-foreground", hsl(theme.effort));
       root.style.setProperty("--success", hsl(mix(theme.fast, theme.background, .82)));
       root.style.setProperty("--success-foreground", hsl(theme.fast));
-      root.style.setProperty("--warning", hsl(mix(theme.accent, theme.background, .82)));
-      root.style.setProperty("--warning-foreground", hsl(theme.accent));
+      root.style.setProperty("--warning", hsl(mix(theme.warning, theme.background, .82)));
+      root.style.setProperty("--warning-foreground", hsl(theme.warning));
       root.style.setProperty("--error", hsl(mix(theme.error, theme.background, .84)));
       root.style.setProperty("--error-foreground", hsl(theme.error));
       root.style.setProperty("--destructive", hsl(theme.error));
@@ -501,8 +504,14 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       } else if (!done) fillFrame = requestAnimationFrame(renderFill);
     };
     const ensureFillFrame = () => { if (!fillFrame) fillFrame = requestAnimationFrame(renderFill); };
+    const hideFillImmediate = () => {
+      fillTarget = null;
+      fillVisible = fillCollapsing = false;
+      if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
+      linkFill.hidden = true;
+    };
     function setFillTarget(link) {
-      if (cursor.hasAttribute("data-loading")) { fillTarget = null; fillVisible = fillCollapsing = false; linkFill.hidden = true; return; }
+      if (cursor.hasAttribute("data-loading")) { hideFillImmediate(); return; }
       if (!link) {
         fillTarget = null;
         if (!fillVisible) return;
@@ -522,8 +531,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const textInput = (target) => target instanceof HTMLTextAreaElement
       || target instanceof HTMLInputElement && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(target.type);
     const wantsText = (target) => {
-      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[data-grab-cursor]')) return false;
+      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[data-grab-cursor],[data-cursor-round]')) return false;
       if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
+      // A text-cursor zone makes prose-like regions behave as one selectable
+      // surface. Interactive descendants above override it and keep their
+      // normal round/link cursor semantics.
+      if (target.closest('[data-text-cursor-zone]')) return true;
       const style = getComputedStyle(target);
       if (style.userSelect === "none") return false;
       if (style.cursor === "text" || style.cursor === "vertical-text") return true;
@@ -731,7 +744,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
     document.addEventListener("contextmenu", (event) => {
       if (event.shiftKey) return;
-      event.preventDefault(); target = event.target; menu.replaceChildren();
+      event.preventDefault();
+      // The link-inversion layer deliberately sits below the menu. Hide the
+      // rendered layer immediately so this translucent menu never inherits
+      // the blend effect; cursor pointer movement will reconcile its state.
+      document.querySelector(".samey-cursor-link-fill")?.setAttribute("hidden", "");
+      target = event.target; menu.replaceChildren();
       const link = target instanceof Element ? target.closest("a[href]") : null;
       const image = target instanceof Element ? target.closest("img[src]") : null;
       const selection = selectedText();

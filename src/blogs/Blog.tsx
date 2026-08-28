@@ -6,7 +6,7 @@ import { posts } from '../site/data.ts';
 export function Blog() {
   return <>
     <TopBar/>
-    <main>
+    <main data-text-cursor-zone>
       <section class="page-intro"><h1>Writing</h1><p>Technical notes from things I actually debugged or built.</p></section>
       <Section id="posts-title" title="Posts"><CompactList entries={posts}/></Section>
     </main>
