@@ -472,7 +472,7 @@ export function mountChain() {
     else if (e.key === 'ArrowRight') next = row * cols + Math.min(cols - 1, col + 1);
     else if (e.key === 'ArrowUp') next = Math.max(0, row - 1) * cols + col;
     else if (e.key === 'ArrowDown') next = Math.min(rows - 1, row + 1) * cols + col;
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void humanMove(focusCell); return; }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) void humanMove(focusCell); return; }
     else if (e.key === 'Home') next = row * cols;
     else if (e.key === 'End') next = row * cols + cols - 1;
     else return;
