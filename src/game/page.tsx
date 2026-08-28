@@ -12,7 +12,7 @@ import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './word
 import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
-import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
+import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
 import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
@@ -425,7 +425,12 @@ export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftPr
 }
 
 function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: {date: () => string, setDate: (value: string) => void, startDaily: () => void, startRandom: () => void, startAdvanced: () => void}) {
-  const preview = () => getDailyChallenge(date())
+  const validDate = () => isValidDateKey(date()) && date() <= localDateKey()
+  const preview = () => validDate() ? getDailyChallenge(date()) : undefined
+  const previewText = () => {
+    const challenge = preview()
+    return challenge ? `${challenge.wordLength} letters · ${challenge.maxTries} guesses · ${challenge.disabledLetters} disabled` : 'Choose a valid date.'
+  }
   return <main class='wordle-opening'>
     <div class='wordle-opening-inner'>
       <h1>Pick a game.</h1>
@@ -433,8 +438,8 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
         <section class='wordle-mode-card wordle-mode-card-primary'>
           <h2>Daily</h2><p>New words, daily.</p>
           <label class='wordle-date-control'><span>Date</span><input type='date' value={date()} max={localDateKey()} onInput={e => setDate(e.currentTarget.value)} /></label>
-          <div class='wordle-mode-spec'>{preview().wordLength} letters · {preview().maxTries} guesses · {preview().disabledLetters} disabled</div>
-          <button class='wordle-mode-action' onClick={startDaily}>Play</button>
+          <div class='wordle-mode-spec'>{previewText()}</div>
+          <button class='wordle-mode-action' disabled={!validDate()} onClick={startDaily}>Play</button>
         </section>
         <section class='wordle-mode-card'>
           <h2>Random</h2><p>You never know what to expect.</p>
@@ -521,7 +526,11 @@ export default function Wordle() {
   )
   const applyConfig = (config: ChallengeConfig) => swapWordleView(() => commitConfig(config), 'forward')
 
-  const startDaily = () => void applyConfig(getDailyChallenge(dailyDate()))
+  const startDaily = () => {
+    const date = dailyDate()
+    if (!isValidDateKey(date) || date > localDateKey()) return
+    void applyConfig(getDailyChallenge(date))
+  }
   const startRandom = () => void applyConfig(createRandomChallenge())
   const startAdvanced = () => {
     let saved: SettingsHardProps = {mode: 'advanced', wordLength: 6, maxTries: 6, disabledLetters: 0, allowAny: false}

@@ -174,7 +174,7 @@ function parseHex(value: string | undefined): number | undefined {
   return Number.isSafeInteger(parsed) ? parsed : undefined
 }
 
-function validDateKey(value: string | undefined): value is string {
+export function isValidDateKey(value: string | undefined): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const [year, month, day] = value.split('-').map(Number)
   const date = new Date(Date.UTC(year, month - 1, day))
@@ -205,13 +205,13 @@ export function parseChallenge(raw: string | null): UrlChallenge | undefined {
     // Legacy daily links omitted the generator version. They are permanently
     // interpreted as v1 so links copied before versioning never change meaning.
     if (parts.length === 3) {
-      if (!validDateKey(a)) return undefined
+      if (!isValidDateKey(a)) return undefined
       return {hard: getDailyChallenge(a, LEGACY_DAILY_CHALLENGE_VERSION), fastInvalidate}
     }
     if (parts.length !== 4) return undefined
     const version = parseHex(a)
     const date = b
-    if (version === undefined || !isDailyChallengeVersion(version) || !validDateKey(date)) return undefined
+    if (version === undefined || !isDailyChallengeVersion(version) || !isValidDateKey(date)) return undefined
     return {hard: getDailyChallenge(date, version), fastInvalidate}
   }
   if ((mode !== 'r' && mode !== 'a') || parts.length !== 6) return undefined
