@@ -326,6 +326,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.documentElement.classList.add("samey-custom-cursor");
     document.body.append(linkFill, cursor);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
+    // The reusable loading SVG carries SMIL for standalone boot screens. The
+    // cursor advances the same path explicitly, so disable the duplicate SVG
+    // animation here instead of running both animation engines while loading.
+    loadingPath?.querySelector("animate")?.remove();
     let loadingRaf = 0, loadingStarted = 0;
     let refreshCursorMode = () => {};
     const animateLoadingPaths = (time) => {
@@ -479,7 +483,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         }
       }
       place(event);
-      setMode(elementAt(event));
+      // pointermove/pointerover are already browser hit-tested. Avoid a second
+      // elementFromPoint() query on the hottest cursor path; captured drags are
+      // covered by the explicit pressed/drag state above.
+      setMode(event.target instanceof Element ? event.target : elementAt(event));
     };
 
 
