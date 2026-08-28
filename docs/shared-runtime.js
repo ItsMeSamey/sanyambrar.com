@@ -712,7 +712,7 @@
 			let dragPreviewW = 0, dragPreviewH = 0;
 			const placeDragPreview = (x, y) => {
 				if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
-				const gap = 5;
+				const gap = 10;
 				const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x + gap));
 				const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y + gap));
 				dragPreview.style.transform = `translate3d(${px}px,${py}px,0)`;

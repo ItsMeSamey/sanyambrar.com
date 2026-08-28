@@ -1,6 +1,5 @@
-import { BackLink, TopBar } from '../../shared/components/TopBar.tsx';
-import { SmartLink } from '../../shared/components/NavLink.tsx';
-import { ChainMark } from '../../shared/components/Brand.tsx';
+import { TopBar } from '../../shared/components/TopBar.tsx';
+import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
 import { SettingsIcon } from '../../site/components/icons.tsx';
 
@@ -11,14 +10,15 @@ function Slider(props:{id:string;label:string;min:number;max:number}) {
   </label>;
 }
 
-const ChainIdentity = () => <SmartLink class="chain-home-link" href="/chain/" aria-label="Chain Reaction"><ChainMark class="chain-header-logo"/></SmartLink>;
+const ChainGameBack = () => <button id="chain-menu-button" class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>;
 
 export function ChainPage() {
   return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain()}>
     <div class="chain-shell">
       <section id="chain-opening" class="chain-opening chain-view">
-        <TopBar start={<ChainIdentity/>}/>
+        <TopBar/>
         <div class="chain-opening-inner">
+          <ChainLiveMark class="chain-opening-logo"/>
           <h1>Pick a board.</h1>
           <div class="chain-mode-grid">
             <article id="chain-resume-card" class="chain-mode-card chain-mode-card-primary">
@@ -48,8 +48,7 @@ export function ChainPage() {
       </section>
 
       <section id="chain-game" class="chain-view" hidden>
-        <TopBar start={<ChainIdentity/>} contextClass="chain-topbar-context" context={<>
-          <BackLink id="chain-menu-button" class="chain-menu-button">Game menu</BackLink>
+        <TopBar start={<ChainGameBack/>} contextClass="chain-topbar-context" context={<>
           <div id="chain-turn" class="chain-turn" aria-hidden="true">
             <span class="chain-turn-item"><span>YOU</span><span id="chain-you-swatch" class="chain-turn-swatch"/></span>
             <span class="chain-turn-item"><span>TURN</span><span id="chain-active-swatch" class="chain-turn-swatch"/></span>
