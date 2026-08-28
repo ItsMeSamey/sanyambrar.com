@@ -46,7 +46,7 @@ function useProgress(lesson: Lesson, results: readonly Result[]) {
   const [loading, setLoading] = useState({ total: 0, current: 0 });
   const seed = useMemo(
     () => ({ progress: new Progress(settings, lesson), results: lesson.filter(results) }),
-    [settings, lesson],
+    [settings, lesson, results],
   );
   const { progress } = seed;
   useEffect(() => {
