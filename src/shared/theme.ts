@@ -437,7 +437,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const renderFill = () => {
       fillFrame = 0;
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      const posEase = reduced ? 1 : .38, sizeEase = reduced ? 1 : .25;
+      const posEase = reduced ? 1 : fillCollapsing ? .62 : .38, sizeEase = reduced ? 1 : fillCollapsing ? .58 : .25;
       fillX += (wantedFillX - fillX) * posEase;
       fillY += (wantedFillY - fillY) * posEase;
       fillW += (wantedFillW - fillW) * sizeEase;
@@ -445,7 +445,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       linkFill.style.width = `${fillW}px`;
       linkFill.style.height = `${fillH}px`;
       linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0)`;
-      if (fillCollapsing) { wantedFillX = pendingX; wantedFillY = pendingY; }
       const done = Math.abs(fillX - wantedFillX) < .5 && Math.abs(fillY - wantedFillY) < .5
         && Math.abs(fillW - wantedFillW) < .5 && Math.abs(fillH - wantedFillH) < .5;
       if (fillCollapsing && done) {
