@@ -17,6 +17,7 @@ const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
 const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
+const GENERATED_KEYBR = join(ROOT, ".build", "keybr");
 const ALL = new Set(["solid", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
@@ -125,9 +126,15 @@ async function verifySourceArchitecture() {
   }
 
   const viteConfigs = await Promise.all(
-    ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts"]
+    ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts", "keybr/vite.config.ts"]
       .map(async name => [name, await readFile(join(ROOT, name), "utf8")] as const),
   );
+  const keybrPackage = JSON.parse(await readFile(join(ROOT, "keybr/package.json"), "utf8"));
+  const keybrDeps = { ...(keybrPackage.dependencies || {}), ...(keybrPackage.devDependencies || {}) };
+  must(!("react" in keybrDeps) && !("react-dom" in keybrDeps) && !("react-intl" in keybrDeps), "architecture: Keybr must not depend on React");
+  must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
+  const keybrEntry = await readFile(join(ROOT, "keybr/src/main.tsx"), "utf8");
+  must(keybrEntry.includes('from "solid-js"') && keybrEntry.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
   const wordleVite = viteConfigs[0][1];
   must(!wordleVite.includes("closeBundle") && wordleVite.includes(".build/wordle"),
     "architecture: Wordle Vite build must stage output privately; build.ts owns publication");
@@ -255,12 +262,16 @@ async function buildSolid() {
 
 
 async function buildKeybr() {
-  const dir = join(ROOT, "keybr");
-  await ensureDeps(dir);
-  // Run Webpack through the local Bun runner.
-  await run(dir, process.execPath, ["./scripts/build-webpack.mjs"], { NODE_ENV: "production" });
-  must(existsSync(join(DOCS, "keybr.html")), "Webpack did not emit docs/keybr.html");
-  log("keybr -> docs/keybr.html");
+  await ensureDeps(ROOT);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "keybr/vite.config.ts"]);
+  const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
+  must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
+  let source = await readFile(html[0], "utf8");
+  const shared = '<link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
+  source = source.replace("</head>", `${shared}</head>`);
+  await mkdir(DOCS, { recursive: true });
+  await writeFile(join(DOCS, "keybr.html"), source);
+  log("solid keybr -> docs/keybr.html");
 }
 
 async function deployAssets() {

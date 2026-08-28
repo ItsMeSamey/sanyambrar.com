@@ -1,1 +1,1 @@
-export * from "./PhoneticModelLoader.tsx";
+export { loaderImpl } from "./loader.ts";

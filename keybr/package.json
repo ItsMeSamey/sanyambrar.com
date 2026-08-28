@@ -6,36 +6,9 @@
   "homepage": ".",
   "license": "AGPL-3.0-only",
   "author": "Aliaksandr Radzivanovich <aradzivanovich@gmail.com>",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "clean": "rm -rf dist node_modules",
-    "build": "NODE_ENV=production bun ./scripts/build-webpack.mjs",
-    "build:dev": "NODE_ENV=development bun ./scripts/build-webpack.mjs",
-    "dev": "NODE_ENV=development bun ./scripts/build-webpack.mjs --watch"
+    "build": "node ../node_modules/vite/bin/vite.js build --config vite.config.ts",
+    "dev": "node ../node_modules/vite/bin/vite.js --config vite.config.ts"
   },
-  "dependencies": {
-    "@mdi/js": "^7.4.47",
-    "clsx": "^2.1.1",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-intl": "^10.1.23"
-  },
-  "devDependencies": {
-    "css-loader": "^7.1.4",
-    "css-minimizer-webpack-plugin": "^8.0.0",
-    "less": "^4.9.0",
-    "less-loader": "^13.0.0",
-    "mini-css-extract-plugin": "^2.10.2",
-    "terser-webpack-plugin": "^5.6.1",
-    "ts-loader": "^9.6.2",
-    "typescript": "^6.0.3",
-    "webpack": "^5.110.0"
-  },
-  "description": "A local-only, frontend-only adaptive typing trainer derived from keybr.com.",
-  "packageManager": "bun@1.2.20",
-  "engines": {
-    "bun": ">=1.2.20"
-  }
+  "description": "A local-only SolidJS adaptive typing trainer derived from keybr.com."
 }

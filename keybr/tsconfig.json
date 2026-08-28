@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@keybr/code": ["packages/keybr-code/lib/index.ts"],
+      "@keybr/content": ["packages/keybr-content/lib/index.ts"],
+      "@keybr/content-books": ["packages/keybr-content-books/lib/index.ts"],
+      "@keybr/content-words": ["packages/keybr-content-words/lib/index.ts"],
+      "@keybr/keyboard": ["packages/keybr-keyboard/lib/index.ts"],
+      "@keybr/lang": ["packages/keybr-lang/lib/index.ts"],
+      "@keybr/lesson": ["packages/keybr-lesson/lib/index.ts"],
+      "@keybr/math": ["packages/keybr-math/lib/index.ts"],
+      "@keybr/phonetic-model": ["packages/keybr-phonetic-model/lib/index.ts"],
+      "@keybr/phonetic-model/*": ["packages/keybr-phonetic-model/*"],
+      "@keybr/phonetic-model-loader": ["packages/keybr-phonetic-model-loader/lib/index.ts"],
+      "@keybr/rand": ["packages/keybr-rand/lib/index.ts"],
+      "@keybr/result": ["packages/keybr-result/lib/index.ts"],
+      "@keybr/result-io": ["packages/keybr-result-io/lib/index.ts"],
+      "@keybr/result-loader": ["packages/keybr-result-loader/lib/index.ts"],
+      "@keybr/settings": ["packages/keybr-settings/lib/index.ts"],
+      "@keybr/textinput": ["packages/keybr-textinput/lib/index.ts"],
+      "@keybr/unicode": ["packages/keybr-unicode/lib/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

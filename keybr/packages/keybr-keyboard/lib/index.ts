@@ -1,4 +1,3 @@
-export * from "./context.tsx";
 export * from "./filter.ts";
 export * from "./geometry.ts";
 export * from "./keyboard.ts";
@@ -12,4 +11,3 @@ export * from "./load.ts";
 export * from "./ngram.ts";
 export * from "./settings.ts";
 export * from "./types.ts";
-export * from "./use-formatted-names.ts";
