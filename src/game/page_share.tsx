@@ -1,7 +1,7 @@
 'use strict'
 
 import ShareIcon from 'lucide-solid/icons/share'
-import { Accessor, createSignal, JSX } from 'solid-js'
+import { Accessor, createSignal, JSX, onCleanup } from 'solid-js'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog'
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
@@ -18,6 +18,8 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
   const hard: SettingsHardProps = createMutable(unwrap(props.hard))
 
   let idx: number = -1
+  let copyResetTimer: ReturnType<typeof setTimeout> | undefined
+  onCleanup(() => clearTimeout(copyResetTimer))
 
   return <Dialog open={open()} onOpenChange={setOpen}>
     <Tooltip>
@@ -63,7 +65,8 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
                 } finally { input.remove() }
               }
               setCopyButtonText('Copied!')
-              setTimeout(() => setCopyButtonText('Copy'), 1000)
+              clearTimeout(copyResetTimer)
+              copyResetTimer = setTimeout(() => setCopyButtonText('Copy'), 1000)
             } catch (error) {
               showError(error instanceof Error ? error : new Error('Could not copy share URL'))
             }

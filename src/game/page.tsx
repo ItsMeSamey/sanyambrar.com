@@ -26,6 +26,12 @@ const ABCD = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ⏎⌫'
 const defaultKeyboardState = {} as KeyboardState
 for (const key of ABCD) defaultKeyboardState[key as Keys] = {state: undefined, pressed: false}
 
+function recordDone(entry: WordLocalStorageState, hard: SettingsHardProps, kind: KindEnum) {
+  void setDone(entry, hard, kind).catch(error =>
+    showError(error instanceof Error ? error : new Error('Could not save Wordle statistics'))
+  )
+}
+
 class Keyboard {
   constructor(public state: KeyboardState, public disabled: string, public suggested: string) {}
 
@@ -193,12 +199,12 @@ class GameState {
     if (response.split('').every(s => s === 'g')) {
       this.stateStore.current_value!.done = KindEnum.Correct
       this.persist()
-      void setDone(this.stateStore.current_value!, this.hard, KindEnum.Correct)
+      recordDone(this.stateStore.current_value!, this.hard, KindEnum.Correct)
       this.state.showPopOver = true
     } else if (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries) {
       this.stateStore.current_value!.done = KindEnum.Failed
       this.persist()
-      void setDone(this.stateStore.current_value!, this.hard, KindEnum.Failed)
+      recordDone(this.stateStore.current_value!, this.hard, KindEnum.Failed)
       this.state.showPopOver = true
     } else {
       this.history.push(['', ''])
@@ -271,7 +277,7 @@ export class WordleModel {
     createEffect(() => {
       if (this.state.soft.reveal && !this.state.isFinished()) batch(() => {
         this.state.stateStore.current_value!.done = KindEnum.Revealed
-        void setDone(this.state.stateStore.current_value!, this.state.hard, KindEnum.Revealed)
+        recordDone(this.state.stateStore.current_value!, this.state.hard, KindEnum.Revealed)
         const last = this.state.history.at(-1)!
         last[0] = this.state.stateStore.current_value!.word
         last[1] = 'b'.repeat(this.state.hard.wordLength)
