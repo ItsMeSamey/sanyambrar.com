@@ -154,6 +154,7 @@ export function App() {
       return;
     }
     if (sameDocumentHash(url)) {
+      setLoading(false);
       if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
       document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
       return;
