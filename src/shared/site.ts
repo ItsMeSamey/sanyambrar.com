@@ -37,7 +37,9 @@ import { searchIndex } from '../site/data.ts';
     document.body.append(box);
     input = box.querySelector('input'); results = box.querySelector('.site-search-results');
     input.addEventListener('input', () => { active = 0; render(); });
-    box.addEventListener('click', e => { if (e.target.closest('[data-close-search]')) close(); });
+    box.addEventListener('click', e => {
+      if (e.target.closest('[data-close-search],a.search-result')) close();
+    });
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1); render(); }
       if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.assign(href); }
@@ -45,6 +47,7 @@ import { searchIndex } from '../site/data.ts';
   };
   const open = () => { ensure(); box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus()); };
   const close = () => { if (box) box.hidden = true; };
+  addEventListener('samey-pageleave', close);
   addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); box && !box.hidden ? close() : open(); }
     else if (e.key === 'Escape') close();
