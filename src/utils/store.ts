@@ -1,6 +1,6 @@
 'use strict'
 
-const storageChange = () => window.dispatchEvent(new Event('wordle:storage-change'))
+const storageChange = (key: string) => window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key}}))
 
 export class LocalstorageStore<T> {
   readonly key: string
@@ -48,7 +48,7 @@ export class LocalstorageStore<T> {
         else localStorage.setItem(this.key, serialized)
       }
     } catch {}
-    storageChange()
+    storageChange(this.key)
   }
 
   set(value: T | undefined) {

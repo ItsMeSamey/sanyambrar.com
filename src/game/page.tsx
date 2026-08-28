@@ -400,7 +400,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       if (legacy) {
         localStorage.setItem(storageKey, legacy)
         localStorage.removeItem(legacyKey)
-        window.dispatchEvent(new Event('wordle:storage-change'))
+        window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key: storageKey}}))
       }
     }
   } catch {}

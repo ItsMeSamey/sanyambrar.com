@@ -44,31 +44,63 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
   }
 }
 
+const sortGames = (games: ActiveGame[]) => games.sort((a, b) => a.config.mode.localeCompare(b.config.mode) || a.config.wordLength - b.config.wordLength || a.config.maxTries - b.config.maxTries)
+
+function readActiveGame(key: string): ActiveGame | undefined {
+  if (!key.startsWith('game.wordle.') || key.startsWith('game.wordle.settings.')) return
+  try {
+    const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
+    if (!Array.isArray(value?.history) || value.history.length <= 1) return
+    const config = readConfig(key, value)
+    if (!isChallengeConfig(config) || value.done !== undefined) return
+    return {key, config, history: value.history.slice(0, -1)}
+  } catch {}
+}
+
+function sameGame(a: ActiveGame, b: ActiveGame) {
+  if (a.config.mode !== b.config.mode || a.config.wordLength !== b.config.wordLength || a.config.maxTries !== b.config.maxTries ||
+    a.config.allowAny !== b.config.allowAny || a.config.disabledLetters !== b.config.disabledLetters ||
+    a.config.dailyDate !== b.config.dailyDate || a.config.dailyVersion !== b.config.dailyVersion ||
+    a.config.wordIndex !== b.config.wordIndex || a.history.length !== b.history.length) return false
+  return a.history.every((row, index) => row[0] === b.history[index][0] && row[1] === b.history[index][1])
+}
+
 export function getActiveGames(): ActiveGame[] {
   const games: ActiveGame[] = []
   try {
     for (let n = 0; n < localStorage.length; n++) {
       const key = localStorage.key(n)
-      if (!key?.startsWith('game.wordle.')) continue
-      try {
-        const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
-        if (!Array.isArray(value?.history) || value.history.length <= 1) continue
-        const config = readConfig(key, value)
-        if (!isChallengeConfig(config) || value.done !== undefined) continue
-        games.push({key, config, history: value.history.slice(0, -1)})
-      } catch {}
+      if (!key) continue
+      const game = readActiveGame(key)
+      if (game) games.push(game)
     }
   } catch {}
-  return games.sort((a, b) => a.config.mode.localeCompare(b.config.mode) || a.config.wordLength - b.config.wordLength || a.config.maxTries - b.config.maxTries)
+  return sortGames(games)
 }
 
 export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect?: (config: SettingsHardProps) => void}): JSX.Element {
   const [open, setOpen] = createSignal(false)
   const [games, setGames] = createSignal(getActiveGames())
   const refresh = () => setGames(getActiveGames())
+  const refreshKey = (key: string) => {
+    if (!key.startsWith('game.wordle.') || key.startsWith('game.wordle.settings.')) return
+    const game = readActiveGame(key)
+    setGames(current => {
+      const index = current.findIndex(item => item.key === key)
+      if (!game) return index < 0 ? current : current.toSpliced(index, 1)
+      if (index >= 0 && sameGame(current[index], game)) return current
+      const next = index < 0 ? [...current, game] : current.with(index, game)
+      return sortGames(next)
+    })
+  }
+  const onStorage = (event: StorageEvent) => event.key ? refreshKey(event.key) : refresh()
+  const onWordleStorage = (event: Event) => {
+    const key = (event as CustomEvent<{key?: string}>).detail?.key
+    if (key) refreshKey(key); else refresh()
+  }
 
-  onMount(() => { window.addEventListener('storage', refresh); window.addEventListener('wordle:storage-change', refresh) })
-  onCleanup(() => { window.removeEventListener('storage', refresh); window.removeEventListener('wordle:storage-change', refresh) })
+  onMount(() => { window.addEventListener('storage', onStorage); window.addEventListener('wordle:storage-change', onWordleStorage) })
+  onCleanup(() => { window.removeEventListener('storage', onStorage); window.removeEventListener('wordle:storage-change', onWordleStorage) })
 
   const current = (game: ActiveGame) => {
     const c = game.config
