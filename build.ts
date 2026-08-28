@@ -11,7 +11,6 @@ const runFile = promisify(execFile);
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "static");
 const DOCS = join(ROOT, "docs");
-const GENERATED_LESS = join(ROOT, "keybr/packages/keybr-themes/lib/themes/site-presets.generated.less");
 const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
 const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
@@ -94,9 +93,6 @@ async function generateAppearance() {
   }
   for (const [id, font] of Object.entries<any>(config.fonts)) must(font.label && font.stack, `appearance: incomplete font ${id}`);
 
-  const lines = ["// Generated from static/shared/appearance.json. Do not edit."];
-  for (const [id, color] of Object.entries<any>(config.colors)) for (const key of ["background", "text", "accent", "error", "slow", "fast", "effort"]) lines.push(`@samey-${id}-${key}: ${color[key]};`);
-  await writeFile(GENERATED_LESS, `${lines.join("\n")}\n`);
 }
 
 async function walk(root: string, accept: (path: string, name: string) => boolean) {
@@ -150,7 +146,7 @@ async function verifySourceArchitecture() {
     "architecture: Wordle views must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/site/engines/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
     "architecture: Chain views must use the shared transition runtime");
-  must((await readFile(join(ROOT, "keybr/packages/keybr-widget/lib/components/view/ViewSwitch.tsx"), "utf8")).includes("SameyAnimateLocalSwap"),
+  must(keybrEntry.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
 }
 
@@ -203,7 +199,6 @@ async function cleanupBuildArtifacts() {
     rm(join(ROOT, ".build"), { recursive: true, force: true }),
     rm(join(ROOT, "dist"), { recursive: true, force: true }),
     rm(join(ROOT, "keybr/dist"), { recursive: true, force: true }),
-    rm(GENERATED_LESS, { force: true }),
     ...transientDocs.map((name) => rm(join(DOCS, name), { recursive: true, force: true })),
   ]);
   for (const file of await walk(DOCS, (_path, name) => /^chunk-.*\.js$/.test(name))) {
