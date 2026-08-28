@@ -37,8 +37,10 @@ function Loader({
   readonly children: (result: PhoneticModel) => ReactNode;
   readonly fallback?: ReactNode;
 }): ReactNode {
-  const result = useLoader(language);
-  if (result == null) {
+  const [result, error] = useLoader(language);
+  if (error != null) {
+    return <p role="alert">Could not load language model.</p>;
+  } else if (result == null) {
     return fallback;
   } else {
     return (
@@ -49,24 +51,29 @@ function Loader({
   }
 }
 
-function useLoader(language: Language): PhoneticModel | null {
+function useLoader(language: Language) {
   const [result, setResult] = useState<PhoneticModel | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     let didCancel = false;
+    setResult(null);
+    setError(null);
 
-    PhoneticModelLoader.loader(language)
-      .then((result) => {
-        if (!didCancel) {
-          setResult(result);
-        }
-      })
-      .catch(catchError);
+    PhoneticModelLoader.loader(language).then(
+      (result) => {
+        if (!didCancel) setResult(result);
+      },
+      (error) => {
+        catchError(error);
+        if (!didCancel) setError(error);
+      },
+    );
 
     return () => {
       didCancel = true;
     };
   }, [language]);
 
-  return result;
+  return [result, error] as const;
 }

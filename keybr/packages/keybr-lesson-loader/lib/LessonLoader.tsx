@@ -49,21 +49,25 @@ function Loader({
   readonly children: (result: Lesson) => ReactNode;
   readonly fallback?: ReactNode;
 }): ReactNode {
-  const result = useLoader(model);
-  if (result == null) {
+  const [result, error] = useLoader(model);
+  if (error != null) {
+    return <p role="alert">Could not load lesson data.</p>;
+  } else if (result == null) {
     return fallback;
   } else {
     return children(result);
   }
 }
 
-function useLoader(model: PhoneticModel): Lesson | null {
+function useLoader(model: PhoneticModel) {
   const { settings } = useSettings();
   const keyboard = useKeyboard();
   const [result, setResult] = useState<Lesson | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     setResult(null);
+    setError(null);
     let didCancel = false;
 
     const load = async (): Promise<void> => {
@@ -117,12 +121,15 @@ function useLoader(model: PhoneticModel): Lesson | null {
       }
     };
 
-    load().catch(catchError);
+    load().catch((error) => {
+      catchError(error);
+      if (!didCancel) setError(error);
+    });
 
     return () => {
       didCancel = true;
     };
   }, [settings, keyboard, model]);
 
-  return result;
+  return [result, error] as const;
 }
