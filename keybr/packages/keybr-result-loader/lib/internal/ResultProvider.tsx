@@ -18,7 +18,7 @@ export function ResultProvider({
       value={{
         results,
         appendResults: (newResults) => {
-          setResults([...results, ...newResults]);
+          setResults((results) => [...results, ...newResults]);
           storage.append(newResults).catch(catchError);
         },
         clearResults: () => {
