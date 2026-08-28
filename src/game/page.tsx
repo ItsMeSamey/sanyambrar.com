@@ -12,7 +12,7 @@ import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './word
 import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
-import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isChallengeConfig, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
+import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
 import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
@@ -412,11 +412,24 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
 }
 
 export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
-  const today = localDateKey()
-  const daily = getDailyChallenge(today)
+  const daily = getDailyChallenge(localDateKey())
+  const hardDefault: SettingsHardProps = {
+    mode: 'daily', wordLength: daily.wordLength, maxTries: daily.maxTries,
+    disabledLetters: daily.disabledLetters, allowAny: daily.allowAny,
+  }
+  const parseSoft = (raw: string): SettingsSoftProps => {
+    const value = JSON.parse(raw) as Partial<SettingsSoftProps>
+    if (!value || typeof value !== 'object' || typeof value.fastInvalidate !== 'boolean') throw new Error('Invalid Wordle soft settings')
+    return {reveal: false, fastInvalidate: value.fastInvalidate}
+  }
+  const parseHard = (raw: string): SettingsHardProps => {
+    const value = JSON.parse(raw)
+    if (!isChallengeSettings(value)) throw new Error('Invalid Wordle hard settings')
+    return {mode: value.mode, wordLength: value.wordLength, maxTries: value.maxTries, disabledLetters: value.disabledLetters, allowAny: value.allowAny}
+  }
   return {
-    softStore: new LocalstorageStore<SettingsSoftProps>('game.wordle.settings.soft', {reveal: false, fastInvalidate: true}, JSON.parse, val => JSON.stringify(val, (k, v) => ['reveal'].includes(k) ? undefined : v)),
-    hardStore: new LocalstorageStore<SettingsHardProps>('game.wordle.settings.hard', {...daily}, JSON.parse, value => JSON.stringify(value, (key, item) => ['dailyDate', 'dailyVersion', 'randomId', 'wordIndex'].includes(key) ? undefined : item)),
+    softStore: new LocalstorageStore('game.wordle.settings.soft', {reveal: false, fastInvalidate: true}, parseSoft, value => JSON.stringify({fastInvalidate: value.fastInvalidate})),
+    hardStore: new LocalstorageStore('game.wordle.settings.hard', hardDefault, parseHard, JSON.stringify),
   }
 }
 
@@ -530,8 +543,11 @@ export default function Wordle() {
   const startRandom = () => void applyConfig(createRandomChallenge())
   const startAdvanced = () => {
     let saved: SettingsHardProps = {mode: 'advanced', wordLength: 6, maxTries: 6, disabledLetters: 0, allowAny: false}
-    try { saved = {...saved, ...JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}'), mode: 'advanced'} } catch {}
-    void applyConfig({...saved, wordIndex: undefined})
+    try {
+      const candidate = {...saved, ...JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}'), mode: 'advanced'}
+      if (isChallengeSettings(candidate)) saved = candidate
+    } catch {}
+    void applyConfig({...saved, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined})
   }
   const nextChallenge = () => {
     const next: ChallengeConfig = hard.mode === 'random'

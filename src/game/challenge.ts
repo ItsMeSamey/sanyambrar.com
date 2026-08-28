@@ -181,15 +181,20 @@ export function isValidDateKey(value: string | undefined): value is string {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
-export function isChallengeConfig(value: unknown): value is ChallengeConfig {
+export function isChallengeSettings(value: unknown): value is ChallengeConfig {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const config = value as Partial<ChallengeConfig>
-  if (!['daily', 'random', 'advanced'].includes(config.mode ?? '') ||
-    !Number.isInteger(config.wordLength) || config.wordLength! < 3 || config.wordLength! > 20 ||
-    !Number.isInteger(config.maxTries) || config.maxTries! < 1 || config.maxTries! > 50 ||
-    !Number.isInteger(config.disabledLetters) || config.disabledLetters! < 0 || config.disabledLetters! > 12 ||
-    typeof config.allowAny !== 'boolean') return false
-  if (config.wordIndex !== undefined && (!Number.isInteger(config.wordIndex) || config.wordIndex < 0 || config.wordIndex >= wordCount(config.wordLength as WordLength))) return false
+  return ['daily', 'random', 'advanced'].includes(config.mode ?? '') &&
+    Number.isInteger(config.wordLength) && config.wordLength! >= 3 && config.wordLength! <= 20 &&
+    Number.isInteger(config.maxTries) && config.maxTries! >= 1 && config.maxTries! <= 50 &&
+    Number.isInteger(config.disabledLetters) && config.disabledLetters! >= 0 && config.disabledLetters! <= 12 &&
+    typeof config.allowAny === 'boolean'
+}
+
+export function isChallengeConfig(value: unknown): value is ChallengeConfig {
+  if (!isChallengeSettings(value)) return false
+  const config = value
+  if (config.wordIndex !== undefined && (!Number.isInteger(config.wordIndex) || config.wordIndex < 0 || config.wordIndex >= wordCount(config.wordLength))) return false
   if (config.randomId !== undefined && typeof config.randomId !== 'string') return false
   if (config.mode === 'daily') {
     if (!isValidDateKey(config.dailyDate)) return false
