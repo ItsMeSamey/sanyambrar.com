@@ -4,7 +4,7 @@ import { batch, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-j
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { Block, WordLocalStorageState } from './page'
 import { SettingsHardProps } from './popup_settings'
-import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isDailyChallengeVersion } from './challenge'
+import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion } from './challenge'
 
 interface ActiveGame {
   key: string
@@ -53,7 +53,7 @@ export function getActiveGames(): ActiveGame[] {
       const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
       if (!Array.isArray(value?.history) || value.history.length <= 1) continue
       const config = readConfig(key, value)
-      if (!config || config.wordLength < 3 || config.wordLength > 20 || config.maxTries < 1 || config.maxTries > 50) continue
+      if (!isChallengeConfig(config)) continue
       if (value.done !== undefined) continue
       games.push({key, config, history: value.history.slice(0, -1)})
     } catch {}

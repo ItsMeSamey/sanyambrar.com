@@ -12,7 +12,7 @@ import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './word
 import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
-import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
+import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isChallengeConfig, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
 import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
@@ -369,11 +369,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     }
     // Fill fields that did not exist in older saves from the current challenge.
     const config = {...hard, ...(savedConfig as Partial<SettingsHardProps> | undefined)}
-    if (!['daily', 'random', 'advanced'].includes(config.mode) || !Number.isInteger(config.wordLength) || config.wordLength < 3 || config.wordLength > 20 ||
-      !Number.isInteger(config.maxTries) || config.maxTries < 1 || config.maxTries > 50 ||
-      !Number.isInteger(config.disabledLetters) || config.disabledLetters < 0 || config.disabledLetters > 12 || typeof config.allowAny !== 'boolean') {
-      throw new Error('Invalid saved Wordle config')
-    }
+    if (!isChallengeConfig(config)) throw new Error('Invalid saved Wordle config')
     stored.config = config
     if (!stored.word) {
       if (config.mode === 'daily' && config.dailyDate) {

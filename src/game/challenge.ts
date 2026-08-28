@@ -181,6 +181,23 @@ export function isValidDateKey(value: string | undefined): value is string {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
+export function isChallengeConfig(value: unknown): value is ChallengeConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const config = value as Partial<ChallengeConfig>
+  if (!['daily', 'random', 'advanced'].includes(config.mode ?? '') ||
+    !Number.isInteger(config.wordLength) || config.wordLength! < 3 || config.wordLength! > 20 ||
+    !Number.isInteger(config.maxTries) || config.maxTries! < 1 || config.maxTries! > 50 ||
+    !Number.isInteger(config.disabledLetters) || config.disabledLetters! < 0 || config.disabledLetters! > 12 ||
+    typeof config.allowAny !== 'boolean') return false
+  if (config.wordIndex !== undefined && (!Number.isInteger(config.wordIndex) || config.wordIndex < 0 || config.wordIndex >= wordCount(config.wordLength as WordLength))) return false
+  if (config.randomId !== undefined && typeof config.randomId !== 'string') return false
+  if (config.mode === 'daily') {
+    if (!isValidDateKey(config.dailyDate)) return false
+    if (config.dailyVersion !== undefined && !isDailyChallengeVersion(config.dailyVersion)) return false
+  }
+  return true
+}
+
 function challengeFlags(fastInvalidate: boolean, allowAny: boolean): string {
   if (fastInvalidate === DEFAULT_FAST_INVALIDATE && allowAny === DEFAULT_ALLOW_ANY) return ''
   return `${fastInvalidate ? 't' : 'f'}${allowAny ? 't' : 'f'}`
