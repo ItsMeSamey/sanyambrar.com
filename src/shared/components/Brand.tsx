@@ -1,3 +1,4 @@
+import { For } from 'solid-js';
 import { SmartLink } from './NavLink.tsx';
 
 export function HomeBrand(props:{class?:string;href?:string}) {
@@ -6,8 +7,13 @@ export function HomeBrand(props:{class?:string;href?:string}) {
   </SmartLink>;
 }
 
-export function WordleMark(props:{class?:string}) {
-  return <span class={props.class ?? 'game-title game-wordle'} aria-label="Wordle">
-    {'WORDLE'.split('').map(letter => <i>{letter}</i>)}
+export const WORDLE_WORDMARK_COLORS = ['#6aaa64', '#c9b458', '#787c7e', '#6aaa64', '#c9b458', '#6aaa64'] as const;
+
+/** Render arbitrary text using Wordle-style cells. Callers may provide one color per cell. */
+export function WordleMark(props:{text:string;colors:readonly string[];class?:string;ariaLabel?:string}) {
+  const text = () => props.text;
+  const color = (index:number) => props.colors[index % props.colors.length] ?? '#787c7e';
+  return <span class={`wordle-text-mark${props.class ? ` ${props.class}` : ''}`} aria-label={props.ariaLabel ?? text()}>
+    <For each={text().split('')}>{(letter, index) => <i style={{background: color(index())}}>{letter}</i>}</For>
   </span>;
 }

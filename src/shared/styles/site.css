@@ -153,6 +153,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 /* Optional text labels used by icon controls. */
 .site-topbar-icon-label{font:750 10px/1 var(--site-font,system-ui)}
+.wordle-text-mark{display:inline-flex;align-items:center;gap:0;vertical-align:middle}.wordle-text-mark i{box-sizing:border-box;display:grid;place-items:center;flex:0 0 var(--wordle-mark-cell,22px);width:var(--wordle-mark-cell,22px);height:var(--wordle-mark-cell,22px);border:0;color:#fff;font:850 var(--wordle-mark-font,10px)/1 var(--site-font,system-ui);font-style:normal;text-transform:uppercase}
 .backline{appearance:none;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin:24px 0;padding:6px 0;border:0;background:transparent;color:var(--site-muted,#787c7e);font:inherit;text-decoration:none;white-space:nowrap}.backline-mark{font:700 1em/1 var(--site-font,system-ui)}.backline:hover,.backline:focus-visible{color:var(--site-fg,#121213)}.site-topbar .backline{margin:0;padding-block:5px}
 
 /* Chain Reaction's mark is a tiny live board: the word itself is the board geometry. */

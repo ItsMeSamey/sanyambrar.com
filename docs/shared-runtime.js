@@ -680,13 +680,6 @@
 			};
 			let nativeDragging = false;
 			let selectingText = false;
-			let selectionDragging = false;
-			let selectionDragCandidate = false;
-			let selectionDragInput = null;
-			let linkDragCandidate = null;
-			let selectionDragText = "";
-			let emulatedDragKind = "";
-			let selectionStartX = 0, selectionStartY = 0;
 			let pressedGrab = false;
 			let pressedPointerId = null;
 			let lastX = 0, lastY = 0;
@@ -695,7 +688,6 @@
 			let linkHandoffUntil = 0;
 			let modifiedLinkPending = null;
 			let suppressModifiedClick = null;
-			let suppressDragClick = null;
 			const renderCursorPosition = () => {
 				cursorFrame = 0;
 				lastX = pendingX;
@@ -716,9 +708,8 @@
 			let dragPreviewW = 0, dragPreviewH = 0;
 			const placeDragPreview = (x, y) => {
 				if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
-				const gap = 4;
-				const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x + gap));
-				const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y + gap));
+				const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x - dragPreviewW / 2));
+				const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y - dragPreviewH / 2));
 				dragPreview.style.transform = `translate3d(${px}px,${py}px,0)`;
 			};
 			const compactDragText = (value, max = 76) => {
@@ -857,7 +848,7 @@
 				return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
 			};
 			const setMode = (target) => {
-				const grab = selectionDragging || nativeDragging || pressedGrab || !selectingText && wantsGrab(target);
+				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrab(target);
 				const link = grab || selectingText ? null : linkTarget(target);
 				setGrabState(grab);
 				setTextState(!grab && (selectingText || !link && wantsText(target)));
@@ -869,24 +860,7 @@
 					delete cursor.dataset.visible;
 					return;
 				}
-				if ((selectionDragCandidate || linkDragCandidate) && event.buttons & 1) {
-					const dx = event.clientX - selectionStartX, dy = event.clientY - selectionStartY;
-					if (!selectionDragging && dx * dx + dy * dy >= 9) {
-						selectionDragging = true;
-						pressedGrab = true;
-						setFillTarget(null);
-						if (linkDragCandidate) {
-							emulatedDragKind = "link";
-							suppressDragClick = linkDragCandidate;
-							showDragPreview("link", linkDragLabel(linkDragCandidate), event.clientX, event.clientY);
-						} else {
-							emulatedDragKind = "text";
-							showDragPreview("text", selectionDragText, event.clientX, event.clientY);
-						}
-					}
-				}
 				place(event);
-				if (selectionDragging) placeDragPreview(event.clientX, event.clientY);
 				setMode(event.target instanceof Element ? event.target : elementAt(event));
 			};
 			document.addEventListener("pointermove", refreshAt, {
@@ -913,99 +887,16 @@
 				}
 			}, { passive: true });
 			addEventListener("samey-pageleave", () => setFillTarget(null));
-			let inputMeasureContext = null;
-			const measureInputText = (input, value) => {
-				inputMeasureContext ||= document.createElement("canvas").getContext("2d");
-				const style = getComputedStyle(input);
-				if (!inputMeasureContext) return 0;
-				inputMeasureContext.font = style.font;
-				const spacing = Number.parseFloat(style.letterSpacing) || 0;
-				const count = [...value].length;
-				return inputMeasureContext.measureText(value).width + Math.max(0, count - 1) * spacing;
-			};
-			const inputTextOriginX = (input) => {
-				const rect = input.getBoundingClientRect(), style = getComputedStyle(input);
-				const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0, borderRight = Number.parseFloat(style.borderRightWidth) || 0;
-				const paddingLeft = Number.parseFloat(style.paddingLeft) || 0, paddingRight = Number.parseFloat(style.paddingRight) || 0;
-				const contentWidth = rect.width - borderLeft - borderRight - paddingLeft - paddingRight;
-				const textWidth = measureInputText(input, input.value);
-				const direction = style.direction;
-				let align = style.textAlign;
-				if (align === "start") align = direction === "rtl" ? "right" : "left";
-				else if (align === "end") align = direction === "rtl" ? "left" : "right";
-				let x = rect.left + borderLeft + paddingLeft - input.scrollLeft;
-				if (align === "center") x += Math.max(0, (contentWidth - textWidth) / 2);
-				else if (align === "right") x += Math.max(0, contentWidth - textWidth);
-				return x;
-			};
-			const selectedInputAtPoint = (x, y, target) => {
-				if (!(target instanceof HTMLInputElement) || !textInput(target)) return null;
-				const start = target.selectionStart, end = target.selectionEnd;
-				if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start) return null;
-				const rect = target.getBoundingClientRect();
-				if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
-				const left = inputTextOriginX(target) + measureInputText(target, target.value.slice(0, start));
-				const right = left + measureInputText(target, target.value.slice(start, end));
-				return x >= left - 3 && x <= right + 3 ? {
-					input: target,
-					text: target.value.slice(start, end)
-				} : null;
-			};
-			const inputOffsetAtPoint = (input, x) => {
-				const origin = inputTextOriginX(input);
-				let low = 0, high = input.value.length;
-				while (low < high) {
-					const mid = Math.floor((low + high) / 2);
-					if (x < origin + measureInputText(input, input.value.slice(0, mid + 1))) high = mid;
-					else low = mid + 1;
-				}
-				const next = Math.max(0, Math.min(input.value.length, low));
-				if (!next) return 0;
-				const before = origin + measureInputText(input, input.value.slice(0, next - 1));
-				const after = origin + measureInputText(input, input.value.slice(0, next));
-				return x - before < after - x ? next - 1 : next;
-			};
-			const selectionAtPoint = (x, y, target) => {
-				if (!(target instanceof Element) || target.closest("a[href],area[href],img,[draggable=\"true\"],[data-grab-cursor]")) return false;
-				const selection = getSelection();
-				if (!selection || selection.isCollapsed || !selection.toString()) return false;
-				for (let i = 0; i < selection.rangeCount; i++) for (const rect of selection.getRangeAt(i).getClientRects()) if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) return true;
-				return false;
-			};
-			const collapseSelectionAt = (x, y) => {
-				const selection = getSelection();
-				if (!selection) return;
-				const pos = document.caretPositionFromPoint?.(x, y);
-				if (pos) {
-					selection.collapse(pos.offsetNode, pos.offset);
-					return;
-				}
-				const range = document.caretRangeFromPoint?.(x, y);
-				if (range) {
-					selection.removeAllRanges();
-					selection.addRange(range);
-				}
-			};
 			document.addEventListener("pointerdown", (event) => {
 				document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
 				document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
 				const actual = elementAt(event);
 				const pressedLink = linkTarget(actual);
 				const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
-				const selectedInput = event.button === 0 && !pressedLink ? selectedInputAtPoint(event.clientX, event.clientY, actual) : null;
 				pressedPointerId = event.pointerId;
-				selectionDragInput = selectedInput?.input || null;
-				selectionDragCandidate = event.button === 0 && !pressedLink && (!!selectedInput || selectionAtPoint(event.clientX, event.clientY, actual));
-				linkDragCandidate = event.button === 0 && pressedLink && !modifiedLink ? pressedLink : null;
-				if (selectionDragCandidate || linkDragCandidate) {
-					event.preventDefault();
-					selectionDragText = selectedInput?.text || getSelection()?.toString() || "";
-					selectionStartX = event.clientX;
-					selectionStartY = event.clientY;
-				}
 				pressedGrab = !!actual?.closest?.(pressedGrabSelector);
 				place(event, true);
-				selectingText = event.button === 0 && !selectionDragCandidate && !linkDragCandidate && !pressedGrab && !pressedLink && wantsText(actual);
+				selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
 				setMode(actual);
 				if (modifiedLink) {
 					event.preventDefault();
@@ -1014,52 +905,9 @@
 					holdLinkCursor(event, pressedLink);
 				}
 			}, true);
-			document.addEventListener("mousedown", (event) => {
-				if (selectionDragCandidate || linkDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
-			}, true);
-			const editableAt = (target) => {
-				if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return target;
-				return target instanceof Element ? target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]") : null;
-			};
-			const dropSelectionText = (target) => {
-				const editable = editableAt(target);
-				if (!editable || !selectionDragText) return;
-				if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) {
-					const start = editable.selectionStart ?? editable.value.length;
-					const end = editable.selectionEnd ?? start;
-					editable.setRangeText(selectionDragText, start, end, "end");
-					editable.dispatchEvent(new InputEvent("input", {
-						bubbles: true,
-						inputType: "insertFromDrop",
-						data: selectionDragText
-					}));
-				} else {
-					editable.focus();
-					document.execCommand("insertText", false, selectionDragText);
-				}
-			};
 			document.addEventListener("pointerup", (event) => {
-				if (selectionDragging && emulatedDragKind === "text") dropSelectionText(elementAt(event));
-				else if (selectionDragCandidate) {
-					if (selectionDragInput) {
-						const offset = inputOffsetAtPoint(selectionDragInput, event.clientX);
-						selectionDragInput.setSelectionRange(offset, offset);
-					} else collapseSelectionAt(event.clientX, event.clientY);
-				}
 				selectingText = false;
-				selectionDragging = false;
-				selectionDragCandidate = false;
-				selectionDragInput = null;
-				linkDragCandidate = null;
-				selectionDragText = "";
-				emulatedDragKind = "";
 				hideDragPreview();
-				if (suppressDragClick) {
-					const draggedLink = suppressDragClick;
-					setTimeout(() => {
-						if (suppressDragClick === draggedLink) suppressDragClick = null;
-					}, 0);
-				}
 				if (pressedPointerId === event.pointerId) {
 					pressedPointerId = null;
 					pressedGrab = false;
@@ -1076,11 +924,6 @@
 			document.addEventListener("click", (event) => {
 				const link = event.button === 0 ? linkTarget(event.target) : null;
 				if (!link) return;
-				if (suppressDragClick === link) {
-					event.preventDefault();
-					suppressDragClick = null;
-					return;
-				}
 				if (suppressModifiedClick === link) {
 					event.preventDefault();
 					suppressModifiedClick = null;
@@ -1101,92 +944,49 @@
 				if (link instanceof HTMLAnchorElement && link.href) window.open(link.href, "_blank", "noopener,noreferrer");
 			}, true);
 			const selectedEditableText = (target) => {
-				const editable = editableAt(target);
+				const editable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target : target instanceof Element ? target.closest("input,textarea") : null;
 				if (!(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement)) return "";
 				const start = editable.selectionStart, end = editable.selectionEnd;
 				return Number.isInteger(start) && Number.isInteger(end) && end > start ? editable.value.slice(start, end) : "";
 			};
-			const isPlainSelectionDrag = (event) => {
-				const target = event.target instanceof Element ? event.target : null;
-				if (!target || target.closest("a[href],area[href],img,[draggable=\"true\"],[data-grab-cursor]")) return false;
-				const selection = getSelection();
-				return !!selection && !selection.isCollapsed && !!selection.toString();
-			};
-			const startEmulatedDrag = (kind, text, event) => {
-				event.preventDefault();
-				nativeDragging = false;
-				selectingText = false;
-				selectionDragCandidate = false;
-				selectionDragging = true;
-				selectionDragText = kind === "text" ? text : "";
-				emulatedDragKind = kind;
-				pressedGrab = true;
-				setFillTarget(null);
-				setGrabState(true);
+			const setNativeDragImage = (event, kind, text) => {
+				if (!event.dataTransfer || !text) return;
 				const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : lastX;
 				const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : lastY;
 				showDragPreview(kind, text, x, y);
-				placeXY(x, y, true);
+				event.dataTransfer.setDragImage(dragPreview, Math.round(dragPreviewW / 2), Math.round(dragPreviewH / 2));
+				requestAnimationFrame(hideDragPreview);
 			};
-			const startNativeDrag = (event, allowSelectionEmulation = false) => {
-				if (allowSelectionEmulation && (selectionDragging || selectionDragCandidate || linkDragCandidate)) {
-					event.preventDefault();
-					return;
-				}
-				if (allowSelectionEmulation) {
-					const editableText = selectedEditableText(event.target);
-					if (editableText || isPlainSelectionDrag(event)) {
-						startEmulatedDrag("text", editableText || getSelection()?.toString() || "", event);
-						return;
-					}
-					const link = linkTarget(event.target);
-					if (link) {
-						suppressDragClick = link;
-						startEmulatedDrag("link", linkDragLabel(link), event);
-						return;
-					}
-				}
+			const startNativeDrag = (event) => {
+				const link = linkTarget(event.target);
+				const text = selectedEditableText(event.target) || (!link ? getSelection()?.toString() || "" : "");
+				if (link) setNativeDragImage(event, "link", linkDragLabel(link));
+				else if (text) setNativeDragImage(event, "text", text);
 				nativeDragging = true;
 				selectingText = false;
-				selectionDragging = false;
-				selectionDragCandidate = false;
-				selectionDragInput = null;
-				linkDragCandidate = null;
-				selectionDragText = "";
-				emulatedDragKind = "";
 				pressedGrab = false;
 				pressedPointerId = null;
 				setGrabState(false);
 				setTextState(false);
 				setFillTarget(null);
-				hideDragPreview();
 				delete cursor.dataset.visible;
 			};
-			document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
-			document.addEventListener("dragenter", (event) => {
-				if (!nativeDragging && !selectionDragging) startNativeDrag(event);
+			document.addEventListener("dragstart", startNativeDrag, true);
+			document.addEventListener("dragenter", () => {
+				nativeDragging = true;
+				delete cursor.dataset.visible;
 			}, true);
-			document.addEventListener("dragover", (event) => {
-				if (!nativeDragging && !selectionDragging) startNativeDrag(event);
-				if (!dragPreview.hidden) placeDragPreview(event.clientX || lastX, event.clientY || lastY);
-			}, true);
-			document.addEventListener("drag", (event) => {
-				if (nativeDragging && !dragPreview.hidden && (event.clientX || event.clientY)) placeDragPreview(event.clientX, event.clientY);
+			document.addEventListener("dragover", () => {
+				nativeDragging = true;
+				delete cursor.dataset.visible;
 			}, true);
 			const stopDragging = (event) => {
 				nativeDragging = false;
 				selectingText = false;
-				selectionDragging = false;
-				selectionDragCandidate = false;
-				selectionDragInput = null;
-				linkDragCandidate = null;
-				selectionDragText = "";
-				emulatedDragKind = "";
 				pressedGrab = false;
 				pressedPointerId = null;
 				modifiedLinkPending = null;
 				suppressModifiedClick = null;
-				suppressDragClick = null;
 				hideDragPreview();
 				if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
 					place(event);

@@ -191,10 +191,13 @@ ${keybrViewSwitch}`;
   const wordleStyle = await readFile(join(ROOT, "src/games/wordle/style.css"), "utf8");
   must(wordlePage.includes("context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span>"),
     "ux: Wordle opening screen must expose Statistics directly");
-  must(wordleStats.includes("<TopBar start={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>") && !wordleStats.includes("HomeBrand"),
-    "ux: Wordle Statistics must have one back control to the Wordle picker");
-  must(wordleStyle.includes(".result-board{width:min(92vw,620px)"),
-    "ux: Wordle completion recap board must retain a substantial width");
+  const wordleBrand = await readFile(join(ROOT, "src/shared/components/Brand.tsx"), "utf8");
+  must(wordleStats.includes("class='wordle-wordle-back'><WordleMark") && !wordleStats.includes(">Wordle</BackLink>") && !wordleStats.includes("HomeBrand"),
+    "ux: Wordle Statistics must have one Wordle-cell back control to the picker");
+  must(wordlePage.includes("class='wordle-back-wordmark'") && !wordlePage.includes("MODES") && !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
+    "ux: Wordle subpages must use < + WORDLE cells and completion must not render a recap board");
+  must(wordleBrand.includes("colors:readonly string[]") && wordleBrand.includes("props.colors[index % props.colors.length]"),
+    "architecture: Wordle text rendering must be centralized and accept per-cell colors");
 
   const chainPage = await readFile(join(ROOT, "src/games/chain/Chain.tsx"), "utf8");
   const chainEngine = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
@@ -203,6 +206,10 @@ ${keybrViewSwitch}`;
     "ux: Chain Reaction must expose persistent statistics");
   must(chainPage.includes('id="chain-stats-back"') && chainLogo.includes("const BACK_ROWS"),
     "ux: Chain Statistics must use the Chain back mark");
+  must(chainEngine.includes("const PAGE_QUERY = 'p'") && chainEngine.includes("addEventListener('popstate', onPopState)") && chainEngine.includes("url.searchParams.set(PAGE_QUERY, page)"),
+    "ux: Chain subpages must round-trip through query-string history");
+  must(keybrViewSwitch.includes('searchParams.get("p")') && keybrViewSwitch.includes('history.pushState') && keybrViewSwitch.includes('addEventListener("popstate", onPopState)'),
+    "ux: Keybr subpages must round-trip through query-string history");
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
@@ -222,6 +229,10 @@ ${keybrViewSwitch}`;
   must(sharedSite.includes("destination.textContent = external ? '↗' : newPage ? '→' : ''") &&
     sharedSite.includes("window.open(targetUrl.href, '_blank', 'noopener,noreferrer')"),
     "ux: search must distinguish external destinations for click and keyboard activation");
+  const sharedTheme = await readFile(join(ROOT, "src/shared/theme.ts"), "utf8");
+  must(sharedTheme.includes("setDragImage(dragPreview, Math.round(dragPreviewW / 2), Math.round(dragPreviewH / 2))") &&
+    !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
+    "ux: text/link dragging must stay native and center the custom drag image on the pointer");
 }
 
 

@@ -14,6 +14,7 @@ import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, legacyGameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
+import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
 import { animateRootSwap } from '../../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
@@ -372,7 +373,6 @@ export class WordleModel {
                   {isCorrect ? <>Solved in <strong>{this.state.history.length}</strong> guesses.</> :
                    isRevealed ? <>The answer has been revealed.</> : <>You used all <strong>{this.state.hard.maxTries}</strong> guesses.</>}
                 </DrawerDescription>
-                <div class='result-board'><For each={this.state.history}>{([word, mask]) => new Block(this.state.hard.wordLength, word, mask || calcDiff(answer, word)).render()}</For></div>
                 <div class='result-actions'>
                   <Show when={this.state.hard.mode === 'random'}><button onClick={this.onNextChallenge}>Next random</button></Show>
                   <Show when={this.state.hard.mode === 'advanced'}><button onClick={this.onNextChallenge}>Play again</button></Show>
@@ -570,15 +570,9 @@ function materializeChallenge(config: ChallengeConfig): SettingsHardProps {
   return {...config, wordIndex, randomId: config.mode === 'random' ? (config.randomId ?? `url-${wordIndex.toString(16)}`) : undefined}
 }
 
-function WordleTextMark(props:{label:string;ariaLabel?:string}) {
-  return <span class='wordle-mode-mark' aria-label={props.ariaLabel ?? props.label}>
-    <span class='wordle-mode-mark-full' aria-hidden='true'>{props.label.split('').map(letter => <i>{letter}</i>)}</span>
-  </span>
-}
-
 function WordleModeMark(props:{mode: SettingsHardProps['mode']}) {
   const label = () => props.mode === 'daily' ? 'DAILY' : props.mode === 'random' ? 'RANDOM' : 'ADVANCED'
-  return <WordleTextMark label={label()} ariaLabel={`${label()} mode`}/>
+  return <WordleMark text={label()} colors={WORDLE_WORDMARK_COLORS} class='wordle-mode-mark' ariaLabel={`${label()} mode`}/>
 }
 
 export default function Wordle() {
@@ -668,10 +662,10 @@ export default function Wordle() {
   const gameKey = () => gameStorageKey({...hard})
 
   const gameContext = () => <><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
-  const modesBack = () => <BackLink onClick={chooseMode} class='wordle-modes-back'><WordleTextMark label='MODES' ariaLabel='Modes'/></BackLink>
+  const wordleBack = () => <BackLink onClick={chooseMode} class='wordle-wordle-back'><WordleMark text='WORDLE' colors={WORDLE_WORDMARK_COLORS} class='wordle-back-wordmark' ariaLabel='Wordle'/></BackLink>
 
   return <>
-    <TopBar start={!showOpening() ? modesBack() : undefined} contextClass='wordle-topbar-context' context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span> : gameContext()}/>
+    <TopBar start={!showOpening() ? wordleBack() : undefined} contextClass='wordle-topbar-context' context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span> : gameContext()}/>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       <For each={[gameKey()]}>{() => RenderWordleModel(hard, soft, nextChallenge, chooseMode)}</For>
     </Show>

@@ -52,6 +52,10 @@ export function mountChain() {
   const defaults = { rows: 9, cols: 6, enemies: 1 };
   const GAME_KEY = 'samey.chain.game.v2';
   const STATS_KEY = 'samey.chain.stats.v1';
+  const PAGE_QUERY = 'p';
+  const PAGE_MENU = 'menu';
+  const PAGE_GAME = 'game';
+  const PAGE_STATS = 'stats';
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
@@ -65,9 +69,22 @@ export function mountChain() {
   let focusCell = 0;
   let particles = [];
   let gameVersion = 0;
-  let menuRequested = false;
+  let pendingPage = null;
   let resultRecorded = false;
   const orbCache = new Map();
+
+  function pageFromLocation() {
+    const value = new URL(location.href).searchParams.get(PAGE_QUERY);
+    return value === PAGE_GAME || value === PAGE_STATS ? value : PAGE_MENU;
+  }
+
+  function writePage(page, replace = false) {
+    const url = new URL(location.href);
+    if (page === PAGE_MENU) url.searchParams.delete(PAGE_QUERY);
+    else url.searchParams.set(PAGE_QUERY, page);
+    if (url.href === location.href) return;
+    history[replace ? 'replaceState' : 'pushState']({...(history.state || {}), chainPage: page}, '', url);
+  }
 
   function clampInt(value, min, max, fallback) {
     const n = Number.parseInt(value, 10);
@@ -385,9 +402,10 @@ export function mountChain() {
     saveGameState(true);
     showResult();
     requestDraw();
-    if (menuRequested) {
-      menuRequested = false;
-      queueMicrotask(showMenu);
+    if (pendingPage) {
+      const page = pendingPage;
+      pendingPage = null;
+      queueMicrotask(() => page === PAGE_STATS ? showStats(false) : showMenu(false));
     }
   }
 
@@ -479,9 +497,11 @@ export function mountChain() {
     updateStatus();
     saveGameState(true);
     requestDraw();
-    if (menuRequested) {
-      menuRequested = false;
-      showMenu();
+    if (pendingPage) {
+      const page = pendingPage;
+      pendingPage = null;
+      if (page === PAGE_STATS) showStats(false);
+      else showMenu(false);
     }
   }
 
@@ -625,14 +645,15 @@ export function mountChain() {
     resumeButton.textContent = saved.gameOver ? 'View board' : 'Continue game';
   }
 
-  function showMenu() {
+  function showMenu(syncUrl = true) {
     const wasInGame = !gameView.hidden;
+    if (syncUrl) writePage(PAGE_MENU);
     if (wasInGame && locked) {
-      menuRequested = true;
+      pendingPage = PAGE_MENU;
       statusEl.textContent = 'Finishing cascade before opening the game menu';
       return;
     }
-    menuRequested = false;
+    pendingPage = null;
     const commit = () => {
       if (wasInGame) gameVersion++;
       setSettingsOpen(false);
@@ -650,8 +671,14 @@ export function mountChain() {
     }
   }
 
-  function showStats() {
-    if (!gameView.hidden && locked) return;
+  function showStats(syncUrl = true) {
+    if (syncUrl) writePage(PAGE_STATS);
+    if (!gameView.hidden && locked) {
+      pendingPage = PAGE_STATS;
+      statusEl.textContent = 'Finishing cascade before opening statistics';
+      return;
+    }
+    pendingPage = null;
     if (!gameView.hidden) saveGameState(false);
     setSettingsOpen(false);
     resultPanel.hidden = true;
@@ -661,8 +688,9 @@ export function mountChain() {
     renderStats();
   }
 
-  function showGame() {
-    menuRequested = false;
+  function showGame(syncUrl = true) {
+    pendingPage = null;
+    if (syncUrl) writePage(PAGE_GAME);
     statsView.hidden = true;
     const wasInMenu = !openingView.hidden;
     const commit = () => {
@@ -790,6 +818,13 @@ export function mountChain() {
   const savedGame = readSavedGame();
   if (savedGame) restoreGame(savedGame); else { buildBoard(); syncSettings(); updateStatus(); }
   updateResumeCard();
+  const onPopState = () => {
+    const page = pageFromLocation();
+    if (page === PAGE_STATS) showStats(false);
+    else if (page === PAGE_GAME) showGame(false);
+    else showMenu(false);
+  };
+  addEventListener('popstate', onPopState);
   const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); };
   const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); };
   addEventListener('resize', positionSettingsOnResize, {passive:true});
@@ -800,15 +835,19 @@ export function mountChain() {
   themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
   const scheme = window.matchMedia('(prefers-color-scheme: dark)');
   scheme.addEventListener('change', repaintTheme);
-  if (savedGame?.inGame) showGame(); else showMenu();
+  const initialPage = pageFromLocation();
+  if (initialPage === PAGE_STATS) showStats(false);
+  else if (initialPage === PAGE_GAME) showGame(false);
+  else showMenu(false);
 
   return () => {
     gameVersion++;
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
     particles = [];
-    menuRequested = false;
+    pendingPage = null;
     removeEventListener('resize', positionSettingsOnResize);
+    removeEventListener('popstate', onPopState);
     resizeObserver.disconnect();
     themeObserver.disconnect();
     window.removeEventListener('samey-themechange', repaintTheme);

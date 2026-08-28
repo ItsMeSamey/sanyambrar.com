@@ -10,6 +10,7 @@ import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
+import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
 
 interface GameStats {
   totalGames: number
@@ -221,7 +222,7 @@ export default function StatsPage() {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <main class='stats-page'>
-    <TopBar start={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>
+    <TopBar start={<BackLink onClick={() => setP(Page.Wordle)} class='wordle-wordle-back'><WordleMark text='WORDLE' colors={WORDLE_WORDMARK_COLORS} class='wordle-back-wordmark' ariaLabel='Wordle'/></BackLink>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
