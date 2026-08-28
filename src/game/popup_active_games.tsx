@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { Block, WordLocalStorageState } from './page'
 import { SettingsHardProps } from './popup_settings'
 import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion } from './challenge'
+import { binarySearch, wordCount } from './word-list'
 
 interface ActiveGame {
   key: string
@@ -18,30 +19,38 @@ const DAILY_RE = /^game\.wordle\.daily\.([0-9a-f]+)\.(\d{4}-\d{2}-\d{2})$/i
 const LEGACY_DAILY_RE = /^game\.wordle\.daily\.(\d{4}-\d{2}-\d{2})$/
 
 function readConfig(key: string, value: WordLocalStorageState): SettingsHardProps | undefined {
-  if (value.config?.mode) return value.config.mode === 'daily'
+  let config: SettingsHardProps | undefined
+  if (value.config?.mode) config = value.config.mode === 'daily'
     ? {...value.config, dailyVersion: value.config.dailyVersion ?? LEGACY_DAILY_CHALLENGE_VERSION}
-    : value.config
+    : {...value.config}
 
-  let match = ADVANCED_RE.exec(key)
-  if (match) return {
-    mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
-    maxTries: Number(match[3]), disabledLetters: Number(match[4]),
+  if (!config) {
+    let match = ADVANCED_RE.exec(key)
+    if (match) config = {
+      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
+      maxTries: Number(match[3]), disabledLetters: Number(match[4]),
+    }
+
+    match = DAILY_RE.exec(key)
+    if (!config && match) {
+      const version = Number.parseInt(match[1], 16)
+      if (isDailyChallengeVersion(version)) config = getDailyChallenge(match[2], version)
+    }
+
+    match = LEGACY_DAILY_RE.exec(key)
+    if (!config && match) config = getDailyChallenge(match[1], LEGACY_DAILY_CHALLENGE_VERSION)
+
+    match = LEGACY_RE.exec(key)
+    if (!config && match) config = {
+      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
+      maxTries: Number(match[3]), disabledLetters: 0,
+    }
   }
 
-  match = DAILY_RE.exec(key)
-  if (match) {
-    const version = Number.parseInt(match[1], 16)
-    if (isDailyChallengeVersion(version)) return getDailyChallenge(match[2], version)
-  }
-
-  match = LEGACY_DAILY_RE.exec(key)
-  if (match) return getDailyChallenge(match[1], LEGACY_DAILY_CHALLENGE_VERSION)
-
-  match = LEGACY_RE.exec(key)
-  if (match) return {
-    mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
-    maxTries: Number(match[3]), disabledLetters: 0,
-  }
+  if (!config || config.mode === 'daily' || Number.isInteger(config.wordIndex)) return config
+  const index = Number.isInteger(value.wordIndex) ? value.wordIndex! : typeof value.word === 'string' ? binarySearch(config.wordLength, value.word.toLowerCase()) : -1
+  if (index >= 0 && index < wordCount(config.wordLength)) config.wordIndex = index
+  return config
 }
 
 const sortGames = (games: ActiveGame[]) => games.sort((a, b) => a.config.mode.localeCompare(b.config.mode) || a.config.wordLength - b.config.wordLength || a.config.maxTries - b.config.maxTries)
