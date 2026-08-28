@@ -100,25 +100,51 @@ export function mountChain() {
     try {
       const saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
       if (!saved || saved.v !== 2) return null;
-      const cfg = {
-        rows: clampInt(saved.r, ...limits.rows, defaults.rows),
-        cols: clampInt(saved.c, ...limits.cols, defaults.cols),
-        enemies: clampInt(saved.e, ...limits.enemies, defaults.enemies),
+      const readInt = (value, [min, max]) => {
+        const n = Number(value);
+        return Number.isInteger(n) && n >= min && n <= max ? n : null;
       };
+      const rowsSaved = readInt(saved.r, limits.rows);
+      const colsSaved = readInt(saved.c, limits.cols);
+      const enemiesSaved = readInt(saved.e, limits.enemies);
+      if (rowsSaved == null || colsSaved == null || enemiesSaved == null) return null;
+      const cfg = {rows: rowsSaved, cols: colsSaved, enemies: enemiesSaved};
       const count = cfg.rows * cfg.cols;
       const b = b64ToBytes(saved.b, count), o = b64ToBytes(saved.o, count), enteredSaved = b64ToBytes(saved.p, cfg.enemies + 2);
       if (!b || !o || !enteredSaved) return null;
       const maxPlayer = cfg.enemies + 1;
-      const savedTurn = Number(saved.t);
+      let savedTurn = Number(saved.t);
       if (!Number.isInteger(savedTurn) || savedTurn < 1 || savedTurn > maxPlayer) return null;
+      for (let player = 0; player < enteredSaved.length; player++) if (enteredSaved[player] > 1) return null;
+      const live = new Uint8Array(maxPlayer + 1);
       for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
         const i = r * cfg.cols + c;
         const d = (r > 0 ? 1 : 0) + (r + 1 < cfg.rows ? 1 : 0) + (c > 0 ? 1 : 0) + (c + 1 < cfg.cols ? 1 : 0);
         if (b[i] >= d || o[i] > maxPlayer || (!b[i] && o[i]) || (b[i] && !o[i])) return null;
-        if (o[i]) enteredSaved[o[i]] = 1;
+        if (o[i]) enteredSaved[o[i]] = live[o[i]] = 1;
       }
       enteredSaved[0] = 0;
-      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver: !!saved.g, inGame: !!saved.i};
+
+      let allEntered = true, sole = EMPTY;
+      for (let player = 1; player <= maxPlayer; player++) {
+        if (!enteredSaved[player]) allEntered = false;
+        if (!live[player]) continue;
+        if (sole) sole = -1;
+        else sole = player;
+      }
+      if (allEntered && sole === EMPTY) return null;
+      let gameOver = saved.g === true;
+      if (gameOver) {
+        if (!allEntered || sole <= EMPTY || savedTurn !== sole) return null;
+      } else if (allEntered && sole > EMPTY) {
+        // A valid stable board with one remaining player is necessarily over.
+        // Repair older/interrupted saves that reached the final board before the
+        // game-over flag was persisted.
+        gameOver = true;
+        savedTurn = sole;
+      }
+      if (saved.i !== true && saved.i !== false) return null;
+      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver, inGame: saved.i};
     } catch { return null; }
   }
 
