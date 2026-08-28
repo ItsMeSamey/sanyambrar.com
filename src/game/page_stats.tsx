@@ -33,6 +33,7 @@ export async function fetchStats(): Promise<GameStats> {
   let dailyWins = 0
   let dailyGuesses = 0
   const words: Value[] = []
+  const latestByWord = new Map<Value, number>()
 
   const recordsByLength = await Promise.all(Array.from({length: 18}, (_, index) => db.getAll(`w${index + 3}` as const)))
 
@@ -40,18 +41,20 @@ export async function fetchStats(): Promise<GameStats> {
     for (const record of records) {
       words.push(record)
       totalGames += record.h.length
+      let latest = 0
       for (const history of record.h) {
+        latest = Math.max(latest, history.t ?? 0)
         if (history.o === 'daily') dailyGames++
         if (history.k !== KindEnum.Correct) continue
         totalWins++
         totalGuesses += history.h.length / record.w.length
         if (history.o === 'daily') { dailyWins++; dailyGuesses += history.h.length / record.w.length }
       }
+      latestByWord.set(record, latest)
     }
   }
 
-  const latestTimestamp = (record: Value) => record.h.reduce((latest, history) => Math.max(latest, history.t ?? 0), 0)
-  words.sort((a, b) => latestTimestamp(b) - latestTimestamp(a))
+  words.sort((a, b) => (latestByWord.get(b) ?? 0) - (latestByWord.get(a) ?? 0))
   return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, dailyGames, dailyWins, dailyAverageGuesses: dailyWins ? dailyGuesses / dailyWins : 0, words}
 }
 
