@@ -28,14 +28,14 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
     </Tooltip>
     <DialogContent class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
       <DialogHeader class='wordle-share-header flex flex-row gap-2 items-center'>
-        <span>Share</span> <span class='wordle-share-word text-blue-500 font-bold uppercase'>{props.word()}</span>
+        <span>Share</span> <span class='wordle-share-word wordle-revealed-text font-bold uppercase'>{props.word()}</span>
       </DialogHeader>
 
       <SettingsKnobs soft={soft} hard={hard} showWordLength={false} />
 
       <DialogFooter class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button
-          class='bg-success text-success-foreground hover:bg-success-foreground hover:text-success duration-200 active:scale-90 transition-all'
+          class='wordle-copy-button'
           onClick={async () => {
             const wlen = props.word().length
             if (idx === -1) {

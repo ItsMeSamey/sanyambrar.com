@@ -79,7 +79,7 @@ function entryMeta(entry: HistoryEntry) {
 function outcome(entry: HistoryEntry) {
   if (entry.k === KindEnum.Correct) return ['Won', 'text-success-foreground']
   if (entry.k === KindEnum.Failed) return ['Failed', 'text-error-foreground']
-  return ['Revealed', 'text-blue-500']
+  return ['Revealed', 'wordle-revealed-text']
 }
 
 function renderHistoryEntry(word: string, entry: HistoryEntry) {

@@ -67,13 +67,13 @@ class Keyboard {
                 if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
               }}
               onpointercancel={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
-              class={'wordle-key text-center content-center rounded transition-all will-change-transform ' + (
+              class={'wordle-key text-center rounded ' + (
                 key.length === 1 ? '' : 'wordle-key-wide ' 
               ) + (
                 isDisabled ? 'wordle-key-disabled ' :
-                this.state[char as Keys].state === 'g' ? 'bg-green-600/60 ' :
-                this.state[char as Keys].state === 'y' ? 'bg-yellow-500/70 ' :
-                this.state[char as Keys].state === 'r' ? 'bg-red-700/50 ' : 'wordle-key-neutral '
+                this.state[char as Keys].state === 'g' ? 'wordle-state-g ' :
+                this.state[char as Keys].state === 'y' ? 'wordle-state-y ' :
+                this.state[char as Keys].state === 'r' ? 'wordle-state-r ' : 'wordle-key-neutral '
               ) + (!isDisabled && key.length === 1 && this.suggested.includes(key.toLowerCase()) ? 'wordle-key-suggested ' : '') + (this.state[char as Keys].pressed ? 'wordle-key-pressed' : '')}
             >{char}</button>
           })}
@@ -93,11 +93,11 @@ export class Block {
       <For each={this.word as unknown as string[]}>{(char, i) => (
         <div
           class={'wordle-cell border capitalize relative ' + (
-            this.mask[i()] === 'r' ? 'border-muted-foreground/50 bg-red-700/50' :
-            this.mask[i()] === 'y' ? 'border-muted-foreground/50 bg-yellow-500/70' :
-            this.mask[i()] === 'g' ? 'border-muted-foreground/50 bg-green-600/60' :
-            this.mask[i()] === 'b' ? 'border-muted-foreground/50 bg-blue-600/60' :
-            'border-muted-foreground/50 bg-transparent'
+            this.mask[i()] === 'r' ? 'wordle-state-r' :
+            this.mask[i()] === 'y' ? 'wordle-state-y' :
+            this.mask[i()] === 'g' ? 'wordle-state-g' :
+            this.mask[i()] === 'b' ? 'wordle-state-b' :
+            'wordle-state-empty'
           )}
         ><span class='wordle-cell-letter font-extrabold'>{char}</span></div>
       )}</For>
@@ -319,7 +319,7 @@ export class WordleModel {
               const isRevealed = last[0] === answer && last[1].split('').every(s => s === 'b')
               return <>
                 <span class='result-kicker'>{isCorrect ? 'Solved' : isRevealed ? 'Revealed' : 'Game over'} / {modeTitle()}</span>
-                <DrawerTitle class={'result-word ' + (isCorrect ? 'text-success-foreground' : isRevealed ? 'text-blue-500' : 'text-error-foreground')}>
+                <DrawerTitle class={'result-word ' + (isCorrect ? 'text-success-foreground' : isRevealed ? 'wordle-revealed-text' : 'text-error-foreground')}>
                   <span class='result-answer'>{answer?.toUpperCase()}</span> <ShareTrigger word={() => answer} soft={this.state.soft} hard={this.state.hard} />
                 </DrawerTitle>
                 <DrawerDescription class='result-copy'>
