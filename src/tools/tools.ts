@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { renderMarkdown } from './markdown.ts';
 export function mountTool(toolId, root) {
   'use strict';
 
@@ -565,50 +566,6 @@ export function mountTool(toolId, root) {
     disposeTool = () => {};
   }
 
-  const inlineMd = text => esc(text)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/~~([^~]+)~~/g, '<del>$1</del>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  function markdown(text) {
-    const lines = text.replace(/\r/g, '').split('\n');
-    const out = [];
-    let index = 0;
-    const wrap = (start, end, html) => `<div data-source-start="${start}" data-source-end="${end}">${html}</div>`;
-    while (index < lines.length) {
-      const start = index;
-      const line = lines[index];
-      if (/^```/.test(line)) {
-        const language = line.slice(3).trim(); let code = ''; index++;
-        while (index < lines.length && !/^```/.test(lines[index])) code += (code ? '\n' : '') + lines[index++];
-        if (index < lines.length) index++;
-        out.push(wrap(start, index, `<pre${language ? ` data-language="${esc(language)}"` : ''}><code>${esc(code)}</code></pre>`)); continue;
-      }
-      if (/^#{1,6}\s/.test(line)) {
-        const match = line.match(/^(#{1,6})\s+(.*)$/); index++;
-        out.push(wrap(start, index, `<h${match[1].length}>${inlineMd(match[2])}</h${match[1].length}>`)); continue;
-      }
-      if (/^>\s?/.test(line)) {
-        const quote = []; while (index < lines.length && /^>\s?/.test(lines[index])) quote.push(lines[index++].replace(/^>\s?/, ''));
-        out.push(wrap(start, index, `<blockquote>${quote.map(inlineMd).join('<br>')}</blockquote>`)); continue;
-      }
-      if (/^[-*+]\s+/.test(line)) {
-        const items = []; while (index < lines.length && /^[-*+]\s+/.test(lines[index])) items.push(`<li>${inlineMd(lines[index++].replace(/^[-*+]\s+/, ''))}</li>`);
-        out.push(wrap(start, index, `<ul>${items.join('')}</ul>`)); continue;
-      }
-      if (/^\d+\.\s+/.test(line)) {
-        const items = []; while (index < lines.length && /^\d+\.\s+/.test(lines[index])) items.push(`<li>${inlineMd(lines[index++].replace(/^\d+\.\s+/, ''))}</li>`);
-        out.push(wrap(start, index, `<ol>${items.join('')}</ol>`)); continue;
-      }
-      if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { index++; out.push(wrap(start, index, '<hr>')); continue; }
-      if (!line.trim()) { index++; continue; }
-      const paragraph = [line]; index++;
-      while (index < lines.length && lines[index].trim() && !/^(#{1,6}\s|```|>\s?|[-*+]\s+|\d+\.\s+)/.test(lines[index])) paragraph.push(lines[index++]);
-      out.push(wrap(start, index, `<p>${paragraph.map(inlineMd).join('<br>')}</p>`));
-    }
-    return out.join('') || '<p></p>';
-  }
 
   async function markdownTool(generation) {
     loadingEditor();
@@ -669,7 +626,7 @@ export function mountTool(toolId, root) {
     };
     const paint = () => {
       const text = model.getValue(); set('text', text);
-      output.innerHTML = markdown(text); rebuildMap();
+      output.innerHTML = renderMarkdown(text); rebuildMap();
       setContext(`<button type="button" data-md-link aria-pressed="${linked ? 'true' : 'false'}" title="Toggle linked scrolling">🔗 Scroll</button>`);
       context.querySelector('[data-md-link]').onclick = () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); paint(); if (linked) syncPreview(); };
       if (linked) syncPreview();

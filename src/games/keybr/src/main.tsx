@@ -149,6 +149,7 @@ const App: Component = () => {
   const [helpOpen, setHelpOpen] = createSignal(false);
   const [fullscreen, setFullscreen] = createSignal(Boolean(document.fullscreenElement));
   let loadController: AbortController | null = null;
+  let mounted = true;
   let settingsDirty = false;
   let lastKeyTime = 0;
 
@@ -292,11 +293,13 @@ const App: Component = () => {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     resultStorage.load().then(
       (loaded) => {
+        if (!mounted) return;
         history = loaded;
         setHistoryRevision((v) => v + 1);
         setHistoryReady(true);
       },
       (error) => {
+        if (!mounted) return;
         console.error("Could not load Keybr history", error);
         history = [];
         setHistoryReady(true);
@@ -305,6 +308,7 @@ const App: Component = () => {
   });
 
   onCleanup(() => {
+    mounted = false;
     loadController?.abort();
     removeEventListener("keydown", handleKeyDown);
     removeEventListener("keyup", handleKeyUp);
@@ -365,13 +369,15 @@ const App: Component = () => {
     const link = document.createElement("a");
     link.href = url;
     link.download = "keybr-history.json";
+    document.body.append(link);
     link.click();
-    queueMicrotask(() => URL.revokeObjectURL(url));
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const toggleFullscreen = async () => {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
+  const toggleFullscreen = () => {
+    const action = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    void action.catch((error) => console.warn("Could not change fullscreen state", error));
   };
 
   return (

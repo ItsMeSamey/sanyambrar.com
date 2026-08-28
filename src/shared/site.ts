@@ -1,67 +1,128 @@
-// @ts-nocheck
-import { searchIndex } from '../site/data.ts';
-(() => {
-  const SCRIPT_ROOT = new URL('.', document.currentScript?.src || location.href);
-  const index = searchIndex;
-  const norm = s => s.toLowerCase();
-  const score = (item, q) => {
-    const text = norm(`${item.title} ${item.kind} ${item.note} ${(item.tags || []).join(' ')}`);
-    const title = norm(item.title);
-    if (!q) return 1;
-    if (title === q) return 100;
-    if (title.startsWith(q)) return 70;
-    if (title.includes(q)) return 50;
-    const words = q.split(/\s+/).filter(Boolean);
-    return words.every(w => text.includes(w)) ? 20 + words.length : 0;
-  };
+import { searchIndex, type Entry } from '../site/data.ts'
 
-  let box, input, results, opener, active = 0, visible = [];
-  const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K';
-  const syncShortcutLabels = () => document.querySelectorAll('[data-search-shortcut]').forEach(el => { el.textContent = shortcutLabel; });
-  syncShortcutLabels();
-  addEventListener('samey-pageload', syncShortcutLabels);
+const api = globalThis as typeof globalThis & {
+  SameyNavigate?: (href: string, options?: {replace?: boolean}) => Promise<void> | void
+}
+const nav = navigator as Navigator & {userAgentData?: {platform?: string}}
+const currentScript = document.currentScript
+const SCRIPT_ROOT = new URL('.', currentScript instanceof HTMLScriptElement ? currentScript.src : location.href)
+const norm = (value: string) => value.toLowerCase()
 
-  const render = () => {
-    const q = norm(input.value.trim());
-    visible = index.map(item => [item, score(item, q)]).filter(x => x[1] > 0).sort((a,b) => b[1] - a[1] || a[0].title.localeCompare(b[0].title)).slice(0, 9).map(x => x[0]);
-    active = Math.min(active, Math.max(0, visible.length - 1));
-    results.innerHTML = visible.map((item, i) => `<a class="search-result${i===active?' active':''}" href="${new URL(item.href, SCRIPT_ROOT).href}"><span><b>${item.title}</b><small>${item.note}</small></span><em>${item.kind}</em></a>`).join('') || '<div class="search-empty">No match</div>';
-  };
-  const ensure = () => {
-    if (box) return;
-    box = document.createElement('div');
-    box.className = 'site-search';
-    box.dataset.sameyRuntime = '';
-    box.hidden = true;
-    box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>';
-    document.body.append(box);
-    input = box.querySelector('input'); results = box.querySelector('.site-search-results');
-    input.addEventListener('input', () => { active = 0; render(); });
-    box.addEventListener('click', e => {
-      if (e.target.closest('a.search-result')) close(false);
-      else if (e.target.closest('[data-close-search]')) close();
-    });
-    input.addEventListener('keydown', e => {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1); render(); }
-      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(false); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.assign(href); }
-    });
-  };
-  const open = trigger => {
-    ensure();
-    opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus());
-  };
-  const close = (restoreFocus = true) => {
-    if (!box || box.hidden) return;
-    box.hidden = true;
-    const target = opener; opener = null;
-    if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus());
-  };
-  addEventListener('samey-pageleave', () => close(false));
-  addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); box && !box.hidden ? close() : open(); }
-    else if (e.key === 'Escape') close();
-  });
-  document.addEventListener('click', e => { const trigger = e.target.closest('[data-open-search]'); if (trigger) open(trigger); });
+function score(item: Entry, query: string): number {
+  if (!query) return 1
+  const title = norm(item.title)
+  if (title === query) return 100
+  if (title.startsWith(query)) return 70
+  if (title.includes(query)) return 50
+  const text = norm(`${item.title} ${item.kind} ${item.note} ${(item.tags ?? []).join(' ')}`)
+  const words = query.split(/\s+/).filter(Boolean)
+  return words.every(word => text.includes(word)) ? 20 + words.length : 0
+}
 
-})();
+let box: HTMLDivElement | undefined
+let input!: HTMLInputElement
+let results!: HTMLDivElement
+let opener: HTMLElement | null = null
+let active = 0
+let visible: Entry[] = []
+
+const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(nav.userAgentData?.platform || nav.platform || nav.userAgent) ? '⌘ K' : 'Ctrl K'
+const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
+syncShortcutLabels()
+addEventListener('samey-pageload', syncShortcutLabels)
+
+function resultNode(item: Entry, index: number): HTMLAnchorElement {
+  const anchor = document.createElement('a')
+  anchor.className = `search-result${index === active ? ' active' : ''}`
+  anchor.href = new URL(item.href, SCRIPT_ROOT).href
+  const text = document.createElement('span')
+  const title = document.createElement('b')
+  const note = document.createElement('small')
+  const kind = document.createElement('em')
+  title.textContent = item.title
+  note.textContent = item.note
+  kind.textContent = item.kind
+  text.append(title, note)
+  anchor.append(text, kind)
+  return anchor
+}
+
+function render() {
+  const query = norm(input.value.trim())
+  visible = searchIndex
+    .map(item => [item, score(item, query)] as const)
+    .filter(([, rank]) => rank > 0)
+    .sort(([a, ar], [b, br]) => br - ar || a.title.localeCompare(b.title))
+    .slice(0, 9)
+    .map(([item]) => item)
+  active = Math.min(active, Math.max(0, visible.length - 1))
+  if (visible.length) results.replaceChildren(...visible.map(resultNode))
+  else {
+    const empty = document.createElement('div')
+    empty.className = 'search-empty'
+    empty.textContent = 'No match'
+    results.replaceChildren(empty)
+  }
+}
+
+function close(restoreFocus = true) {
+  if (!box || box.hidden) return
+  box.hidden = true
+  const target = opener
+  opener = null
+  if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
+}
+
+function ensure() {
+  if (box) return
+  box = document.createElement('div')
+  box.className = 'site-search'
+  box.dataset.sameyRuntime = ''
+  box.hidden = true
+  box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>'
+  document.body.append(box)
+  input = box.querySelector<HTMLInputElement>('input')!
+  results = box.querySelector<HTMLDivElement>('.site-search-results')!
+  input.addEventListener('input', () => { active = 0; render() })
+  box.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null
+    if (target?.closest('a.search-result')) close(false)
+    else if (target?.closest('[data-close-search]')) close()
+  })
+  input.addEventListener('keydown', event => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      active = (active + (event.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1)
+      render()
+    } else if (event.key === 'Enter' && visible[active]) {
+      event.preventDefault()
+      const href = new URL(visible[active].href, SCRIPT_ROOT).href
+      close(false)
+      if (api.SameyNavigate) void api.SameyNavigate(href)
+      else location.assign(href)
+    }
+  })
+}
+
+function open(trigger?: EventTarget | null) {
+  ensure()
+  opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null
+  box!.hidden = false
+  active = 0
+  input.value = ''
+  render()
+  requestAnimationFrame(() => input.focus())
+}
+
+addEventListener('samey-pageleave', () => close(false))
+addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    box && !box.hidden ? close() : open()
+  } else if (event.key === 'Escape') close()
+})
+document.addEventListener('click', event => {
+  const target = event.target instanceof Element ? event.target : null
+  const trigger = target?.closest('[data-open-search]')
+  if (trigger) open(trigger)
+})

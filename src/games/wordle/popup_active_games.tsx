@@ -15,6 +15,7 @@ interface ActiveGame {
 
 const LEGACY_RE = /^game\.wordle\.(any\.)?(\d+)\.(\d+)$/
 const ADVANCED_RE = /^game\.wordle\.advanced\.(any\.)?(\d+)\.(\d+)\.(\d+)$/
+const MODERN_ADVANCED_RE = /^game\.wordle\.advanced\.(\d+)\.(\d+)\.(\d+)\.([01])(?:\.([0-9a-f]+))?$/i
 const DAILY_RE = /^game\.wordle\.daily\.([0-9a-f]+)\.(\d{4}-\d{2}-\d{2})$/i
 const LEGACY_DAILY_RE = /^game\.wordle\.daily\.(\d{4}-\d{2}-\d{2})$/
 
@@ -25,8 +26,15 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
     : {...value.config}
 
   if (!config) {
-    let match = ADVANCED_RE.exec(key)
+    let match = MODERN_ADVANCED_RE.exec(key)
     if (match) config = {
+      mode: 'advanced', wordLength: Number(match[1]) as any, maxTries: Number(match[2]),
+      disabledLetters: Number(match[3]), allowAny: match[4] === '1',
+      wordIndex: match[5] ? Number.parseInt(match[5], 16) : undefined,
+    }
+
+    match = ADVANCED_RE.exec(key)
+    if (!config && match) config = {
       mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
       maxTries: Number(match[3]), disabledLetters: Number(match[4]),
     }

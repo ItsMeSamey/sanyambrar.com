@@ -392,6 +392,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
 
     let nativeDragging = false;
+    let selectingText = false;
     let selectionDragging = false;
     let selectionDragCandidate = false;
     let selectionDragText = "";
@@ -420,7 +421,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let dragPreviewW = 0, dragPreviewH = 0;
     const placeDragPreview = (x, y) => {
       if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
-      const gap = 17;
+      const gap = 10;
       const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x + gap));
       const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y + gap));
       dragPreview.style.transform = `translate3d(${px}px,${py}px,0)`;
@@ -529,10 +530,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
     };
     const setMode = (target) => {
-      const grab = selectionDragging || nativeDragging || pressedGrab || wantsGrab(target);
-      const link = grab ? null : linkTarget(target);
+      const grab = selectionDragging || nativeDragging || pressedGrab || (!selectingText && wantsGrab(target));
+      const link = grab || selectingText ? null : linkTarget(target);
       setGrabState(grab);
-      setTextState(!grab && !link && wantsText(target));
+      setTextState(!grab && (selectingText || !link && wantsText(target)));
       setFillTarget(link);
     };
     refreshCursorMode = () => cursor.hasAttribute("data-visible")
@@ -595,6 +596,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event, true);
+      selectingText = event.button === 0 && !selectionDragCandidate && !pressedGrab && !linkTarget(actual) && wantsText(actual);
       setMode(actual);
       const pressedLink = linkTarget(actual);
       if (pressedLink && (event.ctrlKey || event.metaKey || event.button === 1)) {
@@ -627,6 +629,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.addEventListener("pointerup", (event) => {
       if (selectionDragging) dropSelectionText(elementAt(event));
       else if (selectionDragCandidate) collapseSelectionAt(event.clientX, event.clientY);
+      selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
       selectionDragText = "";
@@ -673,6 +676,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (allowSelectionEmulation && isPlainSelectionDrag(event)) {
         event.preventDefault();
         nativeDragging = false;
+        selectingText = false;
         selectionDragCandidate = false;
         selectionDragging = true;
         selectionDragText = getSelection()?.toString() || "";
@@ -684,6 +688,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         return;
       }
       nativeDragging = true;
+      selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
       selectionDragText = "";
@@ -715,6 +720,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     }, true);
     const stopDragging = (event) => {
       nativeDragging = false;
+      selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
       selectionDragText = "";

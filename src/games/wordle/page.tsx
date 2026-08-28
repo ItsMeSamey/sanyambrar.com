@@ -12,7 +12,7 @@ import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './word
 import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
-import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
+import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, legacyGameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
 import { animateRootSwap } from '../../shared/transitions.ts'
 
@@ -79,7 +79,7 @@ class Keyboard {
                 // is already handled on down/up so it must not insert twice.
                 if (!isDisabled && e.detail === 0) { dispatch('keydown'); dispatch('keyup') }
               }}
-              class={'wordle-key text-center rounded ' + (
+              class={'wordle-key text-center ' + (
                 key.length === 1 ? '' : 'wordle-key-wide ' 
               ) + (
                 isDisabled ? 'wordle-key-disabled ' :
@@ -117,12 +117,13 @@ export class Block {
   }
 }
 
-interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; suggested: string }
+interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; suggested: string; disabled: string }
 export interface WordLocalStorageState {
   word: string
   wordIndex?: number
   history: [string, string][]
   disabled?: string
+  disabledSeed?: string
   config?: SettingsHardProps
   done?: KindEnum
 }
@@ -145,14 +146,21 @@ class GameState {
           stored.word = getRandomWord(hard.wordLength)
           hard.wordIndex = binarySearch(hard.wordLength, stored.word)
         }
-        stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
+        stored.disabledSeed = legacyGameStorageKey(hard)
+        stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, stored.disabledSeed)
       }
       stored.config = {...hard}
     } else if (stored.disabled === undefined || hard.mode === 'daily') {
+      stored.disabledSeed ??= hard.mode === 'daily' ? undefined : legacyGameStorageKey(stored.config ?? hard)
       stored.disabled = hard.mode === 'daily'
         ? getDailyChallenge(hard.dailyDate ?? localDateKey(), hard.dailyVersion ?? DAILY_CHALLENGE_VERSION).disabled
-        : disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
+        : disabledLettersForWord(stored.word, hard.disabledLetters, stored.disabledSeed!)
       stored.config = {...hard}
+    } else {
+      // Existing saves already contain the exact disabled set. Preserve it and
+      // remember the original seed so later slider changes extend/shrink the
+      // same deterministic set instead of reshuffling unrelated letters.
+      stored.disabledSeed ??= legacyGameStorageKey(stored.config ?? hard)
     }
 
     const lastColors = ((stored.history.at(-1) ?? ['', ''])![1] || '').split('')
@@ -168,11 +176,12 @@ class GameState {
       keyboard: Keyboard.stateFromHistory(stored.history),
       showPopOver: stored.done !== undefined,
       suggested: '',
+      disabled: stored.disabled ?? '',
     })
     this.state.keyboard = createMutable(this.state.keyboard)
   }
 
-  get disabled() { return this.stateStore.current_value!.disabled ?? '' }
+  get disabled() { return this.state.disabled }
 
   isFinished() { return this.stateStore.current_value!.done !== undefined }
 
@@ -209,7 +218,7 @@ class GameState {
       this.persist()
       recordDone(this.stateStore.current_value!, this.hard, KindEnum.Correct)
       this.state.showPopOver = true
-    } else if (this.hard.maxTries !== 1 && this.history.length === this.hard.maxTries) {
+    } else if (this.hard.maxTries !== 1 && this.history.length >= this.hard.maxTries) {
       this.stateStore.current_value!.done = KindEnum.Failed
       this.persist()
       recordDone(this.stateStore.current_value!, this.hard, KindEnum.Failed)
@@ -308,6 +317,23 @@ export class WordleModel {
       else this.state.state.suggested = ''
     }))
 
+    createEffect(() => {
+      if (this.state.hard.mode !== 'advanced') return
+      const stored = this.state.stateStore.current_value!
+      const config = {...this.state.hard}
+      stored.disabledSeed ??= legacyGameStorageKey(stored.config ?? config)
+      const disabled = disabledLettersForWord(stored.word, config.disabledLetters, stored.disabledSeed)
+      stored.disabled = disabled
+      stored.config = config
+      this.state.state.disabled = disabled
+      const current = this.state.history.at(-1)
+      if (current && !current[1] && [...current[0]].some(letter => disabled.includes(letter.toLowerCase()))) {
+        current[0] = [...current[0]].filter(letter => !disabled.includes(letter.toLowerCase())).join('')
+      }
+      this.state.persist()
+      this.state.fastInvalidate()
+    })
+
     const handleKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
     const handleKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
     const clearPressed = () => {
@@ -383,6 +409,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       (stored.word !== undefined && typeof stored.word !== 'string') ||
       (stored.wordIndex !== undefined && (!Number.isInteger(stored.wordIndex) || stored.wordIndex < 0)) ||
       (stored.disabled !== undefined && typeof stored.disabled !== 'string') ||
+      (stored.disabledSeed !== undefined && typeof stored.disabledSeed !== 'string') ||
       (stored.done !== undefined && ![KindEnum.Correct, KindEnum.Failed, KindEnum.Revealed].includes(stored.done))) {
       throw new Error('Invalid saved Wordle state')
     }
@@ -406,13 +433,11 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       if (last && mask && !/^(?:[gyr]+|b+)$/.test(mask)) throw new Error('Invalid saved Wordle history')
       if (!last && mask.includes('b')) throw new Error('Invalid saved Wordle history')
     }
-    if (config.maxTries !== 1 && stored.history.length > config.maxTries) throw new Error('Invalid saved Wordle history')
-
     const last = stored.history.at(-1)!
     const solved = last[1] === 'g'.repeat(config.wordLength)
     const revealed = last[1] === 'b'.repeat(config.wordLength)
     if (stored.done === KindEnum.Correct && !solved || stored.done === KindEnum.Revealed && !revealed ||
-      stored.done === KindEnum.Failed && (config.maxTries === 1 || stored.history.length !== config.maxTries || solved || revealed)) {
+      stored.done === KindEnum.Failed && (config.maxTries === 1 || stored.history.length < config.maxTries || solved || revealed)) {
       throw new Error('Invalid saved Wordle completion')
     }
     if (stored.done === undefined && last[1] && !solved && !revealed && (config.maxTries === 1 || stored.history.length < config.maxTries)) {
@@ -443,6 +468,18 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     return JSON.stringify(stored)
   }
   const storageKey = gameStorageKey(hard)
+  if (hard.mode === 'advanced' && Number.isInteger(hard.wordIndex)) try {
+    if (!localStorage.getItem(storageKey)) {
+      const legacyKey = legacyGameStorageKey(hard)
+      const legacy = localStorage.getItem(legacyKey)
+      if (legacy) {
+        localStorage.setItem(storageKey, legacy)
+        localStorage.removeItem(legacyKey)
+        window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key: legacyKey}}))
+        window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key: storageKey}}))
+      }
+    }
+  } catch {}
   if (hard.mode === 'daily' && (hard.dailyVersion ?? DAILY_CHALLENGE_VERSION) === 1 && hard.dailyDate) try {
     if (!localStorage.getItem(storageKey)) {
       const legacyKey = `game.wordle.daily.${hard.dailyDate}`
@@ -636,7 +673,7 @@ export default function Wordle() {
   return <>
     <TopBar start={!showOpening() ? modesBack() : undefined} contextClass='wordle-topbar-context' context={!showOpening() ? gameContext() : undefined}/>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
-      <For each={[gameKey()]}>{() => RenderWordleModel({...hard}, soft, nextChallenge, chooseMode)}</For>
+      <For each={[gameKey()]}>{() => RenderWordleModel(hard, soft, nextChallenge, chooseMode)}</For>
     </Show>
   </>
 }

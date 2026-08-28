@@ -151,11 +151,18 @@ export function createRandomChallenge(): ChallengeConfig {
   return {mode: 'random', randomId: id, wordLength, ...autoDifficulty(wordLength), allowAny: false}
 }
 
-export function gameStorageKey(config: ChallengeConfig): string {
+export function legacyGameStorageKey(config: ChallengeConfig): string {
   if (config.mode === 'daily') return `game.wordle.daily.${(config.dailyVersion ?? DAILY_CHALLENGE_VERSION).toString(16)}.${config.dailyDate ?? localDateKey()}`
   const word = Number.isInteger(config.wordIndex) ? `.${config.wordIndex!.toString(16)}` : ''
   if (config.mode === 'random') return `game.wordle.random.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
   return `game.wordle.advanced.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
+}
+
+export function gameStorageKey(config: ChallengeConfig): string {
+  if (config.mode === 'advanced' && Number.isInteger(config.wordIndex)) {
+    return `game.wordle.advanced.v2.${config.wordLength}.${config.wordIndex!.toString(16)}`
+  }
+  return legacyGameStorageKey(config)
 }
 
 
@@ -258,7 +265,7 @@ export function parseChallenge(raw: string | null): UrlChallenge | undefined {
 export function challengeUrl(config: ChallengeConfig, fastInvalidate: boolean): URL | undefined {
   const value = serializeChallenge(config, fastInvalidate)
   if (!value) return undefined
-  const base = /^https?:$/.test(location.protocol) ? new URL('/wordle', location.origin) : new URL('https://sanyambrar.com/wordle')
+  const base = /^https?:$/.test(location.protocol) ? new URL('/wordle.html', location.origin) : new URL('https://sanyambrar.com/wordle.html')
   base.searchParams.set(GAME_QUERY, value)
   return base
 }
