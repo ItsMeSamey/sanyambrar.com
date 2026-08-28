@@ -74,13 +74,25 @@ async function ensureDeps(dir: string) {
     return;
   }
 
+  const installArgs = existsSync(lock) ? ["install", "--frozen-lockfile"] : ["install"];
   try {
-    await run(dir, "bun", existsSync(lock) ? ["install", "--frozen-lockfile"] : ["install"]);
+    await run(dir, process.execPath, installArgs);
   } catch (error: any) {
-    if (error?.code === "ENOENT") throw new Error(`dependencies for ${relative(ROOT, dir) || "."} are missing/stale and Bun is not installed`);
-    throw error;
+    if (error?.code === "ENOENT" && !existsSync(process.execPath))
+      throw new Error(`dependencies for ${relative(ROOT, dir) || "."} are missing/stale and Bun is not installed`);
+
+    // Bun can leave a partially-populated package cache/tree after an
+    // interrupted install. A common symptom is ENOENT while linking a package
+    // binary (for example TypeScript's bin/tsc). Retry once from clean inputs,
+    // bypassing both the cache and hardlink backend.
+    const detail = `${error?.message || ""}\n${error?.stderr || ""}`;
+    if (!/ENOENT: (?:copying|linking) file/i.test(detail)) throw error;
+    log(`dependency install hit a stale package tree; retrying cleanly for ${relative(ROOT, dir) || "."}`);
+    await rm(join(dir, "node_modules"), { recursive: true, force: true });
+    await run(dir, process.execPath, [...installArgs, "--no-cache", "--backend=copyfile"]);
   }
   await mkdir(join(dir, "node_modules"), { recursive: true });
+  must(await directDependenciesPresent(dir), `dependencies for ${relative(ROOT, dir) || "."} are incomplete after install`);
   await writeFile(stamp, `${await dependencySignature(dir)}\n`);
 }
 
