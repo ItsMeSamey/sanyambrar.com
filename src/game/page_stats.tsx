@@ -61,7 +61,11 @@ export async function fetchStats(): Promise<GameStats> {
 }
 
 export async function hasStats() {
-  return (await fetchStats()).totalGames > 0
+  const db = await waitForDB()
+  for (let length = 3; length <= 20; length++) {
+    if (await db.count(`w${length}` as const)) return true
+  }
+  return false
 }
 
 function entryMeta(entry: HistoryEntry) {

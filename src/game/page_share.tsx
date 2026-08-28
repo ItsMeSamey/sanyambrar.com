@@ -20,14 +20,12 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
   let idx: number = -1
 
   return <Dialog open={open()} onOpenChange={setOpen}>
-    <DialogTrigger>
-      <Tooltip>
-      <TooltipTrigger onClick={e => { e.stopPropagation(); setOpen(true) }} class='wordle-share-trigger'>
+    <Tooltip>
+      <DialogTrigger as={TooltipTrigger} type='button' class='wordle-share-trigger' aria-label='Share' onClick={e => e.stopPropagation()}>
         <ShareIcon class='size-5 stroke-foreground' />
-      </TooltipTrigger>
+      </DialogTrigger>
       <TooltipContent>Share</TooltipContent>
     </Tooltip>
-    </DialogTrigger>
     <DialogContent class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
       <DialogHeader class='wordle-share-header flex flex-row gap-2 items-center'>
         <span>Share</span> <span class='wordle-share-word text-blue-500 font-bold uppercase'>{props.word()}</span>
