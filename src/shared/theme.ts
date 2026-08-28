@@ -628,6 +628,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedGrab = false;
       pressedPointerId = null;
       modifiedLinkPending = null;
+      suppressModifiedClick = null;
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
       else { setGrabState(false); setFillTarget(null); }
     };
