@@ -50,7 +50,8 @@ export async function fetchStats(): Promise<GameStats> {
     }
   }
 
-  words.sort((a, b) => Math.max(...b.h.map(h => h.t ?? 0)) - Math.max(...a.h.map(h => h.t ?? 0)))
+  const latestTimestamp = (record: Value) => record.h.reduce((latest, history) => Math.max(latest, history.t ?? 0), 0)
+  words.sort((a, b) => latestTimestamp(b) - latestTimestamp(a))
   return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, dailyGames, dailyWins, dailyAverageGuesses: dailyWins ? dailyGuesses / dailyWins : 0, words}
 }
 
