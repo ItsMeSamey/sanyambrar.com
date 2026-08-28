@@ -10,8 +10,19 @@ const all = [
   "Meta",
 ] satisfies ModifierId[];
 
-let initialized = false;
-let modifiers: readonly ModifierId[] = [];
+type ModifierTracker = {
+  initialized: boolean;
+  modifiers: readonly ModifierId[];
+};
+
+declare global {
+  var SameyKeybrModifierTracker: ModifierTracker | undefined;
+}
+
+const tracker = (globalThis.SameyKeybrModifierTracker ??= {
+  initialized: false,
+  modifiers: [],
+});
 
 /**
  * A static global object which tracks the state of the modifier keys,
@@ -19,27 +30,28 @@ let modifiers: readonly ModifierId[] = [];
  */
 export class ModifierState {
   static get modifiers(): readonly ModifierId[] {
-    return modifiers;
+    return tracker.modifiers;
   }
 
   static get capsLock(): boolean {
-    return modifiers.includes("CapsLock");
+    return tracker.modifiers.includes("CapsLock");
   }
 
   static get numLock(): boolean {
-    return modifiers.includes("NumLock");
+    return tracker.modifiers.includes("NumLock");
   }
 
   static initialize() {
-    if (!initialized) {
-      // ModifierState must receive keyboard events before any other event listener.
+    if (!tracker.initialized) {
+      // The Keybr bundle can be mounted repeatedly by the shared page runtime.
+      // Keep exactly one pair of global listeners across those mounts.
       window.addEventListener("keydown", (event) => {
-        modifiers = getModifiers(event);
+        tracker.modifiers = getModifiers(event);
       });
       window.addEventListener("keyup", (event) => {
-        modifiers = getModifiers(event);
+        tracker.modifiers = getModifiers(event);
       });
-      initialized = true;
+      tracker.initialized = true;
     }
   }
 }
