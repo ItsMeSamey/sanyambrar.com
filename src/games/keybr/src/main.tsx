@@ -144,7 +144,6 @@ const App: Component = () => {
   const [loadState, setLoadState] = createSignal<LoadState>({ type: "loading", total: 0, current: 0 });
   const [input, setInput] = createSignal<TextInput | null>(null, { equals: false });
   const [inputRevision, setInputRevision] = createSignal(0);
-  const [lastResult, setLastResult] = createSignal<Result | null>(null);
   const [pressed, setPressed] = createSignal<ReadonlySet<string>>(new Set());
   const [view, setViewSignal] = createSignal<View>("practice");
   const [helpOpen, setHelpOpen] = createSignal(false);
@@ -215,7 +214,6 @@ const App: Component = () => {
       Date.now(),
       makeStats(value.steps),
     );
-    setLastResult(result);
     appendResult(result);
     newInput(engine);
   };
@@ -352,7 +350,6 @@ const App: Component = () => {
     try {
       await resultStorage.clear();
       history = [];
-      setLastResult(null);
       setHistoryRevision((v) => v + 1);
       setHistoryEpoch((v) => v + 1);
     } catch (error) {
@@ -397,7 +394,6 @@ const App: Component = () => {
             input={input()}
             inputRevision={inputRevision()}
             pressed={pressed()}
-            lastResult={lastResult()}
             onHelp={() => setHelpOpen(true)}
             onReset={resetInput}
             onSkip={newInput}
@@ -460,7 +456,6 @@ const PracticeView: Component<{
   readonly input: TextInput | null;
   readonly inputRevision: number;
   readonly pressed: ReadonlySet<string>;
-  readonly lastResult: Result | null;
   readonly onHelp: () => void;
   readonly onReset: () => void;
   readonly onSkip: () => void;
@@ -501,11 +496,11 @@ const PracticeView: Component<{
             </div>
           </Match>
           <Match when={props.state.type === "ready" && props.input != null}>
-            <LessonText input={props.input!} revision={props.inputRevision} />
-            <Show when={props.lastResult}>
-              {(result) => <ResultStrip result={result()} />}
-            </Show>
-            <Show when={engine()}>{(value) => <KeyboardView engine={value()} input={props.input!} revision={props.inputRevision} pressed={props.pressed} />}</Show>
+            <Show when={engine()}>{(value) => <PracticeIndicators engine={value()} revision={props.inputRevision} />}</Show>
+            <div class="text-stage">
+              <LessonText input={props.input!} revision={props.inputRevision} />
+            </div>
+            <Show when={engine()}>{(value) => <div class="keyboard-stage"><KeyboardView engine={value()} input={props.input!} revision={props.inputRevision} pressed={props.pressed} /></div>}</Show>
           </Match>
         </Switch>
       </div>
@@ -533,24 +528,37 @@ function LessonText(props: { readonly input: TextInput; readonly revision: numbe
       <For each={chars()}>{(char) => {
         const cls = () => {
           const names = ["lesson-char"];
+          if (char.codePoint <= 0x20) names.push("special");
           if (char.attrs & Attr.Hit) names.push("hit");
           if (char.attrs & Attr.Miss) names.push("miss");
           if (char.attrs & Attr.Garbage) names.push("garbage");
           if (char.attrs & Attr.Cursor) names.push("cursor");
           return names.join(" ");
         };
-        return <span class={cls()}>{char.codePoint === 0x20 ? " " : String.fromCodePoint(char.codePoint)}</span>;
+        const text = () => {
+          switch (char.codePoint) {
+            case 0x09: return "→\u200b";
+            case 0x0a: return "↵\n";
+            case 0x20: return "·\u200b";
+            default: return String.fromCodePoint(char.codePoint);
+          }
+        };
+        return <span class={cls()}>{text()}</span>;
       }}</For>
     </div>
   );
 }
 
-function ResultStrip(props: { readonly result: Result }) {
+function PracticeIndicators(props: { readonly engine: Engine; readonly revision: number }) {
+  const stats = createMemo(() => {
+    props.revision;
+    return props.engine.progress.summaryStats.copy();
+  });
   return (
-    <div class="result-strip">
-      <span><b>{Math.round(props.result.speed / 5)}</b> wpm</span>
-      <span><b>{Math.round(props.result.accuracy * 100)}</b>% accuracy</span>
-      <span><b>{props.result.errors}</b> errors</span>
+    <div class="practice-indicators" aria-label="Typing progress">
+      <span><b>{stats().count ? Math.round(stats().speed.last / 5) : 0}</b> wpm</span>
+      <span><b>{stats().count ? Math.round(stats().accuracy.last * 100) : 100}</b>% accuracy</span>
+      <span><b>{stats().count}</b> lessons</span>
     </div>
   );
 }
@@ -588,13 +596,24 @@ function KeyboardView(props: {
   });
   return (
     <div class="keyboard-wrap" aria-hidden="true">
-      <svg class="keyboard" viewBox={`0 0 ${bounds().width} ${bounds().height}`} preserveAspectRatio="xMidYMid meet">
-        <For each={shapes()}>{(shape) => (
-          <g classList={{ key: true, expected: expectedKey() === shape.id, pressed: props.pressed.has(shape.id) }}>
-            <rect x={shape.x + 0.04} y={shape.y + 0.04} width={Math.max(0.1, shape.w - 0.08)} height={Math.max(0.1, shape.h - 0.08)} rx="0.11" />
-            <text x={shape.x + shape.w / 2} y={shape.y + shape.h / 2} dominant-baseline="middle" text-anchor="middle">{keyLabel(shape, props.engine.keyboard)}</text>
-          </g>
-        )}</For>
+      <svg class="keyboard" viewBox={`-0.375 -0.375 ${bounds().width + 0.75} ${bounds().height + 0.75}`} preserveAspectRatio="xMidYMid meet">
+        <rect class="keyboard-frame" x="-0.375" y="-0.375" width={bounds().width + 0.75} height={bounds().height + 0.75} rx="0.25" />
+        <For each={shapes()}>{(shape) => {
+          const label = () => keyLabel(shape, props.engine.keyboard);
+          const compact = () => /^(Key|Digit)/.test(shape.id) && label().length <= 2;
+          const zone = () => props.engine.settings.get(keyboardProps.colors) && shape.finger ? ` finger-${shape.finger}` : "";
+          return (
+            <g class={`key${expectedKey() === shape.id ? " expected" : ""}${props.pressed.has(shape.id) ? " pressed" : ""}${compact() ? " compact" : ""}${zone()}`}>
+              <rect class="key-button" x={shape.x + 0.025} y={shape.y + 0.025} width={Math.max(0.1, shape.w - 0.05)} height={Math.max(0.1, shape.h - 0.05)} rx="0.025" />
+              <text
+                x={compact() ? shape.x + 0.23 : shape.x + shape.w / 2}
+                y={compact() ? shape.y + 0.27 : shape.y + shape.h / 2}
+                dominant-baseline="middle"
+                text-anchor={compact() ? "start" : "middle"}
+              >{label()}</text>
+            </g>
+          );
+        }}</For>
       </svg>
     </div>
   );
@@ -700,6 +719,7 @@ const SettingsView: Component<{
             <For each={layouts()}>{(layout) => <option value={layout.id}>{layout.name.replace(/[{}]/g, "")}</option>}</For>
           </select>
         </label>
+        <Toggle label="Keyboard colors" checked={props.settings.get(keyboardProps.colors)} onChange={(value) => set(keyboardProps.colors, value)} />
 
         <label class="field-row"><span>Lesson</span>
           <select value={type().id} onChange={(event) => {
