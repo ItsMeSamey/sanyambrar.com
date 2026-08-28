@@ -608,19 +608,20 @@ export function mountChain() {
     g.imageSmoothingQuality = 'high';
     const c = size / 2;
     const gradient = g.createRadialGradient(c - radius*.34, c - radius*.38, radius*.08, c, c, radius*1.04);
-    const themeBg = color('--site-bg', '#fff');
-    const themeFg = color('--site-fg', '#121213');
-    gradient.addColorStop(0, mixColor(base, themeBg, .55));
-    gradient.addColorStop(.32, mixColor(base, themeBg, .16));
+    // Lighting must stay physically consistent across light and dark themes.
+    // Mixing against theme foreground/background inverted the sphere in dark mode:
+    // the rim and drop shadow became white while the highlight became darker.
+    gradient.addColorStop(0, mixColor(base, 'rgb(255 255 255)', .38));
+    gradient.addColorStop(.32, mixColor(base, 'rgb(255 255 255)', .12));
     gradient.addColorStop(.74, base);
-    gradient.addColorStop(1, mixColor(base, themeFg, .30));
-    g.shadowColor = resolvedColor('color-mix(in srgb,var(--site-fg) 18%,transparent)', 'rgba(0,0,0,.18)');
+    gradient.addColorStop(1, mixColor(base, 'rgb(0 0 0)', .30));
+    g.shadowColor = 'rgba(0,0,0,.26)';
     g.shadowBlur = Math.max(1.5, radius * .22);
     g.shadowOffsetY = Math.max(.5, radius * .08);
     g.fillStyle = gradient;
     g.beginPath(); g.arc(c, c, radius, 0, Math.PI * 2); g.fill();
     g.shadowColor = 'transparent';
-    g.strokeStyle = mixColor(base, themeFg, .18);
+    g.strokeStyle = mixColor(base, 'rgb(0 0 0)', .20);
     g.lineWidth = Math.max(.65, radius * .07);
     g.stroke();
     orbCache.set(key, sprite);
