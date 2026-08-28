@@ -376,12 +376,10 @@ export function mountChain() {
       if (!anyPending) break;
       requestDraw();
 
-      // Pending transfers are live ownership for the mover. This prevents the
-      // mover's last exploding cell from looking eliminated mid-transition, but
-      // unlike the old code it does not confuse a multi-owner board with a win.
-      const winNow = liveWinner(owner, next);
-      if (winNow) { finishGame(winNow); return; }
-
+      // Always materialize the next wave before deciding the winner. Otherwise a
+      // final explosion can eliminate the last opponent and finish the game while
+      // its outgoing atoms still exist only in `next`, dropping them from the
+      // displayed and persisted winning board.
       let hasNext = false;
       for (let i = 0; i < next.length; i++) if (next[i]) { hasNext = true; break; }
       if (!hasNext) break;
