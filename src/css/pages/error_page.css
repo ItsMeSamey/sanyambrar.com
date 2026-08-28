@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@800&family=Roboto:wght@100;300&display=swap');
 /* Error Page Swinging Light */
 .__error_page_swinging_light_parent {
   width:100%; height:100%; display:flex; flex-direction:column; align-items:center;
@@ -10,7 +9,7 @@
   --lit-header: hsl(53, 0%, 90%);
   --speed: 2s;
 
-  font-family: 'Roboto', sans-serif;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   background: var(--bg);
   perspective: 1200px;
 }
@@ -31,7 +30,7 @@
   margin:0 0 1rem; color:transparent;
   animation: __error_page_swinging_light_swing var(--speed) infinite alternate ease-in-out;
   font-size: clamp(5rem, 40vmin, 20rem);
-  font-family: 'Open Sans', sans-serif;
+  font-family: inherit;
   letter-spacing: 1rem;
   transform: translate3d(0, 0, 0vmin);
   --x: calc(50% + (var(--swing-x) * 0.5) * 1%);
@@ -93,3 +92,29 @@
   }
 }
 
+
+
+.error-page-message {
+  position: relative;
+  z-index: 1;
+  margin-top: 3.5rem;
+  text-align: center;
+  color: rgb(255 255 255 / 68%);
+}
+
+.error-page-heading {
+  display: block;
+  padding: 2rem;
+  color: rgb(254 202 202 / 72%);
+  font-size: 1.5rem;
+}
+
+.error-page-detail { margin: 0; font-size: 1.25rem; }
+.error-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: .25rem;
+}

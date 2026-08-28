@@ -185,7 +185,7 @@ function StatsContent({stats}: {stats: GameStats}) {
       </div>
     </section>
 
-    <section class='stats-section stats-daily-section'>
+    <section class='stats-section'>
       <div class='stats-section-heading'><div><span class='stats-eyebrow'>Word of the day</span><h2>Daily record</h2></div></div>
       <div class='stats-summary-grid'>
         <SummaryStat label='Daily games' value={stats.dailyGames} />

@@ -15,10 +15,10 @@ function SwingingLight(err: any, reset: () => void): JSX.Element {
         <div class='__error_page_swinging_light_cloak' />
       </div>
     </div>
-    <div class='text-center justify-center items-center mt-14 text-white/50 z-10'>
-      <span class='font-bold p-8 text-2xl text-red-500/50'>Something's Gone Horridly Wrong!</span>
-      <p class='text-center text-xl'>{err.name}: {stripStack(err.message)}</p>
-      <div class='flex flex-row items-center justify-center p-1 gap-4 mt-8'>
+    <div class='error-page-message'>
+      <strong class='error-page-heading'>Something's Gone Horridly Wrong!</strong>
+      <p class='error-page-detail'>{err.name}: {stripStack(err.message)}</p>
+      <div class='error-page-actions'>
         <Button class='rounded-full' onClick={() => { history.back(); retry() }}>Go Back</Button>
         <Button class='rounded-full' onClick={retry}>Try Again</Button>
       </div>

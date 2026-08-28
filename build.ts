@@ -114,7 +114,7 @@ async function walk(root: string, accept: (path: string, name: string) => boolea
 async function verifySourceArchitecture() {
   const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
   const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
-  const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="top site-topbar">'));
+  const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="site-topbar">'));
   must(topBarImplementations.length === 1 && relative(ROOT, topBarImplementations[0][0]) === "src/shared/components/TopBar.tsx",
     `architecture: expected exactly one TopBar implementation, found ${topBarImplementations.map(([path]) => relative(ROOT, path)).join(", ") || "none"}`);
 
