@@ -29,10 +29,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
     return `${+((h / 6) * 360).toFixed(2)} ${+(s * 100).toFixed(2)}% ${+(l * 100).toFixed(2)}%`;
   };
+  let volatileThemePrefs = {};
+  let volatileFont;
   const rawPrefs = () => {
-    try { return JSON.parse(localStorage.getItem(KEY) || "null") || {}; } catch { return {}; }
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem(KEY) || "null") || {}; } catch {}
+    return { ...stored, ...volatileThemePrefs };
   };
   const readFont = () => {
+    if (FONT_IDS.includes(volatileFont)) return volatileFont;
     try {
       const value = localStorage.getItem(FONT_KEY);
       if (FONT_IDS.includes(value)) return value;
@@ -204,14 +209,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 
   const setPrefs = (patch) => {
     if (Object.hasOwn(patch, "font")) {
-      nativeSetItem.call(localStorage, FONT_KEY, patch.font);
+      try { nativeSetItem.call(localStorage, FONT_KEY, patch.font); volatileFont = undefined; }
+      catch { volatileFont = patch.font; }
     }
     const themePatch = { ...patch };
     delete themePatch.font;
     if (Object.keys(themePatch).length > 0) {
       const raw = rawPrefs();
       const { font: _legacyFont, ...theme } = raw;
-      nativeSetItem.call(localStorage, KEY, JSON.stringify({ ...theme, ...themePatch }));
+      const next = { ...theme, ...themePatch };
+      try { nativeSetItem.call(localStorage, KEY, JSON.stringify(next)); volatileThemePrefs = {}; }
+      catch { volatileThemePrefs = next; }
     }
     apply();
   };
