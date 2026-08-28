@@ -29,5 +29,6 @@
       "~/*": ["./src/ui-kit/*"],
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/games/keybr"]
 }

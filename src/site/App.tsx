@@ -5,10 +5,10 @@ import { details } from './data';
 const rawLoaders = {
   home: () => import('./pages/Home'),
   work: () => import('./pages/Work'),
-  tools: () => import('./pages/Tools'),
-  chain: () => import('./pages/Chain'),
+  tools: () => import('../tools/Tools'),
+  chain: () => import('../games/chain/Chain'),
   project: () => import('./pages/Project'),
-  blog: () => import('./pages/Blog'),
+  blog: () => import('../blogs/Blog'),
 } as const;
 
 type RouteKind = keyof typeof rawLoaders;

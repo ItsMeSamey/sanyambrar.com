@@ -33,7 +33,7 @@ The portfolio root owns dependencies and publication:
 bun build.ts keybr
 ```
 
-Vite builds `keybr/index.html` through `keybr/vite.config.ts`, inlines JavaScript, CSS, compressed phonetic models, and word/book data into one staged HTML file, and `build.ts` publishes it as:
+Vite builds `src/games/keybr/index.html` through `src/games/keybr/vite.config.ts`, inlines JavaScript, CSS, compressed phonetic models, and word/book data into one staged HTML file, and `build.ts` publishes it as:
 
 ```text
 docs/keybr.html
@@ -42,7 +42,7 @@ docs/keybr.html
 For local Keybr development from the repository root:
 
 ```sh
-bun --cwd keybr run dev
+bun --cwd src/games/keybr run dev
 ```
 
 No separate Keybr dependency installation is required.

@@ -6,12 +6,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
 import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value } from './words'
-import { Page, setP } from '../utils/navigation'
+import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { WordleMark } from '../shared/components/Brand.tsx'
-import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
-import { SmartLink } from '../shared/components/NavLink.tsx'
+import { WordleMark } from '../../shared/components/Brand.tsx'
+import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
+import { SmartLink } from '../../shared/components/NavLink.tsx'
 
 interface GameStats {
   totalGames: number

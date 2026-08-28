@@ -2,7 +2,7 @@
 
 import { JSX, resetErrorBoundaries } from 'solid-js'
 
-import '../css/pages/error_page.css'
+import './error_page.css'
 import { Button } from '~/registry/ui/button'
 import { stripStack } from '../utils/toast'
 

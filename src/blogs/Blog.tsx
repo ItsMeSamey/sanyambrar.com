@@ -1,7 +1,7 @@
-import { CompactList } from '../components/Entries.tsx';
-import { Section } from '../components/SiteChrome.tsx';
-import { TopBar } from '../../shared/components/TopBar.tsx';
-import { posts } from '../data.ts';
+import { CompactList } from '../site/components/Entries.tsx';
+import { Section } from '../site/components/SiteChrome.tsx';
+import { TopBar } from '../shared/components/TopBar.tsx';
+import { posts } from '../site/data.ts';
 
 export function Blog() {
   return <>

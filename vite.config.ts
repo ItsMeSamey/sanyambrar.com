@@ -5,7 +5,7 @@ import path from 'node:path'
 
 export default defineConfig({
   publicDir: false,
-  input: path.resolve(import.meta.dirname, 'app.html'),
+  input: path.resolve(import.meta.dirname, 'src/games/wordle/index.html'),
   plugins: [solid(), viteSingleFile({ removeViteModuleLoader: true })],
   resolve: { alias: { '~': path.resolve(import.meta.dirname, './src/ui-kit/') } },
   build: {

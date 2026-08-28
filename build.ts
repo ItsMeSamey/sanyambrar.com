@@ -9,7 +9,7 @@ import { generateSite } from "./site.ts";
 const runFile = promisify(execFile);
 
 const ROOT = import.meta.dirname;
-const STATIC = join(ROOT, "static");
+const STATIC = join(ROOT, "src/static");
 const DOCS = join(ROOT, "docs");
 const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
@@ -121,6 +121,10 @@ async function walk(root: string, accept: (path: string, name: string) => boolea
 }
 
 async function verifySourceArchitecture() {
+  for (const dir of ["src/games", "src/tools", "src/blogs", "src/static", "src/games/keybr"])
+    must(existsSync(join(ROOT, dir)), `architecture: missing ${dir}`);
+  must(!existsSync(join(ROOT, "keybr")) && !existsSync(join(ROOT, "static")),
+    "architecture: Keybr/static sources must live under src/");
   const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
   const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
   const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="site-topbar">'));
@@ -134,14 +138,14 @@ async function verifySourceArchitecture() {
   }
 
   const viteConfigs = await Promise.all(
-    ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts", "keybr/vite.config.ts"]
+    ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts", "src/games/keybr/vite.config.ts"]
       .map(async name => [name, await readFile(join(ROOT, name), "utf8")] as const),
   );
-  const keybrPackage = JSON.parse(await readFile(join(ROOT, "keybr/package.json"), "utf8"));
+  const keybrPackage = JSON.parse(await readFile(join(ROOT, "src/games/keybr/package.json"), "utf8"));
   const keybrDeps = { ...(keybrPackage.dependencies || {}), ...(keybrPackage.devDependencies || {}) };
   must(!("react" in keybrDeps) && !("react-dom" in keybrDeps) && !("react-intl" in keybrDeps), "architecture: Keybr must not depend on React");
   must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
-  const keybrEntry = await readFile(join(ROOT, "keybr/src/main.tsx"), "utf8");
+  const keybrEntry = await readFile(join(ROOT, "src/games/keybr/src/main.tsx"), "utf8");
   must(keybrEntry.includes('from "solid-js"') && keybrEntry.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
   const wordleVite = viteConfigs[0][1];
   must(!wordleVite.includes("closeBundle") && wordleVite.includes(".build/wordle"),
@@ -154,9 +158,9 @@ async function verifySourceArchitecture() {
     "architecture: page transition timing must come from PAGE_TRANSITION.duration");
   must((await readFile(join(ROOT, "src/site/App.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Solid routes must use the shared transition runtime");
-  must((await readFile(join(ROOT, "src/game/page.tsx"), "utf8")).includes("animateRootSwap"),
+  must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Wordle views must use the shared transition runtime");
-  must((await readFile(join(ROOT, "src/site/engines/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
+  must((await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
     "architecture: Chain views must use the shared transition runtime");
   must(keybrEntry.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
@@ -210,7 +214,7 @@ async function cleanupBuildArtifacts() {
   await Promise.all([
     rm(join(ROOT, ".build"), { recursive: true, force: true }),
     rm(join(ROOT, "dist"), { recursive: true, force: true }),
-    rm(join(ROOT, "keybr/dist"), { recursive: true, force: true }),
+    rm(join(ROOT, "src/games/keybr/dist"), { recursive: true, force: true }),
     ...transientDocs.map((name) => rm(join(DOCS, name), { recursive: true, force: true })),
   ]);
   for (const file of await walk(DOCS, (_path, name) => /^chunk-.*\.js$/.test(name))) {
@@ -270,7 +274,7 @@ async function buildSolid() {
 
 async function buildKeybr() {
   await ensureDeps(ROOT);
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "keybr/vite.config.ts"]);
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "src/games/keybr/vite.config.ts"]);
   const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
   let source = await readFile(html[0], "utf8");

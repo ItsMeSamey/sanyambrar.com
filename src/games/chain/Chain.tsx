@@ -2,7 +2,7 @@ import { BackLink, TopBar } from '../../shared/components/TopBar.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { ChainMark } from '../../shared/components/Brand.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
-import { CloseIcon, SettingsIcon } from '../components/icons.tsx';
+import { CloseIcon, SettingsIcon } from '../../site/components/icons.tsx';
 
 function Slider(props:{id:string;label:string;min:number;max:number}) {
   return <label class="game-settings-slider" for={props.id}>
@@ -14,7 +14,7 @@ function Slider(props:{id:string;label:string;min:number;max:number}) {
 const ChainIdentity = () => <SmartLink class="chain-home-link" href="/chain" aria-label="Chain Reaction"><ChainMark class="chain-header-logo"/></SmartLink>;
 
 export function ChainPage() {
-  return <EngineBoundary label="Chain Reaction" load={() => import('../engines/chain.ts')} mount={module => module.mountChain()}>
+  return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain()}>
     <div class="chain-shell">
       <section id="chain-opening" class="chain-opening chain-view">
         <TopBar start={<ChainIdentity/>}/>

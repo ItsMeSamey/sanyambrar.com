@@ -50,7 +50,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [compressedAssets(), solid(), viteSingleFile()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
   build: {
-    outDir: resolve(root, "../.build/keybr"),
+    outDir: resolve(root, "../../../.build/keybr"),
     emptyOutDir: true,
     target: "es2022",
     cssMinify: "lightningcss",

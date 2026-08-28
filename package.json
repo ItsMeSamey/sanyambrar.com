@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --open /app.html",
+    "dev": "vite --open /src/games/wordle/index.html",
     "build": "bun build.ts",
     "build:solid": "bun build.ts solid",
     "build:keybr": "bun build.ts keybr",

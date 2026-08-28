@@ -1,13 +1,13 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
 import { ErrorBoundary, Match, Switch } from 'solid-js'
-import StatsPage from './game/page_stats'
+import StatsPage from './page_stats'
 
-import './css/index.css'
+import './style.css'
 
-import { mountPageNavigation, NoPageError, Page, selectP } from './utils/navigation'
-import ErrorPage from './pages/error_page'
-import Wordle from './game/page'
+import { mountPageNavigation, NoPageError, Page, selectP } from '../../utils/navigation'
+import ErrorPage from '../../pages/error_page'
+import Wordle from './page'
 import { Toaster } from '~/registry/ui/toast'
 
 const disposePageNavigation = mountPageNavigation()

@@ -1,4 +1,4 @@
-import config from '../../static/shared/appearance.json';
+import config from '../static/shared/appearance.json';
 
 Object.defineProperty(globalThis, 'SameyAppearanceConfig', {
   value: Object.freeze(config),

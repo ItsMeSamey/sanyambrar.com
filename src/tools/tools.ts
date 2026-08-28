@@ -125,7 +125,7 @@ export function mountTools() {
 
   function ensureMonaco() {
     if (monacoPromise) return monacoPromise;
-    monacoPromise = import('../monaco.ts').then(module => {
+    monacoPromise = import('../site/monaco.ts').then(module => {
       const { monaco } = module;
       ensureLanguage = module.ensureMonacoLanguage;
       siteMonacoTheme(monaco);

@@ -7,8 +7,8 @@
   "license": "AGPL-3.0-only",
   "author": "Aliaksandr Radzivanovich <aradzivanovich@gmail.com>",
   "scripts": {
-    "build": "node ../node_modules/vite/bin/vite.js build --config vite.config.ts",
-    "dev": "node ../node_modules/vite/bin/vite.js --config vite.config.ts"
+    "build": "node ../../../../../node_modules/vite/bin/vite.js build --config vite.config.ts",
+    "dev": "node ../../../../../node_modules/vite/bin/vite.js --config vite.config.ts"
   },
   "description": "A local-only SolidJS adaptive typing trainer derived from keybr.com."
 }

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '~/registry/ui/button'
 import { createMutable, unwrap } from 'solid-js/store'
-import { showError } from '../utils/toast'
+import { showError } from '../../utils/toast'
 import { binarySearch, type WordLength } from './word-list'
 import { challengeUrl } from './challenge'
 

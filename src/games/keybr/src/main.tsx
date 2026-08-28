@@ -476,16 +476,20 @@ const PracticeView: Component<{
     <section class="practice-page">
       <div class="practice-frame">
         <div class="control-grid" aria-label="Keybr controls">
-          <IconButton label="Help" onClick={props.onHelp}><CircleHelp size={20} /></IconButton>
-          <IconButton label="Reset lesson" onClick={props.onReset}><Undo2 size={20} /></IconButton>
-          <IconButton label="Skip lesson" onClick={props.onSkip}><Redo2 size={20} /></IconButton>
-          <IconButton label={props.fullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={props.onFullscreen}>
-            <Show when={props.fullscreen} fallback={<Maximize2 size={20} />}><Minimize2 size={20} /></Show>
-          </IconButton>
-          <HomeButton />
-          <AppearanceButton />
-          <IconButton label="Statistics" onClick={props.onStats}><BarChart3 size={20} /></IconButton>
-          <IconButton label="Settings" onClick={props.onSettings}><SettingsIcon size={20} /></IconButton>
+          <div class="control-row">
+            <IconButton label="Help" onClick={props.onHelp}><CircleHelp size={20} /></IconButton>
+            <IconButton label="Reset lesson" onClick={props.onReset}><Undo2 size={20} /></IconButton>
+            <IconButton label="Skip lesson" onClick={props.onSkip}><Redo2 size={20} /></IconButton>
+            <IconButton label={props.fullscreen ? "Exit fullscreen" : "Fullscreen"} onClick={props.onFullscreen}>
+              <Show when={props.fullscreen} fallback={<Maximize2 size={20} />}><Minimize2 size={20} /></Show>
+            </IconButton>
+          </div>
+          <div class="control-row">
+            <HomeButton />
+            <AppearanceButton />
+            <IconButton label="Statistics" onClick={props.onStats}><BarChart3 size={20} /></IconButton>
+            <IconButton label="Settings" onClick={props.onSettings}><SettingsIcon size={20} /></IconButton>
+          </div>
         </div>
 
         <Switch>
