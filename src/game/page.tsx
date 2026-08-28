@@ -136,23 +136,20 @@ class GameState {
         stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       }
       stored.config = {...hard}
-      this.stateStore.set(stored)
     } else if (stored.disabled === undefined) {
       stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, gameStorageKey(hard))
       stored.config = {...hard}
-      this.stateStore.set(stored)
     }
-    // Rewrite legacy plaintext-answer state through the compact serializer.
-    // Daily games need only the date; random/advanced games persist a word-list index.
-    this.stateStore.set(stored)
-
-    this.history = createMutable<[string, string][]>(stored.history)
     const lastColors = ((stored.history.at(-1) ?? ['', ''])![1] || '').split('')
     if (stored.done === undefined && lastColors.length === hard.wordLength) {
       if (lastColors.every(s => s === 'g')) stored.done = KindEnum.Correct
       else if (lastColors.every(s => s === 'b')) stored.done = KindEnum.Revealed
       else if (hard.maxTries !== 1 && stored.history.length >= hard.maxTries) stored.done = KindEnum.Failed
     }
+
+    // One write per mount migrates legacy plaintext state and persists inferred completion.
+    this.stateStore.set(stored)
+    this.history = createMutable<[string, string][]>(stored.history)
     this.state = createMutable<CurrentState>({
       keyboard: Keyboard.stateFromHistory(stored.history),
       showPopOver: stored.done !== undefined,
@@ -358,7 +355,28 @@ this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).rend
 function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextChallenge: () => void, onChooseMode: () => void) {
   const fromStorage = (raw: string): WordLocalStorageState => {
     const stored = JSON.parse(raw) as WordLocalStorageState
-    const config = stored.config ?? hard
+    if (!stored || typeof stored !== 'object' || !Array.isArray(stored.history) || stored.history.length === 0 ||
+        stored.history.some(row => !Array.isArray(row) || row.length !== 2 || typeof row[0] !== 'string' || typeof row[1] !== 'string') ||
+        (stored.word !== undefined && typeof stored.word !== 'string') ||
+        (stored.wordIndex !== undefined && (!Number.isInteger(stored.wordIndex) || stored.wordIndex < 0)) ||
+        (stored.disabled !== undefined && typeof stored.disabled !== 'string') ||
+        (stored.done !== undefined && ![KindEnum.Correct, KindEnum.Failed, KindEnum.Revealed].includes(stored.done))) {
+      throw new Error('Invalid saved Wordle state')
+    }
+    const savedConfig = (stored as {config?: unknown}).config
+    if (savedConfig !== undefined && (!savedConfig || typeof savedConfig !== 'object' || Array.isArray(savedConfig))) {
+      throw new Error('Invalid saved Wordle config')
+    }
+    // Fill fields that did not exist in older saves from the current challenge.
+    const config = {...hard, ...(savedConfig as Partial<SettingsHardProps> | undefined)}
+    if (!['daily', 'random', 'advanced'].includes(config.mode) ||
+        !Number.isInteger(config.wordLength) || config.wordLength < 3 || config.wordLength > 20 ||
+        !Number.isInteger(config.maxTries) || config.maxTries < 1 || config.maxTries > 50 ||
+        !Number.isInteger(config.disabledLetters) || config.disabledLetters < 0 || config.disabledLetters > 12 ||
+        typeof config.allowAny !== 'boolean') {
+      throw new Error('Invalid saved Wordle config')
+    }
+    stored.config = config
     if (!stored.word) {
       if (config.mode === 'daily' && config.dailyDate) {
         stored.word = getDailyChallenge(config.dailyDate, config.dailyVersion ?? DAILY_CHALLENGE_VERSION).word

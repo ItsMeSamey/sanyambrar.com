@@ -84,7 +84,7 @@ export default function Settings({soft, hard, showActive, showWordLength, onHard
     <PopoverTrigger class='wordle-nav-button game-settings-trigger settings-trigger' aria-label='Settings'>
       <IconSettings class='size-5' />
     </PopoverTrigger>
-    <PopoverContent class='game-settings-popover settings-popover border-muted'>
+    <PopoverContent class='game-settings-popover'>
       <button type='button' class='game-settings-close' onClick={() => setOpen(false)} aria-label='Close settings'><IconX /></button>
       <div class='game-settings-body'>
         <SettingsKnobs soft={soft} hard={hard} showWordLength={showWordLength} onHardChange={onHardChange} />
