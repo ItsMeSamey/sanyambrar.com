@@ -137,6 +137,7 @@ export function App() {
   };
 
   const navigate = async (href: string, replace = false) => {
+    const id = ++navigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     setNavigationError(null);
@@ -149,7 +150,7 @@ export function App() {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'The game could not be loaded.';
         setNavigationError({ url: url.href, message });
-      } finally { setLoading(false); }
+      } finally { if (id === navigationId) setLoading(false); }
       return;
     }
     if (sameDocumentHash(url)) {
@@ -165,11 +166,10 @@ export function App() {
         if (pageSwap) await pageSwap(url.href, {replace});
         else location.assign(url.href);
       } catch (error) {
-        setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.'});
-      } finally { setLoading(false); }
+        if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.'});
+      } finally { if (id === navigationId) setLoading(false); }
       return;
     }
-    const id = ++navigationId;
     setLoading(true);
     try {
       await preload(next);
@@ -219,18 +219,19 @@ export function App() {
       void navigate(url.href);
     };
     const pop = () => {
+      const id = ++navigationId;
       const url = new URL(location.href);
       const next = routeFromUrl(url);
-      if (!next) return;
+      setNavigationError(null);
+      if (!next) { setLoading(false); return; }
       if (next.key === route().key) {
+        setLoading(false);
         syncDocument(next);
         dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
         queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })));
         return;
       }
-      const id = ++navigationId;
       setLoading(true);
-      setNavigationError(null);
       void preload(next).then(async () => {
         if (id !== navigationId) return;
         document.documentElement.dataset.navDirection = next.kind === 'home' ? 'home' : 'forward';
