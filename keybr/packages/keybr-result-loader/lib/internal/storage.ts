@@ -11,16 +11,22 @@ const DB_NAME = "history";
 
 export function createResultStorage(): ResultStorage {
   const local = new PersistentResultStorage();
+  let pending = Promise.resolve();
+  const enqueue = (task: () => Promise<void>) => {
+    const next = pending.then(task, task);
+    pending = next.catch(() => {});
+    return next;
+  };
   return {
     async load() {
       return recoverResults(await local.load());
     },
     async append(results) {
       const valid = results.filter(Result.isValid);
-      if (valid.length > 0) await local.append(valid);
+      if (valid.length > 0) await enqueue(() => local.append(valid));
     },
     async clear() {
-      await local.clear();
+      await enqueue(() => local.clear());
     },
   };
 }
