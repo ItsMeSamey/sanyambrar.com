@@ -5,7 +5,7 @@ import { Accessor, createMemo, createResource, createSignal, For, JSX, Match, on
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
-import { calcDiff, getDB, HistoryEntry, KindEnum, Value } from './words'
+import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
@@ -23,16 +23,9 @@ interface GameStats {
   words: Value[]
 }
 
-async function waitForDB() {
-  for (;;) {
-    const db = getDB()
-    if (db) return db
-    await new Promise(resolve => setTimeout(resolve, 50))
-  }
-}
 
 export async function fetchStats(): Promise<GameStats> {
-  const db = await waitForDB()
+  const db = await getReadyDB()
   let totalGames = 0
   let totalWins = 0
   let totalGuesses = 0
@@ -62,7 +55,7 @@ export async function fetchStats(): Promise<GameStats> {
 }
 
 export async function hasStats() {
-  const db = await waitForDB()
+  const db = await getReadyDB()
   for (let length = 3; length <= 20; length++) {
     if (await db.count(`w${length}` as const)) return true
   }

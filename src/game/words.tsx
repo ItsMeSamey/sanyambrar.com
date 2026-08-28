@@ -70,6 +70,7 @@ const dbReady = openDB<Schema>('game.wordle', 1, {
 }).then(_db => db = _db)
 
 export function getDB(): typeof db { return db }
+export function getReadyDB(): Promise<IDBPDatabase<Schema>> { return db ? Promise.resolve(db) : dbReady }
 
 // Calculates the diff (coloring) from a word and a guess
 // assumes that word and guess are of the same length
@@ -78,22 +79,24 @@ export function calcDiff(word: string, guess: string): string {
 
   const normalizedGuess = guess.toLowerCase()
   const og = word.toLowerCase().split('')
-  const result = Array(guess.length).fill('r')
+  const retval = Array.from({length: guess.length}).fill('r')
+
   for (let i = 0; i < normalizedGuess.length; i++) {
     if (normalizedGuess[i] === og[i]) {
-      result[i] = 'g'
-      og[i] = '\0'
+      retval[i] = 'g'
+      og[i] = ''
     }
   }
+
   for (let i = 0; i < normalizedGuess.length; i++) {
-    if (result[i] === 'g') continue
+    if (retval[i] === 'g') continue
     const idx = og.indexOf(normalizedGuess[i])
-    if (idx !== -1) {
-      result[i] = 'y'
-      og[idx] = '\0'
-    }
+    if (idx === -1) continue
+    retval[i] = 'y'
+    og[idx] = ''
   }
-  return result.join('')
+
+  return retval.join('')
 }
 
 // Gets and returns the record of the word if it exists in db
