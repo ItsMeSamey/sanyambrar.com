@@ -41,8 +41,9 @@ export async function fetchStats(): Promise<GameStats> {
   let dailyGuesses = 0
   const words: Value[] = []
 
-  for (let length = 3; length <= 20; length++) {
-    const records = await db.transaction(`w${length}` as const, 'readonly').objectStore(`w${length}` as const).getAll() as Value[]
+  const recordsByLength = await Promise.all(Array.from({length: 18}, (_, index) => db.getAll(`w${index + 3}` as const)))
+
+  for (const records of recordsByLength) {
     for (const record of records) {
       words.push(record)
       totalGames += record.h.length

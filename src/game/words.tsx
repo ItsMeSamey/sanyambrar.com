@@ -76,25 +76,24 @@ export function getDB(): typeof db { return db }
 export function calcDiff(word: string, guess: string): string {
   if (word.length !== guess.length) throw new Error('Length mismatch')
 
-  const og = word.split('')
-  const retval = Array.from({length: guess.length}).fill('r')
-
-  for (let i = 0; i < guess.length; i++) {
-    if (guess[i].toLowerCase() == og[i].toLowerCase()) {
-      retval[i] = 'g'
-      og[i] = ''
+  const normalizedGuess = guess.toLowerCase()
+  const og = word.toLowerCase().split('')
+  const result = Array(guess.length).fill('r')
+  for (let i = 0; i < normalizedGuess.length; i++) {
+    if (normalizedGuess[i] === og[i]) {
+      result[i] = 'g'
+      og[i] = '\0'
     }
   }
-
-  for (let i = 0; i < guess.length; i++) {
-    if (retval[i] === 'g') continue
-    const idx = og.indexOf(guess[i])
-    if (idx === -1) continue
-    retval[i] = 'y'
-    og[idx] = ''
+  for (let i = 0; i < normalizedGuess.length; i++) {
+    if (result[i] === 'g') continue
+    const idx = og.indexOf(normalizedGuess[i])
+    if (idx !== -1) {
+      result[i] = 'y'
+      og[idx] = '\0'
+    }
   }
-
-  return retval.join('')
+  return result.join('')
 }
 
 // Gets and returns the record of the word if it exists in db
