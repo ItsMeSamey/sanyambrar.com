@@ -2,7 +2,7 @@ import { BackLink, TopBar } from '../../shared/components/TopBar.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { ChainMark } from '../../shared/components/Brand.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
-import { CloseIcon, SettingsIcon } from '../../site/components/icons.tsx';
+import { SettingsIcon } from '../../site/components/icons.tsx';
 
 function Slider(props:{id:string;label:string;min:number;max:number}) {
   return <label class="game-settings-slider" for={props.id}>
@@ -57,7 +57,6 @@ export function ChainPage() {
           <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings"><SettingsIcon/></button>
         </>}/>
         <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
-          <button id="chain-settings-close" type="button" class="game-settings-close chain-settings-close" aria-label="Close settings"><CloseIcon/></button>
           <div class="game-settings-body">
             <div class="game-settings-section-title">BOARD</div>
             <Slider id="chain-rows" label="Rows" min={4} max={30}/>

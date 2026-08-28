@@ -11,7 +11,6 @@ export function mountChain() {
   const activeSwatch = document.getElementById('chain-active-swatch');
   const settingsButton = document.getElementById('chain-settings-button');
   const settingsPanel = document.getElementById('chain-settings');
-  const settingsClose = document.getElementById('chain-settings-close');
   const newGameButton = document.getElementById('chain-new-game');
   const rowsInput = document.getElementById('chain-rows');
   const colsInput = document.getElementById('chain-cols');
@@ -34,7 +33,7 @@ export function mountChain() {
   const resultCopy = document.getElementById('chain-result-copy');
   const playAgainButton = document.getElementById('chain-play-again');
   const resultMenuButton = document.getElementById('chain-result-menu');
-  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !settingsClose || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
+  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 
@@ -704,7 +703,6 @@ export function mountChain() {
   }
 
   settingsButton.addEventListener('click', () => setSettingsOpen(settingsButton.getAttribute('aria-expanded') !== 'true'));
-  settingsClose.addEventListener('click', () => setSettingsOpen(false));
   newGameButton.addEventListener('click', () => { const next = settingsFromControls(); setSettingsOpen(false); startNewGame(next); });
   menuButton.addEventListener('click', showMenu);
   resumeButton.addEventListener('click', () => {

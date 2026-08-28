@@ -190,7 +190,7 @@ class GameState {
     if (this.isFinished()) return
     const last = this.history.at(-1)!
     const guess = unwrap(last)[0]
-    if (guess.length !== this.hard.wordLength) return showError(new Error('Invalid length'))
+    if (guess.length !== this.hard.wordLength) return
     if (!this.hard.allowAny && !getGuessWord(guess)) {
       showToast({title: 'Invalid guess', description: `${guess.toUpperCase()} is not in the dictionary.`, variant: 'error', duration: 1000})
       return
@@ -259,24 +259,33 @@ export class WordleModel {
       if (e.key === 'Escape') { last[0] = ''; last[1] = ''; this.state.fastInvalidate(); return }
 
       this.setKeyState(e.key, true)
-      if (e.key === 'Enter') { if (!e.repeat) this.state.submit(); return }
+      if (e.key === 'Enter') {
+        if (!e.repeat) {
+          if ((last[0] ?? '').length !== this.state.hard.wordLength) this.shakeCurrentBlock()
+          else this.state.submit()
+        }
+        return
+      }
       if (e.key === 'Backspace') { last[0] = (last[0] ?? '').slice(0, -1); last[1] = ''; this.state.fastInvalidate(); return }
 
       const key = e.key.toLowerCase()
       if (key.length !== 1 || !ABCD.toLowerCase().includes(key)) return
       if (this.state.disabled.includes(key)) {
-        this.currentBlock.classList.remove('wordle-invalid-wiggle')
-        setTimeout(() => this.currentBlock.classList.add('wordle-invalid-wiggle'), 0)
+        this.shakeCurrentBlock()
         return
       }
       if (last[0].length === this.state.hard.wordLength) {
-        this.currentBlock.classList.remove('wordle-invalid-wiggle')
-        setTimeout(() => this.currentBlock.classList.add('wordle-invalid-wiggle'), 0)
+        this.shakeCurrentBlock()
         return
       }
       last[0] += key
       this.state.fastInvalidate()
     })
+  }
+
+  private shakeCurrentBlock() {
+    this.currentBlock?.classList.remove('wordle-invalid-wiggle')
+    requestAnimationFrame(() => this.currentBlock?.classList.add('wordle-invalid-wiggle'))
   }
 
   handleKeyUp(e: KeyboardEvent) { this.setKeyState(e.key, false) }
@@ -608,13 +617,13 @@ export default function Wordle() {
     }, 'back')
   }
   const updateAdvancedSetting = (patch: Partial<SettingsHardProps>) => {
-    if (hard.mode !== 'advanced') return
+    if (hard.mode !== 'advanced' || (Object.entries(patch) as [keyof SettingsHardProps, unknown][]).every(([key, value]) => hard[key] === value)) return
     const next: SettingsHardProps = {...hard, ...patch, mode: 'advanced'}
     if (patch.wordLength !== undefined && patch.wordLength !== hard.wordLength) next.wordIndex = undefined
-    // Every hard-setting combination identifies a distinct challenge. Keep the
-    // current word where it remains valid, but materialize a fresh word when the
-    // word length itself changes.
-    void swapWordleView(() => commitConfig(next), 'forward')
+    // Settings are edited from an open popover. Apply them directly so the
+    // game surface updates under the pointer instead of animating the whole
+    // Wordle root on every slider step.
+    commitConfig(next)
   }
   const selectActiveGame = (config: SettingsHardProps) => {
     void swapWordleView(() => commitConfig(config), 'forward')

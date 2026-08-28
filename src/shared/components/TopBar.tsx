@@ -45,5 +45,5 @@ export function BackLink(props:{id?:string;href?:string;onClick?:JSX.EventHandle
   const content = <><span class="backline-mark" aria-hidden="true">{'<'}</span><span>{props.children}</span></>;
   return props.href
     ? <SmartLink id={props.id} class={className} href={props.href}>{content}</SmartLink>
-    : <button id={props.id} class={className} type="button" onClick={props.onClick}>{content}</button>;
+    : <button id={props.id} class={className} type="button" role="link" onClick={props.onClick}>{content}</button>;
 }

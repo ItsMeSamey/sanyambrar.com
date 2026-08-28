@@ -6,8 +6,7 @@
   --game-settings-width: 360px;
 }
 
-.game-settings-trigger,
-.game-settings-close {
+.game-settings-trigger {
   width: var(--game-control-size);
   height: var(--game-control-size);
   padding: 0;
@@ -18,10 +17,8 @@
   color: var(--color-foreground, var(--site-fg, #121213));
   background: transparent;
 }
-.game-settings-trigger:hover,
-.game-settings-close:hover { background: var(--color-muted, var(--site-soft, #f3f4f5)); }
-.game-settings-trigger svg,
-.game-settings-close svg { width: 20px; height: 20px; display: block; }
+.game-settings-trigger:hover { background: var(--color-muted, var(--site-soft, #f3f4f5)); }
+.game-settings-trigger svg { width: 20px; height: 20px; display: block; }
 
 /* Kobalte/Popper owns Wordle positioning so the panel follows the actual
    settings trigger inside constrained game headers. Chain computes its fixed
@@ -40,14 +37,7 @@
 }
 [data-popper-positioner] > .game-settings-popover { position: relative !important; }
 .chain-settings.game-settings-popover { position: fixed; top: 0; left: 0; right: auto; }
-.game-settings-close {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-}
-.game-settings-close svg { stroke: var(--color-error-foreground, var(--site-error, #ef4444)); fill: none; stroke-width: 2; }
-.game-settings-body { display: grid; gap: 18px; padding: 48px 16px 16px; }
+.game-settings-body { display: grid; gap: 18px; padding: 16px; }
 .game-settings-section-title {
   margin: 2px 0 -2px;
   color: var(--color-muted-foreground, var(--site-muted, #787c7e));
@@ -100,7 +90,7 @@
 @media (max-width: 640px) {
   :root { --game-control-top: 9px; --game-control-right: 8px; }
   .game-settings-popover { width: min(var(--game-settings-width), calc(100vw - 16px)); max-height: calc(100dvh - 18px); }
-  .game-settings-body { padding: 46px 12px 12px; }
+  .game-settings-body { padding: 12px; }
 }
 
 /* Keep settings controls contained on narrow viewports and with enlarged text. */
@@ -119,8 +109,15 @@
 .game-settings-slider [data-kb-slider-value-label] { min-width: 0; overflow-wrap: anywhere; }
 .game-settings-action { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
-/* Rounded rails and progress fills remain visually continuous at both endpoints. */
-.game-range-fill,.game-settings-slider [data-kb-slider-fill]{border-radius:999px}
+/* The fill ends square under the thumb so there is no rounded seam/notch. */
+.game-range-fill,.game-settings-slider [data-kb-slider-fill]{border-radius:999px 0 0 999px}
 .game-settings-slider [role=slider],
 .game-settings-slider input[type="range"]::-webkit-slider-thumb,
 .game-settings-slider input[type="range"]::-moz-range-thumb{opacity:1!important}
+
+.game-settings-slider [data-kb-slider-track]{overflow:visible}
+.game-settings-slider [data-kb-slider-fill]{z-index:1;transition:left 100ms cubic-bezier(.2,.8,.2,1),right 100ms cubic-bezier(.2,.8,.2,1)}
+.game-settings-slider [role=slider]{z-index:2;transition:left 100ms cubic-bezier(.2,.8,.2,1),right 100ms cubic-bezier(.2,.8,.2,1),border-color 100ms ease,background-color 100ms ease}
+.game-range-fill{transition:width 100ms cubic-bezier(.2,.8,.2,1)}
+.game-settings-slider input[type="range"]::-webkit-slider-thumb{position:relative;z-index:2}
+@media (prefers-reduced-motion: reduce){.game-settings-slider [data-kb-slider-fill],.game-settings-slider [role=slider],.game-range-fill{transition:none}}
