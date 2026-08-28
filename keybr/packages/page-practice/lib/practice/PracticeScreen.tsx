@@ -44,24 +44,24 @@ function useProgress(lesson: Lesson, results: readonly Result[]) {
   const { settings } = useSettings();
   const [ready, setReady] = useState<Progress | null>(null);
   const [loading, setLoading] = useState({ total: 0, current: 0 });
-  const empty = results.length === 0;
-  const progress = useMemo(
-    () => new Progress(settings, lesson),
-    [settings, lesson, empty],
+  const seed = useMemo(
+    () => ({ progress: new Progress(settings, lesson), results: lesson.filter(results) }),
+    [settings, lesson],
   );
+  const { progress } = seed;
   useEffect(() => {
     // Populating the progress object can take a long time, so we do this
     // asynchronously, interleaved with the browser event loop to avoid
     // freezing of the UI.
     const controller = new AbortController();
     const { signal } = controller;
-    schedule(progress.seedAsync(lesson.filter(results), setLoading), { signal }).then(
+    schedule(progress.seedAsync(seed.results, setLoading), { signal }).then(
       () => { if (!signal.aborted) setReady(progress); },
       (error) => { if (!signal.aborted) catchError(error); },
     );
     return () => {
       controller.abort();
     };
-  }, [progress, lesson, results]);
+  }, [progress, seed.results]);
   return [ready === progress ? progress : null, loading] as const;
 }
