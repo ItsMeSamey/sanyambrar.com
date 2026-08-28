@@ -42,11 +42,12 @@ function ProgressUpdater({ lesson }: { readonly lesson: Lesson }) {
 
 function useProgress(lesson: Lesson, results: readonly Result[]) {
   const { settings } = useSettings();
-  const [done, setDone] = useState(false);
+  const [ready, setReady] = useState<Progress | null>(null);
   const [loading, setLoading] = useState({ total: 0, current: 0 });
+  const empty = results.length === 0;
   const progress = useMemo(
     () => new Progress(settings, lesson),
-    [settings, lesson],
+    [settings, lesson, empty],
   );
   useEffect(() => {
     // Populating the progress object can take a long time, so we do this
@@ -54,12 +55,13 @@ function useProgress(lesson: Lesson, results: readonly Result[]) {
     // freezing of the UI.
     const controller = new AbortController();
     const { signal } = controller;
-    schedule(progress.seedAsync(lesson.filter(results), setLoading), { signal })
-      .then(() => setDone(true))
-      .catch(catchError);
+    schedule(progress.seedAsync(lesson.filter(results), setLoading), { signal }).then(
+      () => { if (!signal.aborted) setReady(progress); },
+      (error) => { if (!signal.aborted) catchError(error); },
+    );
     return () => {
       controller.abort();
     };
   }, [progress, lesson, results]);
-  return [done ? progress : null, loading] as const;
+  return [ready === progress ? progress : null, loading] as const;
 }
