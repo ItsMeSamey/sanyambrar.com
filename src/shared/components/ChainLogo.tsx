@@ -389,10 +389,10 @@ export function ChainLiveMark(props: { class?: string }) {
 }
 
 const BACK_ROWS = [
-  '0010',
   '0100',
-  '1000',
-  '0100',
+  '1100',
+  '1111',
+  '1100',
 ] as const;
 
 export function ChainBackMark(props: { class?: string }) {

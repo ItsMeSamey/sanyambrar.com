@@ -9,9 +9,7 @@ import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { WordleMark } from '../../shared/components/Brand.tsx'
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
-import { SmartLink } from '../../shared/components/NavLink.tsx'
 
 interface GameStats {
   totalGames: number
@@ -223,7 +221,7 @@ export default function StatsPage() {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <main class='stats-page'>
-    <TopBar start={<SmartLink class='wordle-home-link' href='/' aria-label='Sanyam Brar · Home'><WordleMark class='wordle-logo'/></SmartLink>} contextClass='wordle-topbar-context' context={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>
+    <TopBar start={<BackLink onClick={() => setP(Page.Wordle)}>Wordle</BackLink>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
@@ -235,17 +233,7 @@ export default function StatsPage() {
 }
 
 export function StatsPageTrigger(): JSX.Element {
-  const [visible, setVisible] = createSignal(false)
-  const refresh = () => void hasStats().then(setVisible).catch(() => setVisible(false))
-  onMount(() => {
-    refresh()
-    window.addEventListener('wordle:stats-change', refresh)
-  })
-  onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
-
-  return <Show when={visible()}>
-    <button type='button' class='wordle-nav-button' onClick={e => { e.stopPropagation(); setP(Page.Stats) }} aria-label='Statistics'>
-      <BarChart3 class='size-5 stroke-foreground' />
-    </button>
-  </Show>
+  return <button type='button' class='wordle-nav-button' onClick={e => { e.stopPropagation(); setP(Page.Stats) }} aria-label='Statistics'>
+    <BarChart3 class='size-5 stroke-foreground' />
+  </button>
 }

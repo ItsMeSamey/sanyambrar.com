@@ -2089,12 +2089,26 @@
 		const text = document.createElement("span");
 		const title = document.createElement("b");
 		const note = document.createElement("small");
+		const meta = document.createElement("span");
+		meta.className = "search-result-meta";
 		const kind = document.createElement("em");
+		const destination = document.createElement("span");
+		destination.className = "search-result-destination";
+		const targetUrl = new URL(item.href, SCRIPT_ROOT);
+		const external = targetUrl.origin !== location.origin;
+		const newPage = external || targetUrl.pathname !== location.pathname;
 		title.textContent = item.title;
 		note.textContent = item.note;
 		kind.textContent = item.kind;
+		destination.textContent = external ? "↗" : newPage ? "→" : "";
+		destination.setAttribute("aria-label", external ? "External website" : newPage ? "Opens another page" : "Opens in this page");
+		if (external) {
+			anchor.target = "_blank";
+			anchor.rel = "noopener noreferrer";
+		}
 		text.append(title, note);
-		anchor.append(text, kind);
+		meta.append(kind, destination);
+		anchor.append(text, meta);
 		return anchor;
 	}
 	function render() {

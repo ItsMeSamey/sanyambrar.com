@@ -415,8 +415,8 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-key-disabled::after{content:"";position:absolute;left:18%;right:18%;top:50%;height:1px;background:currentColor;transform:rotate(-28deg)}
 .wordle-key-suggested{position:relative;z-index:2;outline:1px solid rgb(59 130 246 / 75%)!important;outline-offset:-1px;box-shadow:none!important}
 .result-board,.stats-guess-board,.active-game-board{gap:0!important}
-.result-board .wordle-row,.stats-guess-board .wordle-row{width:min(100%,calc(var(--wordle-length) * 3rem))}
-.result-board .wordle-cell,.stats-guess-board .wordle-cell{font-size:clamp(.8rem,calc(62cqw / var(--wordle-length)),1.5rem)}
+.result-board .wordle-row{width:min(100%,calc(var(--wordle-length) * 4.35rem))}.stats-guess-board .wordle-row{width:min(100%,calc(var(--wordle-length) * 3rem))}
+.result-board{width:min(92vw,620px);margin:16px auto 20px;container-type:inline-size}.result-board .wordle-cell{font-size:clamp(1rem,calc(70cqw / var(--wordle-length)),2rem)}.stats-guess-board .wordle-cell{font-size:clamp(.8rem,calc(62cqw / var(--wordle-length)),1.5rem)}
 .stats-guess-board{min-width:min(82vw,280px)}
 .stats-page{width:100%;height:100dvh;margin:0;padding:0;display:flex;flex-direction:column;overflow:hidden}.stats-page-header,.stats-content,.stats-state{width:min(1040px,calc(100% - 40px));margin-left:auto;margin-right:auto}.stats-page-header{flex:0 0 auto;margin-top:20px}.stats-content{flex:1;min-height:0;overflow:auto;padding-bottom:32px}.stats-state{overflow:auto}
 

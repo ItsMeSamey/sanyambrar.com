@@ -2,6 +2,7 @@ import { TopBar } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
 import { SettingsIcon } from '../../site/components/icons.tsx';
+import BarChart3 from 'lucide-solid/icons/chart-no-axes-column';
 
 function Slider(props:{id:string;label:string;min:number;max:number}) {
   return <label class="game-settings-slider" for={props.id}>
@@ -16,7 +17,7 @@ export function ChainPage() {
   return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain()}>
     <div class="chain-shell">
       <section id="chain-opening" class="chain-opening chain-view">
-        <TopBar/>
+        <TopBar contextClass="chain-opening-actions" context={<button id="chain-stats-button" class="chain-icon-button" type="button" aria-label="Statistics"><BarChart3/></button>}/>
         <div class="chain-opening-inner">
           <ChainLiveMark class="chain-opening-logo"/>
           <div class="chain-mode-grid">
@@ -44,6 +45,20 @@ export function ChainPage() {
             </article>
           </div>
         </div>
+      </section>
+
+      <section id="chain-stats" class="chain-view chain-stats-view" hidden>
+        <TopBar start={<button id="chain-stats-back" class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>}/>
+        <main class="chain-stats-page">
+          <header><span class="chain-mode-eyebrow">All time</span><h1>Statistics</h1></header>
+          <div class="chain-stats-grid">
+            <div><span>Games</span><strong id="chain-stat-games">0</strong></div>
+            <div><span>Wins</span><strong id="chain-stat-wins">0</strong></div>
+            <div><span>Win rate</span><strong id="chain-stat-rate">–</strong></div>
+            <div><span>Largest board</span><strong id="chain-stat-largest">–</strong></div>
+          </div>
+          <section class="chain-stats-history"><div class="chain-stats-heading"><h2>Recent matches</h2></div><div id="chain-stat-recent" class="chain-stat-recent"/></section>
+        </main>
       </section>
 
       <section id="chain-game" class="chain-view" hidden>

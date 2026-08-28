@@ -407,44 +407,84 @@ export function mountTool(toolId, root) {
     const left = get('left', get('text', 'Hello World\n\nThis is the original text.'));
     const right = get('right', 'Hello World\n\nThis is the modified text.');
     let language = get('language', 'plaintext');
+    let layoutMode = localGet('diff', 'layout', 'split') === 'merged' ? 'merged' : 'split';
     await ensureLanguage(language);
     if (!currentRender(generation) || route() !== 'diff') return;
-    root.innerHTML = '<section class="diff-monaco"><div id="diff-editor" class="monaco-host"></div></section>';
+    root.innerHTML = `<section class="diff-tool" data-layout="${layoutMode}">
+      <div class="diff-panes">
+        <section class="diff-pane diff-pane-original"><header>Original</header><div id="diff-original" class="monaco-host"></div></section>
+        <section class="diff-pane diff-pane-modified"><header>Modified</header><div id="diff-modified" class="monaco-host"></div></section>
+      </div>
+      <div id="diff-compute" class="diff-compute-host" aria-hidden="true"></div>
+    </section>`;
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
-    const diff = monaco.editor.createDiffEditor(root.querySelector('#diff-editor'), {
-      ...editorOptions(language),
-      renderSideBySide: true,
-      originalEditable: true,
-      enableSplitViewResizing: true,
-      ignoreTrimWhitespace: false,
-      renderIndicators: false,
-      renderMarginRevertIcon: false,
-      renderGutterMenu: false,
-      folding: false,
-      lineDecorationsWidth: 0,
-      renderLineHighlight: 'none',
-      renderOverviewRuler: false,
-      diffAlgorithm: 'advanced',
-      useInlineViewWhenSpaceIsLimited: true,
+    const baseOptions = editorOptions(language, {folding:false, renderLineHighlight:'none'});
+    const originalEditor = monaco.editor.create(root.querySelector('#diff-original'), baseOptions);
+    const modifiedEditor = monaco.editor.create(root.querySelector('#diff-modified'), baseOptions);
+    originalEditor.setModel(original); modifiedEditor.setModel(modified);
+
+    // Monaco still performs its advanced diff computation, but it is not the
+    // editing surface. Both visible panes remain ordinary fully-editable editors.
+    const compute = monaco.editor.createDiffEditor(root.querySelector('#diff-compute'), {
+      ...baseOptions, readOnly:true, originalEditable:false, renderSideBySide:true,
+      diffAlgorithm:'advanced', renderIndicators:false, renderMarginRevertIcon:false,
+      renderGutterMenu:false, minimap:{enabled:false}, overviewRulerLanes:0,
     });
-    diff.setModel({ original, modified });
-    const setTopContext = () => {
-      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
-      context.querySelector('[data-diff-language]').onchange = async event => {
-        language = event.target.value; set('language', language);
-        await ensureLanguage(language);
-        if (!currentRender(generation) || route() !== 'diff') return;
-        monaco.editor.setModelLanguage(original, language); monaco.editor.setModelLanguage(modified, language);
-      };
-      context.querySelector('[data-diff-swap]').onclick = () => {
-        const value = original.getValue(); original.setValue(modified.getValue()); modified.setValue(value);
-      };
+    compute.setModel({original, modified});
+    let originalDecorations = [], modifiedDecorations = [];
+    const paintDiff = () => {
+      const changes = compute.getLineChanges?.() || [];
+      const leftMarks = [], rightMarks = [];
+      for (const change of changes) {
+        if (change.originalEndLineNumber > 0) leftMarks.push({
+          range:new monaco.Range(change.originalStartLineNumber,1,Math.max(change.originalStartLineNumber,change.originalEndLineNumber),1),
+          options:{isWholeLine:true,className:'diff-line-removed'}
+        });
+        if (change.modifiedEndLineNumber > 0) rightMarks.push({
+          range:new monaco.Range(change.modifiedStartLineNumber,1,Math.max(change.modifiedStartLineNumber,change.modifiedEndLineNumber),1),
+          options:{isWholeLine:true,className:'diff-line-added'}
+        });
+      }
+      originalDecorations = originalEditor.deltaDecorations(originalDecorations,leftMarks);
+      modifiedDecorations = modifiedEditor.deltaDecorations(modifiedDecorations,rightMarks);
     };
-    const save = () => { set('left', original.getValue()); set('text', original.getValue()); set('right', modified.getValue()); };
-    const a = original.onDidChangeContent(save), b = modified.onDidChangeContent(save);
-    setTopContext();
-    disposeTool = () => { a.dispose(); b.dispose(); diff.dispose(); original.dispose(); modified.dispose(); };
+    const diffUpdate = compute.onDidUpdateDiff(paintDiff);
+
+    let syncingScroll = false;
+    const syncScroll = (from, to) => {
+      if (syncingScroll) return;
+      syncingScroll = true;
+      const maxFrom = Math.max(1, from.getScrollHeight() - from.getLayoutInfo().height);
+      const maxTo = Math.max(0, to.getScrollHeight() - to.getLayoutInfo().height);
+      to.setScrollTop(from.getScrollTop() / maxFrom * maxTo, monaco.editor.ScrollType.Immediate);
+      to.setScrollLeft(from.getScrollLeft(), monaco.editor.ScrollType.Immediate);
+      requestAnimationFrame(() => { syncingScroll = false; });
+    };
+    const os = originalEditor.onDidScrollChange(e => { if (e.scrollTopChanged || e.scrollLeftChanged) syncScroll(originalEditor, modifiedEditor); });
+    const ms = modifiedEditor.onDidScrollChange(e => { if (e.scrollTopChanged || e.scrollLeftChanged) syncScroll(modifiedEditor, originalEditor); });
+
+    const applyLayout = () => {
+      const shell = root.querySelector('.diff-tool');
+      shell.dataset.layout = layoutMode;
+      localSet('diff','layout',layoutMode);
+      requestAnimationFrame(() => { originalEditor.layout(); modifiedEditor.layout(); });
+      setTopContext();
+    };
+    const setTopContext = () => {
+      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value,label]) => `<option value="${value}"${language===value?' selected':''}>${label}</option>`).join('')}</select><span class="diff-view-toggle" role="group" aria-label="Diff layout"><button type="button" data-diff-layout="split" aria-pressed="${layoutMode==='split'}">Side by side</button><button type="button" data-diff-layout="merged" aria-pressed="${layoutMode==='merged'}">Merged</button></span><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
+      context.querySelector('[data-diff-language]').onchange = async event => {
+        language = event.target.value; set('language',language); await ensureLanguage(language);
+        if (!currentRender(generation) || route() !== 'diff') return;
+        monaco.editor.setModelLanguage(original,language); monaco.editor.setModelLanguage(modified,language);
+      };
+      context.querySelectorAll('[data-diff-layout]').forEach(button => button.onclick = () => { layoutMode = button.dataset.diffLayout; applyLayout(); });
+      context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
+    };
+    const save = () => { set('left',original.getValue()); set('text',original.getValue()); set('right',modified.getValue()); };
+    const a=original.onDidChangeContent(save), b=modified.onDidChangeContent(save);
+    setTopContext(); paintDiff();
+    disposeTool = () => { a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffUpdate.dispose(); compute.dispose(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
   }
 
   const digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -596,68 +636,29 @@ export function mountTool(toolId, root) {
     await ensureLanguage('markdown');
     if (!currentRender(generation) || route() !== 'markdown') return;
     const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Live local preview\n- Source-aware linked scrolling');
-    let linked = localGet('markdown', 'linked', '1') !== '0';
-    root.innerHTML = '<section class="markdown-tool"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><article id="md-output" class="markdown-preview"></article></section>';
-    const model = monaco.editor.createModel(value, 'markdown');
-    const editor = monaco.editor.create(root.querySelector('#md-input'), editorOptions('markdown'));
-    editor.setModel(model);
-    const output = root.querySelector('#md-output');
-    let syncing = false;
-    let sourceEntries = [];
-    const rebuildMap = () => {
-      const rootRect = output.getBoundingClientRect();
-      sourceEntries = [...output.querySelectorAll('[data-source-start]')].map(el => {
-        const rect = el.getBoundingClientRect();
-        return { start: +el.dataset.sourceStart, end: +el.dataset.sourceEnd, top: rect.top - rootRect.top + output.scrollTop, bottom: rect.bottom - rootRect.top + output.scrollTop };
-      }).filter(entry => Number.isFinite(entry.start) && Number.isFinite(entry.end));
+    let linked = localGet('markdown','linked','1') !== '0';
+    let viewMode = localGet('markdown','view','combined');
+    if (!['combined','source','preview'].includes(viewMode)) viewMode='combined';
+    root.innerHTML = `<section class="markdown-tool" data-view="${viewMode}"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><article id="md-output" class="markdown-preview"></article></section>`;
+    const model = monaco.editor.createModel(value,'markdown');
+    const editor = monaco.editor.create(root.querySelector('#md-input'),editorOptions('markdown')); editor.setModel(model);
+    const output=root.querySelector('#md-output');
+    let syncing=false, sourceEntries=[];
+    const rebuildMap=()=>{ const rootRect=output.getBoundingClientRect(); sourceEntries=[...output.querySelectorAll('[data-source-start]')].map(el=>{const rect=el.getBoundingClientRect();return{start:+el.dataset.sourceStart,end:+el.dataset.sourceEnd,top:rect.top-rootRect.top+output.scrollTop,bottom:rect.bottom-rootRect.top+output.scrollTop}}).filter(entry=>Number.isFinite(entry.start)&&Number.isFinite(entry.end)); };
+    const sourceToPreview=position=>{const direct=sourceEntries.find(entry=>position>=entry.start&&position<=entry.end);if(direct)return direct.top+(position-direct.start)/Math.max(1,direct.end-direct.start)*Math.max(1,direct.bottom-direct.top);const next=sourceEntries.find(entry=>entry.start>=position);return next?.top??output.scrollHeight};
+    const previewToSource=y=>{const direct=sourceEntries.find(entry=>y>=entry.top&&y<=entry.bottom);if(direct)return direct.start+(y-direct.top)/Math.max(1,direct.bottom-direct.top)*Math.max(1,direct.end-direct.start);let prior=sourceEntries[0];for(const entry of sourceEntries){if(entry.top>y)break;prior=entry}return prior?.end??0};
+    const editorSourcePosition=()=>{const line=editor.getVisibleRanges()[0]?.startLineNumber||1;const top=editor.getTopForLineNumber(line);const next=line<model.getLineCount()?editor.getTopForLineNumber(line+1):top+editor.getOption(monaco.editor.EditorOption.lineHeight);return line-1+Math.max(0,Math.min(1,(editor.getScrollTop()-top)/Math.max(1,next-top)))};
+    const syncPreview=()=>{if(!linked||syncing||!sourceEntries.length||viewMode==='source')return;syncing=true;output.scrollTop=Math.max(0,sourceToPreview(editorSourcePosition())-24);requestAnimationFrame(()=>{syncing=false})};
+    const syncEditor=()=>{if(!linked||syncing||!sourceEntries.length||viewMode==='preview')return;syncing=true;const pos=previewToSource(output.scrollTop+24);const line=Math.max(1,Math.min(model.getLineCount(),Math.floor(pos)+1));const top=editor.getTopForLineNumber(line);const next=line<model.getLineCount()?editor.getTopForLineNumber(line+1):top+editor.getOption(monaco.editor.EditorOption.lineHeight);editor.setScrollTop(top+(pos-Math.floor(pos))*Math.max(1,next-top),monaco.editor.ScrollType.Immediate);requestAnimationFrame(()=>{syncing=false})};
+    const contextMarkup=()=>`<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="combined" aria-pressed="${viewMode==='combined'}">Combined</button><button type="button" data-md-view="source" aria-pressed="${viewMode==='source'}">Source</button><button type="button" data-md-view="preview" aria-pressed="${viewMode==='preview'}">Preview</button></span><button type="button" data-md-link aria-pressed="${linked}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>`;
+    const bindContext=()=>{
+      setContext(contextMarkup());
+      context.querySelectorAll('[data-md-view]').forEach(button=>button.onclick=()=>{viewMode=button.dataset.mdView;localSet('markdown','view',viewMode);root.querySelector('.markdown-tool').dataset.view=viewMode;bindContext();requestAnimationFrame(()=>{editor.layout();rebuildMap();if(linked&&viewMode==='combined')syncPreview()})});
+      context.querySelector('[data-md-link]').onclick=()=>{linked=!linked;localSet('markdown','linked',linked?'1':'0');bindContext();if(linked)syncPreview()};
     };
-    const sourceToPreview = position => {
-      const direct = sourceEntries.find(entry => position >= entry.start && position <= entry.end);
-      if (direct) return direct.top + (position - direct.start) / Math.max(1, direct.end - direct.start) * Math.max(1, direct.bottom - direct.top);
-      const next = sourceEntries.find(entry => entry.start >= position);
-      return next?.top ?? output.scrollHeight;
-    };
-    const previewToSource = y => {
-      const direct = sourceEntries.find(entry => y >= entry.top && y <= entry.bottom);
-      if (direct) return direct.start + (y - direct.top) / Math.max(1, direct.bottom - direct.top) * Math.max(1, direct.end - direct.start);
-      let prior = sourceEntries[0];
-      for (const entry of sourceEntries) { if (entry.top > y) break; prior = entry; }
-      return prior?.end ?? 0;
-    };
-    const editorSourcePosition = () => {
-      const line = editor.getVisibleRanges()[0]?.startLineNumber || 1;
-      const top = editor.getTopForLineNumber(line);
-      const next = line < model.getLineCount() ? editor.getTopForLineNumber(line + 1) : top + editor.getOption(monaco.editor.EditorOption.lineHeight);
-      return line - 1 + Math.max(0, Math.min(1, (editor.getScrollTop() - top) / Math.max(1, next - top)));
-    };
-    const syncPreview = () => {
-      if (!linked || syncing || !sourceEntries.length) return;
-      syncing = true;
-      output.scrollTop = Math.max(0, sourceToPreview(editorSourcePosition()) - 24);
-      requestAnimationFrame(() => { syncing = false; });
-    };
-    const syncEditor = () => {
-      if (!linked || syncing || !sourceEntries.length) return;
-      syncing = true;
-      const pos = previewToSource(output.scrollTop + 24);
-      const line = Math.max(1, Math.min(model.getLineCount(), Math.floor(pos) + 1));
-      const top = editor.getTopForLineNumber(line);
-      const next = line < model.getLineCount() ? editor.getTopForLineNumber(line + 1) : top + editor.getOption(monaco.editor.EditorOption.lineHeight);
-      editor.setScrollTop(top + (pos - Math.floor(pos)) * Math.max(1, next - top), monaco.editor.ScrollType.Immediate);
-      requestAnimationFrame(() => { syncing = false; });
-    };
-    const paint = () => {
-      const text = model.getValue(); set('text', text);
-      output.innerHTML = renderMarkdown(text); rebuildMap();
-      setContext(`<button type="button" data-md-link aria-pressed="${linked ? 'true' : 'false'}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>`);
-      context.querySelector('[data-md-link]').onclick = () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); paint(); if (linked) syncPreview(); };
-      if (linked) syncPreview();
-    };
-    const change = model.onDidChangeContent(paint);
-    const scroll = editor.onDidScrollChange(event => { if (event.scrollTopChanged) syncPreview(); });
-    output.addEventListener('scroll', syncEditor, { passive: true });
-    paint();
-    disposeTool = () => { change.dispose(); scroll.dispose(); output.removeEventListener('scroll', syncEditor); editor.dispose(); model.dispose(); };
+    const paint=()=>{const text=model.getValue();set('text',text);output.innerHTML=renderMarkdown(text);rebuildMap();bindContext();if(linked)syncPreview()};
+    const change=model.onDidChangeContent(paint);const scroll=editor.onDidScrollChange(event=>{if(event.scrollTopChanged)syncPreview()});output.addEventListener('scroll',syncEditor,{passive:true});paint();
+    disposeTool=()=>{change.dispose();scroll.dispose();output.removeEventListener('scroll',syncEditor);editor.dispose();model.dispose()};
   }
 
   function render() {

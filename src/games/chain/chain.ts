@@ -33,7 +33,15 @@ export function mountChain() {
   const resultCopy = document.getElementById('chain-result-copy');
   const playAgainButton = document.getElementById('chain-play-again');
   const resultMenuButton = document.getElementById('chain-result-menu');
-  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton) return () => {};
+  const statsButton = document.getElementById('chain-stats-button');
+  const statsBackButton = document.getElementById('chain-stats-back');
+  const statsView = document.getElementById('chain-stats');
+  const statGames = document.getElementById('chain-stat-games');
+  const statWins = document.getElementById('chain-stat-wins');
+  const statRate = document.getElementById('chain-stat-rate');
+  const statLargest = document.getElementById('chain-stat-largest');
+  const statRecent = document.getElementById('chain-stat-recent');
+  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 
@@ -43,6 +51,7 @@ export function mountChain() {
   const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
   const GAME_KEY = 'samey.chain.game.v2';
+  const STATS_KEY = 'samey.chain.stats.v1';
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
@@ -57,6 +66,7 @@ export function mountChain() {
   let particles = [];
   let gameVersion = 0;
   let menuRequested = false;
+  let resultRecorded = false;
   const orbCache = new Map();
 
   function clampInt(value, min, max, fallback) {
@@ -157,6 +167,38 @@ export function mountChain() {
       }));
     } catch {}
     updateResumeCard();
+  renderStats();
+  }
+
+  function loadStats() {
+    try {
+      const value = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
+      if (!value || typeof value !== 'object') throw 0;
+      return {games: Math.max(0, Number(value.games) || 0), wins: Math.max(0, Number(value.wins) || 0), largest: Math.max(0, Number(value.largest) || 0), recent: Array.isArray(value.recent) ? value.recent.slice(0, 30) : []};
+    } catch { return {games:0,wins:0,largest:0,recent:[]}; }
+  }
+
+  function recordResult(winner) {
+    if (resultRecorded) return;
+    resultRecorded = true;
+    const stats = loadStats();
+    stats.games++;
+    if (winner === HUMAN) stats.wins++;
+    stats.largest = Math.max(stats.largest, config.rows * config.cols);
+    stats.recent.unshift({t:Date.now(),w:winner===HUMAN,r:config.rows,c:config.cols,e:config.enemies});
+    stats.recent = stats.recent.slice(0,30);
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch {}
+    renderStats();
+  }
+
+  function renderStats() {
+    const stats = loadStats();
+    statGames.textContent = String(stats.games);
+    statWins.textContent = String(stats.wins);
+    statRate.textContent = stats.games ? `${(stats.wins / stats.games * 100).toFixed(1)}%` : '–';
+    statLargest.textContent = stats.largest ? `${stats.largest} cells` : '–';
+    if (!stats.recent.length) { statRecent.innerHTML = '<div class="chain-stat-empty">No completed matches yet.</div>'; return; }
+    statRecent.innerHTML = stats.recent.map(entry => `<div class="chain-stat-row"><span>${entry.r} × ${entry.c} · ${entry.e} ${entry.e===1?'enemy':'enemies'}</span><strong data-win="${entry.w}">${entry.w?'WIN':'LOSS'}</strong><time>${new Date(entry.t).toLocaleDateString()}</time></div>`).join('');
   }
 
   function buildBoard() {
@@ -336,6 +378,7 @@ export function mountChain() {
   function finishGame(win) {
     gameOver = true;
     turn = win;
+    recordResult(win);
     locked = false;
     particles = [];
     updateStatus();
@@ -529,6 +572,7 @@ export function mountChain() {
     turn = HUMAN;
     locked = false;
     gameOver = false;
+    resultRecorded = false;
     resultPanel.hidden = true;
     buildBoard();
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
@@ -549,6 +593,7 @@ export function mountChain() {
     entered.set(saved.entered.subarray(0, entered.length));
     turn = saved.turn;
     gameOver = saved.gameOver;
+    resultRecorded = saved.gameOver;
     if (!gameOver && entered[turn] && !hasCells(turn)) turn = nextPlayer(turn);
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     locked = false;
@@ -592,6 +637,7 @@ export function mountChain() {
       if (wasInGame) gameVersion++;
       setSettingsOpen(false);
       resultPanel.hidden = true;
+      statsView.hidden = true;
       if (wasInGame || readSavedGame()) saveGameState(false);
       updateResumeCard();
     };
@@ -604,8 +650,20 @@ export function mountChain() {
     }
   }
 
+  function showStats() {
+    if (!gameView.hidden && locked) return;
+    if (!gameView.hidden) saveGameState(false);
+    setSettingsOpen(false);
+    resultPanel.hidden = true;
+    openingView.hidden = true;
+    gameView.hidden = true;
+    statsView.hidden = false;
+    renderStats();
+  }
+
   function showGame() {
     menuRequested = false;
+    statsView.hidden = true;
     const wasInMenu = !openingView.hidden;
     const commit = () => {
       saveGameState(true);
@@ -718,6 +776,8 @@ export function mountChain() {
   })));
   playAgainButton.addEventListener('click', () => startNewGame(config));
   resultMenuButton.addEventListener('click', showMenu);
+  statsButton.addEventListener('click', showStats);
+  statsBackButton.addEventListener('click', showMenu);
   settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
   const onDocumentPointerDown = e => {
     if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);

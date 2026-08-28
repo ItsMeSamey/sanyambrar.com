@@ -671,7 +671,7 @@ export default function Wordle() {
   const modesBack = () => <BackLink onClick={chooseMode} class='wordle-modes-back'><WordleTextMark label='MODES' ariaLabel='Modes'/></BackLink>
 
   return <>
-    <TopBar start={!showOpening() ? modesBack() : undefined} contextClass='wordle-topbar-context' context={!showOpening() ? gameContext() : undefined}/>
+    <TopBar start={!showOpening() ? modesBack() : undefined} contextClass='wordle-topbar-context' context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span> : gameContext()}/>
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       <For each={[gameKey()]}>{() => RenderWordleModel(hard, soft, nextChallenge, chooseMode)}</For>
     </Show>
