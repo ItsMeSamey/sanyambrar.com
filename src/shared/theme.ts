@@ -395,7 +395,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let selectingText = false;
     let selectionDragging = false;
     let selectionDragCandidate = false;
+    let selectionDragInput = null;
+    let linkDragCandidate = null;
     let selectionDragText = "";
+    let emulatedDragKind = "";
     let selectionStartX = 0, selectionStartY = 0;
     let pressedGrab = false;
     let pressedPointerId = null;
@@ -405,6 +408,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let linkHandoffUntil = 0;
     let modifiedLinkPending = null;
     let suppressModifiedClick = null;
+    let suppressDragClick = null;
     const renderCursorPosition = () => {
       cursorFrame = 0;
       lastX = pendingX; lastY = pendingY;
@@ -421,7 +425,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let dragPreviewW = 0, dragPreviewH = 0;
     const placeDragPreview = (x, y) => {
       if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
-      const gap = 10;
+      const gap = 4;
       const px = Math.max(8, Math.min(innerWidth - dragPreviewW - 8, x + gap));
       const py = Math.max(8, Math.min(innerHeight - dragPreviewH - 8, y + gap));
       dragPreview.style.transform = `translate3d(${px}px,${py}px,0)`;
@@ -443,8 +447,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const hideDragPreview = () => { dragPreview.hidden = true; delete dragPreview.dataset.kind; dragPreview.textContent = ""; };
     const linkDragLabel = (link) => {
       const label = compactDragText(link?.textContent || link?.getAttribute?.("aria-label") || link?.title || "", 56);
+      const href = link instanceof HTMLAnchorElement || link instanceof HTMLAreaElement ? link.href : link?.getAttribute?.("href");
+      if (!href) return label || "Link";
       try {
-        const url = new URL(link.href, location.href);
+        const url = new URL(href, location.href);
         const host = url.origin === location.origin ? url.pathname : url.hostname.replace(/^www\./, "");
         return label ? `${label} · ${host}` : host;
       } catch { return label || "Link"; }
@@ -541,12 +547,20 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       : setFillTarget(null);
     const refreshAt = (event) => {
       if (nativeDragging) { delete cursor.dataset.visible; return; }
-      if (selectionDragCandidate && (event.buttons & 1)) {
+      if ((selectionDragCandidate || linkDragCandidate) && (event.buttons & 1)) {
         const dx = event.clientX - selectionStartX, dy = event.clientY - selectionStartY;
         if (!selectionDragging && dx * dx + dy * dy >= 9) {
           selectionDragging = true;
           pressedGrab = true;
-          showDragPreview("text", selectionDragText, event.clientX, event.clientY);
+          setFillTarget(null);
+          if (linkDragCandidate) {
+            emulatedDragKind = "link";
+            suppressDragClick = linkDragCandidate;
+            showDragPreview("link", linkDragLabel(linkDragCandidate), event.clientX, event.clientY);
+          } else {
+            emulatedDragKind = "text";
+            showDragPreview("text", selectionDragText, event.clientX, event.clientY);
+          }
         }
       }
       place(event);
@@ -564,6 +578,56 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true, capture: true });
     addEventListener("resize", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true });
     addEventListener("samey-pageleave", () => setFillTarget(null));
+    let inputMeasureContext = null;
+    const measureInputText = (input, value) => {
+      inputMeasureContext ||= document.createElement("canvas").getContext("2d");
+      const style = getComputedStyle(input);
+      if (!inputMeasureContext) return 0;
+      inputMeasureContext.font = style.font;
+      const spacing = Number.parseFloat(style.letterSpacing) || 0;
+      const count = [...value].length;
+      return inputMeasureContext.measureText(value).width + Math.max(0, count - 1) * spacing;
+    };
+    const inputTextOriginX = (input) => {
+      const rect = input.getBoundingClientRect(), style = getComputedStyle(input);
+      const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0, borderRight = Number.parseFloat(style.borderRightWidth) || 0;
+      const paddingLeft = Number.parseFloat(style.paddingLeft) || 0, paddingRight = Number.parseFloat(style.paddingRight) || 0;
+      const contentWidth = rect.width - borderLeft - borderRight - paddingLeft - paddingRight;
+      const textWidth = measureInputText(input, input.value);
+      const direction = style.direction;
+      let align = style.textAlign;
+      if (align === "start") align = direction === "rtl" ? "right" : "left";
+      else if (align === "end") align = direction === "rtl" ? "left" : "right";
+      let x = rect.left + borderLeft + paddingLeft - input.scrollLeft;
+      if (align === "center") x += Math.max(0, (contentWidth - textWidth) / 2);
+      else if (align === "right") x += Math.max(0, contentWidth - textWidth);
+      return x;
+    };
+    const selectedInputAtPoint = (x, y, target) => {
+      if (!(target instanceof HTMLInputElement) || !textInput(target)) return null;
+      const start = target.selectionStart, end = target.selectionEnd;
+      if (!Number.isInteger(start) || !Number.isInteger(end) || end <= start) return null;
+      const rect = target.getBoundingClientRect();
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+      const origin = inputTextOriginX(target);
+      const left = origin + measureInputText(target, target.value.slice(0, start));
+      const right = left + measureInputText(target, target.value.slice(start, end));
+      return x >= left - 3 && x <= right + 3 ? { input: target, text: target.value.slice(start, end) } : null;
+    };
+    const inputOffsetAtPoint = (input, x) => {
+      const origin = inputTextOriginX(input);
+      let low = 0, high = input.value.length;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const boundary = origin + measureInputText(input, input.value.slice(0, mid + 1));
+        if (x < boundary) high = mid; else low = mid + 1;
+      }
+      const next = Math.max(0, Math.min(input.value.length, low));
+      if (!next) return 0;
+      const before = origin + measureInputText(input, input.value.slice(0, next - 1));
+      const after = origin + measureInputText(input, input.value.slice(0, next));
+      return x - before < after - x ? next - 1 : next;
+    };
     const selectionAtPoint = (x, y, target) => {
       if (!(target instanceof Element) || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
       const selection = getSelection();
@@ -587,19 +651,23 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
       document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
       const actual = elementAt(event);
+      const pressedLink = linkTarget(actual);
+      const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
+      const selectedInput = event.button === 0 && !pressedLink ? selectedInputAtPoint(event.clientX, event.clientY, actual) : null;
       pressedPointerId = event.pointerId;
-      selectionDragCandidate = event.button === 0 && selectionAtPoint(event.clientX, event.clientY, actual);
-      if (selectionDragCandidate) {
+      selectionDragInput = selectedInput?.input || null;
+      selectionDragCandidate = event.button === 0 && !pressedLink && (!!selectedInput || selectionAtPoint(event.clientX, event.clientY, actual));
+      linkDragCandidate = event.button === 0 && pressedLink && !modifiedLink ? pressedLink : null;
+      if (selectionDragCandidate || linkDragCandidate) {
         event.preventDefault();
-        selectionDragText = getSelection()?.toString() || "";
+        selectionDragText = selectedInput?.text || getSelection()?.toString() || "";
         selectionStartX = event.clientX; selectionStartY = event.clientY;
       }
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event, true);
-      selectingText = event.button === 0 && !selectionDragCandidate && !pressedGrab && !linkTarget(actual) && wantsText(actual);
+      selectingText = event.button === 0 && !selectionDragCandidate && !linkDragCandidate && !pressedGrab && !pressedLink && wantsText(actual);
       setMode(actual);
-      const pressedLink = linkTarget(actual);
-      if (pressedLink && (event.ctrlKey || event.metaKey || event.button === 1)) {
+      if (modifiedLink) {
         event.preventDefault();
         modifiedLinkPending = pressedLink;
         suppressModifiedClick = pressedLink;
@@ -607,7 +675,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
     }, true);
     document.addEventListener("mousedown", (event) => {
-      if (selectionDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
+      if (selectionDragCandidate || linkDragCandidate || selectionAtPoint(event.clientX, event.clientY, elementAt(event))) event.preventDefault();
     }, true);
     const editableAt = (target) => {
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return target;
@@ -627,13 +695,25 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
     };
     document.addEventListener("pointerup", (event) => {
-      if (selectionDragging) dropSelectionText(elementAt(event));
-      else if (selectionDragCandidate) collapseSelectionAt(event.clientX, event.clientY);
+      if (selectionDragging && emulatedDragKind === "text") dropSelectionText(elementAt(event));
+      else if (selectionDragCandidate) {
+        if (selectionDragInput) {
+          const offset = inputOffsetAtPoint(selectionDragInput, event.clientX);
+          selectionDragInput.setSelectionRange(offset, offset);
+        } else collapseSelectionAt(event.clientX, event.clientY);
+      }
       selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
+      selectionDragInput = null;
+      linkDragCandidate = null;
       selectionDragText = "";
+      emulatedDragKind = "";
       hideDragPreview();
+      if (suppressDragClick) {
+        const draggedLink = suppressDragClick;
+        setTimeout(() => { if (suppressDragClick === draggedLink) suppressDragClick = null; }, 0);
+      }
       if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
       if (modifiedLinkPending instanceof HTMLAnchorElement && modifiedLinkPending.href) {
         const link = modifiedLinkPending;
@@ -647,6 +727,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     document.addEventListener("click", (event) => {
       const link = event.button === 0 ? linkTarget(event.target) : null;
       if (!link) return;
+      if (suppressDragClick === link) {
+        event.preventDefault();
+        suppressDragClick = null;
+        return;
+      }
       if (suppressModifiedClick === link) {
         event.preventDefault();
         suppressModifiedClick = null;
@@ -666,47 +751,66 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       holdLinkCursor(event, link);
       if (link instanceof HTMLAnchorElement && link.href) window.open(link.href, "_blank", "noopener,noreferrer");
     }, true);
+    const selectedEditableText = (target) => {
+      const editable = editableAt(target);
+      if (!(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement)) return "";
+      const start = editable.selectionStart, end = editable.selectionEnd;
+      return Number.isInteger(start) && Number.isInteger(end) && end > start ? editable.value.slice(start, end) : "";
+    };
     const isPlainSelectionDrag = (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target || target.closest('a[href],area[href],img,[draggable="true"],[data-grab-cursor]')) return false;
       const selection = getSelection();
       return !!selection && !selection.isCollapsed && !!selection.toString();
     };
+    const startEmulatedDrag = (kind, text, event) => {
+      event.preventDefault();
+      nativeDragging = false;
+      selectingText = false;
+      selectionDragCandidate = false;
+      selectionDragging = true;
+      selectionDragText = kind === "text" ? text : "";
+      emulatedDragKind = kind;
+      pressedGrab = true;
+      setFillTarget(null);
+      setGrabState(true);
+      const x = Number.isFinite(event.clientX) && event.clientX ? event.clientX : lastX;
+      const y = Number.isFinite(event.clientY) && event.clientY ? event.clientY : lastY;
+      showDragPreview(kind, text, x, y);
+      placeXY(x, y, true);
+    };
     const startNativeDrag = (event, allowSelectionEmulation = false) => {
-      if (allowSelectionEmulation && isPlainSelectionDrag(event)) {
+      if (allowSelectionEmulation && (selectionDragging || selectionDragCandidate || linkDragCandidate)) {
         event.preventDefault();
-        nativeDragging = false;
-        selectingText = false;
-        selectionDragCandidate = false;
-        selectionDragging = true;
-        selectionDragText = getSelection()?.toString() || "";
-        pressedGrab = true;
-        setFillTarget(null);
-        setGrabState(true);
-        showDragPreview("text", selectionDragText, event.clientX || lastX, event.clientY || lastY);
-        placeXY(lastX, lastY);
         return;
+      }
+      if (allowSelectionEmulation) {
+        const editableText = selectedEditableText(event.target);
+        if (editableText || isPlainSelectionDrag(event)) {
+          startEmulatedDrag("text", editableText || getSelection()?.toString() || "", event);
+          return;
+        }
+        const link = linkTarget(event.target);
+        if (link) {
+          suppressDragClick = link;
+          startEmulatedDrag("link", linkDragLabel(link), event);
+          return;
+        }
       }
       nativeDragging = true;
       selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
+      selectionDragInput = null;
+      linkDragCandidate = null;
       selectionDragText = "";
+      emulatedDragKind = "";
       pressedGrab = false;
       pressedPointerId = null;
       setGrabState(false);
       setTextState(false);
       setFillTarget(null);
-      const link = linkTarget(event.target);
-      if (link) {
-        showDragPreview("link", linkDragLabel(link), event.clientX || lastX, event.clientY || lastY);
-        try {
-          if (event.dataTransfer) {
-            event.dataTransfer.setDragImage(dragPreview, 0, 0);
-            requestAnimationFrame(() => { if (nativeDragging) hideDragPreview(); });
-          }
-        } catch {}
-      } else hideDragPreview();
+      hideDragPreview();
       delete cursor.dataset.visible;
     };
     document.addEventListener("dragstart", (event) => startNativeDrag(event, true), true);
@@ -723,11 +827,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       selectingText = false;
       selectionDragging = false;
       selectionDragCandidate = false;
+      selectionDragInput = null;
+      linkDragCandidate = null;
       selectionDragText = "";
+      emulatedDragKind = "";
       pressedGrab = false;
       pressedPointerId = null;
       modifiedLinkPending = null;
       suppressModifiedClick = null;
+      suppressDragClick = null;
       hideDragPreview();
       if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
       else { setGrabState(false); setTextState(false); setFillTarget(null); }

@@ -106,7 +106,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 /* Home identity is visibly navigational everywhere. */
 .home-brand-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.home-brand-link,.brand.home-brand-link{display:inline-flex;align-items:center;min-width:0;margin:-7px -12px;padding:7px 12px;border-radius:7px;color:inherit;text-decoration:none;font-size:15px;font-weight:720;letter-spacing:-.025em;white-space:nowrap}
+.home-brand-link,.brand.home-brand-link{display:inline-flex;align-items:center;min-width:0;margin:-7px -12px;padding:7px 12px;border-radius:7px;color:inherit;text-decoration:none;font-size:15px;font-weight:720;line-height:1;letter-spacing:-.025em;white-space:nowrap}
 .home-brand-link:hover,.home-brand-link:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
 .samey-route-snapshot{position:fixed;z-index:2147482000;top:var(--snapshot-top);left:var(--snapshot-left);width:var(--snapshot-width);height:var(--snapshot-height);overflow:hidden;pointer-events:none;contain:paint;background:var(--site-bg,#fff);transform-origin:center;will-change:opacity,transform}
 .samey-route-snapshot>*{width:100%!important;min-height:100%!important;margin:0!important}
@@ -119,12 +119,12 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 /* Shared application top bar. Chrome spans the viewport; only its contents are constrained. */
 .site-topbar{box-sizing:border-box;flex:0 0 var(--site-topbar-height);min-width:0;width:100%;height:var(--site-topbar-height);border-bottom:1px solid var(--site-line,#d3d6da);background:var(--site-bg,#fff);color:var(--site-fg,#121213)}
-.site-topbar-inner{box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;width:100%;height:100%}.site-topbar-start,.site-topbar-context{display:flex;align-items:center;min-width:0}.site-topbar-context{gap:8px;overflow:hidden}.site-topbar-context:empty{display:none}
+.site-topbar-inner{box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;width:100%;height:100%}.site-topbar-start,.site-topbar-context,.site-topbar-nav{height:100%;align-items:center}.site-topbar-start,.site-topbar-context{display:flex;min-width:0}.site-topbar-context{gap:8px;overflow:hidden}.site-topbar-context:empty{display:none}
 .site-topbar-inner-contained{position:relative;width:min(var(--site-content-width,1080px),100%);margin-inline:auto;padding-inline:22px}
 .site-topbar-inner-contained::after{content:"";position:absolute;left:22px;bottom:-1px;width:42px;height:1px;background:var(--site-accent,#787c7e)}
 .site-topbar-nav{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0}
 .site-topbar-nav>a,.site-topbar-search,.site-topbar-icon{box-sizing:border-box;display:inline-grid;place-items:center;min-height:26px;border:0;border-radius:6px;background:transparent;color:var(--site-muted,#787c7e);text-decoration:none;transition:background-color 120ms ease,color 120ms ease,transform 120ms cubic-bezier(.2,.8,.2,1)}
-.site-topbar-nav>a{padding:3px 8px}.site-topbar-search{padding:2px 6px}.site-topbar-icon{width:26px;height:26px;padding:4px}
+.site-topbar-nav>a{padding:3px 8px;line-height:1}.site-topbar-search{padding:2px 6px}.site-topbar-icon{width:26px;height:26px;padding:4px}
 .site-topbar-nav>a:hover,.site-topbar-nav>a:focus-visible,.site-topbar-nav>a[aria-current=page],.site-topbar-search:hover,.site-topbar-search:focus-visible,.site-topbar-icon:hover,.site-topbar-icon:focus-visible{background:var(--site-soft,#eee);color:var(--site-fg,#121213)}
 .site-topbar-nav>a:active,.site-topbar-search:active,.site-topbar-icon:active{transform:scale(.96)}
 .site-topbar-icon svg{width:17px;height:17px}.site-topbar-search{grid-auto-flow:column;gap:6px}.site-topbar-search-icon{width:15px;height:15px;opacity:.72}.site-topbar-search kbd{display:inline-flex;align-items:center;height:22px;padding:0 6px;border:1px solid var(--site-line,#d3d6da);border-bottom-color:color-mix(in srgb,var(--site-line,#d3d6da) 72%,var(--site-fg,#121213));border-radius:5px;color:inherit;background:color-mix(in srgb,var(--site-bg,#fff) 75%,var(--site-soft,#eee));box-shadow:0 1px 0 color-mix(in srgb,var(--site-fg,#121213) 10%,transparent);font:600 10px/1 var(--site-font,system-ui)}.site-topbar-search:hover kbd,.site-topbar-search:focus-visible kbd{color:var(--site-fg,#121213);border-color:color-mix(in srgb,var(--site-accent,#787c7e) 55%,var(--site-line,#d3d6da))}

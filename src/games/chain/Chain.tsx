@@ -19,7 +19,6 @@ export function ChainPage() {
         <TopBar/>
         <div class="chain-opening-inner">
           <ChainLiveMark class="chain-opening-logo"/>
-          <h1>Pick a board.</h1>
           <div class="chain-mode-grid">
             <article id="chain-resume-card" class="chain-mode-card chain-mode-card-primary">
               <span id="chain-resume-eyebrow" class="chain-mode-eyebrow">Current game</span>

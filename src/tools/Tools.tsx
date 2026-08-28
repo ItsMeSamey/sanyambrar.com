@@ -30,7 +30,7 @@ const setToolUrl = (tool:ToolId) => {
 
 function ToolTabs(props:{active:ToolId}) {
   const selected = () => toolOptions.find(tool => tool.id === props.active) ?? toolOptions[0];
-  return <>
+  return <div class="tool-switcher">
     <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => setToolUrl(value as ToolId)}>
       <Tabs.List class="tool-tabs" aria-label="Tools">
         {TOOLS.map(tool => <Tabs.Trigger class="tool-tab" value={tool.id}>{tool.label}</Tabs.Trigger>)}
@@ -55,7 +55,7 @@ function ToolTabs(props:{active:ToolId}) {
         <Select.Content class="tool-select-content"><Select.Listbox class="tool-select-list"/></Select.Content>
       </Select.Portal>
     </Select.Root>
-  </>;
+  </div>;
 }
 
 export function ToolsPage() {
