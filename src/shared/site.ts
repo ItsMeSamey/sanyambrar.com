@@ -15,7 +15,7 @@ import { searchIndex } from '../site/data.ts';
     return words.every(w => text.includes(w)) ? 20 + words.length : 0;
   };
 
-  let box, input, results, active = 0, visible = [];
+  let box, input, results, opener, active = 0, visible = [];
   const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K';
   const syncShortcutLabels = () => document.querySelectorAll('[data-search-shortcut]').forEach(el => { el.textContent = shortcutLabel; });
   syncShortcutLabels();
@@ -38,20 +38,30 @@ import { searchIndex } from '../site/data.ts';
     input = box.querySelector('input'); results = box.querySelector('.site-search-results');
     input.addEventListener('input', () => { active = 0; render(); });
     box.addEventListener('click', e => {
-      if (e.target.closest('[data-close-search],a.search-result')) close();
+      if (e.target.closest('a.search-result')) close(false);
+      else if (e.target.closest('[data-close-search]')) close();
     });
     input.addEventListener('keydown', e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); active = (active + (e.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1); render(); }
-      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.assign(href); }
+      if (e.key === 'Enter' && visible[active]) { e.preventDefault(); close(false); const href = visible[active].href; if (globalThis.SameyNavigate) globalThis.SameyNavigate(href); else location.assign(href); }
     });
   };
-  const open = () => { ensure(); box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus()); };
-  const close = () => { if (box) box.hidden = true; };
-  addEventListener('samey-pageleave', close);
+  const open = trigger => {
+    ensure();
+    opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    box.hidden = false; active = 0; input.value = ''; render(); requestAnimationFrame(() => input.focus());
+  };
+  const close = (restoreFocus = true) => {
+    if (!box || box.hidden) return;
+    box.hidden = true;
+    const target = opener; opener = null;
+    if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus());
+  };
+  addEventListener('samey-pageleave', () => close(false));
   addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); box && !box.hidden ? close() : open(); }
     else if (e.key === 'Escape') close();
   });
-  document.addEventListener('click', e => { if (e.target.closest('[data-open-search]')) open(); });
+  document.addEventListener('click', e => { const trigger = e.target.closest('[data-open-search]'); if (trigger) open(trigger); });
 
 })();
