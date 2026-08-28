@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { TOOLS } from '../shared/catalog.ts';
 import { renderMarkdown } from './markdown.ts';
 export function mountTool(toolId, root) {
   'use strict';
@@ -6,13 +7,6 @@ export function mountTool(toolId, root) {
   const context = document.getElementById('tool-context');
   if (!root || !context) return () => {};
 
-  const TOOLS = [
-    ['text', 'Text', 'Text Inspector'],
-    ['base', 'Encode', 'Encode / Decode'],
-    ['diff', 'Diff', 'Live Diff'],
-    ['number', 'Numbers', 'Number Lab'],
-    ['markdown', 'Markdown', 'Markdown'],
-  ];
   const route = () => toolId;
   const stateKey = (tool, name) => `tool.${tool}.${name}`;
   const localGet = (tool, name, fallback = '') => {
@@ -672,7 +666,7 @@ export function mountTool(toolId, root) {
     disposeTool = () => {};
     const tool = route();
     const run = ({ text: textTool, base: baseTool, diff: diffTool, number: numberTool, markdown: markdownTool })[tool] || textTool;
-    document.title = `${TOOLS.find(([id]) => id === tool)?.[2] || 'Tools'} · Sanyam Brar`;
+    document.title = `${TOOLS.find(({ id }) => id === tool)?.title || 'Tools'} · Sanyam Brar`;
     Promise.resolve(run(generation)).catch(error => {
       if (!currentRender(generation)) return;
       root.innerHTML = `<div class="tool-fatal"><strong>Editor failed to load.</strong><span>${esc(error?.message || String(error))}</span><button type="button">Retry</button></div>`;
