@@ -245,7 +245,7 @@ ${keybrViewSwitch}`;
   must(chainLogo.includes("'0101'") && chainLogo.match(/'1110'/g)?.length === 2 && chainLogo.includes("const gap = 2"),
     "ux: Chain back mark must use the requested 4x4 bitmap and two-cell gap");
   must(chainLogo.includes("var(--site-bg") && chainLogo.includes("samey-themechange") &&
-    chainEngine.includes("const playerColor") && chainEngine.includes("--range-fill-width") && chainEngine.includes("buildBoard();"),
+    chainEngine.includes("function playerColor") && chainEngine.includes("--range-fill-width") && chainEngine.includes("buildBoard();"),
     "ux: Chain canvases, range fills, and untouched-board resizing must stay theme/reactivity aware");
   must(chainEngine.includes("mixColor(base, 'rgb(255 255 255)', .38)") &&
     chainEngine.includes("mixColor(base, 'rgb(0 0 0)', .30)") &&
@@ -274,6 +274,13 @@ ${keybrViewSwitch}`;
   must(toolsStyle.includes("var(--site-effort-color") && toolsStyle.includes("var(--site-fast-color") &&
     toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')"),
     "ux: Tools highlights and Diff colors must derive from the shared theme");
+  must(toolsStyle.includes("width:var(--kb-popper-anchor-width)") && toolsStyle.includes("box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 16px") &&
+    toolsStyle.includes(".tools-page>.site-topbar{--site-topbar-height:72px;flex-basis:72px;height:72px}") && toolsStyle.includes(".tool-switcher>[role=group]{width:100%;min-width:0}") && toolsStyle.includes("overflow-x:auto"),
+    "ux: mobile tool selection must match its popup width and stay separate from tool-specific controls");
+  must(chainEngine.includes("MATCHES_KEY = 'samey.chain.matches.v1'") && chainEngine.includes("status = raw.s === 'completed' || raw.s === 'abandoned'") &&
+    chainEngine.includes("bot:{id:'random',name:'Random Bot',version:1") && chainEngine.includes("function resumeReplayPoint()") &&
+    chainEngine.includes("function drawBoardScene(") && chainEngine.includes("async function animateReplayMove("),
+    "ux: Chain history must retain active/abandoned matches, bot/color metadata, exact renderer replays, and resume-from-point");
   must(toolsStyle.includes('.number-input-pane>input{box-sizing:border-box;width:100%') &&
     toolsStyle.includes('.number-options input{box-sizing:border-box;width:100%') &&
     toolsStyle.includes('.number-card input{box-sizing:border-box;min-width:0;width:100%'),
