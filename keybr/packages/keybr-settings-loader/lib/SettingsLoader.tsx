@@ -25,18 +25,20 @@ export function SettingsLoader({
 function useSettingsStorage(): SettingsStorage {
   return useMemo(() => {
     const key = "settings";
+    const store = (settings: Settings): Settings => {
+      try { localStorage.setItem(key, JSON.stringify(settings.toJSON())); } catch {}
+      return settings;
+    };
     const read = (): Settings => {
       try {
         const value = localStorage.getItem(key);
         if (value != null) return new Settings(JSON.parse(value));
       } catch {}
-      const settings = new Settings(undefined, true);
-      localStorage.setItem(key, JSON.stringify(settings.toJSON()));
-      return settings;
+      return store(new Settings(undefined, true));
     };
     return {
       async load() { return read(); },
-      async store(settings) { localStorage.setItem(key, JSON.stringify(settings.toJSON())); return settings; },
+      async store(settings) { return store(settings); },
     };
   }, []);
 }

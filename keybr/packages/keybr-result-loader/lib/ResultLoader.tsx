@@ -34,7 +34,13 @@ function useLoader(storage: ResultStorage): { readonly type: "loading" } | { rea
   const [state, setState] = useState<{ readonly type: "loading" } | { readonly type: "ready"; readonly results: readonly Result[] }>({ type: "loading" });
   useEffect(() => {
     let cancelled = false;
-    storage.load().then((results) => { if (!cancelled) setState({ type: "ready", results }); }).catch(catchError);
+    storage.load().then(
+      (results) => { if (!cancelled) setState({ type: "ready", results }); },
+      (error) => {
+        catchError(error);
+        if (!cancelled) setState({ type: "ready", results: [] });
+      },
+    );
     return () => { cancelled = true; };
   }, [storage]);
   return state;
