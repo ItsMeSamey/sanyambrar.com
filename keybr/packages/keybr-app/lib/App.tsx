@@ -25,7 +25,10 @@ export function main(): void {
 }
 
 function Bootstrap() {
-  const intl = useLocalIntl();
+  const [intl, error] = useLocalIntl();
+  if (error != null) {
+    return <p role="alert">Could not initialize Keybr.</p>;
+  }
   if (intl == null) {
     return <LoadingProgress />;
   }
@@ -52,22 +55,23 @@ function Bootstrap() {
   );
 }
 
-function useLocalIntl(): IntlShape | null {
+function useLocalIntl() {
   const [intl, setIntl] = useState<IntlShape | null>(null);
+  const [error, setError] = useState<unknown>(null);
   useEffect(() => {
     let cancelled = false;
-    loadIntl()
-      .then((value) => {
-        if (!cancelled) {
-          setIntl(value);
-        }
-      })
-      .catch((error) => {
+    loadIntl().then(
+      (value) => {
+        if (!cancelled) setIntl(value);
+      },
+      (error) => {
         console.error(error);
-      });
+        if (!cancelled) setError(error);
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, []);
-  return intl;
+  return [intl, error] as const;
 }
