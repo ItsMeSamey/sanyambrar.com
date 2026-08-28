@@ -57,18 +57,15 @@ class PersistentResultStorage implements ResultStorage {
   }
 
   async clear(): Promise<void> {
-    await deleteDatabase();
+    const db = await openDatabase();
+    try {
+      const tx = db.transaction(DB_NAME, "readwrite");
+      tx.objectStore(DB_NAME).clear();
+      await completed(tx);
+    } finally {
+      db.close();
+    }
   }
-}
-
-
-function deleteDatabase(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.deleteDatabase(DB_NAME);
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => reject(new Error("Database deletion is blocked by another tab"));
-    req.onsuccess = () => resolve();
-  });
 }
 
 function openDatabase(): Promise<IDBDatabase> {
