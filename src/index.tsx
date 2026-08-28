@@ -5,10 +5,12 @@ import StatsPage from './game/page_stats'
 
 import './css/index.css'
 
-import { disposePageNavigation, NoPageError, Page, selectP } from './utils/navigation'
+import { mountPageNavigation, NoPageError, Page, selectP } from './utils/navigation'
 import ErrorPage from './pages/error_page'
 import Wordle from './game/page'
 import { Toaster } from '~/registry/ui/toast'
+
+const disposePageNavigation = mountPageNavigation()
 
 const disposeWordle = render(function() {
   return <>

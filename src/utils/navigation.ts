@@ -34,10 +34,22 @@ const onPopState = () => {
   const current = document.getElementById('wordle-view-root')
   void animateRootSwap(current, () => { setPage(value) }, () => document.getElementById('wordle-view-root'), value === Page.Wordle ? 'back' : 'forward')
 }
-addEventListener('popstate', onPopState)
+let pageNavigationMounted = false
+
+export function mountPageNavigation() {
+  const value = pageState.refresh() ?? Page.Wordle
+  setPage(value)
+  if (!pageNavigationMounted) {
+    addEventListener('popstate', onPopState)
+    pageNavigationMounted = true
+  }
+  return disposePageNavigation
+}
 
 export function disposePageNavigation() {
+  if (!pageNavigationMounted) return
   removeEventListener('popstate', onPopState)
+  pageNavigationMounted = false
 }
 
 class PageError {
