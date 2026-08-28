@@ -17,13 +17,13 @@ import { BackLink, TopBar } from '../shared/components/TopBar.tsx'
 import { animateRootSwap } from '../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
-type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | 'BACKSPACE'
+type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | '⏎' | '⌫'
 
 interface KeyState { state: WordleStringState | undefined; pressed: boolean }
 interface KeyboardState extends Record<Keys, KeyState> {}
 
 const ABCD = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ⏎⌫'
-const defaultKeyboardState: KeyboardState = {BACKSPACE: {state: undefined, pressed: false}} as any
+const defaultKeyboardState = {} as KeyboardState
 for (const key of ABCD) defaultKeyboardState[key as Keys] = {state: undefined, pressed: false}
 
 class Keyboard {
@@ -245,7 +245,7 @@ export class WordleModel {
       if (e.key === 'Escape') { last[0] = ''; last[1] = ''; this.state.fastInvalidate(); return }
 
       this.setKeyState(e.key, true)
-      if (e.key === 'Enter') return this.state.submit()
+      if (e.key === 'Enter') { if (!e.repeat) this.state.submit(); return }
       if (e.key === 'Backspace') { last[0] = (last[0] ?? '').slice(0, -1); last[1] = ''; this.state.fastInvalidate(); return }
 
       const key = e.key.toLowerCase()
