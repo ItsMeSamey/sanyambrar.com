@@ -393,15 +393,17 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     return JSON.stringify(stored)
   }
   const storageKey = gameStorageKey(hard)
-  if (hard.mode === 'daily' && (hard.dailyVersion ?? DAILY_CHALLENGE_VERSION) === 1 && hard.dailyDate && !localStorage.getItem(storageKey)) {
-    const legacyKey = `game.wordle.daily.${hard.dailyDate}`
-    const legacy = localStorage.getItem(legacyKey)
-    if (legacy) {
-      localStorage.setItem(storageKey, legacy)
-      localStorage.removeItem(legacyKey)
-      window.dispatchEvent(new Event('wordle:storage-change'))
+  if (hard.mode === 'daily' && (hard.dailyVersion ?? DAILY_CHALLENGE_VERSION) === 1 && hard.dailyDate) try {
+    if (!localStorage.getItem(storageKey)) {
+      const legacyKey = `game.wordle.daily.${hard.dailyDate}`
+      const legacy = localStorage.getItem(legacyKey)
+      if (legacy) {
+        localStorage.setItem(storageKey, legacy)
+        localStorage.removeItem(legacyKey)
+        window.dispatchEvent(new Event('wordle:storage-change'))
+      }
     }
-  }
+  } catch {}
   const stateStore = new LocalstorageStore<WordLocalStorageState>(
     storageKey,
     {word: '', history: [['', '']], config: {...hard}},
@@ -506,7 +508,9 @@ export default function Wordle() {
   createEffect(() => hardStore.set({...hard}))
   createEffect(() => softStore.set({...soft}))
   createEffect(() => {
-    if (hard.mode === 'advanced') localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...hard, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
+    if (hard.mode === 'advanced') try {
+      localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...hard, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
+    } catch {}
   })
   createEffect(() => {
     if (!showOpening()) setChallengeQuery(hard, soft.fastInvalidate, true)

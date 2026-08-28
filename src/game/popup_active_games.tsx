@@ -46,18 +46,19 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
 
 export function getActiveGames(): ActiveGame[] {
   const games: ActiveGame[] = []
-  for (let n = 0; n < localStorage.length; n++) {
-    const key = localStorage.key(n)
-    if (!key?.startsWith('game.wordle.')) continue
-    try {
-      const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
-      if (!Array.isArray(value?.history) || value.history.length <= 1) continue
-      const config = readConfig(key, value)
-      if (!isChallengeConfig(config)) continue
-      if (value.done !== undefined) continue
-      games.push({key, config, history: value.history.slice(0, -1)})
-    } catch {}
-  }
+  try {
+    for (let n = 0; n < localStorage.length; n++) {
+      const key = localStorage.key(n)
+      if (!key?.startsWith('game.wordle.')) continue
+      try {
+        const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
+        if (!Array.isArray(value?.history) || value.history.length <= 1) continue
+        const config = readConfig(key, value)
+        if (!isChallengeConfig(config) || value.done !== undefined) continue
+        games.push({key, config, history: value.history.slice(0, -1)})
+      } catch {}
+    }
+  } catch {}
   return games.sort((a, b) => a.config.mode.localeCompare(b.config.mode) || a.config.wordLength - b.config.wordLength || a.config.maxTries - b.config.maxTries)
 }
 
