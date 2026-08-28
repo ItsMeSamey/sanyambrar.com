@@ -6,14 +6,14 @@ export type ProjectDetail={title:string;dek:string;facts:string[];body:string;li
 export const games:Entry[]=[
   {title:'Wordle',href:'/wordle',kind:'Game',note:'A Wordle clone.',tags:['solidjs','word game']},
   {title:'Keybr',href:'/keybr',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
-  {title:'Chain Reaction',href:'/chain',kind:'Game',note:'Canvas-rendered chain reaction with local AI.',tags:['canvas','game','ai']},
+  {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Canvas-rendered chain reaction with local AI.',tags:['canvas','game','ai']},
 ];
-export const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools?tool=${tool.id}`,kind:'Tool',note:tool.note}));
+export const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[
-  {title:'zhtml',href:'/projects/zhtml',kind:'Project',note:'Throughput-oriented HTML parser in Zig.',tags:['zig','parser','performance']},
-  {title:'Reverb',href:'/projects/reverb',kind:'Project',note:'Android rolling audio recorder backed by an in-memory circular buffer.',tags:['kotlin','android','audio']},
-  {title:'OneSerial',href:'/projects/oneserial',kind:'Project',note:'Nested Zig data structures in one contiguous allocation.',tags:['zig','serialization','memory']},
-  {title:'CNN',href:'/projects/cnn',kind:'Project',note:'Convolutional network implemented from scratch in Zig.',tags:['zig','ml','mnist']},
+  {title:'zhtml',href:'/projects/zhtml/',kind:'Project',note:'Throughput-oriented HTML parser in Zig.',tags:['zig','parser','performance']},
+  {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android rolling audio recorder backed by an in-memory circular buffer.',tags:['kotlin','android','audio']},
+  {title:'OneSerial',href:'/projects/oneserial/',kind:'Project',note:'Nested Zig data structures in one contiguous allocation.',tags:['zig','serialization','memory']},
+  {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'Convolutional network implemented from scratch in Zig.',tags:['zig','ml','mnist']},
 ];
 export const moreProjects:Entry[]=[
   {title:'zxml',href:'https://github.com/SmallThingz/zxml',kind:'Project',note:'Fast XML parsing with explicit memory management.',tags:['zig','xml']},
@@ -31,4 +31,4 @@ export const details:Record<string,ProjectDetail>={
  oneserial:{title:'OneSerial',dek:'Nested structures in one contiguous allocation.',facts:['Zig','single allocation','zero-copy serialization'],body:'OneSerial treats layout as the API. Nested structures are packed into one allocation so ownership, locality and serialization remain explicit. It is useful when pointer-heavy object graphs are the thing getting in the way.',links:[{title:'Source',href:'https://github.com/SmallThingz/oneserial',kind:'GitHub',note:'SmallThingz/oneserial'}]},
  cnn:{title:'CNN',dek:'A convolutional neural network implemented from scratch in Zig.',facts:['Zig','~99% MNIST','Python weight interoperability'],body:'The project implements the network primitives rather than wrapping a machine-learning runtime. The interesting constraints are explicit buffers, predictable allocation behavior and moving weights between the Zig implementation and Python tooling.',links:[{title:'Source',href:'https://github.com/ItsMeSamey/cnn_digit_recognition_zig',kind:'GitHub',note:'cnn_digit_recognition_zig'}]},
 };
-export const searchIndex=[...games,...tools,...posts,...projects,...moreProjects,...contributions,{title:'Home',href:'/',kind:'Page',note:'Games, tools and writing.'},{title:'Work',href:'/work',kind:'Page',note:'Projects and open-source contributions.'}];
+export const searchIndex=[...games,...tools,...posts,...projects,...moreProjects,...contributions,{title:'Home',href:'/',kind:'Page',note:'Games, tools and writing.'},{title:'Work',href:'/work/',kind:'Page',note:'Projects and open-source contributions.'}];

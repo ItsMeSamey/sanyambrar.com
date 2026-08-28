@@ -11,7 +11,7 @@ function Slider(props:{id:string;label:string;min:number;max:number}) {
   </label>;
 }
 
-const ChainIdentity = () => <SmartLink class="chain-home-link" href="/chain" aria-label="Chain Reaction"><ChainMark class="chain-header-logo"/></SmartLink>;
+const ChainIdentity = () => <SmartLink class="chain-home-link" href="/chain/" aria-label="Chain Reaction"><ChainMark class="chain-header-logo"/></SmartLink>;
 
 export function ChainPage() {
   return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain()}>

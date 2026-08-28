@@ -1,11 +1,9 @@
 // @ts-nocheck
-export function mountTools() {
+export function mountTool(toolId, root) {
   'use strict';
 
-  const root = document.querySelector('.tools-view');
   const context = document.getElementById('tool-context');
-  const tabs = document.querySelector('.tool-tabs');
-  if (!root || !context || !tabs) return () => {};
+  if (!root || !context) return () => {};
 
   const TOOLS = [
     ['text', 'Text', 'Text Inspector'],
@@ -14,12 +12,7 @@ export function mountTools() {
     ['number', 'Numbers', 'Number Lab'],
     ['markdown', 'Markdown', 'Markdown'],
   ];
-  const valid = new Set(TOOLS.map(([id]) => id));
-  const legacy = { ascii: 'text', words: 'text' };
-  const route = () => {
-    const raw = new URLSearchParams(location.search).get('tool') || 'text';
-    return legacy[raw] || (valid.has(raw) ? raw : 'text');
-  };
+  const route = () => toolId;
   const stateKey = (tool, name) => `tool.${tool}.${name}`;
   const localGet = (tool, name, fallback = '') => {
     try { return localStorage.getItem(stateKey(tool, name)) ?? fallback; } catch { return fallback; }
@@ -50,30 +43,6 @@ export function mountTools() {
   let monacoThemeListener = null;
 
   const setContext = html => { context.innerHTML = html || ''; };
-  const syncTabs = () => tabs.querySelectorAll('[data-tool]').forEach(link => {
-    if (link.dataset.tool === route()) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-  });
-  const setRoute = tool => {
-    if (!valid.has(tool) || tool === route()) return;
-    history.pushState(null, '', `${location.pathname}?tool=${encodeURIComponent(tool)}`);
-    render();
-  };
-
-  const onTabClick = event => {
-    const link = event.target.closest('[data-tool]');
-    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    setRoute(link.dataset.tool);
-  };
-  tabs.addEventListener('click', onTabClick);
-
-  let renderedTool = '';
-  const onRouteChange = () => {
-    if (/\/tools(?:\.html)?\/?$/.test(location.pathname) && route() !== renderedTool) render();
-  };
-  addEventListener('popstate', onRouteChange);
-  addEventListener('samey-solid-routechange', onRouteChange);
 
   function siteMonacoTheme(monaco) {
     const style = getComputedStyle(document.documentElement);
@@ -711,9 +680,7 @@ export function mountTools() {
     const generation = ++renderGeneration;
     try { disposeTool(); } catch {}
     disposeTool = () => {};
-    syncTabs();
     const tool = route();
-    renderedTool = tool;
     const run = ({ text: textTool, base: baseTool, diff: diffTool, number: numberTool, markdown: markdownTool })[tool] || textTool;
     document.title = `${TOOLS.find(([id]) => id === tool)?.[2] || 'Tools'} · Sanyam Brar`;
     Promise.resolve(run(generation)).catch(error => {
@@ -729,9 +696,7 @@ export function mountTools() {
     disposed = true;
     renderGeneration++;
     try { disposeTool(); } catch {}
-    tabs.removeEventListener('click', onTabClick);
-    removeEventListener('popstate', onRouteChange);
-    removeEventListener('samey-solid-routechange', onRouteChange);
+    setContext('');
     if (monacoThemeListener) removeEventListener('samey-themechange', monacoThemeListener);
   };
 }

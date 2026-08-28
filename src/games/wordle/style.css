@@ -384,7 +384,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-logo i:nth-child(2),.wordle-logo i:nth-child(5){background:#c9b458}.wordle-logo i:nth-child(3){background:#787c7e}
 .wordle-topbar-context{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}.wordle-topbar-actions{display:flex;align-items:center;gap:4px;justify-self:end}.wordle-mode-mark,.wordle-mode-mark-full{display:flex;align-items:center;gap:2px}.wordle-mode-mark{justify-self:center}
 .wordle-mode-mark i{display:grid;place-items:center;width:22px;height:22px;border:0;color:#fff;background:#6aaa64;font:850 10px/1 var(--site-font,system-ui);font-style:normal}.wordle-mode-mark i:nth-child(3n+2){background:#c9b458}.wordle-mode-mark i:nth-child(3n){background:#787c7e}
-.wordle-modes-back{gap:5px}.wordle-modes-back .wordle-mode-mark{display:inline-flex}.wordle-modes-back .backline-mark{color:var(--color-muted-foreground)}
+.wordle-modes-back{gap:6px}.wordle-modes-back .wordle-mode-mark{display:inline-flex}.wordle-modes-back .backline-mark{display:grid;place-items:center;width:22px;height:22px;background:#c94b4b;color:#fff;font-weight:850;line-height:1}
 .wordle-nav-button,.wordle-topbar-context .settings-trigger{width:34px;height:34px;display:grid;place-items:center;flex:0 0 34px;border:0;border-radius:6px;background:transparent;color:var(--color-muted-foreground)}
 .wordle-nav-button:hover,.wordle-nav-button:focus-visible,.wordle-topbar-context .settings-trigger:hover,.wordle-topbar-context .settings-trigger:focus-visible{background:var(--color-muted);color:var(--color-foreground)}
 /* Picker: full-viewport background, compact copy, no marketing filler. */

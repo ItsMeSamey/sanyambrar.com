@@ -12,20 +12,18 @@ import {
   type Component,
 } from "solid-js";
 import { render } from "solid-js/web";
-import {
-  BarChart3,
-  CircleHelp,
-  Home,
-  Maximize2,
-  Minimize2,
-  Redo2,
-  RotateCcw,
-  Settings as SettingsIcon,
-  SunMoon,
-  Trash2,
-  Undo2,
-  X,
-} from "lucide-solid";
+import BarChart3 from "lucide-solid/icons/chart-no-axes-column";
+import CircleHelp from "lucide-solid/icons/circle-help";
+import Home from "lucide-solid/icons/house";
+import Maximize2 from "lucide-solid/icons/maximize-2";
+import Minimize2 from "lucide-solid/icons/minimize-2";
+import Redo2 from "lucide-solid/icons/redo-2";
+import RotateCcw from "lucide-solid/icons/rotate-ccw";
+import SettingsIcon from "lucide-solid/icons/settings";
+import SunMoon from "lucide-solid/icons/sun-moon";
+import Trash2 from "lucide-solid/icons/trash-2";
+import Undo2 from "lucide-solid/icons/undo-2";
+import X from "lucide-solid/icons/x";
 import {
   KeyboardOptions,
   KeyCharacters,
@@ -440,7 +438,7 @@ function IconButton(props: {
 function HomeButton() {
   return (
     <IconButton label="Home" onClick={() => {
-      const href = new URL("./", location.href).href;
+      const href = new URL("/", location.href).href;
       const navigate = (globalThis as any).SameyNavigate;
       if (navigate) void navigate(href);
       else location.assign(href);

@@ -1709,7 +1709,7 @@
 		},
 		{
 			title: "Chain Reaction",
-			href: "/chain",
+			href: "/chain/",
 			kind: "Game",
 			note: "Canvas-rendered chain reaction with local AI.",
 			tags: [
@@ -1721,14 +1721,14 @@
 	];
 	var tools = TOOLS.map((tool) => ({
 		title: tool.title,
-		href: `/tools?tool=${tool.id}`,
+		href: `/tools/?tool=${tool.id}`,
 		kind: "Tool",
 		note: tool.note
 	}));
 	var projects = [
 		{
 			title: "zhtml",
-			href: "/projects/zhtml",
+			href: "/projects/zhtml/",
 			kind: "Project",
 			note: "Throughput-oriented HTML parser in Zig.",
 			tags: [
@@ -1739,7 +1739,7 @@
 		},
 		{
 			title: "Reverb",
-			href: "/projects/reverb",
+			href: "/projects/reverb/",
 			kind: "Project",
 			note: "Android rolling audio recorder backed by an in-memory circular buffer.",
 			tags: [
@@ -1750,7 +1750,7 @@
 		},
 		{
 			title: "OneSerial",
-			href: "/projects/oneserial",
+			href: "/projects/oneserial/",
 			kind: "Project",
 			note: "Nested Zig data structures in one contiguous allocation.",
 			tags: [
@@ -1761,7 +1761,7 @@
 		},
 		{
 			title: "CNN",
-			href: "/projects/cnn",
+			href: "/projects/cnn/",
 			kind: "Project",
 			note: "Convolutional network implemented from scratch in Zig.",
 			tags: [
@@ -1833,7 +1833,7 @@
 		},
 		{
 			title: "Work",
-			href: "/work",
+			href: "/work/",
 			kind: "Page",
 			note: "Projects and open-source contributions."
 		}

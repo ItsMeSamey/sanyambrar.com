@@ -34,7 +34,7 @@ const Blog = lazy(() => loadModule('blog').then(m => ({ default: m.Blog })));
 
 type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationError = { url: string; message: string };
-const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/$/, '') || '/';
+const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
@@ -112,7 +112,7 @@ export function App() {
     document.documentElement.dataset.siteKind = next.kind;
     document.documentElement.dataset.sitePage = next.kind;
     document.documentElement.dataset.homeHref = '/';
-    if (next.kind === 'project') document.documentElement.dataset.backHref = '/work';
+    if (next.kind === 'project') document.documentElement.dataset.backHref = '/work/';
     else delete document.documentElement.dataset.backHref;
     document.title = next.kind === 'home' ? 'Sanyam Brar'
       : next.kind === 'work' ? 'Work · Sanyam Brar'
@@ -182,6 +182,14 @@ export function App() {
       } finally { if (id === navigationId) setLoading(false); }
       return;
     }
+    if (next.kind === route().kind && cleanPath(url.pathname) === cleanPath(location.pathname)) {
+      if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
+      syncDocument(next);
+      dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
+      queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })));
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       await preload(next);
@@ -223,7 +231,7 @@ export function App() {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const target = event.target as Element | null;
       const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null;
-      if (!anchor || anchor.target || anchor.hasAttribute('download') || anchor.closest('.tool-tabs')) return;
+      if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
       if (sameDocumentHash(url)) return;

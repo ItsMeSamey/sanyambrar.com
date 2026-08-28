@@ -2,7 +2,7 @@ export type ToolId='text'|'base'|'diff'|'markdown'|'number';
 export type ToolInfo={id:ToolId;label:string;title:string;note:string};
 
 export const SITE_NAV=[
-  {label:'Work',href:'/work'},
+  {label:'Work',href:'/work/'},
 ] as const;
 
 export const TOOLS:readonly ToolInfo[]=[

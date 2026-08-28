@@ -125,6 +125,8 @@ async function verifySourceArchitecture() {
     must(existsSync(join(ROOT, dir)), `architecture: missing ${dir}`);
   must(!existsSync(join(ROOT, "keybr")) && !existsSync(join(ROOT, "static")),
     "architecture: Keybr/static sources must live under src/");
+  for (const file of ["TextTool.tsx", "EncodeTool.tsx", "DiffTool.tsx", "NumbersTool.tsx", "MarkdownTool.tsx"])
+    must(existsSync(join(ROOT, "src/tools", file)), `architecture: missing src/tools/${file}`);
   const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
   const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
   const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="site-topbar">'));
@@ -147,6 +149,8 @@ async function verifySourceArchitecture() {
   must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
   const keybrEntry = await readFile(join(ROOT, "src/games/keybr/src/main.tsx"), "utf8");
   must(keybrEntry.includes('from "solid-js"') && keybrEntry.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
+  must(!sources.some(([, text]) => /@mdi\/|material-symbol|material-icons/.test(text)),
+    "architecture: UI icons must use Lucide rather than mixed Material/MDI sets");
   const wordleVite = viteConfigs[0][1];
   must(!wordleVite.includes("closeBundle") && wordleVite.includes(".build/wordle"),
     "architecture: Wordle Vite build must stage output privately; build.ts owns publication");
@@ -192,7 +196,7 @@ async function copyStatic() {
   // chunks and deleted routes accumulate forever. Standalone Wordle/Keybr
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
-    "index.html", "work.html", "tools.html", "chain.html",
+    "index.html", "work.html", "tools.html", "chain.html", "work", "tools", "chain",
     "blog", "projects", "site-app.js", "site-chunks", "assets",
     "site.css", "shared-runtime.js",
   ];
