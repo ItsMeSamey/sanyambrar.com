@@ -87,9 +87,10 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
     const game = readActiveGame(key)
     setGames(current => {
       const index = current.findIndex(item => item.key === key)
-      if (!game) return index < 0 ? current : current.toSpliced(index, 1)
+      if (!game) return index < 0 ? current : [...current.slice(0, index), ...current.slice(index + 1)]
       if (index >= 0 && sameGame(current[index], game)) return current
-      const next = index < 0 ? [...current, game] : current.with(index, game)
+      const next = [...current]
+      if (index < 0) next.push(game); else next[index] = game
       return sortGames(next)
     })
   }
