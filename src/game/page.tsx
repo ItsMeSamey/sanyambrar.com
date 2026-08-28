@@ -57,6 +57,7 @@ class Keyboard {
             const key = char === '⏎' ? 'Enter' : char === '⌫' ? 'Backspace' : char
             const isDisabled = key.length === 1 && this.disabled.includes(key.toLowerCase())
             const evObj = {key, code: key, location: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, repeat: false}
+            const dispatch = (type: 'keydown' | 'keyup') => document.dispatchEvent(new KeyboardEvent(type, evObj))
             return <button
               type='button'
               disabled={isDisabled}
@@ -65,14 +66,19 @@ class Keyboard {
                 if (isDisabled) return
                 e.preventDefault()
                 e.currentTarget.setPointerCapture?.(e.pointerId)
-                document.dispatchEvent(new KeyboardEvent('keydown', evObj))
+                dispatch('keydown')
               }}
               onpointerup={e => {
                 if (isDisabled) return
-                document.dispatchEvent(new KeyboardEvent('keyup', evObj))
+                dispatch('keyup')
                 if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
               }}
-              onpointercancel={() => !isDisabled && document.dispatchEvent(new KeyboardEvent('keyup', evObj))}
+              onpointercancel={() => !isDisabled && dispatch('keyup')}
+              onClick={e => {
+                // Native keyboard activation emits click with detail=0. Pointer input
+                // is already handled on down/up so it must not insert twice.
+                if (!isDisabled && e.detail === 0) { dispatch('keydown'); dispatch('keyup') }
+              }}
               class={'wordle-key text-center rounded ' + (
                 key.length === 1 ? '' : 'wordle-key-wide ' 
               ) + (
