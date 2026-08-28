@@ -5,6 +5,7 @@ import { TypingSettings } from "@keybr/textinput-ui";
 import { Button, ExplainerBoundary, Field, FieldList, Header, Icon, Spacer, useView, } from "@keybr/widget";
 import { mdiCheckCircle, mdiDeleteForever } from "@keybr/solid-compat/mdi";
 import { useState } from "@keybr/solid-compat/react";
+import { liveObject } from "@keybr/solid-compat/live";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { views } from "../views.tsx";
 import { ExplainSettings } from "./ExplainSettings.tsx";
@@ -16,10 +17,11 @@ export function SettingsScreen() {
     const { settings, updateSettings } = useSettings();
     const { setView } = useView(views);
     const [newSettings, updateNewSettings] = useState(settings);
-    return (<SettingsContext.Provider value={{
-            settings: newSettings(),
-            updateSettings: updateNewSettings,
-        }}>
+    const draftContext = {
+        settings: liveObject(newSettings),
+        updateSettings: updateNewSettings,
+    };
+    return (<SettingsContext.Provider value={draftContext}>
       <KeyboardProvider>
         <Content onSubmit={() => {
             updateSettings(newSettings());

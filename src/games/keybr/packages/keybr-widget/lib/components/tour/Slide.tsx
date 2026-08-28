@@ -10,7 +10,7 @@ export type SlideProps = {
     readonly size?: "small" | "large";
 };
 export function Slide({ anchor, children, className, position, size, ...props }: SlideProps): ReactNode {
-    return (<div {...props} class={clsx(styles.root, size === "small" && styles.small, size === "large" && styles.large, className)}>
+    return (<div {...props} data-tour-anchor={anchor ?? ""} data-tour-position={position ?? ""} class={clsx(styles.root, size === "small" && styles.small, size === "large" && styles.large, className)}>
       {children}
     </div>);
 }

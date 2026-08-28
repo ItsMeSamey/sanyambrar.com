@@ -8,6 +8,7 @@ export function HomeBrand(props:{class?:string;href?:string}) {
 }
 
 export const WORDLE_WORDMARK_COLORS = ['#6aaa64', '#c9b458', '#787c7e', '#6aaa64', '#c9b458', '#6aaa64'] as const;
+export const WORDLE_BACK_COLORS = ['#cf6469', ...WORDLE_WORDMARK_COLORS] as const;
 
 /** Render arbitrary text using Wordle-style cells. Callers may provide one color per cell. */
 export function WordleMark(props:{text:string;colors:readonly string[];class?:string;ariaLabel?:string}) {

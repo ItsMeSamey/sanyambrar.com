@@ -47,7 +47,6 @@ export function mountChain() {
 
   const EMPTY = 0;
   const HUMAN = 1;
-  const PLAYER_COLORS = ['', '#6aaa64', '#c95d63', '#6b8fd6', '#b07aa1', '#d2a94b', '#62a8a8'];
   const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
   const GAME_KEY = 'samey.chain.game.v2';
@@ -239,7 +238,26 @@ export function mountChain() {
 
   const css = () => getComputedStyle(document.documentElement);
   const color = (name, fallback) => css().getPropertyValue(name).trim() || fallback;
-  const playerColor = player => PLAYER_COLORS[player] || `hsl(${(player * 67) % 360} 72% 54%)`;
+  const colorProbe = document.createElement('span');
+  colorProbe.hidden = true;
+  document.body.append(colorProbe);
+  function resolvedColor(expression, fallback) {
+    colorProbe.style.color = '';
+    colorProbe.style.color = expression;
+    return getComputedStyle(colorProbe).color || fallback;
+  }
+  const playerColor = player => {
+    const themed = [
+      '',
+      'var(--site-accent, #6aaa64)',
+      'var(--site-error, #c95d63)',
+      'color-mix(in srgb, var(--site-accent, #6aaa64) 52%, var(--site-fg, #121213))',
+      'color-mix(in srgb, var(--site-error, #c95d63) 58%, var(--site-accent, #6aaa64))',
+      'color-mix(in srgb, var(--site-fg, #121213) 58%, var(--site-accent, #6aaa64))',
+      'color-mix(in srgb, var(--site-muted, #787c7e) 62%, var(--site-accent, #6aaa64))',
+    ];
+    return resolvedColor(themed[player] || `hsl(${(player * 67) % 360} 72% 54%)`, '#6aaa64');
+  };
 
   function layout() {
     const rect = stage.getBoundingClientRect();
@@ -274,11 +292,16 @@ export function mountChain() {
     return [[-radius*.32,-radius*.32],[radius*.32,-radius*.32],[-radius*.32,radius*.32],[radius*.32,radius*.32]];
   }
 
-  function mixHex(a, b, t) {
-    const n = hex => [1,3,5].map(i => Number.parseInt(hex.slice(i, i + 2), 16));
-    const [ar,ag,ab] = n(a), [br,bg,bb] = n(b);
-    const c = (x,y) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
-    return `#${c(ar,br)}${c(ag,bg)}${c(ab,bb)}`;
+  function rgb(value) {
+    const hex = /^#([0-9a-f]{6})$/i.exec(value);
+    if (hex) return [1,3,5].map(i => Number.parseInt(hex[1].slice(i-1, i+1), 16));
+    const match = /rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/i.exec(value);
+    return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : [106,170,100];
+  }
+  function mixColor(a, b, t) {
+    const [ar,ag,ab] = rgb(a), [br,bg,bb] = rgb(b);
+    const c = (x,y) => Math.round(x + (y - x) * t);
+    return `rgb(${c(ar,br)} ${c(ag,bg)} ${c(ab,bb)})`;
   }
 
   function orbSprite(owner, radius) {
@@ -296,17 +319,17 @@ export function mountChain() {
     g.imageSmoothingQuality = 'high';
     const c = size / 2;
     const gradient = g.createRadialGradient(c - radius*.34, c - radius*.38, radius*.08, c, c, radius*1.04);
-    gradient.addColorStop(0, mixHex(base, '#ffffff', .55));
-    gradient.addColorStop(.32, mixHex(base, '#ffffff', .16));
+    gradient.addColorStop(0, mixColor(base, 'rgb(255 255 255)', .55));
+    gradient.addColorStop(.32, mixColor(base, 'rgb(255 255 255)', .16));
     gradient.addColorStop(.74, base);
-    gradient.addColorStop(1, mixHex(base, '#000000', .30));
+    gradient.addColorStop(1, mixColor(base, 'rgb(0 0 0)', .30));
     g.shadowColor = 'rgba(0,0,0,.18)';
     g.shadowBlur = Math.max(1.5, radius * .22);
     g.shadowOffsetY = Math.max(.5, radius * .08);
     g.fillStyle = gradient;
     g.beginPath(); g.arc(c, c, radius, 0, Math.PI * 2); g.fill();
     g.shadowColor = 'transparent';
-    g.strokeStyle = mixHex(base, '#000000', .18);
+    g.strokeStyle = mixColor(base, 'rgb(0 0 0)', .18);
     g.lineWidth = Math.max(.65, radius * .07);
     g.stroke();
     orbCache.set(key, sprite);
@@ -756,11 +779,9 @@ export function mountChain() {
 
   function syncRangeProgress(input) {
     const min = Number(input.min), max = Number(input.max), value = Number(input.value);
-    const ratio = max > min ? (value - min) / (max - min) : 0;
-    const width = input.getBoundingClientRect().width || input.clientWidth || 0;
-    const endpoint = width > 16 ? 8 + ratio * (width - 16) : ratio * width;
+    const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0;
     const shell = input.closest('.game-range-shell');
-    if (shell) shell.style.setProperty('--range-fill-width', `${Math.min(width, endpoint)}px`);
+    if (shell) shell.style.setProperty('--range-fill-width', `calc(${ratio * 100}% + ${8 - ratio * 16}px)`);
   }
 
   function syncSettings() {
@@ -786,6 +807,20 @@ export function mountChain() {
     colsValue.value = colsInput.value;
     enemiesValue.value = enemiesInput.value;
     for (const input of [rowsInput, colsInput, enemiesInput]) syncRangeProgress(input);
+    const untouched = !locked && !gameOver && board && !board.some(value => value !== 0);
+    if (untouched) {
+      const next = settingsFromControls();
+      if (next.rows !== config.rows || next.cols !== config.cols || next.enemies !== config.enemies) {
+        config = next;
+        saveConfig();
+        buildBoard();
+        focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
+        updateStatus();
+        saveGameState(true);
+        updateResumeCard();
+        layout();
+      }
+    }
   }
 
   settingsButton.addEventListener('click', () => setSettingsOpen(settingsButton.getAttribute('aria-expanded') !== 'true'));
@@ -854,6 +889,7 @@ export function mountChain() {
     scheme.removeEventListener('change', repaintTheme);
     document.removeEventListener('pointerdown', onDocumentPointerDown);
     document.removeEventListener('keydown', onDocumentKeyDown);
+    colorProbe.remove();
     canvas.removeEventListener('pointerdown', onCanvasPointerDown);
     canvas.removeEventListener('keydown', onCanvasKeyDown);
     canvas.removeEventListener('focus', onCanvasFocus);

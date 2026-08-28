@@ -1,41 +1,13 @@
-import { cloneElement, type ReactElement, type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
-import { getDir } from "./locale.ts";
+import { type ReactElement, type ReactNode } from "@keybr/solid-compat/react";
+
 /**
- * Expects exactly two child components and swaps their properties depending
- * on the reading direction, "ltr" or "rtl".
+ * Compatibility wrapper retained for ports that still import Dir.
+ * The active call sites perform their direction-aware icon selection before
+ * rendering because Solid JSX does not expose mutable React vnode props.
  */
-export function Dir({ children, swap, }: {
-    readonly children: readonly [
-        ReactElement<any>,
-        ReactElement<any>
-    ];
+export function Dir({ children }: {
+    readonly children: readonly [ReactElement<any>, ReactElement<any>];
     readonly swap: string;
 }): ReactNode {
-    const { locale } = useIntl();
-    if (!(Array.isArray(children) && children.length === 2)) {
-        throw new Error(process.env.NODE_ENV !== "production"
-            ? `Excepting exactly two child components`
-            : undefined);
-    }
-    const [a, b] = children;
-    const { props: ap } = a;
-    const { props: bp } = b;
-    if (!(swap in ap && swap in bp)) {
-        throw new Error(process.env.NODE_ENV !== "production"
-            ? `Property [${swap}] is missing in the child component props`
-            : undefined);
-    }
-    if (getDir(locale) === "rtl") {
-        return (<>
-        {cloneElement(a, { ...ap, [swap]: bp[swap] })}
-        {cloneElement(b, { ...bp, [swap]: ap[swap] })}
-      </>);
-    }
-    else {
-        return (<>
-        {cloneElement(a, { ...ap, [swap]: ap[swap] })}
-        {cloneElement(b, { ...bp, [swap]: bp[swap] })}
-      </>);
-    }
+    return children as unknown as ReactNode;
 }

@@ -13,8 +13,8 @@ import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, legacyGameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
-import { BackLink, TopBar } from '../../shared/components/TopBar.tsx'
-import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
+import { TopBar } from '../../shared/components/TopBar.tsx'
+import { WordleMark, WORDLE_BACK_COLORS, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
 import { animateRootSwap } from '../../shared/transitions.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
@@ -662,7 +662,7 @@ export default function Wordle() {
   const gameKey = () => gameStorageKey({...hard})
 
   const gameContext = () => <><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
-  const wordleBack = () => <BackLink onClick={chooseMode} class='wordle-wordle-back'><WordleMark text='WORDLE' colors={WORDLE_WORDMARK_COLORS} class='wordle-back-wordmark' ariaLabel='Wordle'/></BackLink>
+  const wordleBack = () => <button type='button' role='link' onClick={chooseMode} class='backline wordle-wordle-back'><WordleMark text='<WORDLE' colors={WORDLE_BACK_COLORS} class='wordle-back-wordmark' ariaLabel='Back to Wordle'/></button>
 
   return <>
     <TopBar start={!showOpening() ? wordleBack() : undefined} contextClass='wordle-topbar-context' context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span> : gameContext()}/>

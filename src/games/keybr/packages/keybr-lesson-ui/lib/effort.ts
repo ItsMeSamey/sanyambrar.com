@@ -9,8 +9,8 @@ export type Effort = {
 };
 export function useEffort(): Effort {
     const { settings } = useSettings();
-    const { getPropertyValue } = useComputedStyles();
-    const color = getPropertyValue("--effort-color") || "#000000";
+    const { resolveColor } = useComputedStyles();
+    const color = resolveColor("--effort-color", "#000000");
     return useMemo(() => {
         const dailyGoal = new MutableDailyGoal(settings);
         const effort = (time: number) => {

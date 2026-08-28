@@ -34,7 +34,10 @@ export function Zoomer(props: ZoomerProps): JSX.Element {
 
   createEffect(() => {
     const p = position();
-    queueMicrotask(() => setPosition(place(root).fitToScreen(p)));
+    queueMicrotask(() => {
+      const next = place(root).fitToScreen(p);
+      if (next.x !== p.x || next.y !== p.y || next.zoom !== p.zoom) setPosition(next);
+    });
   });
   createEffect(() => { if (props.id) savedPositions.set(props.id, position()); });
   createEffect(() => {

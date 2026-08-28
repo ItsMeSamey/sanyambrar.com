@@ -2,9 +2,9 @@ import { mixColors, parseColor } from "@keybr/color";
 import { useComputedStyles } from "@keybr/themes";
 import { type CSSProperties, useMemo } from "@keybr/solid-compat/react";
 export function useKeyStyles() {
-    const { getPropertyValue } = useComputedStyles();
-    const slow = getPropertyValue("--slow-key-color") || "#cc0000";
-    const fast = getPropertyValue("--fast-key-color") || "#60d788";
+    const { resolveColor } = useComputedStyles();
+    const slow = resolveColor("--slow-key-color", "#cc0000");
+    const fast = resolveColor("--fast-key-color", "#60d788");
     return useMemo(() => {
         const min = parseColor(slow);
         const max = parseColor(fast);

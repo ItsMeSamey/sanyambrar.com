@@ -1,7 +1,7 @@
 import { type BooksLesson, type CodeLesson, type CustomTextLesson, type GuidedLesson, type Lesson, lessonProps, LessonType, type NumbersLesson, type WordListLesson, } from "@keybr/lesson";
 import { LessonLoader } from "@keybr/lesson-loader";
 import { type Settings, useSettings } from "@keybr/settings";
-import { Tab, TabList } from "@keybr/widget";
+import { TabList } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
@@ -16,34 +16,16 @@ export function LessonSettings(): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>
-      <TabList selectedIndex={LessonType.ALL.indexOf(settings.get(lessonProps.type))} onSelect={(index) => {
+      <TabList tabs={[
+        { label: formatMessage({ id: "t_Guided_lessons", defaultMessage: "Guided lessons" }) },
+        { label: formatMessage({ id: "t_Common_words", defaultMessage: "Common words" }) },
+        { label: formatMessage({ id: "t_Books", defaultMessage: "Books" }) },
+        { label: formatMessage({ id: "t_Custom_text", defaultMessage: "Custom text" }) },
+        { label: formatMessage({ id: "t_Source_code", defaultMessage: "Source code" }) },
+        { label: formatMessage({ id: "t_Numbers", defaultMessage: "Numbers" }) },
+      ]} selectedIndex={LessonType.ALL.indexOf(settings.get(lessonProps.type))} onSelect={(index) => {
             updateSettings(settings.set(lessonProps.type, LessonType.ALL.at(index)));
-        }}>
-        <Tab label={formatMessage({
-            id: "t_Guided_lessons",
-            defaultMessage: "Guided lessons",
-        })}/>
-        <Tab label={formatMessage({
-            id: "t_Common_words",
-            defaultMessage: "Common words",
-        })}/>
-        <Tab label={formatMessage({
-            id: "t_Books",
-            defaultMessage: "Books",
-        })}/>
-        <Tab label={formatMessage({
-            id: "t_Custom_text",
-            defaultMessage: "Custom text",
-        })}/>
-        <Tab label={formatMessage({
-            id: "t_Source_code",
-            defaultMessage: "Source code",
-        })}/>
-        <Tab label={formatMessage({
-            id: "t_Numbers",
-            defaultMessage: "Numbers",
-        })}/>
-      </TabList>
+        }}/>
       <LessonLoader>
         {(lesson) => (<>
             {tabBody(settings, lesson)}

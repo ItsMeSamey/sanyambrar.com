@@ -15,6 +15,14 @@ export const useComputedStyles = () => {
         const getPropertyValue = (name: PropName): string => {
             return style.getPropertyValue(name);
         };
+        const resolveColor = (name: PropName, fallback: string): string => {
+            const child = document.createElement("span");
+            child.style.color = `var(${name}, ${fallback})`;
+            element.appendChild(child);
+            const value = getComputedStyle(child).color || fallback;
+            element.removeChild(child);
+            return value;
+        };
         const computeStyle = (...className: ClassValue[]): GraphicsStyle => {
             // https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle
             // The returned style is a live CSSStyleDeclaration object, which updates itself automatically
@@ -133,7 +141,7 @@ export const useComputedStyles = () => {
             element.removeChild(child);
             return value;
         };
-        return { getPropertyValue, computeStyle, computeLineHeight };
+        return { getPropertyValue, resolveColor, computeStyle, computeLineHeight };
     }, [color, font, hash, element]);
 };
 function use(...arg: any) { }

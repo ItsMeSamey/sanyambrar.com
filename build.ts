@@ -192,10 +192,10 @@ ${keybrViewSwitch}`;
   must(wordlePage.includes("context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span>"),
     "ux: Wordle opening screen must expose Statistics directly");
   const wordleBrand = await readFile(join(ROOT, "src/shared/components/Brand.tsx"), "utf8");
-  must(wordleStats.includes("class='wordle-wordle-back'><WordleMark") && !wordleStats.includes(">Wordle</BackLink>") && !wordleStats.includes("HomeBrand"),
+  must(wordleStats.includes("<WordleMark text='<WORDLE'") && !wordleStats.includes(">Wordle</BackLink>") && !wordleStats.includes("HomeBrand"),
     "ux: Wordle Statistics must have one Wordle-cell back control to the picker");
   must(wordlePage.includes("class='wordle-back-wordmark'") && !wordlePage.includes("MODES") && !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
-    "ux: Wordle subpages must use < + WORDLE cells and completion must not render a recap board");
+    "ux: Wordle subpages must render boxed <WORDLE cells and completion must not render a recap board");
   must(wordleBrand.includes("colors:readonly string[]") && wordleBrand.includes("props.colors[index % props.colors.length]"),
     "architecture: Wordle text rendering must be centralized and accept per-cell colors");
 
@@ -210,6 +210,25 @@ ${keybrViewSwitch}`;
     "ux: Chain subpages must round-trip through query-string history");
   must(keybrViewSwitch.includes('searchParams.get("p")') && keybrViewSwitch.includes('history.pushState') && keybrViewSwitch.includes('addEventListener("popstate", onPopState)'),
     "ux: Keybr subpages must round-trip through query-string history");
+  const keybrSettingsScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/SettingsScreen.tsx"), "utf8");
+  const keybrLessonLoader = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-loader/lib/LessonLoader.tsx"), "utf8");
+  const keybrTabList = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/tablist/TabList.tsx"), "utf8");
+  must(keybrSettingsScreen.includes("settings: liveObject(newSettings)") &&
+    keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
+    keybrTabList.includes("const selectedIndex = () => props.selectedIndex ?? 0"),
+    "ux: Keybr settings must keep draft state, lesson loading, and selected tabs reactive");
+  must(chainLogo.includes("'0101'") && chainLogo.match(/'1110'/g)?.length === 2 && chainLogo.includes("const gap = 2"),
+    "ux: Chain back mark must use the requested 4x4 bitmap and two-cell gap");
+  must(chainLogo.includes("var(--site-bg") && chainLogo.includes("samey-themechange") &&
+    chainEngine.includes("const playerColor") && chainEngine.includes("--range-fill-width") && chainEngine.includes("buildBoard();"),
+    "ux: Chain canvases, range fills, and untouched-board resizing must stay theme/reactivity aware");
+
+  const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
+  const toolsPageSource = await readFile(join(ROOT, "src/tools/Tools.tsx"), "utf8");
+  const blogSource = await readFile(join(ROOT, "src/blogs/Blog.tsx"), "utf8");
+  must(homeSource.includes("home-tool-matrix") && homeSource.includes("home-writing-split") &&
+    !toolsPageSource.includes("home-tool-matrix") && !blogSource.includes("home-writing-split"),
+    "ux: editorial tools and split writing index belong on Home, not the Tools/Writing pages");
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");

@@ -1,10 +1,5 @@
 import { onCleanup, onMount } from 'solid-js';
 
-const RED = '#cf6469';
-const BLUE = '#6e86c8';
-const GRID = '#242424';
-const TEXT = '#eeeeea';
-const BACKGROUND = '#050505';
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]] as const;
 
 const FONT4 = {
@@ -74,6 +69,22 @@ function createLogoController(canvas: HTMLCanvasElement) {
   let animationFrame = 0;
   let timeout = 0;
   let generation = 0;
+  const colorProbe = document.createElement('span');
+  colorProbe.hidden = true;
+  document.body.append(colorProbe);
+  const resolveColor = (value: string, fallback: string) => {
+    colorProbe.style.color = '';
+    colorProbe.style.color = value;
+    return getComputedStyle(colorProbe).color || fallback;
+  };
+  const readPalette = () => ({
+    background: resolveColor('var(--site-bg, #fff)', '#fff'),
+    text: resolveColor('var(--site-fg, #121213)', '#121213'),
+    grid: resolveColor('var(--site-line, #d3d6da)', '#d3d6da'),
+    red: resolveColor('var(--site-error, #cf6469)', '#cf6469'),
+    blue: resolveColor('var(--site-accent, #6e86c8)', '#6e86c8'),
+  });
+  let palette = readPalette();
 
   for (let index = 0; index < count; index++) {
     if (LOGO_MASK[index]) continue;
@@ -104,7 +115,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
 
   function paintBoardLayer() {
     boardContext.setTransform(dpr, 0, 0, dpr, 0, 0);
-    boardContext.fillStyle = BACKGROUND;
+    boardContext.fillStyle = palette.background;
     boardContext.fillRect(0, 0, cssWidth, cssHeight);
     const cellWidth = cssWidth / LOGO_WIDTH;
     const cellHeight = cssHeight / LOGO_HEIGHT;
@@ -114,10 +125,10 @@ function createLogoController(canvas: HTMLCanvasElement) {
       const col = index % LOGO_WIDTH;
       const x = col * cellWidth;
       const y = row * cellHeight;
-      boardContext.fillStyle = LOGO_MASK[index] ? TEXT : GRID;
+      boardContext.fillStyle = LOGO_MASK[index] ? palette.text : palette.grid;
       boardContext.fillRect(x, y, Math.max(0.5, cellWidth - gap), Math.max(0.5, cellHeight - gap));
       if (!LOGO_MASK[index]) {
-        boardContext.fillStyle = BACKGROUND;
+        boardContext.fillStyle = palette.background;
         boardContext.fillRect(x + gap, y + gap, Math.max(0, cellWidth - gap * 2), Math.max(0, cellHeight - gap * 2));
       }
     }
@@ -145,7 +156,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
   function drawOrb(x: number, y: number, radius: number, owner: number) {
     context.beginPath();
     context.arc(x, y, radius, 0, Math.PI * 2);
-    context.fillStyle = owner === 1 ? RED : BLUE;
+    context.fillStyle = owner === 1 ? palette.red : palette.blue;
     context.fill();
   }
 
@@ -362,6 +373,12 @@ function createLogoController(canvas: HTMLCanvasElement) {
   const onReducedMotion = () => draw();
   document.addEventListener('visibilitychange', onVisibility);
   reducedMotion.addEventListener('change', onReducedMotion);
+  const onTheme = () => { palette = readPalette(); paintBoardLayer(); draw(); };
+  window.addEventListener('samey-themechange', onTheme);
+  const themeObserver = new MutationObserver(onTheme);
+  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style','class']});
+  const scheme = matchMedia('(prefers-color-scheme: dark)');
+  scheme.addEventListener('change', onTheme);
   resize();
   seed();
   void run();
@@ -375,6 +392,10 @@ function createLogoController(canvas: HTMLCanvasElement) {
     intersectionObserver?.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
     reducedMotion.removeEventListener('change', onReducedMotion);
+    window.removeEventListener('samey-themechange', onTheme);
+    themeObserver.disconnect();
+    scheme.removeEventListener('change', onTheme);
+    colorProbe.remove();
   };
 }
 
@@ -389,10 +410,10 @@ export function ChainLiveMark(props: { class?: string }) {
 }
 
 const BACK_ROWS = [
-  '00100',
-  '01100',
-  '11111',
-  '01100',
+  '0101',
+  '1110',
+  '1110',
+  '0101',
 ] as const;
 
 export function ChainBackMark(props: { class?: string }) {

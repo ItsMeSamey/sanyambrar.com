@@ -38,6 +38,8 @@ const rHsl = /hsla?/y;
 const rHwb = /hwb/y;
 const rOklab = /oklab/y;
 const rOklch = /oklch/y;
+const rColor = /color/y;
+const rSrgb = /srgb/y;
 const rNone = /none/y;
 const rNumber = /[-+]?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?/y;
 const rPct = /%/y;
@@ -192,6 +194,27 @@ class Parser {
     return false;
   }
 
+  parseSrgbColor() {
+    this.reset();
+    if (
+      this.eat(rColor) &&
+      this.eat(rLB) &&
+      this.eat(rSrgb) &&
+      this.eat(rWs) &&
+      this.parseNumber("x", valueUnit) &&
+      this.eat(rWs) &&
+      this.parseNumber("y", valueUnit) &&
+      this.eat(rWs) &&
+      this.parseNumber("z", valueUnit) &&
+      (!this.eat(rSlash) || this.parseNumber("alpha", alphaUnit)) &&
+      this.eat(rRB) &&
+      this.end()
+    ) {
+      return new RgbColor(this.x, this.y, this.z, this.alpha);
+    }
+    return null;
+  }
+
   parseRgb() {
     this.reset();
     if (
@@ -327,6 +350,7 @@ class Parser {
 
   parse() {
     return (
+      this.parseSrgbColor() ??
       this.parseRgb() ??
       this.parseRgbLegacy() ??
       this.parseHsl() ??

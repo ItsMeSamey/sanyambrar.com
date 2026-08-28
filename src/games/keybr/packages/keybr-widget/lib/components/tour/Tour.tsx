@@ -18,7 +18,7 @@ export type TourProps = {
 export function Tour({ children, onClose, ...props }: TourProps): ReactNode {
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = useState(0);
-    const slides = Children.toArray(children) as ReactElement<SlideProps>[];
+    const slides = Children.toArray(children).filter((child): child is HTMLElement => child instanceof HTMLElement);
     const { length } = slides;
     if (length > 0 && slideIndex() > length - 1) {
         setSlideIndex(length - 1);
@@ -26,7 +26,7 @@ export function Tour({ children, onClose, ...props }: TourProps): ReactNode {
     if (length > 0 && slideIndex() < 0) {
         setSlideIndex(0);
     }
-    const currentSlide = slideIndex() >= 0 && slideIndex() < length ? slides[slideIndex()] : <Slide />;
+    const currentSlide = () => slideIndex() >= 0 && slideIndex() < length ? slides[slideIndex()] : null;
     const selectPrev = () => {
         if (slideIndex() > 0) {
             setSlideIndex(slideIndex() - 1);
@@ -51,14 +51,15 @@ export function Tour({ children, onClose, ...props }: TourProps): ReactNode {
         ["Space"]: selectNext,
         ["Escape"]: close,
     });
-    const { anchor, position } = currentSlide.props;
+    const anchor = () => currentSlide()?.dataset.tourAnchor || undefined;
+    const position = () => (currentSlide()?.dataset.tourPosition || undefined) as SlideProps["position"];
     return (<Portal>
       <Backdrop>
-        <Spotlight anchor={anchor}/>
+        <Spotlight anchor={anchor()}/>
 
-        <Popup {...props} anchor={anchor} position={position} offset={30}>
+        <Popup {...props} anchor={anchor()} position={position()} offset={30}>
           <div class={styles.root}>
-            {currentSlide}
+            {currentSlide()}
 
             <LinkButton className={styles.close} onClick={close}>
               <Icon shape={mdiClose}/>

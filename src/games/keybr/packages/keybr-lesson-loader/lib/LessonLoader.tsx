@@ -47,24 +47,28 @@ function Loader(props: {
     async ({ type, language, book, model }) => {
       switch (type) {
         case LessonType.GUIDED:
-          return new GuidedLesson(settings, keyboard, model, await loadWordList(language));
+          return { type, value: new GuidedLesson(settings, keyboard, model, await loadWordList(language)) };
         case LessonType.WORDLIST:
-          return new WordListLesson(settings, keyboard, model, await loadWordList(language));
+          return { type, value: new WordListLesson(settings, keyboard, model, await loadWordList(language)) };
         case LessonType.BOOKS:
-          return new BooksLesson(settings, keyboard, model, { book, content: await loadContent(book) });
+          return { type, value: new BooksLesson(settings, keyboard, model, { book, content: await loadContent(book) }) };
         case LessonType.CUSTOM:
-          return new CustomTextLesson(settings, keyboard, model);
+          return { type, value: new CustomTextLesson(settings, keyboard, model) };
         case LessonType.CODE:
-          return new CodeLesson(settings, keyboard, model);
+          return { type, value: new CodeLesson(settings, keyboard, model) };
         case LessonType.NUMBERS:
-          return new NumbersLesson(settings, keyboard, model);
+          return { type, value: new NumbersLesson(settings, keyboard, model) };
         default:
           throw new Error(`Unknown lesson type: ${String(type)}`);
       }
     },
   );
+  const currentLesson = () => {
+    const loaded = lesson();
+    return loaded?.type === settings.get(lessonProps.type) ? loaded.value : undefined;
+  };
   return (
-    <Show when={lesson()} fallback={props.fallback ?? <LoadingProgress />}>
+    <Show when={currentLesson()} fallback={props.fallback ?? <LoadingProgress />}>
       {(value) => props.children(value())}
     </Show>
   );

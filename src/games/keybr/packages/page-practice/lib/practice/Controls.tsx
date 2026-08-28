@@ -1,4 +1,4 @@
-import { Dir } from "@keybr/intl";
+import { getDir } from "@keybr/intl";
 import { names } from "@keybr/lesson-ui";
 import { Icon, IconButton, useView } from "@keybr/widget";
 import { mdiAspectRatio, mdiChartBar, mdiCog, mdiHelpCircleOutline, mdiHome, mdiThemeLightDark, mdiRedo, mdiUndo, } from "@keybr/solid-compat/mdi";
@@ -12,7 +12,8 @@ export const Controls = memo(function Controls({ onChangeView, onResetLesson, on
     readonly onSkipLesson: () => void;
     readonly onHelp: () => void;
 }): ReactNode {
-    const { formatMessage } = useIntl();
+    const { formatMessage, locale } = useIntl();
+    const rtl = getDir(locale) === "rtl";
     const { setView } = useView(views);
     return (<div id={names.controls} class={styles.controls}>
       <IconButton icon={<Icon shape={mdiHome}/>} title="Home" onClick={() => {
@@ -28,16 +29,16 @@ export const Controls = memo(function Controls({ onChangeView, onResetLesson, on
             id: "practice.widget.showTour.description",
             defaultMessage: "Show a guided tour with help slides.",
         })} onClick={onHelp}/>
-      <Dir swap="icon">
-        <IconButton icon={<Icon shape={mdiUndo}/>} title={formatMessage({
+      <span style={{ display: "contents" }}>
+        <IconButton icon={<Icon shape={rtl ? mdiRedo : mdiUndo}/>} title={formatMessage({
             id: "practice.widget.resetLesson.description",
             defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
         })} onClick={onResetLesson}/>
-        <IconButton icon={<Icon shape={mdiRedo}/>} title={formatMessage({
+        <IconButton icon={<Icon shape={rtl ? mdiUndo : mdiRedo}/>} title={formatMessage({
             id: "practice.widget.skipLesson.description",
             defaultMessage: "Skip the current lesson (Ctrl + Right Arrow).",
         })} onClick={onSkipLesson}/>
-      </Dir>
+      </span>
       <IconButton icon={<Icon shape={mdiAspectRatio}/>} title={formatMessage({
             id: "practice.widget.switchView.description",
             defaultMessage: "Switch the current interface layout.",

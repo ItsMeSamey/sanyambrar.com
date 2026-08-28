@@ -157,12 +157,12 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .backline{appearance:none;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin:24px 0;padding:6px 0;border:0;background:transparent;color:var(--site-muted,#787c7e);font:inherit;text-decoration:none;white-space:nowrap}.backline-mark{font:700 1em/1 var(--site-font,system-ui)}.backline:hover,.backline:focus-visible{color:var(--site-fg,#121213)}.site-topbar .backline{margin:0;padding-block:5px}
 
 /* Chain Reaction's mark is a tiny live board: the word itself is the board geometry. */
-.chain-live-mark{display:block;min-width:0;aspect-ratio:13.5/1;overflow:hidden;border:1px solid #242424;background:#050505;contain:layout paint size;pointer-events:none}
-.chain-live-mark canvas{display:block;width:100%;height:100%;background:#050505;image-rendering:auto}
+.chain-live-mark{display:block;min-width:0;aspect-ratio:13.5/1;overflow:hidden;border:1px solid var(--site-line,#d3d6da);background:var(--site-bg,#fff);contain:layout paint size;pointer-events:none}
+.chain-live-mark canvas{display:block;width:100%;height:100%;background:var(--site-bg,#fff);image-rendering:auto}
 .chain-back-mark{display:block;width:clamp(142px,18vw,190px);aspect-ratio:60/4;line-height:0;color:var(--site-fg,#121213)}
 .chain-back-mark svg{display:block;width:100%;height:100%;overflow:visible}
 .chain-back-mark .chain-back-wordmark{fill:currentColor}
-.chain-back-mark .chain-back-chevron{fill:#cf6469}
+.chain-back-mark .chain-back-chevron{fill:var(--site-error,#cf6469)}
 @media(max-width:520px){.chain-back-mark{width:118px}}
 
 /* Split writing index: follows the supplied split-index composition. */
