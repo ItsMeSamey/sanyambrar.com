@@ -35,12 +35,60 @@ async function run(cwd: string, file: string, args: string[], env: NodeJS.Proces
   if (stderr.trim()) process.stderr.write(stderr);
 }
 
+async function dependencyPatchFiles(dir: string) {
+  const patchesDir = join(dir, "patches");
+  if (!existsSync(patchesDir)) return [] as string[];
+  return (await readdir(patchesDir, { withFileTypes: true }))
+    .filter(entry => entry.isFile() && entry.name.endsWith(".patch"))
+    .map(entry => join(patchesDir, entry.name))
+    .sort();
+}
+
+async function dependencyPatchSignature(dir: string) {
+  const files = await dependencyPatchFiles(dir);
+  if (files.length === 0) return "";
+  const hash = createHash("sha256");
+  for (const file of files) {
+    hash.update(relative(dir, file));
+    hash.update("\0");
+    hash.update(await readFile(file));
+  }
+  return hash.digest("hex");
+}
+
 async function dependencySignature(dir: string) {
   const files = ["package.json", "bun.lock"].map(name => join(dir, name)).filter(existsSync);
   must(files.length > 0, `dependencies: ${relative(ROOT, dir) || "."} has no package.json or bun.lock`);
   const hash = createHash("sha256");
   for (const file of files) hash.update(await readFile(file));
+  const patchSignature = await dependencyPatchSignature(dir);
+  if (patchSignature) hash.update(`patches:${patchSignature}`);
   return hash.digest("hex");
+}
+
+async function verifyDependencyPatches(dir: string) {
+  const monacoPatch = join(dir, "patches", "monaco-editor+0.56.0.patch");
+  if (!existsSync(monacoPatch)) return;
+  const target = join(dir, "node_modules", "monaco-editor", "esm", "vs", "editor", "common", "diff", "defaultLinesDiffComputer", "defaultLinesDiffComputer.js");
+  must(existsSync(target), "patched Monaco diff implementation is missing");
+  const source = await readFile(target, "utf8");
+  must(source.includes("this._sameyPerfectHashes = new Map()") && source.includes("perfectHashes.size > 500000") && source.includes("if (!hitTimeout) {") && source.includes("Once the shared budget has expired") && source.includes("A timed-out character diff is already coarse"),
+    "Monaco diff patch is not applied; run patch-package rather than editing node_modules directly");
+}
+
+async function ensureDependencyPatches(dir: string) {
+  const wanted = await dependencyPatchSignature(dir);
+  if (!wanted) return;
+  const stamp = join(dir, "node_modules", ".samey-patches-sha256");
+  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted) {
+    await verifyDependencyPatches(dir);
+    return;
+  }
+  const patchPackage = join(dir, "node_modules", "patch-package", "index.js");
+  must(existsSync(patchPackage), "patch-package is required to apply dependency patches");
+  await run(dir, process.execPath, [patchPackage, "--error-on-fail"]);
+  await verifyDependencyPatches(dir);
+  await writeFile(stamp, `${wanted}\n`);
 }
 
 async function directDependenciesPresent(dir: string) {
@@ -66,12 +114,16 @@ async function ensureDepsUnlocked(dir: string) {
   const lock = join(dir, "bun.lock");
   const stamp = join(dir, "node_modules/.samey-deps-sha256");
   const wanted = await dependencySignature(dir);
-  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted && await directDependenciesPresent(dir)) return;
+  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted && await directDependenciesPresent(dir)) {
+    await ensureDependencyPatches(dir);
+    return;
+  }
 
   // Dependency archives are valid build inputs even if bun.lock is absent or
   // older than package.json. Verify the installed direct dependency versions
   // and avoid a network install when the local tree already satisfies them.
   if (await directDependenciesPresent(dir)) {
+    await ensureDependencyPatches(dir);
     await writeFile(stamp, `${wanted}\n`);
     return;
   }
@@ -95,6 +147,11 @@ async function ensureDepsUnlocked(dir: string) {
   }
   await mkdir(join(dir, "node_modules"), { recursive: true });
   must(await directDependenciesPresent(dir), `dependencies for ${relative(ROOT, dir) || "."} are incomplete after install`);
+  // The root postinstall invokes patch-package. Verify its result before a
+  // dependency tree is accepted as build-ready, then stamp that exact patch set.
+  await verifyDependencyPatches(dir);
+  const patchSignature = await dependencyPatchSignature(dir);
+  if (patchSignature) await writeFile(join(dir, "node_modules", ".samey-patches-sha256"), `${patchSignature}\n`);
   await writeFile(stamp, `${await dependencySignature(dir)}\n`);
 }
 
@@ -416,14 +473,22 @@ ${keybrViewSwitch}`;
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
   const rootPackage = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   const diffWorkerSource = await readFile(join(ROOT, "src/tools/diff-worker.ts"), "utf8");
+  const monacoDiffPatch = await readFile(join(ROOT, "patches", "monaco-editor+0.56.0.patch"), "utf8");
   must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" &&
+    rootPackage.devDependencies?.["patch-package"] === "8.0.1" && rootPackage.scripts?.postinstall === "patch-package --error-on-fail" &&
+    monacoDiffPatch.includes("node_modules/monaco-editor/esm/vs/editor/common/diff/defaultLinesDiffComputer/defaultLinesDiffComputer.js") &&
+    monacoDiffPatch.includes("_sameyPerfectHashes") && monacoDiffPatch.includes("perfectHashes.size > 500000") && monacoDiffPatch.includes("if (!hitTimeout)") && monacoDiffPatch.includes("if (!timeout.isValid())") && monacoDiffPatch.includes("if (diffResult.hitTimeout)") &&
     toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('const diffWorker = new DiffWorker()') &&
     toolsSource.includes('const mapDiffLine =') && !toolsSource.includes("#diff-compute") && !toolsSource.includes('createDiffEditor(') &&
+    toolsSource.includes('const serializeChanges = event => event.changes.map(change => ({startLineNumber:change.range.startLineNumber') &&
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'") &&
-    diffWorkerSource.includes('DefaultLinesDiffComputer') && diffWorkerSource.includes('maxComputationTimeMs: 75'),
-    "ux: Diff must use worker-backed advanced diffing, semantic scroll mapping, and deferred large-document persistence");
+    diffWorkerSource.includes('DefaultLinesDiffComputer') && diffWorkerSource.includes('maxComputationTimeMs: 75') &&
+    diffWorkerSource.includes("let originalLines = ['']") && diffWorkerSource.includes('const splitLines = text => text.split(/\\r\\n|\\r|\\n/)') &&
+    diffWorkerSource.includes('const applyChanges = (lines, changes) =>') &&
+    !diffWorkerSource.includes("originalText.split('\n')") && !diffWorkerSource.includes("modifiedText.split('\n')"),
+    "ux: Diff must use patch-package, incremental worker text state, bounded advanced diffing, semantic scroll mapping, and deferred persistence");
   must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:1fr 1fr') &&
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
     "ux: narrow Diff and Markdown combined views must stack top-to-bottom");

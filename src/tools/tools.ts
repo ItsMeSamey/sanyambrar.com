@@ -550,7 +550,7 @@ export function mountTool(toolId, root, context) {
       context.querySelectorAll('[data-diff-layout]').forEach(button => button.onclick = () => { layoutMode = button.dataset.diffLayout; applyLayout(); });
       context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
     };
-    const serializeChanges = event => event.changes.map(change => ({rangeOffset:change.rangeOffset,rangeLength:change.rangeLength,text:change.text}));
+    const serializeChanges = event => event.changes.map(change => ({startLineNumber:change.range.startLineNumber,startColumn:change.range.startColumn,endLineNumber:change.range.endLineNumber,endColumn:change.range.endColumn,text:change.text}));
     // localStorage is synchronous. Serializing both complete documents on every
     // keystroke makes large diffs stall on the main thread even though the diff
     // algorithm itself runs in a worker. Persist only the side that changed and
