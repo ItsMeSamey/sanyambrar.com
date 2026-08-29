@@ -435,10 +435,53 @@ export function mountTool(toolId, root, context) {
     });
     compute.setModel({original, modified});
     let originalDecorations = [], modifiedDecorations = [];
+    const tokenKind = char => /[\p{L}\p{N}_$]/u.test(char) ? 'word' : /\s/u.test(char) ? 'space' : 'punct';
+    const expandWordRange = (model, startLine, startColumn, endLine, endColumn) => {
+      if (startLine !== endLine) return new monaco.Range(startLine,startColumn,endLine,endColumn);
+      const text = model.getLineContent(startLine);
+      let start = Math.max(0,startColumn - 1), end = Math.max(start,endColumn - 1);
+      if (start === end) {
+        // A zero-width inner change is usually an insertion/deletion. Only
+        // expand it when it sits inside a word (for example color -> colour),
+        // not when an entire word was inserted between whitespace.
+        if (!(start > 0 && start < text.length && tokenKind(text[start - 1]) === 'word' && tokenKind(text[start]) === 'word')) {
+          return null;
+        }
+        while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
+        while (end < text.length && tokenKind(text[end]) === 'word') end++;
+      } else {
+        const changed = text.slice(start,end);
+        if (/\S/u.test(changed)) {
+          while (start < end && /\s/u.test(text[start])) start++;
+          while (end > start && /\s/u.test(text[end - 1])) end--;
+        }
+        const leftKind = start < text.length ? tokenKind(text[start]) : null;
+        const rightKind = end > 0 ? tokenKind(text[end - 1]) : null;
+        if (leftKind === 'word') while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
+        if (rightKind === 'word') while (end < text.length && tokenKind(text[end]) === 'word') end++;
+      }
+      return end > start ? new monaco.Range(startLine,start + 1,endLine,end + 1) : null;
+    };
+    const markInnerChange = (model, side, change, className, marks) => {
+      const prefix = side === 'original' ? 'original' : 'modified';
+      const range = expandWordRange(model,
+        change[`${prefix}StartLineNumber`], change[`${prefix}StartColumn`],
+        change[`${prefix}EndLineNumber`], change[`${prefix}EndColumn`]);
+      if (range) marks.push({range,options:{inlineClassName:className}});
+    };
     const paintDiff = () => {
       const changes = compute.getLineChanges?.() || [];
       const leftMarks = [], rightMarks = [];
       for (const change of changes) {
+        if (change.charChanges?.length) {
+          for (const inner of change.charChanges) {
+            markInnerChange(original,'original',inner,'diff-word-removed',leftMarks);
+            markInnerChange(modified,'modified',inner,'diff-word-added',rightMarks);
+          }
+          continue;
+        }
+        // Monaco can omit inner changes for very large edits. Keep those edits
+        // visible rather than silently dropping the diff.
         if (change.originalEndLineNumber > 0) leftMarks.push({
           range:new monaco.Range(change.originalStartLineNumber,1,Math.max(change.originalStartLineNumber,change.originalEndLineNumber),1),
           options:{isWholeLine:true,className:'diff-line-removed'}
