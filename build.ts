@@ -538,14 +538,24 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
     "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
   const keybrPracticeScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/PracticeScreen.tsx"), "utf8");
+  const blogArticle = await readFile(join(ROOT, "src/blogs/btop-mutex.html"), "utf8");
+  must(blogArticle.includes('data-static-article data-site-kind="blog-post"'),
+    "ux: static blog articles must identify themselves explicitly for cursor idle-hide policy");
   must(sharedTheme.includes("const cursorIdleMs = 2200") &&
+    sharedTheme.includes('root.dataset.siteKind === "keybr"') &&
+    sharedTheme.includes('root.dataset.siteKind === "wordle"') &&
+    sharedTheme.includes('root.dataset.siteKind === "blog-post"') &&
+    sharedTheme.includes('if (!cursorIdleHidingEnabled()) { clearCursorIdle(); return; }') &&
+    sharedTheme.includes('addEventListener("samey-pageload", syncCursorIdlePolicy)') &&
+    sharedTheme.includes('addEventListener("samey-solid-routechange", syncCursorIdlePolicy)') &&
+    sharedTheme.includes('if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;') &&
     sharedTheme.includes('const hasRawPointer = "onpointerrawupdate" in window') &&
     sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
     sharedTheme.includes("deadline is enough; one timer follows it") &&
     sharedTheme.includes("Stay hidden after the native/system cursor releases control") &&
     sharedTheme.includes("scale3d(${width / fillDot},${height / fillDot},1)") &&
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
-    "ux: the virtual cursor must use the low-latency raw-pointer/compositor path, idle-hide efficiently, and reject native-drag sentinel coordinates");
+    "ux: the virtual cursor must only idle-hide on Keybr, Wordle, and static blog articles while keeping the low-latency raw-pointer/compositor path");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&

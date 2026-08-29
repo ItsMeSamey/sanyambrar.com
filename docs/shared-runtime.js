@@ -1348,6 +1348,7 @@
 			let pressedPointerId = null;
 			let lastX = 0, lastY = 0;
 			let pendingX = 0, pendingY = 0;
+			let hasPointerPosition = false;
 			let linkHandoffUntil = 0;
 			let modifiedLinkPending = null;
 			let suppressModifiedClick = null;
@@ -1362,6 +1363,7 @@
 			};
 			const placeXY = (x, y) => {
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+				hasPointerPosition = true;
 				renderCursorPosition(x, y);
 			};
 			const place = (event) => {
@@ -1531,6 +1533,10 @@
 				linkFill.hidden = true;
 			};
 			const cursorIdleMs = 2200;
+			const cursorIdleHidingEnabled = () => {
+				const root = document.documentElement;
+				return root.dataset.siteKind === "keybr" || root.dataset.siteKind === "wordle" || root.dataset.siteKind === "blog-post";
+			};
 			let cursorIdleTimer = 0, cursorIdleDeadline = 0;
 			const clearCursorIdle = () => {
 				cursorIdleDeadline = 0;
@@ -1545,6 +1551,10 @@
 			};
 			const runCursorIdle = () => {
 				cursorIdleTimer = 0;
+				if (!cursorIdleHidingEnabled()) {
+					cursorIdleDeadline = 0;
+					return;
+				}
 				if (!cursorIdleDeadline) return;
 				const remaining = cursorIdleDeadline - performance.now();
 				if (remaining > 1) {
@@ -1555,6 +1565,10 @@
 				if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
 			};
 			const armCursorIdle = () => {
+				if (!cursorIdleHidingEnabled()) {
+					clearCursorIdle();
+					return;
+				}
 				cursorIdleDeadline = performance.now() + cursorIdleMs;
 				if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
 			};
@@ -1563,6 +1577,18 @@
 				if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
 				armCursorIdle();
 			};
+			const syncCursorIdlePolicy = () => {
+				if (cursorIdleHidingEnabled()) {
+					if (cursor.hasAttribute("data-visible")) armCursorIdle();
+					return;
+				}
+				clearCursorIdle();
+				if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;
+				cursor.dataset.visible = "";
+				refreshCursorMode();
+			};
+			addEventListener("samey-pageload", syncCursorIdlePolicy);
+			addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
 			function setFillTarget(link) {
 				if (cursor.hasAttribute("data-loading")) {
 					hideFillImmediate();

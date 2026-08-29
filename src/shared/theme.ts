@@ -871,6 +871,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let pressedPointerId = null;
     let lastX = 0, lastY = 0;
     let pendingX = 0, pendingY = 0;
+    let hasPointerPosition = false;
     let linkHandoffUntil = 0;
     let modifiedLinkPending = null;
     let suppressModifiedClick = null;
@@ -888,6 +889,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const placeXY = (x, y) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      hasPointerPosition = true;
       renderCursorPosition(x, y);
     };
     const place = (event) => {
@@ -1026,6 +1028,12 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       linkFill.hidden = true;
     };
     const cursorIdleMs = 2200;
+    const cursorIdleHidingEnabled = () => {
+      const root = document.documentElement;
+      return root.dataset.siteKind === "keybr"
+        || root.dataset.siteKind === "wordle"
+        || root.dataset.siteKind === "blog-post";
+    };
     let cursorIdleTimer = 0, cursorIdleDeadline = 0;
     const clearCursorIdle = () => {
       cursorIdleDeadline = 0;
@@ -1040,6 +1048,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const runCursorIdle = () => {
       cursorIdleTimer = 0;
+      if (!cursorIdleHidingEnabled()) { cursorIdleDeadline = 0; return; }
       if (!cursorIdleDeadline) return;
       const remaining = cursorIdleDeadline - performance.now();
       if (remaining > 1) { cursorIdleTimer = window.setTimeout(runCursorIdle, remaining); return; }
@@ -1047,6 +1056,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
     };
     const armCursorIdle = () => {
+      if (!cursorIdleHidingEnabled()) { clearCursorIdle(); return; }
       cursorIdleDeadline = performance.now() + cursorIdleMs;
       // Do not clear/create a timeout on every raw pointer sample. Updating the
       // deadline is enough; one timer follows it until movement really stops.
@@ -1057,6 +1067,18 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
       armCursorIdle();
     };
+    const syncCursorIdlePolicy = () => {
+      if (cursorIdleHidingEnabled()) {
+        if (cursor.hasAttribute("data-visible")) armCursorIdle();
+        return;
+      }
+      clearCursorIdle();
+      if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;
+      cursor.dataset.visible = "";
+      refreshCursorMode();
+    };
+    addEventListener("samey-pageload", syncCursorIdlePolicy);
+    addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link) {
       if (cursor.hasAttribute("data-loading")) { hideFillImmediate(); return; }
       if (!link) {
