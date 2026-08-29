@@ -420,7 +420,7 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
     sharedTheme.includes("deadline is enough; one timer follows it") &&
     sharedTheme.includes("Stay hidden after the native/system cursor releases control") &&
-    sharedTheme.includes("scale3d(${fillW / fillDot},${fillH / fillDot},1)") &&
+    sharedTheme.includes("scale3d(${width / fillDot},${height / fillDot},1)") &&
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
     "ux: the virtual cursor must use the low-latency raw-pointer/compositor path, idle-hide efficiently, and reject native-drag sentinel coordinates");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
@@ -444,7 +444,10 @@ ${keybrViewSwitch}`;
   const tooltipSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx"), "utf8");
   must(sharedCss.includes("--samey-z-link-fill:2147483000") && sharedCss.includes("--samey-z-overlay:2147483644") &&
     sharedCss.includes("[data-samey-overlay]{z-index:var(--samey-z-overlay)!important}") &&
-    sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('zIndexOf(overlay) <= fillZ') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
+    sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('refreshFillOcclusionRects') &&
+    sharedTheme.includes('zIndexOf(overlay) > fillZ') && sharedTheme.includes('const subtractRect = (rect, hole) =>') &&
+    sharedTheme.includes('samey-cursor-link-fill-slice') &&
+    !sharedTheme.includes('linkBlockedByOverlay') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
     popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && tooltipSource.includes("data-samey-overlay=''") &&
     !sharedTheme.includes('querySelector(".samey-cursor-link-fill")?.setAttribute("hidden"') &&
     blogSource.includes("<main data-text-cursor-zone>") && homeSource.includes('home-writing-detail" data-text-cursor-zone'),

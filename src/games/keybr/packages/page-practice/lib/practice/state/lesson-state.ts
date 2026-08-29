@@ -25,11 +25,9 @@ import {
 } from "@keybr/textinput";
 import { type IInputEvent } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
-import { type LastLesson } from "./last-lesson.ts";
 import { type Progress } from "./progress.ts";
 
 export class LessonState {
-  readonly #onResult: (result: Result, textInput: TextInput) => void;
   readonly settings: Settings;
   readonly lesson: Lesson;
   readonly textInputSettings: TextInputSettings;
@@ -40,18 +38,12 @@ export class LessonState {
   readonly dailyGoal: DailyGoal;
   readonly lessonKeys: LessonKeys;
 
-  lastLesson: LastLesson | null = null;
-
   textInput!: TextInput; // Mutable.
   lines!: LineList; // Mutable.
   suffix!: readonly CodePoint[]; // Mutable.
   depressedKeys: readonly KeyId[] = []; // Mutable.
 
-  constructor(
-    progress: Progress,
-    onResult: (result: Result, textInput: TextInput) => void,
-  ) {
-    this.#onResult = onResult;
+  constructor(progress: Progress) {
     this.settings = progress.settings;
     this.lesson = progress.lesson;
     this.textInputSettings = toTextInputSettings(this.settings);
@@ -72,14 +64,14 @@ export class LessonState {
     this.#reset(this.lesson.generate(this.lessonKeys, Lesson.rng));
   }
 
-  onInput(event: IInputEvent): Feedback {
+  onInput(event: IInputEvent): { feedback: Feedback; result: Result | null } {
     const feedback = this.textInput.onInput(event);
     this.lines = this.textInput.lines;
     this.suffix = this.textInput.remaining.map(({ codePoint }) => codePoint);
-    if (this.textInput.completed) {
-      this.#onResult(this.#makeResult(), this.textInput);
-    }
-    return feedback;
+    return {
+      feedback,
+      result: this.textInput.completed ? this.#makeResult() : null,
+    };
   }
 
   #reset(fragment: StyledText) {

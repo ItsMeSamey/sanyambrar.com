@@ -11,7 +11,10 @@ export function BooksLessonSettings(solidProps: {
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
-    const { book, content, paragraphs, paragraphIndex } = solidProps.lesson;
+    const book = () => solidProps.lesson.book;
+    const content = () => solidProps.lesson.content;
+    const paragraphs = () => solidProps.lesson.paragraphs;
+    const paragraphIndex = () => solidProps.lesson.paragraphIndex;
     return (<>
       <Explainer>
         <Description>
@@ -22,16 +25,16 @@ export function BooksLessonSettings(solidProps: {
             id: "t_Lesson_options",
             defaultMessage: "Lesson options",
         })}>
-        <BookSelector book={book} onChange={(book) => {
+        <BookSelector book={book()} onChange={(book) => {
             updateSettings(settings
                 .set(lessonProps.books.book, book)
                 .set(lessonProps.books.paragraphIndex, 0));
         }}/>
-        <BookPreview book={book} content={content}/>
-        <ParagraphSelector paragraphs={paragraphs} paragraphIndex={paragraphIndex} onChange={(paragraphIndex) => {
+        <BookPreview book={book()} content={content()}/>
+        <ParagraphSelector paragraphs={paragraphs()} paragraphIndex={paragraphIndex()} onChange={(paragraphIndex) => {
             updateSettings(settings.set(lessonProps.books.paragraphIndex, paragraphIndex));
         }}/>
-        <ParagraphPreview paragraphs={paragraphs} paragraphIndex={paragraphIndex}/>
+        <ParagraphPreview paragraphs={paragraphs()} paragraphIndex={paragraphIndex()}/>
         <Spacer size={3}/>
         <BookTextProcessing />
         <TargetSpeedProp />

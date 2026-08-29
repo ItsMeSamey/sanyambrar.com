@@ -1,9 +1,10 @@
 import { Tasks } from "@keybr/lang";
 import { type DailyStats, type DailyStatsMap, LocalDate } from "@keybr/result";
 import { Popup, Portal } from "@keybr/widget";
-import { useEffect, useMemo, useRef, useState } from "@keybr/solid-compat/react";
+import { useEffect, useRef, useState } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Calendar.module.css";
+import { createMemo, For, Show } from "solid-js";
 import { DailyStats as DailyStatsWidget } from "./DailyStats.tsx";
 import { type Effort } from "./effort.ts";
 export function Calendar(solidProps: {
@@ -76,7 +77,7 @@ function BlockList(solidProps: {
     onCellClick?: (stats: DailyStats, elem: Element) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
-    const blocks = useMemo(() => blockList(solidProps.dailyStatsMap), () => [solidProps.dailyStatsMap]);
+    const blocks = createMemo(() => blockList(solidProps.dailyStatsMap));
     return (<div ref={el => ref.current = el} class={styles.root} onMouseOver={(event) => {
             relayEvent(ref.current!, event, solidProps.onCellHoverIn);
         }} onMouseOut={(event) => {
@@ -84,7 +85,7 @@ function BlockList(solidProps: {
         }} onClick={(event) => {
             relayEvent(ref.current!, event, solidProps.onCellClick);
         }}>
-      {blocks.map((block) => (<Block block={block} effort={solidProps.effort}/>))}
+      <For each={blocks()}>{(block) => <Block block={block} effort={solidProps.effort}/>}</For>
     </div>);
 }
 function relayEvent(root: Element, { target }: {
@@ -133,9 +134,9 @@ function Block(solidProps: {
           </tr>
         </thead>
         <tbody>
-          {solidProps.block.cells.map((row, m) => (<tr>
-              {row.map((cell, n) => (<Cell cell={cell} effort={solidProps.effort}/>))}
-            </tr>))}
+          <For each={solidProps.block.cells}>{(row) => <tr>
+              <For each={row}>{(cell) => <Cell cell={cell} effort={solidProps.effort}/>}</For>
+            </tr>}</For>
         </tbody>
       </table>
     </div>);
@@ -144,22 +145,17 @@ function Cell(solidProps: {
     cell: DailyStats | null;
     effort: Effort;
 }) {
-    if (solidProps.cell == null) {
-        return <td />;
-    }
-    const { results, stats } = solidProps.cell;
-    if (results.length === 0) {
-        return (<td class={styles.cell}>
-        <span class={styles.item}>{solidProps.cell.date.dayOfMonth}</span>
-      </td>);
-    }
-    return (<td class={styles.cell}>
-      <span ref={Cell.attach(solidProps.cell)} class={styles.item} style={{
-            "background-color": String(solidProps.effort.shade(solidProps.effort.effort(stats.time))),
-        }} data-date={String(solidProps.cell.date)}>
-        {solidProps.cell.date.dayOfMonth}
-      </span>
-    </td>);
+    return (<Show when={solidProps.cell} keyed fallback={<td />}>
+      {(cell) => cell.results.length === 0 ? (<td class={styles.cell}>
+        <span class={styles.item}>{cell.date.dayOfMonth}</span>
+      </td>) : (<td class={styles.cell}>
+        <span ref={Cell.attach(cell)} class={styles.item} style={{
+            "background-color": String(solidProps.effort.shade(solidProps.effort.effort(cell.stats.time))),
+        }} data-date={String(cell.date)}>
+          {cell.date.dayOfMonth}
+        </span>
+      </td>)}
+    </Show>);
 }
 const attachment = Symbol();
 Cell.attach = (stats: DailyStats) => {

@@ -1,22 +1,23 @@
 import { clsx } from "@keybr/solid-compat/clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { createMemo, For } from "solid-js";
 import * as styles from "./ParagraphPreview.module.css";
 export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
     readonly around?: number;
 }): ReactNode {
-    const { length } = solidProps.paragraphs;
-    const begin = Math.max(0, solidProps.paragraphIndex - (solidProps.around === undefined ? 2 : solidProps.around));
-    const end = Math.min(length - 1, solidProps.paragraphIndex + (solidProps.around === undefined ? 2 : solidProps.around));
-    const items = solidProps.paragraphs
-        .slice(begin, end + 1)
-        .map((paragraph, index) => [begin + index, paragraph] as [
-        number,
-        string
-    ]);
+    const items = createMemo(() => {
+        const { paragraphs, paragraphIndex } = solidProps;
+        const around = solidProps.around ?? 2;
+        const begin = Math.max(0, paragraphIndex - around);
+        const end = Math.min(paragraphs.length - 1, paragraphIndex + around);
+        return paragraphs
+            .slice(begin, end + 1)
+            .map((paragraph, index) => [begin + index, paragraph] as const);
+    });
     return (<div class={styles.root}>
-      {items.map(([index, paragraph]) => (<div class={clsx(styles.item, index === solidProps.paragraphIndex
+      <For each={items()}>{([index, paragraph]) => (<div class={clsx(styles.item, index === solidProps.paragraphIndex
                 ? styles.itemActive
                 : styles.itemInactive)}>
           <ParagraphIndex paragraphIndex={index}/>
@@ -24,7 +25,7 @@ export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
             {index === solidProps.paragraphIndex ? "\u27A4" : " "}
           </span>
           <ParagraphContent paragraph={paragraph}/>
-        </div>))}
+        </div>)}</For>
     </div>);
 });
 export function ParagraphIndex(solidProps: {

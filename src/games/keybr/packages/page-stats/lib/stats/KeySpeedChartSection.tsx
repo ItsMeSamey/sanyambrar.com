@@ -6,6 +6,7 @@ import { type KeyStatsMap } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Explainer, Figure, Para } from "@keybr/widget";
 import { useState } from "@keybr/solid-compat/react";
+import { createEffect, createMemo } from "solid-js";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
@@ -13,16 +14,15 @@ export function KeySpeedChartSection(solidProps: {
     keyStatsMap: KeyStatsMap;
 }) {
     const { settings } = useSettings();
-    const { letters } = solidProps.keyStatsMap;
-    const [current, setCurrent] = useState(letters[0]);
+    const letters = () => solidProps.keyStatsMap.letters;
+    const [current, setCurrent] = useState(letters()[0]);
     const [smoothness, setSmoothness] = useState(0.5);
-    const target = new Target(settings);
-    if (!letters.includes(current())) {
-        setCurrent(letters[0]);
-        return null;
-    }
-    const keyStats = solidProps.keyStatsMap.get(current());
-    const { samples } = keyStats;
+    const target = createMemo(() => new Target(settings));
+    createEffect(() => {
+        if (!letters().includes(current())) setCurrent(letters()[0]);
+    });
+    const keyStats = createMemo(() => solidProps.keyStatsMap.get(current()));
+    const samples = () => keyStats().samples;
     return (<Figure>
       <Figure.Caption>
         <FormattedMessage id="stats.chart.keySpeed.caption" defaultMessage="Key Typing Speed"/>
@@ -41,14 +41,14 @@ export function KeySpeedChartSection(solidProps: {
       </Para>
 
       <Para align="center">
-        <KeyDetails lessonKey={LessonKey.from(keyStats, target)}/>
+        <KeyDetails lessonKey={LessonKey.from(keyStats(), target())}/>
       </Para>
 
       <ChartWrapper>
-        <KeySpeedChart samples={samples} smoothness={smoothness()} width="100%" height="25rem"/>
+        <KeySpeedChart samples={samples()} smoothness={smoothness()} width="100%" height="25rem"/>
       </ChartWrapper>
 
-      <SmoothnessRange disabled={!hasData(samples)} value={smoothness()} onChange={setSmoothness}/>
+      <SmoothnessRange disabled={!hasData(samples())} value={smoothness()} onChange={setSmoothness}/>
 
       <Figure.Legend>
         <FormattedMessage id="stats.chart.keySpeed.legend" defaultMessage="Horizontal axis: lesson number. Vertical axis: {label1} – typing speed for the currently selected key, {label2} – target typing speed." values={{

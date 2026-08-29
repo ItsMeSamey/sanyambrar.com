@@ -12,14 +12,13 @@ export function KeyExtendedDetails(solidProps: {
     readonly keyStats: KeyStats;
 }): ReactNode {
     const { settings } = useSettings();
-    const target = new Target(settings);
-    const learningRate = LearningRate.from(solidProps.keyStats.samples, target);
+    const learningRate = () => LearningRate.from(solidProps.keyStats.samples, new Target(settings));
     return (<div class={styles.root}>
       <Box alignItems="center" justifyContent="center">
         <Key lessonKey={solidProps.lessonKey} size="large"/>
         <KeyDetails lessonKey={solidProps.lessonKey}/>
       </Box>
-      <LearningRateDescription lessonKey={solidProps.lessonKey} learningRate={learningRate}/>
-      <KeyDetailsChart lessonKey={solidProps.lessonKey} learningRate={learningRate} width="50rem" height="15rem"/>
+      <LearningRateDescription lessonKey={solidProps.lessonKey} learningRate={learningRate()}/>
+      <KeyDetailsChart lessonKey={solidProps.lessonKey} learningRate={learningRate()} width="50rem" height="15rem"/>
     </div>);
 }

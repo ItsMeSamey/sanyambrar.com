@@ -23,11 +23,12 @@ export const SpeedGauge = memo(function SpeedGauge(solidProps: {
 }) {
     const { formatMessage } = useIntl();
     const { formatSpeed } = useFormatter();
-    const { last, delta } = solidProps.summaryStats.speed;
+    const last = () => solidProps.summaryStats.speed.last;
+    const delta = () => solidProps.summaryStats.speed.delta;
     return (<Gauge id={solidProps.names?.speed} name={<Name name={formatMessage({
                 id: "t_Speed",
                 defaultMessage: "Speed",
-            })}/>} value={<Value value={formatSpeed(last)}/>} delta={<Value value={signed(formatSpeed(delta), delta)} delta={delta} title={formatMessage({
+            })}/>} value={<Value value={formatSpeed(last())}/>} delta={<Value value={signed(formatSpeed(delta()), delta())} delta={delta()} title={formatMessage({
                 id: "metric.difference.description",
                 defaultMessage: "The difference from the average value.",
             })}/>} title={formatMessage({
@@ -41,11 +42,12 @@ export const AccuracyGauge = memo(function AccuracyGauge(solidProps: {
 }) {
     const { formatMessage } = useIntl();
     const { formatPercents } = useIntlNumbers();
-    const { last, delta } = solidProps.summaryStats.accuracy;
+    const last = () => solidProps.summaryStats.accuracy.last;
+    const delta = () => solidProps.summaryStats.accuracy.delta;
     return (<Gauge id={solidProps.names?.accuracy} name={<Name name={formatMessage({
                 id: "t_Accuracy",
                 defaultMessage: "Accuracy",
-            })}/>} value={<Value value={formatPercents(last)}/>} delta={<Value value={signed(formatPercents(delta), delta)} delta={delta} title={formatMessage({
+            })}/>} value={<Value value={formatPercents(last())}/>} delta={<Value value={signed(formatPercents(delta()), delta())} delta={delta()} title={formatMessage({
                 id: "metric.difference.description",
                 defaultMessage: "The difference from the average value.",
             })}/>} title={formatMessage({
@@ -59,11 +61,12 @@ export const ScoreGauge = memo(function ScoreGauge(solidProps: {
 }) {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { last, delta } = solidProps.summaryStats.score;
+    const last = () => solidProps.summaryStats.score.last;
+    const delta = () => solidProps.summaryStats.score.delta;
     return (<Gauge id={solidProps.names?.score} name={<Name name={formatMessage({
                 id: "t_Score",
                 defaultMessage: "Score",
-            })}/>} value={<Value value={formatNumber(last, 0)}/>} delta={<Value value={signed(formatNumber(delta, 0), delta)} delta={delta} title={formatMessage({
+            })}/>} value={<Value value={formatNumber(last(), 0)}/>} delta={<Value value={signed(formatNumber(delta(), 0), delta())} delta={delta()} title={formatMessage({
                 id: "metric.difference.description",
                 defaultMessage: "The difference from the average value.",
             })}/>} title={formatMessage({

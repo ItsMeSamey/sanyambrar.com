@@ -4,6 +4,7 @@ import { lessonProps, type WordListLesson } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
@@ -66,19 +67,19 @@ function WordListStats(solidProps: {
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { wordCount, avgWordLength } = wordListStats(solidProps.lesson.wordList);
+    const stats = createMemo(() => wordListStats(solidProps.lesson.wordList));
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({
             id: "t_num_Unique_words",
             defaultMessage: "Unique words",
-        })} value={formatNumber(wordCount)}/>
+        })} value={formatNumber(stats().wordCount)}/>
       </Field>
       <Field>
         <NameValue name={formatMessage({
             id: "t_Average_word_length",
             defaultMessage: "Average word length",
-        })} value={formatNumber(avgWordLength, 2)}/>
+        })} value={formatNumber(stats().avgWordLength, 2)}/>
       </Field>
     </FieldList>);
 }

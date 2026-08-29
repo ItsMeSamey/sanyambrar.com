@@ -5,6 +5,7 @@ import {
   makeSummaryStats,
 } from "@keybr/result";
 import { ExplainerBoundary } from "@keybr/widget";
+import { createMemo } from "solid-js";
 import { AccuracyStreaksSection } from "./stats/AccuracyStreaksSection.tsx";
 import { CalendarSection } from "./stats/CalendarSection.tsx";
 import { ExplainStats } from "./stats/ExplainStats.tsx";
@@ -33,22 +34,22 @@ export function StatsPage() {
 }
 
 function Content(props: { readonly keyStatsMap: KeyStatsMap }) {
-  const { results } = props.keyStatsMap;
-  const stats = makeSummaryStats(results);
-  const dailyStatsMap = new DailyStatsMap(results);
+  const results = () => props.keyStatsMap.results;
+  const stats = createMemo(() => makeSummaryStats(results()));
+  const dailyStatsMap = createMemo(() => new DailyStatsMap(results()));
   return (
     <>
-      <AllTimeSummary stats={stats} />
-      <TodaySummary stats={dailyStatsMap.today.stats} />
-      <AccuracyStreaksSection results={results} />
+      <AllTimeSummary stats={stats()} />
+      <TodaySummary stats={dailyStatsMap().today.stats} />
+      <AccuracyStreaksSection results={results()} />
       <ProgressOverviewSection keyStatsMap={props.keyStatsMap} />
-      <SpeedChartSection results={results} />
-      <SpeedHistogramSection stats={stats} />
+      <SpeedChartSection results={results()} />
+      <SpeedHistogramSection stats={stats()} />
       <KeySpeedChartSection keyStatsMap={props.keyStatsMap} />
       <KeySpeedHistogramSection keyStatsMap={props.keyStatsMap} />
       <KeyFrequencyHistogramSection keyStatsMap={props.keyStatsMap} />
       <KeyFrequencyHeatmapSection keyStatsMap={props.keyStatsMap} />
-      <CalendarSection dailyStatsMap={dailyStatsMap} />
+      <CalendarSection dailyStatsMap={dailyStatsMap()} />
       <FooterSection />
     </>
   );

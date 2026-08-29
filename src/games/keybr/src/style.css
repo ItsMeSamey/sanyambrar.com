@@ -26,7 +26,7 @@
   --accent-l2: color-mix(in srgb, var(--accent) 80%, var(--primary));
   --error-d1: color-mix(in srgb, var(--error) 90%, var(--secondary));
   --error-l1: color-mix(in srgb, var(--error) 90%, var(--primary));
-  --shadow-color: color-mix(in srgb, var(--secondary) 27%, transparent);
+  --shadow-color: color-mix(in srgb, var(--site-shadow-tint, #000000) 27%, transparent);
   /* Semantic foregrounds remain vivid. Only keyboard/background surfaces use
      their intentionally softened background variants. */
   --slow-key-color: var(--site-slow-fg, var(--site-slow-color, #dc2626));
@@ -136,7 +136,7 @@
   --Popup__background-color: var(--background-color);
   --Popup__box-shadow: 0 0.5rem 3rem var(--shadow-color);
   --Popup--small__box-shadow: 0 0 1rem var(--shadow-color);
-  --Spotlight__background-color: color-mix(in srgb, var(--secondary) 20%, transparent);
+  --Spotlight__background-color: color-mix(in srgb, var(--site-blur-tint, #000000) 6%, transparent);
   --Spotlight__border-color: var(--secondary-l2);
   --Spotlight-marker__shadow-color: var(--shadow-color);
   --Surface__box-shadow: none;
@@ -153,8 +153,8 @@
   scrollbar-color: var(--secondary) var(--primary);
 }
 
-html[data-site-theme="dark"], html[data-color="dark"], html[data-color="clear-dark"] {
-  --shadow-color: color-mix(in srgb, var(--secondary) 48%, transparent);
+html[data-kb-theme="dark"] {
+  --shadow-color: color-mix(in srgb, var(--site-shadow-tint, #000000) 53%, transparent);
   --keybr-data-strength: 58%;
   --keybr-zone-strength: 28%;
   --keybr-accent-strength: 54%;

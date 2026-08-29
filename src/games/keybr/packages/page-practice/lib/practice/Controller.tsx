@@ -19,14 +19,18 @@ export function Controller(props: {
     "Ctrl+ArrowRight": lesson.handleSkipLesson,
     Escape: lesson.handleResetLesson,
   });
-  useWindowEvent("focus", lesson.handleResetLesson);
-  useWindowEvent("blur", lesson.handleResetLesson);
-  useDocumentEvent("visibilitychange", lesson.handleResetLesson);
+  // App switches can swallow keyup. Clear only physical-key state;
+  // lesson progress and completion feedback must survive focus changes.
+  useWindowEvent("blur", lesson.handleReleaseKeys);
+  useDocumentEvent("visibilitychange", () => {
+    if (document.visibilityState !== "visible") lesson.handleReleaseKeys();
+  });
   return (
     <Presenter
       state={lesson.state()}
       lines={lesson.lines()}
       depressedKeys={lesson.depressedKeys()}
+      lastLesson={lesson.lastLesson()}
       onResetLesson={lesson.handleResetLesson}
       onSkipLesson={lesson.handleSkipLesson}
       onKeyDown={lesson.handleKeyDown}
@@ -42,21 +46,16 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
   const [lessonRevision, setLessonRevision] = createSignal(0);
   const [lines, setLines] = createSignal<LineList>({ text: "", lines: [] }, { equals: false });
   const [depressedKeys, setDepressedKeys] = createSignal<readonly KeyId[]>([], { equals: false });
-  let lastLesson: LastLesson | null = null;
+  const [lastLesson, setLastLesson] = createSignal<LastLesson | null>(null, { equals: false });
 
   const state = createMemo(() => {
     lessonRevision();
     (keyboard as any)[LIVE_ACCESSOR]?.();
-    return new LessonState(progress(), (result, textInput) => {
-      lastLesson = makeLastLesson(result, textInput.steps);
-      onResult()(result);
-      setLessonRevision((value) => value + 1);
-    });
+    return new LessonState(progress());
   });
 
   createEffect(() => {
     const value = state();
-    value.lastLesson = lastLesson;
     setLines(value.lines);
     setDepressedKeys(value.depressedKeys);
   });
@@ -66,6 +65,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     value.resetLesson();
     setLines(value.lines);
     setDepressedKeys((value.depressedKeys = []));
+    setLastLesson(null);
     timeout.cancel();
   };
   const handleSkipLesson = () => {
@@ -73,7 +73,13 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     value.skipLesson();
     setLines(value.lines);
     setDepressedKeys((value.depressedKeys = []));
+    setLastLesson(null);
     timeout.cancel();
+  };
+  const handleReleaseKeys = () => {
+    const value = state();
+    value.depressedKeys = [];
+    setDepressedKeys([]);
   };
 
   const handlers = createMemo(() => {
@@ -87,11 +93,24 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
         setDepressedKeys((value.depressedKeys = deleteKey(value.depressedKeys, event.code)));
       },
       onInput(event) {
-        value.lastLesson = null;
-        const feedback = value.onInput(event);
-        setLines(value.lines);
+        setLastLesson(null);
+        const { feedback, result } = value.onInput(event);
+        if (result != null) {
+          // Complete the lesson as one state transition. The old port updated
+          // the revision from inside LessonState and then published the old
+          // completed lines afterwards, overwriting the freshly generated
+          // lesson until another key event happened.
+          setLastLesson(makeLastLesson(result, value.textInput.steps));
+          onResult()(result);
+          setLessonRevision((revision) => revision + 1);
+          setLines(state().lines);
+          setDepressedKeys([]);
+          timeout.cancel();
+        } else {
+          setLines(value.lines);
+          timeout.schedule(handleResetLesson, 10000);
+        }
         playSounds(feedback);
-        timeout.schedule(handleResetLesson, 10000);
       },
     });
   });
@@ -100,8 +119,10 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     state,
     lines,
     depressedKeys,
+    lastLesson,
     handleResetLesson,
     handleSkipLesson,
+    handleReleaseKeys,
     handleKeyDown: (event: Parameters<ReturnType<typeof handlers>["onKeyDown"]>[0]) => handlers().onKeyDown(event),
     handleKeyUp: (event: Parameters<ReturnType<typeof handlers>["onKeyUp"]>[0]) => handlers().onKeyUp(event),
     handleInput: (event: Parameters<ReturnType<typeof handlers>["onInput"]>[0]) => handlers().onInput(event),

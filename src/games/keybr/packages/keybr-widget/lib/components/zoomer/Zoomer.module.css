@@ -2,6 +2,7 @@
 .root {
   margin: -1rem;
   padding: 1rem;
+  background-color: color-mix(in srgb, var(--site-blur-tint, #000000) 4%, transparent);
   backdrop-filter: blur(10px);
 }
 

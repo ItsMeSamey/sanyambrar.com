@@ -24,11 +24,11 @@ const DailyGoalLabel = (solidProps: {
 const DailyGoalGauge = (solidProps: {
     value: number;
 }) => {
-    const value = Math.max(0, solidProps.value);
-    const barWidth = value > 1 ? 100 : Math.round(value * 100);
-    const frameWidth = value > 1 ? Math.round((1 / value) * 100) : 100;
+    const value = () => Math.max(0, solidProps.value);
+    const barWidth = () => value() > 1 ? 100 : Math.round(value() * 100);
+    const frameWidth = () => value() > 1 ? Math.round((1 / value()) * 100) : 100;
     return (<div class={styles.gauge}>
-      <div class={styles.bar} style={{ "inline-size": `${barWidth}%` }}/>
-      <div class={styles.frame} style={{ "inline-size": `${frameWidth}%` }}/>
+      <div class={styles.bar} style={{ "inline-size": `${barWidth()}%` }}/>
+      <div class={styles.frame} style={{ "inline-size": `${frameWidth()}%` }}/>
     </div>);
 };

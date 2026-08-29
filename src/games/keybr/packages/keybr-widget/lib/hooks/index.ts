@@ -1,4 +1,3 @@
-export * from "./use-deferred.tsx";
 export * from "./use-document-event.ts";
 export * from "./use-element-size.ts";
 export * from "./use-hotkeys.ts";

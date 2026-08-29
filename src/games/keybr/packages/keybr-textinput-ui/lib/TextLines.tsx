@@ -5,6 +5,7 @@ import { renderChars } from "./chars.tsx";
 import { Cursor } from "./Cursor.tsx";
 import { textItemStyle } from "./styles.ts";
 import * as styles from "./TextLines.module.css";
+import { createMemo, For } from "solid-js";
 export type TextLineSize = "X0" | "X1" | "X2" | "X3";
 export const TextLines = memo(function TextLines(props: {
     readonly lines: LineList;
@@ -28,35 +29,33 @@ const TextLine = memo(function TextLine(solidProps: {
     readonly className: string;
     readonly style: CSSProperties;
 }): ReactNode {
-    const items: Char[][] = [];
-    let itemChars: Char[] = [];
-    let ws = false;
-    for (let i = 0; i < solidProps.chars.length; i++) {
-        const char = solidProps.chars[i];
-        switch (char.codePoint) {
-            case 0x0009:
-            case 0x000a:
-            case 0x0020:
-                ws = true;
-                break;
-            default:
-                if (ws) {
-                    if (itemChars.length > 0) {
-                        items.push(itemChars);
+    const items = createMemo(() => {
+        const groups: Char[][] = [];
+        let itemChars: Char[] = [];
+        let ws = false;
+        for (let i = 0; i < solidProps.chars.length; i++) {
+            const char = solidProps.chars[i];
+            switch (char.codePoint) {
+                case 0x0009:
+                case 0x000a:
+                case 0x0020:
+                    ws = true;
+                    break;
+                default:
+                    if (ws) {
+                        if (itemChars.length > 0) groups.push(itemChars);
                         itemChars = [];
+                        ws = false;
                     }
-                    ws = false;
-                }
-                break;
+                    break;
+            }
+            itemChars.push(char);
         }
-        itemChars.push(char);
-    }
-    if (itemChars.length > 0) {
-        items.push(itemChars);
-        itemChars = [];
-    }
+        if (itemChars.length > 0) groups.push(itemChars);
+        return groups;
+    });
     return (<div class={solidProps.className} style={solidProps.style} dir={solidProps.settings.language.direction}>
-        {items.map((chars, index) => (<TextItem settings={solidProps.settings} chars={chars}/>))}
+        <For each={items()}>{(chars) => <TextItem settings={solidProps.settings} chars={chars}/>}</For>
       </div>);
 }, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
     charArraysAreEqual(prevProps.chars, nextProps.chars) && // deep equality

@@ -31,7 +31,13 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const tone = value?.tone === "dark" ? "dark" : "light";
     const background = validHex(value?.background) ? value.background.toLowerCase() : fallback.background;
     const text = validHex(value?.text) ? value.text.toLowerCase() : fallback.text;
-    const out = { tone, background, text };
+    const blurTint = validHex(value?.blurTint) ? value.blurTint.toLowerCase()
+      : validHex(fallback?.blurTint) ? fallback.blurTint.toLowerCase()
+      : "#000000";
+    const shadowTint = validHex(value?.shadowTint) ? value.shadowTint.toLowerCase()
+      : validHex(fallback?.shadowTint) ? fallback.shadowTint.toLowerCase()
+      : "#000000";
+    const out = { tone, background, text, blurTint, shadowTint };
     for (const role of semanticRoles) {
       const fgValue = value?.[`${role}Fg`] ?? value?.[role];
       const fallbackFg = fallback?.[`${role}Fg`] ?? fallback?.[role] ?? text;
@@ -137,7 +143,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       "--error-d1": mix(error, dark ? "#ffffff" : "#000000", .1),
       "--error": error,
       "--error-l1": mix(error, dark ? "#000000" : "#ffffff", .1),
-      "--shadow-color": dark ? "#00000088" : "#00000044",
+      "--shadow-color": `color-mix(in srgb,${theme.shadowTint} ${dark ? 53 : 27}%,transparent)`,
+      "--Spotlight__background-color": `color-mix(in srgb,${theme.blurTint} 6%,transparent)`,
       "--slow-key-color": theme.slowFg,
       "--fast-key-color": theme.fastFg,
       "--effort-color": theme.effortFg,
@@ -204,6 +211,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     root.style.setProperty("--site-muted", mix(theme.text, theme.background, .42));
     root.style.setProperty("--site-line", line);
     root.style.setProperty("--site-soft", soft);
+    root.style.setProperty("--site-blur-tint", theme.blurTint);
+    root.style.setProperty("--site-shadow-tint", theme.shadowTint);
     root.style.setProperty("--site-on-fg", contrastText(theme.text));
     root.style.setProperty("--site-on-bg", contrastText(theme.background));
     for (const role of semanticRoles) {
@@ -342,13 +351,14 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const themeSection = () => {
     const allowed = new Set(menuThemeIds());
     const entries = themeCatalog().filter(([id]) => allowed.has(id));
-    return `<div class="samey-panel-title">Theme</div>${entries.map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}<button type="button" data-open-advanced>Advanced…</button>`;
+    return `<div class="samey-panel-title">Themes</div>${entries.map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}`;
   };
-  const fontSection = () => `<div class="samey-panel-title">Font</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
+  const fontSection = () => `<div class="samey-panel-title">Fonts</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
+  const advancedSection = () => `<div class="samey-panel-advanced"><button type="button" data-open-advanced>Advanced theming and colorblind modes</button></div>`;
   function renderAppearancePanel() {
     if (!appearancePanel) return;
     const wasHidden = appearancePanel.hidden;
-    appearancePanel.innerHTML = themeSection() + fontSection();
+    appearancePanel.innerHTML = themeSection() + fontSection() + advancedSection();
     appearancePanel.hidden = wasHidden;
     const theme = read();
     appearancePanel.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
@@ -390,6 +400,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 
   const editorFields = [
     ["background", "Page background"], ["text", "Text"],
+    ["blurTint", "Blur tint"], ["shadowTint", "Shadow tint"],
     ["selectionBg", "Selection background"], ["selectionFg", "Selection text"],
     ["accentFg", "Accent foreground"], ["accentBg", "Accent background"],
     ["errorFg", "Error foreground"], ["errorBg", "Error background"],
@@ -494,6 +505,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     fillAdvancedEditor(preset);
     previewAdvanced();
   };
+  const colorblindPresetIds = [
+    "deuteranopia", "deuteranopia-dark", "deuteranopia-cool-dark",
+    "protanopia", "protanopia-dark", "protanopia-cool-dark",
+    "tritanopia", "tritanopia-dark", "tritanopia-cool-dark",
+  ].filter((id) => colors[id]);
   const mountAdvancedPage = () => {
     if (advancedPage) return;
     const page = document.createElement("div");
@@ -501,7 +517,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     page.dataset.sameyOverlay = "";
     page.dataset.sameyRuntime = "";
     page.hidden = true;
-    page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theme</h1></div><button type="button" data-close-advanced aria-label="Close advanced theme editor">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section><h2>Colorblind presets</h2><p>Load a preset, then edit or save it.</p><div class="samey-advanced-preset-list"><button type="button" data-load-preset="deuteranopia">Deuteranopia</button><button type="button" data-load-preset="protanopia">Protanopia</button><button type="button" data-load-preset="tritanopia">Tritanopia</button></div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+    page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theming and colorblind modes</h1></div><button type="button" data-close-advanced aria-label="Close advanced theming and colorblind modes">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section><h2>Colorblind modes</h2><p>Each mode has light, dark, and cool dark variants. Load one, then edit or save it.</p><div class="samey-advanced-preset-list">${colorblindPresetIds.map((id) => `<button type="button" data-load-preset="${escapeHtml(id)}">${escapeHtml(config.colors[id]?.label || id)}</button>`).join("")}</div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
     document.body.append(page);
     advancedPage = page;
     advancedEditor = page.querySelector("[data-advanced-editor]");
@@ -646,6 +662,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const linkFill = runtimeNode(document.createElement("div"));
     linkFill.className = "samey-cursor-link-fill";
     linkFill.hidden = true;
+    const fillSlices = [];
+    const ensureFillSlice = (index) => {
+      while (fillSlices.length <= index) {
+        const slice = document.createElement("span");
+        slice.className = "samey-cursor-link-fill-slice";
+        slice.hidden = true;
+        linkFill.append(slice);
+        fillSlices.push(slice);
+      }
+      return fillSlices[index];
+    };
     const dragPreview = runtimeNode(document.createElement("div"));
     dragPreview.className = "samey-drag-preview";
     dragPreview.hidden = true;
@@ -732,19 +759,23 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       return Number.isFinite(z) ? z : 0;
     };
     const containingOverlay = (target) => target instanceof Element ? target.closest("[data-samey-overlay]") : null;
+    const cssFillLayer = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue("--samey-z-link-fill"), 10);
+    const baseFillLayer = Number.isFinite(cssFillLayer) ? cssFillLayer : 2147483000;
+    let fillLayer = baseFillLayer;
     const fillLayerFor = (target) => {
       const overlay = containingOverlay(target);
-      if (overlay) return Math.min(2147483645, zIndexOf(overlay) + 1);
-      const z = Number.parseInt(getComputedStyle(linkFill).zIndex, 10);
-      return Number.isFinite(z) ? z : 2147483000;
+      return overlay ? Math.min(2147483645, zIndexOf(overlay) + 1) : baseFillLayer;
     };
     const setFillLayer = (target) => {
-      if (!containingOverlay(target)) linkFill.style.removeProperty("z-index");
-      else linkFill.style.zIndex = String(fillLayerFor(target));
+      fillLayer = fillLayerFor(target);
+      for (const slice of fillSlices) slice.style.zIndex = String(fillLayer);
+      refreshFillOcclusionRects(target);
     };
     const overlaySelector = "[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]";
     let visibleOverlays = [];
     let overlayRefreshFrame = 0;
+    let fillOcclusionRects = [];
+    let fillOcclusionKey = "";
     const overlayIsVisible = (el) => {
       if (!(el instanceof HTMLElement) || !el.isConnected || el.hidden || el.getAttribute("aria-hidden") === "true" || el.dataset.open === "false") return false;
       const style = getComputedStyle(el);
@@ -752,12 +783,33 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const rect = el.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
     };
+    function refreshFillOcclusionRects(target = fillTarget) {
+      const width = Math.max(1, innerWidth);
+      const height = Math.max(1, innerHeight);
+      const fillZ = target ? fillLayerFor(target) : fillLayer;
+      const holes = visibleOverlays
+        .filter((overlay) => zIndexOf(overlay) > fillZ)
+        .map((overlay) => overlay.getBoundingClientRect())
+        .map((rect) => ({
+          left: Math.max(0, Math.floor(rect.left - 1)),
+          top: Math.max(0, Math.floor(rect.top - 1)),
+          right: Math.min(width, Math.ceil(rect.right + 1)),
+          bottom: Math.min(height, Math.ceil(rect.bottom + 1)),
+        }))
+        .filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
+      const key = `${width}x${height}@${fillZ}:` + holes.map(({ left, top, right, bottom }) => `${left},${top},${right},${bottom}`).join(";");
+      if (key === fillOcclusionKey) return;
+      fillOcclusionKey = key;
+      fillOcclusionRects = holes;
+      if (fillVisible) renderFillSlices();
+    }
     const refreshOverlayState = () => {
       overlayRefreshFrame = 0;
       visibleOverlays = [...document.querySelectorAll(overlaySelector)].filter(overlayIsVisible);
-      // Re-hit-test the current pointer whenever an overlay opens/closes. This
-      // keeps content links active elsewhere on the page while suppressing a
-      // blend fill only where a higher translucent layer actually overlaps it.
+      refreshFillOcclusionRects();
+      // Re-hit-test the current pointer whenever an overlay opens/closes. The
+      // target fill remains active, while higher overlays are subtracted from
+      // the blend geometry so translucent/blurred pixels never sample it.
       refreshCursorMode();
     };
     const queueOverlayRefresh = () => {
@@ -766,6 +818,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     new MutationObserver(queueOverlayRefresh).observe(document.documentElement, {
       subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "aria-hidden", "data-open"],
     });
+    addEventListener("resize", queueOverlayRefresh, { passive: true });
+    addEventListener("scroll", queueOverlayRefresh, { passive: true, capture: true });
     queueOverlayRefresh();
 
     const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
@@ -864,6 +918,39 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
     let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
     let geometryLink = null, geometryRects = [], geometryBounds = null;
+    const subtractRect = (rect, hole) => {
+      const left = Math.max(rect.left, hole.left), top = Math.max(rect.top, hole.top);
+      const right = Math.min(rect.right, hole.right), bottom = Math.min(rect.bottom, hole.bottom);
+      if (right <= left || bottom <= top) return [rect];
+      const pieces = [];
+      if (rect.top < top) pieces.push({ left: rect.left, top: rect.top, right: rect.right, bottom: top });
+      if (bottom < rect.bottom) pieces.push({ left: rect.left, top: bottom, right: rect.right, bottom: rect.bottom });
+      if (rect.left < left) pieces.push({ left: rect.left, top, right: left, bottom });
+      if (right < rect.right) pieces.push({ left: right, top, right: rect.right, bottom });
+      return pieces;
+    };
+    function renderFillSlices() {
+      if (!fillVisible) return;
+      let pieces = [{
+        left: fillX - fillW / 2,
+        top: fillY - fillH / 2,
+        right: fillX + fillW / 2,
+        bottom: fillY + fillH / 2,
+      }];
+      for (const hole of fillOcclusionRects) {
+        pieces = pieces.flatMap((piece) => subtractRect(piece, hole));
+        if (pieces.length === 0) break;
+      }
+      for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        const width = piece.right - piece.left, height = piece.bottom - piece.top;
+        const slice = ensureFillSlice(i);
+        slice.hidden = width <= 0 || height <= 0;
+        slice.style.zIndex = String(fillLayer);
+        slice.style.transform = `translate3d(${piece.left}px,${piece.top}px,0) scale3d(${width / fillDot},${height / fillDot},1)`;
+      }
+      for (let i = pieces.length; i < fillSlices.length; i++) fillSlices[i].hidden = true;
+    }
     const refreshLinkGeometry = (link) => {
       geometryLink = link;
       geometryRects = link ? [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0) : [];
@@ -903,9 +990,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       fillY += (wantedFillY - fillY) * posEase;
       fillW += (wantedFillW - fillW) * sizeEase;
       fillH += (wantedFillH - fillH) * sizeEase;
-      // Keep the blob's box fixed and scale it on the compositor. Width/height
-      // animation forced layout/paint on every frame.
-      linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0) scale3d(${fillW / fillDot},${fillH / fillDot},1)`;
+      // Split the animated rectangle around higher overlays. Each fragment is
+      // itself the blend element; unlike CSS masks, this preserves `difference`
+      // blending in Chromium while keeping translucent overlays untouched.
+      renderFillSlices();
       const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35
         && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35;
       if (fillCollapsing && done) {
@@ -1001,16 +1089,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const rect = range.getBoundingClientRect();
       return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
     };
-    const linkBlockedByOverlay = (link) => {
-      if (!link) return false;
-      const rect = linkRect(link);
-      const fillZ = fillLayerFor(link);
-      return visibleOverlays.some((overlay) => {
-        if (zIndexOf(overlay) <= fillZ) return false;
-        const above = overlay.getBoundingClientRect();
-        return rect.left < above.right && rect.right > above.left && rect.top < above.bottom && rect.bottom > above.top;
-      });
-    };
     let grabModeTarget = null, grabModeValue = false;
     const wantsGrabCached = (target) => {
       if (target === grabModeTarget) return grabModeValue;
@@ -1021,7 +1099,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       updateBlendSource(target);
       const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
       let link = grab || selectingText ? null : linkTarget(target);
-      if (linkBlockedByOverlay(link)) link = null;
       setFillLayer(link);
       setGrabState(grab);
       setTextState(!grab && (selectingText || !link && wantsText(target)));

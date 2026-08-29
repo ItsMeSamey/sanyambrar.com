@@ -3,20 +3,23 @@ import { useFormatter } from "@keybr/lesson-ui";
 import { makeSummaryStats, MutableStreakList, type Result, type Streak, } from "@keybr/result";
 import { Explainer, Figure, NameValue, Para } from "@keybr/widget";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { createMemo, For, Show } from "solid-js";
 export function AccuracyStreaksSection(solidProps: {
     results: readonly Result[];
 }) {
-    const streaks = MutableStreakList.findLongest(solidProps.results);
+    const streaks = createMemo(() => MutableStreakList.findLongest(solidProps.results));
     return (<Figure>
       <Figure.Caption>
         <FormattedMessage id="stats.accuracy.header" defaultMessage="Accuracy Streaks"/>
       </Figure.Caption>
 
-      {streaks.length > 0 ? (<dl>
-          {streaks.map((streak, index) => (<StreakDetails streak={streak}/>))}
-        </dl>) : (<Para align="center">
+      <Show when={streaks().length > 0} fallback={<Para align="center">
           <FormattedMessage id="stats.accuracy.noData" defaultMessage="You don’t have any accuracy streaks. Consider completing a lesson with a highest accuracy possible, regardless of typing speed."/>
-        </Para>)}
+        </Para>}>
+        <dl>
+          <For each={streaks()}>{(streak) => <StreakDetails streak={streak}/>}</For>
+        </dl>
+      </Show>
 
       <Explainer>
         <Figure.Description>
@@ -31,37 +34,37 @@ function StreakDetails(solidProps: {
     const { formatMessage, formatDate } = useIntl();
     const { formatNumber, formatPercents } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
-    const { level, results } = solidProps.streak;
-    const characterCount = results.reduce((x, { length }) => length + x, 0);
-    const stats = makeSummaryStats(results);
+    const results = () => solidProps.streak.results;
+    const characterCount = createMemo(() => results().reduce((x, { length }) => length + x, 0));
+    const stats = createMemo(() => makeSummaryStats(results()));
     return (<>
       <dt>
         <NameValue name={formatMessage({
             id: "t_Accuracy_threshold",
             defaultMessage: "Accuracy threshold",
-        })} value={formatPercents(level)}/>
+        })} value={formatPercents(solidProps.streak.level)}/>
       </dt>
       <dd>
         <NameValue name={formatMessage({
             id: "t_num_Lessons",
             defaultMessage: "Lessons",
-        })} value={formatNumber(results.length)}/>
+        })} value={formatNumber(results().length)}/>
         <NameValue name={formatMessage({
             id: "t_num_Characters",
             defaultMessage: "Characters",
-        })} value={formatNumber(characterCount)}/>
+        })} value={formatNumber(characterCount())}/>
         <NameValue name={formatMessage({
             id: "t_Top_speed",
             defaultMessage: "Top speed",
-        })} value={formatSpeed(stats.speed.max)}/>
+        })} value={formatSpeed(stats().speed.max)}/>
         <NameValue name={formatMessage({
             id: "t_Average_speed",
             defaultMessage: "Average speed",
-        })} value={formatSpeed(stats.speed.avg)}/>
+        })} value={formatSpeed(stats().speed.avg)}/>
         <NameValue name={formatMessage({
             id: "t_Start_date",
             defaultMessage: "Start date",
-        })} value={formatDate(results[0].timeStamp, {
+        })} value={formatDate(results()[0].timeStamp, {
             dateStyle: "short",
             timeStyle: "short",
         })}/>

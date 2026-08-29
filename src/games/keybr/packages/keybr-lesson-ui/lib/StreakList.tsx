@@ -8,22 +8,21 @@ export const StreakList = (solidProps: {
     streakList: StreakListType;
 }) => {
     const { formatPercents } = useIntlNumbers();
-    const children = [];
-    for (const { level, results } of solidProps.streakList) {
-        if (results.length > 0) {
-            if (children.length > 0) {
-                children.push(" ");
-            }
-            children.push(<FormattedMessage id="streakList.streakLength" defaultMessage="{length, plural, =1 {One lesson} other {# lessons}} with {accuracy} accuracy." values={{
+    const children = () => {
+        const items = [];
+        for (const { level, results } of solidProps.streakList) {
+            if (results.length > 0) {
+                if (items.length > 0) items.push(" ");
+                items.push(<FormattedMessage id="streakList.streakLength" defaultMessage="{length, plural, =1 {One lesson} other {# lessons}} with {accuracy} accuracy." values={{
                     length: results.length,
                     accuracy: <Value value={formatPercents(level)}/>,
                 }}/>);
+            }
         }
-    }
-    if (children.length === 0) {
-        children.push(<FormattedMessage id="streakList.noStreaks" defaultMessage="No accuracy streaks."/>);
-    }
+        if (items.length === 0) items.push(<FormattedMessage id="streakList.noStreaks" defaultMessage="No accuracy streaks."/>);
+        return items;
+    };
     return (<span id={solidProps.id} class={solidProps.className}>
-      <span class={styleTextTruncate}>{children}</span>
+      <span class={styleTextTruncate}>{children()}</span>
     </span>);
 };

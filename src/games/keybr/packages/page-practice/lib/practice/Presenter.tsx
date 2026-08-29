@@ -12,12 +12,13 @@ import { Indicators } from "./Indicators.tsx";
 import { DeferredKeyboardPresenter } from "./KeyboardPresenter.tsx";
 import { PracticeTour } from "./PracticeTour.tsx";
 import * as styles from "./Presenter.module.css";
-import { type LessonState } from "./state/index.ts";
+import { type LastLesson, type LessonState } from "./state/index.ts";
 
 type Props = {
   readonly state: LessonState;
   readonly lines: LineList;
   readonly depressedKeys: readonly KeyId[];
+  readonly lastLesson: LastLesson | null;
   readonly onResetLesson: () => void;
   readonly onSkipLesson: () => void;
   readonly onKeyDown: (ev: IKeyboardEvent) => void;
@@ -51,8 +52,8 @@ export function Presenter(props: Props): JSX.Element {
   const keyDown = (ev: IKeyboardEvent) => { if (focus()) props.onKeyDown(ev); };
   const keyUp = (ev: IKeyboardEvent) => { if (focus()) props.onKeyUp(ev); };
   const input = (ev: IInputEvent) => { if (focus()) props.onInput(ev); };
-  const onFocus = () => { setFocus(true); props.onResetLesson(); };
-  const onBlur = () => { setFocus(false); props.onResetLesson(); };
+  const onFocus = () => setFocus(true);
+  const onBlur = () => setFocus(false);
   const changeView = () => {
     const next = getNextView(view());
     Preferences.set(propView, next);
@@ -88,7 +89,7 @@ export function Presenter(props: Props): JSX.Element {
   return (
     <Switch>
       <Match when={view() === View.Normal}>
-        <NormalLayout state={props.state} focus={tour() || focus()} depressedKeys={props.depressedKeys} toggledKeys={ModifierState.modifiers} controls={controls()} textInput={textInput("X0", "TextArea/Normal")} tour={tour() && <PracticeTour onClose={closeTour} />} />
+        <NormalLayout state={props.state} focus={tour() || focus()} depressedKeys={props.depressedKeys} toggledKeys={ModifierState.modifiers} lastLesson={props.lastLesson} controls={controls()} textInput={textInput("X0", "TextArea/Normal")} tour={tour() && <PracticeTour onClose={closeTour} />} />
       </Match>
       <Match when={view() === View.Compact}>
         <CompactLayout state={props.state} controls={controls()} textInput={textInput("X1", "TextArea/Compact")} />
@@ -100,12 +101,12 @@ export function Presenter(props: Props): JSX.Element {
   );
 }
 
-function NormalLayout(props: { readonly state: LessonState; readonly focus: boolean; readonly depressedKeys: readonly string[]; readonly toggledKeys: readonly string[]; readonly controls: JSX.Element; readonly textInput: JSX.Element; readonly tour: JSX.Element }) {
+function NormalLayout(props: { readonly state: LessonState; readonly focus: boolean; readonly depressedKeys: readonly string[]; readonly toggledKeys: readonly string[]; readonly lastLesson: LastLesson | null; readonly controls: JSX.Element; readonly textInput: JSX.Element; readonly tour: JSX.Element }) {
   return <Screen>
     <Indicators state={props.state} />
     <div id={names.textInput} class={styles.textInputNormal}>{props.textInput}</div>
     <div id={names.keyboard} class={styles.keyboard}>
-      <Zoomer id="Keyboard/Normal"><DeferredKeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} suffix={props.state.suffix} lastLesson={props.state.lastLesson} /></Zoomer>
+      <Zoomer id="Keyboard/Normal"><DeferredKeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} suffix={props.state.suffix} lastLesson={props.lastLesson} /></Zoomer>
     </div>
     {props.controls}{props.tour}
   </Screen>;
