@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import { generateSite } from "./site.ts";
 
@@ -60,7 +60,9 @@ async function directDependenciesPresent(dir: string) {
   return true;
 }
 
-async function ensureDeps(dir: string) {
+const dependencyInstalls = new Map<string, Promise<void>>();
+
+async function ensureDepsUnlocked(dir: string) {
   const lock = join(dir, "bun.lock");
   const stamp = join(dir, "node_modules/.samey-deps-sha256");
   const wanted = await dependencySignature(dir);
@@ -94,6 +96,20 @@ async function ensureDeps(dir: string) {
   await mkdir(join(dir, "node_modules"), { recursive: true });
   must(await directDependenciesPresent(dir), `dependencies for ${relative(ROOT, dir) || "."} are incomplete after install`);
   await writeFile(stamp, `${await dependencySignature(dir)}\n`);
+}
+
+async function ensureDeps(dir: string) {
+  const key = resolve(dir);
+  const existing = dependencyInstalls.get(key);
+  if (existing) return existing;
+
+  const pending = ensureDepsUnlocked(key);
+  dependencyInstalls.set(key, pending);
+  try {
+    await pending;
+  } finally {
+    if (dependencyInstalls.get(key) === pending) dependencyInstalls.delete(key);
+  }
 }
 
 async function generateAppearance() {
@@ -620,6 +636,10 @@ async function main() {
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
+  // Bootstrap dependencies once before launching build stages in parallel.
+  // ensureDeps is also single-flight so future concurrent callers cannot race
+  // multiple Bun installers against the same node_modules tree.
+  await ensureDeps(ROOT);
   await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();
