@@ -31,7 +31,7 @@ export function Popup(solidAllProps: PopupProps): ReactNode {
                     .alignToAnchor(anchorBox, screenSize);
             }
     }, () => [solidLocal.anchor, options, screenSize]);
-    return (<div {...props} ref={el => rootRef.current = el} class={styles.root} style={{ position: "fixed", "z-index": 1 }}>
+    return (<div {...props} ref={el => rootRef.current = el} data-samey-overlay="" class={styles.root} style={{ position: "fixed", "z-index": 1 }}>
       {solidLocal.anchor && solidLocal.arrow && (<div ref={el => arrowRef.current = el} class={styles.arrow} style={{ position: "absolute" }}/>)}
       {solidLocal.children}
     </div>);

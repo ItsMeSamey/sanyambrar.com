@@ -14,7 +14,7 @@ export function OptionListMenu(solidProps: {
     useEffect(() => {
         ensureVisible(list.current, item.current);
     });
-    return (<ul ref={el => list.current = el} role="menu" class={styles.root}>
+    return (<ul ref={el => list.current = el} role="menu" data-samey-overlay="" class={styles.root}>
       {solidProps.options.map((option, index) => (<li ref={option === solidProps.selectedOption ? (el => item.current = el) : undefined} role="menuitem" class={clsx(styles.item, iconStyles.altIcon, option === solidProps.selectedOption && styles.itemSelected)} onClick={(event) => {
                 event.preventDefault();
                 solidProps.onSelect(option);

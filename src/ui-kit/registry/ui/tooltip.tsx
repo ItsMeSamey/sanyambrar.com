@@ -9,6 +9,7 @@ export function TooltipContent(props: ComponentProps<typeof TooltipPrimitive.Con
   const [local, rest] = splitProps(props, ['class'])
   return <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
+      data-samey-overlay=''
       class={cx('samey-tooltip', local.class)}
       {...rest}
     />

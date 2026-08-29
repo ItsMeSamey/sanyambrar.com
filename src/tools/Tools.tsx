@@ -52,7 +52,7 @@ function ToolTabs(props:{active:ToolId}) {
         <Select.Icon class="tool-select-icon"><ChevronsUpDown aria-hidden="true"/></Select.Icon>
       </Select.Trigger>
       <Select.Portal>
-        <Select.Content class="tool-select-content"><Select.Listbox class="tool-select-list"/></Select.Content>
+        <Select.Content data-samey-overlay="" class="tool-select-content"><Select.Listbox class="tool-select-list"/></Select.Content>
       </Select.Portal>
     </Select.Root>
   </div>;

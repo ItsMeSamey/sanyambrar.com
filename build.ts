@@ -348,10 +348,16 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
     "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
-  must(sharedCss.includes(".samey-context-menu{position:fixed;z-index:2147483646") &&
-    sharedCss.includes(".samey-cursor-link-fill{position:fixed") && sharedCss.includes("z-index:2147483645") &&
+  const popoverSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/popover.tsx"), "utf8");
+  const dialogSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/dialog.tsx"), "utf8");
+  const tooltipSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx"), "utf8");
+  must(sharedCss.includes("--samey-z-link-fill:2147483000") && sharedCss.includes("--samey-z-overlay:2147483644") &&
+    sharedCss.includes("[data-samey-overlay]{z-index:var(--samey-z-overlay)!important}") &&
+    sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('zIndexOf(overlay) <= fillZ') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
+    popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && tooltipSource.includes("data-samey-overlay=''") &&
+    !sharedTheme.includes('querySelector(".samey-cursor-link-fill")?.setAttribute("hidden"') &&
     blogSource.includes("<main data-text-cursor-zone>") && homeSource.includes('home-writing-detail" data-text-cursor-zone'),
-    "ux: prose cursor zones must cover Writing surfaces and context menus must layer above link inversion but below the cursor");
+    "ux: prose cursor zones must work with overlay-aware link inversion and a discontinuous cursor blend source");
 }
 
 

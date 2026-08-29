@@ -88,6 +88,7 @@ function ensure() {
   if (box) return
   box = document.createElement('div')
   box.className = 'site-search'
+  box.dataset.sameyOverlay = ''
   box.dataset.sameyRuntime = ''
   box.hidden = true
   box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>'

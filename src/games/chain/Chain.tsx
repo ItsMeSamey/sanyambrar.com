@@ -83,7 +83,7 @@ export function ChainPage() {
           </div>
           <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings"><SettingsIcon/></button>
         </>}/>
-        <aside id="chain-settings" class="game-settings-popover chain-settings" aria-hidden="true">
+        <aside id="chain-settings" class="game-settings-popover chain-settings" data-samey-overlay="" aria-hidden="true">
           <div class="game-settings-body">
             <div class="game-settings-section-title">BOARD</div>
             <Slider id="chain-rows" label="Rows" min={4} max={30}/>
@@ -96,7 +96,7 @@ export function ChainPage() {
           <canvas id="chain-canvas" role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
           <div id="chain-status" class="sr-only" aria-live="polite"/>
         </main>
-        <section id="chain-result" class="chain-result" hidden aria-live="polite">
+        <section id="chain-result" class="chain-result" data-samey-overlay="" hidden aria-live="polite">
           <span class="chain-result-eyebrow">Match complete</span>
           <h2 id="chain-result-title">You win</h2>
           <p id="chain-result-copy"/>

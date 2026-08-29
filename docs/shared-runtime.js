@@ -815,6 +815,7 @@
 			if (advancedPage) return;
 			const page = document.createElement("div");
 			page.className = "samey-theme-advanced";
+			page.dataset.sameyOverlay = "";
 			page.dataset.sameyRuntime = "";
 			page.hidden = true;
 			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theme</h1></div><button type="button" data-close-advanced aria-label="Close advanced theme editor">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section><h2>Colorblind presets</h2><p>Load a preset, then edit or save it.</p><div class="samey-advanced-preset-list"><button type="button" data-load-preset="deuteranopia">Deuteranopia</button><button type="button" data-load-preset="protanopia">Protanopia</button><button type="button" data-load-preset="tritanopia">Tritanopia</button></div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
@@ -872,6 +873,7 @@
 			panel.id = "samey-theme-panel";
 			panel.className = "samey-theme-panel";
 			panel.dataset.sameyRuntime = "";
+			panel.dataset.sameyOverlay = "";
 			panel.hidden = true;
 			panel.addEventListener("click", (event) => {
 				const themeButton = event.target.closest("[data-theme-choice]");
@@ -984,6 +986,92 @@
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
 			globalThis.SameyLoading = setLoading;
+			const parseRgb = (value) => {
+				const text = String(value || "").trim().toLowerCase();
+				const parts = text.match(/[+-]?(?:\d+\.?\d*|\.\d+)/g)?.map(Number) || [];
+				if (parts.length < 3) return null;
+				if (text.startsWith("color(srgb ")) return {
+					r: parts[0] * 255,
+					g: parts[1] * 255,
+					b: parts[2] * 255,
+					a: parts.length > 3 ? parts[3] : 1
+				};
+				if (!text.startsWith("rgb")) return null;
+				return {
+					r: parts[0],
+					g: parts[1],
+					b: parts[2],
+					a: parts.length > 3 ? parts[3] : 1
+				};
+			};
+			const effectiveBackdropLuma = (target) => {
+				let el = target instanceof Element ? target : document.body;
+				while (el) {
+					const style = getComputedStyle(el);
+					const rgb = parseRgb(style.backgroundColor);
+					if (rgb && rgb.a >= .75) return (rgb.r * .2126 + rgb.g * .7152 + rgb.b * .0722) / 255;
+					el = el.parentElement;
+				}
+				const fallback = parseRgb(getComputedStyle(document.body).backgroundColor);
+				return fallback ? (fallback.r * .2126 + fallback.g * .7152 + fallback.b * .0722) / 255 : 1;
+			};
+			let blendTarget = null;
+			let blendThemeBackground = "";
+			const updateBlendSource = (target) => {
+				const themeBackground = document.documentElement.style.getPropertyValue("--site-bg");
+				if (blendTarget === target && blendThemeBackground === themeBackground) return;
+				blendTarget = target;
+				blendThemeBackground = themeBackground;
+				const lightBackdrop = effectiveBackdropLuma(target) >= .45;
+				const source = lightBackdrop ? "#ccc" : "#fff";
+				cursor.style.setProperty("--samey-cursor-blend", source);
+				linkFill.style.setProperty("--samey-cursor-blend", source);
+				cursor.dataset.blendSource = lightBackdrop ? "light" : "dark";
+			};
+			const zIndexOf = (el) => {
+				const z = Number.parseInt(getComputedStyle(el).zIndex, 10);
+				return Number.isFinite(z) ? z : 0;
+			};
+			const containingOverlay = (target) => target instanceof Element ? target.closest("[data-samey-overlay]") : null;
+			const fillLayerFor = (target) => {
+				const overlay = containingOverlay(target);
+				if (overlay) return Math.min(2147483645, zIndexOf(overlay) + 1);
+				const z = Number.parseInt(getComputedStyle(linkFill).zIndex, 10);
+				return Number.isFinite(z) ? z : 2147483e3;
+			};
+			const setFillLayer = (target) => {
+				if (!containingOverlay(target)) linkFill.style.removeProperty("z-index");
+				else linkFill.style.zIndex = String(fillLayerFor(target));
+			};
+			const overlaySelector = "[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]";
+			let visibleOverlays = [];
+			let overlayRefreshFrame = 0;
+			const overlayIsVisible = (el) => {
+				if (!(el instanceof HTMLElement) || !el.isConnected || el.hidden || el.getAttribute("aria-hidden") === "true" || el.dataset.open === "false") return false;
+				const style = getComputedStyle(el);
+				if (style.display === "none" || style.visibility === "hidden") return false;
+				const rect = el.getBoundingClientRect();
+				return rect.width > 0 && rect.height > 0;
+			};
+			const refreshOverlayState = () => {
+				overlayRefreshFrame = 0;
+				visibleOverlays = [...document.querySelectorAll(overlaySelector)].filter(overlayIsVisible);
+				refreshCursorMode();
+			};
+			const queueOverlayRefresh = () => {
+				if (!overlayRefreshFrame) overlayRefreshFrame = requestAnimationFrame(refreshOverlayState);
+			};
+			new MutationObserver(queueOverlayRefresh).observe(document.documentElement, {
+				subtree: true,
+				childList: true,
+				attributes: true,
+				attributeFilter: [
+					"hidden",
+					"aria-hidden",
+					"data-open"
+				]
+			});
+			queueOverlayRefresh();
 			const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
 			const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
 			const wantsGrab = (target) => {
@@ -1123,6 +1211,7 @@
 			};
 			const hideFillImmediate = () => {
 				fillTarget = null;
+				setFillLayer(null);
 				fillVisible = fillCollapsing = false;
 				if (fillFrame) {
 					cancelAnimationFrame(fillFrame);
@@ -1137,6 +1226,7 @@
 				}
 				if (!link) {
 					fillTarget = null;
+					setFillLayer(null);
 					if (!fillVisible) return;
 					fillCollapsing = true;
 					wantedFillX = pendingX;
@@ -1190,9 +1280,22 @@
 				const rect = range.getBoundingClientRect();
 				return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
 			};
+			const linkBlockedByOverlay = (link) => {
+				if (!link) return false;
+				const rect = linkRect(link);
+				const fillZ = fillLayerFor(link);
+				return visibleOverlays.some((overlay) => {
+					if (zIndexOf(overlay) <= fillZ) return false;
+					const above = overlay.getBoundingClientRect();
+					return rect.left < above.right && rect.right > above.left && rect.top < above.bottom && rect.bottom > above.top;
+				});
+			};
 			const setMode = (target) => {
+				updateBlendSource(target);
 				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrab(target);
-				const link = grab || selectingText ? null : linkTarget(target);
+				let link = grab || selectingText ? null : linkTarget(target);
+				if (linkBlockedByOverlay(link)) link = null;
+				setFillLayer(link);
 				setGrabState(grab);
 				setTextState(!grab && (selectingText || !link && wantsText(target)));
 				setFillTarget(link);
@@ -1417,6 +1520,7 @@
 			const menu = runtimeNode(document.createElement("div"));
 			menu.id = "samey-context-menu";
 			menu.className = "samey-context-menu";
+			menu.dataset.sameyOverlayBlocker = "";
 			menu.hidden = true;
 			document.body.append(menu);
 			let target = null;
@@ -1451,7 +1555,6 @@
 			document.addEventListener("contextmenu", (event) => {
 				if (event.shiftKey) return;
 				event.preventDefault();
-				document.querySelector(".samey-cursor-link-fill")?.setAttribute("hidden", "");
 				target = event.target;
 				menu.replaceChildren();
 				const link = target instanceof Element ? target.closest("a[href]") : null;
@@ -2278,6 +2381,7 @@
 		if (box) return;
 		box = document.createElement("div");
 		box.className = "site-search";
+		box.dataset.sameyOverlay = "";
 		box.dataset.sameyRuntime = "";
 		box.hidden = true;
 		box.innerHTML = "<div class=\"site-search-backdrop\" data-close-search></div><div class=\"site-search-panel\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Search\"><div class=\"site-search-input\"><span>›</span><input autocomplete=\"off\" spellcheck=\"false\" placeholder=\"Search games, tools, writing, work…\"><kbd>esc</kbd></div><div class=\"site-search-results\"></div></div>";
