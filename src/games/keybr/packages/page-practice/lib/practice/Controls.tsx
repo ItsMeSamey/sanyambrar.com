@@ -1,15 +1,20 @@
 import { getDir } from "@keybr/intl";
 import { names } from "@keybr/lesson-ui";
-import { Icon, IconButton } from "@keybr/widget";
-import {
-  mdiAspectRatio,
-  mdiHelpCircleOutline,
-  mdiRedo,
-  mdiUndo,
-} from "@keybr/solid-compat/mdi";
+import CircleHelp from "lucide-solid/icons/circle-help";
+import Maximize2 from "lucide-solid/icons/maximize-2";
+import Redo2 from "lucide-solid/icons/redo-2";
+import Undo2 from "lucide-solid/icons/undo-2";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Controls.module.css";
+
+function ControlButton(props: {
+  readonly title: string;
+  readonly onClick: () => void;
+  readonly children: ReactNode;
+}) {
+  return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onClick={props.onClick}>{props.children}</button>;
+}
 
 export const Controls = memo(function Controls(props: {
   readonly onChangeView: () => void;
@@ -21,38 +26,34 @@ export const Controls = memo(function Controls(props: {
   const rtl = getDir(locale) === "rtl";
   return (
     <div id={names.controls} class={styles.controls}>
-      <IconButton
-        icon={<Icon shape={mdiHelpCircleOutline} />}
+      <ControlButton
         title={formatMessage({
           id: "practice.widget.showTour.description",
           defaultMessage: "Show a guided tour with help slides.",
         })}
         onClick={props.onHelp}
-      />
-      <IconButton
-        icon={<Icon shape={rtl ? mdiRedo : mdiUndo} />}
-        title={formatMessage({
-          id: "practice.widget.resetLesson.description",
-          defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
-        })}
-        onClick={props.onResetLesson}
-      />
-      <IconButton
-        icon={<Icon shape={rtl ? mdiUndo : mdiRedo} />}
-        title={formatMessage({
-          id: "practice.widget.skipLesson.description",
-          defaultMessage: "Skip the current lesson (Ctrl + Right Arrow).",
-        })}
-        onClick={props.onSkipLesson}
-      />
-      <IconButton
-        icon={<Icon shape={mdiAspectRatio} />}
+      ><CircleHelp aria-hidden="true" /></ControlButton>
+      <ControlButton
         title={formatMessage({
           id: "practice.widget.switchView.description",
           defaultMessage: "Switch the current interface layout.",
         })}
         onClick={props.onChangeView}
-      />
+      ><Maximize2 aria-hidden="true" /></ControlButton>
+      <ControlButton
+        title={formatMessage({
+          id: "practice.widget.resetLesson.description",
+          defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
+        })}
+        onClick={props.onResetLesson}
+      >{rtl ? <Redo2 aria-hidden="true" /> : <Undo2 aria-hidden="true" />}</ControlButton>
+      <ControlButton
+        title={formatMessage({
+          id: "practice.widget.skipLesson.description",
+          defaultMessage: "Skip the current lesson (Ctrl + Right Arrow).",
+        })}
+        onClick={props.onSkipLesson}
+      >{rtl ? <Undo2 aria-hidden="true" /> : <Redo2 aria-hidden="true" />}</ControlButton>
     </div>
   );
 });

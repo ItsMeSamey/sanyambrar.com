@@ -279,13 +279,16 @@ ${keybrViewSwitch}`;
   const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
   const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
   const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
-  must(keybrTopBar.indexOf('label="Home"') < keybrTopBar.indexOf("<AppearanceButton") &&
+  must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") &&
     keybrTopBar.indexOf("<AppearanceButton") < keybrTopBar.indexOf('label="Statistics"') &&
     keybrTopBar.indexOf('label="Statistics"') < keybrTopBar.indexOf('label="Settings"') &&
-    keybrControls.includes("mdiHelpCircleOutline") && keybrControls.includes("mdiUndo") &&
-    keybrControls.includes("mdiRedo") && keybrControls.includes("mdiAspectRatio") &&
+    keybrTopBar.indexOf('label="Settings"') < keybrTopBar.indexOf("<SearchButton") &&
+    keybrControls.indexOf("<CircleHelp") < keybrControls.indexOf("<Maximize2") &&
+    keybrControls.indexOf("<Maximize2") < keybrControls.indexOf("<Undo2") &&
+    keybrControls.indexOf("<Undo2") < keybrControls.lastIndexOf("<Redo2") &&
     !keybrControls.includes("mdiHome") && !keybrControls.includes("AppearanceButton") &&
-    keybrControlsStyle.includes("grid-template-columns: repeat(2, 2rem)") &&
+    keybrControlsStyle.includes("grid-template-columns: repeat(2, 28px)") &&
+    keybrControlsStyle.includes("inset-inline-end: clamp(3.25rem, 7vw, 6rem)") &&
     keybrIconStyle.includes("fill: none") && keybrIconStyle.includes("stroke: currentColor") &&
     keybrCheckbox.includes('@kobalte/core/checkbox') && keybrEventIconStyle.includes("fill: none") &&
     keybrTypingSettings.includes('label: "None"') && keybrTypingSettings.includes('label: "Error only"') &&

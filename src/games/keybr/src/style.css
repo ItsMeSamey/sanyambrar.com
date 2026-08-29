@@ -219,7 +219,7 @@ text { text-rendering: optimizeLegibility; }
 
 ::selection { color: var(--primary); background-color: var(--secondary); }
 
-.keybr-topbar-actions { display:flex; align-items:center; gap:3px; height:100%; }
-.keybr-topbar-actions .site-topbar-icon { color:var(--site-muted,var(--text-color-f2)); }
-.keybr-topbar-actions .site-topbar-icon:hover,
-.keybr-topbar-actions .site-topbar-icon:focus-visible { color:var(--site-fg,var(--text-color)); }
+.keybr-topbar-nav { height:100%; }
+.keybr-topbar-nav .site-topbar-icon { color:var(--site-muted,var(--text-color-f2)); }
+.keybr-topbar-nav .site-topbar-icon:hover,
+.keybr-topbar-nav .site-topbar-icon:focus-visible { color:var(--site-fg,var(--text-color)); }
