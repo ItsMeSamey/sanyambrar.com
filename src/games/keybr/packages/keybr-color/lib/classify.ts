@@ -5,7 +5,6 @@ import {
   type Hwb,
   type Oklab,
   type Oklch,
-  type Xyz,
 } from "./types.ts";
 
 export const isHsl = (o: any): o is Hsl => {

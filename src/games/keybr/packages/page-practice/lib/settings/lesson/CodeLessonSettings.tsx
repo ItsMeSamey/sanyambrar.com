@@ -1,12 +1,10 @@
 import { Syntax } from "@keybr/code";
-import { type CodeLesson, lessonProps } from "@keybr/lesson";
+import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
-export function CodeLessonSettings(solidProps: {
-    readonly lesson: CodeLesson;
-}): ReactNode {
+export function CodeLessonSettings(): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     const syntax = () => settings.get(lessonProps.code.syntax);

@@ -4,7 +4,7 @@ export function ErrorAlert(solidProps: {
     readonly error: unknown;
 }) {
     return (<Alert severity="error">
-      {solidProps.error instanceof AggregateError ? (solidProps.error.errors.map((child, index) => <p>{String(child)}</p>)) : (<p>{String(solidProps.error)}</p>)}
+      {solidProps.error instanceof AggregateError ? (solidProps.error.errors.map((child) => <p>{String(child)}</p>)) : (<p>{String(solidProps.error)}</p>)}
     </Alert>);
 }
 ErrorAlert.report = (error: unknown) => {

@@ -1,9 +1,8 @@
 import ArrowUpRight from 'lucide-solid/icons/arrow-up-right';
-import FileCode from 'lucide-solid/icons/file-code';
 import { games, posts } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';
 import { GameCards } from '../components/Entries.tsx';
-import { Intro, Section } from '../components/SiteChrome.tsx';
+import { Intro, Section, SiteFooter } from '../components/SiteChrome.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { TopBar } from '../../shared/components/TopBar.tsx';
 
@@ -53,20 +52,4 @@ function WritingSplit() {
   </div>;
 }
 
-function HomeIntro() {
-  return <div class="home-intro-wrap">
-    <Intro/>
-    <a
-      class="home-source-link"
-      href="https://github.com/ItsMeSamey/itsmesamey.github.io"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="View this site's source code on GitHub"
-      title="Source code"
-    >
-      <FileCode aria-hidden="true"/>
-    </a>
-  </div>;
-}
-
-export function Home(){return <><TopBar showWork/><main><HomeIntro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing"><WritingSplit/></Section></main></>}
+export function Home(){return <><TopBar showWork/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing"><WritingSplit/></Section></main><SiteFooter/></>}

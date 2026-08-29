@@ -27,7 +27,6 @@ export function KeyboardSettings(): ReactNode {
     </>);
 }
 function LayoutProp(): ReactNode {
-    const { formatMessage } = useIntl();
     const { formatLanguageName, //
     formatLayoutName, formatFullLayoutName, } = useFormattedNames();
     const { compare } = useCollator();

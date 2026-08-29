@@ -54,7 +54,7 @@ export function getBlacklist(language: Language): Blacklist {
     })();
   } else {
     return new (class implements Blacklist {
-      allow(word: string): boolean {
+      allow(_word: string): boolean {
         return true;
       }
     })();

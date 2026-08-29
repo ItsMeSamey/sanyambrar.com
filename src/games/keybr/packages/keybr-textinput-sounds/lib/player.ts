@@ -1,6 +1,5 @@
-import { type Settings, useSettings } from "@keybr/settings";
+import { type Settings } from "@keybr/settings";
 import { Feedback } from "@keybr/textinput";
-import { useMemo } from "@keybr/solid-compat/react";
 import { PlaySounds, soundProps, SoundTheme } from "./settings.ts";
 import { Theme } from "./sound.ts";
 import { defaultTheme } from "./themes/default.ts";

@@ -9,7 +9,7 @@ import { Popup } from "../popup/Popup.tsx";
 import { Spotlight } from "../popup/Spotlight.tsx";
 import { Portal } from "../portal/Portal.tsx";
 import { Meter } from "./Meter.tsx";
-import { Slide, type SlideProps } from "./Slide.tsx";
+import { type SlideProps } from "./Slide.tsx";
 import * as styles from "./Tour.module.css";
 import { splitProps } from "solid-js";
 export type TourProps = {

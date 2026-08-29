@@ -61,7 +61,7 @@ function forwardEmulation(
     },
     onKeyUp: (event) => {
       timeToType.add(event);
-      const [mapped, codePoint] = fixKey(keyboard, event);
+      const [mapped] = fixKey(keyboard, event);
       target.onKeyUp(mapped);
     },
     onInput: (event) => {

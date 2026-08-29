@@ -23,7 +23,7 @@ export class LetterEvents implements LessonEventSource {
     }
   }
 
-  append(result: Result, listener: LessonEventListener): void {
+  append(_result: Result, listener: LessonEventListener): void {
     const lessonKeys = this.#lesson.update(this.#keyStatsMap);
     for (const lessonKey of lessonKeys.findIncludedKeys()) {
       if (!this.#included.has(lessonKey.letter)) {

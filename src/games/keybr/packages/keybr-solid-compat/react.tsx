@@ -8,7 +8,6 @@ import {
   onCleanup,
   untrack,
   useContext,
-  type Component as SolidComponent,
   type JSX,
 } from "solid-js";
 import { LIVE_ACCESSOR, liveObject } from "./live.ts";

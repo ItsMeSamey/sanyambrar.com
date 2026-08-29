@@ -1,4 +1,3 @@
-import { Point } from "./point.ts";
 import { Rect } from "./rect.ts";
 import { Size } from "./size.ts";
 

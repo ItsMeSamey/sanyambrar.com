@@ -1,7 +1,7 @@
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
-import { SettingsIcon } from '../../site/components/icons.tsx';
+import Settings from 'lucide-solid/icons/settings';
 import BarChart3 from 'lucide-solid/icons/chart-no-axes-column';
 import { createChainRefs } from './dom.ts';
 
@@ -23,7 +23,7 @@ export function ChainPage() {
       label="Settings"
       ariaControls="chain-settings"
       ariaExpanded={false}
-    ><SettingsIcon/></TopBarIconButton>}
+    ><Settings aria-hidden="true"/></TopBarIconButton>}
   </GameTopBarActions>;
 
   return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain(refs)}>

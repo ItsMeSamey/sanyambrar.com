@@ -1,5 +1,3 @@
-import { OklabColor } from "./color-oklab.ts";
-import { OklchColor } from "./color-oklch.ts";
 import { RgbColor } from "./color-rgb.ts";
 import { type Oklab, type Oklch, type Rgb, type Xyz } from "./types.ts";
 

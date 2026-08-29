@@ -1,11 +1,9 @@
-import { useIntlNumbers } from "@keybr/intl";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, Range, Value, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 export function RepeatWordsProp(): ReactNode {
-    const { formatPercents } = useIntlNumbers();
     const { settings, updateSettings } = useSettings();
     return (<>
       <FieldList>

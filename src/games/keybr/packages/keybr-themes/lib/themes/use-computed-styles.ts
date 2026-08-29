@@ -10,7 +10,6 @@ export const useComputedStyles = () => {
     const { getStyledElement } = useDynamicStyles();
     const element = getStyledElement();
     return useMemo(() => {
-        use(theme.color, theme.font, theme.hash);
         const style = getComputedStyle(element);
         const getPropertyValue = (name: PropName): string => {
             return style.getPropertyValue(name);
@@ -32,7 +31,7 @@ export const useComputedStyles = () => {
             // padding, they are instead the used values.
             const child = createElement("div", className);
             element.appendChild(child);
-            const { font, fontStyle, fontVariant, fontWeight, fontSize, lineHeight, fontFamily, textAlign, verticalAlign, color, opacity, fill, fillOpacity, fillRule, stroke, strokeDasharray, strokeDashoffset, strokeLinecap, strokeLinejoin, strokeMiterlimit, strokeOpacity, strokeWidth, } = getComputedStyle(child);
+            const { font, fontStyle, fontVariant, fontWeight, fontSize, lineHeight, fontFamily, textAlign, verticalAlign, fill, fillOpacity, fillRule, stroke, strokeLinecap, strokeLinejoin, strokeMiterlimit, strokeOpacity, strokeWidth } = getComputedStyle(child);
             element.removeChild(child);
             const result: GraphicsStyle = {};
             if (font != null) {
@@ -144,7 +143,6 @@ export const useComputedStyles = () => {
         return { getPropertyValue, resolveColor, computeStyle, computeLineHeight };
     }, () => [theme.color, theme.font, theme.hash, element]);
 };
-function use(...arg: any) { }
 const createElement = (tagName: string, className: ClassValue): HTMLElement => {
     const element = document.createElement(tagName);
     element.textContent = "?";

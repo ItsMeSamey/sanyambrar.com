@@ -1,9 +1,9 @@
 import { type Player } from "./types.ts";
 
 export const nullPlayer = new (class NullPlayer implements Player {
-  play(offset?: number, duration?: number) {}
+  play(_offset?: number, _duration?: number) {}
   stop() {}
-  volume(volume: number) {}
+  volume(_volume: number) {}
 })();
 
 export class WebAudioPlayer implements Player {

@@ -1,6 +1,5 @@
 import { HslColor } from "./color-hsl.ts";
 import { HsvColor } from "./color-hsv.ts";
-import { HwbColor } from "./color-hwb.ts";
 import { RgbColor } from "./color-rgb.ts";
 import { type Hsl, type Hsv, type Hwb, type Rgb } from "./types.ts";
 

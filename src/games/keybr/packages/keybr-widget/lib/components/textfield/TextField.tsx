@@ -1,5 +1,5 @@
 import { clsx } from "@keybr/solid-compat/clsx";
-import { type ReactNode, type RefObject, useEffect, useImperativeHandle, useRef, } from "@keybr/solid-compat/react";
+import { type ReactNode, useEffect, useImperativeHandle, useRef, } from "@keybr/solid-compat/react";
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./TextField.module.css";
 import { type TextFieldProps } from "./TextField.types.ts";

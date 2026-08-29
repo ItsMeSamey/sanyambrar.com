@@ -14,7 +14,7 @@ export class DailyGoalEvents implements LessonEventSource {
     this.#lastValue = 0;
   }
 
-  append(result: Result, listener: LessonEventListener): void {
+  append(_result: Result, listener: LessonEventListener): void {
     if (this.#lastValue < 1 && this.#dailyGoal.value >= 1) {
       listener({
         type: "daily-goal",

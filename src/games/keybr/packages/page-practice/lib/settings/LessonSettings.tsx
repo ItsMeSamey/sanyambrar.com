@@ -1,4 +1,4 @@
-import { type BooksLesson, type CodeLesson, type CustomTextLesson, type GuidedLesson, type Lesson, lessonProps, LessonType, type NumbersLesson, type WordListLesson, } from "@keybr/lesson";
+import { type BooksLesson, type CustomTextLesson, type Lesson, lessonProps, LessonType, type WordListLesson, } from "@keybr/lesson";
 import { LessonLoader } from "@keybr/lesson-loader";
 import { type Settings, useSettings } from "@keybr/settings";
 import { SegmentedControl } from "@keybr/widget";
@@ -42,7 +42,7 @@ export function LessonSettings(): ReactNode {
 function tabBody(settings: Settings, lesson: Lesson): ReactNode {
     switch (settings.get(lessonProps.type)) {
         case LessonType.GUIDED:
-            return <GuidedLessonSettings lesson={lesson as GuidedLesson}/>;
+            return <GuidedLessonSettings/>;
         case LessonType.WORDLIST:
             return <WordListLessonSettings lesson={lesson as WordListLesson}/>;
         case LessonType.BOOKS:
@@ -50,9 +50,9 @@ function tabBody(settings: Settings, lesson: Lesson): ReactNode {
         case LessonType.CUSTOM:
             return <CustomTextLessonSettings lesson={lesson as CustomTextLesson}/>;
         case LessonType.CODE:
-            return <CodeLessonSettings lesson={lesson as CodeLesson}/>;
+            return <CodeLessonSettings/>;
         case LessonType.NUMBERS:
-            return <NumbersLessonSettings lesson={lesson as NumbersLesson}/>;
+            return <NumbersLessonSettings/>;
         default:
             throw new Error();
     }

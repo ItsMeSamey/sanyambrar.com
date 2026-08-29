@@ -63,7 +63,7 @@ export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
         }
         return null;
     }
-    function draw([shape0, shape1, f]: Item, index: number): ReactNode {
+    function draw([shape0, shape1, f]: Item): ReactNode {
         if (shape0 === shape1) {
             return null;
         }

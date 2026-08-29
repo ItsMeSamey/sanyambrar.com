@@ -11,21 +11,6 @@ export function Calendar(solidProps: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
 }) {
-    type State = Readonly<{
-        type: "hidden";
-    } | {
-        type: "visible-in";
-        stats: DailyStats;
-        elem: Element;
-    } | {
-        type: "visible";
-        stats: DailyStats;
-        elem: Element;
-    } | {
-        type: "visible-out";
-        stats: DailyStats;
-        elem: Element;
-    }>;
     const [state, setState] = useState<any>({ type: "hidden" });
     useEffect(() => {
         const tasks = new Tasks();

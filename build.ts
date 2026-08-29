@@ -145,6 +145,7 @@ async function verifySourceArchitecture() {
     "architecture: tools must use the shared ToolSurface");
   for (const file of ["TextTool.tsx", "EncodeTool.tsx", "DiffTool.tsx", "NumbersTool.tsx", "MarkdownTool.tsx"])
     must(!existsSync(join(ROOT, "src/tools", file)), `architecture: redundant tool wrapper remains: src/tools/${file}`);
+  must(!existsSync(join(ROOT, "src/site/components/icons.tsx")), "architecture: one-use site icon wrapper should not return");
   const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
   const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
   const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="site-topbar">'));
@@ -469,8 +470,20 @@ ${keybrViewSwitch}`;
   must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
-  must(homeSource.includes("https://github.com/ItsMeSamey/itsmesamey.github.io") && homeSource.includes("home-source-link"),
-    "ux: home must expose a compact source-code repository link");
+  const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
+  const footerPages = await Promise.all([
+    "src/site/pages/Home.tsx",
+    "src/site/pages/Work.tsx",
+    "src/site/pages/Project.tsx",
+    "src/blogs/Blog.tsx",
+    "src/tools/Tools.tsx",
+  ].map(path => readFile(join(ROOT, path), "utf8")));
+  must(siteChrome.includes("Site's source ↗") && siteChrome.includes("https://github.com/ItsMeSamey/itsmesamey.github.io") &&
+    siteChrome.includes('class="site-contact-footer"') && footerPages.every(source => source.includes("<SiteFooter/>")),
+    "ux: portfolio pages must expose a named site-source link and contact footer");
+  const phoneticModel = await readFile(join(ROOT, "src/games/keybr/packages/keybr-phonetic-model/lib/phoneticmodel.ts"), "utf8");
+  must(phoneticModel.includes("this.map.get(indexedCodePoint)!.push(prefix)") && !phoneticModel.includes("this.map.get(codePoint)!.push(prefix)"),
+    "bugfix: Keybr phonetic prefixes must be indexed under every letter they contain");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
   must(sharedTheme.includes('globalThis.SameyLoadingBegin = () =>') && sharedTheme.includes('mountLoadingBar()') &&
     sharedTheme.includes('Math.max(0, time - loadingStarted)') &&

@@ -51,7 +51,7 @@ export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
         }
         return null;
     }
-    function draw([shape, f]: Item, index: number): ReactNode {
+    function draw([shape, f]: Item): ReactNode {
         const { x, y } = getKeyCenter(shape);
         switch (solidProps.modifier) {
             case "h": {

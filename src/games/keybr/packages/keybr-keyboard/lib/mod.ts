@@ -4,7 +4,7 @@ import { type GeometryDict } from "./types.ts";
 
 export type Mod = (geometry: Geometry, dict: GeometryDict) => GeometryDict;
 
-export const nullMod: Mod = (geometry: Geometry, dict: GeometryDict) => dict;
+export const nullMod: Mod = (_geometry: Geometry, dict: GeometryDict) => dict;
 
 export const angleMod: Mod = ({ form }, dict) => {
   if (form === "staggered") {

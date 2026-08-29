@@ -37,7 +37,7 @@ export class Polynomial0 extends Polynomial {
     super([y]);
   }
 
-  override eval(x: number): number {
+  override eval(_x: number): number {
     return this.y;
   }
 

@@ -12,7 +12,7 @@ export const KeyDetails = (solidProps: {
     lessonKey: LessonKey;
 }) => {
     const { formatMessage } = useIntl();
-    const { formatSpeed, formatConfidence, formatLearningRate, speedUnitName } = useFormatter();
+    const { formatSpeed, formatConfidence, formatLearningRate } = useFormatter();
     const { settings } = useSettings();
     const details = createMemo(() => {
         const { timeToType, bestTimeToType, confidence, bestConfidence } = solidProps.lessonKey;

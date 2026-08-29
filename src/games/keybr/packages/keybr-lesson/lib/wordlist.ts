@@ -42,7 +42,7 @@ export class WordListLesson extends Lesson {
     return LessonKeys.includeAll(keyStatsMap, new Target(this.settings));
   }
 
-  override generate(lessonKeys: LessonKeys, rng: RNGStream) {
+  override generate(_lessonKeys: LessonKeys, rng: RNGStream) {
     const wordGenerator = randomWords(this.wordList, rng);
     const words = mangledWords(
       uniqueWords(wordGenerator),

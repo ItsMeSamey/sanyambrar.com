@@ -1,4 +1,3 @@
-import { type GuidedLesson } from "@keybr/lesson";
 import { Description, Explainer, FieldSet } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
@@ -10,9 +9,7 @@ import { RecoverKeysProp } from "./RecoverKeysProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
-export function GuidedLessonSettings(solidProps: {
-    readonly lesson: GuidedLesson;
-}): ReactNode {
+export function GuidedLessonSettings(): ReactNode {
     const { formatMessage } = useIntl();
     return (<>
       <Explainer>

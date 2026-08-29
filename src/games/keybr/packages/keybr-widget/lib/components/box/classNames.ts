@@ -1,8 +1,3 @@
-import {
-  styleSizeFill,
-  styleSizeFillAlt,
-  styleSizeFit,
-} from "../../styles/size.ts";
 import * as boxStyles from "./Box.module.css";
 import {
   type BoxAlignContent,

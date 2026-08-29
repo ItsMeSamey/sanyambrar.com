@@ -24,7 +24,7 @@ export class LearningRate {
 
   static example(target: Target): LearningRate {
     return new LearningRate(
-      new Array(14).fill(0).map((value, index) => {
+      new Array(14).fill(0).map((_value, index) => {
         const timeStamp =
           /* 2001-01-01T12:00:00Z */ 978350400000 + index * 60000;
         const timeToType = 500 - index * 10;

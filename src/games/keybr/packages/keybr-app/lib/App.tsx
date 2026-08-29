@@ -6,7 +6,7 @@ import { ResultLoader } from "@keybr/result-loader";
 import { SettingsLoader } from "@keybr/settings-loader";
 import { ThemeProvider } from "@keybr/themes";
 import { PortalContainer, Toaster } from "@keybr/widget";
-import { createEffect, createSignal, onCleanup, onMount, Show, type JSX } from "solid-js";
+import { createEffect, createSignal, Show, type JSX } from "solid-js";
 import { render } from "solid-js/web";
 import { type IntlShape, RawIntlProvider } from "@keybr/solid-compat/intl";
 

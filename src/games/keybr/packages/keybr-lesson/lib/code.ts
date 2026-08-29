@@ -21,7 +21,7 @@ export class CodeLesson extends Lesson {
     return LessonKeys.includeAll(keyStatsMap, new Target(this.settings));
   }
 
-  override generate(lessonKeys: LessonKeys, rng: RNGStream) {
+  override generate(_lessonKeys: LessonKeys, rng: RNGStream) {
     const syntax = this.settings.get(lessonProps.code.syntax);
     const flags = this.settings.get(lessonProps.code.flags);
     return syntax.generate(new Set(flags), rng);

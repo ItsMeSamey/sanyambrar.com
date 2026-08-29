@@ -181,8 +181,8 @@ class PrefixList {
           word.push(codePoint);
 
           const prefix = new Prefix([...word]);
-          for (const index of new Set(word)) {
-            this.map.get(codePoint)!.push(prefix);
+          for (const indexedCodePoint of new Set(word)) {
+            this.map.get(indexedCodePoint)!.push(prefix);
           }
 
           if (word.length < minLength) {

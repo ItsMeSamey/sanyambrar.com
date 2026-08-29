@@ -1,4 +1,3 @@
-import { createContext, useContext } from "@keybr/solid-compat/react";
 /*
  * Locale identifier is a triple "language[-script][-region]".
  *
@@ -70,14 +69,3 @@ export function getDir(locale: LocaleId): "ltr" | "rtl" {
             return "ltr";
     }
 }
-const map = (() => {
-    const tmp = new Map<string, LocaleId>();
-    for (const id of allLocales) {
-        const { language, region } = new Intl.Locale(id).maximize();
-        tmp.set(language + "-" + region, id);
-        if (!tmp.has(language)) {
-            tmp.set(language, id);
-        }
-    }
-    return tmp;
-})();

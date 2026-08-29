@@ -39,7 +39,7 @@ const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
   if (/\/blog(?:\/index)?$/.test(path)) return { key: 'blog', kind: 'blog' };
-  if (path === '/' || /\/index$/.test(path)) return { key: 'home', kind: 'home' };
+  if (path === '/') return { key: 'home', kind: 'home' };
   if (/\/work$/.test(path)) return { key: 'work', kind: 'work' };
   if (/\/tools$/.test(path)) return { key: 'tools', kind: 'tools' };
   if (/\/chain$/.test(path)) return { key: 'chain', kind: 'chain' };

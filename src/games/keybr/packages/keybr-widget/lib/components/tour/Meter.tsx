@@ -5,6 +5,6 @@ export function Meter(solidProps: {
     readonly slideIndex: number;
 }) {
     return (<div class={styles.root}>
-      {new Array(solidProps.length).fill(null).map((slide, index) => (<span class={clsx(styles.item, solidProps.slideIndex === index && styles.current)}/>))}
+      {new Array(solidProps.length).fill(null).map((_slide, index) => (<span class={clsx(styles.item, solidProps.slideIndex === index && styles.current)}/>))}
     </div>);
 }

@@ -40,7 +40,7 @@ export class CustomTextLesson extends Lesson {
     return LessonKeys.includeAll(keyStatsMap, new Target(this.settings));
   }
 
-  override generate(lessonKeys: LessonKeys, rng: RNGStream) {
+  override generate(_lessonKeys: LessonKeys, rng: RNGStream) {
     return generateFragment(this.settings, this.#makeWordGenerator(rng));
   }
 

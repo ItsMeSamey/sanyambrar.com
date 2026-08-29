@@ -1,5 +1,4 @@
 import { Tasks } from "@keybr/lang";
-import { type LessonKey } from "@keybr/lesson";
 import { CurrentKeyRow, DailyGoalRow, GaugeRow, KeySetRow, names, StreakListRow, } from "@keybr/lesson-ui";
 import { Popup, Portal } from "@keybr/widget";
 import { memo, type ReactNode, useEffect, useState } from "@keybr/solid-compat/react";
@@ -9,21 +8,6 @@ import { type LessonState } from "./state/index.ts";
 export const Indicators = memo(function Indicators(props: {
     readonly state: LessonState;
 }): ReactNode {
-    type State = Readonly<{
-        type: "hidden";
-    } | {
-        type: "visible-in";
-        key: LessonKey;
-        elem: Element;
-    } | {
-        type: "visible";
-        key: LessonKey;
-        elem: Element;
-    } | {
-        type: "visible-out";
-        key: LessonKey;
-        elem: Element;
-    }>;
     const [state, setState] = useState<any>({ type: "hidden" });
     useEffect(() => {
         const tasks = new Tasks();

@@ -36,7 +36,7 @@ export const textStatsOf = (
     let length = lengths.get(word);
     if (length == null) {
       length = 0;
-      for (const grapheme of graphemes.segment(word)) {
+      for (const _grapheme of graphemes.segment(word)) {
         length += 1;
       }
       lengths.set(word, length);
