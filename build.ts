@@ -480,7 +480,7 @@ ${keybrViewSwitch}`;
     monacoDiffPatch.includes("_sameyPerfectHashes") && monacoDiffPatch.includes("perfectHashes.size > 500000") && monacoDiffPatch.includes("if (!hitTimeout)") && monacoDiffPatch.includes("if (!timeout.isValid())") && monacoDiffPatch.includes("if (diffResult.hitTimeout)") &&
     toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('const diffWorker = new DiffWorker()') &&
     toolsSource.includes('const mapDiffLine =') && !toolsSource.includes("#diff-compute") && !toolsSource.includes('createDiffEditor(') &&
-    toolsSource.includes('const serializeChanges = event => event.changes.map(change => ({startLineNumber:change.range.startLineNumber') &&
+    toolsSource.includes('const serializeChanges = event => event.changes.map(change => ({') && toolsSource.includes('startLineNumber:change.range.startLineNumber') &&
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'") &&
@@ -489,9 +489,12 @@ ${keybrViewSwitch}`;
     diffWorkerSource.includes('const applyChanges = (lines, changes) =>') &&
     !diffWorkerSource.includes("originalText.split('\n')") && !diffWorkerSource.includes("modifiedText.split('\n')"),
     "ux: Diff must use patch-package, incremental worker text state, bounded advanced diffing, semantic scroll mapping, and deferred persistence");
-  must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:1fr 1fr') &&
+  must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:minmax(0,var(--diff-split,50%)) 5px minmax(0,1fr)') &&
+    toolsStyle.includes('.diff-splitter') && toolsStyle.includes('.diff-combined-table') &&
+    toolsSource.includes('aria-label="Resize diff panes"') && toolsSource.includes("data-diff-layout=\"combined\"") &&
+    toolsSource.includes("wordWrap:'off'") && toolsSource.includes('const renderCombined = () =>') &&
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
-    "ux: narrow Diff and Markdown combined views must stack top-to-bottom");
+    "ux: Diff must keep the compact resizable side-by-side layout plus a bounded combined view, while narrow Markdown remains stacked");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
@@ -522,6 +525,9 @@ ${keybrViewSwitch}`;
   must(sharedTheme.includes('const virtualScrollerOptOut =') && sharedTheme.includes('.monaco-host, .monaco-editor, .monaco-diff-editor') &&
     sharedTheme.includes('if (scanRaf || !pending.size) return;'),
     "performance: global virtual-scrollbar discovery must ignore Monaco-owned editor mutation trees");
+  must(sharedTheme.includes('if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();') &&
+    !sharedTheme.includes('documentNavigationMounted = true;\n    markInitialPageStyles();'),
+    "bugfix: page swaps must not reclassify runtime-loaded Monaco CSS as disposable page CSS");
   const appearanceConfig = await readFile(join(ROOT, "src/static/shared/appearance.json"), "utf8");
   must(appearanceConfig.includes('"warning":"#d4a72c"') && appearanceConfig.includes('"warning":"#facc15"') &&
     sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warningFg)') &&
@@ -566,7 +572,7 @@ ${keybrViewSwitch}`;
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
-  const footerPages = await Promise.all([
+  const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",
     "src/site/pages/Project.tsx",
@@ -574,8 +580,9 @@ ${keybrViewSwitch}`;
     "src/tools/Tools.tsx",
   ].map(path => readFile(join(ROOT, path), "utf8")));
   must(siteChrome.includes("Site's source ↗") && siteChrome.includes("https://github.com/ItsMeSamey/itsmesamey.github.io") &&
-    siteChrome.includes('class="site-contact-footer"') && footerPages.every(source => source.includes("<SiteFooter/>")),
-    "ux: portfolio pages must expose a named site-source link and contact footer");
+    !siteChrome.includes('site-contact-footer') && !siteChrome.includes('function SiteFooter') &&
+    portfolioPages.every(source => !source.includes("<SiteFooter") && !source.includes("SiteFooter")) && !homeStyle.includes('site-contact-footer'),
+    "ux: the site-source link must remain available without a bottom contact footer on any portfolio page");
   const phoneticModel = await readFile(join(ROOT, "src/games/keybr/packages/keybr-phonetic-model/lib/phoneticmodel.ts"), "utf8");
   must(phoneticModel.includes("this.map.get(indexedCodePoint)!.push(prefix)") && !phoneticModel.includes("this.map.get(codePoint)!.push(prefix)"),
     "bugfix: Keybr phonetic prefixes must be indexed under every letter they contain");

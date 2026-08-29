@@ -40,11 +40,3 @@
 @media(max-width:850px){.site-standard .home-tool-matrix{grid-template-columns:repeat(2,1fr)}.site-standard .home-tool:nth-child(n){grid-column:span 1;padding:16px 16px 15px 0;border-top:0;border-right:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg));border-bottom:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg))}.site-standard .home-tool:nth-child(even){padding-left:16px;border-right:0}.site-standard .home-tool:nth-child(5){border-bottom:0}}
 @media(max-width:700px){.site-standard .home-writing-split{grid-template-columns:1fr}.site-standard .home-writing-index{border-right:0;border-bottom:1px solid var(--site-line)}.site-standard .home-writing-detail{padding:22px 16px 24px}.site-standard .home-writing-detail h2{font-size:23px}.site-standard .home-writing-detail time{float:none;display:block;margin:8px 0 0}.site-standard .home-writing-detail footer{align-items:flex-start;flex-direction:column}}
 @media(max-width:560px){.site-standard .home-tool-matrix{grid-template-columns:1fr}.site-standard .home-tool:nth-child(n){padding:15px 0;border-right:0;border-bottom:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg))}.site-standard .home-tool:last-child{border-bottom:0}.site-standard .home-tool-desc{margin-top:8px}}
-
-/* Shared portfolio contact footer. */
-.site-standard .site-contact-footer,.tools-page .site-contact-footer{width:min(1320px,100%);margin:54px auto 0;padding:20px 14px 28px;border-top:1px solid var(--site-line);display:flex;align-items:flex-start;justify-content:space-between;gap:24px;color:var(--site-muted);font:700 10px/1.4 var(--site-font,system-ui);letter-spacing:.06em}
-.site-contact-label{text-transform:uppercase;letter-spacing:.13em}
-.site-contact-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px 18px}
-.site-contact-links a{color:var(--site-fg);text-decoration:none}
-.site-contact-links a:hover,.site-contact-links a:focus-visible{text-decoration:underline;text-underline-offset:3px}
-@media(max-width:700px){.site-standard .site-contact-footer,.tools-page .site-contact-footer{margin-top:38px;padding:18px 12px 24px;flex-direction:column;gap:12px}.site-contact-links{justify-content:flex-start}}

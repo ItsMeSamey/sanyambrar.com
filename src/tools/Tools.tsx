@@ -5,7 +5,6 @@ import Check from 'lucide-solid/icons/check';
 import ChevronsUpDown from 'lucide-solid/icons/chevrons-up-down';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
-import { SiteFooter } from '../site/components/SiteChrome.tsx';
 import { ToolContext, ToolSurface } from './ToolSurface.tsx';
 
 const validTools = new Set<ToolId>(TOOLS.map(tool => tool.id));
@@ -72,6 +71,5 @@ export function ToolsPage() {
     <main class="tools-app">
       <Show keyed when={active()}>{tool => <ToolSurface tool={tool}/>}</Show>
     </main>
-    <SiteFooter/>
   </ToolContext.Provider>;
 }

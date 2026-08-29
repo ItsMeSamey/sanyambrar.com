@@ -2446,7 +2446,6 @@
 			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
 			if (documentNavigationMounted) return;
 			documentNavigationMounted = true;
-			markInitialPageStyles();
 			document.addEventListener("pointerover", (event) => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				const a = event.target.closest?.("a[href]");
@@ -2491,6 +2490,7 @@
 			mountCursor();
 			mountContextMenu();
 			mountVirtualScrollbars();
+			if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();
 			mountSpa();
 			addEventListener("samey-pageload", mountSpa);
 		};

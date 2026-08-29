@@ -2,7 +2,7 @@ import ArrowUpRight from 'lucide-solid/icons/arrow-up-right';
 import { games, posts, projects } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';
 import { GameCards, ProjectCards } from '../components/Entries.tsx';
-import { Intro, Section, SiteFooter } from '../components/SiteChrome.tsx';
+import { Intro, Section } from '../components/SiteChrome.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { TopBar } from '../../shared/components/TopBar.tsx';
 
@@ -52,4 +52,4 @@ function WritingSplit() {
   </div>;
 }
 
-export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Work" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main><SiteFooter/></>}
+export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Work" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main></>}

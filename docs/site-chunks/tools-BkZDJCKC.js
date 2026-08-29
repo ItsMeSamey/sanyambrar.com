@@ -4,16 +4,284 @@ import{s as e,t}from"../site-app.js";var n=e=>e.replace(/[&<>"']/g,e=>({"&":`&am
 `))}</code></pre>`));continue}let c=/^(#{1,6})\s+(.*)$/.exec(s);if(c){a++;let t=c[1].length;r.push(o(e,a,`<h${t}>${i(c[2])}</h${t}>`));continue}if(/^>\s?/.test(s)){let n=[];for(;a<t.length&&/^>\s?/.test(t[a]);)n.push(t[a++].replace(/^>\s?/,``));r.push(o(e,a,`<blockquote>${n.map(i).join(`<br>`)}</blockquote>`));continue}if(/^[-*+]\s+/.test(s)){let n=[];for(;a<t.length&&/^[-*+]\s+/.test(t[a]);)n.push(`<li>${i(t[a++].replace(/^[-*+]\s+/,``))}</li>`);r.push(o(e,a,`<ul>${n.join(``)}</ul>`));continue}if(/^\d+\.\s+/.test(s)){let n=[];for(;a<t.length&&/^\d+\.\s+/.test(t[a]);)n.push(`<li>${i(t[a++].replace(/^\d+\.\s+/,``))}</li>`);r.push(o(e,a,`<ol>${n.join(``)}</ol>`));continue}if(/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(s)){a++,r.push(o(e,a,`<hr>`));continue}if(!s.trim()){a++;continue}let l=[s];for(a++;a<t.length&&t[a].trim()&&!/^(#{1,6}\s|```|>\s?|[-*+]\s+|\d+\.\s+)/.test(t[a]);)l.push(t[a++]);r.push(o(e,a,`<p>${l.map(i).join(`<br>`)}</p>`))}return r.join(``)||`<p></p>`}function o(e){return new Worker(`/assets/diff-worker-DTU5oDPS.js`,{name:e?.name})}var s;function c(){if(s)return s;let e=globalThis.SameyLoadingBeginAfterDelay?.()??(()=>{});return s=t(()=>import(`./monaco-CH-VS9lI.js`).then(e=>e.t),__vite__mapDeps([0,1,2])).catch(e=>{throw s=void 0,e}).finally(e),s}function l(t,n,r){if(!n||!r)return()=>{};let i=()=>t,s=(e,t)=>`tool.${e}.${t}`,l=(e,t,n=``)=>{try{return localStorage.getItem(s(e,t))??n}catch{return n}},u=(e,t,n)=>{try{localStorage.setItem(s(e,t),String(n))}catch{}},d=(e,t=``)=>l(i(),e,t),f=(e,t)=>u(i(),e,t),p=e=>String(e).replace(/[&<>"']/g,e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e]),m=e=>({copy:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,swap:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>`,link:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`})[e]||``,h=async e=>{try{if(navigator.clipboard?.writeText)return await navigator.clipboard.writeText(String(e)),!0;let t=document.createElement(`textarea`);t.value=String(e),t.setAttribute(`readonly`,``),t.style.cssText=`position:fixed;left:-9999px;top:0;opacity:0`,document.body.append(t);try{return t.select(),document.execCommand(`copy`)}finally{t.remove()}}catch{return!1}},g=()=>{},_=!1,v=0,y=async()=>{},b=null,x=e=>{r.innerHTML=e||``},S=()=>getComputedStyle(document.documentElement).getPropertyValue(`--site-font`).trim()||`system-ui`;function C(e){let t=getComputedStyle(document.documentElement),n=S(),r=t.getPropertyValue(`--site-bg`).trim()||`#0d1117`,i=t.getPropertyValue(`--site-fg`).trim()||`#e6edf3`,a=t.getPropertyValue(`--site-muted`).trim()||`#8b949e`,o=t.getPropertyValue(`--site-line`).trim()||`#30363d`,s=t.getPropertyValue(`--site-soft`).trim()||`#161b22`,c=t.getPropertyValue(`--site-accent`).trim()||`#58a6ff`,l=t.getPropertyValue(`--site-error`).trim()||`#f85149`;t.getPropertyValue(`--site-fast-color`).trim(),t.getPropertyValue(`--site-effort-color`).trim();let u=document.documentElement.classList.contains(`dark`)||document.documentElement.dataset.kbTheme===`dark`;e.editor.defineTheme(`samey-site`,{base:u?`vs-dark`:`vs`,inherit:!0,rules:[{token:`comment`,foreground:a.replace(`#`,``)},{token:`string`,foreground:u?`72b172`:`267f37`},{token:`number`,foreground:u?`b281d3`:`795e26`},{token:`keyword`,foreground:c.replace(`#`,``)}],colors:{"editor.background":r,"editor.foreground":i,"editorGutter.background":r,"editorLineNumber.foreground":a,"editorLineNumber.activeForeground":i,"editor.lineHighlightBackground":s,"editor.lineHighlightBorder":`#00000000`,"editor.selectionBackground":`${c}55`,"editor.inactiveSelectionBackground":`${c}2c`,"editorCursor.foreground":c,"editorIndentGuide.background1":o,"editorIndentGuide.activeBackground1":a,"editorWhitespace.foreground":o,"editorError.foreground":l,"diffEditor.insertedTextBackground":`#00000000`,"diffEditor.removedTextBackground":`#00000000`,"diffEditor.insertedLineBackground":`#00000000`,"diffEditor.removedLineBackground":`#00000000`,"diffEditor.diagonalFill":o,"scrollbar.shadow":`#00000000`,"scrollbarSlider.background":`${a}55`,"scrollbarSlider.hoverBackground":`${a}88`,"scrollbarSlider.activeBackground":`${a}aa`}}),e.editor.setTheme(`samey-site`);for(let t of e.editor.getEditors())t.updateOptions({fontFamily:n})}function w(){return c().then(e=>{let{monaco:t}=e;return y=e.ensureMonacoLanguage,C(t),!_&&!b&&(b=()=>C(t),addEventListener(`samey-themechange`,b)),t})}let T=(e,t={})=>({language:e,theme:`samey-site`,automaticLayout:!0,minimap:{enabled:!1},lineNumbers:`on`,lineNumbersMinChars:3,glyphMargin:!1,folding:!0,fontFamily:S(),fontSize:14,lineHeight:22,fontLigatures:!0,wordWrap:`on`,wrappingIndent:`same`,renderLineHighlight:`gutter`,renderWhitespace:`selection`,scrollBeyondLastLine:!1,smoothScrolling:!1,overviewRulerLanes:0,hideCursorInOverviewRuler:!0,fixedOverflowWidgets:!0,padding:{top:18,bottom:26},scrollbar:{useShadows:!1,verticalScrollbarSize:8,horizontalScrollbarSize:8,alwaysConsumeMouseWheel:!1},...t});function E(e=`Loading editor…`){n.innerHTML=`<div class="tool-editor-loading"><span>${p(e)}</span></div>`,x(``)}let D=e=>e===v,O=new TextEncoder;function k(e){let t=0,n=0;for(let r of e)t++,r.codePointAt(0)>127&&n++;return{words:e.match(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)?.length??0,chars:t,bytes:O.encode(e).length,nonAscii:n}}async function A(e){E();let t=await w();if(!D(e)||i()!==`text`)return;let r=d(`text`,`Hello World! Café résumé naïve
 你好世界！
 Emoji: 🎉🚀💡`);n.innerHTML=`<section class="tool-one-pane"><div id="text-editor" class="monaco-host"></div></section>`;let a=t.editor.createModel(r,`plaintext`),o=t.editor.create(n.querySelector(`#text-editor`),T(`plaintext`));o.setModel(a);let s=[],c=()=>{let e=a.getValue(),n=k(e);x(`<span class="text-tool-stats"><span class="text-stat"><b>W</b><strong>${n.words.toLocaleString()}</strong><span>words</span></span><span class="text-stat"><b>X</b><strong>${n.chars.toLocaleString()}</strong><span>chars</span></span><span class="text-stat"><b>A</b><strong>${n.nonAscii.toLocaleString()}</strong><span>non-ASCII</span></span></span>`);let r=[];for(let e=1;e<=a.getLineCount();e++){let n=a.getLineContent(e);for(let i of n.matchAll(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu))r.push({range:new t.Range(e,i.index+1,e,i.index+i[0].length+1),options:{inlineClassName:`monaco-word-highlight`}});for(let i=0;i<n.length;){let a=n.codePointAt(i),o=a>65535?2:1;a>127&&r.push({range:new t.Range(e,i+1,e,i+o+1),options:{inlineClassName:`monaco-nonascii-highlight`}}),i+=o}}s=o.deltaDecorations(s,r),f(`text`,e)},l=a.onDidChangeContent(c);c(),g=()=>{l.dispose(),o.dispose(),a.dispose()}}let j=new TextDecoder(`utf-8`,{fatal:!0}),M=`123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz`,N=`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;=?@[]^_{|}~`,P=e=>{let t=``;for(let n=0;n<e.length;n+=32768)t+=String.fromCharCode(...e.subarray(n,n+32768));return t},F=e=>Uint8Array.from(e,e=>e.charCodeAt(0)),I=(e,t)=>{if(!e.length)return``;let n=0n;for(let t of e)n=n*256n+BigInt(t);let r=``;for(;n;n/=BigInt(t.length))r=t[Number(n%BigInt(t.length))]+r;let i=0;for(;i<e.length&&!e[i];)i++;return t[0].repeat(i)+r},L=(e,t)=>{e=e.trim();let n=0n;for(let r of e){let e=t.indexOf(r);if(e<0)throw Error(`Invalid character: ${r}`);n=n*BigInt(t.length)+BigInt(e)}let r=[];for(;n;n>>=8n)r.unshift(Number(n&255n));let i=0;for(;i<e.length&&e[i]===t[0];)i++;return Uint8Array.from([...Array(i).fill(0),...r])},R=e=>[...e].map(e=>e.toString(16).padStart(2,`0`)).join(``),z=e=>{if(e=e.replace(/\s|^0x/gi,``),e.length%2||!/^\s*$|^[\da-f]+$/i.test(e))throw Error(`Invalid hex`);return Uint8Array.from(e.match(/../g)?.map(e=>parseInt(e,16))??[])},B=e=>[...e].map(e=>e.toString(2).padStart(8,`0`)).join(` `),V=e=>{if(e=e.replace(/[\s_]/g,``),e.length%8||!/^[01]*$/.test(e))throw Error(`Invalid binary`);return Uint8Array.from(e.match(/.{8}/g)?.map(e=>parseInt(e,2))??[])},H=`ABCDEFGHIJKLMNOPQRSTUVWXYZ234567`,U=e=>{let t=``,n=0,r=0;for(let i of e)for(n=n<<8|i,r+=8;r>=5;)t+=H[n>>>r-5&31],r-=5;for(r&&(t+=H[n<<5-r&31]);t.length%8;)t+=`=`;return t},W=e=>{e=e.toUpperCase().replace(/[\s-=]/g,``);let t=0,n=0,r=[];for(let i of e){let e=H.indexOf(i);if(e<0)throw Error(`Invalid Base32`);t=t<<5|e,n+=5,n>=8&&(r.push(t>>>n-8&255),n-=8)}return Uint8Array.from(r)},G=e=>[...e].map(e=>({"&":`&amp;`,"<":`&lt;`,">":`&gt;`,'"':`&quot;`,"'":`&#39;`})[e]??(e.codePointAt(0)>127?`&#${e.codePointAt(0)};`:e)).join(``),K=e=>{let t=document.createElement(`textarea`);return t.innerHTML=e,t.value},q=e=>[...e].map(e=>{let t=e.codePointAt(0);return t>=32&&t<=126&&e!==`\\`?e:t<=65535?`\\u${t.toString(16).padStart(4,`0`)}`:`\\u{${t.toString(16)}}`}).join(``),ee=e=>e.replace(/\\u\{([\da-f]{1,6})\}|\\u([\da-f]{4})|\\x([\da-f]{2})/gi,(e,t,n,r)=>String.fromCodePoint(parseInt(t||n||r,16))),te=e=>e.replace(/[A-Za-z]/g,e=>String.fromCharCode((e<=`Z`?65:97)+(e.charCodeAt(0)-(e<=`Z`?65:97)+13)%26)),J=[[`base64`,`Base64`],[`base64url`,`Base64URL`],[`base32`,`Base32`],[`base58`,`Base58`],[`base88`,`Base88`],[`hex`,`Hex`],[`binary`,`Binary`],[`url`,`URL`],[`html`,`HTML`],[`json`,`JSON string`],[`unicode`,`Unicode`],[`rot13`,`ROT13`]],Y=(e,t,n=!1)=>{if(e===`base64`)return n?j.decode(F(atob(t.replace(/\s/g,``)))):btoa(P(O.encode(t)));if(e===`base64url`){if(n){let e=t.replace(/\s/g,``).replace(/-/g,`+`).replace(/_/g,`/`);return e+=`=`.repeat((4-e.length%4)%4),j.decode(F(atob(e)))}return btoa(P(O.encode(t))).replace(/\+/g,`-`).replace(/\//g,`_`).replace(/=+$/,``)}if(e===`base32`)return n?j.decode(W(t)):U(O.encode(t));if(e===`base58`)return n?j.decode(L(t,M)):I(O.encode(t),M);if(e===`base88`)return n?j.decode(L(t,N)):I(O.encode(t),N);if(e===`hex`)return n?j.decode(z(t)):R(O.encode(t));if(e===`binary`)return n?j.decode(V(t)):B(O.encode(t));if(e===`url`)return n?decodeURIComponent(t):encodeURIComponent(t);if(e===`html`)return n?K(t):G(t);if(e===`json`){if(n){let e=JSON.parse(t);if(typeof e!=`string`)throw Error(`JSON value is not a string`);return e}return JSON.stringify(t)}return e===`unicode`?n?ee(t):q(t):te(t)},X=(e,t)=>{let n=t.trim();if(!n)return``;if(e===`hex`){let e=n.replace(/^0x/i,``).replace(/\s/g,``);if(!e||e.length%2||!/^[\da-f]+$/i.test(e))throw Error(`Invalid Hex`)}else if(e===`base32`){let e=n.replace(/\s/g,``);if(!/^[A-Z2-7]+={0,6}$/i.test(e)||/=[^=]/.test(e))throw Error(`Invalid Base32`);let t=e.replace(/=+$/,``);if(![0,2,4,5,7].includes(t.length%8))throw Error(`Invalid Base32`);let r=W(e);if(U(r).replace(/=+$/,``)!==t.toUpperCase())throw Error(`Invalid Base32`)}else if(e===`base64`){let e=n.replace(/\s/g,``);if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(e))throw Error(`Invalid Base64`)}else if(e===`base64url`){let e=n.replace(/\s/g,``);if(!/^[A-Za-z0-9_-]+={0,2}$/.test(e))throw Error(`Invalid Base64URL`)}else if(e===`binary`){let e=n.replace(/[\s_]/g,``);if(!e||e.length%8||!/^[01]+$/.test(e))throw Error(`Invalid Binary`)}return Y(e,n,!0)},Z=e=>{let t=e.trim();if(!t)return null;for(let e of[`hex`,`base32`,`base64`,`base64url`,`url`])try{if(e===`url`){if(!/%[\da-f]{2}/i.test(t)||decodeURIComponent(t)===t)continue;return e}return X(e,t),e}catch{}return null};async function ne(e){E();let t=await w();if(!D(e)||i()!==`base`)return;let r=d(`mode`,`decode`)===`encode`?`encode`:`decode`,a=d(`format`,`auto`);[...J.map(([e])=>e),`auto`].includes(a)||(a=`auto`);let o=d(`lines`,`0`)===`1`,s=d(`text`,`https%3A%2F%2Fsanyambrar.com%2Ftools%3Ftool%3Dbase`);n.innerHTML=`<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${r===`decode`?` selected`:``}>Decode</option><option value="encode"${r===`encode`?` selected`:``}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${a===`auto`?` selected`:``}>Auto detect</option>${J.map(([e,t])=>`<option value="${e}"${a===e?` selected`:``}>${t}</option>`).join(``)}</select></label><button class="codec-line-toggle" type="button" data-codec-lines role="switch" aria-checked="${o}"><span class="codec-switch-track" aria-hidden="true"><span></span></span><span>Per line</span></button><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy aria-label="Copy output" title="Copy output">${m(`copy`)}</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="codec-status" data-codec-status></div></div></section>`;let c=t.editor.createModel(s,`plaintext`),l=t.editor.createModel(``,`plaintext`),u=t.editor.create(n.querySelector(`#codec-input`),T(`plaintext`,{lineNumbers:`off`,folding:!1,padding:{top:12,bottom:12}})),p=t.editor.create(n.querySelector(`#codec-output`),T(`plaintext`,{readOnly:!0,lineNumbers:`off`,folding:!1,padding:{top:12,bottom:12}}));u.setModel(c),p.setModel(l);let _=n.querySelector(`[data-codec-status]`),v=n.querySelector(`[data-codec-auto]`),y=n.querySelector(`[data-codec-mode]`),b=n.querySelector(`[data-codec-format]`),S=n.querySelector(`[data-codec-lines]`);x(``);let C=(e,t=0)=>{let n=a;if(r===`decode`&&a===`auto`&&(n=Z(e)),r===`encode`&&a===`auto`&&(n=`base64`),!n)throw Error(`${t?`Line ${t}: `:``}input does not match a supported encoding`);try{return r===`decode`?X(n,e):Y(n,e,!1)}catch(e){throw Error(`${t?`Line ${t}: `:``}${e?.message||String(e)}`)}},O=()=>{let e=c.getValue();f(`text`,e),f(`mode`,r),f(`format`,a),f(`lines`,o?`1`:`0`),S.setAttribute(`aria-checked`,String(o));let t=a;if(!o&&r===`decode`&&a===`auto`&&(t=Z(e)),!o&&r===`encode`&&a===`auto`&&(t=`base64`),v.innerHTML=a===`auto`?o?`Detecting <strong>per line</strong>`:t?`Detected <strong>${J.find(([e])=>e===t)?.[1]||t}</strong>`:`No encoding detected`:``,!e){l.setValue(``),_.textContent=``,_.classList.remove(`danger`);return}try{let t=o?e.split(/\r?\n/).map((e,t)=>e?C(e,t+1):``).join(`
-`):C(e);l.setValue(t);let n=o?` · ${e.split(/\r?\n/).length.toLocaleString()} lines`:``;_.textContent=`${[...e].length.toLocaleString()} → ${[...t].length.toLocaleString()} chars${n}`,_.classList.remove(`danger`)}catch(e){l.setValue(``),_.textContent=e?.message||String(e),_.classList.add(`danger`)}};y.onchange=()=>{r=y.value,O()},b.onchange=()=>{a=b.value,O()},S.onclick=()=>{o=!o,O()},n.querySelector(`[data-codec-copy]`).onclick=()=>h(l.getValue());let k=c.onDidChangeContent(O);O(),g=()=>{k.dispose(),u.dispose(),p.dispose(),c.dispose(),l.dispose()}}let re=[[`plaintext`,`Plain text`],[`javascript`,`JavaScript`],[`typescript`,`TypeScript`],[`json`,`JSON`],[`html`,`HTML`],[`css`,`CSS`],[`markdown`,`Markdown`],[`python`,`Python`],[`rust`,`Rust`],[`go`,`Go`],[`java`,`Java`],[`cpp`,`C++`],[`c`,`C`],[`shell`,`Shell`],[`sql`,`SQL`],[`yaml`,`YAML`],[`xml`,`XML`]];async function ie(e){E();let t=await w();if(!D(e)||i()!==`diff`)return;let a=d(`left`,d(`text`,`Hello World
-
-This is the original text.`)),s=d(`right`,`Hello World
-
-This is the modified text.`),c=d(`language`,`plaintext`),p=l(`diff`,`layout`,`split`)===`merged`?`merged`:`split`;if(await y(c),!D(e)||i()!==`diff`)return;n.innerHTML=`<section class="diff-tool" data-layout="${p}">
+`):C(e);l.setValue(t);let n=o?` · ${e.split(/\r?\n/).length.toLocaleString()} lines`:``;_.textContent=`${[...e].length.toLocaleString()} → ${[...t].length.toLocaleString()} chars${n}`,_.classList.remove(`danger`)}catch(e){l.setValue(``),_.textContent=e?.message||String(e),_.classList.add(`danger`)}};y.onchange=()=>{r=y.value,O()},b.onchange=()=>{a=b.value,O()},S.onclick=()=>{o=!o,O()},n.querySelector(`[data-codec-copy]`).onclick=()=>h(l.getValue());let k=c.onDidChangeContent(O);O(),g=()=>{k.dispose(),u.dispose(),p.dispose(),c.dispose(),l.dispose()}}let re=[[`plaintext`,`Plain text`],[`javascript`,`JavaScript`],[`typescript`,`TypeScript`],[`json`,`JSON`],[`html`,`HTML`],[`css`,`CSS`],[`markdown`,`Markdown`],[`python`,`Python`],[`rust`,`Rust`],[`go`,`Go`],[`java`,`Java`],[`cpp`,`C++`],[`c`,`C`],[`shell`,`Shell`],[`sql`,`SQL`],[`yaml`,`YAML`],[`xml`,`XML`]];async function ie(generation) {
+    const loadingEditor=E, ensureMonaco=w, currentRender=D, route=i, get=d, set=f, localGet=l, localSet=u, ensureLanguage=y, root=n, context=r, setContext=x, esc=p, icon=m, editorOptions=T, DiffWorker=o, LANGUAGES=re;
+    loadingEditor();
+    const monaco = await ensureMonaco();
+    if (!currentRender(generation) || route() !== 'diff') return;
+    const left = get('left', get('text', 'Hello World\n\nThis is the original text.'));
+    const right = get('right', 'Hello World\n\nThis is the modified text.');
+    let language = get('language', 'plaintext');
+    const savedLayout = localGet('diff', 'layout', 'split');
+    let layoutMode = savedLayout === 'combined' || savedLayout === 'merged' ? 'combined' : 'split';
+    let splitRatio = Math.min(80, Math.max(20, +localGet('diff', 'split', '50') || 50));
+    await ensureLanguage(language);
+    if (!currentRender(generation) || route() !== 'diff') return;
+    root.innerHTML = `<section class="diff-tool" data-layout="${layoutMode}" style="--diff-split:${splitRatio}%">
       <div class="diff-panes">
-        <section class="diff-pane diff-pane-original"><header>Original</header><div id="diff-original" class="monaco-host"></div></section>
-        <section class="diff-pane diff-pane-modified"><header>Modified</header><div id="diff-modified" class="monaco-host"></div></section>
+        <section class="diff-pane diff-pane-original" aria-label="Original"><div id="diff-original" class="monaco-host"></div></section>
+        <div class="diff-splitter" role="separator" tabindex="0" aria-label="Resize diff panes" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="${Math.round(splitRatio)}"></div>
+        <section class="diff-pane diff-pane-modified" aria-label="Modified"><div id="diff-modified" class="monaco-host"></div></section>
       </div>
-    </section>`;let h=t.editor.createModel(a,c),_=t.editor.createModel(s,c),v=T(c,{folding:!1,renderLineHighlight:`none`}),b=t.editor.create(n.querySelector(`#diff-original`),v),S=t.editor.create(n.querySelector(`#diff-modified`),v);b.setModel(h),S.setModel(_);let C=new o,O=0,k=-1,A=[],j=[],M=[],N=e=>/[\p{L}\p{N}_$]/u.test(e)?`word`:/\s/u.test(e)?`space`:`punct`,P=(e,n)=>{let{startLineNumber:r,startColumn:i,endLineNumber:a,endColumn:o}=n;if(r!==a)return new t.Range(r,i,a,o);let s=e.getLineContent(r),c=Math.max(0,i-1),l=Math.max(c,o-1);if(c===l){if(!(c>0&&c<s.length&&N(s[c-1])===`word`&&N(s[c])===`word`))return null;for(;c>0&&N(s[c-1])===`word`;)c--;for(;l<s.length&&N(s[l])===`word`;)l++}else{let e=s.slice(c,l);if(/\S/u.test(e)){for(;c<l&&/\s/u.test(s[c]);)c++;for(;l>c&&/\s/u.test(s[l-1]);)l--}let t=c<s.length?N(s[c]):null,n=l>0?N(s[l-1]):null;if(t===`word`)for(;c>0&&N(s[c-1])===`word`;)c--;if(n===`word`)for(;l<s.length&&N(s[l])===`word`;)l++}return l>c?new t.Range(r,c+1,a,l+1):null},F=(e,n,r)=>n>e?{range:new t.Range(e,1,n-1,1),options:{isWholeLine:!0,className:r}}:null,I=e=>{let t=[],n=[];for(let r of e)if(r.innerChanges.length)for(let e of r.innerChanges){let r=P(h,e.originalRange),i=P(_,e.modifiedRange);r&&t.push({range:r,options:{inlineClassName:`diff-word-removed`}}),i&&n.push({range:i,options:{inlineClassName:`diff-word-added`}})}else{let e=F(r.originalStartLineNumber,r.originalEndLineNumberExclusive,`diff-line-removed`),i=F(r.modifiedStartLineNumber,r.modifiedEndLineNumberExclusive,`diff-line-added`);e&&t.push(e),i&&n.push(i)}j=b.deltaDecorations(j,t),M=S.deltaDecorations(M,n)};C.onmessage=e=>{let t=e.data;t.type!==`result`||t.revision<O||t.revision<k||(k=t.revision,A=t.changes,I(A))},C.postMessage({type:`init`,revision:O,original:a,modified:s});let L=(e,t)=>{let n=0;for(let r of A){let i=t?r.originalStartLineNumber:r.modifiedStartLineNumber,a=t?r.originalEndLineNumberExclusive:r.modifiedEndLineNumberExclusive,o=t?r.modifiedStartLineNumber:r.originalStartLineNumber,s=t?r.modifiedEndLineNumberExclusive:r.originalEndLineNumberExclusive,c=Math.max(0,a-i),l=Math.max(0,s-o);if(e<i)break;if(c>0&&e<a){if(l<=1||c<=1)return Math.max(1,o);let t=(e-i)/(c-1);return Math.max(1,Math.round(o+t*(l-1)))}n+=l-c}return Math.max(1,e+n)},R=!1,z=(e,n,r)=>{if(!R){if(R=!0,e.getModel()&&n.getModel()){let i=e.getVisibleRanges()[0];if(i){let a=i.startLineNumber,o=Math.min(n.getModel().getLineCount(),L(a,r)),s=e.getTopForLineNumber(a)-e.getScrollTop();n.setScrollTop(Math.max(0,n.getTopForLineNumber(o)-s),t.editor.ScrollType.Immediate)}n.setScrollLeft(e.getScrollLeft(),t.editor.ScrollType.Immediate)}requestAnimationFrame(()=>{R=!1})}},B=b.onDidScrollChange(e=>{(e.scrollTopChanged||e.scrollLeftChanged)&&z(b,S,!0)}),V=S.onDidScrollChange(e=>{(e.scrollTopChanged||e.scrollLeftChanged)&&z(S,b,!1)}),H=()=>{let e=n.querySelector(`.diff-tool`);e.dataset.layout=p,u(`diff`,`layout`,p),requestAnimationFrame(()=>{b.layout(),S.layout()}),U()},U=()=>{x(`<select data-diff-language aria-label="Syntax language">${re.map(([e,t])=>`<option value="${e}"${c===e?` selected`:``}>${t}</option>`).join(``)}</select><span class="diff-view-toggle" role="group" aria-label="Diff layout"><button type="button" data-diff-layout="split" aria-pressed="${p===`split`}">Side by side</button><button type="button" data-diff-layout="merged" aria-pressed="${p===`merged`}">Merged</button></span><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${m(`swap`)}</button>`),r.querySelector(`[data-diff-language]`).onchange=async n=>{c=n.target.value,f(`language`,c),await y(c),!(!D(e)||i()!==`diff`)&&(t.editor.setModelLanguage(h,c),t.editor.setModelLanguage(_,c))},r.querySelectorAll(`[data-diff-layout]`).forEach(e=>e.onclick=()=>{p=e.dataset.diffLayout,H()}),r.querySelector(`[data-diff-swap]`).onclick=()=>{let e=h.getValue();h.setValue(_.getValue()),_.setValue(e)}},W=e=>e.changes.map(e=>({startLineNumber:e.range.startLineNumber,startColumn:e.range.startColumn,endLineNumber:e.range.endLineNumber,endColumn:e.range.endColumn,text:e.text}));let saveTimer=0,originalDirty=!1,modifiedDirty=!1;const flushSave=()=>{saveTimer&&(clearTimeout(saveTimer),saveTimer=0),originalDirty&&(f(`left`,h.getValue()),originalDirty=!1),modifiedDirty&&(f(`right`,_.getValue()),modifiedDirty=!1)},scheduleSave=e=>{e===`original`?originalDirty=!0:modifiedDirty=!0,saveTimer&&clearTimeout(saveTimer),saveTimer=setTimeout(flushSave,400)},saveOnPageHide=()=>flushSave();addEventListener(`pagehide`,saveOnPageHide);let K=h.onDidChangeContent(e=>{scheduleSave(`original`),O++,C.postMessage({type:`edit`,side:`original`,revision:O,changes:W(e)})}),q=_.onDidChangeContent(e=>{scheduleSave(`modified`),O++,C.postMessage({type:`edit`,side:`modified`,revision:O,changes:W(e)})});U(),g=()=>{flushSave(),removeEventListener(`pagehide`,saveOnPageHide),K.dispose(),q.dispose(),B.dispose(),V.dispose(),C.terminate(),b.dispose(),S.dispose(),h.dispose(),_.dispose()}}let Q=`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`,$=e=>e.trim().replace(/[\s_,']/g,``);function ae(e,t){if(e=$(e),!e)throw Error(`Enter a number`);let n=e[0]===`-`;if((n||e[0]===`+`)&&(e=e.slice(1)),t===16&&(e=e.replace(/^0x/i,``)),t===8&&(e=e.replace(/^0o/i,``)),t===2&&(e=e.replace(/^0b/i,``)),!e)throw Error(`Enter a number`);let r=0n;for(let n of e){let e=t<=36?n.toUpperCase():n,i=Q.indexOf(e);if(i<0||i>=t)throw Error(`“${n}” is not valid in base ${t}`);r=r*BigInt(t)+BigInt(i)}return n?-r:r}function oe(e,t){if(!e)return`0`;let n=e<0n;n&&(e=-e);let r=``;for(;e;e/=BigInt(t))r=Q[Number(e%BigInt(t))]+r;return(n?`-`:``)+r}let se=(e,t)=>{let n=e.startsWith(`-`),r=n?e.slice(1):e,i=[];for(let e=r.length;e>0;e-=t)i.unshift(r.slice(Math.max(0,e-t),e));return(n?`-`:``)+i.join(` `)};function ce(){let e=Math.min(62,Math.max(2,+d(`base`,`10`)||10)),t=Math.min(62,Math.max(2,+d(`custom`,`36`)||36)),r=d(`text`,`255`);n.innerHTML=`<section class="number-tool"><div class="number-shell"><section class="number-input-pane"><label for="number-input">Input</label><input id="number-input" spellcheck="false" value="${p(r)}"></section><div class="number-options" aria-label="Number options"><label><span>Source base</span><input id="source-base" type="number" min="2" max="62" value="${e}"></label><div class="radix-choices" aria-label="Common source bases">${[2,8,10,16].map(e=>`<button type="button" data-base="${e}">Base ${e}</button>`).join(``)}</div><label><span>Custom output base</span><input id="custom-base" type="number" min="2" max="62" value="${t}"></label></div><div class="number-error" id="number-error" hidden></div><section class="number-output-pane"><header><h1>Output</h1></header><div class="number-grid"></div><section class="bit-panel"><header><h2>Bits</h2><span id="bit-caption"></span></header><div id="bit-values" class="bit-values"></div></section></section></div></section>`;let i=n.querySelector(`#number-input`),a=n.querySelector(`#source-base`),o=n.querySelector(`#custom-base`),s=n.querySelector(`.number-grid`),c=n.querySelector(`#bit-values`),l=n.querySelector(`#bit-caption`),u=n.querySelector(`#number-error`),_=null,v=()=>[[`binary`,`Binary`,2,4],[`octal`,`Octal`,8,3],[`decimal`,`Decimal`,10,3],[`hex`,`Hexadecimal`,16,4],[`custom`,`Base ${t}`,t,4]],y=()=>{s.innerHTML=v().map(([e,t,n])=>`<div class="number-card" data-number-card="${e}"><header><span>${t}</span><small>base ${n}</small></header><input data-number-radix="${n}" aria-label="${t}" spellcheck="false"><button type="button" data-copy-number aria-label="Copy value" title="Copy value">${m(`copy`)}</button></div>`).join(``)},b=e=>{for(let[t,n,r,i]of v()){let a=s.querySelector(`[data-number-card="${t}"]`);if(!a)continue;a.querySelector(`header span`).textContent=n,a.querySelector(`header small`).textContent=`base ${r}`;let o=a.querySelector(`[data-number-radix]`);o.dataset.numberRadix=String(r);let c=_===null?``:oe(_,r);o!==e&&(o.value=_===null?``:se(c,i));let l=a.querySelector(`[data-copy-number]`);l.dataset.copyNumber=c,l.disabled=_===null}},S=i=>{try{_=ae(r,e),u.hidden=!0,u.textContent=``}catch(e){_=null,u.hidden=!1,u.textContent=e?.message||String(e)}if(n.querySelectorAll(`[data-base]`).forEach(t=>t.toggleAttribute(`data-active`,+t.dataset.base===e)),b(i),_===null)c.innerHTML=``,l.textContent=``;else{let e=_<0n?-_:_,t=Math.max(1,e.toString(2).length),n=e.toString(2).padStart(Math.ceil(t/4)*4,`0`);c.innerHTML=(n.match(/.{1,4}/g)||[]).map(e=>`<code>${e}</code>`).join(``),l.textContent=`${t} bit${t===1?``:`s`} · ${Math.ceil(t/8)} byte${Math.ceil(t/8)===1?``:`s`}`}f(`text`,r),f(`base`,e),f(`custom`,t),x(_===null?`<span class="danger">Invalid value</span>`:``)};y(),i.oninput=()=>{r=i.value,S()},a.onchange=()=>{e=Math.min(62,Math.max(2,+a.value||2)),a.value=String(e),S()},o.onchange=()=>{t=Math.min(62,Math.max(2,+o.value||2)),o.value=String(t),S()},n.querySelector(`.radix-choices`).onclick=t=>{let n=t.target.closest(`[data-base]`);n&&(e=+n.dataset.base,a.value=String(e),S())},s.addEventListener(`input`,t=>{let n=t.target.closest(`[data-number-radix]`);n&&(e=+n.dataset.numberRadix,r=$(n.value),a.value=String(e),i.value=r,S(n))}),s.addEventListener(`change`,e=>{e.target.closest(`[data-number-radix]`)&&S()}),s.addEventListener(`click`,e=>{let t=e.target.closest(`[data-copy-number]`);t&&!t.disabled&&h(t.dataset.copyNumber)}),S(),g=()=>{}}async function le(e){E();let t=await w();if(!D(e)||i()!==`markdown`||(await y(`markdown`),!D(e)||i()!==`markdown`))return;let o=d(`text`,`# Markdown
+      <section class="diff-combined" aria-label="Combined diff"></section>
+    </section>`;
+    const original = monaco.editor.createModel(left, language);
+    const modified = monaco.editor.createModel(right, language);
+    const baseOptions = editorOptions(language, {
+      folding:false,
+      renderLineHighlight:'none',
+      wordWrap:'off',
+      fontSize:13.5,
+      lineHeight:21,
+      padding:{top:12,bottom:16},
+    });
+    const originalEditor = monaco.editor.create(root.querySelector('#diff-original'), baseOptions);
+    const modifiedEditor = monaco.editor.create(root.querySelector('#diff-modified'), baseOptions);
+    originalEditor.setModel(original); modifiedEditor.setModel(modified);
+
+    // Diffing runs entirely in a dedicated worker. It uses the same advanced
+    // line/character algorithm as Monaco's DiffEditor, without mounting a
+    // second hidden DiffEditor or making its expensive alignment DOM part of
+    // the typing hot path.
+    const diffWorker = new DiffWorker();
+    let revision = 0;
+    let appliedRevision = -1;
+    let diffMappings = [];
+    let originalDecorations = [], modifiedDecorations = [];
+    const tokenKind = char => /[\p{L}\p{N}_$]/u.test(char) ? 'word' : /\s/u.test(char) ? 'space' : 'punct';
+    const expandWordRange = (model, range) => {
+      const {startLineNumber,startColumn,endLineNumber,endColumn} = range;
+      if (startLineNumber !== endLineNumber) return new monaco.Range(startLineNumber,startColumn,endLineNumber,endColumn);
+      const text = model.getLineContent(startLineNumber);
+      let start = Math.max(0,startColumn - 1), end = Math.max(start,endColumn - 1);
+      if (start === end) {
+        if (!(start > 0 && start < text.length && tokenKind(text[start - 1]) === 'word' && tokenKind(text[start]) === 'word')) return null;
+        while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
+        while (end < text.length && tokenKind(text[end]) === 'word') end++;
+      } else {
+        const changed = text.slice(start,end);
+        if (/\S/u.test(changed)) {
+          while (start < end && /\s/u.test(text[start])) start++;
+          while (end > start && /\s/u.test(text[end - 1])) end--;
+        }
+        const leftKind = start < text.length ? tokenKind(text[start]) : null;
+        const rightKind = end > 0 ? tokenKind(text[end - 1]) : null;
+        if (leftKind === 'word') while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
+        if (rightKind === 'word') while (end < text.length && tokenKind(text[end]) === 'word') end++;
+      }
+      return end > start ? new monaco.Range(startLineNumber,start + 1,endLineNumber,end + 1) : null;
+    };
+    const lineDecoration = (start, endExclusive, className) => endExclusive > start ? {
+      range:new monaco.Range(start,1,endExclusive - 1,1), options:{isWholeLine:true,className}
+    } : null;
+    const paintDiff = changes => {
+      const leftMarks = [], rightMarks = [];
+      for (const change of changes) {
+        if (change.innerChanges.length) {
+          for (const inner of change.innerChanges) {
+            const leftRange = expandWordRange(original,inner.originalRange);
+            const rightRange = expandWordRange(modified,inner.modifiedRange);
+            if (leftRange) leftMarks.push({range:leftRange,options:{inlineClassName:'diff-word-removed'}});
+            if (rightRange) rightMarks.push({range:rightRange,options:{inlineClassName:'diff-word-added'}});
+          }
+        } else {
+          const leftLine = lineDecoration(change.originalStartLineNumber,change.originalEndLineNumberExclusive,'diff-line-removed');
+          const rightLine = lineDecoration(change.modifiedStartLineNumber,change.modifiedEndLineNumberExclusive,'diff-line-added');
+          if (leftLine) leftMarks.push(leftLine);
+          if (rightLine) rightMarks.push(rightLine);
+        }
+      }
+      originalDecorations = originalEditor.deltaDecorations(originalDecorations,leftMarks);
+      modifiedDecorations = modifiedEditor.deltaDecorations(modifiedDecorations,rightMarks);
+    };
+
+    const combined = root.querySelector('.diff-combined');
+    const combinedEsc = value => esc(value).replace(/\t/g, '    ');
+    const renderCombined = () => {
+      if (layoutMode !== 'combined') return;
+      if (!diffMappings.length) {
+        combined.innerHTML = '<div class="diff-combined-empty">No differences</div>';
+        return;
+      }
+      const contextLines = 3;
+      const originalCount = original.getLineCount();
+      const modifiedCount = modified.getLineCount();
+      const hunks = [];
+      for (const change of diffMappings) {
+        const hunk = {
+          originalStart:Math.max(1,change.originalStartLineNumber - contextLines),
+          originalEnd:Math.min(originalCount + 1,change.originalEndLineNumberExclusive + contextLines),
+          modifiedStart:Math.max(1,change.modifiedStartLineNumber - contextLines),
+          modifiedEnd:Math.min(modifiedCount + 1,change.modifiedEndLineNumberExclusive + contextLines),
+          changes:[change],
+        };
+        const previous = hunks[hunks.length - 1];
+        if (previous && hunk.originalStart <= previous.originalEnd && hunk.modifiedStart <= previous.modifiedEnd) {
+          previous.originalEnd = Math.max(previous.originalEnd,hunk.originalEnd);
+          previous.modifiedEnd = Math.max(previous.modifiedEnd,hunk.modifiedEnd);
+          previous.changes.push(change);
+        } else hunks.push(hunk);
+      }
+      let rows = 0;
+      for (const hunk of hunks) rows += (hunk.originalEnd - hunk.originalStart) + (hunk.modifiedEnd - hunk.modifiedStart);
+      if (rows > 5000) {
+        combined.innerHTML = '<div class="diff-combined-empty">Combined view is capped for very large diffs. Use side by side.</div>';
+        return;
+      }
+      let html = '<table class="diff-combined-table"><tbody>';
+      const row = (kind, oldNo, newNo, prefix, text) => {
+        html += `<tr class="diff-combined-row ${kind}"><td class="diff-combined-num">${oldNo || ''}</td><td class="diff-combined-num">${newNo || ''}</td><td class="diff-combined-prefix">${prefix}</td><td class="diff-combined-code">${combinedEsc(text)}</td></tr>`;
+      };
+      for (const hunk of hunks) {
+        html += `<tr class="diff-combined-hunk"><td colspan="4">@@ -${hunk.originalStart},${hunk.originalEnd - hunk.originalStart} +${hunk.modifiedStart},${hunk.modifiedEnd - hunk.modifiedStart} @@</td></tr>`;
+        let oldLine = hunk.originalStart, newLine = hunk.modifiedStart;
+        for (const change of hunk.changes) {
+          while (oldLine < change.originalStartLineNumber && newLine < change.modifiedStartLineNumber) {
+            row('context',oldLine,newLine,' ',original.getLineContent(oldLine)); oldLine++; newLine++;
+          }
+          for (; oldLine < change.originalEndLineNumberExclusive; oldLine++) row('removed',oldLine,'','−',original.getLineContent(oldLine));
+          for (; newLine < change.modifiedEndLineNumberExclusive; newLine++) row('added','',newLine,'+',modified.getLineContent(newLine));
+        }
+        while (oldLine < hunk.originalEnd && newLine < hunk.modifiedEnd) {
+          row('context',oldLine,newLine,' ',original.getLineContent(oldLine)); oldLine++; newLine++;
+        }
+      }
+      combined.innerHTML = html + '</tbody></table>';
+    };
+
+    diffWorker.onmessage = event => {
+      const result = event.data;
+      if (result.type !== 'result' || result.revision < revision || result.revision < appliedRevision) return;
+      appliedRevision = result.revision;
+      diffMappings = result.changes;
+      paintDiff(diffMappings);
+      renderCombined();
+    };
+    diffWorker.postMessage({type:'init',revision,original:left,modified:right});
+
+    // Map a model line through the current diff. Unlike percentage mirroring,
+    // this preserves corresponding source lines across inserted/deleted blocks.
+    const mapDiffLine = (line, fromOriginal) => {
+      let delta = 0;
+      for (const change of diffMappings) {
+        const aStart = fromOriginal ? change.originalStartLineNumber : change.modifiedStartLineNumber;
+        const aEnd = fromOriginal ? change.originalEndLineNumberExclusive : change.modifiedEndLineNumberExclusive;
+        const bStart = fromOriginal ? change.modifiedStartLineNumber : change.originalStartLineNumber;
+        const bEnd = fromOriginal ? change.modifiedEndLineNumberExclusive : change.originalEndLineNumberExclusive;
+        const aLength = Math.max(0,aEnd - aStart), bLength = Math.max(0,bEnd - bStart);
+        if (line < aStart) break;
+        if (aLength > 0 && line < aEnd) {
+          if (bLength <= 1 || aLength <= 1) return Math.max(1,bStart);
+          const ratio = (line - aStart) / (aLength - 1);
+          return Math.max(1,Math.round(bStart + ratio * (bLength - 1)));
+        }
+        delta += bLength - aLength;
+      }
+      return Math.max(1,line + delta);
+    };
+    let syncingScroll = false;
+    const syncScroll = (from, to, fromOriginal) => {
+      if (syncingScroll || layoutMode !== 'split') return;
+      syncingScroll = true;
+      if (from.getModel() && to.getModel()) {
+        const visible = from.getVisibleRanges()[0];
+        if (visible) {
+          const sourceLine = visible.startLineNumber;
+          const targetLine = Math.min(to.getModel().getLineCount(),mapDiffLine(sourceLine,fromOriginal));
+          const viewportOffset = from.getTopForLineNumber(sourceLine) - from.getScrollTop();
+          to.setScrollTop(Math.max(0,to.getTopForLineNumber(targetLine) - viewportOffset),monaco.editor.ScrollType.Immediate);
+        }
+        to.setScrollLeft(from.getScrollLeft(),monaco.editor.ScrollType.Immediate);
+      }
+      requestAnimationFrame(() => { syncingScroll = false; });
+    };
+    const os = originalEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(originalEditor,modifiedEditor,true); });
+    const ms = modifiedEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(modifiedEditor,originalEditor,false); });
+
+    const shell = root.querySelector('.diff-tool');
+    const splitter = root.querySelector('.diff-splitter');
+    const setSplitRatio = (value, persist = false) => {
+      splitRatio = Math.min(80,Math.max(20,value));
+      shell.style.setProperty('--diff-split',`${splitRatio}%`);
+      splitter.setAttribute('aria-valuenow',String(Math.round(splitRatio)));
+      if (persist) localSet('diff','split',splitRatio.toFixed(2));
+      requestAnimationFrame(() => { originalEditor.layout(); modifiedEditor.layout(); });
+    };
+    splitter.onpointerdown = event => {
+      if (matchMedia('(max-width: 700px)').matches) return;
+      event.preventDefault(); splitter.setPointerCapture(event.pointerId); shell.toggleAttribute('data-resizing',true);
+    };
+    splitter.onpointermove = event => {
+      if (!splitter.hasPointerCapture(event.pointerId)) return;
+      const rect = shell.getBoundingClientRect();
+      setSplitRatio(((event.clientX - rect.left) / Math.max(1,rect.width)) * 100);
+    };
+    const finishSplit = event => {
+      if (splitter.hasPointerCapture(event.pointerId)) splitter.releasePointerCapture(event.pointerId);
+      shell.removeAttribute('data-resizing'); localSet('diff','split',splitRatio.toFixed(2));
+    };
+    splitter.onpointerup = finishSplit;
+    splitter.onpointercancel = finishSplit;
+    splitter.onkeydown = event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault(); setSplitRatio(splitRatio + (event.key === 'ArrowRight' ? 2 : -2),true);
+    };
+
+    const applyLayout = () => {
+      shell.dataset.layout = layoutMode;
+      localSet('diff','layout',layoutMode);
+      if (layoutMode === 'combined') renderCombined();
+      requestAnimationFrame(() => { originalEditor.layout(); modifiedEditor.layout(); });
+      setTopContext();
+    };
+    const setTopContext = () => {
+      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value,label]) => `<option value="${value}"${language===value?' selected':''}>${label}</option>`).join('')}</select><span class="diff-view-toggle" role="group" aria-label="Diff layout"><button type="button" data-diff-layout="split" aria-pressed="${layoutMode==='split'}">Side by side</button><button type="button" data-diff-layout="combined" aria-pressed="${layoutMode==='combined'}">Combined</button></span><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
+      context.querySelector('[data-diff-language]').onchange = async event => {
+        language = event.target.value; set('language',language); await ensureLanguage(language);
+        if (!currentRender(generation) || route() !== 'diff') return;
+        monaco.editor.setModelLanguage(original,language); monaco.editor.setModelLanguage(modified,language);
+      };
+      context.querySelectorAll('[data-diff-layout]').forEach(button => button.onclick = () => { layoutMode = button.dataset.diffLayout; applyLayout(); });
+      context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
+    };
+    const serializeChanges = event => event.changes.map(change => ({
+      startLineNumber:change.range.startLineNumber,
+      startColumn:change.range.startColumn,
+      endLineNumber:change.range.endLineNumber,
+      endColumn:change.range.endColumn,
+      text:change.text,
+    }));
+    // localStorage is synchronous. Serializing both complete documents on every
+    // keystroke makes large diffs stall on the main thread even though the diff
+    // algorithm itself runs in a worker. Persist only the side that changed and
+    // move the full-string write out of the input event.
+    let saveTimer = 0, originalDirty = false, modifiedDirty = false;
+    const flushSave = () => {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+      if (originalDirty) {
+        const value = original.getValue();
+        set('left',value);
+        originalDirty = false;
+      }
+      if (modifiedDirty) {
+        set('right',modified.getValue());
+        modifiedDirty = false;
+      }
+    };
+    const scheduleSave = side => {
+      if (side === 'original') originalDirty = true;
+      else modifiedDirty = true;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(flushSave,400);
+    };
+    const saveOnPageHide = () => flushSave();
+    addEventListener('pagehide',saveOnPageHide);
+    const a=original.onDidChangeContent(event => { scheduleSave('original'); revision++; diffWorker.postMessage({type:'edit',side:'original',revision,changes:serializeChanges(event)}); });
+    const b=modified.onDidChangeContent(event => { scheduleSave('modified'); revision++; diffWorker.postMessage({type:'edit',side:'modified',revision,changes:serializeChanges(event)}); });
+    setTopContext();
+    g = () => { flushSave(); removeEventListener('pagehide',saveOnPageHide); a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffWorker.terminate(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
+  }
+let Q=`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`,$=e=>e.trim().replace(/[\s_,']/g,``);function ae(e,t){if(e=$(e),!e)throw Error(`Enter a number`);let n=e[0]===`-`;if((n||e[0]===`+`)&&(e=e.slice(1)),t===16&&(e=e.replace(/^0x/i,``)),t===8&&(e=e.replace(/^0o/i,``)),t===2&&(e=e.replace(/^0b/i,``)),!e)throw Error(`Enter a number`);let r=0n;for(let n of e){let e=t<=36?n.toUpperCase():n,i=Q.indexOf(e);if(i<0||i>=t)throw Error(`“${n}” is not valid in base ${t}`);r=r*BigInt(t)+BigInt(i)}return n?-r:r}function oe(e,t){if(!e)return`0`;let n=e<0n;n&&(e=-e);let r=``;for(;e;e/=BigInt(t))r=Q[Number(e%BigInt(t))]+r;return(n?`-`:``)+r}let se=(e,t)=>{let n=e.startsWith(`-`),r=n?e.slice(1):e,i=[];for(let e=r.length;e>0;e-=t)i.unshift(r.slice(Math.max(0,e-t),e));return(n?`-`:``)+i.join(` `)};function ce(){let e=Math.min(62,Math.max(2,+d(`base`,`10`)||10)),t=Math.min(62,Math.max(2,+d(`custom`,`36`)||36)),r=d(`text`,`255`);n.innerHTML=`<section class="number-tool"><div class="number-shell"><section class="number-input-pane"><label for="number-input">Input</label><input id="number-input" spellcheck="false" value="${p(r)}"></section><div class="number-options" aria-label="Number options"><label><span>Source base</span><input id="source-base" type="number" min="2" max="62" value="${e}"></label><div class="radix-choices" aria-label="Common source bases">${[2,8,10,16].map(e=>`<button type="button" data-base="${e}">Base ${e}</button>`).join(``)}</div><label><span>Custom output base</span><input id="custom-base" type="number" min="2" max="62" value="${t}"></label></div><div class="number-error" id="number-error" hidden></div><section class="number-output-pane"><header><h1>Output</h1></header><div class="number-grid"></div><section class="bit-panel"><header><h2>Bits</h2><span id="bit-caption"></span></header><div id="bit-values" class="bit-values"></div></section></section></div></section>`;let i=n.querySelector(`#number-input`),a=n.querySelector(`#source-base`),o=n.querySelector(`#custom-base`),s=n.querySelector(`.number-grid`),c=n.querySelector(`#bit-values`),l=n.querySelector(`#bit-caption`),u=n.querySelector(`#number-error`),_=null,v=()=>[[`binary`,`Binary`,2,4],[`octal`,`Octal`,8,3],[`decimal`,`Decimal`,10,3],[`hex`,`Hexadecimal`,16,4],[`custom`,`Base ${t}`,t,4]],y=()=>{s.innerHTML=v().map(([e,t,n])=>`<div class="number-card" data-number-card="${e}"><header><span>${t}</span><small>base ${n}</small></header><input data-number-radix="${n}" aria-label="${t}" spellcheck="false"><button type="button" data-copy-number aria-label="Copy value" title="Copy value">${m(`copy`)}</button></div>`).join(``)},b=e=>{for(let[t,n,r,i]of v()){let a=s.querySelector(`[data-number-card="${t}"]`);if(!a)continue;a.querySelector(`header span`).textContent=n,a.querySelector(`header small`).textContent=`base ${r}`;let o=a.querySelector(`[data-number-radix]`);o.dataset.numberRadix=String(r);let c=_===null?``:oe(_,r);o!==e&&(o.value=_===null?``:se(c,i));let l=a.querySelector(`[data-copy-number]`);l.dataset.copyNumber=c,l.disabled=_===null}},S=i=>{try{_=ae(r,e),u.hidden=!0,u.textContent=``}catch(e){_=null,u.hidden=!1,u.textContent=e?.message||String(e)}if(n.querySelectorAll(`[data-base]`).forEach(t=>t.toggleAttribute(`data-active`,+t.dataset.base===e)),b(i),_===null)c.innerHTML=``,l.textContent=``;else{let e=_<0n?-_:_,t=Math.max(1,e.toString(2).length),n=e.toString(2).padStart(Math.ceil(t/4)*4,`0`);c.innerHTML=(n.match(/.{1,4}/g)||[]).map(e=>`<code>${e}</code>`).join(``),l.textContent=`${t} bit${t===1?``:`s`} · ${Math.ceil(t/8)} byte${Math.ceil(t/8)===1?``:`s`}`}f(`text`,r),f(`base`,e),f(`custom`,t),x(_===null?`<span class="danger">Invalid value</span>`:``)};y(),i.oninput=()=>{r=i.value,S()},a.onchange=()=>{e=Math.min(62,Math.max(2,+a.value||2)),a.value=String(e),S()},o.onchange=()=>{t=Math.min(62,Math.max(2,+o.value||2)),o.value=String(t),S()},n.querySelector(`.radix-choices`).onclick=t=>{let n=t.target.closest(`[data-base]`);n&&(e=+n.dataset.base,a.value=String(e),S())},s.addEventListener(`input`,t=>{let n=t.target.closest(`[data-number-radix]`);n&&(e=+n.dataset.numberRadix,r=$(n.value),a.value=String(e),i.value=r,S(n))}),s.addEventListener(`change`,e=>{e.target.closest(`[data-number-radix]`)&&S()}),s.addEventListener(`click`,e=>{let t=e.target.closest(`[data-copy-number]`);t&&!t.disabled&&h(t.dataset.copyNumber)}),S(),g=()=>{}}async function le(e){E();let t=await w();if(!D(e)||i()!==`markdown`||(await y(`markdown`),!D(e)||i()!==`markdown`))return;let o=d(`text`,`# Markdown
 
 **Bold**, *italic*, \`code\`.
 

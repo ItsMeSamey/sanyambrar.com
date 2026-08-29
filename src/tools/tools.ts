@@ -414,18 +414,29 @@ export function mountTool(toolId, root, context) {
     const left = get('left', get('text', 'Hello World\n\nThis is the original text.'));
     const right = get('right', 'Hello World\n\nThis is the modified text.');
     let language = get('language', 'plaintext');
-    let layoutMode = localGet('diff', 'layout', 'split') === 'merged' ? 'merged' : 'split';
+    const savedLayout = localGet('diff', 'layout', 'split');
+    let layoutMode = savedLayout === 'combined' || savedLayout === 'merged' ? 'combined' : 'split';
+    let splitRatio = Math.min(80, Math.max(20, +localGet('diff', 'split', '50') || 50));
     await ensureLanguage(language);
     if (!currentRender(generation) || route() !== 'diff') return;
-    root.innerHTML = `<section class="diff-tool" data-layout="${layoutMode}">
+    root.innerHTML = `<section class="diff-tool" data-layout="${layoutMode}" style="--diff-split:${splitRatio}%">
       <div class="diff-panes">
-        <section class="diff-pane diff-pane-original"><header>Original</header><div id="diff-original" class="monaco-host"></div></section>
-        <section class="diff-pane diff-pane-modified"><header>Modified</header><div id="diff-modified" class="monaco-host"></div></section>
+        <section class="diff-pane diff-pane-original" aria-label="Original"><div id="diff-original" class="monaco-host"></div></section>
+        <div class="diff-splitter" role="separator" tabindex="0" aria-label="Resize diff panes" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="${Math.round(splitRatio)}"></div>
+        <section class="diff-pane diff-pane-modified" aria-label="Modified"><div id="diff-modified" class="monaco-host"></div></section>
       </div>
+      <section class="diff-combined" aria-label="Combined diff"></section>
     </section>`;
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
-    const baseOptions = editorOptions(language, {folding:false, renderLineHighlight:'none'});
+    const baseOptions = editorOptions(language, {
+      folding:false,
+      renderLineHighlight:'none',
+      wordWrap:'off',
+      fontSize:13.5,
+      lineHeight:21,
+      padding:{top:12,bottom:16},
+    });
     const originalEditor = monaco.editor.create(root.querySelector('#diff-original'), baseOptions);
     const modifiedEditor = monaco.editor.create(root.querySelector('#diff-modified'), baseOptions);
     originalEditor.setModel(original); modifiedEditor.setModel(modified);
@@ -485,12 +496,68 @@ export function mountTool(toolId, root, context) {
       originalDecorations = originalEditor.deltaDecorations(originalDecorations,leftMarks);
       modifiedDecorations = modifiedEditor.deltaDecorations(modifiedDecorations,rightMarks);
     };
+
+    const combined = root.querySelector('.diff-combined');
+    const combinedEsc = value => esc(value).replace(/\t/g, '    ');
+    const renderCombined = () => {
+      if (layoutMode !== 'combined') return;
+      if (!diffMappings.length) {
+        combined.innerHTML = '<div class="diff-combined-empty">No differences</div>';
+        return;
+      }
+      const contextLines = 3;
+      const originalCount = original.getLineCount();
+      const modifiedCount = modified.getLineCount();
+      const hunks = [];
+      for (const change of diffMappings) {
+        const hunk = {
+          originalStart:Math.max(1,change.originalStartLineNumber - contextLines),
+          originalEnd:Math.min(originalCount + 1,change.originalEndLineNumberExclusive + contextLines),
+          modifiedStart:Math.max(1,change.modifiedStartLineNumber - contextLines),
+          modifiedEnd:Math.min(modifiedCount + 1,change.modifiedEndLineNumberExclusive + contextLines),
+          changes:[change],
+        };
+        const previous = hunks[hunks.length - 1];
+        if (previous && hunk.originalStart <= previous.originalEnd && hunk.modifiedStart <= previous.modifiedEnd) {
+          previous.originalEnd = Math.max(previous.originalEnd,hunk.originalEnd);
+          previous.modifiedEnd = Math.max(previous.modifiedEnd,hunk.modifiedEnd);
+          previous.changes.push(change);
+        } else hunks.push(hunk);
+      }
+      let rows = 0;
+      for (const hunk of hunks) rows += (hunk.originalEnd - hunk.originalStart) + (hunk.modifiedEnd - hunk.modifiedStart);
+      if (rows > 5000) {
+        combined.innerHTML = '<div class="diff-combined-empty">Combined view is capped for very large diffs. Use side by side.</div>';
+        return;
+      }
+      let html = '<table class="diff-combined-table"><tbody>';
+      const row = (kind, oldNo, newNo, prefix, text) => {
+        html += `<tr class="diff-combined-row ${kind}"><td class="diff-combined-num">${oldNo || ''}</td><td class="diff-combined-num">${newNo || ''}</td><td class="diff-combined-prefix">${prefix}</td><td class="diff-combined-code">${combinedEsc(text)}</td></tr>`;
+      };
+      for (const hunk of hunks) {
+        html += `<tr class="diff-combined-hunk"><td colspan="4">@@ -${hunk.originalStart},${hunk.originalEnd - hunk.originalStart} +${hunk.modifiedStart},${hunk.modifiedEnd - hunk.modifiedStart} @@</td></tr>`;
+        let oldLine = hunk.originalStart, newLine = hunk.modifiedStart;
+        for (const change of hunk.changes) {
+          while (oldLine < change.originalStartLineNumber && newLine < change.modifiedStartLineNumber) {
+            row('context',oldLine,newLine,' ',original.getLineContent(oldLine)); oldLine++; newLine++;
+          }
+          for (; oldLine < change.originalEndLineNumberExclusive; oldLine++) row('removed',oldLine,'','−',original.getLineContent(oldLine));
+          for (; newLine < change.modifiedEndLineNumberExclusive; newLine++) row('added','',newLine,'+',modified.getLineContent(newLine));
+        }
+        while (oldLine < hunk.originalEnd && newLine < hunk.modifiedEnd) {
+          row('context',oldLine,newLine,' ',original.getLineContent(oldLine)); oldLine++; newLine++;
+        }
+      }
+      combined.innerHTML = html + '</tbody></table>';
+    };
+
     diffWorker.onmessage = event => {
       const result = event.data;
       if (result.type !== 'result' || result.revision < revision || result.revision < appliedRevision) return;
       appliedRevision = result.revision;
       diffMappings = result.changes;
       paintDiff(diffMappings);
+      renderCombined();
     };
     diffWorker.postMessage({type:'init',revision,original:left,modified:right});
 
@@ -516,7 +583,7 @@ export function mountTool(toolId, root, context) {
     };
     let syncingScroll = false;
     const syncScroll = (from, to, fromOriginal) => {
-      if (syncingScroll) return;
+      if (syncingScroll || layoutMode !== 'split') return;
       syncingScroll = true;
       if (from.getModel() && to.getModel()) {
         const visible = from.getVisibleRanges()[0];
@@ -533,15 +600,44 @@ export function mountTool(toolId, root, context) {
     const os = originalEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(originalEditor,modifiedEditor,true); });
     const ms = modifiedEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(modifiedEditor,originalEditor,false); });
 
+    const shell = root.querySelector('.diff-tool');
+    const splitter = root.querySelector('.diff-splitter');
+    const setSplitRatio = (value, persist = false) => {
+      splitRatio = Math.min(80,Math.max(20,value));
+      shell.style.setProperty('--diff-split',`${splitRatio}%`);
+      splitter.setAttribute('aria-valuenow',String(Math.round(splitRatio)));
+      if (persist) localSet('diff','split',splitRatio.toFixed(2));
+      requestAnimationFrame(() => { originalEditor.layout(); modifiedEditor.layout(); });
+    };
+    splitter.onpointerdown = event => {
+      if (matchMedia('(max-width: 700px)').matches) return;
+      event.preventDefault(); splitter.setPointerCapture(event.pointerId); shell.toggleAttribute('data-resizing',true);
+    };
+    splitter.onpointermove = event => {
+      if (!splitter.hasPointerCapture(event.pointerId)) return;
+      const rect = shell.getBoundingClientRect();
+      setSplitRatio(((event.clientX - rect.left) / Math.max(1,rect.width)) * 100);
+    };
+    const finishSplit = event => {
+      if (splitter.hasPointerCapture(event.pointerId)) splitter.releasePointerCapture(event.pointerId);
+      shell.removeAttribute('data-resizing'); localSet('diff','split',splitRatio.toFixed(2));
+    };
+    splitter.onpointerup = finishSplit;
+    splitter.onpointercancel = finishSplit;
+    splitter.onkeydown = event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault(); setSplitRatio(splitRatio + (event.key === 'ArrowRight' ? 2 : -2),true);
+    };
+
     const applyLayout = () => {
-      const shell = root.querySelector('.diff-tool');
       shell.dataset.layout = layoutMode;
       localSet('diff','layout',layoutMode);
+      if (layoutMode === 'combined') renderCombined();
       requestAnimationFrame(() => { originalEditor.layout(); modifiedEditor.layout(); });
       setTopContext();
     };
     const setTopContext = () => {
-      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value,label]) => `<option value="${value}"${language===value?' selected':''}>${label}</option>`).join('')}</select><span class="diff-view-toggle" role="group" aria-label="Diff layout"><button type="button" data-diff-layout="split" aria-pressed="${layoutMode==='split'}">Side by side</button><button type="button" data-diff-layout="merged" aria-pressed="${layoutMode==='merged'}">Merged</button></span><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
+      setContext(`<select data-diff-language aria-label="Syntax language">${LANGUAGES.map(([value,label]) => `<option value="${value}"${language===value?' selected':''}>${label}</option>`).join('')}</select><span class="diff-view-toggle" role="group" aria-label="Diff layout"><button type="button" data-diff-layout="split" aria-pressed="${layoutMode==='split'}">Side by side</button><button type="button" data-diff-layout="combined" aria-pressed="${layoutMode==='combined'}">Combined</button></span><button type="button" data-diff-swap aria-label="Swap sides" title="Swap sides">${icon('swap')}</button>`);
       context.querySelector('[data-diff-language]').onchange = async event => {
         language = event.target.value; set('language',language); await ensureLanguage(language);
         if (!currentRender(generation) || route() !== 'diff') return;
@@ -550,7 +646,13 @@ export function mountTool(toolId, root, context) {
       context.querySelectorAll('[data-diff-layout]').forEach(button => button.onclick = () => { layoutMode = button.dataset.diffLayout; applyLayout(); });
       context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
     };
-    const serializeChanges = event => event.changes.map(change => ({startLineNumber:change.range.startLineNumber,startColumn:change.range.startColumn,endLineNumber:change.range.endLineNumber,endColumn:change.range.endColumn,text:change.text}));
+    const serializeChanges = event => event.changes.map(change => ({
+      startLineNumber:change.range.startLineNumber,
+      startColumn:change.range.startColumn,
+      endLineNumber:change.range.endLineNumber,
+      endColumn:change.range.endColumn,
+      text:change.text,
+    }));
     // localStorage is synchronous. Serializing both complete documents on every
     // keystroke makes large diffs stall on the main thread even though the diff
     // algorithm itself runs in a worker. Persist only the side that changed and

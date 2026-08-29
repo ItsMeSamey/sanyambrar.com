@@ -1710,7 +1710,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
     if (documentNavigationMounted) return;
     documentNavigationMounted = true;
-    markInitialPageStyles();
     document.addEventListener("pointerover", event => { if (document.documentElement.hasAttribute("data-solid-spa")) return; const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); }, { passive: true });
     document.addEventListener("focusin", event => { if (document.documentElement.hasAttribute("data-solid-spa")) return; const a = event.target.closest?.("a[href]"); if (a && !a.target) prefetch(a.href); });
     document.addEventListener("click", event => {
@@ -1733,7 +1732,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); addEventListener("samey-pageload", mountSpa); };
+  const mountRuntime = () => {
+    normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars();
+    // Only styles present on a directly loaded non-Solid document are initial page styles.
+    // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;
+    // marking those on the first swapped page would delete them on the next back navigation.
+    if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();
+    mountSpa();
+    addEventListener("samey-pageload", mountSpa);
+  };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

@@ -27,14 +27,3 @@ export function Intro() {
 export function Section(props:{id:string;title:string;href?:string;children:JSX.Element}) {
   return <section aria-labelledby={props.id}><div class="section-head"><h1 id={props.id}>{props.href ? <SmartLink class="section-head-link" href={props.href}><span>{props.title}</span><span aria-hidden="true">↗</span></SmartLink> : props.title}</h1></div>{props.children}</section>;
 }
-
-export function SiteFooter() {
-  return <footer class="site-contact-footer" aria-label="Contact">
-    <span class="site-contact-label">Contact</span>
-    <div class="site-contact-links">
-      <ExternalLink href={PERSONAL_GITHUB} copyLabel="Sanyam Brar on GitHub">GitHub · @ItsMeSamey ↗</ExternalLink>
-      <ExternalLink href={ORG_GITHUB} copyLabel="SmallThingz on GitHub">SmallThingz ↗</ExternalLink>
-      <SiteSourceLink/>
-    </div>
-  </footer>;
-}
