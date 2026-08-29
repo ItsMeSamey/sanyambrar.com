@@ -419,8 +419,11 @@ ${keybrViewSwitch}`;
   must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" &&
     toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('const diffWorker = new DiffWorker()') &&
     toolsSource.includes('const mapDiffLine =') && !toolsSource.includes("#diff-compute") && !toolsSource.includes('createDiffEditor(') &&
+    toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
+    toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
+    !toolsSource.includes("const save = () => { set('left'") &&
     diffWorkerSource.includes('DefaultLinesDiffComputer') && diffWorkerSource.includes('maxComputationTimeMs: 75'),
-    "ux: Diff must use a dedicated advanced-diff worker with ordinary editable Monaco panes and semantic scroll mapping");
+    "ux: Diff must use worker-backed advanced diffing, semantic scroll mapping, and deferred large-document persistence");
   must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:1fr 1fr') &&
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
     "ux: narrow Diff and Markdown combined views must stack top-to-bottom");

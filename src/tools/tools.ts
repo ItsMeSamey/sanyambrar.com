@@ -551,11 +551,35 @@ export function mountTool(toolId, root, context) {
       context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
     };
     const serializeChanges = event => event.changes.map(change => ({rangeOffset:change.rangeOffset,rangeLength:change.rangeLength,text:change.text}));
-    const save = () => { set('left',original.getValue()); set('text',original.getValue()); set('right',modified.getValue()); };
-    const a=original.onDidChangeContent(event => { save(); revision++; diffWorker.postMessage({type:'edit',side:'original',revision,changes:serializeChanges(event)}); });
-    const b=modified.onDidChangeContent(event => { save(); revision++; diffWorker.postMessage({type:'edit',side:'modified',revision,changes:serializeChanges(event)}); });
+    // localStorage is synchronous. Serializing both complete documents on every
+    // keystroke makes large diffs stall on the main thread even though the diff
+    // algorithm itself runs in a worker. Persist only the side that changed and
+    // move the full-string write out of the input event.
+    let saveTimer = 0, originalDirty = false, modifiedDirty = false;
+    const flushSave = () => {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; }
+      if (originalDirty) {
+        const value = original.getValue();
+        set('left',value);
+        originalDirty = false;
+      }
+      if (modifiedDirty) {
+        set('right',modified.getValue());
+        modifiedDirty = false;
+      }
+    };
+    const scheduleSave = side => {
+      if (side === 'original') originalDirty = true;
+      else modifiedDirty = true;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(flushSave,400);
+    };
+    const saveOnPageHide = () => flushSave();
+    addEventListener('pagehide',saveOnPageHide);
+    const a=original.onDidChangeContent(event => { scheduleSave('original'); revision++; diffWorker.postMessage({type:'edit',side:'original',revision,changes:serializeChanges(event)}); });
+    const b=modified.onDidChangeContent(event => { scheduleSave('modified'); revision++; diffWorker.postMessage({type:'edit',side:'modified',revision,changes:serializeChanges(event)}); });
     setTopContext();
-    disposeTool = () => { a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffWorker.terminate(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
+    disposeTool = () => { flushSave(); removeEventListener('pagehide',saveOnPageHide); a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffWorker.terminate(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
   }
 
   const digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
