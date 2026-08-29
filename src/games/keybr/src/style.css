@@ -1,3 +1,5 @@
+@import "../../../shared/styles/game-settings.css";
+
 /* Global Keybr styles, ported from the original React/Less entry and theme files. */
 :where(html) {
   --default-font-family: var(--site-font, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
@@ -29,6 +31,8 @@
      their intentionally softened background variants. */
   --slow-key-color: var(--site-slow-fg, var(--site-slow-color, #dc2626));
   --fast-key-color: var(--site-fast-fg, var(--site-fast-color, #16a34a));
+  --slow-key-background-color: var(--site-error-bg, #f0caca);
+  --fast-key-background-color: var(--site-fast-bg, #cce8d5);
   --effort-color: var(--site-effort-fg, var(--site-effort-color, #2563eb));
 
   --keybr-chart-speed: var(--site-fast-fg, var(--site-fast-color, #16a34a));

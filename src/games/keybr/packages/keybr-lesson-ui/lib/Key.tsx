@@ -3,33 +3,62 @@ import { type MouseProps } from "@keybr/widget";
 import { clsx } from "@keybr/solid-compat/clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
-import { splitProps, mergeProps } from "solid-js";
-export const Key = (solidAllProps: {
-    lessonKey: LessonKey;
-    isSelectable?: boolean;
-    isCurrent?: boolean;
-    size?: "normal" | "large" | "announcement";
-    title?: string;
+import { mergeProps, splitProps } from "solid-js";
+
+export const Key = (allProps: {
+  lessonKey: LessonKey;
+  isSelectable?: boolean;
+  isCurrent?: boolean;
+  size?: "normal" | "large" | "announcement";
+  title?: string;
 } & MouseProps) => {
-    const solidMergedProps = mergeProps({ isSelectable: false, isCurrent: false, size: "normal" }, solidAllProps);
-    const [solidLocal, props] = splitProps(solidMergedProps, ["lessonKey", "isSelectable", "isCurrent", "size", "title"]);
-    const { keyStyles } = useKeyStyles();
-    const { letter: { codePoint, label }, confidence, isIncluded, isFocused, isForced, } = solidLocal.lessonKey;
-    return (<span {...props} ref={Key.attach(solidLocal.lessonKey)} class={clsx(styles.lessonKey, solidLocal.size === "normal" && styles.lessonKeyNormal, solidLocal.size === "large" && styles.lessonKeyLarge, solidLocal.size === "announcement" && styles.lessonKeyAnnouncement, isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded, isIncluded && confidence == null && styles.lessonKeyUncalibrated, isIncluded && isFocused && styles.lessonKeyFocused, isIncluded && isForced && styles.lessonKeyForced, solidLocal.isSelectable && styles.lessonKeySelectable, solidLocal.isCurrent && styles.lessonKeyCurrent)} style={keyStyles(true, confidence)} title={solidLocal.title} data-code-point={codePoint}>
-      {label}
-      {isIncluded || (<svg viewBox="0 0 100 100" class={styles.cross}>
-          <path d="M 0 100 L 100 0"/>
-        </svg>)}
-    </span>);
+  const merged = mergeProps(
+    { isSelectable: false, isCurrent: false, size: "normal" as const },
+    allProps,
+  );
+  const [local, props] = splitProps(merged, [
+    "lessonKey",
+    "isSelectable",
+    "isCurrent",
+    "size",
+    "title",
+  ]);
+  const { keyStyles } = useKeyStyles();
+  const key = () => local.lessonKey;
+
+  return (
+    <span
+      {...props}
+      ref={Key.attach(key())}
+      class={clsx(
+        styles.lessonKey,
+        local.size === "normal" && styles.lessonKeyNormal,
+        local.size === "large" && styles.lessonKeyLarge,
+        local.size === "announcement" && styles.lessonKeyAnnouncement,
+        key().isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded,
+        key().isIncluded && key().confidence == null && styles.lessonKeyUncalibrated,
+        key().isIncluded && key().isFocused && styles.lessonKeyFocused,
+        key().isIncluded && key().isForced && styles.lessonKeyForced,
+        local.isSelectable && styles.lessonKeySelectable,
+        local.isCurrent && styles.lessonKeyCurrent,
+      )}
+      style={keyStyles(key().isIncluded, key().confidence)}
+      title={local.title}
+      data-code-point={key().letter.codePoint}
+    >
+      {key().letter.label}
+      {key().isIncluded || (
+        <svg viewBox="0 0 100 100" class={styles.cross}>
+          <path d="M 0 100 L 100 0" />
+        </svg>
+      )}
+    </span>
+  );
 };
+
 const attachment = Symbol();
-Key.attach = (key: LessonKey) => {
-    return (target: Element | null): void => {
-        if (target != null) {
-            (target as any)[attachment] = key;
-        }
-    };
+Key.attach = (key: LessonKey) => (target: Element | null): void => {
+  if (target != null) (target as any)[attachment] = key;
 };
-Key.attached = (target: Element | null): LessonKey | null => {
-    return (target as any)?.[attachment] ?? null;
-};
+Key.attached = (target: Element | null): LessonKey | null =>
+  (target as any)?.[attachment] ?? null;

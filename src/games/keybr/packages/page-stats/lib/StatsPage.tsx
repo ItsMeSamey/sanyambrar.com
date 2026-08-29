@@ -16,6 +16,7 @@ import { KeySpeedHistogramSection } from "./stats/KeySpeedHistogramSection.tsx";
 import { ProgressOverviewSection } from "./stats/ProgressOverviewSection.tsx";
 import { ResultGrouper } from "./stats/ResultGrouper.tsx";
 import { SpeedChartSection } from "./stats/SpeedChartSection.tsx";
+import { SpeedHistogramSection } from "./stats/SpeedHistogramSection.tsx";
 import { AllTimeSummary, TodaySummary } from "./stats/Summary.tsx";
 
 /** Local statistics only; there is no user identity or public stats. */
@@ -48,6 +49,7 @@ function Content(solidProps: {
       <AccuracyStreaksSection results={results} />
       <ProgressOverviewSection keyStatsMap={solidProps.keyStatsMap} />
       <SpeedChartSection results={results} />
+      <SpeedHistogramSection stats={stats} />
       <KeySpeedChartSection keyStatsMap={solidProps.keyStatsMap} />
       <KeySpeedHistogramSection keyStatsMap={solidProps.keyStatsMap} />
       <KeyFrequencyHistogramSection keyStatsMap={solidProps.keyStatsMap} />

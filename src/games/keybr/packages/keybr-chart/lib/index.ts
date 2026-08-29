@@ -9,3 +9,5 @@ export * from "./KeySpeedHistogram.tsx";
 export * from "./Marker.tsx";
 export * from "./ProgressOverviewChart.tsx";
 export * from "./SpeedChart.tsx";
+export * from "./SpeedHistogram.tsx";
+export * from "./speed-distribution.ts";

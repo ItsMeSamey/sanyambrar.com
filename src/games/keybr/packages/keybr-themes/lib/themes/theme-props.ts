@@ -1,2 +1,7 @@
-// Only these computed variables are consumed by the retained local app.
-export type PropName = "--slow-key-color" | "--fast-key-color" | "--effort-color";
+// Semantic colors consumed from the portfolio theme by Keybr runtime code.
+export type PropName =
+  | "--slow-key-color"
+  | "--fast-key-color"
+  | "--slow-key-background-color"
+  | "--fast-key-background-color"
+  | "--effort-color";

@@ -1,9 +1,15 @@
-import { CaretMovementStyle, CaretShapeStyle, type TextDisplaySettings } from "@keybr/textinput";
+import {
+  CaretMovementStyle,
+  CaretShapeStyle,
+  type TextDisplaySettings,
+} from "@keybr/textinput";
 import { createEffect, onCleanup, type JSX } from "solid-js";
 import { findCursor } from "./chars.tsx";
-import { getCursorStyle } from "./styles.ts";
 
-export function Cursor(props: { readonly settings: TextDisplaySettings; readonly children: JSX.Element }): JSX.Element {
+export function Cursor(props: {
+  readonly settings: TextDisplaySettings;
+  readonly children: JSX.Element;
+}): JSX.Element {
   let container!: HTMLDivElement;
   let cursor!: HTMLSpanElement;
   let initial = true;
@@ -16,8 +22,35 @@ export function Cursor(props: { readonly settings: TextDisplaySettings; readonly
     style.left = style.top = style.width = style.height = "";
     initial = true;
   };
+
+  const applyShapeStyle = (shape: CaretShapeStyle) => {
+    const style = cursor.style;
+    style.color = "";
+    style.backgroundColor = "";
+    style.borderStyle = "";
+    style.borderColor = "";
+    switch (shape) {
+      case CaretShapeStyle.Block:
+        style.color = "var(--textinput-cursor__color)";
+        style.backgroundColor = "var(--textinput-cursor__background-color)";
+        break;
+      case CaretShapeStyle.Box:
+        style.borderStyle = "solid";
+        style.borderColor = "var(--textinput-cursor__background-color)";
+        break;
+      case CaretShapeStyle.Line:
+      case CaretShapeStyle.Underline:
+        style.backgroundColor = "var(--textinput-cursor__background-color)";
+        break;
+    }
+  };
+
   const move = (char: HTMLElement) => {
-    const { caretShapeStyle, caretMovementStyle, language: { direction } } = props.settings;
+    const {
+      caretShapeStyle,
+      caretMovementStyle,
+      language: { direction },
+    } = props.settings;
     const style = cursor.style;
     const from = getComputedStyle(char);
     style.fontFamily = from.fontFamily;
@@ -27,45 +60,115 @@ export function Cursor(props: { readonly settings: TextDisplaySettings; readonly
     style.fontVariant = from.fontVariant;
     style.fontKerning = from.fontKerning;
     style.lineHeight = from.lineHeight;
-    const x = char.offsetLeft, y = char.parentElement!.offsetTop, w = char.offsetWidth, h = char.parentElement!.offsetHeight;
-    let left = x, top = y;
+    applyShapeStyle(caretShapeStyle);
+
+    const x = char.offsetLeft;
+    const y = char.parentElement!.offsetTop;
+    const width = char.offsetWidth;
+    const height = char.parentElement!.offsetHeight;
+    let left = x;
+    let top = y;
+
     switch (caretShapeStyle) {
       case CaretShapeStyle.Block:
-        cursor.textContent = char.textContent; style.display = "block"; style.borderWidth = style.width = style.height = ""; break;
+        cursor.textContent = char.textContent;
+        style.display = "block";
+        style.borderWidth = style.width = style.height = "";
+        break;
       case CaretShapeStyle.Box:
-        cursor.textContent = ""; style.display = "block"; style.borderWidth = "1px"; style.width = `${w + 4}px`; style.height = `${h + 4}px`; left = x - 2; top = y - 2; break;
+        cursor.textContent = "";
+        style.display = "block";
+        style.borderWidth = "1px";
+        style.width = `${width + 4}px`;
+        style.height = `${height + 4}px`;
+        left = x - 2;
+        top = y - 2;
+        break;
       case CaretShapeStyle.Line:
-        cursor.textContent = ""; style.display = "block"; style.borderWidth = ""; style.width = "2px"; style.height = `${h}px`; left = direction === "ltr" ? x - 2 : x + w; break;
+        cursor.textContent = "";
+        style.display = "block";
+        style.borderWidth = "";
+        style.width = "2px";
+        style.height = `${height}px`;
+        left = direction === "ltr" ? x - 2 : x + width;
+        break;
       case CaretShapeStyle.Underline:
-        cursor.textContent = ""; style.display = "block"; style.borderWidth = ""; style.width = `${w}px`; style.height = "2px"; top = y + h - 2; break;
+        cursor.textContent = "";
+        style.display = "block";
+        style.borderWidth = "";
+        style.width = `${width}px`;
+        style.height = "2px";
+        top = y + height - 2;
+        break;
     }
-    const fromLeft = cursor.offsetLeft, fromTop = cursor.offsetTop;
-    style.left = `${left}px`; style.top = `${top}px`;
-    animation?.cancel(); animation = null;
+
+    const fromLeft = cursor.offsetLeft;
+    const fromTop = cursor.offsetTop;
+    style.left = `${left}px`;
+    style.top = `${top}px`;
+    animation?.cancel();
+    animation = null;
+
     if (!initial && caretMovementStyle === CaretMovementStyle.Smooth) {
-      animation = cursor.animate([{ left: `${fromLeft}px`, top: `${fromTop}px` }, { left: `${left}px`, top: `${top}px` }], { duration: wpmToDuration(120), iterations: 1, easing: "linear" });
-      const clear = () => { animation = null; };
-      animation.onfinish = clear; animation.oncancel = clear; animation.onremove = clear;
+      animation = cursor.animate(
+        [
+          { left: `${fromLeft}px`, top: `${fromTop}px` },
+          { left: `${left}px`, top: `${top}px` },
+        ],
+        {
+          duration: wpmToDuration(120),
+          iterations: 1,
+          easing: "linear",
+        },
+      );
+      const clear = () => {
+        animation = null;
+      };
+      animation.onfinish = clear;
+      animation.oncancel = clear;
+      animation.onremove = clear;
     }
     initial = false;
   };
+
   const position = () => {
     const char = findCursor(container);
-    if (char != null) move(char); else hide();
+    if (char != null) move(char);
+    else hide();
   };
+
   createEffect(() => {
-    props.settings;
+    // Explicit field reads make appearance changes reposition/repaint the caret
+    // even when the settings wrapper object itself stays stable.
+    props.settings.caretShapeStyle;
+    props.settings.caretMovementStyle;
+    props.settings.language.direction;
     props.children;
     queueMicrotask(position);
   });
+
   onCleanup(() => animation?.cancel());
 
   return (
     <div ref={container} style={{ display: "block", position: "relative" }}>
-      <span ref={cursor} style={{ display: "block", position: "absolute", left: "0", top: "0", width: "0", height: "0", ...getCursorStyle(props.settings.caretShapeStyle) }} />
+      <span
+        ref={cursor}
+        data-keybr-cursor=""
+        style={{
+          display: "block",
+          position: "absolute",
+          left: "0",
+          top: "0",
+          width: "0",
+          height: "0",
+          "pointer-events": "none",
+        }}
+      />
       {props.children}
     </div>
   );
 }
 
-function wpmToDuration(wpm: number): number { return Math.round(1000 / ((wpm * 5) / 60)); }
+function wpmToDuration(wpm: number): number {
+  return Math.round(1000 / ((wpm * 5) / 60));
+}

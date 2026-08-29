@@ -1,3 +1,4 @@
+export * from "./dist.ts";
 export * from "./filter.ts";
 export * from "./histogram.ts";
 export * from "./keyset.ts";

@@ -1,4 +1,4 @@
-/* Shared game settings primitives. Wordle and Chain Reaction both consume this file. */
+/* Shared game settings primitives used by Wordle, Chain Reaction, and Keybr. */
 :root {
   --game-control-top: 11px;
   --game-control-right: 12px;
@@ -110,14 +110,31 @@
 .game-settings-action { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
 /* The fill ends square under the thumb so there is no rounded seam/notch. */
-.game-range-fill,.game-settings-slider [data-kb-slider-fill]{border-radius:999px 0 0 999px}
+.game-range-fill,
+.game-settings-slider [data-kb-slider-fill] {
+  border-radius: 999px 0 0 999px;
+}
 .game-settings-slider [role=slider],
 .game-settings-slider input[type="range"]::-webkit-slider-thumb,
-.game-settings-slider input[type="range"]::-moz-range-thumb{opacity:1!important}
-
-.game-settings-slider [data-kb-slider-track]{overflow:visible}
-.game-settings-slider [data-kb-slider-fill]{z-index:1;transition:left 100ms cubic-bezier(.2,.8,.2,1),right 100ms cubic-bezier(.2,.8,.2,1)}
-.game-settings-slider [role=slider]{z-index:2;transition:left 100ms cubic-bezier(.2,.8,.2,1),right 100ms cubic-bezier(.2,.8,.2,1),border-color 100ms ease,background-color 100ms ease}
-.game-range-fill{transition:width 100ms cubic-bezier(.2,.8,.2,1)}
-.game-settings-slider input[type="range"]::-webkit-slider-thumb{position:relative;z-index:2}
-@media (prefers-reduced-motion: reduce){.game-settings-slider [data-kb-slider-fill],.game-settings-slider [role=slider],.game-range-fill{transition:none}}
+.game-settings-slider input[type="range"]::-moz-range-thumb {
+  opacity: 1 !important;
+}
+.game-settings-slider [data-kb-slider-track] { overflow: visible; }
+.game-settings-slider [data-kb-slider-fill] {
+  z-index: 1;
+  transition: left 100ms cubic-bezier(.2,.8,.2,1), right 100ms cubic-bezier(.2,.8,.2,1);
+}
+.game-settings-slider [role=slider] {
+  z-index: 2;
+  transition: left 100ms cubic-bezier(.2,.8,.2,1), right 100ms cubic-bezier(.2,.8,.2,1), border-color 100ms ease, background-color 100ms ease;
+}
+.game-range-fill { transition: width 100ms cubic-bezier(.2,.8,.2,1); }
+.game-settings-slider input[type="range"]::-webkit-slider-thumb {
+  position: relative;
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-settings-slider [data-kb-slider-fill],
+  .game-settings-slider [role=slider],
+  .game-range-fill { transition: none; }
+}

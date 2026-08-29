@@ -19,9 +19,9 @@ export class FontFace {
         this.scripts = scripts;
         this.name = fontName(family, weight, style);
         this.cssProperties = {
-            fontFamily: [family, ...fallbacks].join(","),
-            fontWeight: weight,
-            fontStyle: style,
+            "font-family": [family, ...fallbacks].join(","),
+            "font-weight": weight,
+            "font-style": style,
         };
     }
 }
