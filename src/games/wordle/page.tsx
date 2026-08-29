@@ -8,8 +8,8 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { showError } from '../../utils/toast'
 import { LocalstorageStore } from '../../utils/store'
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { calcDiff, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
-import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
+import { calcDiff, getCompletedDailyDates, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
+import { binarySearch, playableNextLetters, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, legacyGameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
@@ -18,6 +18,7 @@ import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Bran
 import { WordleBackButton } from './WordleBackButton'
 import { animateRootSwap } from '../../shared/transitions.ts'
 import { pageRoot } from '../../utils/navigation.ts'
+import { WordleDatePicker } from './WordleDatePicker'
 
 type WordleStringState = 'g' | 'y' | 'r'
 type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | '⏎' | '⌫'
@@ -188,10 +189,6 @@ class GameState {
 
   isFinished() { return this.stateStore.current_value!.done !== undefined }
 
-  existsPrefix(prefix: string) {
-    return hasPrefix(this.hard.wordLength, prefix)
-  }
-
   persist() {
     this.stateStore.current_value!.history = unwrap(this.history)
     this.stateStore.current_value!.config = {...this.hard}
@@ -235,13 +232,7 @@ class GameState {
   fastInvalidate() {
     if (!this.soft.fastInvalidate || this.hard.allowAny || this.isFinished()) { this.state.suggested = ''; return }
     const prefix = (this.history.at(-1)?.[0] ?? '').toLowerCase()
-    if (prefix.length >= this.hard.wordLength || !this.existsPrefix(prefix)) { this.state.suggested = ''; return }
-    let next = ''
-    for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
-      if (this.disabled.includes(letter)) continue
-      if (this.existsPrefix(prefix + letter)) next += letter
-    }
-    this.state.suggested = next
+    this.state.suggested = playableNextLetters(this.hard.wordLength, prefix, this.disabled)
   }
 
 }
@@ -525,19 +516,29 @@ export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftPr
 }
 
 function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: {date: () => string, setDate: (value: string) => void, startDaily: () => void, startRandom: () => void, startAdvanced: () => void}) {
+  const [completedDates, setCompletedDates] = createSignal<ReadonlySet<string>>(new Set())
   const validDate = () => isValidDateKey(date()) && date() <= localDateKey()
   const preview = () => validDate() ? getDailyChallenge(date()) : undefined
   const previewText = () => {
     const challenge = preview()
     return challenge ? `${challenge.wordLength} letters · ${challenge.maxTries} guesses · ${challenge.disabledLetters} disabled` : 'Choose a valid date.'
   }
+  const refreshCompletedDates = () => void getCompletedDailyDates().then(setCompletedDates).catch(() => setCompletedDates(new Set<string>()))
+  onMount(() => {
+    refreshCompletedDates()
+    window.addEventListener('wordle:stats-change', refreshCompletedDates)
+  })
+  onCleanup(() => window.removeEventListener('wordle:stats-change', refreshCompletedDates))
   return <main class='wordle-opening'>
     <div class='wordle-opening-inner'>
       <h1>Pick a game.</h1>
       <div class='wordle-mode-grid'>
         <section class='wordle-mode-card wordle-mode-card-primary'>
           <h2>Daily</h2><p>New words, daily.</p>
-          <label class='wordle-date-control'><span>Date</span><input type='date' value={date()} max={localDateKey()} onInput={e => setDate(e.currentTarget.value)} /></label>
+          <div class='wordle-date-control'>
+            <span>Date</span>
+            <WordleDatePicker value={date()} max={localDateKey()} completedDates={completedDates()} onValueChange={setDate} />
+          </div>
           <div class='wordle-mode-spec'>{previewText()}</div>
           <button class='wordle-mode-action' disabled={!validDate()} onClick={startDaily}>Play</button>
         </section>

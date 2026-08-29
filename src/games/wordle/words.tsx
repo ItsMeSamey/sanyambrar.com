@@ -140,3 +140,17 @@ export async function getDoneWords(wlen: WordLength): Promise<Value[]> {
   return await readyDb.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).getAll()
 }
 
+
+// Daily completion is stored alongside the regular word history. Scan every
+// word-length bucket so the date picker can mark all completed Daily dates.
+export async function getCompletedDailyDates(): Promise<Set<string>> {
+  const readyDb = db ?? await dbReady
+  const dates = new Set<string>()
+  const stores = Array.from({length: 18}, (_, index) => `w${index + 3}`) as (keyof Schema)[]
+  for (const storeName of stores) {
+    const values = await readyDb.transaction(storeName, 'readonly').objectStore(storeName).getAll()
+    for (const value of values) for (const entry of value.h) if (entry.q) dates.add(entry.q)
+  }
+  return dates
+}
+

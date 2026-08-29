@@ -195,6 +195,9 @@ ${keybrViewSwitch}`;
   const wordleStats = await readFile(join(ROOT, "src/games/wordle/page_stats.tsx"), "utf8");
   const wordleStyle = await readFile(join(ROOT, "src/games/wordle/style.css"), "utf8");
   const wordleBackButton = await readFile(join(ROOT, "src/games/wordle/WordleBackButton.tsx"), "utf8");
+  const wordleDatePicker = await readFile(join(ROOT, "src/games/wordle/WordleDatePicker.tsx"), "utf8");
+  const wordleWordList = await readFile(join(ROOT, "src/games/wordle/word-list.ts"), "utf8");
+  const wordleHistory = await readFile(join(ROOT, "src/games/wordle/words.tsx"), "utf8");
   must(wordlePage.includes("<GameTopBarActions ariaLabel='Wordle'>") && wordlePage.includes("<StatsPageTrigger />") &&
     wordlePage.includes("nav={gameActions()}") && !wordlePage.includes("wordle-topbar-actions"),
     "ux: Wordle must expose Statistics through the shared game action rail");
@@ -218,6 +221,15 @@ ${keybrViewSwitch}`;
   must(wordleStyle.includes(".stats-content { display: grid; gap: 16px; align-content: start; grid-auto-rows: max-content; }") &&
     wordleStyle.includes("color-mix(in srgb,var(--color-border) 12%,transparent)"),
     "ux: Wordle statistics rows must not stretch and game-grid contrast must stay subdued");
+  must(wordlePage.includes("<WordleDatePicker") && !wordlePage.includes("type='date'") &&
+    wordleDatePicker.includes("solid-ui.com/docs/components/date-picker") && wordleDatePicker.includes("data-completed") &&
+    wordleHistory.includes("getCompletedDailyDates"),
+    "ux: Wordle Daily selection must use the Solid UI-style calendar and mark completed dates");
+  must(wordleWordList.includes("playableNextLetters") && wordlePage.includes("playableNextLetters(this.hard.wordLength, prefix, this.disabled)"),
+    "correctness: Wordle fast invalidate suggestions must have an excluded-letter-free full continuation");
+  must(wordleStyle.includes("radial-gradient(ellipse at 50% 45%") &&
+    wordleStyle.includes(".wordle-key-suggested{position:relative;z-index:2;outline:2px solid"),
+    "ux: Wordle surfaces must retain the subtle vignette and visible fast-invalidate outline");
 
   const chainPage = await readFile(join(ROOT, "src/games/chain/Chain.tsx"), "utf8");
   const chainEngine = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
