@@ -36,3 +36,11 @@
 @media(max-width:850px){.site-standard .home-tool-matrix{grid-template-columns:repeat(2,1fr)}.site-standard .home-tool:nth-child(n){grid-column:span 1;padding:16px 16px 15px 0;border-top:0;border-right:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg));border-bottom:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg))}.site-standard .home-tool:nth-child(even){padding-left:16px;border-right:0}.site-standard .home-tool:nth-child(5){border-bottom:0}}
 @media(max-width:700px){.site-standard .home-writing-split{grid-template-columns:1fr}.site-standard .home-writing-index{border-right:0;border-bottom:1px solid var(--site-line)}.site-standard .home-writing-detail{padding:22px 16px 24px}.site-standard .home-writing-detail h2{font-size:23px}.site-standard .home-writing-detail time{float:none;display:block;margin:8px 0 0}.site-standard .home-writing-detail footer{align-items:flex-start;flex-direction:column}}
 @media(max-width:560px){.site-standard .home-tool-matrix{grid-template-columns:1fr}.site-standard .home-tool:nth-child(n){padding:15px 0;border-right:0;border-bottom:1px solid color-mix(in srgb,var(--site-line) 55%,var(--site-bg))}.site-standard .home-tool:last-child{border-bottom:0}.site-standard .home-tool-desc{margin-top:8px}}
+
+/* Small, explicit link to this site's own source without adding another nav item. */
+.site-standard .home-intro-wrap{position:relative}
+.site-standard .home-source-link{position:absolute;right:0;bottom:10px;display:grid;place-items:center;width:24px;height:24px;border-radius:6px;color:var(--site-muted);transition:color 120ms ease,background-color 120ms ease}
+.site-standard .home-source-link:hover,.site-standard .home-source-link:focus-visible{color:var(--site-fg);background:var(--site-soft)}
+.site-standard .home-source-link svg{width:14px;height:14px}
+@media(max-width:700px){.site-standard .home-source-link{bottom:7px}}
+@media(prefers-reduced-motion:reduce){.site-standard .home-source-link{transition:none!important}}

@@ -967,6 +967,7 @@
 			const setLoading = (loading) => {
 				cursor.toggleAttribute("data-loading", !!loading);
 				if (loading) {
+					clearCursorIdle();
 					cursor.removeAttribute("data-grab");
 					cursor.removeAttribute("data-text");
 					cursor.dataset.visible = "";
@@ -982,7 +983,10 @@
 					cancelAnimationFrame(loadingRaf);
 					loadingRaf = 0;
 				}
-				if (!loading) refreshCursorMode();
+				if (!loading) {
+					refreshCursorMode();
+					if (cursor.hasAttribute("data-visible")) armCursorIdle();
+				}
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
 			globalThis.SameyLoading = setLoading;
@@ -1099,7 +1103,7 @@
 				if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
 				setGrabState(false);
 				cursor.removeAttribute("data-grab");
-				cursor.dataset.visible = "";
+				wakeCursor();
 			};
 			let nativeDragging = false;
 			let selectingText = false;
@@ -1116,7 +1120,6 @@
 				lastX = pendingX;
 				lastY = pendingY;
 				cursor.style.transform = `translate3d(${pendingX - 32}px,${pendingY - 32}px,0)`;
-				cursor.dataset.visible = "";
 			};
 			const placeXY = (x, y, immediate = false) => {
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -1219,6 +1222,30 @@
 				}
 				linkFill.hidden = true;
 			};
+			const cursorIdleMs = 2200;
+			let cursorIdleTimer = 0;
+			const clearCursorIdle = () => {
+				if (cursorIdleTimer) {
+					clearTimeout(cursorIdleTimer);
+					cursorIdleTimer = 0;
+				}
+			};
+			const hidePointerVisuals = () => {
+				delete cursor.dataset.visible;
+				hideFillImmediate();
+			};
+			const armCursorIdle = () => {
+				clearCursorIdle();
+				cursorIdleTimer = window.setTimeout(() => {
+					cursorIdleTimer = 0;
+					if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+				}, cursorIdleMs);
+			};
+			const wakeCursor = () => {
+				if (nativeDragging || cursor.hasAttribute("data-loading")) return;
+				cursor.dataset.visible = "";
+				armCursorIdle();
+			};
 			function setFillTarget(link) {
 				if (cursor.hasAttribute("data-loading")) {
 					hideFillImmediate();
@@ -1301,19 +1328,20 @@
 				setFillTarget(link);
 			};
 			refreshCursorMode = () => cursor.hasAttribute("data-visible") ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
-			const refreshAt = (event) => {
+			const refreshAt = (event, moved = false) => {
 				if (nativeDragging) {
-					delete cursor.dataset.visible;
+					hidePointerVisuals();
 					return;
 				}
 				place(event);
+				if (moved) wakeCursor();
 				setMode(event.target instanceof Element ? event.target : elementAt(event));
 			};
-			document.addEventListener("pointermove", refreshAt, {
+			document.addEventListener("pointermove", (event) => refreshAt(event, true), {
 				capture: true,
 				passive: true
 			});
-			document.addEventListener("pointerover", refreshAt, {
+			document.addEventListener("pointerover", (event) => refreshAt(event, false), {
 				capture: true,
 				passive: true
 			});
@@ -1414,19 +1442,21 @@
 				pressedPointerId = null;
 				setGrabState(false);
 				setTextState(false);
-				setFillTarget(null);
-				delete cursor.dataset.visible;
+				clearCursorIdle();
+				hidePointerVisuals();
 			};
 			document.addEventListener("dragstart", startNativeDrag, true);
 			document.addEventListener("dragenter", () => {
 				nativeDragging = true;
-				delete cursor.dataset.visible;
+				clearCursorIdle();
+				hidePointerVisuals();
 			}, true);
 			document.addEventListener("dragover", () => {
 				nativeDragging = true;
-				delete cursor.dataset.visible;
+				clearCursorIdle();
+				hidePointerVisuals();
 			}, true);
-			const stopDragging = (event) => {
+			const stopDragging = () => {
 				nativeDragging = false;
 				selectingText = false;
 				pressedGrab = false;
@@ -1434,14 +1464,9 @@
 				modifiedLinkPending = null;
 				suppressModifiedClick = null;
 				hideDragPreview();
-				if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
-					place(event);
-					setMode(elementAt(event));
-				} else {
-					setGrabState(false);
-					setTextState(false);
-					setFillTarget(null);
-				}
+				setGrabState(false);
+				setTextState(false);
+				hidePointerVisuals();
 			};
 			document.addEventListener("dragend", stopDragging, true);
 			document.addEventListener("drop", stopDragging, true);
@@ -1449,8 +1474,8 @@
 			addEventListener("blur", stopDragging);
 			addEventListener("pointerout", (event) => {
 				if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) {
-					delete cursor.dataset.visible;
-					setFillTarget(null);
+					clearCursorIdle();
+					hidePointerVisuals();
 				}
 			});
 		};

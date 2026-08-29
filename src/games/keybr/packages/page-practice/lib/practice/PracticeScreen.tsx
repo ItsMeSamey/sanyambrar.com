@@ -5,7 +5,7 @@ import { LessonLoader } from "@keybr/lesson-loader";
 import { LoadingProgress } from "@keybr/pages-shared";
 import { type Result, useResults } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
-import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, Show, untrack } from "solid-js";
 import { Controller } from "./Controller.tsx";
 import { displayEvent, Progress } from "./state/index.ts";
 
@@ -27,10 +27,16 @@ function ProgressUpdater(props: { readonly lesson: Lesson }) {
   createEffect(() => {
     const value = progress();
     const lesson = props.lesson;
-    void results.length;
+    // ResultProvider is append-only during practice and `Progress.append()`
+    // already updates the live lesson statistics incrementally. Subscribing
+    // this seeding effect to `results.length` made every completed lesson tear
+    // down the controller, flash LoadingProgress, and rebuild the whole
+    // practice screen. Only seed from history when the Progress instance
+    // itself changes (lesson/settings/page load).
+    const seedResults = untrack(() => lesson.filter(results));
     setReady(null);
     const controller = new AbortController();
-    schedule(value.seedAsync(lesson.filter(results), setLoading), { signal: controller.signal })
+    schedule(value.seedAsync(seedResults, setLoading), { signal: controller.signal })
       .then(() => { if (!controller.signal.aborted) setReady(value); })
       .catch((error) => { if (!controller.signal.aborted) console.error(error); });
     onCleanup(() => controller.abort());

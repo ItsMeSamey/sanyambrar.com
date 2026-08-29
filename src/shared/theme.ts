@@ -605,11 +605,20 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     };
     const setLoading = (loading) => {
       cursor.toggleAttribute("data-loading", !!loading);
-      if (loading) { cursor.removeAttribute("data-grab"); cursor.removeAttribute("data-text"); cursor.dataset.visible = ""; linkFill.hidden = true; }
+      if (loading) {
+        clearCursorIdle();
+        cursor.removeAttribute("data-grab");
+        cursor.removeAttribute("data-text");
+        cursor.dataset.visible = "";
+        linkFill.hidden = true;
+      }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
-      if (!loading) refreshCursorMode();
+      if (!loading) {
+        refreshCursorMode();
+        if (cursor.hasAttribute("data-visible")) armCursorIdle();
+      }
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));
     globalThis.SameyLoading = setLoading;
@@ -722,7 +731,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) placeXY(event.clientX, event.clientY);
       setGrabState(false);
       cursor.removeAttribute("data-grab");
-      cursor.dataset.visible = "";
+      wakeCursor();
     };
 
     let nativeDragging = false;
@@ -739,7 +748,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       cursorFrame = 0;
       lastX = pendingX; lastY = pendingY;
       cursor.style.transform = `translate3d(${pendingX - 32}px,${pendingY - 32}px,0)`;
-      cursor.dataset.visible = "";
     };
     const placeXY = (x, y, immediate = false) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -828,6 +836,30 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
       linkFill.hidden = true;
     };
+    const cursorIdleMs = 2200;
+    let cursorIdleTimer = 0;
+    const clearCursorIdle = () => {
+      if (cursorIdleTimer) {
+        clearTimeout(cursorIdleTimer);
+        cursorIdleTimer = 0;
+      }
+    };
+    const hidePointerVisuals = () => {
+      delete cursor.dataset.visible;
+      hideFillImmediate();
+    };
+    const armCursorIdle = () => {
+      clearCursorIdle();
+      cursorIdleTimer = window.setTimeout(() => {
+        cursorIdleTimer = 0;
+        if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+      }, cursorIdleMs);
+    };
+    const wakeCursor = () => {
+      if (nativeDragging || cursor.hasAttribute("data-loading")) return;
+      cursor.dataset.visible = "";
+      armCursorIdle();
+    };
     function setFillTarget(link) {
       if (cursor.hasAttribute("data-loading")) { hideFillImmediate(); return; }
       if (!link) {
@@ -895,9 +927,14 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     refreshCursorMode = () => cursor.hasAttribute("data-visible")
       ? setMode(document.elementFromPoint(pendingX, pendingY))
       : setFillTarget(null);
-    const refreshAt = (event) => {
-      if (nativeDragging) { delete cursor.dataset.visible; return; }
+    const refreshAt = (event, moved = false) => {
+      if (nativeDragging) { hidePointerVisuals(); return; }
       place(event);
+      // `pointerover` can be synthesized by DOM changes underneath a
+      // stationary pointer. Only actual movement should wake/reset the idle
+      // timer; otherwise animated/replaced content could keep the cursor
+      // visible forever without the user moving it.
+      if (moved) wakeCursor();
       // pointermove/pointerover are already browser hit-tested. Avoid a second
       // elementFromPoint() query on the hottest cursor path.
       setMode(event.target instanceof Element ? event.target : elementAt(event));
@@ -905,8 +942,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 
 
 
-    document.addEventListener("pointermove", refreshAt, { capture: true, passive: true });
-    document.addEventListener("pointerover", refreshAt, { capture: true, passive: true });
+    document.addEventListener("pointermove", (event) => refreshAt(event, true), { capture: true, passive: true });
+    document.addEventListener("pointerover", (event) => refreshAt(event, false), { capture: true, passive: true });
     addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true, capture: true });
     addEventListener("resize", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true });
     addEventListener("samey-pageleave", () => setFillTarget(null));
@@ -990,13 +1027,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = null;
       setGrabState(false);
       setTextState(false);
-      setFillTarget(null);
-      delete cursor.dataset.visible;
+      // Native drag-and-drop owns the pointer presentation from here. Freeze
+      // our logical coordinates at the point where the grab cursor handed off
+      // instead of accepting the 0,0 sentinel coordinates Chromium can emit
+      // while the system drag cursor is active.
+      clearCursorIdle();
+      hidePointerVisuals();
     };
     document.addEventListener("dragstart", startNativeDrag, true);
-    document.addEventListener("dragenter", () => { nativeDragging = true; delete cursor.dataset.visible; }, true);
-    document.addEventListener("dragover", () => { nativeDragging = true; delete cursor.dataset.visible; }, true);
-    const stopDragging = (event) => {
+    document.addEventListener("dragenter", () => { nativeDragging = true; clearCursorIdle(); hidePointerVisuals(); }, true);
+    document.addEventListener("dragover", () => { nativeDragging = true; clearCursorIdle(); hidePointerVisuals(); }, true);
+    const stopDragging = () => {
       nativeDragging = false;
       selectingText = false;
       pressedGrab = false;
@@ -1004,14 +1045,18 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       modifiedLinkPending = null;
       suppressModifiedClick = null;
       hideDragPreview();
-      if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event); setMode(elementAt(event)); }
-      else { setGrabState(false); setTextState(false); setFillTarget(null); }
+      setGrabState(false);
+      setTextState(false);
+      // Stay hidden after the native/system cursor releases control. The next
+      // real pointer move provides trustworthy coordinates and wakes the
+      // virtual cursor at that position.
+      hidePointerVisuals();
     };
     document.addEventListener("dragend", stopDragging, true);
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
     addEventListener("blur", stopDragging);
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) { delete cursor.dataset.visible; setFillTarget(null); } });
+    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) { clearCursorIdle(); hidePointerVisuals(); } });
   };
 
   const editableTarget = (el) => {

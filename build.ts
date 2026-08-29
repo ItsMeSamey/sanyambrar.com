@@ -370,6 +370,17 @@ ${keybrViewSwitch}`;
     sharedTheme.includes("target.closest('[data-text-cursor-zone]')") && sharedTheme.includes("samey-cursor-link-fill") &&
     !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
     "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
+  const keybrPracticeScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/PracticeScreen.tsx"), "utf8");
+  must(sharedTheme.includes("const cursorIdleMs = 2200") &&
+    sharedTheme.includes("Only actual movement should wake/reset the idle") &&
+    sharedTheme.includes("Stay hidden after the native/system cursor releases control") &&
+    !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
+    "ux: the virtual cursor must idle-hide and must not accept native-drag sentinel coordinates");
+  must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
+    !keybrPracticeScreen.includes("void results.length"),
+    "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
+  must(homeSource.includes("https://github.com/ItsMeSamey/itsmesamey.github.io") && homeSource.includes("home-source-link"),
+    "ux: home must expose a compact source-code repository link");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
   const popoverSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/popover.tsx"), "utf8");
   const dialogSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/dialog.tsx"), "utf8");
