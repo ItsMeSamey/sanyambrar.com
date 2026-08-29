@@ -16,18 +16,6 @@
 					"fast": "#16a34a",
 					"effort": "#2563eb"
 				},
-				"clear-light": {
-					"label": "Clear light",
-					"tone": "light",
-					"background": "#faf9f8",
-					"text": "#202332",
-					"accent": "#355d82",
-					"error": "#c43d46",
-					"warning": "#a66b12",
-					"slow": "#aa2832",
-					"fast": "#267549",
-					"effort": "#365f9c"
-				},
 				"dark": {
 					"label": "Dark",
 					"tone": "dark",
@@ -51,24 +39,52 @@
 					"slow": "#e2848b",
 					"fast": "#69aa80",
 					"effort": "#80a1c5"
+				},
+				"deuteranopia": {
+					"label": "Deuteranopia",
+					"tone": "light",
+					"background": "#ffffff",
+					"text": "#121213",
+					"accent": "#0072b2",
+					"error": "#d55e00",
+					"warning": "#e69f00",
+					"slow": "#d55e00",
+					"fast": "#009e73",
+					"effort": "#cc79a7"
+				},
+				"protanopia": {
+					"label": "Protanopia",
+					"tone": "light",
+					"background": "#ffffff",
+					"text": "#121213",
+					"accent": "#3b6fb6",
+					"error": "#d89000",
+					"warning": "#8e6c9e",
+					"slow": "#d89000",
+					"fast": "#4e79a7",
+					"effort": "#b07aa1"
+				},
+				"tritanopia": {
+					"label": "Tritanopia",
+					"tone": "light",
+					"background": "#ffffff",
+					"text": "#121213",
+					"accent": "#007c91",
+					"error": "#c74646",
+					"warning": "#a85ac7",
+					"slow": "#c74646",
+					"fast": "#168b76",
+					"effort": "#8b5fbf"
 				}
 			},
 			fonts: {
-				"sans-serif": {
-					"label": "Sans serif",
-					"stack": "system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif"
-				},
-				"serif": {
-					"label": "Serif",
-					"stack": "ui-serif,Georgia,Cambria,\"Times New Roman\",serif"
-				},
 				"monospace": {
 					"label": "Monospace",
 					"stack": "ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",monospace"
 				},
-				"cursive": {
-					"label": "Cursive",
-					"stack": "cursive"
+				"sans-serif": {
+					"label": "Sans serif",
+					"stack": "system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif"
 				}
 			}
 		}),
@@ -251,15 +267,6 @@
 		const FONT_KEY = "samey.font";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
-		const colors = config.colors;
-		const COLOR_IDS = [...Object.keys(colors), "custom"];
-		const FONT_IDS = Object.keys(config.fonts);
-		const colorLabels = {
-			system: "System",
-			...Object.fromEntries(Object.entries(colors).map(([id, value]) => [id, value.label]))
-		};
-		const fontLabels = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.label]));
-		const fontStacks = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.stack]));
 		const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 		const mix = (a, b, weight) => {
 			const rgb = (value) => [
@@ -282,6 +289,61 @@
 			const s = l > .5 ? d / (2 - max - min) : d / (max + min);
 			return `${+((max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4) / 6 * 360).toFixed(2)} ${+(s * 100).toFixed(2)}% ${+(l * 100).toFixed(2)}%`;
 		};
+		const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
+			"&": "&amp;",
+			"<": "&lt;",
+			">": "&gt;",
+			"\"": "&quot;",
+			"'": "&#39;"
+		})[c]);
+		const semanticRoles = [
+			"accent",
+			"error",
+			"warning",
+			"slow",
+			"fast",
+			"effort"
+		];
+		const defaultBgWeight = (tone) => tone === "dark" ? .29 : .17;
+		const normalizeTheme = (value, fallback) => {
+			const tone = value?.tone === "dark" ? "dark" : "light";
+			const background = validHex(value?.background) ? value.background.toLowerCase() : fallback.background;
+			const text = validHex(value?.text) ? value.text.toLowerCase() : fallback.text;
+			const out = {
+				tone,
+				background,
+				text
+			};
+			for (const role of semanticRoles) {
+				const fgValue = value?.[`${role}Fg`] ?? value?.[role];
+				const fallbackFg = fallback?.[`${role}Fg`] ?? fallback?.[role] ?? text;
+				const fg = validHex(fgValue) ? fgValue.toLowerCase() : fallbackFg;
+				const bgValue = value?.[`${role}Bg`];
+				const fallbackBg = fallback?.[`${role}Bg`];
+				const bg = validHex(bgValue) ? bgValue.toLowerCase() : validHex(fallbackBg) ? fallbackBg.toLowerCase() : mix(background, fg, defaultBgWeight(tone));
+				out[role] = fg;
+				out[`${role}Fg`] = fg;
+				out[`${role}Bg`] = bg;
+			}
+			const selectionFg = value?.selectionFg;
+			const selectionBg = value?.selectionBg;
+			out.selectionFg = validHex(selectionFg) ? selectionFg.toLowerCase() : text;
+			out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg, tone === "dark" ? .42 : .27);
+			return out;
+		};
+		const rawColors = config.colors;
+		const colors = {};
+		for (const [id, value] of Object.entries(rawColors)) colors[id] = normalizeTheme(value, value);
+		const COLOR_IDS = Object.keys(colors);
+		const FONT_IDS = Object.keys(config.fonts);
+		const fontLabels = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.label]));
+		const fontStacks = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.stack]));
+		const DEFAULT_THEME_MENU = [
+			"system",
+			"light",
+			"dark",
+			"clear-dark"
+		];
 		let volatileThemePrefs = {};
 		let volatileFont;
 		const rawPrefs = () => {
@@ -294,6 +356,7 @@
 				...volatileThemePrefs
 			};
 		};
+		const defaultFont = () => document.documentElement.dataset.siteKind === "keybr" ? "monospace" : "sans-serif";
 		const readFont = () => {
 			if (FONT_IDS.includes(volatileFont)) return volatileFont;
 			try {
@@ -301,12 +364,17 @@
 				if (FONT_IDS.includes(value)) return value;
 			} catch {}
 			const legacy = rawPrefs().font;
-			return FONT_IDS.includes(legacy) ? legacy : "sans-serif";
+			return FONT_IDS.includes(legacy) ? legacy : defaultFont();
 		};
-		const migrateColor = (value) => {
-			if (value === "light-contrast") return "clear-light";
-			if (value === "dark-contrast") return "clear-dark";
-			if (value === "chocolate") return "dark";
+		const normalizedSavedThemes = (raw = rawPrefs()) => Array.isArray(raw.savedThemes) ? raw.savedThemes.filter((item) => item && typeof item.id === "string" && typeof item.name === "string").map((item) => ({
+			...normalizeTheme(item, colors.light),
+			id: item.id,
+			name: item.name.slice(0, 80)
+		})) : [];
+		const savedThemeId = (id) => `saved:${id}`;
+		const migrateColor = (value, savedThemes) => {
+			if (value === "light-contrast" || value === "clear-light") return "light";
+			if (value === "dark-contrast" || value === "chocolate") return value === "chocolate" ? "dark" : "clear-dark";
 			if ([
 				"gray",
 				"yellow",
@@ -314,57 +382,61 @@
 				"coffee",
 				"honey"
 			].includes(value)) return "light";
-			return value === "system" || COLOR_IDS.includes(value) ? value : "system";
+			if (typeof value === "string" && value.startsWith("saved:")) return savedThemes.some((theme) => savedThemeId(theme.id) === value) ? value : "system";
+			return value === "system" || value === "custom" || COLOR_IDS.includes(value) ? value : "system";
 		};
 		const read = () => {
 			const raw = rawPrefs();
-			const selected = migrateColor(raw.color);
-			let color = selected;
-			if (color === "system") color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+			const savedThemes = normalizedSavedThemes(raw);
+			const selected = migrateColor(raw.color, savedThemes);
 			const font = readFont();
-			if (color !== "custom") return {
-				color,
-				selected: selected || "system",
-				font,
-				...colors[color],
-				custom: { ...colors[color] }
-			};
-			const custom = raw.custom || {};
-			const fallback = custom.tone === "dark" ? colors.dark : colors.light;
+			if (selected === "system") {
+				const color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+				return {
+					color,
+					selected: "system",
+					font,
+					...colors[color],
+					custom: { ...colors[color] }
+				};
+			}
+			if (selected === "custom") {
+				const custom = raw.custom || {};
+				const fallback = custom.tone === "dark" ? colors.dark : colors.light;
+				const theme = normalizeTheme(custom, fallback);
+				return {
+					color: "custom",
+					selected: "custom",
+					font,
+					...theme,
+					custom: { ...theme }
+				};
+			}
+			if (selected.startsWith("saved:")) {
+				const saved = savedThemes.find((theme) => savedThemeId(theme.id) === selected) || savedThemes[0];
+				const theme = normalizeTheme(saved, saved?.tone === "dark" ? colors.dark : colors.light);
+				return {
+					color: selected,
+					selected,
+					font,
+					...theme,
+					custom: { ...theme },
+					savedName: saved?.name || "Saved theme"
+				};
+			}
+			const theme = colors[selected] || colors.light;
 			return {
-				color,
-				selected: "custom",
+				color: selected,
+				selected,
 				font,
-				tone: custom.tone === "dark" ? "dark" : "light",
-				background: validHex(custom.background) ? custom.background.toLowerCase() : fallback.background,
-				text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
-				accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
-				error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
-				warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
-				slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
-				fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
-				effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort,
-				custom: {
-					tone: custom.tone === "dark" ? "dark" : "light",
-					background: validHex(custom.background) ? custom.background.toLowerCase() : fallback.background,
-					text: validHex(custom.text) ? custom.text.toLowerCase() : fallback.text,
-					accent: validHex(custom.accent) ? custom.accent.toLowerCase() : fallback.accent,
-					error: validHex(custom.error) ? custom.error.toLowerCase() : fallback.error,
-					warning: validHex(custom.warning) ? custom.warning.toLowerCase() : fallback.warning,
-					slow: validHex(custom.slow) ? custom.slow.toLowerCase() : fallback.slow,
-					fast: validHex(custom.fast) ? custom.fast.toLowerCase() : fallback.fast,
-					effort: validHex(custom.effort) ? custom.effort.toLowerCase() : fallback.effort
-				}
+				...theme,
+				custom: { ...theme }
 			};
 		};
 		const keybrCustomProperties = (theme) => {
 			const dark = theme.tone === "dark";
-			const primary = theme.background, secondary = theme.text, accent = theme.accent, error = theme.error;
-			const dataStrength = dark ? .72 : .62;
-			const zoneStrength = dark ? .35 : .27;
-			const accentStrength = dark ? .64 : .54;
-			const data = (value) => mix(primary, value, dataStrength);
-			const zone = (value) => mix(primary, value, zoneStrength);
+			const primary = theme.background, secondary = theme.text;
+			const accent = theme.accentFg, error = theme.errorFg;
 			return {
 				"--primary-d2": mix(primary, dark ? "#ffffff" : "#000000", .1),
 				"--primary-d1": mix(primary, dark ? "#ffffff" : "#000000", .05),
@@ -386,36 +458,36 @@
 				"--error": error,
 				"--error-l1": mix(error, dark ? "#000000" : "#ffffff", .1),
 				"--shadow-color": dark ? "#00000088" : "#00000044",
-				"--slow-key-color": data(theme.slow),
-				"--fast-key-color": data(theme.fast),
-				"--effort-color": data(theme.effort),
+				"--slow-key-color": theme.slowFg,
+				"--fast-key-color": theme.fastFg,
+				"--effort-color": theme.effortFg,
 				"--textinput__color": secondary,
 				"--textinput--special__color": mix(secondary, primary, .5),
 				"--textinput--hit__color": mix(secondary, primary, .4),
 				"--textinput--miss__color": error,
 				"--Name-color": mix(secondary, primary, .2),
 				"--Value-color": mix(secondary, primary, .1),
-				"--Value--more__color": data(theme.fast),
-				"--Value--less__color": data(theme.slow),
-				"--Chart-speed__color": data(theme.fast),
-				"--Chart-accuracy__color": data(theme.error),
-				"--Chart-complexity__color": data(theme.effort),
-				"--Chart-threshold__color": data(theme.accent),
-				"--Chart-hist-h__color": data(theme.effort),
-				"--Chart-hist-m__color": data(theme.error),
-				"--Chart-hist-r__color": mix(data(theme.error), data(theme.effort), .5),
-				"--KeyboardKey-pointer__color": mix(primary, theme.accent, accentStrength),
-				"--KeyboardKey-symbol--dead__color": data(theme.error),
-				"--KeyboardKey-symbol--ligature__color": data(theme.effort),
-				"--pinky-zone-color": zone(theme.fast),
-				"--ring-zone-color": zone(theme.warning),
-				"--middle-zone-color": zone(theme.warning),
-				"--left-index-zone-color": zone(theme.accent),
-				"--right-index-zone-color": zone(theme.effort),
-				"--thumb-zone-color": zone(theme.error),
-				"--syntax-keyword": mix(primary, theme.accent, .68),
-				"--syntax-string": mix(primary, theme.fast, .68),
-				"--syntax-number": mix(primary, theme.effort, .68),
+				"--Value--more__color": theme.fastFg,
+				"--Value--less__color": theme.slowFg,
+				"--Chart-speed__color": theme.fastFg,
+				"--Chart-accuracy__color": theme.errorFg,
+				"--Chart-complexity__color": theme.effortFg,
+				"--Chart-threshold__color": theme.accentFg,
+				"--Chart-hist-h__color": theme.effortFg,
+				"--Chart-hist-m__color": theme.errorFg,
+				"--Chart-hist-r__color": mix(theme.errorFg, theme.effortFg, .5),
+				"--KeyboardKey-pointer__color": theme.accentBg,
+				"--KeyboardKey-symbol--dead__color": theme.errorFg,
+				"--KeyboardKey-symbol--ligature__color": theme.effortFg,
+				"--pinky-zone-color": theme.fastBg,
+				"--ring-zone-color": theme.warningBg,
+				"--middle-zone-color": theme.warningBg,
+				"--left-index-zone-color": theme.accentBg,
+				"--right-index-zone-color": theme.effortBg,
+				"--thumb-zone-color": theme.errorBg,
+				"--syntax-keyword": theme.accentFg,
+				"--syntax-string": theme.fastFg,
+				"--syntax-number": theme.effortFg,
 				"--syntax-comment": mix(secondary, primary, .42)
 			};
 		};
@@ -428,6 +500,10 @@
 			dispatchEvent(new CustomEvent("samey-themechange", { detail: theme }));
 			notifying = false;
 		};
+		let appearancePanel = null;
+		let appearanceTrigger = null;
+		let advancedPage = null;
+		let advancedEditor = null;
 		const apply = () => {
 			const theme = read();
 			const root = document.documentElement;
@@ -444,16 +520,29 @@
 			root.style.setProperty("--site-muted", mix(theme.text, theme.background, .42));
 			root.style.setProperty("--site-line", line);
 			root.style.setProperty("--site-soft", soft);
-			root.style.setProperty("--site-accent", theme.accent);
-			root.style.setProperty("--site-error", theme.error);
-			root.style.setProperty("--site-warning-color", theme.warning);
-			root.style.setProperty("--site-slow-color", theme.slow);
-			root.style.setProperty("--site-fast-color", theme.fast);
-			root.style.setProperty("--site-effort-color", theme.effort);
+			for (const role of semanticRoles) {
+				root.style.setProperty(`--site-${role}-fg`, theme[`${role}Fg`]);
+				root.style.setProperty(`--site-${role}-bg`, theme[`${role}Bg`]);
+			}
+			root.style.setProperty("--site-accent", theme.accentFg);
+			root.style.setProperty("--site-error", theme.errorFg);
+			root.style.setProperty("--site-warning-color", theme.warningFg);
+			root.style.setProperty("--site-slow-color", theme.slowFg);
+			root.style.setProperty("--site-fast-color", theme.fastFg);
+			root.style.setProperty("--site-effort-color", theme.effortFg);
 			root.style.setProperty("--site-font", fontStacks[theme.font]);
+			if (root.dataset.siteKind === "wordle") {
+				root.style.removeProperty("--site-selection");
+				root.style.removeProperty("--site-selection-bg");
+				root.style.removeProperty("--site-selection-fg");
+			} else {
+				root.style.setProperty("--site-selection", theme.selectionBg);
+				root.style.setProperty("--site-selection-bg", theme.selectionBg);
+				root.style.setProperty("--site-selection-fg", theme.selectionFg);
+			}
 			if (root.dataset.siteKind === "keybr") {
 				for (const name of KEYBR_CUSTOM_PROPERTIES) root.style.removeProperty(name);
-				if (theme.color === "custom") for (const [name, value] of Object.entries(keybrCustomProperties(theme))) root.style.setProperty(name, value);
+				for (const [name, value] of Object.entries(keybrCustomProperties(theme))) root.style.setProperty(name, value);
 			}
 			if (root.dataset.siteKind === "wordle") {
 				root.style.setProperty("--background", hsl(theme.background));
@@ -472,21 +561,23 @@
 				root.style.setProperty("--accent-foreground", hsl(theme.text));
 				root.style.setProperty("--border", hsl(line));
 				root.style.setProperty("--input", hsl(line));
-				root.style.setProperty("--ring", hsl(theme.accent));
-				root.style.setProperty("--info", hsl(mix(theme.effort, theme.background, .82)));
-				root.style.setProperty("--info-foreground", hsl(theme.effort));
-				root.style.setProperty("--success", hsl(mix(theme.fast, theme.background, .82)));
-				root.style.setProperty("--success-foreground", hsl(theme.fast));
-				root.style.setProperty("--warning", hsl(mix(theme.warning, theme.background, .82)));
-				root.style.setProperty("--warning-foreground", hsl(theme.warning));
-				root.style.setProperty("--error", hsl(mix(theme.error, theme.background, .84)));
-				root.style.setProperty("--error-foreground", hsl(theme.error));
-				root.style.setProperty("--destructive", hsl(theme.error));
+				root.style.setProperty("--ring", hsl(theme.accentFg));
+				root.style.setProperty("--info", hsl(mix(theme.effortFg, theme.background, .82)));
+				root.style.setProperty("--info-foreground", hsl(theme.effortFg));
+				root.style.setProperty("--success", hsl(mix(theme.fastFg, theme.background, .82)));
+				root.style.setProperty("--success-foreground", hsl(theme.fastFg));
+				root.style.setProperty("--warning", hsl(mix(theme.warningFg, theme.background, .82)));
+				root.style.setProperty("--warning-foreground", hsl(theme.warningFg));
+				root.style.setProperty("--error", hsl(mix(theme.errorFg, theme.background, .84)));
+				root.style.setProperty("--error-foreground", hsl(theme.errorFg));
+				root.style.setProperty("--destructive", hsl(theme.errorFg));
 				root.style.setProperty("--destructive-foreground", hsl(theme.background));
 				root.style.setProperty("--wordle-key-neutral", mix(theme.text, theme.background, theme.tone === "dark" ? .78 : .74));
 			}
 			document.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
 			document.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
+			renderAppearancePanel();
+			syncAdvancedMenuChecks();
 			notify(theme);
 			return theme;
 		};
@@ -518,7 +609,11 @@
 			get: read,
 			set: setPrefs,
 			apply,
-			themeIds: Object.freeze(["system", ...COLOR_IDS]),
+			themeIds: Object.freeze([
+				"system",
+				...COLOR_IDS,
+				"custom"
+			]),
 			fontIds: Object.freeze([...FONT_IDS])
 		});
 		Object.defineProperty(globalThis, "SameyAppearance", {
@@ -526,9 +621,35 @@
 			configurable: false,
 			writable: false
 		});
-		const section = (title, items, attr) => `<div class="samey-panel-title">${title}</div>${Object.entries(items).map(([value, label]) => `<button type="button" ${attr}="${value}">${label}</button>`).join("")}`;
-		let appearancePanel = null;
-		let appearanceTrigger = null;
+		const themeCatalog = () => {
+			const raw = rawPrefs();
+			const saved = normalizedSavedThemes(raw);
+			return [
+				["system", "System"],
+				...Object.entries(config.colors).map(([id, value]) => [id, value.label]),
+				...saved.map((theme) => [savedThemeId(theme.id), theme.name])
+			];
+		};
+		const menuThemeIds = () => {
+			const raw = rawPrefs();
+			const catalog = new Set(themeCatalog().map(([id]) => id));
+			const result = (Array.isArray(raw.menuThemes) ? raw.menuThemes : DEFAULT_THEME_MENU).filter((id) => catalog.has(id) && id !== "clear-light");
+			return result.length ? result : [...DEFAULT_THEME_MENU];
+		};
+		const themeSection = () => {
+			const allowed = new Set(menuThemeIds());
+			return `<div class="samey-panel-title">Theme</div>${themeCatalog().filter(([id]) => allowed.has(id)).map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}<button type="button" data-open-advanced>Advanced…</button>`;
+		};
+		const fontSection = () => `<div class="samey-panel-title">Font</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
+		function renderAppearancePanel() {
+			if (!appearancePanel) return;
+			const wasHidden = appearancePanel.hidden;
+			appearancePanel.innerHTML = themeSection() + fontSection();
+			appearancePanel.hidden = wasHidden;
+			const theme = read();
+			appearancePanel.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
+			appearancePanel.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
+		}
 		const positionAppearancePanel = (trigger) => {
 			if (!appearancePanel || !trigger) return;
 			const margin = 8;
@@ -558,8 +679,192 @@
 			appearanceTrigger?.setAttribute("aria-expanded", "false");
 			appearanceTrigger = trigger;
 			trigger.setAttribute("aria-expanded", "true");
+			renderAppearancePanel();
 			appearancePanel.hidden = false;
 			positionAppearancePanel(trigger);
+		};
+		const editorFields = [
+			["background", "Page background"],
+			["text", "Text"],
+			["selectionBg", "Selection background"],
+			["selectionFg", "Selection text"],
+			["accentFg", "Accent foreground"],
+			["accentBg", "Accent background"],
+			["errorFg", "Error foreground"],
+			["errorBg", "Error background"],
+			["warningFg", "Warning foreground"],
+			["warningBg", "Warning background"],
+			["slowFg", "Slow foreground"],
+			["slowBg", "Slow background"],
+			["fastFg", "Fast foreground"],
+			["fastBg", "Fast background"],
+			["effortFg", "Effort foreground"],
+			["effortBg", "Effort background"]
+		];
+		const editorThemeFromInputs = () => {
+			if (!advancedEditor) return read().custom;
+			const value = { tone: advancedEditor.querySelector("[name=\"tone\"]")?.value === "dark" ? "dark" : "light" };
+			for (const [key] of editorFields) {
+				const input = advancedEditor.querySelector(`[name="${key}"]`);
+				if (input && validHex(input.value)) value[key] = input.value.toLowerCase();
+			}
+			return normalizeTheme(value, value.tone === "dark" ? colors.dark : colors.light);
+		};
+		const fillAdvancedEditor = (theme = read()) => {
+			if (!advancedEditor) return;
+			advancedEditor.querySelector("[name=\"tone\"]").value = theme.tone;
+			for (const [key] of editorFields) {
+				const value = theme[key] || theme.custom?.[key];
+				if (!validHex(value)) continue;
+				const color = advancedEditor.querySelector(`[data-color-for="${key}"]`);
+				const text = advancedEditor.querySelector(`[name="${key}"]`);
+				if (color) color.value = value;
+				if (text) text.value = value;
+			}
+			const name = advancedEditor.querySelector("[name=\"themeName\"]");
+			if (name && !name.value) name.value = theme.savedName || "My theme";
+		};
+		const syncColorPair = (target) => {
+			const key = target.dataset.colorFor || target.name;
+			if (!key || !editorFields.some(([field]) => field === key)) return;
+			const color = advancedEditor.querySelector(`[data-color-for="${key}"]`);
+			const text = advancedEditor.querySelector(`[name="${key}"]`);
+			if (target.matches("input[type=\"color\"]")) text.value = target.value;
+			else if (validHex(target.value)) color.value = target.value;
+		};
+		const previewAdvanced = () => setPrefs({
+			color: "custom",
+			custom: editorThemeFromInputs()
+		});
+		const makeSavedId = (name) => {
+			return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 36) || "theme"}-${Date.now().toString(36)}`;
+		};
+		const saveAdvancedTheme = () => {
+			const raw = rawPrefs();
+			const name = advancedEditor.querySelector("[name=\"themeName\"]")?.value.trim() || "Saved theme";
+			const theme = editorThemeFromInputs();
+			const savedThemes = normalizedSavedThemes(raw);
+			const id = makeSavedId(name);
+			savedThemes.push({
+				id,
+				name,
+				...theme
+			});
+			const menuThemes = [.../* @__PURE__ */ new Set([...menuThemeIds(), savedThemeId(id)])];
+			setPrefs({
+				savedThemes,
+				menuThemes,
+				color: savedThemeId(id)
+			});
+			renderAdvancedSavedThemes();
+		};
+		const advancedMenuList = () => themeCatalog().filter(([id]) => id !== "clear-light").map(([id, label]) => {
+			const checked = menuThemeIds().includes(id) ? " checked" : "";
+			return `<label class="samey-advanced-check"><input type="checkbox" data-menu-theme="${escapeHtml(id)}"${checked}><span>${escapeHtml(label)}</span></label>`;
+		}).join("");
+		const renderAdvancedSavedThemes = () => {
+			if (!advancedPage) return;
+			const host = advancedPage.querySelector("[data-saved-themes]");
+			const saved = normalizedSavedThemes();
+			host.innerHTML = saved.length ? saved.map((theme) => `<div class="samey-saved-theme"><button type="button" data-load-saved="${escapeHtml(theme.id)}">${escapeHtml(theme.name)}</button><button type="button" data-delete-saved="${escapeHtml(theme.id)}" aria-label="Delete ${escapeHtml(theme.name)}">×</button></div>`).join("") : `<p class="samey-advanced-empty">No saved themes yet.</p>`;
+			const menu = advancedPage.querySelector("[data-theme-menu-list]");
+			if (menu) menu.innerHTML = advancedMenuList();
+		};
+		function syncAdvancedMenuChecks() {
+			if (!advancedPage || advancedPage.hidden) return;
+			const allowed = new Set(menuThemeIds());
+			advancedPage.querySelectorAll("[data-menu-theme]").forEach((input) => {
+				input.checked = allowed.has(input.dataset.menuTheme);
+			});
+		}
+		const setMenuThemeAllowed = (id, allowed) => {
+			const set = new Set(menuThemeIds());
+			if (allowed) set.add(id);
+			else set.delete(id);
+			if (set.size === 0) set.add("system");
+			setPrefs({ menuThemes: [...set] });
+		};
+		const deleteSavedTheme = (id) => {
+			const raw = rawPrefs();
+			const selectedId = savedThemeId(id);
+			const patch = {
+				savedThemes: normalizedSavedThemes(raw).filter((theme) => theme.id !== id),
+				menuThemes: menuThemeIds().filter((themeId) => themeId !== selectedId)
+			};
+			if (read().selected === selectedId) patch.color = "system";
+			setPrefs(patch);
+			renderAdvancedSavedThemes();
+		};
+		const loadSavedIntoEditor = (id) => {
+			const saved = normalizedSavedThemes().find((theme) => theme.id === id);
+			if (!saved) return;
+			const name = advancedEditor.querySelector("[name=\"themeName\"]");
+			if (name) name.value = saved.name;
+			fillAdvancedEditor(saved);
+			previewAdvanced();
+		};
+		const loadPresetIntoEditor = (id) => {
+			const preset = colors[id];
+			if (!preset) return;
+			const name = advancedEditor.querySelector("[name=\"themeName\"]");
+			if (name) name.value = `${config.colors[id]?.label || id} custom`;
+			fillAdvancedEditor(preset);
+			previewAdvanced();
+		};
+		const mountAdvancedPage = () => {
+			if (advancedPage) return;
+			const page = document.createElement("div");
+			page.className = "samey-theme-advanced";
+			page.dataset.sameyRuntime = "";
+			page.hidden = true;
+			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theme</h1></div><button type="button" data-close-advanced aria-label="Close advanced theme editor">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section><h2>Colorblind presets</h2><p>Load a preset, then edit or save it.</p><div class="samey-advanced-preset-list"><button type="button" data-load-preset="deuteranopia">Deuteranopia</button><button type="button" data-load-preset="protanopia">Protanopia</button><button type="button" data-load-preset="tritanopia">Tritanopia</button></div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+			document.body.append(page);
+			advancedPage = page;
+			advancedEditor = page.querySelector("[data-advanced-editor]");
+			advancedEditor.addEventListener("input", (event) => {
+				const target = event.target;
+				if (target.name === "themeName") return;
+				syncColorPair(target);
+				if (target.name === "tone") {
+					const current = editorThemeFromInputs();
+					const normalized = normalizeTheme({
+						...current,
+						tone: target.value
+					}, target.value === "dark" ? colors.dark : colors.light);
+					fillAdvancedEditor(normalized);
+				}
+				if (target.matches("input[type=\"color\"]") || validHex(target.value) || target.name === "tone") previewAdvanced();
+			});
+			page.addEventListener("click", (event) => {
+				const target = event.target.closest?.("button");
+				if (!target) return;
+				if (target.hasAttribute("data-close-advanced")) closeAdvanced();
+				else if (target.hasAttribute("data-save-theme")) saveAdvancedTheme();
+				else if (target.hasAttribute("data-reset-editor")) {
+					advancedEditor.querySelector("[name=\"themeName\"]").value = read().savedName || "My theme";
+					fillAdvancedEditor(read());
+				} else if (target.dataset.loadPreset) loadPresetIntoEditor(target.dataset.loadPreset);
+				else if (target.dataset.loadSaved) loadSavedIntoEditor(target.dataset.loadSaved);
+				else if (target.dataset.deleteSaved) deleteSavedTheme(target.dataset.deleteSaved);
+			});
+			page.addEventListener("change", (event) => {
+				const input = event.target.closest?.("[data-menu-theme]");
+				if (input) setMenuThemeAllowed(input.dataset.menuTheme, input.checked);
+			});
+		};
+		const openAdvanced = () => {
+			mountAdvancedPage();
+			closeAppearance();
+			advancedEditor.querySelector("[name=\"themeName\"]").value = read().savedName || "My theme";
+			fillAdvancedEditor(read());
+			renderAdvancedSavedThemes();
+			advancedPage.hidden = false;
+			document.documentElement.classList.add("samey-advanced-open");
+		};
+		const closeAdvanced = () => {
+			if (!advancedPage) return;
+			advancedPage.hidden = true;
+			document.documentElement.classList.remove("samey-advanced-open");
 		};
 		const mountControls = () => {
 			if (appearancePanel) return;
@@ -568,12 +873,12 @@
 			panel.className = "samey-theme-panel";
 			panel.dataset.sameyRuntime = "";
 			panel.hidden = true;
-			panel.innerHTML = section("Theme", colorLabels, "data-theme-choice") + section("Font", fontLabels, "data-font-choice");
 			panel.addEventListener("click", (event) => {
 				const themeButton = event.target.closest("[data-theme-choice]");
 				if (themeButton) setPrefs({ color: themeButton.dataset.themeChoice });
 				const fontButton = event.target.closest("[data-font-choice]");
 				if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
+				if (event.target.closest("[data-open-advanced]")) openAdvanced();
 			});
 			document.body.append(panel);
 			appearancePanel = panel;
@@ -589,6 +894,10 @@
 			});
 			addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
 			addEventListener("samey-pageleave", closeAppearance);
+			addEventListener("keydown", (event) => {
+				if (event.key === "Escape" && advancedPage && !advancedPage.hidden) closeAdvanced();
+			});
+			renderAppearancePanel();
 			apply();
 		};
 		globalThis.SameyOpenAppearance = (trigger) => toggleAppearance(trigger);

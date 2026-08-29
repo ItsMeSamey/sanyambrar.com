@@ -1,14 +1,14 @@
 {
   "colors": {
     "light": {"label":"Light","tone":"light","background":"#ffffff","text":"#121213","accent":"#2563eb","error":"#dc2626","warning":"#d4a72c","slow":"#dc2626","fast":"#16a34a","effort":"#2563eb"},
-    "clear-light": {"label":"Clear light","tone":"light","background":"#faf9f8","text":"#202332","accent":"#355d82","error":"#c43d46","warning":"#a66b12","slow":"#aa2832","fast":"#267549","effort":"#365f9c"},
     "dark": {"label":"Dark","tone":"dark","background":"#121213","text":"#f8f8f8","accent":"#60a5fa","error":"#f87171","warning":"#facc15","slow":"#ef4444","fast":"#4ade80","effort":"#60a5fa"},
-    "clear-dark": {"label":"Clear dark","tone":"dark","background":"#303237","text":"#b0b4bd","accent":"#7c9fc4","error":"#e2848b","warning":"#d9bd68","slow":"#e2848b","fast":"#69aa80","effort":"#80a1c5"}
+    "clear-dark": {"label":"Clear dark","tone":"dark","background":"#303237","text":"#b0b4bd","accent":"#7c9fc4","error":"#e2848b","warning":"#d9bd68","slow":"#e2848b","fast":"#69aa80","effort":"#80a1c5"},
+    "deuteranopia": {"label":"Deuteranopia","tone":"light","background":"#ffffff","text":"#121213","accent":"#0072b2","error":"#d55e00","warning":"#e69f00","slow":"#d55e00","fast":"#009e73","effort":"#cc79a7"},
+    "protanopia": {"label":"Protanopia","tone":"light","background":"#ffffff","text":"#121213","accent":"#3b6fb6","error":"#d89000","warning":"#8e6c9e","slow":"#d89000","fast":"#4e79a7","effort":"#b07aa1"},
+    "tritanopia": {"label":"Tritanopia","tone":"light","background":"#ffffff","text":"#121213","accent":"#007c91","error":"#c74646","warning":"#a85ac7","slow":"#c74646","fast":"#168b76","effort":"#8b5fbf"}
   },
   "fonts": {
-    "sans-serif": {"label":"Sans serif","stack":"system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif"},
-    "serif": {"label":"Serif","stack":"ui-serif,Georgia,Cambria,\"Times New Roman\",serif"},
     "monospace": {"label":"Monospace","stack":"ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",monospace"},
-    "cursive": {"label":"Cursive","stack":"cursive"}
+    "sans-serif": {"label":"Sans serif","stack":"system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif"}
   }
 }

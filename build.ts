@@ -237,12 +237,29 @@ ${keybrViewSwitch}`;
   must(keybrLayoutEffectStart >= 0 && keybrLayoutEffect.includes("createEffect(() =>") && !keybrLayoutEffect.includes("createRenderEffect(() =>"),
     "ux: Keybr React layout effects must run after DOM refs are attached");
   const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
-  must(keybrStyle.includes("--keybr-chart-speed: color-mix(in srgb, #6fb48c") &&
-    keybrStyle.includes("--pinky-zone-color: color-mix(in srgb, #8ec07c") &&
-    keybrStyle.includes("--right-index-zone-color: color-mix(in srgb, #c98298") &&
-    keybrStyle.includes("--syntax-number: color-mix(in srgb, var(--site-effort-color") &&
+  must(keybrStyle.includes("--keybr-chart-speed: var(--site-fast-fg") &&
+    keybrStyle.includes("--pinky-zone-color: var(--site-fast-bg") &&
+    keybrStyle.includes("--right-index-zone-color: var(--site-effort-bg") &&
+    keybrStyle.includes("--syntax-number: var(--site-effort-fg") &&
     keybrStyle.includes("--Button__background-color: var(--primary-d1)"),
-    "ux: Keybr data colors must stay distinct and subdued without accent-washing controls");
+    "ux: Keybr must keep colored foregrounds vivid while muting keyboard/background variants");
+  const keybrExplainToggle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/ExplainToggle.tsx"), "utf8");
+  const keybrExplainer = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/explainer/Explainer.tsx"), "utf8");
+  must(keybrExplainToggle.includes("explainerState.explainersVisible") && keybrExplainer.includes("explainerState.explainersVisible") &&
+    !keybrExplainToggle.includes("const { explainersVisible") && !keybrExplainer.includes("const { explainersVisible"),
+    "ux: Keybr explanation visibility must remain reactive after toggling");
+  const sharedThemeRuntime = await readFile(join(ROOT, "src/shared/theme.ts"), "utf8");
+  must(sharedThemeRuntime.includes('dataset.siteKind === "keybr" ? "monospace" : "sans-serif"') &&
+    sharedThemeRuntime.includes('data-open-advanced') && sharedThemeRuntime.includes('data-save-theme') &&
+    sharedThemeRuntime.includes('data-menu-theme') && sharedThemeRuntime.includes('selectionBg') &&
+    sharedThemeRuntime.includes('`--site-${role}-bg`'),
+    "ux: appearance must default to monospace and expose saved advanced themes with separate foreground/background colors");
+  const keybrCanvas = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/canvas/Canvas.tsx"), "utf8");
+  const keybrElementSize = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/hooks/use-element-size.ts"), "utf8");
+  must(keybrCanvas.includes("const currentSize = size()") && keybrCanvas.includes("context.setTransform") &&
+    keybrCanvas.includes('"inline-size": "100%"') && keybrCanvas.includes('"block-size": "100%"') &&
+    keybrElementSize.includes("return size;") && !keybrElementSize.includes("return size();"),
+    "ux: Keybr canvas sizing must stay reactive so statistics charts are actually painted");
   const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
   const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
   const keybrIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/icon/Icon.module.css"), "utf8");
@@ -321,7 +338,7 @@ ${keybrViewSwitch}`;
   const sharedTheme = await readFile(join(ROOT, "src/shared/theme.ts"), "utf8");
   const appearanceConfig = await readFile(join(ROOT, "src/static/shared/appearance.json"), "utf8");
   must(appearanceConfig.includes('"warning":"#d4a72c"') && appearanceConfig.includes('"warning":"#facc15"') &&
-    sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warning)') &&
+    sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warningFg)') &&
     wordleBrand.includes("var(--site-warning-color") && wordleBrand.includes("var(--site-error") &&
     wordleStyle.includes(".wordle-state-r { background: color-mix(in srgb, var(--site-error") &&
     wordleStyle.includes(".wordle-state-y { background: color-mix(in srgb, var(--site-warning-color"),

@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useState } from "@keybr/solid-compat/react";
 import { getElementSize } from "../utils/geometry.ts";
 import { type Size } from "../utils/size.ts";
+
 export type ElementResizeCallback = (entry: ResizeObserverEntry) => void;
 const observed = new WeakMap<Element, ElementResizeCallback>();
 let resizeObserver: ResizeObserver | null = null;
@@ -9,9 +10,7 @@ const getResizeObserver = (): ResizeObserver => {
         resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const callback = observed.get(entry.target);
-                if (callback != null) {
-                    callback(entry);
-                }
+                if (callback != null) callback(entry);
             }
         });
     }
@@ -26,19 +25,22 @@ export const onElementResize = (element: Element, callback: ElementResizeCallbac
         resizeObserver.unobserve(element);
     };
 };
-export const useElementSize = (ref: RefObject<Element | null>): Size | null => {
+
+// React rerenders consumers when this state changes. Solid does not, so returning
+// size() here would permanently hand callers the initial null snapshot. Keep the
+// signal as an accessor and let callers read it inside their reactive effects.
+export const useElementSize = (ref: RefObject<Element | null>): (() => Size | null) => {
     const [size, setSize] = useState<Size | null>(null);
     useEffect(() => {
         const element = ref.current;
-        if (element == null) {
-            return;
-        }
-        return onElementResize(element, () => {
+        if (element == null) return;
+        const update = () => {
             const newSize = getElementSize(element);
-            if (size() == null || !size().eq(newSize)) {
-                setSize(newSize);
-            }
-        });
-    }, () => [ref, size()]);
-    return size();
+            const oldSize = size();
+            if (oldSize == null || !oldSize.eq(newSize)) setSize(newSize);
+        };
+        update();
+        return onElementResize(element, update);
+    }, []);
+    return size;
 };

@@ -3,6 +3,6 @@ import { useExplainerState } from "./context.ts";
 export function Explainer(solidProps: {
     readonly children?: ReactNode;
 }): ReactNode {
-    const { explainersVisible } = useExplainerState();
-    return explainersVisible && solidProps.children;
+    const explainerState = useExplainerState();
+    return <>{explainerState.explainersVisible && solidProps.children}</>;
 }

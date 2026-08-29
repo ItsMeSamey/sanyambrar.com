@@ -8,7 +8,7 @@ export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
     const element = useRef<HTMLCanvasElement>(null);
     const size = useElementSize(element);
     useImperativeHandle(solidLocal.ref, () => ({
-        getSize: () => size,
+        getSize: () => size(),
         getContext: (...args) => {
             const canvas = element.current!;
             return canvas.getContext.call(canvas, ...args) as any;
@@ -22,34 +22,38 @@ export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
             return canvas.toDataURL.call(canvas, ...args);
         },
         paint: (paint) => {
-            if (size != null && size.width > 0 && size.height > 0) {
+            const currentSize = size();
+            if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
                 const canvas = element.current!;
                 const context = canvas.getContext("2d")!;
-                new Graphics(context).paint(paint(size));
+                new Graphics(context).paint(paint(currentSize));
             }
         },
     }));
     useEffect(() => {
-        if (size != null && size.width > 0 && size.height > 0) {
+        const currentSize = size();
+        if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
             const canvas = element.current!;
             const context = canvas.getContext("2d")!;
             const ratio = devicePixelRatio;
-            canvas.width = Math.max(1, size.width * ratio);
-            canvas.height = Math.max(1, size.height * ratio);
-            context.scale(ratio, ratio);
+            canvas.width = Math.max(1, currentSize.width * ratio);
+            canvas.height = Math.max(1, currentSize.height * ratio);
+            context.setTransform(ratio, 0, 0, ratio, 0, 0);
+            solidLocal.onResize?.(currentSize);
         }
-    }, () => [size]);
+    }, () => [size()]);
     useEffect(() => {
-        if (size != null && size.width > 0 && size.height > 0) {
+        const currentSize = size();
+        if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
             const canvas = element.current!;
             const context = canvas.getContext("2d")!;
-            new Graphics(context).paint(solidLocal.paint(size));
+            new Graphics(context).paint(solidLocal.paint(currentSize));
         }
-    }, () => [size, solidLocal.paint]);
+    }, () => [size(), solidLocal.paint]);
     return (<canvas {...props} ref={el => element.current = el} id={solidLocal.id} class={solidLocal.className} style={{
             display: "block",
-            inlineSize: "100%",
-            blockSize: "100%",
+            "inline-size": "100%",
+            "block-size": "100%",
             ...solidLocal.style,
         }} title={solidLocal.title}/>);
 });

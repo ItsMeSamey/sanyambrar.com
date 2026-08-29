@@ -8,16 +8,17 @@ export function ExplainToggle(solidProps: {
     readonly defaultMessage: string;
 }) {
     const { formatMessage } = useIntl();
-    const { explainersVisible, toggleExplainers } = useExplainerState();
+    const explainerState = useExplainerState();
     const prop = booleanProp(solidProps.preference, true);
-    useLayoutEffect(() => toggleExplainers(Preferences.get(prop)));
+    useLayoutEffect(() => explainerState.toggleExplainers(Preferences.get(prop)));
     return (<FieldList>
       <Field>
         <Button onClick={() => {
-            toggleExplainers(!explainersVisible);
-            Preferences.set(prop, !explainersVisible);
+            const visible = !explainerState.explainersVisible;
+            explainerState.toggleExplainers(visible);
+            Preferences.set(prop, visible);
         }}>
-          {explainersVisible
+          {explainerState.explainersVisible
             ? `\u25BC ${formatMessage({ id: "t_Hide_explanations", defaultMessage: "Hide explanations" })}`
             : `\u25BA ${formatMessage({ id: solidProps.messageId, defaultMessage: solidProps.defaultMessage })}`}
         </Button>
