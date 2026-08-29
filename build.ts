@@ -352,12 +352,17 @@ ${keybrViewSwitch}`;
   must(keybrLayoutEffectStart >= 0 && keybrLayoutEffect.includes("createEffect(() =>") && !keybrLayoutEffect.includes("createRenderEffect(() =>"),
     "ux: Keybr React layout effects must run after DOM refs are attached");
   const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
-  must(keybrStyle.includes("--keybr-chart-speed: var(--site-fast-fg") &&
+  const keybrHtml = await readFile(join(ROOT, "src/games/keybr/index.html"), "utf8");
+  must(keybrStyle.includes("--keybr-preferred-root-font-size") &&
+    keybrStyle.includes("font-size: clamp(8px, calc(2vw - 1px), var(--keybr-preferred-root-font-size))") &&
+    keybrHtml.includes("let widest = Math.max(innerWidth, screen.width || 0, screen.availWidth || 0)") &&
+    keybrHtml.includes('"--keybr-preferred-root-font-size", `${preferredSize(widest)}px`') &&
+    keybrStyle.includes("--keybr-chart-speed: var(--site-fast-fg") &&
     keybrStyle.includes("--pinky-zone-color: var(--site-fast-bg") &&
     keybrStyle.includes("--right-index-zone-color: var(--site-effort-bg") &&
     keybrStyle.includes("--syntax-number: var(--site-effort-fg") &&
     keybrStyle.includes("--Button__background-color: var(--primary-d1)"),
-    "ux: Keybr must keep colored foregrounds vivid while muting keyboard/background variants");
+    "ux: Keybr must keep its desktop scale until the practice surface is actually narrow, while keeping colored foregrounds vivid and background variants muted");
   const keybrKeyStyles = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/styles.ts"), "utf8");
   const keybrProgressOverview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/ProgressOverviewChart.tsx"), "utf8");
   const keybrSpeedHistogram = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/SpeedHistogram.tsx"), "utf8");

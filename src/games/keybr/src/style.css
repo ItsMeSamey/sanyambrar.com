@@ -148,7 +148,10 @@
   --syntax-comment: var(--site-muted, var(--secondary-f2));
 
   font-family: var(--default-font-family);
-  font-size: 8px;
+  --keybr-preferred-root-font-size: 8px;
+  /* Keep the desktop scale while the fluid practice surface still has room.
+     Only start shrinking once the viewport is genuinely narrow. */
+  font-size: clamp(8px, calc(2vw - 1px), var(--keybr-preferred-root-font-size));
   line-height: 1.5;
   scrollbar-color: var(--secondary) var(--primary);
 }
@@ -165,12 +168,12 @@ html[data-font="serif"] { --default-font-family: ui-serif, Georgia, Cambria, "Ti
 html[data-font="monospace"] { --default-font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; --header-font-family: var(--default-font-family); --value-font-family: var(--default-font-family); --monospace-font-family: var(--default-font-family); }
 html[data-font="cursive"] { --default-font-family: cursive; --header-font-family: cursive; --value-font-family: cursive; --monospace-font-family: cursive; }
 
-@media (min-width: 1280px), (min-device-width: 1280px) { html { font-size: 10px; } }
-@media (min-width: 1440px), (min-device-width: 1440px) { html { font-size: 11px; } }
-@media (min-width: 1600px), (min-device-width: 1600px) { html { font-size: 12px; } }
-@media (min-width: 1920px), (min-device-width: 1920px) { html { font-size: 15px; } }
-@media (min-width: 2560px), (min-device-width: 2560px) { html { font-size: 18px; } }
-@media (min-width: 3840px), (min-device-width: 3840px) { html { font-size: 24px; } }
+@media (min-width: 1280px), (min-device-width: 1280px) { html { --keybr-preferred-root-font-size: 10px; } }
+@media (min-width: 1440px), (min-device-width: 1440px) { html { --keybr-preferred-root-font-size: 11px; } }
+@media (min-width: 1600px), (min-device-width: 1600px) { html { --keybr-preferred-root-font-size: 12px; } }
+@media (min-width: 1920px), (min-device-width: 1920px) { html { --keybr-preferred-root-font-size: 15px; } }
+@media (min-width: 2560px), (min-device-width: 2560px) { html { --keybr-preferred-root-font-size: 18px; } }
+@media (min-width: 3840px), (min-device-width: 3840px) { html { --keybr-preferred-root-font-size: 24px; } }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body, #app { min-block-size: 100%; margin: 0; }

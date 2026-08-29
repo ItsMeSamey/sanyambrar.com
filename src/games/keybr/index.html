@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>keybr local</title>
+  <script>
+    (() => {
+      let widest = Math.max(innerWidth, screen.width || 0, screen.availWidth || 0);
+      const preferredSize = (width) =>
+        width >= 3840 ? 24 : width >= 2560 ? 18 : width >= 1920 ? 15 :
+        width >= 1600 ? 12 : width >= 1440 ? 11 : width >= 1280 ? 10 : 8;
+      const applyScale = () => {
+        widest = Math.max(widest, innerWidth, screen.width || 0, screen.availWidth || 0);
+        document.documentElement.style.setProperty(
+          "--keybr-preferred-root-font-size", `${preferredSize(widest)}px`,
+        );
+      };
+      applyScale();
+      addEventListener("resize", applyScale, { passive: true });
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>
