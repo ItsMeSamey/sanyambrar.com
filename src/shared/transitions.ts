@@ -1,21 +1,19 @@
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-const twoFrames = async () => { await nextFrame(); await nextFrame(); };
 
 type Direction = 'forward' | 'back';
 
 /** One motion contract for every page/view swap in the site. */
 export const PAGE_TRANSITION = {
   // One timing knob for Solid routes, standalone root swaps, and mounted game views.
-  duration: 260,
-  leaveRatio: 180 / 260,
-  enterEasing: 'cubic-bezier(.22,1,.36,1)',
+  duration: 210,
+  leaveRatio: 0.72,
+  enterEasing: 'cubic-bezier(.16,1,.3,1)',
   leaveEasing: 'cubic-bezier(.4,0,.2,1)',
-  opacity: .15,
-  clip: 'inset(4% 4% round 12px)',
-  forwardScale: .955,
-  backScale: .985,
-  leaveScale: 1.02,
+  opacity: .32,
+  forwardScale: .982,
+  backScale: .992,
+  leaveScale: 1.006,
 } as const;
 
 const leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
@@ -42,20 +40,23 @@ function snapshotElement(element: HTMLElement) {
     node.removeAttribute('aria-describedby');
   });
 
-  const originals = [element, ...element.querySelectorAll<HTMLElement>('*')];
-  const copies = [clone, ...clone.querySelectorAll<HTMLElement>('*')];
-  for (let i = 0; i < Math.min(originals.length, copies.length); i++) {
-    const source = originals[i], target = copies[i];
-    target.scrollTop = source.scrollTop;
-    target.scrollLeft = source.scrollLeft;
+  clone.scrollTop = element.scrollTop;
+  clone.scrollLeft = element.scrollLeft;
+  const sourceState = element.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input,textarea,select');
+  const targetState = clone.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input,textarea,select');
+  for (let i = 0; i < Math.min(sourceState.length, targetState.length); i++) {
+    const source = sourceState[i], target = targetState[i];
     if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
       target.value = source.value; target.checked = source.checked;
     } else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
     else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
-    else if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
-      target.width = source.width; target.height = source.height;
-      try { target.getContext('2d')?.drawImage(source, 0, 0); } catch {}
-    }
+  }
+  const sourceCanvases = element.querySelectorAll<HTMLCanvasElement>('canvas');
+  const targetCanvases = clone.querySelectorAll<HTMLCanvasElement>('canvas');
+  for (let i = 0; i < Math.min(sourceCanvases.length, targetCanvases.length); i++) {
+    const source = sourceCanvases[i], target = targetCanvases[i];
+    target.width = source.width; target.height = source.height;
+    try { target.getContext('2d')?.drawImage(source, 0, 0); } catch {}
   }
   shell.append(clone);
   document.body.append(shell);
@@ -65,13 +66,12 @@ function snapshotElement(element: HTMLElement) {
 function primeIncoming(element: HTMLElement, direction: Direction) {
   element.style.opacity = String(PAGE_TRANSITION.opacity);
   element.style.transform = startScale(direction);
-  element.style.clipPath = PAGE_TRANSITION.clip;
 }
 
 function animateIncoming(element: HTMLElement, direction: Direction) {
   return element.animate([
-    { opacity: PAGE_TRANSITION.opacity, transform: startScale(direction), clipPath: PAGE_TRANSITION.clip },
-    { opacity: 1, transform: 'scale(1)', clipPath: 'inset(0 round 0)' },
+    { opacity: PAGE_TRANSITION.opacity, transform: startScale(direction) },
+    { opacity: 1, transform: 'scale(1)' },
   ], { duration: PAGE_TRANSITION.duration, easing: PAGE_TRANSITION.enterEasing, fill: 'both' });
 }
 
@@ -85,7 +85,6 @@ function animateOutgoing(element: HTMLElement) {
 function clearIncoming(element: HTMLElement) {
   element.style.opacity = '';
   element.style.transform = '';
-  element.style.clipPath = '';
   element.style.pointerEvents = '';
 }
 
@@ -98,7 +97,6 @@ export async function animateRootSwap(current: HTMLElement | null, commit: () =>
   let incoming = next();
   if (!incoming || incoming === current || !incoming.isConnected) { await nextFrame(); incoming = next(); }
   if (incoming) primeIncoming(incoming, direction);
-  await twoFrames();
 
   const enter = incoming?.animate ? animateIncoming(incoming, direction) : undefined;
   const leave = animateOutgoing(snapshot);

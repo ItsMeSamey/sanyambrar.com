@@ -95,21 +95,16 @@
 	//#region src/shared/transitions.ts
 	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 	var nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-	var twoFrames = async () => {
-		await nextFrame();
-		await nextFrame();
-	};
 	/** One motion contract for every page/view swap in the site. */
 	var PAGE_TRANSITION = {
-		duration: 260,
-		leaveRatio: 180 / 260,
-		enterEasing: "cubic-bezier(.22,1,.36,1)",
+		duration: 210,
+		leaveRatio: .72,
+		enterEasing: "cubic-bezier(.16,1,.3,1)",
 		leaveEasing: "cubic-bezier(.4,0,.2,1)",
-		opacity: .15,
-		clip: "inset(4% 4% round 12px)",
-		forwardScale: .955,
-		backScale: .985,
-		leaveScale: 1.02
+		opacity: .32,
+		forwardScale: .982,
+		backScale: .992,
+		leaveScale: 1.006
 	};
 	var leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
 	var startScale = (direction) => `scale(${direction === "back" ? PAGE_TRANSITION.backScale : PAGE_TRANSITION.forwardScale})`;
@@ -131,24 +126,27 @@
 			node.removeAttribute("aria-labelledby");
 			node.removeAttribute("aria-describedby");
 		});
-		const originals = [element, ...element.querySelectorAll("*")];
-		const copies = [clone, ...clone.querySelectorAll("*")];
-		for (let i = 0; i < Math.min(originals.length, copies.length); i++) {
-			const source = originals[i], target = copies[i];
-			target.scrollTop = source.scrollTop;
-			target.scrollLeft = source.scrollLeft;
+		clone.scrollTop = element.scrollTop;
+		clone.scrollLeft = element.scrollLeft;
+		const sourceState = element.querySelectorAll("input,textarea,select");
+		const targetState = clone.querySelectorAll("input,textarea,select");
+		for (let i = 0; i < Math.min(sourceState.length, targetState.length); i++) {
+			const source = sourceState[i], target = targetState[i];
 			if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
 				target.value = source.value;
 				target.checked = source.checked;
 			} else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
 			else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
-			else if (source instanceof HTMLCanvasElement && target instanceof HTMLCanvasElement) {
-				target.width = source.width;
-				target.height = source.height;
-				try {
-					target.getContext("2d")?.drawImage(source, 0, 0);
-				} catch {}
-			}
+		}
+		const sourceCanvases = element.querySelectorAll("canvas");
+		const targetCanvases = clone.querySelectorAll("canvas");
+		for (let i = 0; i < Math.min(sourceCanvases.length, targetCanvases.length); i++) {
+			const source = sourceCanvases[i], target = targetCanvases[i];
+			target.width = source.width;
+			target.height = source.height;
+			try {
+				target.getContext("2d")?.drawImage(source, 0, 0);
+			} catch {}
 		}
 		shell.append(clone);
 		document.body.append(shell);
@@ -157,17 +155,14 @@
 	function primeIncoming(element, direction) {
 		element.style.opacity = String(PAGE_TRANSITION.opacity);
 		element.style.transform = startScale(direction);
-		element.style.clipPath = PAGE_TRANSITION.clip;
 	}
 	function animateIncoming(element, direction) {
 		return element.animate([{
 			opacity: PAGE_TRANSITION.opacity,
-			transform: startScale(direction),
-			clipPath: PAGE_TRANSITION.clip
+			transform: startScale(direction)
 		}, {
 			opacity: 1,
-			transform: "scale(1)",
-			clipPath: "inset(0 round 0)"
+			transform: "scale(1)"
 		}], {
 			duration: PAGE_TRANSITION.duration,
 			easing: PAGE_TRANSITION.enterEasing,
@@ -190,7 +185,6 @@
 	function clearIncoming(element) {
 		element.style.opacity = "";
 		element.style.transform = "";
-		element.style.clipPath = "";
 		element.style.pointerEvents = "";
 	}
 	async function animateRootSwap(current, commit, next, direction = "forward") {
@@ -212,7 +206,6 @@
 			incoming = next();
 		}
 		if (incoming) primeIncoming(incoming, direction);
-		await twoFrames();
 		const enter = incoming?.animate ? animateIncoming(incoming, direction) : void 0;
 		const leave = animateOutgoing(snapshot);
 		await Promise.allSettled([leave.finished, enter?.finished ?? Promise.resolve()]);
@@ -1150,26 +1143,26 @@
 			let pressedPointerId = null;
 			let lastX = 0, lastY = 0;
 			let pendingX = 0, pendingY = 0;
-			let cursorFrame = 0;
 			let linkHandoffUntil = 0;
 			let modifiedLinkPending = null;
 			let suppressModifiedClick = null;
-			const renderCursorPosition = () => {
-				cursorFrame = 0;
-				lastX = pendingX;
-				lastY = pendingY;
-				cursor.style.transform = `translate3d(${pendingX - 32}px,${pendingY - 32}px,0)`;
+			const renderCursorPosition = (x = pendingX, y = pendingY) => {
+				lastX = pendingX = x;
+				lastY = pendingY = y;
+				cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
 			};
-			const placeXY = (x, y, immediate = false) => {
+			const latestPointerSample = (event) => {
+				const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : null;
+				return samples?.length ? samples[samples.length - 1] : event;
+			};
+			const placeXY = (x, y) => {
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-				pendingX = x;
-				pendingY = y;
-				if (immediate) {
-					if (cursorFrame) cancelAnimationFrame(cursorFrame);
-					renderCursorPosition();
-				} else if (!cursorFrame) cursorFrame = requestAnimationFrame(renderCursorPosition);
+				renderCursorPosition(x, y);
 			};
-			const place = (event, immediate = false) => placeXY(event.clientX, event.clientY, immediate);
+			const place = (event) => {
+				const sample = latestPointerSample(event);
+				placeXY(sample.clientX, sample.clientY);
+			};
 			let dragPreviewW = 0, dragPreviewH = 0;
 			const placeDragPreview = (x, y) => {
 				if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -1212,15 +1205,22 @@
 				}
 			};
 			const fillDot = 16.8;
-			let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0;
+			let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0, fillLastTime = 0;
 			let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
 			let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
-			const linkRect = (link) => {
-				return [...link.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0).find((rect) => pendingX >= rect.left && pendingX <= rect.right && pendingY >= rect.top && pendingY <= rect.bottom) ?? link.getBoundingClientRect();
+			let geometryLink = null, geometryRects = [], geometryBounds = null;
+			const refreshLinkGeometry = (link) => {
+				geometryLink = link;
+				geometryRects = link ? [...link.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0) : [];
+				geometryBounds = link ? link.getBoundingClientRect() : null;
 			};
-			const updateFillGoal = () => {
+			const linkRect = (link, force = false) => {
+				if (force || geometryLink !== link || !geometryBounds) refreshLinkGeometry(link);
+				return geometryRects.find((rect) => pendingX >= rect.left && pendingX <= rect.right && pendingY >= rect.top && pendingY <= rect.bottom) ?? geometryBounds ?? link.getBoundingClientRect();
+			};
+			const updateFillGoal = (forceGeometry = false) => {
 				if (!fillTarget?.isConnected) return setFillTarget(null);
-				const rect = linkRect(fillTarget);
+				const rect = linkRect(fillTarget, forceGeometry);
 				const insetX = Math.min(8, Math.max(2, rect.width * .04));
 				const insetY = Math.min(6, Math.max(1, rect.height * .12));
 				const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
@@ -1231,30 +1231,41 @@
 				wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
 				wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
 			};
-			const renderFill = () => {
+			const renderFill = (time) => {
 				fillFrame = 0;
 				const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-				const posEase = reduced ? 1 : fillCollapsing ? .62 : .38, sizeEase = reduced ? 1 : fillCollapsing ? .58 : .25;
+				const dt = fillLastTime ? Math.min(34, Math.max(1, time - fillLastTime)) : 16.667;
+				fillLastTime = time;
+				const alpha = (tau) => reduced ? 1 : 1 - Math.exp(-dt / tau);
+				const posEase = alpha(fillCollapsing ? 34 : 42);
+				const sizeEase = alpha(fillCollapsing ? 42 : 62);
 				fillX += (wantedFillX - fillX) * posEase;
 				fillY += (wantedFillY - fillY) * posEase;
 				fillW += (wantedFillW - fillW) * sizeEase;
 				fillH += (wantedFillH - fillH) * sizeEase;
-				linkFill.style.width = `${fillW}px`;
-				linkFill.style.height = `${fillH}px`;
-				linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0)`;
-				const done = Math.abs(fillX - wantedFillX) < .5 && Math.abs(fillY - wantedFillY) < .5 && Math.abs(fillW - wantedFillW) < .5 && Math.abs(fillH - wantedFillH) < .5;
+				linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0) scale3d(${fillW / fillDot},${fillH / fillDot},1)`;
+				const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35 && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35;
 				if (fillCollapsing && done) {
 					fillVisible = fillCollapsing = false;
 					linkFill.hidden = true;
+					fillLastTime = 0;
 				} else if (!done) fillFrame = requestAnimationFrame(renderFill);
+				else fillLastTime = 0;
 			};
 			const ensureFillFrame = () => {
-				if (!fillFrame) fillFrame = requestAnimationFrame(renderFill);
+				if (!fillFrame) {
+					fillLastTime = 0;
+					fillFrame = requestAnimationFrame(renderFill);
+				}
 			};
 			const hideFillImmediate = () => {
 				fillTarget = null;
+				geometryLink = null;
+				geometryRects = [];
+				geometryBounds = null;
 				setFillLayer(null);
 				fillVisible = fillCollapsing = false;
+				fillLastTime = 0;
 				if (fillFrame) {
 					cancelAnimationFrame(fillFrame);
 					fillFrame = 0;
@@ -1262,8 +1273,9 @@
 				linkFill.hidden = true;
 			};
 			const cursorIdleMs = 2200;
-			let cursorIdleTimer = 0;
+			let cursorIdleTimer = 0, cursorIdleDeadline = 0;
 			const clearCursorIdle = () => {
+				cursorIdleDeadline = 0;
 				if (cursorIdleTimer) {
 					clearTimeout(cursorIdleTimer);
 					cursorIdleTimer = 0;
@@ -1273,16 +1285,24 @@
 				delete cursor.dataset.visible;
 				hideFillImmediate();
 			};
+			const runCursorIdle = () => {
+				cursorIdleTimer = 0;
+				if (!cursorIdleDeadline) return;
+				const remaining = cursorIdleDeadline - performance.now();
+				if (remaining > 1) {
+					cursorIdleTimer = window.setTimeout(runCursorIdle, remaining);
+					return;
+				}
+				cursorIdleDeadline = 0;
+				if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+			};
 			const armCursorIdle = () => {
-				clearCursorIdle();
-				cursorIdleTimer = window.setTimeout(() => {
-					cursorIdleTimer = 0;
-					if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
-				}, cursorIdleMs);
+				cursorIdleDeadline = performance.now() + cursorIdleMs;
+				if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
 			};
 			const wakeCursor = () => {
 				if (nativeDragging || cursor.hasAttribute("data-loading")) return;
-				cursor.dataset.visible = "";
+				if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
 				armCursorIdle();
 			};
 			function setFillTarget(link) {
@@ -1308,6 +1328,7 @@
 					fillVisible = true;
 					linkFill.hidden = false;
 				}
+				if (fillTarget !== link) refreshLinkGeometry(link);
 				fillTarget = link;
 				fillCollapsing = false;
 				linkFill.hidden = false;
@@ -1356,9 +1377,15 @@
 					return rect.left < above.right && rect.right > above.left && rect.top < above.bottom && rect.bottom > above.top;
 				});
 			};
+			let grabModeTarget = null, grabModeValue = false;
+			const wantsGrabCached = (target) => {
+				if (target === grabModeTarget) return grabModeValue;
+				grabModeTarget = target;
+				return grabModeValue = wantsGrab(target);
+			};
 			const setMode = (target) => {
 				updateBlendSource(target);
-				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrab(target);
+				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrabCached(target);
 				let link = grab || selectingText ? null : linkTarget(target);
 				if (linkBlockedByOverlay(link)) link = null;
 				setFillLayer(link);
@@ -1367,15 +1394,28 @@
 				setFillTarget(link);
 			};
 			refreshCursorMode = () => cursor.hasAttribute("data-visible") ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
-			const refreshAt = (event, moved = false) => {
+			const hasRawPointer = "onpointerrawupdate" in window;
+			const moveCursorOnly = (event) => {
 				if (nativeDragging) {
 					hidePointerVisuals();
 					return;
 				}
 				place(event);
+				wakeCursor();
+			};
+			const refreshAt = (event, moved = false) => {
+				if (nativeDragging) {
+					hidePointerVisuals();
+					return;
+				}
+				if (!hasRawPointer || !moved || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
 				if (moved) wakeCursor();
 				setMode(event.target instanceof Element ? event.target : elementAt(event));
 			};
+			if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, {
+				capture: true,
+				passive: true
+			});
 			document.addEventListener("pointermove", (event) => refreshAt(event, true), {
 				capture: true,
 				passive: true
@@ -1386,7 +1426,7 @@
 			});
 			addEventListener("scroll", () => {
 				if (fillTarget) {
-					updateFillGoal();
+					updateFillGoal(true);
 					ensureFillFrame();
 				}
 			}, {
@@ -1395,7 +1435,7 @@
 			});
 			addEventListener("resize", () => {
 				if (fillTarget) {
-					updateFillGoal();
+					updateFillGoal(true);
 					ensureFillFrame();
 				}
 			}, { passive: true });
@@ -1408,7 +1448,7 @@
 				const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
 				pressedPointerId = event.pointerId;
 				pressedGrab = !!actual?.closest?.(pressedGrabSelector);
-				place(event, true);
+				place(event);
 				selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
 				setMode(actual);
 				if (modifiedLink) {
@@ -1431,7 +1471,7 @@
 					holdLinkCursor(event, link);
 					window.open(link.href, "_blank", "noopener,noreferrer");
 				}
-				place(event, true);
+				place(event);
 				setMode(elementAt(event));
 			}, true);
 			document.addEventListener("click", (event) => {

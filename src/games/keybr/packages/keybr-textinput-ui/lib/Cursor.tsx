@@ -110,15 +110,18 @@ export function Cursor(props: {
     animation = null;
 
     if (!initial && caretMovementStyle === CaretMovementStyle.Smooth) {
+      // The logical caret lands immediately; only its visual delta is animated.
+      // Animating transform stays on the compositor and keeps the smooth mode
+      // responsive instead of making every keystroke wait on left/top layout.
       animation = cursor.animate(
         [
-          { left: `${fromLeft}px`, top: `${fromTop}px` },
-          { left: `${left}px`, top: `${top}px` },
+          { transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)` },
+          { transform: "translate3d(0,0,0)" },
         ],
         {
-          duration: wpmToDuration(120),
+          duration: 48,
           iterations: 1,
-          easing: "linear",
+          easing: "cubic-bezier(.16,1,.3,1)",
         },
       );
       const clear = () => {
@@ -162,13 +165,10 @@ export function Cursor(props: {
           width: "0",
           height: "0",
           "pointer-events": "none",
+          "will-change": "transform",
         }}
       />
       {props.children}
     </div>
   );
-}
-
-function wpmToDuration(wpm: number): number {
-  return Math.round(1000 / ((wpm * 5) / 60));
 }

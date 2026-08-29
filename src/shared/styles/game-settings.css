@@ -80,7 +80,7 @@
   font-weight: 600;
   background: transparent;
   color: var(--color-foreground, var(--site-fg, #121213));
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color var(--site-fast,110ms) var(--site-ease-out,ease), color var(--site-fast,110ms) var(--site-ease-out,ease);
 }
 .game-settings-action:hover {
   background: var(--color-muted, color-mix(in srgb, var(--site-soft, #f3f4f5) 78%, var(--site-fg, #121213)));
@@ -122,13 +122,13 @@
 .game-settings-slider [data-kb-slider-track] { overflow: visible; }
 .game-settings-slider [data-kb-slider-fill] {
   z-index: 1;
-  transition: left 100ms cubic-bezier(.2,.8,.2,1), right 100ms cubic-bezier(.2,.8,.2,1);
+  transition: border-color var(--site-fast,110ms) var(--site-ease-out,ease), background-color var(--site-fast,110ms) var(--site-ease-out,ease);
 }
 .game-settings-slider [role=slider] {
   z-index: 2;
-  transition: left 100ms cubic-bezier(.2,.8,.2,1), right 100ms cubic-bezier(.2,.8,.2,1), border-color 100ms ease, background-color 100ms ease;
+  transition: border-color var(--site-fast,110ms) var(--site-ease-out,ease), background-color var(--site-fast,110ms) var(--site-ease-out,ease);
 }
-.game-range-fill { transition: width 100ms cubic-bezier(.2,.8,.2,1); }
+.game-range-fill { transition: none; }
 .game-settings-slider input[type="range"]::-webkit-slider-thumb {
   position: relative;
   z-index: 2;
@@ -140,9 +140,9 @@
 }
 
 /* Shared switch primitive. Wordle, Chain and Keybr use the same geometry. */
-.samey-switch-control { display:inline-flex; width:2.25rem; height:1.25rem; flex-shrink:0; align-items:center; padding:.125rem; border:1px solid var(--color-input,var(--site-line,#d3d6da)); border-radius:999px; background:var(--color-secondary,var(--site-soft,#f3f4f5)); transition:background-color 150ms ease,border-color 150ms ease; }
+.samey-switch-control { display:inline-flex; width:2.25rem; height:1.25rem; flex-shrink:0; align-items:center; padding:.125rem; border:1px solid var(--color-input,var(--site-line,#d3d6da)); border-radius:999px; background:var(--color-secondary,var(--site-soft,#f3f4f5)); transition:background-color var(--site-medium,190ms) var(--site-ease-out,ease),border-color var(--site-fast,110ms) var(--site-ease-out,ease); }
 .samey-switch-control[data-checked] { border-color:var(--color-primary,var(--site-fg,#121213)); background:var(--color-primary,var(--site-fg,#121213)); }
-.samey-switch-thumb { display:block; width:.875rem; height:.875rem; pointer-events:none; border-radius:50%; background:var(--color-background,var(--site-bg,#fff)); box-shadow:0 1px 2px color-mix(in srgb,var(--site-fg,#121213) 12%,transparent); transform:translateX(0); transition:transform 150ms ease; }
+.samey-switch-thumb { display:block; width:.875rem; height:.875rem; pointer-events:none; border-radius:50%; background:var(--color-background,var(--site-bg,#fff)); box-shadow:0 1px 2px color-mix(in srgb,var(--site-fg,#121213) 12%,transparent); transform:translateX(0); transition:transform var(--site-medium,190ms) var(--site-ease-spring,cubic-bezier(.16,1,.3,1)); }
 .samey-switch-control[data-checked] .samey-switch-thumb { transform:translateX(1rem); }
 .keybr-toggle { display:inline-flex; min-width:0; align-items:center; gap:1rem; cursor:pointer; }
 .keybr-toggle-label { min-width:0; line-height:1.35; overflow-wrap:anywhere; }
@@ -156,7 +156,7 @@
 
 /* Solid UI-style checkbox: actual multi-select semantics, not a switch. */
 .keybr-checkbox { display:inline-flex; min-width:0; align-items:center; gap:.65rem; cursor:pointer; }
-.keybr-checkbox-control { display:grid; place-items:center; width:1.35rem; height:1.35rem; flex:0 0 1.35rem; border:1px solid var(--site-line,#d3d6da); border-radius:4px; color:var(--site-bg,#fff); background:var(--site-bg,#fff); transition:border-color 120ms ease,background-color 120ms ease,box-shadow 120ms ease; }
+.keybr-checkbox-control { display:grid; place-items:center; width:1.35rem; height:1.35rem; flex:0 0 1.35rem; border:1px solid var(--site-line,#d3d6da); border-radius:4px; color:var(--site-bg,#fff); background:var(--site-bg,#fff); transition:border-color var(--site-fast,110ms) var(--site-ease-out,ease),background-color var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease); }
 .keybr-checkbox-control[data-checked] { border-color:var(--site-fg,#121213); background:var(--site-fg,#121213); }
 .keybr-checkbox-control:focus-visible,.keybr-checkbox:focus-within .keybr-checkbox-control { box-shadow:0 0 0 2px color-mix(in srgb,var(--site-accent,#787c7e) 32%,transparent); }
 .keybr-checkbox-indicator,.keybr-checkbox-indicator svg { display:block; width:1rem; height:1rem; }

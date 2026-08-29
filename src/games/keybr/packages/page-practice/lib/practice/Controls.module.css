@@ -24,7 +24,7 @@
   background: transparent;
   color: var(--site-muted, var(--text-color-f2));
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease, transform 120ms cubic-bezier(.2,.8,.2,1);
+  transition: background-color var(--site-fast,110ms) var(--site-ease-out,ease), color var(--site-fast,110ms) var(--site-ease-out,ease), transform var(--site-fast,110ms) var(--site-ease-out,ease);
 }
 
 .controlButton:hover,

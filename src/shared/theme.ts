@@ -777,22 +777,29 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let pressedPointerId = null;
     let lastX = 0, lastY = 0;
     let pendingX = 0, pendingY = 0;
-    let cursorFrame = 0;
     let linkHandoffUntil = 0;
     let modifiedLinkPending = null;
     let suppressModifiedClick = null;
-    const renderCursorPosition = () => {
-      cursorFrame = 0;
-      lastX = pendingX; lastY = pendingY;
-      cursor.style.transform = `translate3d(${pendingX - 32}px,${pendingY - 32}px,0)`;
+    // Pointer position is a compositor-only transform. Updating it directly from
+    // pointerrawupdate avoids the extra requestAnimationFrame of latency that the
+    // old cursor path added (up to a full display frame), while the more expensive
+    // hit-testing/mode work remains on ordinary pointermove events.
+    const renderCursorPosition = (x = pendingX, y = pendingY) => {
+      lastX = pendingX = x; lastY = pendingY = y;
+      cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
     };
-    const placeXY = (x, y, immediate = false) => {
+    const latestPointerSample = (event) => {
+      const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : null;
+      return samples?.length ? samples[samples.length - 1] : event;
+    };
+    const placeXY = (x, y) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      pendingX = x; pendingY = y;
-      if (immediate) { if (cursorFrame) cancelAnimationFrame(cursorFrame); renderCursorPosition(); }
-      else if (!cursorFrame) cursorFrame = requestAnimationFrame(renderCursorPosition);
+      renderCursorPosition(x, y);
     };
-    const place = (event, immediate = false) => placeXY(event.clientX, event.clientY, immediate);
+    const place = (event) => {
+      const sample = latestPointerSample(event);
+      placeXY(sample.clientX, sample.clientY);
+    };
     let dragPreviewW = 0, dragPreviewH = 0;
     const placeDragPreview = (x, y) => {
       if (dragPreview.hidden || !Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -826,17 +833,24 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       } catch { return label || "Link"; }
     };
     const fillDot = 16.8;
-    let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0;
+    let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0, fillLastTime = 0;
     let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
     let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
-    const linkRect = (link) => {
-      const rects = [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
-      return rects.find(rect => pendingX >= rect.left && pendingX <= rect.right && pendingY >= rect.top && pendingY <= rect.bottom)
+    let geometryLink = null, geometryRects = [], geometryBounds = null;
+    const refreshLinkGeometry = (link) => {
+      geometryLink = link;
+      geometryRects = link ? [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0) : [];
+      geometryBounds = link ? link.getBoundingClientRect() : null;
+    };
+    const linkRect = (link, force = false) => {
+      if (force || geometryLink !== link || !geometryBounds) refreshLinkGeometry(link);
+      return geometryRects.find(rect => pendingX >= rect.left && pendingX <= rect.right && pendingY >= rect.top && pendingY <= rect.bottom)
+        ?? geometryBounds
         ?? link.getBoundingClientRect();
     };
-    const updateFillGoal = () => {
+    const updateFillGoal = (forceGeometry = false) => {
       if (!fillTarget?.isConnected) return setFillTarget(null);
-      const rect = linkRect(fillTarget);
+      const rect = linkRect(fillTarget, forceGeometry);
       const insetX = Math.min(8, Math.max(2, rect.width * .04));
       const insetY = Math.min(6, Math.max(1, rect.height * .12));
       const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
@@ -847,35 +861,46 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
       wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
     };
-    const renderFill = () => {
+    const renderFill = (time) => {
       fillFrame = 0;
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      const posEase = reduced ? 1 : fillCollapsing ? .62 : .38, sizeEase = reduced ? 1 : fillCollapsing ? .58 : .25;
+      const dt = fillLastTime ? Math.min(34, Math.max(1, time - fillLastTime)) : 16.667;
+      fillLastTime = time;
+      const alpha = (tau) => reduced ? 1 : 1 - Math.exp(-dt / tau);
+      // Time-based easing has the same feel at 60/120/144 Hz. Position responds
+      // a little faster than size so the blob follows the pointer without the
+      // old rubber-band lag, while still expanding/collapsing smoothly.
+      const posEase = alpha(fillCollapsing ? 34 : 42);
+      const sizeEase = alpha(fillCollapsing ? 42 : 62);
       fillX += (wantedFillX - fillX) * posEase;
       fillY += (wantedFillY - fillY) * posEase;
       fillW += (wantedFillW - fillW) * sizeEase;
       fillH += (wantedFillH - fillH) * sizeEase;
-      linkFill.style.width = `${fillW}px`;
-      linkFill.style.height = `${fillH}px`;
-      linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0)`;
-      const done = Math.abs(fillX - wantedFillX) < .5 && Math.abs(fillY - wantedFillY) < .5
-        && Math.abs(fillW - wantedFillW) < .5 && Math.abs(fillH - wantedFillH) < .5;
+      // Keep the blob's box fixed and scale it on the compositor. Width/height
+      // animation forced layout/paint on every frame.
+      linkFill.style.transform = `translate3d(${fillX - fillW / 2}px,${fillY - fillH / 2}px,0) scale3d(${fillW / fillDot},${fillH / fillDot},1)`;
+      const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35
+        && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35;
       if (fillCollapsing && done) {
         fillVisible = fillCollapsing = false;
         linkFill.hidden = true;
+        fillLastTime = 0;
       } else if (!done) fillFrame = requestAnimationFrame(renderFill);
+      else fillLastTime = 0;
     };
-    const ensureFillFrame = () => { if (!fillFrame) fillFrame = requestAnimationFrame(renderFill); };
+    const ensureFillFrame = () => { if (!fillFrame) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
     const hideFillImmediate = () => {
       fillTarget = null;
+      geometryLink = null; geometryRects = []; geometryBounds = null;
       setFillLayer(null);
-      fillVisible = fillCollapsing = false;
+      fillVisible = fillCollapsing = false; fillLastTime = 0;
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
       linkFill.hidden = true;
     };
     const cursorIdleMs = 2200;
-    let cursorIdleTimer = 0;
+    let cursorIdleTimer = 0, cursorIdleDeadline = 0;
     const clearCursorIdle = () => {
+      cursorIdleDeadline = 0;
       if (cursorIdleTimer) {
         clearTimeout(cursorIdleTimer);
         cursorIdleTimer = 0;
@@ -885,16 +910,23 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       delete cursor.dataset.visible;
       hideFillImmediate();
     };
+    const runCursorIdle = () => {
+      cursorIdleTimer = 0;
+      if (!cursorIdleDeadline) return;
+      const remaining = cursorIdleDeadline - performance.now();
+      if (remaining > 1) { cursorIdleTimer = window.setTimeout(runCursorIdle, remaining); return; }
+      cursorIdleDeadline = 0;
+      if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+    };
     const armCursorIdle = () => {
-      clearCursorIdle();
-      cursorIdleTimer = window.setTimeout(() => {
-        cursorIdleTimer = 0;
-        if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
-      }, cursorIdleMs);
+      cursorIdleDeadline = performance.now() + cursorIdleMs;
+      // Do not clear/create a timeout on every raw pointer sample. Updating the
+      // deadline is enough; one timer follows it until movement really stops.
+      if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
     };
     const wakeCursor = () => {
       if (nativeDragging || cursor.hasAttribute("data-loading")) return;
-      cursor.dataset.visible = "";
+      if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
       armCursorIdle();
     };
     function setFillTarget(link) {
@@ -912,6 +944,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         fillX = wantedFillX = pendingX; fillY = wantedFillY = pendingY; fillW = fillH = fillDot;
         fillVisible = true; linkFill.hidden = false;
       }
+      if (fillTarget !== link) refreshLinkGeometry(link);
       fillTarget = link; fillCollapsing = false; linkFill.hidden = false;
       updateFillGoal();
       ensureFillFrame();
@@ -951,9 +984,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         return rect.left < above.right && rect.right > above.left && rect.top < above.bottom && rect.bottom > above.top;
       });
     };
+    let grabModeTarget = null, grabModeValue = false;
+    const wantsGrabCached = (target) => {
+      if (target === grabModeTarget) return grabModeValue;
+      grabModeTarget = target;
+      return grabModeValue = wantsGrab(target);
+    };
     const setMode = (target) => {
       updateBlendSource(target);
-      const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrab(target));
+      const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
       let link = grab || selectingText ? null : linkTarget(target);
       if (linkBlockedByOverlay(link)) link = null;
       setFillLayer(link);
@@ -964,25 +1003,30 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     refreshCursorMode = () => cursor.hasAttribute("data-visible")
       ? setMode(document.elementFromPoint(pendingX, pendingY))
       : setFillTarget(null);
-    const refreshAt = (event, moved = false) => {
+    const hasRawPointer = "onpointerrawupdate" in window;
+    const moveCursorOnly = (event) => {
       if (nativeDragging) { hidePointerVisuals(); return; }
       place(event);
-      // `pointerover` can be synthesized by DOM changes underneath a
-      // stationary pointer. Only actual movement should wake/reset the idle
-      // timer; otherwise animated/replaced content could keep the cursor
-      // visible forever without the user moving it.
+      wakeCursor();
+    };
+    const refreshAt = (event, moved = false) => {
+      if (nativeDragging) { hidePointerVisuals(); return; }
+      // Raw pointer samples normally arrive first. If a browser advertises
+      // pointerrawupdate but does not emit it for a particular input source
+      // (automation, remote desktop, accessibility hardware), pointermove still
+      // catches up immediately instead of leaving the virtual cursor behind.
+      if (!hasRawPointer || !moved || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
       if (moved) wakeCursor();
       // pointermove/pointerover are already browser hit-tested. Avoid a second
       // elementFromPoint() query on the hottest cursor path.
       setMode(event.target instanceof Element ? event.target : elementAt(event));
     };
 
-
-
+    if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, { capture: true, passive: true });
     document.addEventListener("pointermove", (event) => refreshAt(event, true), { capture: true, passive: true });
     document.addEventListener("pointerover", (event) => refreshAt(event, false), { capture: true, passive: true });
-    addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true, capture: true });
-    addEventListener("resize", () => { if (fillTarget) { updateFillGoal(); ensureFillFrame(); } }, { passive: true });
+    addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true, capture: true });
+    addEventListener("resize", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true });
     addEventListener("samey-pageleave", () => setFillTarget(null));
     document.addEventListener("pointerdown", (event) => {
       document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
@@ -992,7 +1036,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
       pressedPointerId = event.pointerId;
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
-      place(event, true);
+      place(event);
       selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
       setMode(actual);
       if (modifiedLink) {
@@ -1012,7 +1056,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         holdLinkCursor(event, link);
         window.open(link.href, "_blank", "noopener,noreferrer");
       }
-      place(event, true);
+      place(event);
       setMode(elementAt(event));
     }, true);
     document.addEventListener("click", (event) => {

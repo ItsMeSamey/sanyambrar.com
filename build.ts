@@ -174,6 +174,9 @@ ${keybrViewSwitch}`;
   const transitions = await readFile(join(ROOT, "src/shared/transitions.ts"), "utf8");
   must(/duration:\s*\d+/.test(transitions) && !/enterDuration:|leaveDuration:/.test(transitions),
     "architecture: page transition timing must come from PAGE_TRANSITION.duration");
+  must(transitions.includes("duration: 210") && !transitions.includes("clipPath") &&
+    !transitions.includes("querySelectorAll<HTMLElement>('*')") && transitions.includes("querySelectorAll<HTMLCanvasElement>('canvas')"),
+    "performance: page transitions must stay compositor-only and avoid walking every descendant during snapshot setup");
   must((await readFile(join(ROOT, "src/site/App.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Solid routes must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
@@ -394,10 +397,19 @@ ${keybrViewSwitch}`;
     "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
   const keybrPracticeScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/PracticeScreen.tsx"), "utf8");
   must(sharedTheme.includes("const cursorIdleMs = 2200") &&
-    sharedTheme.includes("Only actual movement should wake/reset the idle") &&
+    sharedTheme.includes('const hasRawPointer = "onpointerrawupdate" in window') &&
+    sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
+    sharedTheme.includes("deadline is enough; one timer follows it") &&
     sharedTheme.includes("Stay hidden after the native/system cursor releases control") &&
+    sharedTheme.includes("scale3d(${fillW / fillDot},${fillH / fillDot},1)") &&
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
-    "ux: the virtual cursor must idle-hide and must not accept native-drag sentinel coordinates");
+    "ux: the virtual cursor must use the low-latency raw-pointer/compositor path, idle-hide efficiently, and reject native-drag sentinel coordinates");
+  const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
+  const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
+  must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&
+    !keybrCaret.includes('{ left: `${fromLeft}px`, top: `${fromTop}px` }') &&
+    !settingsMotionCss.includes('transition: left 100ms') && !settingsMotionCss.includes('transition: width 100ms'),
+    "performance: typing caret and sliders must not add positional interpolation latency on the main thread");
   must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
