@@ -1,6 +1,6 @@
 import * as styles from "./ErrorReport.module.css";
-export function ErrorReport({ report }: {
+export function ErrorReport(solidProps: {
     readonly report: string;
 }) {
-    return <pre class={styles.report}>{report}</pre>;
+    return <pre class={styles.report}>{solidProps.report}</pre>;
 }

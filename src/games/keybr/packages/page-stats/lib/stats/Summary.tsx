@@ -4,7 +4,7 @@ import { type SummaryStats } from "@keybr/result";
 import { formatDuration, Header, Para } from "@keybr/widget";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Summary.module.css";
-export function AllTimeSummary({ stats: { count, time, speed, accuracy }, }: {
+export function AllTimeSummary(props: {
     stats: SummaryStats;
 }) {
     const { formatMessage } = useIntl();
@@ -19,36 +19,36 @@ export function AllTimeSummary({ stats: { count, time, speed, accuracy }, }: {
         <Statistic name={formatMessage({
             id: "t_Time",
             defaultMessage: "Time",
-        })} value={formatDuration(time)}/>
+        })} value={formatDuration(props.stats.time)}/>
 
         <Statistic name={formatMessage({
             id: "t_num_Lessons",
             defaultMessage: "Lessons",
-        })} value={formatNumber(count)}/>
+        })} value={formatNumber(props.stats.count)}/>
 
         <Statistic name={formatMessage({
             id: "t_Top_speed",
             defaultMessage: "Top speed",
-        })} value={speed.max > 0 ? formatSpeed(speed.max) : "N/A"}/>
+        })} value={props.stats.speed.max > 0 ? formatSpeed(props.stats.speed.max) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Average_speed",
             defaultMessage: "Average speed",
-        })} value={speed.avg > 0 ? formatSpeed(speed.avg) : "N/A"}/>
+        })} value={props.stats.speed.avg > 0 ? formatSpeed(props.stats.speed.avg) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Top_accuracy",
             defaultMessage: "Top accuracy",
-        })} value={accuracy.max > 0 ? formatPercents(accuracy.max) : "N/A"}/>
+        })} value={props.stats.accuracy.max > 0 ? formatPercents(props.stats.accuracy.max) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Average_accuracy",
             defaultMessage: "Average accuracy",
-        })} value={accuracy.avg > 0 ? formatPercents(accuracy.avg) : "N/A"}/>
+        })} value={props.stats.accuracy.avg > 0 ? formatPercents(props.stats.accuracy.avg) : "N/A"}/>
       </Para>
     </>);
 }
-export function TodaySummary({ stats: { count, time, speed, accuracy }, }: {
+export function TodaySummary(props: {
     stats: SummaryStats;
 }) {
     const { formatMessage } = useIntl();
@@ -63,41 +63,41 @@ export function TodaySummary({ stats: { count, time, speed, accuracy }, }: {
         <Statistic name={formatMessage({
             id: "t_Time",
             defaultMessage: "Time",
-        })} value={formatDuration(time)}/>
+        })} value={formatDuration(props.stats.time)}/>
 
         <Statistic name={formatMessage({
             id: "t_num_Lessons",
             defaultMessage: "Lessons",
-        })} value={formatNumber(count)}/>
+        })} value={formatNumber(props.stats.count)}/>
 
         <Statistic name={formatMessage({
             id: "t_Top_speed",
             defaultMessage: "Top speed",
-        })} value={speed.max > 0 ? formatSpeed(speed.max) : "N/A"}/>
+        })} value={props.stats.speed.max > 0 ? formatSpeed(props.stats.speed.max) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Average_speed",
             defaultMessage: "Average speed",
-        })} value={speed.avg > 0 ? formatSpeed(speed.avg) : "N/A"}/>
+        })} value={props.stats.speed.avg > 0 ? formatSpeed(props.stats.speed.avg) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Top_accuracy",
             defaultMessage: "Top accuracy",
-        })} value={accuracy.max > 0 ? formatPercents(accuracy.max) : "N/A"}/>
+        })} value={props.stats.accuracy.max > 0 ? formatPercents(props.stats.accuracy.max) : "N/A"}/>
 
         <Statistic name={formatMessage({
             id: "t_Average_accuracy",
             defaultMessage: "Average accuracy",
-        })} value={accuracy.avg > 0 ? formatPercents(accuracy.avg) : "N/A"}/>
+        })} value={props.stats.accuracy.avg > 0 ? formatPercents(props.stats.accuracy.avg) : "N/A"}/>
       </Para>
     </>);
 }
-function Statistic({ name, value }: {
+function Statistic(solidProps: {
     name: unknown;
     value: unknown;
 }) {
     return (<span class={styles.statisticListItem}>
-      <span class={styles.itemName}>{String(name) + ":"}</span>
-      <span class={styles.itemValue}>{String(value)}</span>
+      <span class={styles.itemName}>{String(solidProps.name) + ":"}</span>
+      <span class={styles.itemValue}>{String(solidProps.value)}</span>
     </span>);
 }

@@ -10,7 +10,7 @@ import { RecoverKeysProp } from "./RecoverKeysProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
-export function GuidedLessonSettings({ lesson, }: {
+export function GuidedLessonSettings(solidProps: {
     readonly lesson: GuidedLesson;
 }): ReactNode {
     const { formatMessage } = useIntl();

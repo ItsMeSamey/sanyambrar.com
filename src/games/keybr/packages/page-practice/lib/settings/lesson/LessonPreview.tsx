@@ -9,17 +9,17 @@ import { FieldSet } from "@keybr/widget";
 import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./LessonPreview.module.css";
-export function LessonPreview({ lesson, }: {
+export function LessonPreview(solidProps: {
     readonly lesson: Lesson;
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();
     const { lessonKeys, textInput } = useMemo(() => {
-        const lessonKeys = lesson.update(makeKeyStatsMap(lesson.letters, lesson.filter(results)));
-        const textInput = new TextInput(lesson.generate(lessonKeys, LCG(123)), toTextInputSettings(settings));
+        const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results)));
+        const textInput = new TextInput(solidProps.lesson.generate(lessonKeys, LCG(123)), toTextInputSettings(settings));
         return { lessonKeys, textInput };
-    }, () => [settings, lesson, results]);
+    }, () => [settings, solidProps.lesson, results]);
     return (<FieldSet legend={formatMessage({
             id: "t_Lesson_preview:",
             defaultMessage: "Lesson preview",

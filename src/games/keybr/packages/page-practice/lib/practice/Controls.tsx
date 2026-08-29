@@ -6,7 +6,7 @@ import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import { views } from "../views.tsx";
 import * as styles from "./Controls.module.css";
-export const Controls = memo(function Controls({ onChangeView, onResetLesson, onSkipLesson, onHelp, }: {
+export const Controls = memo(function Controls(solidProps: {
     readonly onChangeView: () => void;
     readonly onResetLesson: () => void;
     readonly onSkipLesson: () => void;
@@ -28,21 +28,21 @@ export const Controls = memo(function Controls({ onChangeView, onResetLesson, on
       <IconButton icon={<Icon shape={mdiHelpCircleOutline}/>} title={formatMessage({
             id: "practice.widget.showTour.description",
             defaultMessage: "Show a guided tour with help slides.",
-        })} onClick={onHelp}/>
+        })} onClick={solidProps.onHelp}/>
       <span style={{ display: "contents" }}>
         <IconButton icon={<Icon shape={rtl ? mdiRedo : mdiUndo}/>} title={formatMessage({
             id: "practice.widget.resetLesson.description",
             defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
-        })} onClick={onResetLesson}/>
+        })} onClick={solidProps.onResetLesson}/>
         <IconButton icon={<Icon shape={rtl ? mdiUndo : mdiRedo}/>} title={formatMessage({
             id: "practice.widget.skipLesson.description",
             defaultMessage: "Skip the current lesson (Ctrl + Right Arrow).",
-        })} onClick={onSkipLesson}/>
+        })} onClick={solidProps.onSkipLesson}/>
       </span>
       <IconButton icon={<Icon shape={mdiAspectRatio}/>} title={formatMessage({
             id: "practice.widget.switchView.description",
             defaultMessage: "Switch the current interface layout.",
-        })} onClick={onChangeView}/>
+        })} onClick={solidProps.onChangeView}/>
       <IconButton icon={<Icon shape={mdiChartBar}/>} title={formatMessage({
             id: "local.statistics.description",
             defaultMessage: "Show your local typing statistics.",

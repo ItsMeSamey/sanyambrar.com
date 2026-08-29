@@ -4,7 +4,7 @@ import { useSettings } from "@keybr/settings";
 import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
-export function CodeLessonSettings({ lesson, }: {
+export function CodeLessonSettings(solidProps: {
     readonly lesson: CodeLesson;
 }): ReactNode {
     const { formatMessage } = useIntl();

@@ -4,7 +4,7 @@ import { ensureVisible } from "../../utils/index.ts";
 import * as iconStyles from "../icon/Icon.module.css";
 import { type OptionListOption } from "./OptionList.types.ts";
 import * as styles from "./OptionListMenu.module.css";
-export function OptionListMenu({ options, selectedOption, onSelect, }: {
+export function OptionListMenu(solidProps: {
     readonly options: readonly OptionListOption[];
     readonly selectedOption: OptionListOption;
     readonly onSelect: (value: OptionListOption) => void;
@@ -15,9 +15,9 @@ export function OptionListMenu({ options, selectedOption, onSelect, }: {
         ensureVisible(list.current, item.current);
     });
     return (<ul ref={el => list.current = el} role="menu" class={styles.root}>
-      {options.map((option, index) => (<li ref={option === selectedOption ? (el => item.current = el) : undefined} role="menuitem" class={clsx(styles.item, iconStyles.altIcon, option === selectedOption && styles.itemSelected)} onClick={(event) => {
+      {solidProps.options.map((option, index) => (<li ref={option === solidProps.selectedOption ? (el => item.current = el) : undefined} role="menuitem" class={clsx(styles.item, iconStyles.altIcon, option === solidProps.selectedOption && styles.itemSelected)} onClick={(event) => {
                 event.preventDefault();
-                onSelect(option);
+                solidProps.onSelect(option);
             }}>
           {option.name}
         </li>))}

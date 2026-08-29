@@ -12,29 +12,29 @@ export function TargetSpeedProp(): ReactNode {
     const { locale } = useIntl();
     const rtl = getDir(locale) === "rtl";
     const { settings, updateSettings } = useSettings();
-    const targetSpeed = settings.get(lessonProps.targetSpeed);
+    const targetSpeed = () => settings.get(lessonProps.targetSpeed);
     return (<span style={{ display: "contents" }}>
       <FieldList>
         <Field>
           <FormattedMessage id="t_Target_typing_speed:" defaultMessage="Target typing speed:"/>
         </Field>
         <Field>
-          <Range size={16} min={lessonProps.targetSpeed.min} max={lessonProps.targetSpeed.max} step={1} value={targetSpeed} onChange={(value) => {
+          <Range size={16} min={lessonProps.targetSpeed.min} max={lessonProps.targetSpeed.max} step={1} value={targetSpeed()} onChange={(value) => {
             updateSettings(settings.set(lessonProps.targetSpeed, value));
         }}/>
         </Field>
         <Field>
           <span style={{ display: "contents" }}>
-            <IconButton icon={<Icon shape={rtl ? mdiSkipNext : mdiSkipPrevious}/>} disabled={targetSpeed === lessonProps.targetSpeed.min} onClick={() => {
-            updateSettings(settings.set(lessonProps.targetSpeed, Math.ceil(targetSpeed / 5) * 5 - 5));
+            <IconButton icon={<Icon shape={rtl ? mdiSkipNext : mdiSkipPrevious}/>} disabled={targetSpeed() === lessonProps.targetSpeed.min} onClick={() => {
+            updateSettings(settings.set(lessonProps.targetSpeed, Math.ceil(targetSpeed() / 5) * 5 - 5));
         }}/>
-            <IconButton icon={<Icon shape={rtl ? mdiSkipPrevious : mdiSkipNext}/>} disabled={targetSpeed === lessonProps.targetSpeed.max} onClick={() => {
-            updateSettings(settings.set(lessonProps.targetSpeed, Math.floor(targetSpeed / 5) * 5 + 5));
+            <IconButton icon={<Icon shape={rtl ? mdiSkipPrevious : mdiSkipNext}/>} disabled={targetSpeed() === lessonProps.targetSpeed.max} onClick={() => {
+            updateSettings(settings.set(lessonProps.targetSpeed, Math.floor(targetSpeed() / 5) * 5 + 5));
         }}/>
           </span>
         </Field>
         <Field>
-          <Value value={formatSpeed(targetSpeed)}/>
+          <Value value={formatSpeed(targetSpeed())}/>
         </Field>
       </FieldList>
       <Explainer>

@@ -5,7 +5,7 @@ export type SizeProps = {
     readonly width: string;
     readonly height: string;
 };
-export function Chart({ children, width, height, }: {
+export function Chart(solidProps: {
     readonly children: ReactNode;
 } & SizeProps): ReactNode {
     return (<div style={{
@@ -13,21 +13,21 @@ export function Chart({ children, width, height, }: {
             position: "relative",
             "inset-inline-start": "0px",
             "inset-block-start": "0px",
-            "inline-size": width,
-            "block-size": height,
+            "inline-size": solidProps.width,
+            "block-size": solidProps.height,
             margin: "0px",
             padding: "0px",
             "border-style": "none",
         }}>
-      {children}
+      {solidProps.children}
     </div>);
 }
-export function ChartCanvas({ styles, paint, width, height, }: {
+export function ChartCanvas(solidProps: {
     readonly styles: ChartStyles;
     readonly paint: (rect: Rect) => ShapeList;
 } & SizeProps): ReactNode {
-    return (<Chart width={width} height={height}>
-      <Canvas paint={chartArea(styles, paint)}/>
+    return (<Chart width={solidProps.width} height={solidProps.height}>
+      <Canvas paint={chartArea(solidProps.styles, solidProps.paint)}/>
     </Chart>);
 }
 export function chartArea(styles: ChartStyles, cb: (d: Rect) => ShapeList) {

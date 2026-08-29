@@ -5,7 +5,7 @@ import { useSettings } from "@keybr/settings";
 import { type FocusProps, useHotkeysHandler } from "@keybr/widget";
 import { Key } from "./Key.tsx";
 import * as styles from "./KeySelector.module.css";
-export const KeySelector = ({ current, disabled, keyStatsMap, tabIndex, title, onSelect, onFocus, onBlur, }: {
+export const KeySelector = (solidProps: {
     current: Letter;
     keyStatsMap: KeyStatsMap;
     title?: string;
@@ -13,10 +13,10 @@ export const KeySelector = ({ current, disabled, keyStatsMap, tabIndex, title, o
 } & FocusProps) => {
     const { settings } = useSettings();
     const target = new Target(settings);
-    const { letters } = keyStatsMap;
+    const { letters } = solidProps.keyStatsMap;
     const handlePrev = () => {
-        if (onSelect != null) {
-            const currentIndex = letters.findIndex((letter) => letter.codePoint === current.codePoint);
+        if (solidProps.onSelect != null) {
+            const currentIndex = letters.findIndex((letter) => letter.codePoint === solidProps.current.codePoint);
             let selectedIndex;
             if (currentIndex === -1 || currentIndex === 0) {
                 selectedIndex = letters.length - 1;
@@ -24,12 +24,12 @@ export const KeySelector = ({ current, disabled, keyStatsMap, tabIndex, title, o
             else {
                 selectedIndex = currentIndex - 1;
             }
-            onSelect(letters[selectedIndex]);
+            solidProps.onSelect(letters[selectedIndex]);
         }
     };
     const handleNext = () => {
-        if (onSelect != null) {
-            const currentIndex = letters.findIndex((letter) => letter.codePoint === current.codePoint);
+        if (solidProps.onSelect != null) {
+            const currentIndex = letters.findIndex((letter) => letter.codePoint === solidProps.current.codePoint);
             let selectedIndex;
             if (currentIndex === -1 || currentIndex === letters.length - 1) {
                 selectedIndex = 0;
@@ -37,18 +37,18 @@ export const KeySelector = ({ current, disabled, keyStatsMap, tabIndex, title, o
             else {
                 selectedIndex = currentIndex + 1;
             }
-            onSelect(letters[selectedIndex]);
+            solidProps.onSelect(letters[selectedIndex]);
         }
     };
-    return (<span class={styles.root} tabIndex={disabled ? undefined : (tabIndex ?? 0)} title={title} onFocus={onFocus} onBlur={onBlur} onKeyDown={useHotkeysHandler({
+    return (<span class={styles.root} tabIndex={solidProps.disabled ? undefined : (solidProps.tabIndex ?? 0)} title={solidProps.title} onFocus={solidProps.onFocus} onBlur={solidProps.onBlur} onKeyDown={useHotkeysHandler({
             ["ArrowLeft"]: handlePrev,
             ["ArrowUp"]: handlePrev,
             ["ArrowRight"]: handleNext,
             ["ArrowDown"]: handleNext,
         })}>
-      {letters.map((letter) => (<Key lessonKey={LessonKey.from(keyStatsMap.get(letter), target).asIncluded()} isSelectable={true} isCurrent={current.codePoint === letter.codePoint} onClick={() => {
-                if (onSelect != null) {
-                    onSelect(letter);
+      {letters.map((letter) => (<Key lessonKey={LessonKey.from(solidProps.keyStatsMap.get(letter), target).asIncluded()} isSelectable={true} isCurrent={solidProps.current.codePoint === letter.codePoint} onClick={() => {
+                if (solidProps.onSelect != null) {
+                    solidProps.onSelect(letter);
                 }
             }}/>))}
     </span>);

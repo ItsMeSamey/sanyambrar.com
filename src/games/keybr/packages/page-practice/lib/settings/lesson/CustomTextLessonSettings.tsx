@@ -9,7 +9,7 @@ import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { exampleTexts } from "./example-texts.ts";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
-export function CustomTextLessonSettings({ lesson, }: {
+export function CustomTextLessonSettings(solidProps: {
     readonly lesson: CustomTextLesson;
 }): ReactNode {
     const { formatMessage } = useIntl();
@@ -26,7 +26,7 @@ export function CustomTextLessonSettings({ lesson, }: {
             defaultMessage: "Lesson options",
         })}>
         <CustomTextInput />
-        <CustomTextStats language={lesson.model.language} customText={settings.get(lessonProps.customText.content)}/>
+        <CustomTextStats language={solidProps.lesson.model.language} customText={settings.get(lessonProps.customText.content)}/>
         <CustomTextProcessing />
         <TargetSpeedProp />
         <LessonLengthProp />
@@ -58,13 +58,13 @@ function CustomTextInput(): ReactNode {
       </Para>
     </>);
 }
-function CustomTextStats({ language, customText, }: {
+function CustomTextStats(solidProps: {
     readonly language: Language;
     readonly customText: string;
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { numWords, numUniqueWords, avgWordLength } = useMemo(() => textStatsOf(language.locale, customText), () => [language, customText]);
+    const { numWords, numUniqueWords, avgWordLength } = useMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText), () => [solidProps.language, solidProps.customText]);
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({

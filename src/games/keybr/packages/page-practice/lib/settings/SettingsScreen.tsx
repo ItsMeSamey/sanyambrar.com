@@ -30,7 +30,7 @@ export function SettingsScreen() {
       </KeyboardProvider>
     </SettingsContext.Provider>);
 }
-function Content({ onSubmit }: {
+function Content(solidProps: {
     readonly onSubmit: () => void;
 }) {
     const { formatMessage } = useIntl();
@@ -81,7 +81,7 @@ function Content({ onSubmit }: {
             id: "t_Done",
             defaultMessage: "Done",
         })} onClick={() => {
-            onSubmit();
+            solidProps.onSubmit();
         }}/>
             </Field>
           </FieldList>

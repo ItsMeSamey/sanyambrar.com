@@ -5,7 +5,7 @@ import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./DailyStats.module.css";
 import { type Effort } from "./effort.ts";
 import { useFormatter } from "./format.ts";
-export function DailyStats({ stats: { date, results, stats }, effort, }: {
+export function DailyStats(props: {
     stats: DailyStatsType;
     effort: Effort;
 }) {
@@ -14,43 +14,43 @@ export function DailyStats({ stats: { date, results, stats }, effort, }: {
     const { formatSpeed } = useFormatter();
     return (<div class={styles.root}>
       <Para align="center">
-        {formatDate(Number(date), { dateStyle: "long" })}
+        {formatDate(Number(props.stats.date), { dateStyle: "long" })}
       </Para>
       <div>
         <NameValue name={formatMessage({
             id: "t_Daily_goal",
             defaultMessage: "Daily goal",
-        })} value={formatPercents(effort.effort(stats.time))}/>
+        })} value={formatPercents(props.effort.effort(props.stats.stats.time))}/>
       </div>
       <div>
         <NameValue name={formatMessage({
             id: "t_Time",
             defaultMessage: "Time",
-        })} value={formatDuration(stats.time)}/>
+        })} value={formatDuration(props.stats.stats.time)}/>
       </div>
       <div>
         <NameValue name={formatMessage({
             id: "t_num_Lessons",
             defaultMessage: "Lessons",
-        })} value={formatNumber(results.length)}/>
+        })} value={formatNumber(props.stats.results.length)}/>
       </div>
       <div>
         <NameValue name={formatMessage({
             id: "t_Top_speed",
             defaultMessage: "Top speed",
-        })} value={formatSpeed(stats.speed.max)}/>
+        })} value={formatSpeed(props.stats.stats.speed.max)}/>
       </div>
       <div>
         <NameValue name={formatMessage({
             id: "t_Average_speed",
             defaultMessage: "Average speed",
-        })} value={formatSpeed(stats.speed.avg)}/>
+        })} value={formatSpeed(props.stats.stats.speed.avg)}/>
       </div>
       <div>
         <NameValue name={formatMessage({
             id: "t_Average_accuracy",
             defaultMessage: "Average accuracy",
-        })} value={formatPercents(stats.accuracy.avg)}/>
+        })} value={formatPercents(props.stats.stats.accuracy.avg)}/>
       </div>
     </div>);
 }

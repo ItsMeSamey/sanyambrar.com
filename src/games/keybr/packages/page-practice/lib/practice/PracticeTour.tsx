@@ -3,10 +3,10 @@ import { Slide, Tour } from "@keybr/widget";
 import { memo } from "@keybr/solid-compat/react";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { KeyDetailsChartDemo } from "./KeyDetailsChartDemo.tsx";
-export const PracticeTour = memo(function PracticeTour({ onClose, }: {
+export const PracticeTour = memo(function PracticeTour(solidProps: {
     readonly onClose?: () => void;
 }) {
-    return (<Tour onClose={onClose}>
+    return (<Tour onClose={solidProps.onClose}>
       <Slide size="large">
         <FormattedMessage id="m_tour01" defaultMessage={"<h1>Learn to Type Faster</h1>" +
             "<p>This web application will help you to learn <em>touch typing</em> which means typing through muscle memory without using your eyesight to find the keys. It can improve your typing speed and accuracy dramatically. The opposite is <em>hunt and peck typing</em>, a method of typing in which you look at the keyboard instead of the screen, and use only the index fingers.</p>" +

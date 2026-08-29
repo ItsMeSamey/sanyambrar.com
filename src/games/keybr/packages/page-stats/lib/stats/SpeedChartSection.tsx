@@ -6,7 +6,7 @@ import { useState } from "@keybr/solid-compat/react";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
-export function SpeedChartSection({ results }: {
+export function SpeedChartSection(solidProps: {
     results: readonly Result[];
 }) {
     const [smoothness, setSmoothness] = useState(0.5);
@@ -22,10 +22,10 @@ export function SpeedChartSection({ results }: {
       </Explainer>
 
       <ChartWrapper>
-        <SpeedChart results={results} smoothness={smoothness()} width="100%" height="25rem"/>
+        <SpeedChart results={solidProps.results} smoothness={smoothness()} width="100%" height="25rem"/>
       </ChartWrapper>
 
-      <SmoothnessRange disabled={!hasData(results)} value={smoothness()} onChange={setSmoothness}/>
+      <SmoothnessRange disabled={!hasData(solidProps.results)} value={smoothness()} onChange={setSmoothness}/>
 
       <Figure.Legend>
         <FormattedMessage id="stats.chart.speed.legend" defaultMessage="Horizontal axis: lesson number. Vertical axis: {label1} – typing speed, {label2} – typing accuracy, {label3} – number of keys in the lessons." values={{

@@ -1,12 +1,12 @@
 import { type Task, Tasks } from "@keybr/lang";
-import { type ReactElement } from "@keybr/solid-compat/react";
+import { type ReactNode } from "@keybr/solid-compat/react";
 import { type ToastOptions } from "./types.ts";
 const tasks = new Tasks();
 let nextKey = 0;
 export class Toast {
     readonly #key = (nextKey += 1);
     #delayed: Task | null = null;
-    constructor(readonly message: ReactElement<any>, readonly options: ToastOptions) { }
+    constructor(readonly render: () => ReactNode, readonly options: ToastOptions) { }
     get key() {
         return this.#key;
     }

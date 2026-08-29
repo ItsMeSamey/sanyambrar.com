@@ -2,7 +2,7 @@ import { type LessonKey, type LessonKeys } from "@keybr/lesson";
 import { type ClassName } from "@keybr/widget";
 import { useRef } from "@keybr/solid-compat/react";
 import { Key } from "./Key.tsx";
-export const KeySet = ({ id, className, lessonKeys, onKeyHoverIn, onKeyHoverOut, onKeyClick, }: {
+export const KeySet = (solidProps: {
     id?: string;
     className?: ClassName;
     lessonKeys: LessonKeys;
@@ -11,14 +11,14 @@ export const KeySet = ({ id, className, lessonKeys, onKeyHoverIn, onKeyHoverOut,
     onKeyClick?: (key: LessonKey, elem: Element) => void;
 }) => {
     const ref = useRef<HTMLElement>(null);
-    return (<span ref={el => ref.current = el} id={id} class={className} onMouseOver={(event) => {
-            relayEvent(ref.current!, event, onKeyHoverIn);
+    return (<span ref={el => ref.current = el} id={solidProps.id} class={solidProps.className} onMouseOver={(event) => {
+            relayEvent(ref.current!, event, solidProps.onKeyHoverIn);
         }} onMouseOut={(event) => {
-            relayEvent(ref.current!, event, onKeyHoverOut);
+            relayEvent(ref.current!, event, solidProps.onKeyHoverOut);
         }} onClick={(event) => {
-            relayEvent(ref.current!, event, onKeyClick);
+            relayEvent(ref.current!, event, solidProps.onKeyClick);
         }}>
-      {[...lessonKeys].map((lessonKey) => (<Key lessonKey={lessonKey}/>))}
+      {[...solidProps.lessonKeys].map((lessonKey) => (<Key lessonKey={lessonKey}/>))}
     </span>);
 };
 function relayEvent(root: Element, { target }: {

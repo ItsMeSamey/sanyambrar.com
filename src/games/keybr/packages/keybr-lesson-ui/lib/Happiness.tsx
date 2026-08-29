@@ -1,21 +1,21 @@
 import { Icon } from "@keybr/widget";
 import { mdiEmoticonHappy, mdiEmoticonSad } from "@keybr/solid-compat/mdi";
 import * as styles from "./Happiness.module.css";
-export function Happiness({ learningRate }: {
+export function Happiness(solidProps: {
     learningRate: number;
 }) {
-    if (learningRate > 0) {
+    if (solidProps.learningRate > 0) {
         return (<span class={styles.happy}>
         <Happy />
-        {learningRate >= +5 && <Happy />}
-        {learningRate >= +10 && <Happy />}
+        {solidProps.learningRate >= +5 && <Happy />}
+        {solidProps.learningRate >= +10 && <Happy />}
       </span>);
     }
-    if (learningRate < 0) {
+    if (solidProps.learningRate < 0) {
         return (<span class={styles.sad}>
         <Sad />
-        {learningRate <= -5 && <Sad />}
-        {learningRate <= -10 && <Sad />}
+        {solidProps.learningRate <= -5 && <Sad />}
+        {solidProps.learningRate <= -10 && <Sad />}
       </span>);
     }
     return null;

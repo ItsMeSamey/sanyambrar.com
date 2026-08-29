@@ -32,24 +32,24 @@ function LayoutProp(): ReactNode {
     formatLayoutName, formatFullLayoutName, } = useFormattedNames();
     const { compare } = useCollator();
     const { settings, updateSettings } = useSettings();
-    const options = KeyboardOptions.from(settings);
+    const options = () => KeyboardOptions.from(settings);
     return (<>
       <FieldList>
         <Field>
           <FormattedMessage id="t_Language:" defaultMessage="Language:"/>
         </Field>
         <Field>
-          <OptionList options={options
+          <OptionList options={options()
             .selectableLanguages()
             .map((item) => ({
             value: item.id,
             name: formatLanguageName(item),
         }))
-            .sort((a, b) => compare(a.name, b.name))} value={options.language.id} onSelect={(id) => {
-            updateSettings(options
+            .sort((a, b) => compare(a.name, b.name))} value={options().language.id} onSelect={(id) => {
+            updateSettings(options()
                 .withLanguage(Language.ALL.get(id))
-                .withGeometry(options.geometry)
-                .withZones(options.zones)
+                .withGeometry(options().geometry)
+                .withZones(options().zones)
                 .save(settings));
         }}/>
         </Field>
@@ -57,23 +57,23 @@ function LayoutProp(): ReactNode {
           <FormattedMessage id="t_Layout:" defaultMessage="Layout:"/>
         </Field>
         <Field>
-          <OptionList options={options.selectableLayouts().map((item) => ({
+          <OptionList options={options().selectableLayouts().map((item) => ({
             value: item.id,
-            name: item.language.id === options.language.id
+            name: item.language.id === options().language.id
                 ? formatLayoutName(item)
                 : formatFullLayoutName(item),
-        }))} value={options.layout.id} onSelect={(id) => {
-            updateSettings(options
+        }))} value={options().layout.id} onSelect={(id) => {
+            updateSettings(options()
                 .withLayout(Layout.ALL.get(id))
-                .withGeometry(options.geometry)
-                .withZones(options.zones)
+                .withGeometry(options().geometry)
+                .withZones(options().zones)
                 .save(settings));
         }}/>
         </Field>
       </FieldList>
       <FieldList>
         <Field>
-          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Forward} disabled={!options.layout.emulate} label={formatMessage({
+          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Forward} disabled={!options().layout.emulate} label={formatMessage({
             id: "t_Emulate_layout",
             defaultMessage: "Emulate layout",
         })} onChange={(value) => {
@@ -88,7 +88,7 @@ function LayoutProp(): ReactNode {
       </Explainer>
       <FieldList>
         <Field>
-          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Reverse} disabled={!options.layout.emulate} label={formatMessage({
+          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Reverse} disabled={!options().layout.emulate} label={formatMessage({
             id: "t_Keyboard_hardware_emulates_",
             defaultMessage: "Keyboard hardware emulates layout",
         })} onChange={(value) => {
@@ -106,20 +106,20 @@ function LayoutProp(): ReactNode {
 function GeometryProp(): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
-    const options = KeyboardOptions.from(settings);
+    const options = () => KeyboardOptions.from(settings);
     return (<>
       <FieldList>
         <Field>
           <FormattedMessage id="t_Geometry:" defaultMessage="Geometry:"/>
         </Field>
         <Field>
-          <OptionList options={options.selectableGeometries().map((item) => ({
+          <OptionList options={options().selectableGeometries().map((item) => ({
             value: item.id,
             name: item.name,
-        }))} value={options.geometry.id} onSelect={(id) => {
-            updateSettings(options
+        }))} value={options().geometry.id} onSelect={(id) => {
+            updateSettings(options()
                 .withGeometry(Geometry.ALL.get(id))
-                .withZones(options.zones)
+                .withZones(options().zones)
                 .save(settings));
         }}/>
         </Field>
@@ -127,11 +127,11 @@ function GeometryProp(): ReactNode {
           <FormattedMessage id="t_Zones:" defaultMessage="Zones:"/>
         </Field>
         <Field>
-          <OptionList options={options.selectableZones().map((item) => ({
+          <OptionList options={options().selectableZones().map((item) => ({
             value: item.id,
             name: item.name,
-        }))} value={options.zones.id} onSelect={(id) => {
-            updateSettings(options.withZones(ZoneMod.ALL.get(id)).save(settings));
+        }))} value={options().zones.id} onSelect={(id) => {
+            updateSettings(options().withZones(ZoneMod.ALL.get(id)).save(settings));
         }}/>
         </Field>
       </FieldList>
@@ -171,11 +171,9 @@ const KeyboardPreview = memo(function KeyboardPreview(): ReactNode {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
     const depressedKeys = useDepressedKeys(settings, keyboard);
-    const colors = settings.get(keyboardProps.colors);
-    const pointers = settings.get(keyboardProps.pointers);
     return (<VirtualKeyboard keyboard={keyboard} height="16rem">
-      <KeyLayer depressedKeys={depressedKeys} toggledKeys={ModifierState.modifiers} showColors={colors}/>
-      {pointers && <PointersPreview />}
+      <KeyLayer depressedKeys={depressedKeys} toggledKeys={ModifierState.modifiers} showColors={settings.get(keyboardProps.colors)}/>
+      {settings.get(keyboardProps.pointers) && <PointersPreview />}
     </VirtualKeyboard>);
 });
 const PointersPreview = memo(function PointersPreview(): ReactNode {

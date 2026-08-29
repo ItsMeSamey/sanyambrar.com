@@ -6,12 +6,12 @@ import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
-export function BooksLessonSettings({ lesson, }: {
+export function BooksLessonSettings(solidProps: {
     readonly lesson: BooksLesson;
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
-    const { book, content, paragraphs, paragraphIndex } = lesson;
+    const { book, content, paragraphs, paragraphIndex } = solidProps.lesson;
     return (<>
       <Explainer>
         <Description>

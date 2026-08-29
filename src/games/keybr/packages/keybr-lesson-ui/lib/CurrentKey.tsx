@@ -3,13 +3,13 @@ import { type ClassName, styleTextTruncate } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { Key } from "./Key.tsx";
 import { KeyDetails } from "./KeyDetails.tsx";
-export const CurrentKey = ({ id, className, lessonKeys, }: {
+export const CurrentKey = (solidProps: {
     id?: string;
     className?: ClassName;
     lessonKeys: LessonKeys;
 }) => {
-    const focusedKey = lessonKeys.findFocusedKey();
-    return (<span id={id} class={className}>
+    const focusedKey = solidProps.lessonKeys.findFocusedKey();
+    return (<span id={solidProps.id} class={solidProps.className}>
       {focusedKey != null ? (<>
           <Key lessonKey={focusedKey}/> <KeyDetails lessonKey={focusedKey}/>
         </>) : (<span class={styleTextTruncate}>

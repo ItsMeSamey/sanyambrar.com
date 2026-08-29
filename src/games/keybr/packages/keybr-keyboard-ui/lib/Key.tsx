@@ -74,9 +74,9 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
         children.push(makeLigatureLabel(d, 25, 12, styles.secondarySymbol));
     }
     const zoneClassName = zoneClassNameOf(shape);
-    function KeyComponent({ depressed, toggled, showColors, ...props }: KeyProps): ReactNode {
-        return (<svg {...props as any} class={clsx(styles.key, depressed && styles.depressedKey, toggled && styles.toggledKey, showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
-        {...children}
+    function KeyComponent(props: KeyProps): ReactNode {
+        return (<svg {...props as any} class={clsx(styles.key, props.depressed && styles.depressedKey, props.toggled && styles.toggledKey, props.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
+        {children}
       </svg>);
     }
     KeyComponent.displayName = `Key[${id}]`;

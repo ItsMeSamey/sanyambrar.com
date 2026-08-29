@@ -9,11 +9,11 @@ import { useState } from "@keybr/solid-compat/react";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
-export function KeySpeedChartSection({ keyStatsMap, }: {
+export function KeySpeedChartSection(solidProps: {
     keyStatsMap: KeyStatsMap;
 }) {
     const { settings } = useSettings();
-    const { letters } = keyStatsMap;
+    const { letters } = solidProps.keyStatsMap;
     const [current, setCurrent] = useState(letters[0]);
     const [smoothness, setSmoothness] = useState(0.5);
     const target = new Target(settings);
@@ -21,7 +21,7 @@ export function KeySpeedChartSection({ keyStatsMap, }: {
         setCurrent(letters[0]);
         return null;
     }
-    const keyStats = keyStatsMap.get(current());
+    const keyStats = solidProps.keyStatsMap.get(current());
     const { samples } = keyStats;
     return (<Figure>
       <Figure.Caption>
@@ -35,7 +35,7 @@ export function KeySpeedChartSection({ keyStatsMap, }: {
       </Explainer>
 
       <Para align="center">
-        <KeySelector keyStatsMap={keyStatsMap} current={current()} onSelect={(current) => {
+        <KeySelector keyStatsMap={solidProps.keyStatsMap} current={current()} onSelect={(current) => {
             setCurrent(current);
         }}/>
       </Para>

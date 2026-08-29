@@ -10,13 +10,13 @@ import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function KeyDetailsChart({ lessonKey, learningRate, width, height, }: {
+export function KeyDetailsChart(solidProps: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
 } & SizeProps): ReactNode {
     const styles = useChartStyles();
-    const paint = usePaint(styles, lessonKey, learningRate);
-    return <ChartCanvas styles={styles} paint={paint} width={width} height={height}/>;
+    const paint = usePaint(styles, solidProps.lessonKey, solidProps.learningRate);
+    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
 function usePaint(styles: ChartStyles, lessonKey: LessonKey, learningRate: LearningRate | null) {
     const { formatMessage } = useIntl();

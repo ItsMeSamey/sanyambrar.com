@@ -3,7 +3,7 @@ import { useKeyboard } from "@keybr/keyboard";
 import { type KeyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
-export function KeyFrequencyHeatmapSection({ keyStatsMap, }: {
+export function KeyFrequencyHeatmapSection(solidProps: {
     keyStatsMap: KeyStatsMap;
 }) {
     const keyboard = useKeyboard();
@@ -18,7 +18,7 @@ export function KeyFrequencyHeatmapSection({ keyStatsMap, }: {
         </Figure.Description>
       </Explainer>
 
-      <KeyFrequencyHeatmap keyStatsMap={keyStatsMap} keyboard={keyboard}/>
+      <KeyFrequencyHeatmap keyStatsMap={solidProps.keyStatsMap} keyboard={keyboard}/>
 
       <Figure.Legend>
         <FormattedMessage id="stats.chart.keyFrequencyHeatmap.legend" defaultMessage="Circle color: {label1} – hit count, {label2} – miss count." values={{

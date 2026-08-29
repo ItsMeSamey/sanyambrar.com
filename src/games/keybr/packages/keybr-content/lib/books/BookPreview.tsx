@@ -6,25 +6,25 @@ import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";
-export const BookPreview = memo(function BookPreview({ book, content, }: BookContent): ReactNode {
+export const BookPreview = memo(function BookPreview(solidProps: BookContent): ReactNode {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const { numChapters, numParagraphs, numWords, numUniqueWords, numCharacters, avgWordLength, } = useMemo(() => {
-        const paragraphs = flattenContent(content);
-        const numChapters = content.length;
+        const paragraphs = flattenContent(solidProps.content);
+        const numChapters = solidProps.content.length;
         const numParagraphs = paragraphs.length;
-        const textStats = textStatsOf(book.language.locale, paragraphs);
+        const textStats = textStatsOf(solidProps.book.language.locale, paragraphs);
         return {
             numChapters,
             numParagraphs,
             ...textStats,
         };
-    }, () => [book, content]);
+    }, () => [solidProps.book, solidProps.content]);
     return (<div class={styles.root}>
-      <img class={styles.coverImage} src={book.coverImage} alt="Book cover image" title={`${book.title} by ${book.author}`}/>
+      <img class={styles.coverImage} src={solidProps.book.coverImage} alt="Book cover image" title={`${solidProps.book.title} by ${solidProps.book.author}`}/>
       <div class={styles.details}>
         <p>
-          <strong>{book.title}</strong> by <strong>{book.author}</strong>
+          <strong>{solidProps.book.title}</strong> by <strong>{solidProps.book.author}</strong>
         </p>
         <p>
           <NameValue name={formatMessage({

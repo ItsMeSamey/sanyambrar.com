@@ -1,6 +1,6 @@
 import { type KeyId, useKeyboard } from "@keybr/keyboard";
 import { type Result } from "@keybr/result";
-import { liveObject, LIVE_ACCESSOR } from "@keybr/solid-compat/live";
+import { LIVE_ACCESSOR } from "@keybr/solid-compat/live";
 import { type LineList } from "@keybr/textinput";
 import { addKey, deleteKey, emulateLayout } from "@keybr/textinput-events";
 import { makeSoundPlayer } from "@keybr/textinput-sounds";
@@ -24,9 +24,9 @@ export function Controller(props: {
   useDocumentEvent("visibilitychange", lesson.handleResetLesson);
   return (
     <Presenter
-      state={lesson.state}
-      lines={lesson.lines}
-      depressedKeys={lesson.depressedKeys}
+      state={lesson.state()}
+      lines={lesson.lines()}
+      depressedKeys={lesson.depressedKeys()}
       onResetLesson={lesson.handleResetLesson}
       onSkipLesson={lesson.handleSkipLesson}
       onKeyDown={lesson.handleKeyDown}
@@ -97,9 +97,9 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
   });
 
   return {
-    state: liveObject(state),
-    get lines() { return lines(); },
-    get depressedKeys() { return depressedKeys(); },
+    state,
+    lines,
+    depressedKeys,
     handleResetLesson,
     handleSkipLesson,
     handleKeyDown: (event: Parameters<ReturnType<typeof handlers>["onKeyDown"]>[0]) => handlers().onKeyDown(event),

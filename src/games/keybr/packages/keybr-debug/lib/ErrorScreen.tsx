@@ -1,14 +1,14 @@
 import { Article, Header, Para } from "@keybr/widget";
 import { ErrorReport } from "./ErrorReport.tsx";
 
-export function ErrorScreen({ report }: { readonly report: string }) {
+export function ErrorScreen(solidProps: { readonly report: string }) {
   return (
     <Article>
       <Header level={1}>Error</Header>
 
       <Para>Oh no, something bad has happened!</Para>
 
-      <ErrorReport report={report} />
+      <ErrorReport report={solidProps.report} />
     </Article>
   );
 }

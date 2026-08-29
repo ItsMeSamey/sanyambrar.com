@@ -1,10 +1,10 @@
 import { mdiAlertCircleOutline, mdiCheckCircleOutline, mdiInformationOutline, } from "@keybr/solid-compat/mdi";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { Icon } from "../icon/index.ts";
-export function SeverityIcon({ severity, }: {
+export function SeverityIcon(solidProps: {
     readonly severity: "info" | "success" | "error" | null;
 }): ReactNode {
-    switch (severity) {
+    switch (solidProps.severity) {
         case "info":
             return <InfoIcon />;
         case "success":

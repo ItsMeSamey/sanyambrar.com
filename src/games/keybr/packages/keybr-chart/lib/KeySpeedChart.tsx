@@ -11,13 +11,13 @@ import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function KeySpeedChart({ samples, smoothness, width, height, }: {
+export function KeySpeedChart(solidProps: {
     readonly samples: readonly KeySample[];
     readonly smoothness: number;
 } & SizeProps): ReactNode {
     const styles = useChartStyles();
-    const paint = usePaint(styles, samples, smoothness);
-    return <ChartCanvas styles={styles} paint={paint} width={width} height={height}/>;
+    const paint = usePaint(styles, solidProps.samples, solidProps.smoothness);
+    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
 function usePaint(styles: ChartStyles, samples: readonly KeySample[], smoothness: number) {
     const { formatMessage } = useIntl();

@@ -6,7 +6,7 @@ import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Calendar.module.css";
 import { DailyStats as DailyStatsWidget } from "./DailyStats.tsx";
 import { type Effort } from "./effort.ts";
-export function Calendar({ dailyStatsMap, effort, }: {
+export function Calendar(solidProps: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
 }) {
@@ -45,7 +45,7 @@ export function Calendar({ dailyStatsMap, effort, }: {
         };
     }, () => [state()]);
     return (<>
-      <BlockList dailyStatsMap={dailyStatsMap} effort={effort} onCellHoverIn={(stats, elem) => {
+      <BlockList dailyStatsMap={solidProps.dailyStatsMap} effort={solidProps.effort} onCellHoverIn={(stats, elem) => {
             setState({ type: "visible-in", stats, elem });
         }} onCellHoverOut={() => {
             switch (state().type) {
@@ -63,12 +63,12 @@ export function Calendar({ dailyStatsMap, effort, }: {
             }} onMouseLeave={() => {
                 setState({ ...state(), type: "visible-out" });
             }}>
-            <DailyStatsWidget stats={state().stats} effort={effort}/>
+            <DailyStatsWidget stats={state().stats} effort={solidProps.effort}/>
           </Popup>
         </Portal>)}
     </>);
 }
-function BlockList({ dailyStatsMap, effort, onCellHoverIn, onCellHoverOut, onCellClick, }: {
+function BlockList(solidProps: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
     onCellHoverIn?: (stats: DailyStats, elem: Element) => void;
@@ -76,15 +76,15 @@ function BlockList({ dailyStatsMap, effort, onCellHoverIn, onCellHoverOut, onCel
     onCellClick?: (stats: DailyStats, elem: Element) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
-    const blocks = useMemo(() => blockList(dailyStatsMap), () => [dailyStatsMap]);
+    const blocks = useMemo(() => blockList(solidProps.dailyStatsMap), () => [solidProps.dailyStatsMap]);
     return (<div ref={el => ref.current = el} class={styles.root} onMouseOver={(event) => {
-            relayEvent(ref.current!, event, onCellHoverIn);
+            relayEvent(ref.current!, event, solidProps.onCellHoverIn);
         }} onMouseOut={(event) => {
-            relayEvent(ref.current!, event, onCellHoverOut);
+            relayEvent(ref.current!, event, solidProps.onCellHoverOut);
         }} onClick={(event) => {
-            relayEvent(ref.current!, event, onCellClick);
+            relayEvent(ref.current!, event, solidProps.onCellClick);
         }}>
-      {blocks.map((block) => (<Block block={block} effort={effort}/>))}
+      {blocks.map((block) => (<Block block={block} effort={solidProps.effort}/>))}
     </div>);
 }
 function relayEvent(root: Element, { target }: {
@@ -107,7 +107,7 @@ type BlockCells = {
     month: number;
     cells: (DailyStats | null)[][];
 };
-function Block({ block, effort }: {
+function Block(solidProps: {
     block: BlockCells;
     effort: Effort;
 }) {
@@ -119,7 +119,7 @@ function Block({ block, effort }: {
     return (<div class={styles.calendar}>
       <table class={styles.table}>
         <caption class={styles.caption}>
-          {block.year}/{block.month}
+          {solidProps.block.year}/{solidProps.block.month}
         </caption>
         <thead>
           <tr>
@@ -133,31 +133,31 @@ function Block({ block, effort }: {
           </tr>
         </thead>
         <tbody>
-          {block.cells.map((row, m) => (<tr>
-              {row.map((cell, n) => (<Cell cell={cell} effort={effort}/>))}
+          {solidProps.block.cells.map((row, m) => (<tr>
+              {row.map((cell, n) => (<Cell cell={cell} effort={solidProps.effort}/>))}
             </tr>))}
         </tbody>
       </table>
     </div>);
 }
-function Cell({ cell, effort }: {
+function Cell(solidProps: {
     cell: DailyStats | null;
     effort: Effort;
 }) {
-    if (cell == null) {
+    if (solidProps.cell == null) {
         return <td />;
     }
-    const { results, stats } = cell;
+    const { results, stats } = solidProps.cell;
     if (results.length === 0) {
         return (<td class={styles.cell}>
-        <span class={styles.item}>{cell.date.dayOfMonth}</span>
+        <span class={styles.item}>{solidProps.cell.date.dayOfMonth}</span>
       </td>);
     }
     return (<td class={styles.cell}>
-      <span ref={Cell.attach(cell)} class={styles.item} style={{
-            "background-color": String(effort.shade(effort.effort(stats.time))),
-        }} data-date={String(cell.date)}>
-        {cell.date.dayOfMonth}
+      <span ref={Cell.attach(solidProps.cell)} class={styles.item} style={{
+            "background-color": String(solidProps.effort.shade(solidProps.effort.effort(stats.time))),
+        }} data-date={String(solidProps.cell.date)}>
+        {solidProps.cell.date.dayOfMonth}
       </span>
     </td>);
 }

@@ -1,7 +1,7 @@
 import { Field, FieldList, OptionList } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { Book } from "./book.ts";
-export function BookSelector({ book, onChange, }: {
+export function BookSelector(solidProps: {
     readonly book: Book;
     readonly onChange: (book: Book) => void;
 }): ReactNode {
@@ -11,8 +11,8 @@ export function BookSelector({ book, onChange, }: {
         <OptionList size={24} options={Book.ALL.map(({ id, title }) => ({
             value: id,
             name: title,
-        }))} value={book.id} onSelect={(value) => {
-            onChange(Book.ALL.get(value));
+        }))} value={solidProps.book.id} onSelect={(value) => {
+            solidProps.onChange(Book.ALL.get(value));
         }}/>
       </Field>
     </FieldList>);

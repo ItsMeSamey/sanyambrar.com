@@ -6,7 +6,7 @@ import { Cursor } from "./Cursor.tsx";
 import { textItemStyle } from "./styles.ts";
 import * as styles from "./TextLines.module.css";
 export type TextLineSize = "X0" | "X1" | "X2" | "X3";
-export const TextLines = memo(function TextLines({ settings = textDisplaySettings, lines, wrap = true, size = "X0", lineTemplate: LineTemplate, cursor, focus, }: {
+export const TextLines = memo(function TextLines(props: {
     readonly lines: LineList;
     readonly settings?: TextDisplaySettings;
     readonly wrap?: boolean;
@@ -15,13 +15,14 @@ export const TextLines = memo(function TextLines({ settings = textDisplaySetting
     readonly cursor: boolean;
     readonly focus: boolean;
 }): ReactNode {
-    const className = clsx(styles.root, wrap ? styles.wrap : styles.nowrap, focus ? styles.focus : styles.blur, size === "X0" && styles.sizeX0, size === "X1" && styles.sizeX1, size === "X2" && styles.sizeX2, size === "X3" && styles.sizeX3);
-    const children = lines.lines.map(({ text, chars, ...props }: Line) => LineTemplate != null ? (<LineTemplate {...props}>
-        <TextLine settings={settings} chars={chars} className={className} style={settings.font.cssProperties}/>
-      </LineTemplate>) : (<TextLine settings={settings} chars={chars} className={className} style={settings.font.cssProperties}/>));
-    return cursor ? <Cursor settings={settings}>{children}</Cursor> : children;
+    const settings = () => props.settings ?? textDisplaySettings;
+    const className = () => clsx(styles.root, (props.wrap ?? true) ? styles.wrap : styles.nowrap, props.focus ? styles.focus : styles.blur, (props.size ?? "X0") === "X0" && styles.sizeX0, (props.size ?? "X0") === "X1" && styles.sizeX1, (props.size ?? "X0") === "X2" && styles.sizeX2, (props.size ?? "X0") === "X3" && styles.sizeX3);
+    const children = () => props.lines.lines.map(({ text, chars, ...lineProps }: Line) => props.lineTemplate != null ? (<props.lineTemplate {...lineProps}>
+        <TextLine settings={settings()} chars={chars} className={className()} style={settings().font.cssProperties}/>
+      </props.lineTemplate>) : (<TextLine settings={settings()} chars={chars} className={className()} style={settings().font.cssProperties}/>));
+    return <>{props.cursor ? <Cursor settings={settings()}>{children()}</Cursor> : children()}</>;
 });
-const TextLine = memo(function TextLine({ settings, chars, className, style, }: {
+const TextLine = memo(function TextLine(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
     readonly className: string;
@@ -30,8 +31,8 @@ const TextLine = memo(function TextLine({ settings, chars, className, style, }: 
     const items: Char[][] = [];
     let itemChars: Char[] = [];
     let ws = false;
-    for (let i = 0; i < chars.length; i++) {
-        const char = chars[i];
+    for (let i = 0; i < solidProps.chars.length; i++) {
+        const char = solidProps.chars[i];
         switch (char.codePoint) {
             case 0x0009:
             case 0x000a:
@@ -54,16 +55,16 @@ const TextLine = memo(function TextLine({ settings, chars, className, style, }: 
         items.push(itemChars);
         itemChars = [];
     }
-    return (<div class={className} style={style} dir={settings.language.direction}>
-        {items.map((chars, index) => (<TextItem settings={settings} chars={chars}/>))}
+    return (<div class={solidProps.className} style={solidProps.style} dir={solidProps.settings.language.direction}>
+        {items.map((chars, index) => (<TextItem settings={solidProps.settings} chars={chars}/>))}
       </div>);
 }, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
     charArraysAreEqual(prevProps.chars, nextProps.chars) && // deep equality
     prevProps.className === nextProps.className);
-const TextItem = memo(function TextItem({ settings, chars, }: {
+const TextItem = memo(function TextItem(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
 }): ReactNode {
-    return <span style={textItemStyle}>{renderChars(settings, chars)}</span>;
+    return <span style={textItemStyle}>{renderChars(solidProps.settings, solidProps.chars)}</span>;
 }, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
     charArraysAreEqual(prevProps.chars, nextProps.chars));

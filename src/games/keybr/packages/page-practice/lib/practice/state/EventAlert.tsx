@@ -3,12 +3,12 @@ import { Award, toast } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
 import { type LessonEvent } from "./event-types.ts";
-export function EventAlert({ event }: {
+export function EventAlert(solidProps: {
     readonly event: LessonEvent;
 }) {
-    switch (event.type) {
+    switch (solidProps.event.type) {
         case "new-letter":
-            return (<Award icon={<Key lessonKey={event.lessonKey} size="announcement"/>}>
+            return (<Award icon={<Key lessonKey={solidProps.event.lessonKey} size="announcement"/>}>
           <FormattedMessage id="t_ev_New_letter_unlocked" defaultMessage="New letter unlocked!"/>
         </Award>);
         case "top-speed":
@@ -26,7 +26,7 @@ export function EventAlert({ event }: {
     }
 }
 export function displayEvent(event: LessonEvent): void {
-    toast(<EventAlert event={event}/>, {
+    toast(() => <EventAlert event={event}/>, {
         autoClose: 3000,
         closeOnClick: true,
         pauseOnHover: true,

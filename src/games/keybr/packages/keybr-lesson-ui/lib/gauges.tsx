@@ -7,24 +7,24 @@ import { useIntl } from "@keybr/solid-compat/intl";
 import { useFormatter } from "./format.ts";
 import * as styles from "./gauges.module.css";
 import { type Names } from "./names.ts";
-export const GaugeList = memo(function GaugeRow({ summaryStats, names, }: {
+export const GaugeList = memo(function GaugeRow(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
     return (<div class={styles.gaugeList}>
-      <SpeedGauge summaryStats={summaryStats} names={names}/>
-      <AccuracyGauge summaryStats={summaryStats} names={names}/>
-      <ScoreGauge summaryStats={summaryStats} names={names}/>
+      <SpeedGauge summaryStats={solidProps.summaryStats} names={solidProps.names}/>
+      <AccuracyGauge summaryStats={solidProps.summaryStats} names={solidProps.names}/>
+      <ScoreGauge summaryStats={solidProps.summaryStats} names={solidProps.names}/>
     </div>);
 });
-export const SpeedGauge = memo(function SpeedGauge({ summaryStats, names, }: {
+export const SpeedGauge = memo(function SpeedGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
     const { formatMessage } = useIntl();
     const { formatSpeed } = useFormatter();
-    const { last, delta } = summaryStats.speed;
-    return (<Gauge id={names?.speed} name={<Name name={formatMessage({
+    const { last, delta } = solidProps.summaryStats.speed;
+    return (<Gauge id={solidProps.names?.speed} name={<Name name={formatMessage({
                 id: "t_Speed",
                 defaultMessage: "Speed",
             })}/>} value={<Value value={formatSpeed(last)}/>} delta={<Value value={signed(formatSpeed(delta), delta)} delta={delta} title={formatMessage({
@@ -35,14 +35,14 @@ export const SpeedGauge = memo(function SpeedGauge({ summaryStats, names, }: {
             defaultMessage: "Typing speed in the last lesson.",
         })}/>);
 });
-export const AccuracyGauge = memo(function AccuracyGauge({ summaryStats, names, }: {
+export const AccuracyGauge = memo(function AccuracyGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
     const { formatMessage } = useIntl();
     const { formatPercents } = useIntlNumbers();
-    const { last, delta } = summaryStats.accuracy;
-    return (<Gauge id={names?.accuracy} name={<Name name={formatMessage({
+    const { last, delta } = solidProps.summaryStats.accuracy;
+    return (<Gauge id={solidProps.names?.accuracy} name={<Name name={formatMessage({
                 id: "t_Accuracy",
                 defaultMessage: "Accuracy",
             })}/>} value={<Value value={formatPercents(last)}/>} delta={<Value value={signed(formatPercents(delta), delta)} delta={delta} title={formatMessage({
@@ -53,14 +53,14 @@ export const AccuracyGauge = memo(function AccuracyGauge({ summaryStats, names, 
             defaultMessage: "The percentage of characters typed without errors in the last lesson.",
         })}/>);
 });
-export const ScoreGauge = memo(function ScoreGauge({ summaryStats, names, }: {
+export const ScoreGauge = memo(function ScoreGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { last, delta } = summaryStats.score;
-    return (<Gauge id={names?.score} name={<Name name={formatMessage({
+    const { last, delta } = solidProps.summaryStats.score;
+    return (<Gauge id={solidProps.names?.score} name={<Name name={formatMessage({
                 id: "t_Score",
                 defaultMessage: "Score",
             })}/>} value={<Value value={formatNumber(last, 0)}/>} delta={<Value value={signed(formatNumber(delta, 0), delta)} delta={delta} title={formatMessage({
@@ -72,7 +72,7 @@ export const ScoreGauge = memo(function ScoreGauge({ summaryStats, names, }: {
                 "Scores are greater when you type faster and with fewer errors.",
         })}/>);
 });
-export const Gauge = memo(function Gauge({ id, className, name, value, delta, title, }: {
+export const Gauge = memo(function Gauge(solidProps: {
     id?: string;
     className?: ClassName;
     name: ReactNode;
@@ -80,8 +80,8 @@ export const Gauge = memo(function Gauge({ id, className, name, value, delta, ti
     delta: ReactNode;
     title: string;
 }) {
-    return (<span id={id} class={clsx(styles.gauge, className)} title={title}>
-      {name} {value} ({delta})
+    return (<span id={solidProps.id} class={clsx(styles.gauge, solidProps.className)} title={solidProps.title}>
+      {solidProps.name} {solidProps.value} ({solidProps.delta})
     </span>);
 });
 function signed(value: any, delta: number): string {

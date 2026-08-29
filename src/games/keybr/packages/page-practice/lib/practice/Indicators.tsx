@@ -6,7 +6,7 @@ import { memo, type ReactNode, useEffect, useState } from "@keybr/solid-compat/r
 import * as styles from "./Indicators.module.css";
 import { KeyExtendedDetails } from "./KeyExtendedDetails.tsx";
 import { type LessonState } from "./state/index.ts";
-export const Indicators = memo(function Indicators({ state: { keyStatsMap, summaryStats, lessonKeys, streakList, dailyGoal }, }: {
+export const Indicators = memo(function Indicators(props: {
     readonly state: LessonState;
 }): ReactNode {
     type State = Readonly<{
@@ -44,8 +44,8 @@ export const Indicators = memo(function Indicators({ state: { keyStatsMap, summa
         };
     }, () => [state()]);
     return (<div id={names.indicators} class={styles.indicators}>
-      <GaugeRow summaryStats={summaryStats} names={names}/>
-      <KeySetRow lessonKeys={lessonKeys} names={names} onKeyHoverIn={(key, elem) => {
+      <GaugeRow summaryStats={props.state.summaryStats} names={names}/>
+      <KeySetRow lessonKeys={props.state.lessonKeys} names={names} onKeyHoverIn={(key, elem) => {
             setState({ type: "visible-in", key, elem });
         }} onKeyHoverOut={() => {
             switch (state().type) {
@@ -57,16 +57,16 @@ export const Indicators = memo(function Indicators({ state: { keyStatsMap, summa
                     break;
             }
         }}/>
-      <CurrentKeyRow lessonKeys={lessonKeys} names={names}/>
-      <StreakListRow streakList={streakList} names={names}/>
-      {dailyGoal.goal > 0 && (<DailyGoalRow dailyGoal={dailyGoal} names={names}/>)}
+      <CurrentKeyRow lessonKeys={props.state.lessonKeys} names={names}/>
+      <StreakListRow streakList={props.state.streakList} names={names}/>
+      {props.state.dailyGoal.goal > 0 && (<DailyGoalRow dailyGoal={props.state.dailyGoal} names={names}/>)}
       {(state().type === "visible" || state().type === "visible-out") && (<Portal>
           <Popup anchor={state().elem} onMouseEnter={() => {
                 setState({ ...state(), type: "visible" });
             }} onMouseLeave={() => {
                 setState({ ...state(), type: "visible-out" });
             }}>
-            <KeyExtendedDetails lessonKey={state().key} keyStats={keyStatsMap.get(state().key.letter)}/>
+            <KeyExtendedDetails lessonKey={state().key} keyStats={props.state.keyStatsMap.get(state().key.letter)}/>
           </Popup>
         </Portal>)}
     </div>);

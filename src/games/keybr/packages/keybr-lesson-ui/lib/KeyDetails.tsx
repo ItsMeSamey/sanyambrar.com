@@ -7,18 +7,18 @@ import { useIntl } from "@keybr/solid-compat/intl";
 import { useFormatter } from "./format.ts";
 import { Happiness } from "./Happiness.tsx";
 import * as styles from "./styles.module.css";
-export const KeyDetails = ({ lessonKey }: {
+export const KeyDetails = (solidProps: {
     lessonKey: LessonKey;
 }) => {
     const { formatMessage } = useIntl();
     const { formatSpeed, formatConfidence, formatLearningRate, speedUnitName } = useFormatter();
     const { settings } = useSettings();
-    const { timeToType, bestTimeToType, confidence, bestConfidence } = lessonKey;
+    const { timeToType, bestTimeToType, confidence, bestConfidence } = solidProps.lessonKey;
     if (timeToType != null &&
         bestTimeToType != null &&
         confidence != null &&
         bestConfidence != null) {
-        const learningRate = LearningRate.from(lessonKey.samples, //
+        const learningRate = LearningRate.from(solidProps.lessonKey.samples, //
         new Target(settings))?.learningRate ?? null;
         return (<span class={clsx(styles.keyDetails, styles.keyDetailsCalibrated)}>
         <NameValue name={<Name name={formatMessage({

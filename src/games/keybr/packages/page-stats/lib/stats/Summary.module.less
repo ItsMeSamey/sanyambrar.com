@@ -24,3 +24,15 @@
   font-size: 2rem;
   text-align: center;
 }
+@media (max-width: 600px) {
+  .statisticList {
+    flex-wrap: wrap;
+  }
+
+  .statisticListItem {
+    box-sizing: border-box;
+    flex: 1 1 calc(50% - 0.5rem);
+    min-width: 0;
+    padding-inline: 0.5rem;
+  }
+}

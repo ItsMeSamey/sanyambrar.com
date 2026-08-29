@@ -3,10 +3,10 @@ import { useFormatter } from "@keybr/lesson-ui";
 import { makeSummaryStats, MutableStreakList, type Result, type Streak, } from "@keybr/result";
 import { Explainer, Figure, NameValue, Para } from "@keybr/widget";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
-export function AccuracyStreaksSection({ results, }: {
+export function AccuracyStreaksSection(solidProps: {
     results: readonly Result[];
 }) {
-    const streaks = MutableStreakList.findLongest(results);
+    const streaks = MutableStreakList.findLongest(solidProps.results);
     return (<Figure>
       <Figure.Caption>
         <FormattedMessage id="stats.accuracy.header" defaultMessage="Accuracy Streaks"/>
@@ -25,13 +25,13 @@ export function AccuracyStreaksSection({ results, }: {
       </Explainer>
     </Figure>);
 }
-function StreakDetails({ streak }: {
+function StreakDetails(solidProps: {
     streak: Streak;
 }) {
     const { formatMessage, formatDate } = useIntl();
     const { formatNumber, formatPercents } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
-    const { level, results } = streak;
+    const { level, results } = solidProps.streak;
     const characterCount = results.reduce((x, { length }) => length + x, 0);
     const stats = makeSummaryStats(results);
     return (<>

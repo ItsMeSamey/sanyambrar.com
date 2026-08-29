@@ -1,7 +1,7 @@
 import { type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./Backdrop.module.css";
-export function Backdrop({ children, }: {
+export function Backdrop(solidProps: {
     readonly children: ReactNode;
 }): ReactNode {
-    return <div class={styles.root}>{children}</div>;
+    return <div class={styles.root}>{solidProps.children}</div>;
 }

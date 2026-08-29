@@ -3,9 +3,12 @@ import { type ReactNode, type RefObject, useEffect, useImperativeHandle, useRef,
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./TextField.module.css";
 import { type TextFieldProps } from "./TextField.types.ts";
-export function TextField({ disabled, error, maxLength, name, placeholder, readOnly, ref, rows, size, tabIndex, title, type = "text", value, onChange, onInput, ...props }: TextFieldProps): ReactNode {
+import { splitProps, mergeProps } from "solid-js";
+export function TextField(solidAllProps: TextFieldProps): ReactNode {
+    const solidMergedProps = mergeProps({ type: "text" }, solidAllProps);
+    const [solidLocal, props] = splitProps(solidMergedProps, ["disabled", "error", "maxLength", "name", "placeholder", "readOnly", "ref", "rows", "size", "tabIndex", "title", "type", "value", "onChange", "onInput"]);
     const element = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
-    useImperativeHandle(ref, () => ({
+    useImperativeHandle(solidLocal.ref, () => ({
         focus() {
             element.current?.focus();
         },
@@ -17,20 +20,20 @@ export function TextField({ disabled, error, maxLength, name, placeholder, readO
         },
     }));
     useEffect(() => {
-        element.current?.setCustomValidity(error ?? "");
-    }, () => [error]);
-    if (type === "textarea") {
-        return (<textarea {...props} ref={el => element.current = el} class={clsx(styles.root, disabled && styles.disabled, sizeClassName(size))} disabled={disabled} maxLength={maxLength} name={name} placeholder={placeholder} readOnly={readOnly} rows={rows} tabIndex={tabIndex} title={title} value={value} onChange={(event) => {
-                onChange?.(event.target.value);
+        element.current?.setCustomValidity(solidLocal.error ?? "");
+    }, () => [solidLocal.error]);
+    if (solidLocal.type === "textarea") {
+        return (<textarea {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} maxLength={solidLocal.maxLength} name={solidLocal.name} placeholder={solidLocal.placeholder} readOnly={solidLocal.readOnly} rows={solidLocal.rows} tabIndex={solidLocal.tabIndex} title={solidLocal.title} value={solidLocal.value} onChange={(event) => {
+                solidLocal.onChange?.(event.target.value);
             }} onInput={(event) => {
-                onInput?.(event as InputEvent);
+                solidLocal.onInput?.(event as InputEvent);
             }}/>);
     }
     else {
-        return (<input {...props} ref={el => element.current = el} class={clsx(styles.root, disabled && styles.disabled, sizeClassName(size))} disabled={disabled} maxLength={maxLength} name={name} placeholder={placeholder} readOnly={readOnly} tabIndex={tabIndex} title={title} type={type} value={value} onChange={(event) => {
-                onChange?.(event.target.value);
+        return (<input {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} maxLength={solidLocal.maxLength} name={solidLocal.name} placeholder={solidLocal.placeholder} readOnly={solidLocal.readOnly} tabIndex={solidLocal.tabIndex} title={solidLocal.title} type={solidLocal.type} value={solidLocal.value} onChange={(event) => {
+                solidLocal.onChange?.(event.target.value);
             }} onInput={(event) => {
-                onInput?.(event as InputEvent);
+                solidLocal.onInput?.(event as InputEvent);
             }}/>);
     }
 }

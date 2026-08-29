@@ -3,14 +3,14 @@ import { type Char, type TextDisplaySettings, TextInput, } from "@keybr/textinpu
 import { type ReactNode, useEffect, useMemo, useState } from "@keybr/solid-compat/react";
 import { StaticText } from "./StaticText.tsx";
 import { type TextLineSize } from "./TextLines.tsx";
-export function AnimatedText({ settings, text, wrap, size, }: {
+export function AnimatedText(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly text: string;
     readonly wrap?: boolean;
     readonly size?: TextLineSize;
 }): ReactNode {
-    const chars = useAnimatedTextState(text);
-    return (<StaticText settings={settings} lines={{ text, lines: [{ text, chars }] }} cursor={true} wrap={wrap} size={size}/>);
+    const chars = useAnimatedTextState(solidProps.text);
+    return (<StaticText settings={solidProps.settings} lines={{ text: solidProps.text, lines: [{ text: solidProps.text, chars }] }} cursor={true} wrap={solidProps.wrap} size={solidProps.size}/>);
 }
 function useAnimatedTextState(text: string): readonly Char[] {
     const textInput = useMemo(() => new TextInput(text, {

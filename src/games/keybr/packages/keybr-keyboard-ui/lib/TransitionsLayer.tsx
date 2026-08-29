@@ -4,7 +4,7 @@ import { clsx } from "@keybr/solid-compat/clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 import * as styles from "./TransitionsLayer.module.css";
-export const TransitionsLayer = memo(function TransitionsLayer({ histogram, modifier, }: {
+export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
     readonly histogram: Iterable<readonly [
         CodePoint,
         CodePoint,
@@ -28,7 +28,7 @@ export const TransitionsLayer = memo(function TransitionsLayer({ histogram, modi
     </Surface>);
     function items() {
         const list: Item[] = [];
-        for (const [codePoint0, codePoint1, f] of [...histogram]
+        for (const [codePoint0, codePoint1, f] of [...solidProps.histogram]
             .sort((a, b) => b[2] - a[2])
             .slice(0, 100)) {
             if (f > 0) {
@@ -82,7 +82,7 @@ export const TransitionsLayer = memo(function TransitionsLayer({ histogram, modi
         const Y1 = y0 + Math.sin(theta) * t;
         const X2 = x1 - Math.cos(theta) * t;
         const Y2 = y1 - Math.sin(theta) * t;
-        return (<path class={clsx(styles.arc, modifierStyle(modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
+        return (<path class={clsx(styles.arc, modifierStyle(solidProps.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
     }
 });
 function modifierStyle(m: "h" | "m" | "f") {
