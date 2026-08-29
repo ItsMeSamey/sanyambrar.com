@@ -6,6 +6,7 @@ export function ToolSurface(props:{tool:ToolId}) {
   let dispose = () => {};
   let cancelled = false;
   onMount(() => {
+    const releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
     void import('./tools.ts').then(module => {
       if (cancelled) return;
       dispose = module.mountTool(props.tool, root);
@@ -19,7 +20,7 @@ export function ToolSurface(props:{tool:ToolId}) {
       detail.textContent = error instanceof Error ? error.message : String(error);
       box.append(title, detail);
       root.replaceChildren(box);
-    });
+    }).finally(releaseLoading);
   });
   onCleanup(() => { cancelled = true; dispose(); });
   return <div ref={root} class="tools-view" data-tool-view={props.tool} aria-live="polite"/>;

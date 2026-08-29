@@ -84,6 +84,13 @@ body [role=dialog]:not(.site-search-panel){
    Keeping the timing in one JS path avoids browser-specific View Transition failures. */
 .site-route{will-change:opacity,transform}
 
+/* Global loading strip. Keybr's original top progress affordance now belongs
+   to the shared runtime so route, engine and lazy-tool loads use one signal. */
+.samey-loading-top{position:fixed;z-index:var(--samey-z-cursor);top:0;left:0;right:0;height:.5rem;overflow:hidden;pointer-events:none;opacity:0;visibility:hidden;background:transparent}
+html[data-site-loading] .samey-loading-top{opacity:1;visibility:visible}
+.samey-loading-top-bar{display:block;width:100%;height:100%;background:linear-gradient(-45deg,transparent 0,transparent .707rem,var(--site-fg,#121213) .707rem,var(--site-fg,#121213) 1.414rem,transparent 1.414rem);background-size:2rem 1rem;animation:samey-loading-stripes .5s linear infinite}
+@keyframes samey-loading-stripes{to{background-position:2rem 0}}
+
 /* Loading cursor: six-lobed sine circle supplied by the site runtime. */
 .samey-cursor-loading{display:none;position:absolute;inset:0;width:64px;height:64px;overflow:visible}
 .samey-cursor[data-loading] .samey-cursor-dot,.samey-cursor[data-loading] .samey-cursor-text,.samey-cursor[data-loading] .samey-cursor-grab{display:none!important}
@@ -96,6 +103,7 @@ body [role=dialog]:not(.site-search-panel){
 .samey-vscroll,.samey-hscroll{opacity:.72;transition:opacity var(--site-fast) ease}.samey-vscroll:hover,.samey-hscroll:hover{opacity:1}
 
 @media(prefers-reduced-motion:reduce){
+  .samey-loading-top-bar{animation:none!important;background:var(--site-fg,#121213)}
   .game-settings-popover,.samey-theme-panel:not([hidden]),body [role=dialog],.site-search-panel,.site-search-backdrop{animation:none!important}
 }
 

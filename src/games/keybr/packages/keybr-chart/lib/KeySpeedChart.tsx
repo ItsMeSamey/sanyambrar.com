@@ -74,14 +74,8 @@ function usePaint(styles: ChartStyles, samples: readonly KeySample[], smoothness
         function paintTargetSpeedLine(): ShapeList {
             const y = Math.round(proj.y(target.targetSpeed));
             return [
-                Shapes.fill(styles.threshold, [
-                    Shapes.rect({
-                        x: box.x - 10,
-                        y: y,
-                        width: box.width + 20,
-                        height: 1,
-                    }),
-                ]),
+                Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
                 Shapes.fillText({
                     x: box.x + box.width + 15,
                     y: y,

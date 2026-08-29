@@ -99,6 +99,7 @@ export function mountTool(toolId, root) {
 
   function ensureMonaco() {
     if (monacoPromise) return monacoPromise;
+    const releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
     monacoPromise = import('../site/monaco.ts').then(module => {
       const { monaco } = module;
       ensureLanguage = module.ensureMonacoLanguage;
@@ -111,7 +112,7 @@ export function mountTool(toolId, root) {
     }).catch(error => {
       monacoPromise = undefined;
       throw error;
-    });
+    }).finally(releaseLoading);
     return monacoPromise;
   }
 

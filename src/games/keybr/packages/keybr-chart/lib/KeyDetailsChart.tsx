@@ -71,14 +71,8 @@ function usePaint(styles: ChartStyles, lessonKey: LessonKey, learningRate: Learn
         function paintTargetSpeedLine(): ShapeList {
             const y = Math.round(proj.y(target.targetSpeed));
             return [
-                Shapes.fill(styles.threshold, [
-                    Shapes.rect({
-                        x: box.x - 10,
-                        y: y,
-                        width: box.width + 20,
-                        height: 1,
-                    }),
-                ]),
+                Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
                 Shapes.fillText({
                     x: box.x + box.width + 15,
                     y: y,
@@ -97,14 +91,8 @@ function usePaint(styles: ChartStyles, lessonKey: LessonKey, learningRate: Learn
         }): ShapeList {
             const x = proj.x(value);
             return [
-                Shapes.fill(styles.threshold, [
-                    Shapes.rect({
-                        x: Math.round(x),
-                        y: box.y - 10,
-                        width: 1,
-                        height: box.height + 20,
-                    }),
-                ]),
+                Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
+                Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
                 Shapes.fillText({
                     x: Math.round(x) + 2,
                     y: box.y - 1,

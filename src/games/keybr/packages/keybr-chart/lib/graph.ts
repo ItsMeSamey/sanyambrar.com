@@ -68,22 +68,16 @@ export function paintCurve(
     readonly style: GraphicsStyle;
   },
 ): ShapeList {
-  return (g: Graphics): void => {
-    g.withStyle(style, () => {
-      const d = proj.box.width / 20;
-      const s = (proj.xmax - proj.xmin) / d;
-      for (let i = 0; i < d; i++) {
-        const a = proj.xmin + i * s;
-        const b = proj.xmin + (i + 1) * s;
-        g.strokeLine(
-          proj.x(a),
-          proj.y(model.eval(a)),
-          proj.x(b),
-          proj.y(model.eval(b)),
-        );
-      }
-    });
-  };
+  const count = Math.max(2, Math.ceil(proj.box.width / 20));
+  const step = (proj.xmax - proj.xmin) / count;
+  const points = new Array(count + 1).fill(0).map((_, i) => {
+    const value = proj.xmin + i * step;
+    return { x: proj.x(value), y: proj.y(model.eval(value)) };
+  });
+  return Shapes.stroke(
+    { ...style, lineCap: "round", lineJoin: "round" },
+    Shapes.polyline(points),
+  );
 }
 
 export function paintHistogram(

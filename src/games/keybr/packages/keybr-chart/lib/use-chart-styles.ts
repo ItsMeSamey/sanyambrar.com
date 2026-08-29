@@ -8,6 +8,7 @@ export function useChartStyles() {
         const { computeStyle, computeLineHeight } = computed;
         return {
             frame: computeStyle(styles.frame),
+            background: computeStyle(styles.background),
             headerText: computeStyle(styles.headerText),
             subheaderText: computeStyle(styles.subheaderText),
             keyLabel: computeStyle(styles.value, styles.keyFont),

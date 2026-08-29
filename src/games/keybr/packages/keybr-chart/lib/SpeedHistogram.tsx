@@ -85,34 +85,27 @@ function usePaint(
   }
 
   function paintCdf(box: Rect): ShapeList {
-    return Shapes.fill(
-      styles.threshold,
-      [...indexRange.steps()].map((index) => {
-        const width = Math.ceil(box.width / indexRange.span);
-        const x = Math.round(indexRange.normalize(index, 1) * box.width);
-        const y = Math.round(cdfRange.normalize(cdf.at(index)) * box.height);
-        return Shapes.rect({
-          x: box.x + x,
-          y: box.y + box.height - y - 1,
-          width,
-          height: 1,
-        });
-      }),
-    );
+    const points = [...indexRange.steps()].map((index) => ({
+      x: box.x + indexRange.normalize(index, 1) * box.width,
+      y: box.y + box.height - cdfRange.normalize(cdf.at(index)) * box.height,
+    }));
+    const line = Shapes.polyline(points);
+    return [
+      Shapes.stroke({ ...styles.background, lineWidth: 4, lineCap: "round", lineJoin: "round" }, line),
+      Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round", lineJoin: "round" }, line),
+    ];
   }
 
   function paintSpeedMarker(box: Rect, { label, value }: SpeedThreshold): ShapeList {
     if (!(value >= indexRange.min && value <= indexRange.max)) return [];
     const x = Math.round(indexRange.normalize(value) * box.width);
     return [
-      Shapes.fill(styles.value, [
-        Shapes.rect({
-          x: box.x + x,
-          y: box.y - 10,
-          width: 1,
-          height: box.height + 20,
-        }),
-      ]),
+      Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({
+        x1: box.x + x, y1: box.y - 10, x2: box.x + x, y2: box.y + box.height + 10,
+      })),
+      Shapes.stroke({ ...styles.value, lineWidth: 2, lineCap: "round" }, Shapes.line({
+        x1: box.x + x, y1: box.y - 10, x2: box.x + x, y2: box.y + box.height + 10,
+      })),
       Shapes.fillText({
         x: box.x + x + 5,
         y: box.y + box.height - 5,
@@ -134,14 +127,12 @@ function usePaint(
     const percentile = distribution.cdf(value);
     const y = Math.round(cdfRange.normalize(percentile) * box.height);
     return [
-      Shapes.fill(styles.threshold, [
-        Shapes.rect({
-          x: box.x - 10,
-          y: box.y + box.height - y,
-          width: box.width + 20,
-          height: 1,
-        }),
-      ]),
+      Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({
+        x1: box.x - 10, y1: box.y + box.height - y, x2: box.x + box.width + 10, y2: box.y + box.height - y,
+      })),
+      Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({
+        x1: box.x - 10, y1: box.y + box.height - y, x2: box.x + box.width + 10, y2: box.y + box.height - y,
+      })),
       Shapes.fillText({
         x: box.x + box.width - 5,
         y: box.y + box.height - y - 5,

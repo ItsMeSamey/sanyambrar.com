@@ -140,6 +140,17 @@ export class Shapes {
     };
   }
 
+  static polyline(points: readonly { readonly x: number; readonly y: number }[]): Shape {
+    return (g: Graphics): void => {
+      if (points.length < 2) return;
+      const { context } = g;
+      context.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        context.lineTo(points[i].x, points[i].y);
+      }
+    };
+  }
+
   static rect({
     x,
     y,

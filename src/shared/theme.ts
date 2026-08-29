@@ -155,7 +155,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       "--Chart-hist-h__color": theme.effortFg,
       "--Chart-hist-m__color": theme.errorFg,
       "--Chart-hist-r__color": mix(theme.errorFg, theme.effortFg, .5),
-      "--KeyboardKey-pointer__color": theme.accentBg,
+      "--KeyboardKey-pointer__color": theme.text,
       "--KeyboardKey-symbol--dead__color": theme.errorFg,
       "--KeyboardKey-symbol--ligature__color": theme.effortFg,
       "--pinky-zone-color": theme.fastBg,
@@ -575,6 +575,41 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const loadingCursorSvg = generateAnimatedSineCircleSvg;
   globalThis.SameyLoadingSvg = loadingCursorSvg;
 
+  // One shared loading state drives the cursor and the top progress strip.
+  // Token-based callers compose safely with route navigation instead of one
+  // async task hiding another task's loading state.
+  let directLoading = false;
+  let loadingTasks = 0;
+  let loadingState = false;
+  const publishLoading = () => {
+    const on = directLoading || loadingTasks > 0;
+    if (on === loadingState) return;
+    loadingState = on;
+    document.documentElement.toggleAttribute("data-site-loading", on);
+    dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+  };
+  globalThis.SameyLoading = (value) => { directLoading = !!value; publishLoading(); };
+  globalThis.SameyLoadingBegin = () => {
+    loadingTasks++; publishLoading();
+    let active = true;
+    return () => {
+      if (!active) return;
+      active = false;
+      loadingTasks = Math.max(0, loadingTasks - 1);
+      publishLoading();
+    };
+  };
+  const mountLoadingBar = () => {
+    if (document.getElementById("samey-loading-top")) return;
+    const root = runtimeNode(document.createElement("div"));
+    root.id = "samey-loading-top";
+    root.className = "samey-loading-top";
+    root.setAttribute("role", "progressbar");
+    root.setAttribute("aria-label", "Loading");
+    root.innerHTML = '<span class="samey-loading-top-bar"></span>';
+    document.body.append(root);
+  };
+
   const mountCursor = () => {
     if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
     const cursor = runtimeNode(document.createElement("div"));
@@ -599,8 +634,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const animateLoadingPaths = (time) => {
       if (!cursor.hasAttribute("data-loading")) { loadingRaf = 0; return; }
       const frames = loadingFrames();
-      const progress = ((time - loadingStarted) % (loadingGeometry.duration * 1000)) / (loadingGeometry.duration * 1000);
-      loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
+      const duration = loadingGeometry.duration * 1000;
+      const progress = (Math.max(0, time - loadingStarted) % duration) / duration;
+      const frame = Math.max(0, Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1))));
+      loadingPath?.setAttribute("d", frames[frame]);
       loadingRaf = requestAnimationFrame(animateLoadingPaths);
     };
     const setLoading = (loading) => {
@@ -621,7 +658,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));
-    globalThis.SameyLoading = setLoading;
+    if (loadingState) queueMicrotask(() => { if (loadingState) setLoading(true); });
 
     // `difference` with a fixed white source has an unavoidable 50% gray
     // fixed point. Choose the blend source discontinuously from the effective
@@ -1306,12 +1343,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const pageCache = new Map();
   const reducedMotion = () => matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const setLoading = value => {
-    const on = !!value;
-    document.documentElement.toggleAttribute("data-site-loading", on);
-    dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+    globalThis.SameyLoading?.(!!value);
     // Lazy navigation never covers the current page with a transient loading card.
-    // The existing page stays painted until the replacement is fully ready, while
-    // the cursor alone communicates pending work. This avoids flash/flicker entirely.
+    // The existing page stays painted until the replacement is fully ready while
+    // the shared top strip and cursor communicate pending work.
     document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
   };
   const syncHtmlData = (doc, baseUrl) => {
@@ -1513,7 +1548,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     if (!raw.color || raw.color === "system") apply();
   });
   apply();
-  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); addEventListener("samey-pageload", mountSpa); };
+  const mountRuntime = () => { normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSpa(); addEventListener("samey-pageload", mountSpa); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
   if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});

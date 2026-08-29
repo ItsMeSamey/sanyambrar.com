@@ -476,7 +476,7 @@
 				"--Chart-hist-h__color": theme.effortFg,
 				"--Chart-hist-m__color": theme.errorFg,
 				"--Chart-hist-r__color": mix(theme.errorFg, theme.effortFg, .5),
-				"--KeyboardKey-pointer__color": theme.accentBg,
+				"--KeyboardKey-pointer__color": theme.text,
 				"--KeyboardKey-symbol--dead__color": theme.errorFg,
 				"--KeyboardKey-symbol--ligature__color": theme.effortFg,
 				"--pinky-zone-color": theme.fastBg,
@@ -936,6 +936,41 @@
 		const loadingFrames = generateLoadingFrames;
 		const loadingCursorSvg = generateAnimatedSineCircleSvg;
 		globalThis.SameyLoadingSvg = loadingCursorSvg;
+		let directLoading = false;
+		let loadingTasks = 0;
+		let loadingState = false;
+		const publishLoading = () => {
+			const on = directLoading || loadingTasks > 0;
+			if (on === loadingState) return;
+			loadingState = on;
+			document.documentElement.toggleAttribute("data-site-loading", on);
+			dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+		};
+		globalThis.SameyLoading = (value) => {
+			directLoading = !!value;
+			publishLoading();
+		};
+		globalThis.SameyLoadingBegin = () => {
+			loadingTasks++;
+			publishLoading();
+			let active = true;
+			return () => {
+				if (!active) return;
+				active = false;
+				loadingTasks = Math.max(0, loadingTasks - 1);
+				publishLoading();
+			};
+		};
+		const mountLoadingBar = () => {
+			if (document.getElementById("samey-loading-top")) return;
+			const root = runtimeNode(document.createElement("div"));
+			root.id = "samey-loading-top";
+			root.className = "samey-loading-top";
+			root.setAttribute("role", "progressbar");
+			root.setAttribute("aria-label", "Loading");
+			root.innerHTML = "<span class=\"samey-loading-top-bar\"></span>";
+			document.body.append(root);
+		};
 		const mountCursor = () => {
 			if (!matchMedia?.("(pointer:fine)").matches || document.getElementById("samey-cursor")) return;
 			const cursor = runtimeNode(document.createElement("div"));
@@ -960,8 +995,10 @@
 					return;
 				}
 				const frames = loadingFrames();
-				const progress = (time - loadingStarted) % (loadingGeometry.duration * 1e3) / (loadingGeometry.duration * 1e3);
-				loadingPath?.setAttribute("d", frames[Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1)))]);
+				const duration = loadingGeometry.duration * 1e3;
+				const progress = Math.max(0, time - loadingStarted) % duration / duration;
+				const frame = Math.max(0, Math.min(frames.length - 1, Math.floor(progress * (frames.length - 1))));
+				loadingPath?.setAttribute("d", frames[frame]);
 				loadingRaf = requestAnimationFrame(animateLoadingPaths);
 			};
 			const setLoading = (loading) => {
@@ -989,7 +1026,9 @@
 				}
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
-			globalThis.SameyLoading = setLoading;
+			if (loadingState) queueMicrotask(() => {
+				if (loadingState) setLoading(true);
+			});
 			const parseRgb = (value) => {
 				const text = String(value || "").trim().toLowerCase();
 				const parts = text.match(/[+-]?(?:\d+\.?\d*|\.\d+)/g)?.map(Number) || [];
@@ -1870,9 +1909,7 @@
 		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
 		const pageCache = /* @__PURE__ */ new Map();
 		const setLoading = (value) => {
-			const on = !!value;
-			document.documentElement.toggleAttribute("data-site-loading", on);
-			dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+			globalThis.SameyLoading?.(!!value);
 			document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
 		};
 		const syncHtmlData = (doc, baseUrl) => {
@@ -2135,6 +2172,7 @@
 			normalizeExternalLinks();
 			observeExternalLinks();
 			mountControls();
+			mountLoadingBar();
 			mountCursor();
 			mountContextMenu();
 			mountVirtualScrollbars();

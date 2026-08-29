@@ -86,6 +86,11 @@ async function animateRouteSwap(commit: () => void, homeward = false) {
 }
 
 function RouteLoading() {
+  let releaseLoading = () => {};
+  onMount(() => {
+    releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
+  });
+  onCleanup(() => releaseLoading());
   return <div class="site-route-loading" role="status" aria-live="polite"><span>Loading page</span></div>;
 }
 

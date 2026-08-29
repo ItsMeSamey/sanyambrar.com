@@ -251,6 +251,15 @@ ${keybrViewSwitch}`;
     keybrStyle.includes("--syntax-number: var(--site-effort-fg") &&
     keybrStyle.includes("--Button__background-color: var(--primary-d1)"),
     "ux: Keybr must keep colored foregrounds vivid while muting keyboard/background variants");
+  const keybrKeyStyles = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/styles.ts"), "utf8");
+  const keybrProgressOverview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/ProgressOverviewChart.tsx"), "utf8");
+  const keybrSpeedHistogram = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/SpeedHistogram.tsx"), "utf8");
+  const keybrChartDecoration = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/decoration.ts"), "utf8");
+  must(keybrKeyStyles.includes('resolveColor("--slow-key-color"') && keybrKeyStyles.includes('resolveColor("--fast-key-color"') &&
+    keybrProgressOverview.includes("confidenceForegroundColor") &&
+    keybrSpeedHistogram.includes("Shapes.polyline(points)") && keybrSpeedHistogram.includes("styles.background, lineWidth: 4") &&
+    keybrChartDecoration.includes("Shapes.stroke") && keybrChartDecoration.includes('lineCap: "round"'),
+    "ux: Keybr progress charts must use foreground semantics and antialiased contrast-safe lines");
   const keybrExplainToggle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/ExplainToggle.tsx"), "utf8");
   const keybrExplainer = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/explainer/Explainer.tsx"), "utf8");
   must(keybrExplainToggle.includes("explainerState.explainersVisible") && keybrExplainer.includes("explainerState.explainersVisible") &&
@@ -266,8 +275,9 @@ ${keybrViewSwitch}`;
   const keybrElementSize = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/hooks/use-element-size.ts"), "utf8");
   must(keybrCanvas.includes("const currentSize = size()") && keybrCanvas.includes("context.setTransform") &&
     keybrCanvas.includes('"inline-size": "100%"') && keybrCanvas.includes('"block-size": "100%"') &&
+    keybrCanvas.includes('addEventListener("samey-themechange", repaint)') && keybrCanvas.includes("themeRevision()") &&
     keybrElementSize.includes("return size;") && !keybrElementSize.includes("return size();"),
-    "ux: Keybr canvas sizing must stay reactive so statistics charts are actually painted");
+    "ux: Keybr canvas sizing and theme repainting must stay reactive so statistics charts update immediately");
   const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
   const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
   const keybrTopBar = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/KeybrTopBar.tsx"), "utf8");
@@ -394,6 +404,10 @@ ${keybrViewSwitch}`;
   must(homeSource.includes("https://github.com/ItsMeSamey/itsmesamey.github.io") && homeSource.includes("home-source-link"),
     "ux: home must expose a compact source-code repository link");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
+  must(sharedTheme.includes('globalThis.SameyLoadingBegin = () =>') && sharedTheme.includes('mountLoadingBar()') &&
+    sharedTheme.includes('Math.max(0, time - loadingStarted)') &&
+    sharedTheme.includes('"--KeyboardKey-pointer__color": theme.text') && sharedCss.includes('.samey-loading-top{') && sharedCss.includes('html[data-site-loading] .samey-loading-top'),
+    "ux: loading must use the shared top strip and Keybr keyboard pointers must follow the foreground theme");
   const popoverSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/popover.tsx"), "utf8");
   const dialogSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/dialog.tsx"), "utf8");
   const tooltipSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx"), "utf8");

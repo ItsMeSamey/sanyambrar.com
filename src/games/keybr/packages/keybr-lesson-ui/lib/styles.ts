@@ -6,8 +6,13 @@ export function useKeyStyles() {
     return useMemo(() => {
         const min = parseColor(computed.resolveColor("--slow-key-background-color", "#f0caca"));
         const max = parseColor(computed.resolveColor("--fast-key-background-color", "#cce8d5"));
+        const foregroundMin = parseColor(computed.resolveColor("--slow-key-color", "#dc2626"));
+        const foregroundMax = parseColor(computed.resolveColor("--fast-key-color", "#16a34a"));
         function confidenceColor(confidence: number) {
             return mixColors(min, max, confidence);
+        }
+        function confidenceForegroundColor(confidence: number) {
+            return mixColors(foregroundMin, foregroundMax, confidence);
         }
         function keyStyles(isIncluded: boolean, confidence: number | null): CSSProperties {
             if (isIncluded && confidence != null) {
@@ -19,6 +24,6 @@ export function useKeyStyles() {
                 return {};
             }
         }
-        return { confidenceColor, keyStyles };
+        return { confidenceColor, confidenceForegroundColor, keyStyles };
     }, [computed]);
 }

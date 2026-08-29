@@ -22,7 +22,7 @@ function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {
     const { formatMessage } = useIntl();
     const { formatInteger } = useIntlNumbers();
     const { settings } = useSettings();
-    const { confidenceColor } = useKeyStyles();
+    const { confidenceForegroundColor } = useKeyStyles();
     const target = new Target(settings);
     const g = withStyles(styles);
     const { letters, results } = keyStatsMap;
@@ -49,14 +49,9 @@ function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {
             g.paintKeyTicks(box, letters, "left", { margin: 4 }),
         ];
         function paintGrid1(): ShapeList {
-            return Shapes.fill(styles.frame, [
-                boxes.map(({ rect }) => Shapes.rect({
-                    x: rect.x,
-                    y: rect.cy,
-                    width: rect.width,
-                    height: 1,
-                })),
-            ]);
+            return Shapes.stroke({ ...styles.frame, lineWidth: 1, lineCap: "round" },
+                boxes.map(({ rect }) => Shapes.line({ x1: rect.x, y1: rect.cy, x2: rect.x + rect.width, y2: rect.cy })),
+            );
         }
         function paintGraph(g: Graphics): void {
             for (const { value: letter, rect: { x, y, width, height }, } of boxes) {
@@ -64,7 +59,7 @@ function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {
                 for (let i = 0; i < keyData.length; i++) {
                     const value = keyData[i];
                     if (value === value) {
-                        g.fillStyle = confidenceColor(value);
+                        g.fillStyle = confidenceForegroundColor(value);
                         g.fillRect(x + i, y, 1, height);
                     }
                 }
