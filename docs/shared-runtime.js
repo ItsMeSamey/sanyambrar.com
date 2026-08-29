@@ -1696,6 +1696,7 @@
 				pressedPointerId = event.pointerId;
 				pressedGrab = !!actual?.closest?.(pressedGrabSelector);
 				place(event);
+				wakeCursor();
 				selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
 				setMode(actual);
 				if (modifiedLink) {
@@ -1719,6 +1720,7 @@
 					window.open(link.href, "_blank", "noopener,noreferrer");
 				}
 				place(event);
+				wakeCursor();
 				setMode(elementAt(event));
 			}, true);
 			document.addEventListener("click", (event) => {

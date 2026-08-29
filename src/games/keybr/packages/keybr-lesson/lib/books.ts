@@ -20,10 +20,11 @@ import { wordSequence } from "./text/words.ts";
 export class BooksLesson extends Lesson {
   readonly book: Book;
   readonly content: Content;
-  readonly paragraphs: readonly string[];
-  readonly paragraphIndex: number;
-  readonly wordList: readonly string[];
   wordIndex = 0;
+  #paragraphCacheKey = "";
+  #paragraphCache: readonly string[] = [];
+  #wordListCacheKey = "";
+  #wordListCache: readonly string[] = [];
 
   constructor(
     settings: Settings,
@@ -32,17 +33,46 @@ export class BooksLesson extends Lesson {
     { book, content }: BookContent,
   ) {
     super(settings, keyboard, model);
-    const paragraphIndex = this.settings.get(lessonProps.books.paragraphIndex);
     this.book = book;
     this.content = content;
-    this.paragraphs = this.#flattenContent(content);
-    this.paragraphIndex = clamp(paragraphIndex, 0, this.paragraphs.length);
-    this.wordList = [
-      ...this.paragraphs.slice(this.paragraphIndex),
-      ...this.paragraphs.slice(0, this.paragraphIndex),
-    ]
-      .map(splitParagraph)
-      .flat();
+  }
+
+  get paragraphs(): readonly string[] {
+    const lettersOnly = this.settings.get(lessonProps.books.lettersOnly);
+    const lowercase = this.settings.get(lessonProps.books.lowercase);
+    const key = `${Number(lettersOnly)}:${Number(lowercase)}`;
+    if (key !== this.#paragraphCacheKey) {
+      this.#paragraphCacheKey = key;
+      this.#paragraphCache = this.#flattenContent(this.content, lettersOnly, lowercase);
+      this.#wordListCacheKey = "";
+    }
+    return this.#paragraphCache;
+  }
+
+  get paragraphIndex(): number {
+    const paragraphs = this.paragraphs;
+    return clamp(
+      this.settings.get(lessonProps.books.paragraphIndex),
+      0,
+      Math.max(0, paragraphs.length - 1),
+    );
+  }
+
+  get wordList(): readonly string[] {
+    const paragraphs = this.paragraphs;
+    const paragraphIndex = this.paragraphIndex;
+    const key = `${this.#paragraphCacheKey}:${paragraphIndex}`;
+    if (key !== this.#wordListCacheKey) {
+      this.#wordListCacheKey = key;
+      this.wordIndex = 0;
+      this.#wordListCache = [
+        ...paragraphs.slice(paragraphIndex),
+        ...paragraphs.slice(0, paragraphIndex),
+      ]
+        .map(splitParagraph)
+        .flat();
+    }
+    return this.#wordListCache;
   }
 
   override get letters() {
@@ -57,9 +87,7 @@ export class BooksLesson extends Lesson {
     return generateFragment(this.settings, wordSequence(this.wordList, this));
   }
 
-  #flattenContent(content: Content) {
-    const lettersOnly = this.settings.get(lessonProps.books.lettersOnly);
-    const lowercase = this.settings.get(lessonProps.books.lowercase);
+  #flattenContent(content: Content, lettersOnly: boolean, lowercase: boolean) {
     const codePoints = new Set(this.keyboard.getCodePoints());
     if (lettersOnly) {
       for (const codePoint of codePoints) {

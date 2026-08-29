@@ -12,6 +12,7 @@ export function SegmentedControl<T>(props: {
   readonly options: readonly SegmentedOption<T>[];
   readonly disabled?: boolean;
   readonly label?: string;
+  readonly comfortable?: boolean;
   readonly onChange?: (value: T) => void;
 }): ReactNode {
   const select = (index: number) => {
@@ -36,7 +37,13 @@ export function SegmentedControl<T>(props: {
     }
   };
   return (
-    <div class="keybr-segmented" role="radiogroup" aria-label={props.label} onKeyDown={onKeyDown}>
+    <div
+      class="keybr-segmented"
+      data-comfortable={props.comfortable ? "" : undefined}
+      role="radiogroup"
+      aria-label={props.label}
+      onKeyDown={onKeyDown}
+    >
       <For each={props.options}>{(item, index) => {
         const selected = () => Object.is(item.value, props.value);
         return (

@@ -11,12 +11,25 @@ import { generateFragment } from "./text/fragment.ts";
 import { randomWords, uniqueWords, wordSequence } from "./text/words.ts";
 
 export class CustomTextLesson extends Lesson {
-  readonly wordList: readonly string[];
   wordIndex = 0;
+  #wordListKey = "";
+  #wordList: readonly string[] = [];
 
   constructor(settings: Settings, keyboard: Keyboard, model: PhoneticModel) {
     super(settings, keyboard, model);
-    this.wordList = this.#getWordList();
+  }
+
+  get wordList(): readonly string[] {
+    const content = this.settings.get(lessonProps.customText.content);
+    const lettersOnly = this.settings.get(lessonProps.customText.lettersOnly);
+    const lowercase = this.settings.get(lessonProps.customText.lowercase);
+    const key = `${content}\u0000${Number(lettersOnly)}${Number(lowercase)}`;
+    if (key !== this.#wordListKey) {
+      this.#wordListKey = key;
+      this.wordIndex = 0;
+      this.#wordList = this.#getWordList(content, lettersOnly, lowercase);
+    }
+    return this.#wordList;
   }
 
   override get letters() {
@@ -40,10 +53,7 @@ export class CustomTextLesson extends Lesson {
     }
   }
 
-  #getWordList() {
-    const content = this.settings.get(lessonProps.customText.content);
-    const lettersOnly = this.settings.get(lessonProps.customText.lettersOnly);
-    const lowercase = this.settings.get(lessonProps.customText.lowercase);
+  #getWordList(content: string, lettersOnly: boolean, lowercase: boolean) {
     const codePoints = new Set(this.codePoints);
     if (lettersOnly) {
       for (const codePoint of codePoints) {

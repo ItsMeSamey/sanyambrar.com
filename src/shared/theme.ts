@@ -1154,6 +1154,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       pressedPointerId = event.pointerId;
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event);
+      wakeCursor();
       selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
       setMode(actual);
       if (modifiedLink) {
@@ -1174,6 +1175,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         window.open(link.href, "_blank", "noopener,noreferrer");
       }
       place(event);
+      wakeCursor();
       setMode(elementAt(event));
     }, true);
     document.addEventListener("click", (event) => {

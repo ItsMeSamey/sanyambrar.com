@@ -13,7 +13,7 @@ import { generateFragment } from "./text/fragment.ts";
 import { mangledWords, randomWords, uniqueWords } from "./text/words.ts";
 
 export class WordListLesson extends Lesson {
-  readonly wordList: WordList;
+  readonly #wordList: WordList;
 
   constructor(
     settings: Settings,
@@ -22,11 +22,16 @@ export class WordListLesson extends Lesson {
     wordList: WordList,
   ) {
     super(settings, keyboard, model);
-    const wordListSize = settings.get(lessonProps.wordList.wordListSize);
-    const longWordsOnly = settings.get(lessonProps.wordList.longWordsOnly);
-    this.wordList = filterWordList(wordList, this.codePoints)
-      .filter((word) => !longWordsOnly || word.length > 3)
-      .slice(0, wordListSize);
+    this.#wordList = filterWordList(wordList, this.codePoints);
+  }
+
+  get wordList(): WordList {
+    const wordListSize = this.settings.get(lessonProps.wordList.wordListSize);
+    const longWordsOnly = this.settings.get(lessonProps.wordList.longWordsOnly);
+    const words = longWordsOnly
+      ? this.#wordList.filter((word) => word.length > 3)
+      : this.#wordList;
+    return words.slice(0, wordListSize);
   }
 
   override get letters() {

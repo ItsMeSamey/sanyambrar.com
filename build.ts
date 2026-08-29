@@ -239,17 +239,26 @@ ${keybrViewSwitch}`;
   const keybrLessonLoader = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-loader/lib/LessonLoader.tsx"), "utf8");
   const keybrReactiveSettings = await readFile(join(ROOT, "src/games/keybr/packages/keybr-settings/lib/reactive.ts"), "utf8");
   const keybrLessonSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/LessonSettings.tsx"), "utf8");
-  must(keybrSettingsScreen.includes("createReactiveSettings(snapshotSettings(settings))") &&
-    keybrSettingsScreen.includes("snapshotSettings(draft.current())") &&
+  const keybrWordListLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/wordlist.ts"), "utf8");
+  const keybrBooksLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/books.ts"), "utf8");
+  const keybrCustomTextLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/customtext.ts"), "utf8");
+  must(!keybrSettingsScreen.includes("createReactiveSettings(snapshotSettings(settings))") &&
+    keybrSettingsScreen.includes("<KeyboardProvider>") &&
     keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
+    keybrLessonLoader.includes("<Show keyed when={currentLesson()}") &&
     keybrReactiveSettings.includes("const revisions = new Map") &&
     keybrReactiveSettings.includes("revision(prop.key)[0]()") &&
     keybrReactiveSettings.includes("Object.is(before[key], after[key])") &&
     keybrReactiveSettings.includes("const toJSON = () => untrack(current).toJSON()") &&
     !keybrReactiveSettings.includes("allRevision") &&
     keybrLessonSettings.includes("<SegmentedControl") &&
-    keybrLessonSettings.includes("value={settings.get(lessonProps.type)}"),
-    "ux: Keybr settings must invalidate per property while lesson loading and selection stay reactive");
+    keybrLessonSettings.includes("comfortable") &&
+    keybrLessonSettings.includes("value={settings.get(lessonProps.type)}") &&
+    keybrWordListLesson.includes("get wordList(): WordList") &&
+    keybrBooksLesson.includes("get paragraphs(): readonly string[]") &&
+    keybrBooksLesson.includes("get paragraphIndex(): number") &&
+    keybrCustomTextLesson.includes("get wordList(): readonly string[]"),
+    "ux: Keybr settings must persist immediately and lesson-derived previews must stay reactive");
   const keybrSolidReactCompat = await readFile(join(ROOT, "src/games/keybr/packages/keybr-solid-compat/react.tsx"), "utf8");
   const keybrLayoutEffectStart = keybrSolidReactCompat.indexOf("export function useLayoutEffect");
   const keybrLayoutEffectEnd = keybrSolidReactCompat.indexOf("\n}", keybrLayoutEffectStart) + 2;
@@ -332,7 +341,7 @@ ${keybrViewSwitch}`;
     keybrTypingSettings.includes('label: "Key only"') && keybrTypingSettings.includes('label: "All"') &&
     keybrNameValue.includes('typeof v === "string" || typeof v === "number"') &&
     !keybrNameValue.includes("isValidElement") &&
-    keybrSettingsScreen.includes("snapshotSettings(settings)") && keybrSettingsScreen.includes("snapshotSettings(draft.current())") &&
+    !keybrSettingsScreen.includes("snapshotSettings(") &&
     !keybrBookPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
     !keybrLessonPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
     !keybrCustomTextSettings.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s),

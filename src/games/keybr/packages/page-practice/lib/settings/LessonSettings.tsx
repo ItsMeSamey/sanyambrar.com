@@ -18,6 +18,7 @@ export function LessonSettings(): ReactNode {
     return (<>
       <SegmentedControl
         label="Lesson type"
+        comfortable
         value={settings.get(lessonProps.type)}
         options={[
           { value: LessonType.GUIDED, label: formatMessage({ id: "t_Guided_lessons", defaultMessage: "Guided lessons" }) },

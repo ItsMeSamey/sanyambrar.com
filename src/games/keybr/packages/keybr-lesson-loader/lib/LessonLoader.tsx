@@ -68,8 +68,8 @@ function Loader(props: {
     return loaded?.type === settings.get(lessonProps.type) ? loaded.value : undefined;
   };
   return (
-    <Show when={currentLesson()} fallback={props.fallback ?? <LoadingProgress />}>
-      {(value) => props.children(value())}
+    <Show keyed when={currentLesson()} fallback={props.fallback ?? <LoadingProgress />}>
+      {(value) => props.children(value)}
     </Show>
   );
 }
