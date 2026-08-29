@@ -68,6 +68,7 @@ export function ChainPage() {
               <button id="chain-replay-prev" type="button">Previous</button>
               <button id="chain-replay-play" type="button">Play</button>
               <button id="chain-replay-next" type="button">Next</button>
+              <button id="chain-replay-resume" class="chain-replay-resume" type="button">Resume from here</button>
               <output id="chain-replay-status">Move 0 / 0</output>
             </div>
           </section>

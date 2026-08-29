@@ -49,8 +49,9 @@ export function mountChain() {
   const replayPrev = document.getElementById('chain-replay-prev');
   const replayPlay = document.getElementById('chain-replay-play');
   const replayNext = document.getElementById('chain-replay-next');
+  const replayResume = document.getElementById('chain-replay-resume');
   const replayStatus = document.getElementById('chain-replay-status');
-  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent || !replayPanel || !replayCanvas || !replayTitle || !replayCopy || !replayClose || !replayPrev || !replayPlay || !replayNext || !replayStatus) return () => {};
+  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent || !replayPanel || !replayCanvas || !replayTitle || !replayCopy || !replayClose || !replayPrev || !replayPlay || !replayNext || !replayResume || !replayStatus) return () => {};
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 
@@ -58,8 +59,10 @@ export function mountChain() {
   const HUMAN = 1;
   const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
   const defaults = { rows: 9, cols: 6, enemies: 1 };
-  const GAME_KEY = 'samey.chain.game.v3';
-  const LEGACY_GAME_KEY = 'samey.chain.game.v2';
+  const GAME_KEY = 'samey.chain.game.v4';
+  const LEGACY_GAME_KEY = 'samey.chain.game.v3';
+  const LEGACY_GAME_KEY_V2 = 'samey.chain.game.v2';
+  const MATCHES_KEY = 'samey.chain.matches.v1';
   const STATS_KEY = 'samey.chain.stats.v2';
   const LEGACY_STATS_KEY = 'samey.chain.stats.v1';
   const PAGE_QUERY = 'p';
@@ -87,6 +90,12 @@ export function mountChain() {
   let replayFrames = [];
   let replayIndex = 0;
   let replayTimer = 0;
+  let replayRunId = 0;
+  let replayDisplay = null;
+  let replayParticles = [];
+  let replayFrame = 0;
+  let currentMatchId = '';
+  let gamePlayers = [];
   const replayCtx = replayCanvas.getContext('2d', { alpha: false });
   const orbCache = new Map();
 
@@ -150,15 +159,145 @@ export function mountChain() {
 
   const encodeMove = (owner, index) => owner * 1024 + index;
 
+  const newMatchId = () => `chain-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
+
+  function createPlayers(enemies) {
+    const players = [{id:HUMAN,name:'You',kind:'human',color:semanticPlayerColor(HUMAN)}];
+    for (let i = 1; i <= enemies; i++) players.push({
+      id:i+1,
+      name:`Random Bot ${i}`,
+      kind:'bot',
+      color:semanticPlayerColor(i+1),
+      bot:{id:'random',name:'Random Bot',version:1,settings:{thinkMinMs:65,thinkMaxMs:135}},
+    });
+    return players;
+  }
+
+  function normalizePlayers(raw, enemies) {
+    const count = enemies + 1;
+    if (!Array.isArray(raw) || raw.length !== count) return createPlayers(enemies);
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const item = raw[i] || {};
+      const id = i + 1;
+      const kind = id === HUMAN ? 'human' : 'bot';
+      const colorValue = typeof item.color === 'string' && item.color.trim() ? item.color.trim() : semanticPlayerColor(id);
+      const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim().slice(0,80) : (kind === 'human' ? 'You' : `Random Bot ${id-1}`);
+      const player = {id,name,kind,color:colorValue};
+      if (kind === 'bot') {
+        const bot = item.bot && typeof item.bot === 'object' ? item.bot : {};
+        player.bot = {
+          id: typeof bot.id === 'string' && bot.id ? bot.id : 'random',
+          name: typeof bot.name === 'string' && bot.name ? bot.name : 'Random Bot',
+          version: Number.isInteger(Number(bot.version)) ? Number(bot.version) : 1,
+          settings: bot.settings && typeof bot.settings === 'object' ? {...bot.settings} : {thinkMinMs:65,thinkMaxMs:135},
+        };
+      }
+      out.push(player);
+    }
+    return out;
+  }
+
+  function emptyMatchDb() { return {v:1,base:{games:0,wins:0,largest:0},matches:[]}; }
+
+  function normalizeMatch(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const r = clampInt(raw.r, ...limits.rows, 0), c = clampInt(raw.c, ...limits.cols, 0), e = clampInt(raw.e, ...limits.enemies, 0);
+    if (!r || !c || !e) return null;
+    const count = r * c, maxPlayer = e + 1;
+    const moves = [];
+    if (Array.isArray(raw.m)) for (const encoded of raw.m) {
+      if (!decodeMove(encoded, count, maxPlayer)) break;
+      moves.push(Number(encoded));
+    }
+    const status = raw.s === 'completed' || raw.s === 'abandoned' ? raw.s : 'active';
+    const winner = Number.isInteger(Number(raw.w)) && Number(raw.w) >= 1 && Number(raw.w) <= maxPlayer ? Number(raw.w) : 0;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : newMatchId(),
+      t: Number.isFinite(Number(raw.t)) ? Number(raw.t) : Date.now(),
+      u: Number.isFinite(Number(raw.u)) ? Number(raw.u) : Date.now(),
+      end: Number.isFinite(Number(raw.end)) ? Number(raw.end) : 0,
+      s: status,
+      w: winner,
+      r,c,e,m:moves,q:raw.q !== false,
+      p: normalizePlayers(raw.p, e),
+      parent: typeof raw.parent === 'string' ? raw.parent : '',
+      fork: Number.isInteger(Number(raw.fork)) ? Math.max(0, Number(raw.fork)) : 0,
+    };
+  }
+
+  function loadMatchDb() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(MATCHES_KEY) || 'null');
+      if (stored?.v === 1 && Array.isArray(stored.matches)) {
+        return {
+          v:1,
+          base:{games:Math.max(0,Number(stored.base?.games)||0),wins:Math.max(0,Number(stored.base?.wins)||0),largest:Math.max(0,Number(stored.base?.largest)||0)},
+          matches:stored.matches.map(normalizeMatch).filter(Boolean).slice(0,120),
+        };
+      }
+      const legacy = loadStats();
+      const legacyRecent = legacy.recent || [];
+      const representedWins = legacyRecent.filter(entry => entry.w).length;
+      const db = {
+        v:1,
+        base:{
+          games:Math.max(0, legacy.games - legacyRecent.length),
+          wins:Math.max(0, legacy.wins - representedWins),
+          largest:legacy.largest || 0,
+        },
+        matches:legacyRecent.map(entry => ({
+          id:newMatchId(),t:entry.t,u:entry.t,end:entry.t,s:'completed',w:entry.x || (entry.w ? HUMAN : 0),
+          r:entry.r,c:entry.c,e:entry.e,m:Array.isArray(entry.m)?entry.m.slice():[],q:Array.isArray(entry.m)&&entry.m.length>0,p:createPlayers(entry.e),parent:'legacy',fork:0,
+        })),
+      };
+      localStorage.setItem(MATCHES_KEY, JSON.stringify(db));
+      return db;
+    } catch { return emptyMatchDb(); }
+  }
+
+  function persistMatchDb(db) {
+    try { localStorage.setItem(MATCHES_KEY, JSON.stringify({...db,matches:db.matches.slice(0,120)})); } catch {}
+  }
+
+  function findMatch(id) {
+    if (!id) return null;
+    return loadMatchDb().matches.find(match => match.id === id) || null;
+  }
+
+  function syncMatchRecord(status = gameOver ? 'completed' : 'active', winner = gameOver ? turn : 0) {
+    if (!currentMatchId) return;
+    const db = loadMatchDb();
+    let match = db.matches.find(item => item.id === currentMatchId);
+    if (!match) {
+      match = {id:currentMatchId,t:Date.now(),u:Date.now(),end:0,s:'active',w:0,r:config.rows,c:config.cols,e:config.enemies,m:[],q:true,p:gamePlayers,parent:'',fork:0};
+      db.matches.unshift(match);
+    }
+    match.u = Date.now();
+    match.r = config.rows; match.c = config.cols; match.e = config.enemies;
+    match.m = moveHistory.slice();
+    match.q = replayComplete;
+    match.p = gamePlayers.map(player => ({...player,bot:player.bot ? {...player.bot,settings:{...player.bot.settings}} : undefined}));
+    match.s = status;
+    match.w = winner || 0;
+    if (status === 'completed' || status === 'abandoned') match.end = match.end || Date.now();
+    else match.end = 0;
+    db.matches.sort((a,b) => b.u - a.u);
+    persistMatchDb(db);
+  }
+
+  function abandonCurrentMatch() {
+    if (!currentMatchId || gameOver) return;
+    syncMatchRecord('abandoned', 0);
+  }
+
   function readSavedGame() {
     try {
       let saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
-      let legacy = false;
-      if (!saved) {
-        saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || 'null');
-        legacy = true;
-      }
-      if (!saved || (!legacy && saved.v !== 3) || (legacy && saved.v !== 2)) return null;
+      let version = 4;
+      if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || 'null'); version = 3; }
+      if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY_V2) || 'null'); version = 2; }
+      if (!saved || Number(saved.v) !== version) return null;
       const readInt = (value, [min, max]) => {
         const n = Number(value);
         return Number.isInteger(n) && n >= min && n <= max ? n : null;
@@ -183,37 +322,35 @@ export function mountChain() {
         if (o[i]) enteredSaved[o[i]] = live[o[i]] = 1;
       }
       enteredSaved[0] = 0;
-
       let allEntered = true, sole = EMPTY;
       for (let player = 1; player <= maxPlayer; player++) {
         if (!enteredSaved[player]) allEntered = false;
         if (!live[player]) continue;
-        if (sole) sole = -1;
-        else sole = player;
+        if (sole) sole = -1; else sole = player;
       }
       if (allEntered && sole === EMPTY) return null;
-      let gameOver = saved.g === true;
-      if (gameOver) {
+      let savedOver = saved.g === true;
+      if (savedOver) {
         if (!allEntered || sole <= EMPTY || savedTurn !== sole) return null;
       } else if (allEntered && sole > EMPTY) {
-        gameOver = true;
+        savedOver = true;
         savedTurn = sole;
       }
       if (saved.i !== true && saved.i !== false) return null;
       const moves = [];
-      let historyComplete = !legacy && saved.q !== false;
-      if (!legacy && Array.isArray(saved.m)) {
+      let historyComplete = version >= 3 && saved.q !== false;
+      if (version >= 3 && Array.isArray(saved.m)) {
         for (const encoded of saved.m) {
           const move = decodeMove(encoded, count, maxPlayer);
           if (!move) { historyComplete = false; break; }
-          moves.push(encoded);
+          moves.push(Number(encoded));
         }
-      } else if (!legacy) {
-        historyComplete = false;
-      } else {
-        historyComplete = false;
-      }
-      return {config: cfg, board: b, owners: o, entered: enteredSaved, turn: savedTurn, gameOver, inGame: saved.i, moves, replayComplete: historyComplete};
+      } else historyComplete = false;
+      return {
+        config:cfg,board:b,owners:o,entered:enteredSaved,turn:savedTurn,gameOver:savedOver,inGame:saved.i,moves,replayComplete:historyComplete,
+        matchId:version >= 4 && typeof saved.id === 'string' ? saved.id : '',
+        players:version >= 4 ? normalizePlayers(saved.pl, cfg.enemies) : createPlayers(cfg.enemies),
+      };
     } catch { return null; }
   }
 
@@ -221,12 +358,14 @@ export function mountChain() {
     if (!board || !owners || !entered) return;
     try {
       localStorage.setItem(GAME_KEY, JSON.stringify({
-        v:3,r:config.rows,c:config.cols,e:config.enemies,
+        v:4,id:currentMatchId,pl:gamePlayers,r:config.rows,c:config.cols,e:config.enemies,
         b:bytesToB64(board),o:bytesToB64(owners),p:bytesToB64(entered),
         t:turn,g:gameOver,i:inGame,m:moveHistory,q:replayComplete
       }));
       localStorage.removeItem(LEGACY_GAME_KEY);
+      localStorage.removeItem(LEGACY_GAME_KEY_V2);
     } catch {}
+    syncMatchRecord(gameOver ? 'completed' : 'active', gameOver ? turn : 0);
     updateResumeCard();
     renderStats();
   }
@@ -285,61 +424,57 @@ export function mountChain() {
   function recordResult(winner) {
     if (resultRecorded) return;
     resultRecorded = true;
-    const stats = loadStats();
-    stats.games++;
-    if (winner === HUMAN) stats.wins++;
-    stats.largest = Math.max(stats.largest, config.rows * config.cols);
-    stats.recent.unshift({
-      t:Date.now(),w:winner===HUMAN,r:config.rows,c:config.cols,e:config.enemies,x:winner,
-      m: replayComplete && moveHistory.length ? moveHistory.slice() : null,
-    });
-    stats.recent = stats.recent.slice(0,30);
-    persistStats(stats);
+    syncMatchRecord('completed', winner);
     renderStats();
   }
 
-  function stopReplay(resetLabel = true) {
-    if (replayTimer) clearInterval(replayTimer);
-    replayTimer = 0;
-    if (resetLabel) replayPlay.textContent = 'Play';
-  }
-
   function renderStats() {
-    const stats = loadStats();
-    statGames.textContent = String(stats.games);
-    statWins.textContent = String(stats.wins);
-    statRate.textContent = stats.games ? `${(stats.wins / stats.games * 100).toFixed(1)}%` : '–';
-    statLargest.textContent = stats.largest ? `${stats.largest} cells` : '–';
+    const db = loadMatchDb();
+    const completed = db.matches.filter(match => match.s === 'completed');
+    const games = db.base.games + completed.length;
+    const wins = db.base.wins + completed.filter(match => match.w === HUMAN).length;
+    const largest = Math.max(db.base.largest, ...completed.map(match => match.r * match.c), 0);
+    statGames.textContent = String(games);
+    statWins.textContent = String(wins);
+    statRate.textContent = games ? `${(wins / games * 100).toFixed(1)}%` : '–';
+    statLargest.textContent = largest ? `${largest} cells` : '–';
     statRecent.replaceChildren();
-    if (!stats.recent.length) {
+    const matches = db.matches.slice().sort((a,b) => b.u - a.u);
+    if (!matches.length) {
       const empty = document.createElement('div');
       empty.className = 'chain-stat-empty';
-      empty.textContent = 'No completed matches yet.';
+      empty.textContent = 'No matches yet.';
       statRecent.append(empty);
       return;
     }
-    for (const entry of stats.recent) {
+    for (const entry of matches) {
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'chain-stat-row chain-stat-row-button';
       const main = document.createElement('span');
       main.className = 'chain-stat-row-main';
+      const bots = entry.p.filter(player => player.kind === 'bot').map(player => player.name).join(', ');
       main.textContent = `${entry.r} × ${entry.c} · ${entry.e} ${entry.e===1?'enemy':'enemies'}`;
       const meta = document.createElement('small');
       meta.className = 'chain-stat-row-meta';
-      meta.textContent = entry.m?.length ? `${entry.m.length} moves recorded` : 'Legacy match · replay unavailable';
+      meta.textContent = `${entry.m.length} ${entry.m.length===1?'move':'moves'} · ${bots || 'No bots'}`;
       main.append(meta);
       const outcome = document.createElement('strong');
-      outcome.dataset.win = String(entry.w);
-      outcome.textContent = entry.w ? 'WIN' : 'LOSS';
+      if (entry.s === 'completed') {
+        outcome.dataset.win = String(entry.w === HUMAN);
+        outcome.textContent = entry.w === HUMAN ? 'WIN' : 'LOSS';
+      } else {
+        outcome.dataset.state = entry.s;
+        outcome.textContent = entry.s === 'abandoned' ? 'ABANDONED' : 'IN PROGRESS';
+      }
       const date = document.createElement('time');
-      date.dateTime = new Date(entry.t).toISOString();
-      date.textContent = new Date(entry.t).toLocaleDateString();
+      date.dateTime = new Date(entry.u).toISOString();
+      date.textContent = new Date(entry.u).toLocaleDateString();
       const replay = document.createElement('span');
       replay.className = 'chain-stat-row-replay';
-      replay.textContent = entry.m?.length ? 'Replay ›' : 'No replay';
+      replay.textContent = entry.q ? 'Open ›' : 'No replay';
       row.append(main, outcome, date, replay);
-      if (entry.m?.length) row.addEventListener('click', () => openReplay(entry));
+      if (entry.q) row.addEventListener('click', () => openReplay(entry));
       else row.disabled = true;
       statRecent.append(row);
     }
@@ -374,15 +509,31 @@ export function mountChain() {
     return sole;
   }
 
-  function applyReplayMove(model, encoded) {
+  function modelHasCells(model, owner) {
+    for (let i = 0; i < model.owners.length; i++) if (model.owners[i] === owner) return true;
+    return false;
+  }
+
+  function nextPlayerForModel(model, owner) {
+    for (let step = 1; step <= model.playerCount; step++) {
+      const candidate = ((owner - 1 + step) % model.playerCount) + 1;
+      if (!model.entered[candidate] || modelHasCells(model, candidate)) return candidate;
+    }
+    return HUMAN;
+  }
+
+  function simulateReplayMove(model, encoded) {
     const move = decodeMove(encoded, model.board.length, model.playerCount);
-    if (!move) return false;
+    if (!move) return null;
     model.entered[move.owner] = 1;
     let pending = new Uint32Array(model.board.length);
     pending[move.index] = 1;
     const winningStates = new Set();
+    const waves = [];
+    let winner = EMPTY;
     for (let guard = 0; guard < 20000; guard++) {
       const next = new Uint32Array(model.board.length);
+      const transfers = [];
       let any = false;
       for (let i = 0; i < pending.length; i++) {
         const incoming = pending[i];
@@ -394,21 +545,27 @@ export function mountChain() {
         const remainder = total - bursts * d;
         model.board[i] = remainder;
         model.owners[i] = remainder ? move.owner : EMPTY;
-        if (bursts) for (const n of model.links[i]) next[n] += bursts;
+        if (bursts) for (const n of model.links[i]) {
+          next[n] += bursts;
+          transfers.push({from:i,to:n,owner:move.owner});
+        }
       }
       if (!any) break;
+      waves.push({board:model.board.slice(),owners:model.owners.slice(),transfers});
       let hasNext = false;
       for (let i = 0; i < next.length; i++) if (next[i]) { hasNext = true; break; }
       if (!hasNext) break;
-      const winner = replayWinner(model, move.owner, next);
-      if (winner) {
+      const winNow = replayWinner(model, move.owner, next);
+      if (winNow) {
         const signature = `${bytesToB64(model.board)}:${bytesToB64(new Uint8Array(next.buffer))}`;
-        if (winningStates.has(signature)) break;
+        if (winningStates.has(signature)) { winner = winNow; break; }
         winningStates.add(signature);
       }
       pending = next;
     }
-    return true;
+    winner ||= replayWinner(model, move.owner);
+    const turnAfter = winner || nextPlayerForModel(model, move.owner);
+    return {move,waves,winner,turnAfter};
   }
 
   function buildReplayFrames(entry) {
@@ -423,56 +580,96 @@ export function mountChain() {
       degrees: topology.degrees,
       links: topology.links,
     };
-    const frames = [{board:model.board.slice(),owners:model.owners.slice(),move:null}];
+    const frames = [{board:model.board.slice(),owners:model.owners.slice(),entered:model.entered.slice(),move:null,waves:[],winner:0,turn:HUMAN}];
     for (const encoded of entry.m || []) {
-      const move = decodeMove(encoded, model.board.length, model.playerCount);
-      if (!move || !applyReplayMove(model, encoded)) break;
-      frames.push({board:model.board.slice(),owners:model.owners.slice(),move});
+      const result = simulateReplayMove(model, encoded);
+      if (!result) break;
+      frames.push({
+        board:model.board.slice(),owners:model.owners.slice(),entered:model.entered.slice(),move:result.move,waves:result.waves,
+        winner:result.winner,turn:result.turnAfter,
+      });
     }
     return frames;
   }
 
-  function drawReplay() {
-    if (!replayCtx || replayPanel.hidden || !replayEntry || !replayFrames.length) return;
-    const cfg = replayEntry;
+  function replayGeometry() {
+    const cfg = {rows:replayEntry.r,cols:replayEntry.c};
     const rect = replayCanvas.parentElement.getBoundingClientRect();
     const maxW = Math.max(180, Math.min(680, rect.width - 24));
     const maxH = Math.max(180, Math.min(innerHeight * .44, 520));
-    const cellSize = Math.max(4, Math.floor(Math.min(maxW / cfg.c, maxH / cfg.r)));
-    const w = cfg.c * cellSize + 2, h = cfg.r * cellSize + 2;
+    const cellSize = Math.max(4, Math.floor(Math.min(maxW / cfg.cols, maxH / cfg.rows)));
+    const w = cfg.cols * cellSize + 2, h = cfg.rows * cellSize + 2;
     const scale = Math.min(devicePixelRatio || 1, 2.5);
     replayCanvas.style.width = `${w}px`;
     replayCanvas.style.height = `${h}px`;
-    replayCanvas.width = Math.max(1, Math.round(w * scale));
-    replayCanvas.height = Math.max(1, Math.round(h * scale));
-    replayCtx.setTransform(scale,0,0,scale,0,0);
-    replayCtx.fillStyle = color('--site-soft', '#f3f4f5');
-    replayCtx.fillRect(0,0,w,h);
-    replayCtx.strokeStyle = color('--site-line', '#d3d6da');
-    replayCtx.lineWidth = 1;
-    replayCtx.beginPath();
-    for (let c = 0; c <= cfg.c; c++) { const x = 1 + c * cellSize; replayCtx.moveTo(x,1); replayCtx.lineTo(x,1 + cfg.r * cellSize); }
-    for (let r = 0; r <= cfg.r; r++) { const y = 1 + r * cellSize; replayCtx.moveTo(1,y); replayCtx.lineTo(1 + cfg.c * cellSize,y); }
-    replayCtx.stroke();
-    const frameData = replayFrames[replayIndex];
-    const radius = Math.max(2.2, Math.min(8.5, cellSize * .13));
-    for (let i = 0; i < frameData.board.length; i++) {
-      const count = frameData.board[i];
-      if (!count) continue;
-      const cx = 1 + (i % cfg.c + .5) * cellSize;
-      const cy = 1 + (Math.floor(i / cfg.c) + .5) * cellSize;
-      replayCtx.fillStyle = playerColor(frameData.owners[i]);
-      for (const [dx,dy] of atomOffsets(count, radius)) {
-        replayCtx.beginPath(); replayCtx.arc(cx+dx,cy+dy,radius,0,Math.PI*2); replayCtx.fill();
-      }
+    if (replayCanvas.width !== Math.max(1, Math.round(w * scale)) || replayCanvas.height !== Math.max(1, Math.round(h * scale))) {
+      replayCanvas.width = Math.max(1, Math.round(w * scale));
+      replayCanvas.height = Math.max(1, Math.round(h * scale));
     }
-    replayPrev.disabled = replayIndex <= 0;
-    replayNext.disabled = replayIndex >= replayFrames.length - 1;
+    replayCtx.setTransform(scale,0,0,scale,0,0);
+    replayCtx.imageSmoothingEnabled = true;
+    replayCtx.imageSmoothingQuality = 'high';
+    return {cfg,w,h,cell:cellSize,ox:1,oy:1,scale};
+  }
+
+  function drawReplay(now = performance.now()) {
+    replayFrame = 0;
+    if (!replayCtx || replayPanel.hidden || !replayEntry || !replayFrames.length) return;
+    const geom = replayGeometry();
+    const frameData = replayDisplay || replayFrames[replayIndex];
+    const alive = drawBoardScene(replayCtx, geom.cfg, frameData.board, frameData.owners, geom, replayEntry.p, replayParticles, now, -1);
+    replayPrev.disabled = replayIndex <= 0 || !!replayTimer;
+    replayNext.disabled = replayIndex >= replayFrames.length - 1 || !!replayTimer;
+    replayResume.disabled = !!replayTimer;
     replayStatus.value = `Move ${replayIndex} / ${Math.max(0,replayFrames.length-1)}`;
+    if (alive && !replayFrame) replayFrame = requestAnimationFrame(drawReplay);
+    else if (!alive) replayParticles = [];
+  }
+
+  function stopReplay(resetLabel = true) {
+    replayRunId++;
+    if (replayTimer) clearTimeout(replayTimer);
+    replayTimer = 0;
+    replayParticles = [];
+    replayDisplay = null;
+    if (replayFrame) cancelAnimationFrame(replayFrame);
+    replayFrame = 0;
+    if (resetLabel) replayPlay.textContent = 'Play';
+    drawReplay();
+  }
+
+  function waitReplay(ms, runId) {
+    return new Promise(resolve => {
+      replayTimer = window.setTimeout(() => { replayTimer = 0; resolve(runId === replayRunId); }, ms);
+    });
+  }
+
+  async function animateReplayMove(targetIndex, runId = ++replayRunId) {
+    if (targetIndex <= 0 || targetIndex >= replayFrames.length) return false;
+    const target = replayFrames[targetIndex];
+    for (const wave of target.waves) {
+      if (runId !== replayRunId) return false;
+      replayDisplay = wave;
+      const started = performance.now();
+      replayParticles = wave.transfers.map(p => ({...p,start:started,duration:105}));
+      drawReplay(started);
+      if (!await waitReplay(82, runId)) return false;
+    }
+    replayIndex = targetIndex;
+    replayDisplay = null;
+    replayParticles = [];
+    drawReplay();
+    return true;
   }
 
   function setReplayIndex(next) {
+    replayRunId++;
+    if (replayTimer) clearTimeout(replayTimer);
+    replayTimer = 0;
+    replayDisplay = null;
+    replayParticles = [];
     replayIndex = Math.max(0, Math.min(replayFrames.length - 1, next));
+    replayPlay.textContent = 'Play';
     drawReplay();
   }
 
@@ -481,8 +678,11 @@ export function mountChain() {
     replayEntry = entry;
     replayFrames = buildReplayFrames(entry);
     replayIndex = 0;
-    replayTitle.textContent = entry.w ? 'Winning match' : 'Match replay';
-    replayCopy.textContent = `${entry.r} × ${entry.c} board · ${entry.e} ${entry.e===1?'enemy':'enemies'} · ${entry.m.length} moves`;
+    replayDisplay = null;
+    const statusLabel = entry.s === 'completed' ? (entry.w === HUMAN ? 'Winning match' : 'Completed match') : (entry.s === 'abandoned' ? 'Abandoned match' : 'In-progress match');
+    replayTitle.textContent = statusLabel;
+    const bots = entry.p.filter(player => player.kind === 'bot').map(player => `${player.name} (${player.bot?.name || 'Bot'})`).join(', ');
+    replayCopy.textContent = `${entry.r} × ${entry.c} board · ${entry.m.length} ${entry.m.length===1?'move':'moves'} · ${bots}`;
     replayPanel.hidden = false;
     requestAnimationFrame(() => { drawReplay(); replayPanel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}); });
   }
@@ -495,15 +695,53 @@ export function mountChain() {
     replayIndex = 0;
   }
 
-  function toggleReplay() {
-    if (replayTimer) { stopReplay(); return; }
+  async function toggleReplay() {
+    if (replayTimer || replayPlay.textContent === 'Pause') { stopReplay(); return; }
     if (replayIndex >= replayFrames.length - 1) replayIndex = 0;
+    const runId = ++replayRunId;
     replayPlay.textContent = 'Pause';
-    replayTimer = window.setInterval(() => {
-      if (replayIndex >= replayFrames.length - 1) { stopReplay(); return; }
-      setReplayIndex(replayIndex + 1);
-    }, 460);
     drawReplay();
+    for (let next = replayIndex + 1; next < replayFrames.length; next++) {
+      if (!await animateReplayMove(next, runId) || runId !== replayRunId) return;
+      if (!await waitReplay(250, runId)) return;
+    }
+    if (runId === replayRunId) { replayPlay.textContent = 'Play'; replayTimer = 0; drawReplay(); }
+  }
+
+  function resumeReplayPoint() {
+    if (!replayEntry || !replayFrames.length) return;
+    stopReplay();
+    const frameData = replayFrames[replayIndex];
+    abandonCurrentMatch();
+    gameVersion++;
+    config = {rows:replayEntry.r,cols:replayEntry.c,enemies:replayEntry.e};
+    saveConfig();
+    rows = config.rows; cols = config.cols; playerCount = config.enemies + 1;
+    buildBoard();
+    board.set(frameData.board);
+    owners.set(frameData.owners);
+    entered.set(frameData.entered.subarray(0, entered.length));
+    turn = frameData.turn || HUMAN;
+    gameOver = !!frameData.winner;
+    locked = false;
+    resultRecorded = gameOver;
+    moveHistory = replayEntry.m.slice(0,replayIndex);
+    replayComplete = true;
+    currentMatchId = newMatchId();
+    gamePlayers = normalizePlayers(replayEntry.p, config.enemies);
+    particles = [];
+    focusCell = 0;
+    syncSettings();
+    updateStatus();
+    const db = loadMatchDb();
+    db.matches.unshift({
+      id:currentMatchId,t:Date.now(),u:Date.now(),end:gameOver?Date.now():0,s:gameOver?'completed':'active',w:gameOver?frameData.winner:0,
+      r:config.rows,c:config.cols,e:config.enemies,m:moveHistory.slice(),q:true,p:gamePlayers,parent:replayEntry.id,fork:replayIndex,
+    });
+    persistMatchDb(db);
+    saveGameState(true);
+    closeReplay();
+    showGame();
   }
 
   function buildBoard() {
@@ -535,7 +773,7 @@ export function mountChain() {
     colorProbe.style.color = expression;
     return getComputedStyle(colorProbe).color || fallback;
   }
-  const playerColor = player => {
+  function semanticPlayerColor(player) {
     const themed = [
       '',
       'var(--site-fast-color, #16a34a)',
@@ -546,7 +784,11 @@ export function mountChain() {
       'color-mix(in srgb, var(--site-error, #dc2626) 58%, var(--site-effort-color, #2563eb))',
     ];
     return resolvedColor(themed[player] || 'var(--site-effort-color)', color('--site-effort-color', '#2563eb'));
-  };
+  }
+
+  function playerColor(player, players = gamePlayers) {
+    return players?.[player - 1]?.color || semanticPlayerColor(player);
+  }
 
   function layout() {
     const rect = stage.getBoundingClientRect();
@@ -593,92 +835,95 @@ export function mountChain() {
     return `rgb(${c(ar,br)} ${c(ag,bg)} ${c(ab,bb)})`;
   }
 
-  function orbSprite(owner, radius) {
-    const base = playerColor(owner);
-    const key = `${owner}:${radius.toFixed(2)}:${dpr}`;
+  function orbSpriteFor(base, radius, scale) {
+    const key = `${base}:${radius.toFixed(2)}:${scale.toFixed(2)}`;
     let sprite = orbCache.get(key);
     if (sprite) return sprite;
     const pad = 3, size = Math.ceil(radius * 2 + pad * 2);
     sprite = document.createElement('canvas');
-    sprite.width = Math.ceil(size * dpr);
-    sprite.height = Math.ceil(size * dpr);
+    sprite.width = Math.ceil(size * scale);
+    sprite.height = Math.ceil(size * scale);
     const g = sprite.getContext('2d');
-    g.scale(dpr, dpr);
+    g.scale(scale, scale);
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
     const c = size / 2;
     const gradient = g.createRadialGradient(c - radius*.34, c - radius*.38, radius*.08, c, c, radius*1.04);
-    const themeBg = color('--site-bg', '#fff');
-    const themeFg = color('--site-fg', '#121213');
-    gradient.addColorStop(0, mixColor(base, themeBg, .55));
-    gradient.addColorStop(.32, mixColor(base, themeBg, .16));
+    gradient.addColorStop(0, mixColor(base, 'rgb(255 255 255)', .38));
+    gradient.addColorStop(.32, mixColor(base, 'rgb(255 255 255)', .12));
     gradient.addColorStop(.74, base);
-    gradient.addColorStop(1, mixColor(base, themeFg, .30));
-    g.shadowColor = resolvedColor('color-mix(in srgb,var(--site-fg) 18%,transparent)', 'rgba(0,0,0,.18)');
+    gradient.addColorStop(1, mixColor(base, 'rgb(0 0 0)', .30));
+    g.shadowColor = 'rgba(0,0,0,.26)';
     g.shadowBlur = Math.max(1.5, radius * .22);
     g.shadowOffsetY = Math.max(.5, radius * .08);
     g.fillStyle = gradient;
     g.beginPath(); g.arc(c, c, radius, 0, Math.PI * 2); g.fill();
     g.shadowColor = 'transparent';
-    g.strokeStyle = mixColor(base, themeFg, .18);
+    g.strokeStyle = mixColor(base, 'rgb(0 0 0)', .20);
     g.lineWidth = Math.max(.65, radius * .07);
     g.stroke();
     orbCache.set(key, sprite);
     return sprite;
   }
 
-  function drawOrb(x, y, owner, radius, alpha = 1) {
-    const sprite = orbSprite(owner, radius);
-    const w = sprite.width / dpr, h = sprite.height / dpr;
-    const old = ctx.globalAlpha;
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(sprite, x - w/2, y - h/2, w, h);
-    ctx.globalAlpha = old;
+  function drawOrbTo(targetCtx, x, y, base, radius, scale, alpha = 1) {
+    const sprite = orbSpriteFor(base, radius, scale);
+    const w = sprite.width / scale, h = sprite.height / scale;
+    const old = targetCtx.globalAlpha;
+    targetCtx.globalAlpha = alpha;
+    targetCtx.drawImage(sprite, x - w/2, y - h/2, w, h);
+    targetCtx.globalAlpha = old;
+  }
+
+  function sceneCenter(index, cfg, geom) {
+    return [geom.ox + (index % cfg.cols + .5) * geom.cell, geom.oy + (Math.floor(index / cfg.cols) + .5) * geom.cell];
+  }
+
+  function drawBoardScene(targetCtx, cfg, boardData, ownerData, geom, players, moving, now, focus = -1) {
+    targetCtx.fillStyle = color('--site-soft', '#f3f4f5');
+    targetCtx.fillRect(0, 0, geom.w, geom.h);
+    targetCtx.lineWidth = 1;
+    targetCtx.strokeStyle = color('--site-line', '#d3d6da');
+    targetCtx.beginPath();
+    for (let c = 0; c <= cfg.cols; c++) { const x = geom.ox + c * geom.cell; targetCtx.moveTo(x, geom.oy); targetCtx.lineTo(x, geom.oy + cfg.rows * geom.cell); }
+    for (let r = 0; r <= cfg.rows; r++) { const y = geom.oy + r * geom.cell; targetCtx.moveTo(geom.ox, y); targetCtx.lineTo(geom.ox + cfg.cols * geom.cell, y); }
+    targetCtx.stroke();
+
+    const atomR = Math.max(3.8, Math.min(11, geom.cell * .135));
+    for (let i = 0; i < boardData.length; i++) {
+      const count = boardData[i]; if (!count) continue;
+      const [cx, cy] = sceneCenter(i, cfg, geom);
+      const base = playerColor(ownerData[i], players);
+      for (const [dx,dy] of atomOffsets(count, atomR)) drawOrbTo(targetCtx, cx + dx, cy + dy, base, atomR, geom.scale);
+    }
+
+    if (focus >= 0 && focus < boardData.length) {
+      const [fx, fy] = sceneCenter(focus, cfg, geom);
+      targetCtx.save();
+      targetCtx.strokeStyle = color('--site-accent', '#6aaa64');
+      targetCtx.lineWidth = 2;
+      targetCtx.strokeRect(fx - geom.cell / 2 + 2, fy - geom.cell / 2 + 2, Math.max(0, geom.cell - 4), Math.max(0, geom.cell - 4));
+      targetCtx.restore();
+    }
+
+    let alive = false;
+    if (moving?.length) for (const particle of moving) {
+      const t = Math.min(1, (now - particle.start) / particle.duration);
+      if (t < 1) alive = true;
+      const e = 1 - (1 - t) * (1 - t);
+      const [x0,y0] = sceneCenter(particle.from, cfg, geom);
+      const [x1,y1] = sceneCenter(particle.to, cfg, geom);
+      drawOrbTo(targetCtx, x0 + (x1-x0)*e, y0 + (y1-y0)*e, playerColor(particle.owner, players), atomR, geom.scale, 1 - t*.12);
+    }
+    targetCtx.globalAlpha = 1;
+    return alive;
   }
 
   function draw(now) {
     frame = 0;
-    const boardBg = color('--site-soft', '#f3f4f5');
-    const line = color('--site-line', '#d3d6da');
-    ctx.fillStyle = boardBg;
-    ctx.fillRect(0, 0, cssW, cssH);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = line;
-    ctx.beginPath();
-    for (let c = 0; c <= cols; c++) { const x = ox + c * cell; ctx.moveTo(x, oy); ctx.lineTo(x, oy + rows * cell); }
-    for (let r = 0; r <= rows; r++) { const y = oy + r * cell; ctx.moveTo(ox, y); ctx.lineTo(ox + cols * cell, y); }
-    ctx.stroke();
-
-    const atomR = Math.max(3.8, Math.min(11, cell * .135));
-    for (let i = 0; i < board.length; i++) {
-      const count = board[i]; if (!count) continue;
-      const [cx, cy] = center(i);
-      for (const [dx,dy] of atomOffsets(count, atomR)) drawOrb(cx + dx, cy + dy, owners[i], atomR);
-    }
-
-    if (!gameOver && document.activeElement === canvas && focusCell >= 0 && focusCell < board.length) {
-      const [fx, fy] = center(focusCell);
-      ctx.save();
-      ctx.strokeStyle = color('--site-accent', '#6aaa64');
-      ctx.lineWidth = 2;
-      ctx.strokeRect(fx - cell / 2 + 2, fy - cell / 2 + 2, Math.max(0, cell - 4), Math.max(0, cell - 4));
-      ctx.restore();
-    }
-
-    if (particles.length) {
-      let alive = false;
-      for (const p of particles) {
-        const t = Math.min(1, (now - p.start) / p.duration);
-        if (t < 1) alive = true;
-        const e = 1 - (1 - t) * (1 - t);
-        const x = p.x0 + (p.x1 - p.x0) * e;
-        const y = p.y0 + (p.y1 - p.y0) * e;
-        drawOrb(x, y, p.owner, atomR, 1 - t * .12);
-      }
-      ctx.globalAlpha = 1;
-      if (alive) requestDraw(); else particles = [];
-    }
-
+    const geom = {w:cssW,h:cssH,cell,ox,oy,scale:dpr};
+    const alive = drawBoardScene(ctx, {rows,cols}, board, owners, geom, gamePlayers, particles, now, (!gameOver && document.activeElement === canvas) ? focusCell : -1);
+    if (alive) requestDraw(); else particles = [];
   }
 
   function requestDraw() { if (!frame) frame = requestAnimationFrame(draw); }
@@ -768,13 +1013,11 @@ export function mountChain() {
         owners[i] = remainder ? owner : EMPTY;
 
         if (!bursts) continue;
-        const [x0, y0] = center(i);
         for (const n of neighbors[i]) {
           next[n] += bursts;
           // One visual orb per direction is enough to communicate the wave.
           // The simulation itself still propagates every atom via the count.
-          const [x1, y1] = center(n);
-          transfers.push({x0,y0,x1,y1,owner,start:performance.now(),duration:105});
+          transfers.push({from:i,to:n,owner,start:performance.now(),duration:105});
         }
       }
 
@@ -845,7 +1088,10 @@ export function mountChain() {
       const player = turn;
       const moves = legalMoves(player);
       if (!moves.length) { entered[player] = 1; turn = nextPlayer(player); saveGameState(true); continue; }
-      await new Promise(resolve => setTimeout(resolve, 65 + Math.random() * 70));
+      const botSettings = gamePlayers[player - 1]?.bot?.settings || {};
+      const thinkMin = Math.max(0, Number(botSettings.thinkMinMs) || 65);
+      const thinkMax = Math.max(thinkMin, Number(botSettings.thinkMaxMs) || 135);
+      await new Promise(resolve => setTimeout(resolve, thinkMin + Math.random() * (thinkMax - thinkMin)));
       if (version !== gameVersion || gameOver || turn !== player || locked) return;
       const idx = moves[(Math.random() * moves.length) | 0];
       await playMove(idx, player);
@@ -910,6 +1156,8 @@ export function mountChain() {
     resultRecorded = false;
     moveHistory = [];
     replayComplete = true;
+    currentMatchId = newMatchId();
+    gamePlayers = createPlayers(config.enemies);
     resultPanel.hidden = true;
     buildBoard();
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
@@ -933,12 +1181,15 @@ export function mountChain() {
     resultRecorded = saved.gameOver;
     moveHistory = Array.isArray(saved.moves) ? saved.moves.slice() : [];
     replayComplete = saved.replayComplete === true;
+    currentMatchId = saved.matchId || newMatchId();
+    gamePlayers = normalizePlayers(saved.players, config.enemies);
     if (!gameOver && entered[turn] && !hasCells(turn)) turn = nextPlayer(turn);
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     locked = false;
     particles = [];
     syncSettings();
     updateStatus();
+    syncMatchRecord(gameOver ? 'completed' : 'active', gameOver ? turn : 0);
   }
 
   function boardSummary(cfg = config) {
@@ -1046,6 +1297,7 @@ export function mountChain() {
   }
 
   function startNewGame(nextConfig) {
+    abandonCurrentMatch();
     reset(nextConfig);
     showGame();
   }
@@ -1110,6 +1362,7 @@ export function mountChain() {
       if (next.rows !== config.rows || next.cols !== config.cols || next.enemies !== config.enemies) {
         config = next;
         saveConfig();
+        gamePlayers = createPlayers(config.enemies);
         buildBoard();
         focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
         updateStatus();
@@ -1140,8 +1393,9 @@ export function mountChain() {
   statsBackButton.addEventListener('click', showMenu);
   replayClose.addEventListener('click', closeReplay);
   replayPrev.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex - 1); });
-  replayNext.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex + 1); });
-  replayPlay.addEventListener('click', toggleReplay);
+  replayNext.addEventListener('click', () => { stopReplay(); void animateReplayMove(replayIndex + 1); });
+  replayPlay.addEventListener('click', () => { void toggleReplay(); });
+  replayResume.addEventListener('click', resumeReplayPoint);
   settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
   const onDocumentPointerDown = e => {
     if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
