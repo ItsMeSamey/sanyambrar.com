@@ -642,6 +642,19 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       publishLoading();
     };
   };
+  globalThis.SameyLoadingBeginAfterDelay = (delay = 120) => {
+    let active = true;
+    let release;
+    const timer = setTimeout(() => {
+      if (active) release = globalThis.SameyLoadingBegin();
+    }, delay);
+    return () => {
+      if (!active) return;
+      active = false;
+      clearTimeout(timer);
+      release?.();
+    };
+  };
   const mountLoadingBar = () => {
     if (document.getElementById("samey-loading-top")) return;
     const root = runtimeNode(document.createElement("div"));

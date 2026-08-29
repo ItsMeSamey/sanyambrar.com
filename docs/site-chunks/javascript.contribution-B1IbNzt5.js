@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/javascript-B2_WfKyB.js","site-chunks/typescript-CmmNujPC.js","site-chunks/monaco-sesrng15.js","site-app.js","site-chunks/monaco-DnOY8KQw.css"])))=>i.map(i=>d[i]);
+import{t as e}from"../site-app.js";import{t}from"./_.contribution-DowuzwWa.js";t({id:`javascript`,extensions:[`.js`,`.es6`,`.jsx`,`.mjs`,`.cjs`],firstLine:`^#!.*\\bnode`,filenames:[`jakefile`],aliases:[`JavaScript`,`javascript`,`js`],mimetypes:[`text/javascript`],loader:()=>e(()=>import(`./javascript-B2_WfKyB.js`),__vite__mapDeps([0,1,2,3,4]))});

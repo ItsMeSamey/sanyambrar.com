@@ -1,6 +1,17 @@
 // @ts-nocheck
 import { TOOLS } from '../shared/catalog.ts';
 import { renderMarkdown } from './markdown.ts';
+let sharedMonacoPromise;
+
+function loadMonacoModule() {
+  if (sharedMonacoPromise) return sharedMonacoPromise;
+  const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
+  sharedMonacoPromise = import('../site/monaco.ts').catch(error => {
+    sharedMonacoPromise = undefined;
+    throw error;
+  }).finally(releaseLoading);
+  return sharedMonacoPromise;
+}
 export function mountTool(toolId, root, context) {
   'use strict';
 
@@ -37,7 +48,6 @@ export function mountTool(toolId, root, context) {
   let disposeTool = () => {};
   let disposed = false;
   let renderGeneration = 0;
-  let monacoPromise;
   let ensureLanguage = async () => {};
   let monacoThemeListener = null;
 
@@ -97,9 +107,7 @@ export function mountTool(toolId, root, context) {
   }
 
   function ensureMonaco() {
-    if (monacoPromise) return monacoPromise;
-    const releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
-    monacoPromise = import('../site/monaco.ts').then(module => {
+    return loadMonacoModule().then(module => {
       const { monaco } = module;
       ensureLanguage = module.ensureMonacoLanguage;
       siteMonacoTheme(monaco);
@@ -108,11 +116,7 @@ export function mountTool(toolId, root, context) {
         addEventListener('samey-themechange', monacoThemeListener);
       }
       return monaco;
-    }).catch(error => {
-      monacoPromise = undefined;
-      throw error;
-    }).finally(releaseLoading);
-    return monacoPromise;
+    });
   }
 
   const editorOptions = (language, extra = {}) => ({
