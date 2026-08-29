@@ -196,6 +196,11 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .samey-saved-theme{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:5px;margin-top:5px}.samey-saved-theme button:first-child{text-align:left}.samey-saved-theme button:last-child{padding:0;color:var(--site-error-fg,var(--site-error,#dc2626))}.samey-advanced-empty{margin:0!important}
 @media(max-width:760px){.samey-theme-advanced-shell>main{grid-template-columns:1fr}.samey-theme-advanced aside{grid-template-columns:1fr 1fr}.samey-theme-advanced aside section:last-child{grid-column:1/-1}}
 @media(max-width:520px){.samey-advanced-color-grid,.samey-advanced-field,.samey-theme-advanced aside{grid-template-columns:1fr}.samey-theme-advanced aside section:last-child{grid-column:auto}}
+
+/* Shared Keybr identity mark: game card + in-game back navigation. */
+.keybr-mark{display:inline-flex;align-items:center;position:relative;gap:0;color:var(--site-muted,#787c7e);font:600 1rem/1.15 var(--site-font,system-ui);letter-spacing:-.04em;white-space:nowrap}
+.keybr-mark i{font-style:normal}.keybr-mark .keybr-hit{color:var(--site-muted,#787c7e)}.keybr-mark .keybr-miss{color:var(--site-error,#dc2626)}.keybr-mark .keybr-miss-bg{color:var(--site-bg,#fff);background:var(--site-error,#dc2626);padding:0 2px;margin:0 1px}.keybr-mark .keybr-cursor{width:2px;height:1.05em;margin-left:2px;background:var(--site-muted,#787c7e);animation:keybr-caret 1s steps(1,end) infinite}@keyframes keybr-caret{50%{opacity:0}}@media(prefers-reduced-motion:reduce){.keybr-mark .keybr-cursor{animation:none!important}}
+.backline .keybr-mark{font-size:.92rem;letter-spacing:-.035em}
 /* Shared game settings primitives used by Wordle, Chain Reaction, and Keybr. */
 :root {
   --game-control-top: 11px;
@@ -348,10 +353,9 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 /* Compact segmented selector for mutually-exclusive setting groups. */
 .keybr-segmented { display:flex; flex-wrap:wrap; width:100%; min-width:0; gap:2px; padding:2px; border:1px solid var(--site-line,#d3d6da); border-radius:6px; background:var(--site-soft,#f3f4f5); }
-.keybr-segmented-item { min-width:0; flex:1 1 7rem; min-height:2.5rem; padding:.45rem .7rem; border:0; border-radius:4px; color:var(--site-muted,#787c7e); background:transparent; line-height:1.2; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+.keybr-segmented-item { min-width:max-content; max-width:100%; flex:1 1 auto; min-height:42px; padding:.65rem .85rem; border:0; border-radius:4px; color:var(--site-muted,#787c7e); background:transparent; line-height:1.15; white-space:nowrap; overflow-wrap:normal; text-align:center; }
 .keybr-segmented-item:hover,.keybr-segmented-item:focus-visible { color:var(--site-fg,#121213); background:color-mix(in srgb,var(--site-bg,#fff) 65%,var(--site-soft,#f3f4f5)); }
 .keybr-segmented-item[data-selected] { color:var(--site-fg,#121213); background:var(--site-bg,#fff); box-shadow:0 1px 2px color-mix(in srgb,var(--site-fg,#121213) 12%,transparent); }
-@media(max-width:600px){.keybr-segmented-item{flex-basis:calc(50% - 2px)}}
 
 /* Solid UI-style checkbox: actual multi-select semantics, not a switch. */
 .keybr-checkbox { display:inline-flex; min-width:0; align-items:center; gap:.65rem; cursor:pointer; }

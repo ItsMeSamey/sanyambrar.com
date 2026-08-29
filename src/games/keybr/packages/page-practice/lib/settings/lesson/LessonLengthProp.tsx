@@ -11,7 +11,7 @@ export function LessonLengthProp(): ReactNode {
           <FormattedMessage id="t_Add_words_to_lessons:" defaultMessage="Add words to lessons:"/>
         </Field>
         <Field>
-          <Range size={16} min={1} max={100} step={1} value={Math.round(settings.get(lessonProps.length) * 100)} onChange={(value) => {
+          <Range size={16} min={0} max={125} step={1} value={Math.round(settings.get(lessonProps.length) * 100)} onChange={(value) => {
             updateSettings(settings.set(lessonProps.length, value / 100));
         }}/>
         </Field>

@@ -18,6 +18,12 @@
   overflow-wrap: anywhere;
 }
 
+/* Segmented selectors are the primary value control for exclusive choices.
+   Let their field consume the remaining row instead of shrink-wrapping labels. */
+.root > *:has(> :global(.keybr-segmented)) {
+  flex: 1 1 auto;
+}
+
 .root:not(:first-child) {
   margin-block-start: 1rem;
 }
@@ -34,5 +40,9 @@
   .root > * {
     min-inline-size: 0;
     max-inline-size: 100%;
+  }
+
+  .root > *:has(> :global(.keybr-segmented)) {
+    flex-basis: 100%;
   }
 }

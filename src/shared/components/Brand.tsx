@@ -18,3 +18,10 @@ export function WordleMark(props:{text:string;colors:readonly string[];class?:st
     <For each={text().split('')}>{(letter, index) => <i style={{background: color(index())}}>{letter}</i>}</For>
   </span>;
 }
+
+/** Keybr's game-card wordmark, shared with in-game back navigation. */
+export function KeybrMark(props:{class?:string;ariaLabel?:string}) {
+  return <span class={`keybr-mark${props.class ? ` ${props.class}` : ''}`} aria-label={props.ariaLabel ?? 'Keybr'}>
+    <i class="keybr-hit">K</i><i class="keybr-hit">e</i><i class="keybr-miss">y</i><i class="keybr-hit">b</i><i class="keybr-miss-bg">r</i><b class="keybr-cursor" aria-hidden="true"/>
+  </span>;
+}

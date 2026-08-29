@@ -1288,7 +1288,7 @@
 				"submit"
 			].includes(target.type);
 			const wantsText = (target) => {
-				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[data-grab-cursor],[data-cursor-round]")) return false;
+				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return false;
 				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]")) return true;
 				if (target.closest("[data-text-cursor-zone]")) return true;
 				const style = getComputedStyle(target);

@@ -20,6 +20,7 @@ export function Toggle(props: ToggleProps): ReactNode {
   return (
     <SwitchPrimitive.Root
       class="keybr-toggle"
+      data-cursor-round=""
       checked={props.checked}
       disabled={props.disabled}
       onChange={props.onChange}

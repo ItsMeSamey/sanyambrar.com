@@ -1,8 +1,31 @@
-/* Generated from the original Keybr Less module. */
-.footer {
-  position: sticky;
-  inset-block-end: 0;
-  padding-inline: 0;
-  padding-block: 2rem;
-  background-image: linear-gradient(transparent, var(--background-color));
+.lessonHeading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  margin-block: 0 1rem;
+}
+
+.lessonHeading > h1 {
+  margin-block: 0;
+}
+
+.lessonActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .6rem;
+}
+
+@media (max-width: 640px) {
+  .lessonHeading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .lessonActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }

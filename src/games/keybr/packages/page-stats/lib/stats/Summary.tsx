@@ -96,7 +96,7 @@ function Statistic(solidProps: {
     name: unknown;
     value: unknown;
 }) {
-    return (<span class={styles.statisticListItem}>
+    return (<span class={styles.statisticListItem} data-text-cursor-zone="">
       <span class={styles.itemName}>{String(solidProps.name) + ":"}</span>
       <span class={styles.itemValue}>{String(solidProps.value)}</span>
     </span>);

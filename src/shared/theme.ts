@@ -882,7 +882,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const textInput = (target) => target instanceof HTMLTextAreaElement
       || target instanceof HTMLInputElement && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(target.type);
     const wantsText = (target) => {
-      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[data-grab-cursor],[data-cursor-round]')) return false;
+      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return false;
       if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
       // A text-cursor zone makes prose-like regions behave as one selectable
       // surface. Interactive descendants above override it and keep their

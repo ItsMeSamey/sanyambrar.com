@@ -1,7 +1,9 @@
-import { AppearanceButton, SearchButton, TopBar } from "../../../../../shared/components/TopBar.tsx";
+import { HomeBrand, KeybrMark } from "../../../../../shared/components/Brand.tsx";
+import { AppearanceButton, BackLink, SearchButton, TopBar } from "../../../../../shared/components/TopBar.tsx";
 import BarChart3 from "lucide-solid/icons/chart-no-axes-column";
 import SettingsIcon from "lucide-solid/icons/settings";
 import { useView } from "@keybr/widget";
+import { Show } from "solid-js";
 import { views } from "./views.tsx";
 
 function TopIcon(props: { label: string; onClick: () => void; children: any }) {
@@ -9,8 +11,14 @@ function TopIcon(props: { label: string; onClick: () => void; children: any }) {
 }
 
 export function KeybrTopBar() {
-  const { setView } = useView(views);
+  const { setView, currentView } = useView(views);
   return <TopBar
+    start={<Show
+      when={currentView() !== "practice"}
+      fallback={<HomeBrand class="brand home-brand-link" />}
+    >
+      <BackLink class="keybr-view-back" onClick={() => setView("practice")}><KeybrMark /></BackLink>
+    </Show>}
     nav={<nav class="top-nav site-topbar-nav keybr-topbar-nav" aria-label="Keybr">
       <AppearanceButton />
       <TopIcon label="Statistics" onClick={() => setView("statistics")}><BarChart3 aria-hidden="true" /></TopIcon>

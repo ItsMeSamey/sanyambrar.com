@@ -9,6 +9,7 @@ import { type ReactNode, useState } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 export function ResultGrouper(solidProps: {
     children: (keyStatsMap: KeyStatsMap) => ReactNode;
+    actions?: ReactNode;
 }) {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
@@ -74,6 +75,8 @@ export function ResultGrouper(solidProps: {
             setCharacterClass(value);
         }}/>
         </Field>
+        <Field.Filler />
+        {solidProps.actions != null && <Field>{solidProps.actions}</Field>}
       </FieldList>
 
       <KeyboardContext.Provider value={keyboard}>

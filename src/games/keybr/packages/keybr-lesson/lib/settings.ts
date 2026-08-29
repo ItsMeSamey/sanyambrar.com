@@ -11,7 +11,7 @@ import { LessonType } from "./lessontype.ts";
 
 export const lessonProps = {
   type: itemProp("lesson.type", LessonType.ALL, LessonType.GUIDED),
-  length: numberProp("lesson.length", 0, { min: 0, max: 1 }),
+  length: numberProp("lesson.length", 0, { min: 0, max: 1.25 }),
   guided: {
     naturalWords: booleanProp("lesson.guided.naturalWords", true),
     keyboardOrder: booleanProp("lesson.guided.keyboardOrder", false),

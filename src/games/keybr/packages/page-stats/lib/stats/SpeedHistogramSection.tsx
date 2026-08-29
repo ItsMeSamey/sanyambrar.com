@@ -3,11 +3,9 @@ import { useIntlNumbers } from "@keybr/intl";
 import { type SummaryStats } from "@keybr/result";
 import {
   Explainer,
-  Field,
-  FieldList,
   Figure,
   Para,
-  RadioBox,
+  SegmentedControl,
   Value,
 } from "@keybr/widget";
 import { useState } from "@keybr/solid-compat/react";
@@ -85,28 +83,15 @@ export function SpeedHistogramSection(props: { readonly stats: SummaryStats }) {
         />
       </ChartWrapper>
 
-      <FieldList>
-        <Field.Filler />
-        <Field>
-          <RadioBox
-            name="population-speed-period"
-            value="average"
-            checked={period() === "average"}
-            label="Average Speed"
-            onSelect={() => setPeriod("average")}
-          />
-        </Field>
-        <Field>
-          <RadioBox
-            name="population-speed-period"
-            value="top"
-            checked={period() === "top"}
-            label="Top Speed"
-            onSelect={() => setPeriod("top")}
-          />
-        </Field>
-        <Field.Filler />
-      </FieldList>
+      <SegmentedControl<Period>
+        label="Speed comparison"
+        value={period()}
+        options={[
+          { value: "average", label: "Average speed" },
+          { value: "top", label: "Top speed" },
+        ]}
+        onChange={setPeriod}
+      />
 
       <Explainer>
         <Figure.Legend>

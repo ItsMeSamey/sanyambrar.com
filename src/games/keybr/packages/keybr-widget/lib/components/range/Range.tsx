@@ -47,7 +47,7 @@ export function Range(allProps: RangeProps): ReactNode {
         styles.root,
         "game-settings-slider",
         local.disabled && styles.disabled,
-        sizeClassName(local.size),
+        sizeClassName(local.size ?? 16),
       )}
       style={{ "--range-fill-width": fillWidth() }}
     >

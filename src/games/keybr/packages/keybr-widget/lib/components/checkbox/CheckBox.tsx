@@ -12,6 +12,7 @@ export function CheckBox(props: CheckBoxProps): ReactNode {
   return (
     <CheckboxPrimitive.Root
       class="keybr-checkbox"
+      data-cursor-round=""
       checked={props.checked}
       disabled={props.disabled}
       name={props.name}

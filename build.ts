@@ -273,6 +273,10 @@ ${keybrViewSwitch}`;
   const keybrTopBar = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/KeybrTopBar.tsx"), "utf8");
   const keybrIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/icon/Icon.module.css"), "utf8");
   const keybrCheckbox = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/checkbox/CheckBox.tsx"), "utf8");
+  const keybrRange = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/range/Range.tsx"), "utf8");
+  const keybrWidgetIndex = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/index.ts"), "utf8");
+  const keybrLessonProps = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/settings.ts"), "utf8");
+  const keybrLessonLength = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonLengthProp.tsx"), "utf8");
   const keybrTypingSettings = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/TypingSettings.tsx"), "utf8");
   const keybrNameValue = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/text/NameValue.tsx"), "utf8");
   const keybrEventIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/state/event-icons.module.css"), "utf8");
@@ -283,6 +287,7 @@ ${keybrViewSwitch}`;
     keybrTopBar.indexOf("<AppearanceButton") < keybrTopBar.indexOf('label="Statistics"') &&
     keybrTopBar.indexOf('label="Statistics"') < keybrTopBar.indexOf('label="Settings"') &&
     keybrTopBar.indexOf('label="Settings"') < keybrTopBar.indexOf("<SearchButton") &&
+    keybrTopBar.includes("<Show") && keybrTopBar.includes('fallback={<HomeBrand class="brand home-brand-link" />}') && keybrTopBar.includes("<KeybrMark") &&
     keybrControls.indexOf("<CircleHelp") < keybrControls.indexOf("<Maximize2") &&
     keybrControls.indexOf("<Maximize2") < keybrControls.indexOf("<Undo2") &&
     keybrControls.indexOf("<Undo2") < keybrControls.lastIndexOf("<Redo2") &&
@@ -291,6 +296,10 @@ ${keybrViewSwitch}`;
     keybrControlsStyle.includes("inset-inline-end: clamp(3.25rem, 7vw, 6rem)") &&
     keybrIconStyle.includes("fill: none") && keybrIconStyle.includes("stroke: currentColor") &&
     keybrCheckbox.includes('@kobalte/core/checkbox') && keybrEventIconStyle.includes("fill: none") &&
+    keybrRange.includes("local.size ?? 16") &&
+    !keybrWidgetIndex.includes("radiobox") && !keybrWidgetIndex.includes("tablist") && !keybrWidgetIndex.includes("Checkable") &&
+    keybrLessonProps.includes('length: numberProp("lesson.length", 0, { min: 0, max: 1.25 })') &&
+    keybrLessonLength.includes('min={0} max={125}') &&
     keybrTypingSettings.includes('label: "None"') && keybrTypingSettings.includes('label: "Error only"') &&
     keybrTypingSettings.includes('label: "Key only"') && keybrTypingSettings.includes('label: "All"') &&
     keybrNameValue.includes('typeof v === "string" || typeof v === "number"') &&
@@ -306,7 +315,7 @@ ${keybrViewSwitch}`;
   const keybrOptionStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/optionlist/OptionListMenu.module.css"), "utf8");
   const sharedSettingsStyle = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrScreenStyle.includes("inline-size: min(70rem, 100%)") && keybrScreenStyle.includes("min-inline-size: 0") &&
-    keybrFieldListStyle.includes("overflow-wrap: anywhere") && keybrFieldListStyle.includes("flex-wrap: wrap") &&
+    keybrFieldListStyle.includes("overflow-wrap: anywhere") && keybrFieldListStyle.includes("flex-wrap: wrap") && keybrFieldListStyle.includes(":has(> :global(.keybr-segmented))") &&
     keybrSizeStyle.includes("@media (max-width: 720px)") && keybrSizeStyle.includes("max-inline-size: 100%") &&
     keybrOptionStyle.includes("white-space: normal") && keybrOptionStyle.includes("overflow-wrap: anywhere") &&
     sharedSettingsStyle.includes(".keybr-segmented") && sharedSettingsStyle.includes("flex-wrap: wrap"),
