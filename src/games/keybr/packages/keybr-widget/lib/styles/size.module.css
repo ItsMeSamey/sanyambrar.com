@@ -59,3 +59,15 @@
   min-inline-size: 32rem !important;
 
 }
+
+@media (max-width: 720px) {
+  .width6, .width10, .width16, .width24, .width32 {
+    inline-size: auto !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    flex: 1 1 auto;
+  }
+  .size-full {
+    min-inline-size: 0 !important;
+  }
+}

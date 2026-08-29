@@ -2,6 +2,7 @@ import { KeyboardOptions, Layout } from "@keybr/keyboard";
 import { Settings } from "@keybr/settings";
 import { ViewSwitch } from "@keybr/widget";
 import { views } from "./views.tsx";
+import { KeybrTopBar } from "./KeybrTopBar.tsx";
 
 setDefaultLayout(window.navigator.language);
 
@@ -18,5 +19,5 @@ function setDefaultLayout(localeId: string) {
 }
 
 export function PracticePage() {
-  return <ViewSwitch views={views} />;
+  return <ViewSwitch views={views} header={() => <KeybrTopBar />} />;
 }

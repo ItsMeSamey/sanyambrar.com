@@ -9,8 +9,8 @@ export function CodeLessonSettings(solidProps: {
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
-    const syntax = settings.get(lessonProps.code.syntax);
-    const flags = settings.get(lessonProps.code.flags);
+    const syntax = () => settings.get(lessonProps.code.syntax);
+    const flags = () => settings.get(lessonProps.code.flags);
     return (<>
       <Explainer>
         <Description>
@@ -29,14 +29,14 @@ export function CodeLessonSettings(solidProps: {
             <OptionList options={Syntax.ALL.map((item) => ({
             value: item.id,
             name: item.name,
-        }))} value={syntax.id} onSelect={(id) => {
+        }))} value={syntax().id} onSelect={(id) => {
             updateSettings(settings.set(lessonProps.code.syntax, Syntax.ALL.get(id)));
         }}/>
           </Field>
-          {[...syntax.flags].map((flag) => {
+          {[...syntax().flags].map((flag) => {
             return (<Field>
-                <CheckBox label={flag} checked={flags.includes(flag)} onChange={(checked) => {
-                    const set = new Set(flags);
+                <CheckBox label={flag} checked={flags().includes(flag)} onChange={(checked) => {
+                    const set = new Set(flags());
                     if (checked) {
                         set.add(flag);
                     }

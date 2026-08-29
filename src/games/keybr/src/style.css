@@ -79,7 +79,7 @@
   --KeyboardKey-symbol--depressed__color: var(--primary);
   --KeyboardKey-symbol--dead__color: var(--slow-key-color);
   --KeyboardKey-symbol--ligature__color: var(--effort-color);
-  --KeyboardKey-pointer__color: var(--site-accent-bg, color-mix(in srgb, var(--site-accent) 17%, var(--primary)));
+  --KeyboardKey-pointer__color: var(--site-fg, var(--secondary));
   --pinky-zone-color: var(--site-fast-bg, #d9efe0);
   --ring-zone-color: var(--site-warning-bg, #f8edcf);
   --middle-zone-color: var(--site-warning-bg, #f8edcf);
@@ -218,3 +218,8 @@ ol, ul { padding-inline: 2rem 0; font-weight: normal; }
 text { text-rendering: optimizeLegibility; }
 
 ::selection { color: var(--primary); background-color: var(--secondary); }
+
+.keybr-topbar-actions { display:flex; align-items:center; gap:3px; height:100%; }
+.keybr-topbar-actions .site-topbar-icon { color:var(--site-muted,var(--text-color-f2)); }
+.keybr-topbar-actions .site-topbar-icon:hover,
+.keybr-topbar-actions .site-topbar-icon:focus-visible { color:var(--site-fg,var(--text-color)); }

@@ -138,3 +138,29 @@
   .game-settings-slider [role=slider],
   .game-range-fill { transition: none; }
 }
+
+/* Shared switch primitive. Wordle, Chain and Keybr use the same geometry. */
+.samey-switch-control { display:inline-flex; width:2.25rem; height:1.25rem; flex-shrink:0; align-items:center; padding:.125rem; border:1px solid var(--color-input,var(--site-line,#d3d6da)); border-radius:999px; background:var(--color-secondary,var(--site-soft,#f3f4f5)); transition:background-color 150ms ease,border-color 150ms ease; }
+.samey-switch-control[data-checked] { border-color:var(--color-primary,var(--site-fg,#121213)); background:var(--color-primary,var(--site-fg,#121213)); }
+.samey-switch-thumb { display:block; width:.875rem; height:.875rem; pointer-events:none; border-radius:50%; background:var(--color-background,var(--site-bg,#fff)); box-shadow:0 1px 2px color-mix(in srgb,var(--site-fg,#121213) 12%,transparent); transform:translateX(0); transition:transform 150ms ease; }
+.samey-switch-control[data-checked] .samey-switch-thumb { transform:translateX(1rem); }
+.keybr-toggle { display:inline-flex; min-width:0; align-items:center; gap:1rem; cursor:pointer; }
+.keybr-toggle-label { min-width:0; line-height:1.35; overflow-wrap:anywhere; }
+.keybr-toggle[data-disabled] { opacity:.55; cursor:default; }
+
+/* Compact segmented selector for mutually-exclusive setting groups. */
+.keybr-segmented { display:flex; flex-wrap:wrap; width:100%; min-width:0; gap:2px; padding:2px; border:1px solid var(--site-line,#d3d6da); border-radius:6px; background:var(--site-soft,#f3f4f5); }
+.keybr-segmented-item { min-width:0; flex:1 1 7rem; min-height:2.5rem; padding:.45rem .7rem; border:0; border-radius:4px; color:var(--site-muted,#787c7e); background:transparent; line-height:1.2; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+.keybr-segmented-item:hover,.keybr-segmented-item:focus-visible { color:var(--site-fg,#121213); background:color-mix(in srgb,var(--site-bg,#fff) 65%,var(--site-soft,#f3f4f5)); }
+.keybr-segmented-item[data-selected] { color:var(--site-fg,#121213); background:var(--site-bg,#fff); box-shadow:0 1px 2px color-mix(in srgb,var(--site-fg,#121213) 12%,transparent); }
+@media(max-width:600px){.keybr-segmented-item{flex-basis:calc(50% - 2px)}}
+
+/* Solid UI-style checkbox: actual multi-select semantics, not a switch. */
+.keybr-checkbox { display:inline-flex; min-width:0; align-items:center; gap:.65rem; cursor:pointer; }
+.keybr-checkbox-control { display:grid; place-items:center; width:1.35rem; height:1.35rem; flex:0 0 1.35rem; border:1px solid var(--site-line,#d3d6da); border-radius:4px; color:var(--site-bg,#fff); background:var(--site-bg,#fff); transition:border-color 120ms ease,background-color 120ms ease,box-shadow 120ms ease; }
+.keybr-checkbox-control[data-checked] { border-color:var(--site-fg,#121213); background:var(--site-fg,#121213); }
+.keybr-checkbox-control:focus-visible,.keybr-checkbox:focus-within .keybr-checkbox-control { box-shadow:0 0 0 2px color-mix(in srgb,var(--site-accent,#787c7e) 32%,transparent); }
+.keybr-checkbox-indicator,.keybr-checkbox-indicator svg { display:block; width:1rem; height:1rem; }
+.keybr-checkbox-indicator svg { fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.keybr-checkbox-label { min-width:0; line-height:1.35; overflow-wrap:anywhere; }
+.keybr-checkbox[data-disabled] { opacity:.55; cursor:default; }

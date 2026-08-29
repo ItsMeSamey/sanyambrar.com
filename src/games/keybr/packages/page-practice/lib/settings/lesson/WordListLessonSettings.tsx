@@ -2,7 +2,7 @@ import { wordListStats } from "@keybr/content";
 import { useIntlNumbers } from "@keybr/intl";
 import { lessonProps, type WordListLesson } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
-import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
+import { Toggle, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
@@ -48,7 +48,7 @@ function WordListPreview(solidProps: {
         }}/>
         </Field>
         <Field>
-          <CheckBox label={formatMessage({
+          <Toggle label={formatMessage({
             id: "t_Long_words_only",
             defaultMessage: "Long words only",
         })} checked={settings.get(lessonProps.wordList.longWordsOnly)} onChange={(value) => {

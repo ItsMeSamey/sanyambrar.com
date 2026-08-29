@@ -1,7 +1,7 @@
 import { type BooksLesson, type CodeLesson, type CustomTextLesson, type GuidedLesson, type Lesson, lessonProps, LessonType, type NumbersLesson, type WordListLesson, } from "@keybr/lesson";
 import { LessonLoader } from "@keybr/lesson-loader";
 import { type Settings, useSettings } from "@keybr/settings";
-import { TabList } from "@keybr/widget";
+import { SegmentedControl } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
@@ -16,16 +16,19 @@ export function LessonSettings(): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>
-      <TabList tabs={[
-        { label: formatMessage({ id: "t_Guided_lessons", defaultMessage: "Guided lessons" }) },
-        { label: formatMessage({ id: "t_Common_words", defaultMessage: "Common words" }) },
-        { label: formatMessage({ id: "t_Books", defaultMessage: "Books" }) },
-        { label: formatMessage({ id: "t_Custom_text", defaultMessage: "Custom text" }) },
-        { label: formatMessage({ id: "t_Source_code", defaultMessage: "Source code" }) },
-        { label: formatMessage({ id: "t_Numbers", defaultMessage: "Numbers" }) },
-      ]} selectedIndex={LessonType.ALL.indexOf(settings.get(lessonProps.type))} onSelect={(index) => {
-            updateSettings(settings.set(lessonProps.type, LessonType.ALL.at(index)));
-        }}/>
+      <SegmentedControl
+        label="Lesson type"
+        value={settings.get(lessonProps.type)}
+        options={[
+          { value: LessonType.GUIDED, label: formatMessage({ id: "t_Guided_lessons", defaultMessage: "Guided lessons" }) },
+          { value: LessonType.WORDLIST, label: formatMessage({ id: "t_Common_words", defaultMessage: "Common words" }) },
+          { value: LessonType.BOOKS, label: formatMessage({ id: "t_Books", defaultMessage: "Books" }) },
+          { value: LessonType.CUSTOM, label: formatMessage({ id: "t_Custom_text", defaultMessage: "Custom text" }) },
+          { value: LessonType.CODE, label: formatMessage({ id: "t_Source_code", defaultMessage: "Source code" }) },
+          { value: LessonType.NUMBERS, label: formatMessage({ id: "t_Numbers", defaultMessage: "Numbers" }) },
+        ]}
+        onChange={(value) => updateSettings(settings.set(lessonProps.type, value))}
+      />
       <LessonLoader>
         {(lesson) => (<>
             {tabBody(settings, lesson)}

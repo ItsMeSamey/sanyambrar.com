@@ -30,12 +30,12 @@ export function PrimaryNav(props:{showWork?:boolean;activeHref?:string}) {
  * The only site top bar implementation.
  * Pages customize content through slots, never by creating another header/bar.
  */
-export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;showWork?:boolean;activeHref?:string}) {
+export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;showWork?:boolean;activeHref?:string;nav?:JSX.Element|false}) {
   return <header class="site-topbar">
     <div class="site-topbar-inner site-topbar-inner-contained">
       <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
       <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
-      <PrimaryNav showWork={props.showWork} activeHref={props.activeHref}/>
+      {props.nav === false ? null : (props.nav ?? <PrimaryNav showWork={props.showWork} activeHref={props.activeHref}/>)}
     </div>
   </header>;
 }

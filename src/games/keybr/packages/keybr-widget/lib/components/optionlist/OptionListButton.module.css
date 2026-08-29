@@ -6,7 +6,9 @@
   display: inline-block;
   position: relative;
   vertical-align: middle;
-  min-inline-size: 20rem;
+  inline-size: min(20rem, 100%);
+  min-inline-size: 0;
+  max-inline-size: 100%;
   margin: 0;
   padding: 0;
   border: none;

@@ -225,11 +225,19 @@ ${keybrViewSwitch}`;
     "ux: Keybr subpages must round-trip through query-string history");
   const keybrSettingsScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/SettingsScreen.tsx"), "utf8");
   const keybrLessonLoader = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-loader/lib/LessonLoader.tsx"), "utf8");
-  const keybrTabList = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/tablist/TabList.tsx"), "utf8");
-  must(keybrSettingsScreen.includes("settings: liveObject(newSettings)") &&
+  const keybrReactiveSettings = await readFile(join(ROOT, "src/games/keybr/packages/keybr-settings/lib/reactive.ts"), "utf8");
+  const keybrLessonSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/LessonSettings.tsx"), "utf8");
+  must(keybrSettingsScreen.includes("createReactiveSettings(snapshotSettings(settings))") &&
+    keybrSettingsScreen.includes("snapshotSettings(draft.current())") &&
     keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
-    keybrTabList.includes("const selectedIndex = () => props.selectedIndex ?? 0"),
-    "ux: Keybr settings must keep draft state, lesson loading, and selected tabs reactive");
+    keybrReactiveSettings.includes("const revisions = new Map") &&
+    keybrReactiveSettings.includes("revision(prop.key)[0]()") &&
+    keybrReactiveSettings.includes("Object.is(before[key], after[key])") &&
+    keybrReactiveSettings.includes("const toJSON = () => untrack(current).toJSON()") &&
+    !keybrReactiveSettings.includes("allRevision") &&
+    keybrLessonSettings.includes("<SegmentedControl") &&
+    keybrLessonSettings.includes("value={settings.get(lessonProps.type)}"),
+    "ux: Keybr settings must invalidate per property while lesson loading and selection stay reactive");
   const keybrSolidReactCompat = await readFile(join(ROOT, "src/games/keybr/packages/keybr-solid-compat/react.tsx"), "utf8");
   const keybrLayoutEffectStart = keybrSolidReactCompat.indexOf("export function useLayoutEffect");
   const keybrLayoutEffectEnd = keybrSolidReactCompat.indexOf("\n}", keybrLayoutEffectStart) + 2;
@@ -262,29 +270,44 @@ ${keybrViewSwitch}`;
     "ux: Keybr canvas sizing must stay reactive so statistics charts are actually painted");
   const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
   const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
+  const keybrTopBar = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/KeybrTopBar.tsx"), "utf8");
   const keybrIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/icon/Icon.module.css"), "utf8");
-  const keybrCheckableStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/Checkable.module.css"), "utf8");
+  const keybrCheckbox = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/checkbox/CheckBox.tsx"), "utf8");
+  const keybrTypingSettings = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/TypingSettings.tsx"), "utf8");
+  const keybrNameValue = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/text/NameValue.tsx"), "utf8");
   const keybrEventIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/state/event-icons.module.css"), "utf8");
   const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
   const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
   const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
-  must(keybrControls.includes('data-samey-appearance=""') &&
-    keybrControlsStyle.includes("grid-template-columns: repeat(4, 2rem)") &&
+  must(keybrTopBar.indexOf('label="Home"') < keybrTopBar.indexOf("<AppearanceButton") &&
+    keybrTopBar.indexOf("<AppearanceButton") < keybrTopBar.indexOf('label="Statistics"') &&
+    keybrTopBar.indexOf('label="Statistics"') < keybrTopBar.indexOf('label="Settings"') &&
+    keybrControls.includes("mdiHelpCircleOutline") && keybrControls.includes("mdiUndo") &&
+    keybrControls.includes("mdiRedo") && keybrControls.includes("mdiAspectRatio") &&
+    !keybrControls.includes("mdiHome") && !keybrControls.includes("AppearanceButton") &&
+    keybrControlsStyle.includes("grid-template-columns: repeat(2, 2rem)") &&
     keybrIconStyle.includes("fill: none") && keybrIconStyle.includes("stroke: currentColor") &&
-    keybrCheckableStyle.includes("fill: none") && keybrCheckableStyle.includes("stroke: currentColor") &&
-    keybrEventIconStyle.includes("fill: none") &&
-    keybrSettingsScreen.includes("snapshotSettings(settings)") && keybrSettingsScreen.includes("snapshotSettings(newSettings())") &&
+    keybrCheckbox.includes('@kobalte/core/checkbox') && keybrEventIconStyle.includes("fill: none") &&
+    keybrTypingSettings.includes('label: "None"') && keybrTypingSettings.includes('label: "Error only"') &&
+    keybrTypingSettings.includes('label: "Key only"') && keybrTypingSettings.includes('label: "All"') &&
+    keybrNameValue.includes('typeof v === "string" || typeof v === "number"') &&
+    !keybrNameValue.includes("isValidElement") &&
+    keybrSettingsScreen.includes("snapshotSettings(settings)") && keybrSettingsScreen.includes("snapshotSettings(draft.current())") &&
     !keybrBookPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
     !keybrLessonPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
     !keybrCustomTextSettings.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s),
-    "ux: Keybr controls, theme trigger, Lucide rendering, settings draft, and memo values must retain Solid-port fixes");
+    "ux: Keybr topbar, side controls, segmented sound labels, checkboxes, preview nodes, and memo values must retain Solid-port fixes");
   const keybrScreenStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/Screen.module.css"), "utf8");
-  const keybrTabStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/tablist/TabList.module.css"), "utf8");
   const keybrFieldListStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/fieldlist/FieldList.module.css"), "utf8");
+  const keybrSizeStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/styles/size.module.css"), "utf8");
+  const keybrOptionStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/optionlist/OptionListMenu.module.css"), "utf8");
+  const sharedSettingsStyle = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrScreenStyle.includes("inline-size: min(70rem, 100%)") && keybrScreenStyle.includes("min-inline-size: 0") &&
-    keybrTabStyle.includes("@media (max-width: 600px)") && keybrTabStyle.includes("min-inline-size: 0") &&
-    keybrFieldListStyle.includes("@media (max-width: 600px)") && keybrFieldListStyle.includes("flex-wrap: wrap"),
-    "ux: Keybr practice/settings/statistics and form rows must fit phone widths");
+    keybrFieldListStyle.includes("overflow-wrap: anywhere") && keybrFieldListStyle.includes("flex-wrap: wrap") &&
+    keybrSizeStyle.includes("@media (max-width: 720px)") && keybrSizeStyle.includes("max-inline-size: 100%") &&
+    keybrOptionStyle.includes("white-space: normal") && keybrOptionStyle.includes("overflow-wrap: anywhere") &&
+    sharedSettingsStyle.includes(".keybr-segmented") && sharedSettingsStyle.includes("flex-wrap: wrap"),
+    "ux: Keybr practice/settings/statistics, segmented choices, menus, and form rows must fit phone widths without overflow");
   must(chainLogo.includes("'0101'") && chainLogo.match(/'1110'/g)?.length === 2 && chainLogo.includes("const gap = 2"),
     "ux: Chain back mark must use the requested 4x4 bitmap and two-cell gap");
   must(chainLogo.includes("var(--site-bg") && chainLogo.includes("samey-themechange") &&

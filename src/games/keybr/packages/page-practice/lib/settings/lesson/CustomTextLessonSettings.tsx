@@ -3,7 +3,7 @@ import { type Language } from "@keybr/keyboard";
 import { type CustomTextLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { textStatsOf } from "@keybr/unicode";
-import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, LinkButton, NameValue, Para, TextField, } from "@keybr/widget";
+import { Toggle, Description, Explainer, Field, FieldList, FieldSet, LinkButton, NameValue, Para, TextField, } from "@keybr/widget";
 import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { exampleTexts } from "./example-texts.ts";
@@ -91,7 +91,7 @@ function CustomTextProcessing(): ReactNode {
     const { settings, updateSettings } = useSettings();
     return (<FieldList>
       <Field>
-        <CheckBox checked={settings.get(lessonProps.customText.lettersOnly)} label={formatMessage({
+        <Toggle checked={settings.get(lessonProps.customText.lettersOnly)} label={formatMessage({
             id: "t_Remove_punctuation_characters",
             defaultMessage: "Remove punctuation characters",
         })} title={formatMessage({
@@ -102,7 +102,7 @@ function CustomTextProcessing(): ReactNode {
         }}/>
       </Field>
       <Field>
-        <CheckBox checked={settings.get(lessonProps.customText.lowercase)} label={formatMessage({
+        <Toggle checked={settings.get(lessonProps.customText.lowercase)} label={formatMessage({
             id: "t_Transform_to_lowercase",
             defaultMessage: "Transform to lowercase",
         })} title={formatMessage({
@@ -113,7 +113,7 @@ function CustomTextProcessing(): ReactNode {
         }}/>
       </Field>
       <Field>
-        <CheckBox checked={settings.get(lessonProps.customText.randomize)} label={formatMessage({
+        <Toggle checked={settings.get(lessonProps.customText.randomize)} label={formatMessage({
             id: "t_Shuffle_words",
             defaultMessage: "Shuffle words",
         })} title={formatMessage({

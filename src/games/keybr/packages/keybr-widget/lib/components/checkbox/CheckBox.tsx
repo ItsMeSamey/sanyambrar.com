@@ -1,7 +1,36 @@
-import { mdiCheckboxBlankOutline, mdiCheckboxMarkedOutline } from "@keybr/solid-compat/mdi";
-import { type ReactNode } from "@keybr/solid-compat/react";
-import { Checkable } from "../Checkable.tsx";
+import * as CheckboxPrimitive from "@kobalte/core/checkbox";
+import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { type CheckBoxProps } from "./CheckBox.types.ts";
+
+/** Solid/Kobalte checkbox using the same interaction model as Solid UI. */
 export function CheckBox(props: CheckBoxProps): ReactNode {
-    return <Checkable {...props} type="checkbox" iconOff={mdiCheckboxBlankOutline} iconOn={mdiCheckboxMarkedOutline}/>;
+  const input = useRef<HTMLInputElement>(null);
+  useImperativeHandle(props.ref, () => ({
+    focus: () => input.current?.focus(),
+    blur: () => input.current?.blur(),
+  }));
+  return (
+    <CheckboxPrimitive.Root
+      class="keybr-checkbox"
+      checked={props.checked}
+      disabled={props.disabled}
+      name={props.name}
+      value={props.value}
+      onChange={props.onChange}
+      title={props.title}
+    >
+      <CheckboxPrimitive.Input
+        ref={(el) => (input.current = el)}
+        tabIndex={props.tabIndex}
+        onFocus={props.onFocus as any}
+        onBlur={props.onBlur as any}
+      />
+      <CheckboxPrimitive.Control class="keybr-checkbox-control">
+        <CheckboxPrimitive.Indicator class="keybr-checkbox-indicator">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.25 8.25 6.5 11.5 12.75 4.75" /></svg>
+        </CheckboxPrimitive.Indicator>
+      </CheckboxPrimitive.Control>
+      <CheckboxPrimitive.Label class="keybr-checkbox-label">{props.label ?? props.children}</CheckboxPrimitive.Label>
+    </CheckboxPrimitive.Root>
+  );
 }

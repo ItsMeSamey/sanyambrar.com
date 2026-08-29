@@ -5,7 +5,7 @@ import { Tasks } from "@keybr/lang";
 import { useSettings } from "@keybr/settings";
 import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
-import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
+import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
 import { memo, type ReactNode, useEffect, useState } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 export function KeyboardSettings(): ReactNode {
@@ -73,12 +73,17 @@ function LayoutProp(): ReactNode {
       </FieldList>
       <FieldList>
         <Field>
-          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Forward} disabled={!options().layout.emulate} label={formatMessage({
-            id: "t_Emulate_layout",
-            defaultMessage: "Emulate layout",
-        })} onChange={(value) => {
-            updateSettings(settings.set(keyboardProps.emulation, value ? Emulation.Forward : Emulation.None));
-        }}/>
+          <SegmentedControl
+            label="Keyboard emulation"
+            disabled={!options().layout.emulate}
+            value={settings.get(keyboardProps.emulation)}
+            options={[
+              { value: Emulation.None, label: "System" },
+              { value: Emulation.Forward, label: "Emulate layout" },
+              { value: Emulation.Reverse, label: "Hardware layout" },
+            ]}
+            onChange={(value) => updateSettings(settings.set(keyboardProps.emulation, value))}
+          />
         </Field>
       </FieldList>
       <Explainer>
@@ -86,16 +91,6 @@ function LayoutProp(): ReactNode {
           <FormattedMessage id="keyboard.emulation.forward.description" defaultMessage="Keyboard emulation ignores the keyboard layout configured in your system and allows you to practice the selected keyboard regardless of how your system is configured. It is more convenient to keep the emulation option enabled. If the above option is disabled (greyed out), this means the layout cannot be emulated (mainly for layouts which use dead keys)."/>
         </Description>
       </Explainer>
-      <FieldList>
-        <Field>
-          <CheckBox checked={settings.get(keyboardProps.emulation) === Emulation.Reverse} disabled={!options().layout.emulate} label={formatMessage({
-            id: "t_Keyboard_hardware_emulates_",
-            defaultMessage: "Keyboard hardware emulates layout",
-        })} onChange={(value) => {
-            updateSettings(settings.set(keyboardProps.emulation, value ? Emulation.Reverse : Emulation.None));
-        }}/>
-        </Field>
-      </FieldList>
       <Explainer>
         <Description>
           <FormattedMessage id="keyboard.emulation.reverse.description" defaultMessage="Use this option if you have a hardware layout switcher on your keyboard, and you see that incorrect keys are highlighted on the virtual keyboard."/>
@@ -137,7 +132,7 @@ function GeometryProp(): ReactNode {
       </FieldList>
       <FieldList>
         <Field>
-          <CheckBox label={formatMessage({
+          <Toggle label={formatMessage({
             id: "t_Colored_keys",
             defaultMessage: "Colored keys",
         })} checked={settings.get(keyboardProps.colors)} onChange={(value) => {
@@ -152,7 +147,7 @@ function GeometryProp(): ReactNode {
       </Explainer>
       <FieldList>
         <Field>
-          <CheckBox label={formatMessage({
+          <Toggle label={formatMessage({
             id: "t_Highlight_keys",
             defaultMessage: "Highlight keys",
         })} checked={settings.get(keyboardProps.pointers)} onChange={(value) => {

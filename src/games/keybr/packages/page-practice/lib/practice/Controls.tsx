@@ -1,19 +1,14 @@
 import { getDir } from "@keybr/intl";
 import { names } from "@keybr/lesson-ui";
-import { Icon, IconButton, useView } from "@keybr/widget";
+import { Icon, IconButton } from "@keybr/widget";
 import {
   mdiAspectRatio,
-  mdiChartBar,
-  mdiCog,
   mdiHelpCircleOutline,
-  mdiHome,
   mdiRedo,
-  mdiThemeLightDark,
   mdiUndo,
 } from "@keybr/solid-compat/mdi";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
-import { views } from "../views.tsx";
 import * as styles from "./Controls.module.css";
 
 export const Controls = memo(function Controls(props: {
@@ -24,42 +19,8 @@ export const Controls = memo(function Controls(props: {
 }): ReactNode {
   const { formatMessage, locale } = useIntl();
   const rtl = getDir(locale) === "rtl";
-  const { setView } = useView(views);
   return (
     <div id={names.controls} class={styles.controls}>
-      <IconButton
-        icon={<Icon shape={mdiHome} />}
-        title="Home"
-        onClick={() => {
-          const href = new URL("./", location.href).href;
-          const navigate = (globalThis as any).SameyNavigate;
-          if (navigate) void navigate(href);
-          else location.assign(href);
-        }}
-      />
-      <IconButton
-        icon={<Icon shape={mdiThemeLightDark} />}
-        title="Appearance"
-        data-samey-appearance=""
-        aria-expanded="false"
-      />
-      <IconButton
-        icon={<Icon shape={mdiChartBar} />}
-        title={formatMessage({
-          id: "local.statistics.description",
-          defaultMessage: "Show your local typing statistics.",
-        })}
-        onClick={() => setView("statistics")}
-      />
-      <IconButton
-        icon={<Icon shape={mdiCog} />}
-        title={formatMessage({
-          id: "practice.widget.settings.description",
-          defaultMessage:
-            "Change lesson settings, configure language, keyboard layout, etc.",
-        })}
-        onClick={() => setView("settings")}
-      />
       <IconButton
         icon={<Icon shape={mdiHelpCircleOutline} />}
         title={formatMessage({

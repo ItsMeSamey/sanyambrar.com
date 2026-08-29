@@ -17,7 +17,7 @@ export function useView<T extends ViewMap>(_views: T) {
   return useContext(ViewContext) as { readonly setView: (name: keyof T, props?: ViewProps) => void };
 }
 
-export function ViewSwitch(props: { readonly views: ViewMap }) {
+export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: () => any }) {
   const first = Object.keys(props.views)[0];
   const readView = (): ViewName => {
     const value = new URL(location.href).searchParams.get("p");
@@ -52,6 +52,7 @@ export function ViewSwitch(props: { readonly views: ViewMap }) {
   onMount(() => addEventListener("popstate", onPopState));
   onCleanup(() => removeEventListener("popstate", onPopState));
   return <ViewContext.Provider value={{ setView }}>
+    {props.header?.()}
     <Dynamic component={current().View} {...current().viewProps}/>
   </ViewContext.Provider>;
 }

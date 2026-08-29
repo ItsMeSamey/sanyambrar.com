@@ -1,10 +1,10 @@
-/* Two compact rows of four controls. */
+/* Practice-only controls stay beside the lesson; navigation lives in the shared top bar. */
 .controls {
   position: absolute;
   inset-inline-end: 0;
   inset-block-start: 0;
   display: grid;
-  grid-template-columns: repeat(4, 2rem);
+  grid-template-columns: repeat(2, 2rem);
   grid-auto-rows: 2rem;
   gap: 0.15rem;
   align-items: center;

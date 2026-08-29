@@ -1,7 +1,7 @@
 import { BookPreview, BookSelector, ParagraphPreview, ParagraphSelector, } from "@keybr/content";
 import { type BooksLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
-import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, Spacer, } from "@keybr/widget";
+import { Toggle, Description, Explainer, Field, FieldList, FieldSet, Spacer, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
@@ -44,7 +44,7 @@ function BookTextProcessing(): ReactNode {
     const { settings, updateSettings } = useSettings();
     return (<FieldList>
       <Field>
-        <CheckBox checked={settings.get(lessonProps.books.lettersOnly)} label={formatMessage({
+        <Toggle checked={settings.get(lessonProps.books.lettersOnly)} label={formatMessage({
             id: "t_Remove_punctuation_characters",
             defaultMessage: "Remove punctuation characters",
         })} title={formatMessage({
@@ -55,7 +55,7 @@ function BookTextProcessing(): ReactNode {
         }}/>
       </Field>
       <Field>
-        <CheckBox checked={settings.get(lessonProps.books.lowercase)} label={formatMessage({
+        <Toggle checked={settings.get(lessonProps.books.lowercase)} label={formatMessage({
             id: "t_Transform_to_lowercase",
             defaultMessage: "Transform to lowercase",
         })} title={formatMessage({
