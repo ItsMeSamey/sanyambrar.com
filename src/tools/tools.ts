@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { TOOLS } from '../shared/catalog.ts';
 import { renderMarkdown } from './markdown.ts';
+import DiffWorker from './diff-worker.ts?worker';
 let sharedMonacoPromise;
 
 function loadMonacoModule() {
@@ -91,10 +92,10 @@ export function mountTool(toolId, root, context) {
         'editorIndentGuide.activeBackground1': muted,
         'editorWhitespace.foreground': line,
         'editorError.foreground': error,
-        'diffEditor.insertedTextBackground': `${fast}42`,
-        'diffEditor.removedTextBackground': `${error}42`,
-        'diffEditor.insertedLineBackground': `${fast}18`,
-        'diffEditor.removedLineBackground': `${error}18`,
+        'diffEditor.insertedTextBackground': '#00000000',
+        'diffEditor.removedTextBackground': '#00000000',
+        'diffEditor.insertedLineBackground': '#00000000',
+        'diffEditor.removedLineBackground': '#00000000',
         'diffEditor.diagonalFill': line,
         'scrollbar.shadow': '#00000000',
         'scrollbarSlider.background': `${muted}55`,
@@ -421,7 +422,6 @@ export function mountTool(toolId, root, context) {
         <section class="diff-pane diff-pane-original"><header>Original</header><div id="diff-original" class="monaco-host"></div></section>
         <section class="diff-pane diff-pane-modified"><header>Modified</header><div id="diff-modified" class="monaco-host"></div></section>
       </div>
-      <div id="diff-compute" class="diff-compute-host" aria-hidden="true"></div>
     </section>`;
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
@@ -430,27 +430,23 @@ export function mountTool(toolId, root, context) {
     const modifiedEditor = monaco.editor.create(root.querySelector('#diff-modified'), baseOptions);
     originalEditor.setModel(original); modifiedEditor.setModel(modified);
 
-    // Monaco still performs its advanced diff computation, but it is not the
-    // editing surface. Both visible panes remain ordinary fully-editable editors.
-    const compute = monaco.editor.createDiffEditor(root.querySelector('#diff-compute'), {
-      ...baseOptions, readOnly:true, originalEditable:false, renderSideBySide:true,
-      diffAlgorithm:'advanced', renderIndicators:false, renderMarginRevertIcon:false,
-      renderGutterMenu:false, minimap:{enabled:false}, overviewRulerLanes:0,
-    });
-    compute.setModel({original, modified});
+    // Diffing runs entirely in a dedicated worker. It uses the same advanced
+    // line/character algorithm as Monaco's DiffEditor, without mounting a
+    // second hidden DiffEditor or making its expensive alignment DOM part of
+    // the typing hot path.
+    const diffWorker = new DiffWorker();
+    let revision = 0;
+    let appliedRevision = -1;
+    let diffMappings = [];
     let originalDecorations = [], modifiedDecorations = [];
     const tokenKind = char => /[\p{L}\p{N}_$]/u.test(char) ? 'word' : /\s/u.test(char) ? 'space' : 'punct';
-    const expandWordRange = (model, startLine, startColumn, endLine, endColumn) => {
-      if (startLine !== endLine) return new monaco.Range(startLine,startColumn,endLine,endColumn);
-      const text = model.getLineContent(startLine);
+    const expandWordRange = (model, range) => {
+      const {startLineNumber,startColumn,endLineNumber,endColumn} = range;
+      if (startLineNumber !== endLineNumber) return new monaco.Range(startLineNumber,startColumn,endLineNumber,endColumn);
+      const text = model.getLineContent(startLineNumber);
       let start = Math.max(0,startColumn - 1), end = Math.max(start,endColumn - 1);
       if (start === end) {
-        // A zero-width inner change is usually an insertion/deletion. Only
-        // expand it when it sits inside a word (for example color -> colour),
-        // not when an entire word was inserted between whitespace.
-        if (!(start > 0 && start < text.length && tokenKind(text[start - 1]) === 'word' && tokenKind(text[start]) === 'word')) {
-          return null;
-        }
+        if (!(start > 0 && start < text.length && tokenKind(text[start - 1]) === 'word' && tokenKind(text[start]) === 'word')) return null;
         while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
         while (end < text.length && tokenKind(text[end]) === 'word') end++;
       } else {
@@ -464,54 +460,78 @@ export function mountTool(toolId, root, context) {
         if (leftKind === 'word') while (start > 0 && tokenKind(text[start - 1]) === 'word') start--;
         if (rightKind === 'word') while (end < text.length && tokenKind(text[end]) === 'word') end++;
       }
-      return end > start ? new monaco.Range(startLine,start + 1,endLine,end + 1) : null;
+      return end > start ? new monaco.Range(startLineNumber,start + 1,endLineNumber,end + 1) : null;
     };
-    const markInnerChange = (model, side, change, className, marks) => {
-      const prefix = side === 'original' ? 'original' : 'modified';
-      const range = expandWordRange(model,
-        change[`${prefix}StartLineNumber`], change[`${prefix}StartColumn`],
-        change[`${prefix}EndLineNumber`], change[`${prefix}EndColumn`]);
-      if (range) marks.push({range,options:{inlineClassName:className}});
-    };
-    const paintDiff = () => {
-      const changes = compute.getLineChanges?.() || [];
+    const lineDecoration = (start, endExclusive, className) => endExclusive > start ? {
+      range:new monaco.Range(start,1,endExclusive - 1,1), options:{isWholeLine:true,className}
+    } : null;
+    const paintDiff = changes => {
       const leftMarks = [], rightMarks = [];
       for (const change of changes) {
-        if (change.charChanges?.length) {
-          for (const inner of change.charChanges) {
-            markInnerChange(original,'original',inner,'diff-word-removed',leftMarks);
-            markInnerChange(modified,'modified',inner,'diff-word-added',rightMarks);
+        if (change.innerChanges.length) {
+          for (const inner of change.innerChanges) {
+            const leftRange = expandWordRange(original,inner.originalRange);
+            const rightRange = expandWordRange(modified,inner.modifiedRange);
+            if (leftRange) leftMarks.push({range:leftRange,options:{inlineClassName:'diff-word-removed'}});
+            if (rightRange) rightMarks.push({range:rightRange,options:{inlineClassName:'diff-word-added'}});
           }
-          continue;
+        } else {
+          const leftLine = lineDecoration(change.originalStartLineNumber,change.originalEndLineNumberExclusive,'diff-line-removed');
+          const rightLine = lineDecoration(change.modifiedStartLineNumber,change.modifiedEndLineNumberExclusive,'diff-line-added');
+          if (leftLine) leftMarks.push(leftLine);
+          if (rightLine) rightMarks.push(rightLine);
         }
-        // Monaco can omit inner changes for very large edits. Keep those edits
-        // visible rather than silently dropping the diff.
-        if (change.originalEndLineNumber > 0) leftMarks.push({
-          range:new monaco.Range(change.originalStartLineNumber,1,Math.max(change.originalStartLineNumber,change.originalEndLineNumber),1),
-          options:{isWholeLine:true,className:'diff-line-removed'}
-        });
-        if (change.modifiedEndLineNumber > 0) rightMarks.push({
-          range:new monaco.Range(change.modifiedStartLineNumber,1,Math.max(change.modifiedStartLineNumber,change.modifiedEndLineNumber),1),
-          options:{isWholeLine:true,className:'diff-line-added'}
-        });
       }
       originalDecorations = originalEditor.deltaDecorations(originalDecorations,leftMarks);
       modifiedDecorations = modifiedEditor.deltaDecorations(modifiedDecorations,rightMarks);
     };
-    const diffUpdate = compute.onDidUpdateDiff(paintDiff);
+    diffWorker.onmessage = event => {
+      const result = event.data;
+      if (result.type !== 'result' || result.revision < revision || result.revision < appliedRevision) return;
+      appliedRevision = result.revision;
+      diffMappings = result.changes;
+      paintDiff(diffMappings);
+    };
+    diffWorker.postMessage({type:'init',revision,original:left,modified:right});
 
+    // Map a model line through the current diff. Unlike percentage mirroring,
+    // this preserves corresponding source lines across inserted/deleted blocks.
+    const mapDiffLine = (line, fromOriginal) => {
+      let delta = 0;
+      for (const change of diffMappings) {
+        const aStart = fromOriginal ? change.originalStartLineNumber : change.modifiedStartLineNumber;
+        const aEnd = fromOriginal ? change.originalEndLineNumberExclusive : change.modifiedEndLineNumberExclusive;
+        const bStart = fromOriginal ? change.modifiedStartLineNumber : change.originalStartLineNumber;
+        const bEnd = fromOriginal ? change.modifiedEndLineNumberExclusive : change.originalEndLineNumberExclusive;
+        const aLength = Math.max(0,aEnd - aStart), bLength = Math.max(0,bEnd - bStart);
+        if (line < aStart) break;
+        if (aLength > 0 && line < aEnd) {
+          if (bLength <= 1 || aLength <= 1) return Math.max(1,bStart);
+          const ratio = (line - aStart) / (aLength - 1);
+          return Math.max(1,Math.round(bStart + ratio * (bLength - 1)));
+        }
+        delta += bLength - aLength;
+      }
+      return Math.max(1,line + delta);
+    };
     let syncingScroll = false;
-    const syncScroll = (from, to) => {
+    const syncScroll = (from, to, fromOriginal) => {
       if (syncingScroll) return;
       syncingScroll = true;
-      const maxFrom = Math.max(1, from.getScrollHeight() - from.getLayoutInfo().height);
-      const maxTo = Math.max(0, to.getScrollHeight() - to.getLayoutInfo().height);
-      to.setScrollTop(from.getScrollTop() / maxFrom * maxTo, monaco.editor.ScrollType.Immediate);
-      to.setScrollLeft(from.getScrollLeft(), monaco.editor.ScrollType.Immediate);
+      if (from.getModel() && to.getModel()) {
+        const visible = from.getVisibleRanges()[0];
+        if (visible) {
+          const sourceLine = visible.startLineNumber;
+          const targetLine = Math.min(to.getModel().getLineCount(),mapDiffLine(sourceLine,fromOriginal));
+          const viewportOffset = from.getTopForLineNumber(sourceLine) - from.getScrollTop();
+          to.setScrollTop(Math.max(0,to.getTopForLineNumber(targetLine) - viewportOffset),monaco.editor.ScrollType.Immediate);
+        }
+        to.setScrollLeft(from.getScrollLeft(),monaco.editor.ScrollType.Immediate);
+      }
       requestAnimationFrame(() => { syncingScroll = false; });
     };
-    const os = originalEditor.onDidScrollChange(e => { if (e.scrollTopChanged || e.scrollLeftChanged) syncScroll(originalEditor, modifiedEditor); });
-    const ms = modifiedEditor.onDidScrollChange(e => { if (e.scrollTopChanged || e.scrollLeftChanged) syncScroll(modifiedEditor, originalEditor); });
+    const os = originalEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(originalEditor,modifiedEditor,true); });
+    const ms = modifiedEditor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) syncScroll(modifiedEditor,originalEditor,false); });
 
     const applyLayout = () => {
       const shell = root.querySelector('.diff-tool');
@@ -530,10 +550,12 @@ export function mountTool(toolId, root, context) {
       context.querySelectorAll('[data-diff-layout]').forEach(button => button.onclick = () => { layoutMode = button.dataset.diffLayout; applyLayout(); });
       context.querySelector('[data-diff-swap]').onclick = () => { const value=original.getValue(); original.setValue(modified.getValue()); modified.setValue(value); };
     };
+    const serializeChanges = event => event.changes.map(change => ({rangeOffset:change.rangeOffset,rangeLength:change.rangeLength,text:change.text}));
     const save = () => { set('left',original.getValue()); set('text',original.getValue()); set('right',modified.getValue()); };
-    const a=original.onDidChangeContent(save), b=modified.onDidChangeContent(save);
-    setTopContext(); paintDiff();
-    disposeTool = () => { a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffUpdate.dispose(); compute.dispose(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
+    const a=original.onDidChangeContent(event => { save(); revision++; diffWorker.postMessage({type:'edit',side:'original',revision,changes:serializeChanges(event)}); });
+    const b=modified.onDidChangeContent(event => { save(); revision++; diffWorker.postMessage({type:'edit',side:'modified',revision,changes:serializeChanges(event)}); });
+    setTopContext();
+    disposeTool = () => { a.dispose(); b.dispose(); os.dispose(); ms.dispose(); diffWorker.terminate(); originalEditor.dispose(); modifiedEditor.dispose(); original.dispose(); modified.dispose(); };
   }
 
   const digits = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';

@@ -1,6 +1,6 @@
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import * as monaco from 'monaco-editor/editor/editor.api';
+import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
+import JsonWorker from 'monaco-editor/language/json/json.worker?worker';
 
 type MonacoEnvironment = {
   getWorker(_: string, label: string): Worker;
@@ -17,22 +17,22 @@ const environment: MonacoEnvironment = {
 
 type LanguageLoader = () => Promise<unknown>;
 const languageLoaders: Record<string, LanguageLoader> = {
-  javascript: () => import('monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution'),
-  typescript: () => import('monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution'),
-  json: () => import('monaco-editor/esm/vs/language/json/monaco.contribution'),
-  html: () => import('monaco-editor/esm/vs/basic-languages/html/html.contribution'),
-  css: () => import('monaco-editor/esm/vs/basic-languages/css/css.contribution'),
-  markdown: () => import('monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution'),
-  python: () => import('monaco-editor/esm/vs/basic-languages/python/python.contribution'),
-  rust: () => import('monaco-editor/esm/vs/basic-languages/rust/rust.contribution'),
-  go: () => import('monaco-editor/esm/vs/basic-languages/go/go.contribution'),
-  java: () => import('monaco-editor/esm/vs/basic-languages/java/java.contribution'),
-  cpp: () => import('monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution'),
-  c: () => import('monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution'),
-  shell: () => import('monaco-editor/esm/vs/basic-languages/shell/shell.contribution'),
-  sql: () => import('monaco-editor/esm/vs/basic-languages/sql/sql.contribution'),
-  yaml: () => import('monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution'),
-  xml: () => import('monaco-editor/esm/vs/basic-languages/xml/xml.contribution'),
+  javascript: () => import('monaco-editor/languages/definitions/javascript/register'),
+  typescript: () => import('monaco-editor/languages/definitions/typescript/register'),
+  json: () => import('monaco-editor/language/json/monaco.contribution'),
+  html: () => import('monaco-editor/languages/definitions/html/register'),
+  css: () => import('monaco-editor/languages/definitions/css/register'),
+  markdown: () => import('monaco-editor/languages/definitions/markdown/register'),
+  python: () => import('monaco-editor/languages/definitions/python/register'),
+  rust: () => import('monaco-editor/languages/definitions/rust/register'),
+  go: () => import('monaco-editor/languages/definitions/go/register'),
+  java: () => import('monaco-editor/languages/definitions/java/register'),
+  cpp: () => import('monaco-editor/languages/definitions/cpp/register'),
+  c: () => import('monaco-editor/languages/definitions/cpp/register'),
+  shell: () => import('monaco-editor/languages/definitions/shell/register'),
+  sql: () => import('monaco-editor/languages/definitions/sql/register'),
+  yaml: () => import('monaco-editor/languages/definitions/yaml/register'),
+  xml: () => import('monaco-editor/languages/definitions/xml/register'),
 };
 
 const loading = new Map<string, Promise<unknown>>();

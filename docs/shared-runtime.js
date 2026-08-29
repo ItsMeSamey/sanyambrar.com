@@ -1073,7 +1073,7 @@
 		};
 		const observeExternalLinks = () => new MutationObserver((records) => {
 			for (const record of records) for (const node of record.addedNodes) {
-				if (!(node instanceof Element)) continue;
+				if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
 				if (node.matches?.("a[href]")) normalizeExternalLinks(node.parentElement || document);
 				else normalizeExternalLinks(node);
 			}
@@ -1863,7 +1863,7 @@
 		};
 		stampLinkCopyLabels();
 		new MutationObserver((records) => {
-			for (const record of records) for (const node of record.addedNodes) if (node instanceof Element) stampLinkCopyLabels(node);
+			for (const record of records) for (const node of record.addedNodes) if (node instanceof Element && !node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) stampLinkCopyLabels(node);
 		}).observe(document.documentElement, {
 			childList: true,
 			subtree: true
@@ -1995,9 +1995,10 @@
 			total: target.scrollHeight
 		};
 		const setScroll = (target, top) => target === document.scrollingElement ? scrollTo({ top }) : target.scrollTop = top;
+		const virtualScrollerOptOut = (target) => target instanceof Element && !!target.closest("[data-samey-runtime], .monaco-host, .monaco-editor, .monaco-diff-editor, [data-samey-native-scrollbars]");
 		const virtualScrollerEligible = (target) => {
 			if (target === document.scrollingElement) return true;
-			if (!(target instanceof Element) || !target.isConnected || target.closest("[data-samey-runtime]")) return false;
+			if (!(target instanceof Element) || !target.isConnected || virtualScrollerOptOut(target)) return false;
 			const style = getComputedStyle(target);
 			if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= .001) return false;
 			const r = target.getBoundingClientRect();
@@ -2152,8 +2153,8 @@
 			let scanRaf = 0;
 			const pending = /* @__PURE__ */ new Set();
 			const scheduleTargets = (targets) => {
-				for (const target of targets) if (target instanceof Element && !target.closest("[data-samey-runtime]")) pending.add(target);
-				if (scanRaf) return;
+				for (const target of targets) if (target instanceof Element && !virtualScrollerOptOut(target)) pending.add(target);
+				if (scanRaf || !pending.size) return;
 				scanRaf = requestAnimationFrame(() => {
 					scanRaf = 0;
 					for (const target of pending) {
@@ -2171,7 +2172,6 @@
 					for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
 				}
 				scheduleTargets(targets);
-				scheduleVirtualBars();
 			}).observe(document.body, {
 				subtree: true,
 				childList: true

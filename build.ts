@@ -414,9 +414,14 @@ ${keybrViewSwitch}`;
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
-  must(toolsSource.includes("monaco.editor.create(root.querySelector('#diff-original')") && toolsSource.includes("monaco.editor.create(root.querySelector('#diff-modified')"),
-    "ux: both Diff sides must remain ordinary editable editors");
-  must(toolsStyle.includes('@media(max-width:700px){.diff-panes,.diff-tool[data-layout="split"] .diff-panes{grid-template-columns:1fr;grid-template-rows:1fr 1fr}') &&
+  const rootPackage = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const diffWorkerSource = await readFile(join(ROOT, "src/tools/diff-worker.ts"), "utf8");
+  must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" &&
+    toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('const diffWorker = new DiffWorker()') &&
+    toolsSource.includes('const mapDiffLine =') && !toolsSource.includes("#diff-compute") && !toolsSource.includes('createDiffEditor(') &&
+    diffWorkerSource.includes('DefaultLinesDiffComputer') && diffWorkerSource.includes('maxComputationTimeMs: 75'),
+    "ux: Diff must use a dedicated advanced-diff worker with ordinary editable Monaco panes and semantic scroll mapping");
+  must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:1fr 1fr') &&
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
     "ux: narrow Diff and Markdown combined views must stack top-to-bottom");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
@@ -446,6 +451,9 @@ ${keybrViewSwitch}`;
     sharedSite.includes("window.open(targetUrl.href, '_blank', 'noopener,noreferrer')"),
     "ux: search must distinguish external destinations for click and keyboard activation");
   const sharedTheme = await readFile(join(ROOT, "src/shared/theme.ts"), "utf8");
+  must(sharedTheme.includes('const virtualScrollerOptOut =') && sharedTheme.includes('.monaco-host, .monaco-editor, .monaco-diff-editor') &&
+    sharedTheme.includes('if (scanRaf || !pending.size) return;'),
+    "performance: global virtual-scrollbar discovery must ignore Monaco-owned editor mutation trees");
   const appearanceConfig = await readFile(join(ROOT, "src/static/shared/appearance.json"), "utf8");
   must(appearanceConfig.includes('"warning":"#d4a72c"') && appearanceConfig.includes('"warning":"#facc15"') &&
     sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warningFg)') &&

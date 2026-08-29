@@ -14,9 +14,9 @@
     "@kobalte/core": "^0.13.13",
     "idb": "^8.0.3",
     "lucide-solid": "^1.37.0",
+    "monaco-editor": "0.56.0",
     "solid-js": "^1.9.15",
-    "vite-plugin-singlefile": "^2.3.3",
-    "monaco-editor": "0.52.2"
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
