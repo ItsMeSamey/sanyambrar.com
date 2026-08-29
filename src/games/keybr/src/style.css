@@ -96,8 +96,8 @@
   --Chart-hist-m__color: var(--keybr-chart-hist-m);
   --Chart-hist-r__color: var(--keybr-chart-hist-r);
 
-  --DailyGoal-bar__color: var(--primary-l2);
-  --DailyGoal-frame__color: var(--primary-d2);
+  --DailyGoal-bar__color: var(--site-fg, var(--secondary));
+  --DailyGoal-frame__color: color-mix(in srgb, var(--site-fg, var(--secondary)) 35%, transparent);
   --Calendar-caption__background-color: var(--primary-d1);
   --Calendar-headerCell__background-color: var(--primary-d2);
   --Calendar-cell--background-color: var(--primary-l1);

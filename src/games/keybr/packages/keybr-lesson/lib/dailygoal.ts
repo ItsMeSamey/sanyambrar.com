@@ -5,7 +5,7 @@ import { lessonProps } from "./settings.ts";
 export type DailyGoal = {
   /** Daily goal in minutes. */
   readonly goal: number;
-  /** Progress in range [0, 1]. */
+  /** Progress ratio. Values above 1 represent progress beyond the daily goal. */
   readonly value: number;
 };
 

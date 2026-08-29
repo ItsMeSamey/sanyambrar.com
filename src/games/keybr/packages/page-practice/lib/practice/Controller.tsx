@@ -30,6 +30,7 @@ export function Controller(props: {
       state={lesson.state()}
       lines={lesson.lines()}
       depressedKeys={lesson.depressedKeys()}
+      suffix={lesson.suffix()}
       lastLesson={lesson.lastLesson()}
       onResetLesson={lesson.handleResetLesson}
       onSkipLesson={lesson.handleSkipLesson}
@@ -52,6 +53,11 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     lessonRevision();
     (keyboard as any)[LIVE_ACCESSOR]?.();
     return new LessonState(progress());
+  });
+
+  const suffix = createMemo(() => {
+    lines(); // Suffix mutates with TextInput; the line signal is its reactive clock.
+    return state().suffix;
   });
 
   createEffect(() => {
@@ -103,7 +109,8 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
           setLastLesson(makeLastLesson(result, value.textInput.steps));
           onResult()(result);
           setLessonRevision((revision) => revision + 1);
-          setLines(state().lines);
+          const next = state();
+          setLines(next.lines);
           setDepressedKeys([]);
           timeout.cancel();
         } else {
@@ -119,6 +126,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     state,
     lines,
     depressedKeys,
+    suffix,
     lastLesson,
     handleResetLesson,
     handleSkipLesson,

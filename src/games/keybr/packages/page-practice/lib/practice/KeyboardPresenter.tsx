@@ -18,7 +18,7 @@ export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
     const hasLastLesson = () => props.lastLesson != null;
     return (<VirtualKeyboard keyboard={keyboard} height="16rem">
       <KeyLayer depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} showColors={colors()}/>
-      {!hasLastLesson() && props.focus && pointers() && <PointersLayer suffix={props.suffix}/>}
+      {!hasLastLesson() && props.focus && props.depressedKeys.length === 0 && pointers() && <PointersLayer suffix={props.suffix}/>}
       {props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.misses)} modifier="m"/>)}
       {props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.hits)} modifier="h"/>)}
       {props.lastLesson && (<TransitionsLayer histogram={props.lastLesson.misses2} modifier="m"/>)}

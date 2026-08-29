@@ -10,16 +10,22 @@
   flex: 1;
   inline-size: 100%;
   block-size: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--site-fg, var(--text-color)) 10%, transparent);
+}
+
+.bar,
+.frame {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
 }
 
 .bar {
-  position: absolute;
   block-size: 8px;
-  background-color: var(--DailyGoal-bar__color);
 }
 
 .frame {
-  position: absolute;
-  block-size: 8px;
-  border: 1px solid var(--DailyGoal-frame__color);
+  inline-size: 100%;
+  border: 1px solid color-mix(in srgb, var(--site-fg, var(--text-color)) 35%, transparent);
 }
