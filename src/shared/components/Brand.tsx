@@ -7,15 +7,19 @@ export function HomeBrand(props:{class?:string;href?:string}) {
   </SmartLink>;
 }
 
-export const WORDLE_WORDMARK_COLORS = ['var(--site-fast-color, #16a34a)', 'var(--site-warning-color, #d4a72c)', 'var(--site-error, #dc2626)', 'var(--site-fast-color, #16a34a)', 'var(--site-effort-color, #2563eb)', 'var(--site-warning-color, #d4a72c)'] as const;
-export const WORDLE_BACK_COLORS = ['var(--site-error, #dc2626)', ...WORDLE_WORDMARK_COLORS] as const;
+type SemanticRole = 'accent' | 'error' | 'warning' | 'slow' | 'fast' | 'effort';
+export const WORDLE_WORDMARK_COLORS = ['fast', 'warning', 'error', 'fast', 'effort', 'warning'] as const satisfies readonly SemanticRole[];
+export const WORDLE_BACK_COLORS = ['error', ...WORDLE_WORDMARK_COLORS] as const satisfies readonly SemanticRole[];
 
 /** Render arbitrary text using Wordle-style cells. Callers may provide one color per cell. */
-export function WordleMark(props:{text:string;colors:readonly string[];class?:string;ariaLabel?:string}) {
+export function WordleMark(props:{text:string;colors:readonly SemanticRole[];class?:string;ariaLabel?:string}) {
   const text = () => props.text;
-  const color = (index:number) => props.colors[index % props.colors.length] ?? 'var(--site-muted, #787c7e)';
+  const role = (index:number) => props.colors[index % props.colors.length] ?? 'accent';
   return <span class={`wordle-text-mark${props.class ? ` ${props.class}` : ''}`} aria-label={props.ariaLabel ?? text()}>
-    <For each={text().split('')}>{(letter, index) => <i style={{background: color(index())}}>{letter}</i>}</For>
+    <For each={text().split('')}>{(letter, index) => {
+      const name = role(index());
+      return <i style={{background: `var(--site-${name}-fg)`, color: `var(--site-${name}-on-fg)`}}>{letter}</i>;
+    }}</For>
   </span>;
 }
 

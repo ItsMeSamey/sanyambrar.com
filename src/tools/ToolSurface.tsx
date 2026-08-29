@@ -1,7 +1,10 @@
-import { onCleanup, onMount } from 'solid-js';
+import { createContext, onCleanup, onMount, useContext, type Accessor } from 'solid-js';
 import type { ToolId } from '../shared/catalog.ts';
 
+export const ToolContext = createContext<Accessor<HTMLDivElement | undefined>>(() => undefined);
+
 export function ToolSurface(props:{tool:ToolId}) {
+  const context = useContext(ToolContext);
   let root!: HTMLDivElement;
   let dispose = () => {};
   let cancelled = false;
@@ -9,7 +12,7 @@ export function ToolSurface(props:{tool:ToolId}) {
     const releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
     void import('./tools.ts').then(module => {
       if (cancelled) return;
-      dispose = module.mountTool(props.tool, root);
+      dispose = module.mountTool(props.tool, root, context());
     }).catch(error => {
       if (cancelled) return;
       const box = document.createElement('div');

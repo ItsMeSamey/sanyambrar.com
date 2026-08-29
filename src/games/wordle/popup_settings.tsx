@@ -81,7 +81,7 @@ export default function Settings({soft, hard, showActive, showWordLength, onHard
   const [open, setOpen] = createSignal(false)
 
   return <Popover open={open()} onOpenChange={setOpen} placement='bottom-end' gutter={6} flip='top-end'>
-    <PopoverTrigger class='wordle-nav-button game-settings-trigger settings-trigger' aria-label='Settings'>
+    <PopoverTrigger class='top-icon site-topbar-icon game-settings-trigger settings-trigger' aria-label='Settings'>
       <IconSettings class='size-5' />
     </PopoverTrigger>
     <PopoverContent class='game-settings-popover wordle-settings-popover'>

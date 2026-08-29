@@ -1,15 +1,11 @@
-import { Match, Switch, createSignal, onCleanup, onMount } from 'solid-js';
+import { Show, createSignal, onCleanup, onMount } from 'solid-js';
 import * as Select from '@kobalte/core/select';
 import * as Tabs from '@kobalte/core/tabs';
 import Check from 'lucide-solid/icons/check';
 import ChevronsUpDown from 'lucide-solid/icons/chevrons-up-down';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
-import { DiffTool } from './DiffTool.tsx';
-import { EncodeTool } from './EncodeTool.tsx';
-import { MarkdownTool } from './MarkdownTool.tsx';
-import { NumbersTool } from './NumbersTool.tsx';
-import { TextTool } from './TextTool.tsx';
+import { ToolContext, ToolSurface } from './ToolSurface.tsx';
 
 const validTools = new Set<ToolId>(TOOLS.map(tool => tool.id));
 const toolOptions = [...TOOLS];
@@ -59,6 +55,7 @@ function ToolTabs(props:{active:ToolId}) {
 }
 
 export function ToolsPage() {
+  let context: HTMLDivElement | undefined;
   const [active, setActive] = createSignal<ToolId>(selectedTool());
   const sync = () => setActive(selectedTool());
   onMount(() => {
@@ -69,16 +66,10 @@ export function ToolsPage() {
     removeEventListener('popstate', sync);
     removeEventListener('samey-solid-routechange', sync);
   });
-  return <>
-    <TopBar contextClass="tools-topbar-context" context={<><ToolTabs active={active()}/><div class="tool-context" id="tool-context" aria-live="polite"/></>}/>
-    <main id="tools-root" class="tools-app">
-      <Switch fallback={<TextTool/>}>
-        <Match when={active() === 'text'}><TextTool/></Match>
-        <Match when={active() === 'base'}><EncodeTool/></Match>
-        <Match when={active() === 'diff'}><DiffTool/></Match>
-        <Match when={active() === 'number'}><NumbersTool/></Match>
-        <Match when={active() === 'markdown'}><MarkdownTool/></Match>
-      </Switch>
+  return <ToolContext.Provider value={() => context}>
+    <TopBar contextClass="tools-topbar-context" context={<><ToolTabs active={active()}/><div ref={el => context = el} class="tool-context" aria-live="polite"/></>}/>
+    <main class="tools-app">
+      <Show keyed when={active()}>{tool => <ToolSurface tool={tool}/>}</Show>
     </main>
-  </>;
+  </ToolContext.Provider>;
 }

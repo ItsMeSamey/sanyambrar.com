@@ -1,106 +1,120 @@
-import { TopBar } from '../../shared/components/TopBar.tsx';
+import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
 import { SettingsIcon } from '../../site/components/icons.tsx';
 import BarChart3 from 'lucide-solid/icons/chart-no-axes-column';
+import { createChainRefs } from './dom.ts';
 
-function Slider(props:{id:string;label:string;min:number;max:number}) {
-  return <label class="game-settings-slider" for={props.id}>
-    <span class="game-settings-slider-head"><span class="game-settings-slider-label">{props.label}</span><output id={`${props.id}-value`} class="game-settings-slider-value"/></span>
-    <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"/></span><input id={props.id} type="range" min={props.min} max={props.max} step="1"/></span>
+function Slider(props:{label:string;min:number;max:number;inputRef:(el:HTMLInputElement)=>void;outputRef:(el:HTMLOutputElement)=>void}) {
+  return <label class="game-settings-slider">
+    <span class="game-settings-slider-head"><span class="game-settings-slider-label">{props.label}</span><output ref={props.outputRef} class="game-settings-slider-value"/></span>
+    <span class="game-range-shell"><span class="game-range-track" aria-hidden="true"><span class="game-range-fill"/></span><input ref={props.inputRef} type="range" min={props.min} max={props.max} step="1"/></span>
   </label>;
 }
 
-const ChainGameBack = () => <button id="chain-menu-button" class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>;
-
 export function ChainPage() {
-  return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain()}>
+  const refs = createChainRefs();
+  const statsButton = () => <TopBarIconButton ref={el => refs.statsButtons.push(el)} label="Statistics"><BarChart3 aria-hidden="true"/></TopBarIconButton>;
+  const gameActions = (settings = false) => <GameTopBarActions ariaLabel="Chain Reaction">
+    {statsButton()}
+    {settings && <TopBarIconButton
+      ref={el => refs.settingsButton = el}
+      class="game-settings-trigger chain-settings-trigger"
+      label="Settings"
+      ariaControls="chain-settings"
+      ariaExpanded={false}
+    ><SettingsIcon/></TopBarIconButton>}
+  </GameTopBarActions>;
+
+  return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain(refs)}>
     <div class="chain-shell">
-      <section id="chain-opening" class="chain-opening chain-view">
-        <TopBar contextClass="chain-opening-actions" context={<button id="chain-stats-button" class="chain-icon-button" type="button" aria-label="Statistics"><BarChart3/></button>}/>
+      <section ref={el => refs.openingView = el} class="chain-opening chain-view">
+        <TopBar nav={gameActions()}/>
         <div class="chain-opening-inner">
           <ChainLiveMark class="chain-opening-logo"/>
           <div class="chain-mode-grid">
-            <article id="chain-resume-card" class="chain-mode-card chain-mode-card-primary">
-              <span id="chain-resume-eyebrow" class="chain-mode-eyebrow">Current game</span>
-              <h2 id="chain-resume-title">Continue</h2>
-              <p id="chain-resume-copy">Saved board</p>
-              <div id="chain-resume-spec" class="chain-mode-spec"/>
-              <button id="chain-resume" class="chain-mode-action" type="button">Continue game</button>
+            <article ref={el => refs.resumeCard = el} class="chain-mode-card chain-mode-card-primary">
+              <span ref={el => refs.resumeEyebrow = el} class="chain-mode-eyebrow">Current game</span>
+              <h2 ref={el => refs.resumeTitle = el}>Continue</h2>
+              <p ref={el => refs.resumeCopy = el}>Saved board</p>
+              <div ref={el => refs.resumeSpec = el} class="chain-mode-spec"/>
+              <button ref={el => refs.resumeButton = el} class="chain-mode-action" type="button">Continue game</button>
             </article>
             <article class="chain-mode-card">
               <span class="chain-mode-eyebrow">Quick match</span>
               <h2>Classic</h2>
               <div class="chain-mode-spec">9 × 6 board<br/>1 enemy</div>
-              <button id="chain-quick" class="chain-mode-action chain-mode-action-secondary" type="button">Start classic</button>
+              <button ref={el => refs.quickButton = el} class="chain-mode-action chain-mode-action-secondary" type="button">Start classic</button>
             </article>
             <article class="chain-mode-card">
               <span class="chain-mode-eyebrow">New board</span>
               <h2>Custom</h2>
               <div class="chain-preset-list">
-                <button class="chain-preset" type="button" data-rows="7" data-cols="5" data-enemies="1">Compact · 7 × 5 · 1 enemy</button>
-                <button class="chain-preset" type="button" data-rows="12" data-cols="8" data-enemies="2">Wide · 12 × 8 · 2 enemies</button>
-                <button class="chain-preset" type="button" data-rows="16" data-cols="10" data-enemies="3">Large · 16 × 10 · 3 enemies</button>
+                <button ref={el => refs.presets.push(el)} class="chain-preset" type="button" data-rows="7" data-cols="5" data-enemies="1">Compact · 7 × 5 · 1 enemy</button>
+                <button ref={el => refs.presets.push(el)} class="chain-preset" type="button" data-rows="12" data-cols="8" data-enemies="2">Wide · 12 × 8 · 2 enemies</button>
+                <button ref={el => refs.presets.push(el)} class="chain-preset" type="button" data-rows="16" data-cols="10" data-enemies="3">Large · 16 × 10 · 3 enemies</button>
               </div>
             </article>
           </div>
         </div>
       </section>
 
-      <section id="chain-stats" class="chain-view chain-stats-view" hidden>
-        <TopBar start={<button id="chain-stats-back" class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>}/>
+      <section ref={el => refs.statsView = el} class="chain-view chain-stats-view" hidden>
+        <TopBar start={<button ref={el => refs.statsBackButton = el} class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>} nav={gameActions()}/>
         <main class="chain-stats-page">
           <header><span class="chain-mode-eyebrow">All time</span><h1>Statistics</h1></header>
           <div class="chain-stats-grid">
-            <div><span>Games</span><strong id="chain-stat-games">0</strong></div>
-            <div><span>Wins</span><strong id="chain-stat-wins">0</strong></div>
-            <div><span>Win rate</span><strong id="chain-stat-rate">–</strong></div>
-            <div><span>Largest board</span><strong id="chain-stat-largest">–</strong></div>
+            <div><span>Games</span><strong ref={el => refs.statGames = el}>0</strong></div>
+            <div><span>Wins</span><strong ref={el => refs.statWins = el}>0</strong></div>
+            <div><span>Win rate</span><strong ref={el => refs.statRate = el}>–</strong></div>
+            <div><span>Largest board</span><strong ref={el => refs.statLargest = el}>–</strong></div>
           </div>
-          <section class="chain-stats-history"><div class="chain-stats-heading"><h2>Recent matches</h2></div><div id="chain-stat-recent" class="chain-stat-recent"/></section>
-          <section id="chain-replay" class="chain-replay" hidden>
+          <section class="chain-stats-history"><div class="chain-stats-heading"><h2>Recent matches</h2></div><div ref={el => refs.statRecent = el} class="chain-stat-recent"/></section>
+          <section ref={el => refs.replayPanel = el} class="chain-replay" hidden>
             <div class="chain-replay-head">
-              <div><span class="chain-mode-eyebrow">Replay</span><h2 id="chain-replay-title">Match replay</h2><p id="chain-replay-copy"/></div>
-              <button id="chain-replay-close" class="chain-replay-close" type="button">Close</button>
+              <div><span class="chain-mode-eyebrow">Replay</span><h2 ref={el => refs.replayTitle = el}>Match replay</h2><p ref={el => refs.replayCopy = el}/></div>
+              <button ref={el => refs.replayClose = el} class="chain-replay-close" type="button">Close</button>
             </div>
-            <div class="chain-replay-stage"><canvas id="chain-replay-canvas" aria-label="Chain Reaction match replay"/></div>
+            <div class="chain-replay-stage"><canvas ref={el => refs.replayCanvas = el} aria-label="Chain Reaction match replay"/></div>
             <div class="chain-replay-controls">
-              <button id="chain-replay-prev" type="button">Previous</button>
-              <button id="chain-replay-play" type="button">Play</button>
-              <button id="chain-replay-next" type="button">Next</button>
-              <button id="chain-replay-resume" class="chain-replay-resume" type="button">Resume from here</button>
-              <output id="chain-replay-status">Move 0 / 0</output>
+              <button ref={el => refs.replayPrev = el} type="button">Previous</button>
+              <button ref={el => refs.replayPlay = el} type="button">Play</button>
+              <button ref={el => refs.replayNext = el} type="button">Next</button>
+              <button ref={el => refs.replayResume = el} class="chain-replay-resume" type="button">Resume from here</button>
+              <output ref={el => refs.replayStatus = el}>Move 0 / 0</output>
             </div>
           </section>
         </main>
       </section>
 
-      <section id="chain-game" class="chain-view" hidden>
-        <TopBar start={<ChainGameBack/>} contextClass="chain-topbar-context" context={<>
-          <div id="chain-turn" class="chain-turn" aria-hidden="true">
-            <span class="chain-turn-item"><span>YOU</span><span id="chain-you-swatch" class="chain-turn-swatch"/></span>
-            <span class="chain-turn-item"><span>TURN</span><span id="chain-active-swatch" class="chain-turn-swatch"/></span>
-          </div>
-          <button id="chain-settings-button" class="game-settings-trigger chain-settings-trigger" type="button" aria-label="Settings" aria-expanded="false" aria-controls="chain-settings"><SettingsIcon/></button>
-        </>}/>
-        <aside id="chain-settings" class="game-settings-popover chain-settings" data-samey-overlay="" aria-hidden="true">
+      <section ref={el => refs.gameView = el} class="chain-view chain-game-view" hidden>
+        <TopBar
+          start={<button ref={el => refs.menuButton = el} class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>}
+          contextClass="chain-topbar-context"
+          context={<div ref={el => refs.turnEl = el} class="chain-turn" aria-hidden="true">
+            <span class="chain-turn-item"><span>YOU</span><span ref={el => refs.youSwatch = el} class="chain-turn-swatch"/></span>
+            <span class="chain-turn-item"><span>TURN</span><span ref={el => refs.activeSwatch = el} class="chain-turn-swatch"/></span>
+          </div>}
+          nav={gameActions(true)}
+        />
+        <aside ref={el => refs.settingsPanel = el} id="chain-settings" class="game-settings-popover chain-settings" data-samey-overlay="" aria-hidden="true">
           <div class="game-settings-body">
             <div class="game-settings-section-title">BOARD</div>
-            <Slider id="chain-rows" label="Rows" min={4} max={30}/>
-            <Slider id="chain-cols" label="Columns" min={4} max={30}/>
-            <Slider id="chain-enemies" label="Enemies" min={1} max={5}/>
-            <div class="game-settings-actions"><button id="chain-new-game" class="game-settings-action" type="button">Start new game</button></div>
+            <Slider label="Rows" min={4} max={30} inputRef={el => refs.rowsInput = el} outputRef={el => refs.rowsValue = el}/>
+            <Slider label="Columns" min={4} max={30} inputRef={el => refs.colsInput = el} outputRef={el => refs.colsValue = el}/>
+            <Slider label="Enemies" min={1} max={5} inputRef={el => refs.enemiesInput = el} outputRef={el => refs.enemiesValue = el}/>
+            <div class="game-settings-actions"><button ref={el => refs.newGameButton = el} class="game-settings-action" type="button">Start new game</button></div>
           </div>
         </aside>
-        <main id="chain-stage" class="chain-stage">
-          <canvas id="chain-canvas" role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
-          <div id="chain-status" class="sr-only" aria-live="polite"/>
+        <main ref={el => refs.stage = el} class="chain-stage">
+          <canvas ref={el => refs.canvas = el} role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
+          <div ref={el => refs.statusEl = el} class="sr-only" aria-live="polite"/>
         </main>
-        <section id="chain-result" class="chain-result" data-samey-overlay="" hidden aria-live="polite">
+        <section ref={el => refs.resultPanel = el} class="chain-result" data-samey-overlay="" hidden aria-live="polite">
           <span class="chain-result-eyebrow">Match complete</span>
-          <h2 id="chain-result-title">You win</h2>
-          <p id="chain-result-copy"/>
-          <div class="chain-result-actions"><button id="chain-play-again" class="chain-result-primary" type="button">Play again</button><button id="chain-result-menu" class="chain-result-secondary" type="button">Game menu</button></div>
+          <h2 ref={el => refs.resultTitle = el}>You win</h2>
+          <p ref={el => refs.resultCopy = el}/>
+          <div class="chain-result-actions"><button ref={el => refs.playAgainButton = el} class="chain-result-primary" type="button">Play again</button><button ref={el => refs.resultMenuButton = el} class="chain-result-secondary" type="button">Game menu</button></div>
         </section>
       </section>
     </div>

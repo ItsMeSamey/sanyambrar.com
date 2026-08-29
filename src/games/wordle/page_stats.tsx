@@ -9,8 +9,8 @@ import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value } from './words'
 import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { TopBar } from '../../shared/components/TopBar.tsx'
-import { WordleMark, WORDLE_BACK_COLORS } from '../../shared/components/Brand.tsx'
+import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx'
+import { WordleBackButton } from './WordleBackButton'
 
 interface GameStats {
   totalGames: number
@@ -222,7 +222,7 @@ export default function StatsPage() {
   onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
 
   return <main class='stats-page'>
-    <TopBar start={<button type='button' role='link' onClick={() => setP(Page.Wordle)} class='backline wordle-wordle-back'><WordleMark text='<WORDLE' colors={WORDLE_BACK_COLORS} class='wordle-back-wordmark' ariaLabel='Back to Wordle'/></button>}/>
+    <TopBar start={<WordleBackButton onClick={() => setP(Page.Wordle)}/>} nav={<GameTopBarActions ariaLabel='Wordle'><StatsPageTrigger /></GameTopBarActions>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
@@ -234,7 +234,7 @@ export default function StatsPage() {
 }
 
 export function StatsPageTrigger(): JSX.Element {
-  return <button type='button' class='wordle-nav-button' onClick={e => { e.stopPropagation(); setP(Page.Stats) }} aria-label='Statistics'>
-    <BarChart3 class='size-5 stroke-foreground' />
-  </button>
+  return <TopBarIconButton label='Statistics' onClick={e => { e.stopPropagation(); setP(Page.Stats) }}>
+    <BarChart3 aria-hidden='true' />
+  </TopBarIconButton>
 }

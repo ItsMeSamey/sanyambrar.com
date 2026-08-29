@@ -156,7 +156,7 @@
 
 /* Solid UI-style checkbox: actual multi-select semantics, not a switch. */
 .keybr-checkbox { display:inline-flex; min-width:0; align-items:center; gap:.65rem; cursor:pointer; }
-.keybr-checkbox-control { display:grid; place-items:center; width:1.35rem; height:1.35rem; flex:0 0 1.35rem; border:1px solid var(--site-line,#d3d6da); border-radius:4px; color:var(--site-bg,#fff); background:var(--site-bg,#fff); transition:border-color var(--site-fast,110ms) var(--site-ease-out,ease),background-color var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease); }
+.keybr-checkbox-control { display:grid; place-items:center; width:1.35rem; height:1.35rem; flex:0 0 1.35rem; border:1px solid var(--site-line,#d3d6da); border-radius:4px; color:var(--site-on-fg,#fff); background:var(--site-bg,#fff); transition:border-color var(--site-fast,110ms) var(--site-ease-out,ease),background-color var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease); }
 .keybr-checkbox-control[data-checked] { border-color:var(--site-fg,#121213); background:var(--site-fg,#121213); }
 .keybr-checkbox-control:focus-visible,.keybr-checkbox:focus-within .keybr-checkbox-control { box-shadow:0 0 0 2px color-mix(in srgb,var(--site-accent,#787c7e) 32%,transparent); }
 .keybr-checkbox-indicator,.keybr-checkbox-indicator svg { display:block; width:1rem; height:1rem; }

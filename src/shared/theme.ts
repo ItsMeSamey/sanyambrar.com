@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { animateRootSwap } from './transitions.ts';
+import { contrastText } from './contrast.ts';
 import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry } from './loadingSvg.ts';
 (() => {
   const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
@@ -203,9 +204,15 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     root.style.setProperty("--site-muted", mix(theme.text, theme.background, .42));
     root.style.setProperty("--site-line", line);
     root.style.setProperty("--site-soft", soft);
+    root.style.setProperty("--site-on-fg", contrastText(theme.text));
+    root.style.setProperty("--site-on-bg", contrastText(theme.background));
     for (const role of semanticRoles) {
-      root.style.setProperty(`--site-${role}-fg`, theme[`${role}Fg`]);
-      root.style.setProperty(`--site-${role}-bg`, theme[`${role}Bg`]);
+      const fg = theme[`${role}Fg`];
+      const bg = theme[`${role}Bg`];
+      root.style.setProperty(`--site-${role}-fg`, fg);
+      root.style.setProperty(`--site-${role}-bg`, bg);
+      root.style.setProperty(`--site-${role}-on-fg`, contrastText(fg));
+      root.style.setProperty(`--site-${role}-on-bg`, contrastText(bg));
     }
     root.style.setProperty("--site-accent", theme.accentFg);
     root.style.setProperty("--site-error", theme.errorFg);
@@ -231,6 +238,14 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     }
 
     if (root.dataset.siteKind === "wordle") {
+      const infoBg = mix(theme.background, theme.effortFg, .18);
+      const successBg = mix(theme.background, theme.fastFg, .18);
+      const warningBg = mix(theme.background, theme.warningFg, .18);
+      const errorBg = mix(theme.background, theme.errorFg, .16);
+      const stateErrorBg = mix(theme.background, theme.errorFg, .68);
+      const stateWarningBg = mix(theme.background, theme.warningFg, .76);
+      const stateFastBg = mix(theme.background, theme.fastFg, .76);
+      const stateEffortBg = mix(theme.background, theme.effortFg, .70);
       root.style.setProperty("--background", hsl(theme.background));
       root.style.setProperty("--foreground", hsl(theme.text));
       root.style.setProperty("--card", hsl(theme.background));
@@ -238,7 +253,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       root.style.setProperty("--popover", hsl(theme.background));
       root.style.setProperty("--popover-foreground", hsl(theme.text));
       root.style.setProperty("--primary", hsl(theme.text));
-      root.style.setProperty("--primary-foreground", hsl(theme.background));
+      root.style.setProperty("--primary-foreground", hsl(contrastText(theme.text)));
       root.style.setProperty("--secondary", hsl(soft));
       root.style.setProperty("--secondary-foreground", hsl(theme.text));
       root.style.setProperty("--muted", hsl(soft));
@@ -248,16 +263,28 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       root.style.setProperty("--border", hsl(line));
       root.style.setProperty("--input", hsl(line));
       root.style.setProperty("--ring", hsl(theme.accentFg));
-      root.style.setProperty("--info", hsl(mix(theme.effortFg, theme.background, .82)));
+      root.style.setProperty("--info", hsl(infoBg));
       root.style.setProperty("--info-foreground", hsl(theme.effortFg));
-      root.style.setProperty("--success", hsl(mix(theme.fastFg, theme.background, .82)));
+      root.style.setProperty("--info-on-bg", hsl(contrastText(infoBg)));
+      root.style.setProperty("--success", hsl(successBg));
       root.style.setProperty("--success-foreground", hsl(theme.fastFg));
-      root.style.setProperty("--warning", hsl(mix(theme.warningFg, theme.background, .82)));
+      root.style.setProperty("--success-on-bg", hsl(contrastText(successBg)));
+      root.style.setProperty("--warning", hsl(warningBg));
       root.style.setProperty("--warning-foreground", hsl(theme.warningFg));
-      root.style.setProperty("--error", hsl(mix(theme.errorFg, theme.background, .84)));
+      root.style.setProperty("--warning-on-bg", hsl(contrastText(warningBg)));
+      root.style.setProperty("--error", hsl(errorBg));
       root.style.setProperty("--error-foreground", hsl(theme.errorFg));
+      root.style.setProperty("--error-on-bg", hsl(contrastText(errorBg)));
       root.style.setProperty("--destructive", hsl(theme.errorFg));
-      root.style.setProperty("--destructive-foreground", hsl(theme.background));
+      root.style.setProperty("--destructive-foreground", hsl(contrastText(theme.errorFg)));
+      root.style.setProperty("--wordle-state-r-bg", stateErrorBg);
+      root.style.setProperty("--wordle-state-r-fg", contrastText(stateErrorBg));
+      root.style.setProperty("--wordle-state-y-bg", stateWarningBg);
+      root.style.setProperty("--wordle-state-y-fg", contrastText(stateWarningBg));
+      root.style.setProperty("--wordle-state-g-bg", stateFastBg);
+      root.style.setProperty("--wordle-state-g-fg", contrastText(stateFastBg));
+      root.style.setProperty("--wordle-state-b-bg", stateEffortBg);
+      root.style.setProperty("--wordle-state-b-fg", contrastText(stateEffortBg));
       root.style.setProperty("--wordle-key-neutral", mix(theme.text, theme.background, theme.tone === "dark" ? .78 : .74));
     }
 
@@ -1497,7 +1524,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     // or snap in with no transition.
     if (document.documentElement.dataset.siteKind === 'keybr') return document.getElementById('app');
     if (document.documentElement.hasAttribute('data-static-article')) return document.querySelector('.article-route');
-    return document.querySelector('#solid-site-app,#wordle-root,.site-route,.article-route');
+    return document.querySelector('#solid-site-app,[data-wordle-root],.site-route,.article-route');
   };
   const waitForDestinationRoot = async () => {
     for (let i = 0; i < 90; i++) {

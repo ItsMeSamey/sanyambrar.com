@@ -9,7 +9,7 @@ export function EffortLegend(solidProps: {
     return (<>
       <FormattedMessage id="t_Daily_goal:" defaultMessage="Daily goal:"/>{" "}
       {[1.0, 0.75, 0.5, 0.25, 0.0].map((value) => (<span class={styles.cell}>
-          <span class={styles.item} style={{ "background-color": String(solidProps.effort.shade(value)) }}>
+          <span class={styles.item} style={{ "background-color": String(solidProps.effort.shade(value)), color: solidProps.effort.textShade(value) }}>
             {formatPercents(value)}
           </span>
         </span>))}

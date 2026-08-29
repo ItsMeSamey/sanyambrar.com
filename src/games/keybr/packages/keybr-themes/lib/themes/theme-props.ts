@@ -4,4 +4,5 @@ export type PropName =
   | "--fast-key-color"
   | "--slow-key-background-color"
   | "--fast-key-background-color"
-  | "--effort-color";
+  | "--effort-color"
+  | "--Calendar-cell--background-color";

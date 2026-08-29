@@ -13,9 +13,11 @@ import { binarySearch, hasPrefix, wordAt, wordCount } from './word-list'
 import { StatsPageTrigger } from './page_stats'
 import { ShareTrigger } from './page_share'
 import { ChallengeConfig, createRandomChallenge, DAILY_CHALLENGE_VERSION, disabledLettersForWord, gameStorageKey, legacyGameStorageKey, getDailyChallenge, isChallengeConfig, isChallengeSettings, isValidDateKey, localDateKey, GAME_QUERY, parseChallenge, serializeChallenge } from './challenge'
-import { TopBar } from '../../shared/components/TopBar.tsx'
-import { WordleMark, WORDLE_BACK_COLORS, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
+import { GameTopBarActions, TopBar } from '../../shared/components/TopBar.tsx'
+import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
+import { WordleBackButton } from './WordleBackButton'
 import { animateRootSwap } from '../../shared/transitions.ts'
+import { pageRoot } from '../../utils/navigation.ts'
 
 type WordleStringState = 'g' | 'y' | 'r'
 type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | '⏎' | '⌫'
@@ -612,12 +614,7 @@ export default function Wordle() {
     setChallengeQuery(hard, soft.fastInvalidate, true)
     setShowOpening(false)
   })
-  const swapWordleView = (commit: () => void, direction: 'forward' | 'back') => animateRootSwap(
-    document.getElementById('wordle-root'),
-    commit,
-    () => document.getElementById('wordle-root'),
-    direction,
-  )
+  const swapWordleView = (commit: () => void, direction: 'forward' | 'back') => animateRootSwap(pageRoot(), commit, pageRoot, direction)
   const applyConfig = (config: ChallengeConfig) => swapWordleView(() => commitConfig(config), 'forward')
 
   const startDaily = () => {
@@ -661,11 +658,18 @@ export default function Wordle() {
   }
   const gameKey = () => gameStorageKey({...hard})
 
-  const gameContext = () => <><WordleModeMark mode={hard.mode}/><span class='wordle-topbar-actions'><StatsPageTrigger />{Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}</span></>
-  const wordleBack = () => <button type='button' role='link' onClick={chooseMode} class='backline wordle-wordle-back'><WordleMark text='<WORDLE' colors={WORDLE_BACK_COLORS} class='wordle-back-wordmark' ariaLabel='Back to Wordle'/></button>
+  const gameActions = () => <GameTopBarActions ariaLabel='Wordle'>
+    <StatsPageTrigger />
+    {!showOpening() && Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}
+  </GameTopBarActions>
 
   return <>
-    <TopBar start={!showOpening() ? wordleBack() : undefined} contextClass='wordle-topbar-context' context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span> : gameContext()}/>
+    <TopBar
+      start={!showOpening() ? <WordleBackButton onClick={chooseMode}/> : undefined}
+      contextClass='wordle-topbar-context'
+      context={!showOpening() ? <WordleModeMark mode={hard.mode}/> : undefined}
+      nav={gameActions()}
+    />
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       <For each={[gameKey()]}>{() => RenderWordleModel(hard, soft, nextChallenge, chooseMode)}</For>
     </Show>

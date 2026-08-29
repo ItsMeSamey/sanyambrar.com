@@ -56,7 +56,7 @@
   --textinput--special__color: color-mix(in srgb, var(--primary) 50%, var(--secondary));
   --textinput--hit__color: color-mix(in srgb, var(--primary) 40%, var(--secondary));
   --textinput--miss__color: var(--error);
-  --textinput-cursor__color: var(--background-color);
+  --textinput-cursor__color: var(--site-on-fg, var(--background-color));
   --textinput-cursor__background-color: var(--textinput__color);
 
   --LessonKey--included__color: var(--secondary-d1);
@@ -76,7 +76,7 @@
   --KeyboardKey-button__color: var(--primary);
   --KeyboardKey-button--depressed__color: var(--secondary);
   --KeyboardKey-symbol__color: var(--secondary);
-  --KeyboardKey-symbol--depressed__color: var(--primary);
+  --KeyboardKey-symbol--depressed__color: var(--site-on-fg, var(--primary));
   --KeyboardKey-symbol--dead__color: var(--slow-key-color);
   --KeyboardKey-symbol--ligature__color: var(--effort-color);
   --KeyboardKey-pointer__color: var(--site-fg, var(--secondary));
@@ -218,8 +218,3 @@ ol, ul { padding-inline: 2rem 0; font-weight: normal; }
 text { text-rendering: optimizeLegibility; }
 
 ::selection { color: var(--primary); background-color: var(--secondary); }
-
-.keybr-topbar-nav { height:100%; }
-.keybr-topbar-nav .site-topbar-icon { color:var(--site-muted,var(--text-color-f2)); }
-.keybr-topbar-nav .site-topbar-icon:hover,
-.keybr-topbar-nav .site-topbar-icon:focus-visible { color:var(--site-fg,var(--text-color)); }

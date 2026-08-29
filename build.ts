@@ -125,8 +125,10 @@ async function verifySourceArchitecture() {
     must(existsSync(join(ROOT, dir)), `architecture: missing ${dir}`);
   must(!existsSync(join(ROOT, "keybr")) && !existsSync(join(ROOT, "static")),
     "architecture: Keybr/static sources must live under src/");
+  must(existsSync(join(ROOT, "src/tools/Tools.tsx")) && existsSync(join(ROOT, "src/tools/ToolSurface.tsx")),
+    "architecture: tools must use the shared ToolSurface");
   for (const file of ["TextTool.tsx", "EncodeTool.tsx", "DiffTool.tsx", "NumbersTool.tsx", "MarkdownTool.tsx"])
-    must(existsSync(join(ROOT, "src/tools", file)), `architecture: missing src/tools/${file}`);
+    must(!existsSync(join(ROOT, "src/tools", file)), `architecture: redundant tool wrapper remains: src/tools/${file}`);
   const sourceFiles = await walk(join(ROOT, "src"), (_path, name) => /\.(?:ts|tsx|html|css)$/.test(name));
   const sources = await Promise.all(sourceFiles.map(async path => [path, await readFile(path, "utf8")] as const));
   const topBarImplementations = sources.filter(([, text]) => text.includes('<header class="site-topbar">'));
@@ -192,21 +194,27 @@ ${keybrViewSwitch}`;
   const wordlePage = await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8");
   const wordleStats = await readFile(join(ROOT, "src/games/wordle/page_stats.tsx"), "utf8");
   const wordleStyle = await readFile(join(ROOT, "src/games/wordle/style.css"), "utf8");
-  must(wordlePage.includes("context={showOpening() ? <span class='wordle-topbar-actions'><StatsPageTrigger /></span>"),
-    "ux: Wordle opening screen must expose Statistics directly");
+  const wordleBackButton = await readFile(join(ROOT, "src/games/wordle/WordleBackButton.tsx"), "utf8");
+  must(wordlePage.includes("<GameTopBarActions ariaLabel='Wordle'>") && wordlePage.includes("<StatsPageTrigger />") &&
+    wordlePage.includes("nav={gameActions()}") && !wordlePage.includes("wordle-topbar-actions"),
+    "ux: Wordle must expose Statistics through the shared game action rail");
   const wordleBrand = await readFile(join(ROOT, "src/shared/components/Brand.tsx"), "utf8");
-  must(wordleStats.includes("<WordleMark text='<WORDLE'") && !wordleStats.includes(">Wordle</BackLink>") && !wordleStats.includes("HomeBrand"),
-    "ux: Wordle Statistics must have one Wordle-cell back control to the picker");
-  must(wordlePage.includes("class='wordle-back-wordmark'") && !wordlePage.includes("MODES") && !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
+  must(wordleStats.includes("<WordleBackButton") && wordleBackButton.includes('WordleMark text="<WORDLE"') &&
+    !wordleStats.includes(">Wordle</BackLink>") && !wordleStats.includes("HomeBrand"),
+    "ux: Wordle Statistics must have one shared Wordle-cell back control to the picker");
+  must(wordleBackButton.includes('class="wordle-back-wordmark"') && !wordlePage.includes("MODES") &&
+    !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
     "ux: Wordle subpages must render boxed <WORDLE cells and completion must not render a recap board");
-  must(wordleBrand.includes("colors:readonly string[]") && wordleBrand.includes("props.colors[index % props.colors.length]"),
-    "architecture: Wordle text rendering must be centralized and accept per-cell colors");
+  must(wordleBrand.includes("colors:readonly SemanticRole[]") && wordleBrand.includes("props.colors[index % props.colors.length]") &&
+    wordleBrand.includes("--site-${name}-on-fg"),
+    "architecture: Wordle text rendering must be centralized and use contrast-aware semantic colors");
   must(wordleStyle.includes("--wordle-key-neutral: color-mix(in srgb,var(--site-fg") &&
-    wordleStyle.includes("var(--site-error") && wordleStyle.includes("var(--site-warning-color") &&
-    wordleStyle.includes("var(--site-fast-color") && wordleStyle.includes("var(--site-effort-color") &&
-    wordleStyle.includes(".stats-page") && wordleStyle.includes("var(--color-background)") &&
-    wordleStyle.includes(".wordle-key-pressed{filter:none") && !wordleStyle.includes("filter:invert(1)"),
-    "ux: Wordle keyboard, game states, and subpage surfaces must derive from the site theme");
+    wordleStyle.includes("var(--wordle-state-r-bg)") && wordleStyle.includes("var(--wordle-state-r-fg)") &&
+    wordleStyle.includes("var(--wordle-state-y-bg)") && wordleStyle.includes("var(--wordle-state-g-bg)") &&
+    wordleStyle.includes("var(--wordle-state-b-bg)") && wordleStyle.includes(".stats-page") &&
+    wordleStyle.includes("var(--color-background)") && wordleStyle.includes(".wordle-key-pressed{filter:none") &&
+    !wordleStyle.includes("filter:invert(1)"),
+    "ux: Wordle keyboard, game states, and subpage surfaces must derive from contrast-safe site theme pairs");
   must(wordleStyle.includes(".stats-content { display: grid; gap: 16px; align-content: start; grid-auto-rows: max-content; }") &&
     wordleStyle.includes("color-mix(in srgb,var(--color-border) 12%,transparent)"),
     "ux: Wordle statistics rows must not stretch and game-grid contrast must stay subdued");
@@ -214,11 +222,12 @@ ${keybrViewSwitch}`;
   const chainPage = await readFile(join(ROOT, "src/games/chain/Chain.tsx"), "utf8");
   const chainEngine = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
   const chainLogo = await readFile(join(ROOT, "src/shared/components/ChainLogo.tsx"), "utf8");
-  must(chainPage.includes('id="chain-stats-button"') && chainPage.includes('id="chain-stats"') && chainEngine.includes("samey.chain.stats.v2"),
-    "ux: Chain Reaction must expose persistent statistics");
-  must(chainPage.includes('id="chain-stats-back"') && chainLogo.includes("const BACK_ROWS"),
+  must(chainPage.includes('<GameTopBarActions ariaLabel="Chain Reaction">') && chainPage.includes('label="Statistics"') &&
+    chainPage.includes('ref={el => refs.statsView = el}') && chainEngine.includes("samey.chain.stats.v2") && !chainEngine.includes("getElementById"),
+    "ux: Chain Reaction must expose persistent statistics through shared actions and direct refs");
+  must(chainPage.includes('ref={el => refs.statsBackButton = el}') && chainLogo.includes("const BACK_ROWS"),
     "ux: Chain Statistics must use the Chain back mark");
-  must(chainPage.includes('id="chain-replay-canvas"') && chainPage.includes('id="chain-replay-play"') &&
+  must(chainPage.includes('ref={el => refs.replayCanvas = el}') && chainPage.includes('ref={el => refs.replayPlay = el}') &&
     chainEngine.includes("moveHistory.push(encodeMove(owner, start))") && chainEngine.includes("buildReplayFrames") &&
     chainEngine.includes("LEGACY_STATS_KEY"),
     "ux: Chain statistics must persist player move locations and replay completed matches");
@@ -296,10 +305,16 @@ ${keybrViewSwitch}`;
   const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
   const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
   const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
-  must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") &&
-    keybrTopBar.indexOf("<AppearanceButton") < keybrTopBar.indexOf('label="Statistics"') &&
+  const keybrEffortLegend = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/EffortLegend.tsx"), "utf8");
+  const keybrEffort = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/effort.ts"), "utf8");
+  must(keybrEffortLegend.includes("effort.textShade(value)") && keybrEffort.includes("contrastTextRgb("),
+    "ux: Keybr effort legend text must adapt to its shaded background");
+  const sharedTopBar = await readFile(join(ROOT, "src/shared/components/TopBar.tsx"), "utf8");
+  const sharedGameActions = sharedTopBar.slice(sharedTopBar.indexOf("export function GameTopBarActions"), sharedTopBar.indexOf("export function PrimaryNav"));
+  must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") && keybrTopBar.includes("<GameTopBarActions") &&
     keybrTopBar.indexOf('label="Statistics"') < keybrTopBar.indexOf('label="Settings"') &&
-    keybrTopBar.indexOf('label="Settings"') < keybrTopBar.indexOf("<SearchButton") &&
+    sharedGameActions.indexOf("<AppearanceButton/>") < sharedGameActions.indexOf("{props.children}") &&
+    sharedGameActions.indexOf("{props.children}") < sharedGameActions.indexOf("<SearchButton/>") &&
     keybrTopBar.includes("<Show") && keybrTopBar.includes('fallback={<HomeBrand class="brand home-brand-link" />}') && keybrTopBar.includes("<KeybrMark") &&
     keybrControls.indexOf("<CircleHelp") < keybrControls.indexOf("<Maximize2") &&
     keybrControls.indexOf("<Maximize2") < keybrControls.indexOf("<Undo2") &&
@@ -387,9 +402,13 @@ ${keybrViewSwitch}`;
   const appearanceConfig = await readFile(join(ROOT, "src/static/shared/appearance.json"), "utf8");
   must(appearanceConfig.includes('"warning":"#d4a72c"') && appearanceConfig.includes('"warning":"#facc15"') &&
     sharedTheme.includes('root.style.setProperty("--site-warning-color", theme.warningFg)') &&
-    wordleBrand.includes("var(--site-warning-color") && wordleBrand.includes("var(--site-error") &&
-    wordleStyle.includes(".wordle-state-r { background: color-mix(in srgb, var(--site-error") &&
-    wordleStyle.includes(".wordle-state-y { background: color-mix(in srgb, var(--site-warning-color"),
+    wordleBrand.includes("['fast', 'warning', 'error', 'fast', 'effort', 'warning']") &&
+    sharedTheme.includes("const stateErrorBg = mix(theme.background, theme.errorFg") &&
+    sharedTheme.includes("const stateWarningBg = mix(theme.background, theme.warningFg") &&
+    sharedTheme.includes("const stateFastBg = mix(theme.background, theme.fastFg") &&
+    sharedTheme.includes("const stateEffortBg = mix(theme.background, theme.effortFg") &&
+    wordleStyle.includes(".wordle-state-r { background: var(--wordle-state-r-bg)") &&
+    wordleStyle.includes(".wordle-state-y { background: var(--wordle-state-y-bg)"),
     "ux: built-in themes and Wordle states must retain explicit red/yellow/green/blue semantics");
   must(sharedTheme.includes("setDragImage(dragPreview, Math.round(dragPreviewW / 2), Math.round(dragPreviewH / 2))") &&
     sharedTheme.includes("target.closest('[data-text-cursor-zone]')") && sharedTheme.includes("samey-cursor-link-fill") &&
@@ -544,7 +563,7 @@ async function buildKeybr() {
   const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
   let source = await readFile(html[0], "utf8");
-  const shared = '<link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
+  const shared = '<link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
   source = source.replace("</head>", `${shared}</head>`);
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);

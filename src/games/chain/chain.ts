@@ -1,57 +1,17 @@
 // @ts-nocheck
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
-export function mountChain() {
+export function mountChain(refs) {
   'use strict';
 
-  const canvas = document.getElementById('chain-canvas');
-  const stage = document.getElementById('chain-stage');
-  const statusEl = document.getElementById('chain-status');
-  const turnEl = document.getElementById('chain-turn');
-  const youSwatch = document.getElementById('chain-you-swatch');
-  const activeSwatch = document.getElementById('chain-active-swatch');
-  const settingsButton = document.getElementById('chain-settings-button');
-  const settingsPanel = document.getElementById('chain-settings');
-  const newGameButton = document.getElementById('chain-new-game');
-  const rowsInput = document.getElementById('chain-rows');
-  const colsInput = document.getElementById('chain-cols');
-  const enemiesInput = document.getElementById('chain-enemies');
-  const rowsValue = document.getElementById('chain-rows-value');
-  const colsValue = document.getElementById('chain-cols-value');
-  const enemiesValue = document.getElementById('chain-enemies-value');
-  const openingView = document.getElementById('chain-opening');
-  const gameView = document.getElementById('chain-game');
-  const menuButton = document.getElementById('chain-menu-button');
-  const resumeCard = document.getElementById('chain-resume-card');
-  const resumeButton = document.getElementById('chain-resume');
-  const resumeEyebrow = document.getElementById('chain-resume-eyebrow');
-  const resumeTitle = document.getElementById('chain-resume-title');
-  const resumeCopy = document.getElementById('chain-resume-copy');
-  const resumeSpec = document.getElementById('chain-resume-spec');
-  const quickButton = document.getElementById('chain-quick');
-  const resultPanel = document.getElementById('chain-result');
-  const resultTitle = document.getElementById('chain-result-title');
-  const resultCopy = document.getElementById('chain-result-copy');
-  const playAgainButton = document.getElementById('chain-play-again');
-  const resultMenuButton = document.getElementById('chain-result-menu');
-  const statsButton = document.getElementById('chain-stats-button');
-  const statsBackButton = document.getElementById('chain-stats-back');
-  const statsView = document.getElementById('chain-stats');
-  const statGames = document.getElementById('chain-stat-games');
-  const statWins = document.getElementById('chain-stat-wins');
-  const statRate = document.getElementById('chain-stat-rate');
-  const statLargest = document.getElementById('chain-stat-largest');
-  const statRecent = document.getElementById('chain-stat-recent');
-  const replayPanel = document.getElementById('chain-replay');
-  const replayCanvas = document.getElementById('chain-replay-canvas');
-  const replayTitle = document.getElementById('chain-replay-title');
-  const replayCopy = document.getElementById('chain-replay-copy');
-  const replayClose = document.getElementById('chain-replay-close');
-  const replayPrev = document.getElementById('chain-replay-prev');
-  const replayPlay = document.getElementById('chain-replay-play');
-  const replayNext = document.getElementById('chain-replay-next');
-  const replayResume = document.getElementById('chain-replay-resume');
-  const replayStatus = document.getElementById('chain-replay-status');
-  if (!canvas || !stage || !statusEl || !turnEl || !youSwatch || !activeSwatch || !settingsButton || !settingsPanel || !newGameButton || !rowsInput || !colsInput || !enemiesInput || !rowsValue || !colsValue || !enemiesValue || !openingView || !gameView || !menuButton || !resumeCard || !resumeButton || !resumeEyebrow || !resumeTitle || !resumeCopy || !resumeSpec || !quickButton || !resultPanel || !resultTitle || !resultCopy || !playAgainButton || !resultMenuButton || !statsButton || !statsBackButton || !statsView || !statGames || !statWins || !statRate || !statLargest || !statRecent || !replayPanel || !replayCanvas || !replayTitle || !replayCopy || !replayClose || !replayPrev || !replayPlay || !replayNext || !replayResume || !replayStatus) return () => {};
+  const {
+    canvas, stage, statusEl, turnEl, youSwatch, activeSwatch, settingsButton, settingsPanel,
+    newGameButton, rowsInput, colsInput, enemiesInput, rowsValue, colsValue, enemiesValue,
+    openingView, gameView, menuButton, resumeCard, resumeButton, resumeEyebrow, resumeTitle,
+    resumeCopy, resumeSpec, quickButton, resultPanel, resultTitle, resultCopy, playAgainButton,
+    resultMenuButton, statsButtons, statsBackButton, statsView, statGames, statWins, statRate,
+    statLargest, statRecent, replayPanel, replayCanvas, replayTitle, replayCopy, replayClose,
+    replayPrev, replayPlay, replayNext, replayResume, replayStatus, presets,
+  } = refs;
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!ctx) return () => {};
 
@@ -1382,14 +1342,14 @@ export function mountChain() {
     showGame();
   });
   quickButton.addEventListener('click', () => startNewGame(defaults));
-  document.querySelectorAll('.chain-preset').forEach(button => button.addEventListener('click', () => startNewGame({
+  presets.forEach(button => button.addEventListener('click', () => startNewGame({
     rows: clampInt(button.dataset.rows, ...limits.rows, defaults.rows),
     cols: clampInt(button.dataset.cols, ...limits.cols, defaults.cols),
     enemies: clampInt(button.dataset.enemies, ...limits.enemies, defaults.enemies),
   })));
   playAgainButton.addEventListener('click', () => startNewGame(config));
   resultMenuButton.addEventListener('click', showMenu);
-  statsButton.addEventListener('click', showStats);
+  statsButtons.forEach(button => button.addEventListener('click', showStats));
   statsBackButton.addEventListener('click', showMenu);
   replayClose.addEventListener('click', closeReplay);
   replayPrev.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex - 1); });

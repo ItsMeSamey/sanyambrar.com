@@ -2,7 +2,7 @@
 .__error_page_swinging_light_parent {
   width:100%; height:100%; display:flex; flex-direction:column; align-items:center;
   --button: var(--site-muted, #787c7e);
-  --button-color: var(--site-bg, #fff);
+  --button-color: var(--site-on-fg, #fff);
   --shadow: color-mix(in srgb, var(--site-fg, #121213) 55%, transparent);
   --bg: var(--site-bg, #fff);
   --header: var(--site-muted, #787c7e);

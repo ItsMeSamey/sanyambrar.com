@@ -1,10 +1,9 @@
 // @ts-nocheck
 import { TOOLS } from '../shared/catalog.ts';
 import { renderMarkdown } from './markdown.ts';
-export function mountTool(toolId, root) {
+export function mountTool(toolId, root, context) {
   'use strict';
 
-  const context = document.getElementById('tool-context');
   if (!root || !context) return () => {};
 
   const route = () => toolId;
