@@ -6,7 +6,7 @@ export type ProjectDetail={title:string;dek:string;facts:string[];body:string;li
 export const games:Entry[]=[
   {title:'Wordle',href:'/wordle.html',kind:'Game',note:'A Wordle clone.',tags:['solidjs','word game']},
   {title:'Keybr',href:'/keybr.html',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
-  {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Canvas-rendered chain reaction with local AI.',tags:['canvas','game','ai']},
+  {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Chain reaction clone with local AI.',tags:['canvas','game','ai']},
 ];
 export const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[

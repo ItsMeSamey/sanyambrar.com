@@ -1,7 +1,6 @@
 import type { JSX } from 'solid-js';
 import MoonStar from 'lucide-solid/icons/moon-star';
 import Search from 'lucide-solid/icons/search';
-import { SITE_NAV } from '../catalog.ts';
 import { HomeBrand } from './Brand.tsx';
 import { SmartLink } from './NavLink.tsx';
 
@@ -54,21 +53,20 @@ export function GameTopBarActions(props:{children?:JSX.Element;ariaLabel?:string
   </nav>;
 }
 
-export function PrimaryNav(props:{showWork?:boolean;activeHref?:string}) {
+export function PrimaryNav() {
   return <nav class="top-nav site-topbar-nav" aria-label="Primary">
-    {props.showWork && SITE_NAV.map(item => <SmartLink href={item.href} aria-current={props.activeHref === item.href ? 'page' : undefined}>{item.label}</SmartLink>)}
     <AppearanceButton/>
     <SearchButton/>
   </nav>;
 }
 
 /** The only site top bar implementation. Pages customize content through slots. */
-export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;showWork?:boolean;activeHref?:string;nav?:JSX.Element|false}) {
+export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;nav?:JSX.Element|false}) {
   return <header class="site-topbar">
     <div class="site-topbar-inner site-topbar-inner-contained">
       <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
       <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
-      {props.nav === false ? null : (props.nav ?? <PrimaryNav showWork={props.showWork} activeHref={props.activeHref}/>)}
+      {props.nav === false ? null : (props.nav ?? <PrimaryNav/>)}
     </div>
   </header>;
 }

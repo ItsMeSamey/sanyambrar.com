@@ -398,11 +398,19 @@ ${keybrViewSwitch}`;
     "ux: Chain orb lighting must not invert its highlight/shadow in dark themes");
 
   const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
+  const homeStyle = await readFile(join(ROOT, "src/site/styles/home.css"), "utf8");
+  const siteData = await readFile(join(ROOT, "src/site/data.ts"), "utf8");
+  const siteCatalog = await readFile(join(ROOT, "src/shared/catalog.ts"), "utf8");
   const toolsPageSource = await readFile(join(ROOT, "src/tools/Tools.tsx"), "utf8");
   const blogSource = await readFile(join(ROOT, "src/blogs/Blog.tsx"), "utf8");
   must(homeSource.includes("home-tool-matrix") && homeSource.includes("home-writing-split") &&
     !toolsPageSource.includes("home-tool-matrix") && !blogSource.includes("home-writing-split"),
     "ux: editorial tools and split writing index belong on Home, not the Tools/Writing pages");
+  must(homeSource.includes('title="Work" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
+    !sharedTopBar.includes("showWork") && !sharedTopBar.includes("SITE_NAV") &&
+    siteData.includes("Chain reaction clone with local AI.") && siteCatalog.includes("Word count and non-ASCII character detection.") &&
+    homeStyle.includes(".site-standard .intro{display:flex;justify-content:space-between;align-items:center;gap:18px;min-height:72px"),
+    "ux: Work/Writing must be Home sections, card copy must stay concise, and the intro must stay compact");
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
@@ -412,9 +420,10 @@ ${keybrViewSwitch}`;
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
     "ux: narrow Diff and Markdown combined views must stack top-to-bottom");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
+    toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
     toolsStyle.includes('.text-stat:nth-child(3) b,.text-stat:nth-child(3) strong{color:var(--site-error)}'),
-    "ux: mobile text counts must remain visible with word/non-ASCII colors");
+    "ux: text counts must remain legible and retain word/non-ASCII colors");
   must(toolsStyle.includes("var(--site-effort-color") && toolsStyle.includes("var(--site-fast-color") &&
     toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')"),
     "ux: Tools highlights and Diff colors must derive from the shared theme");
@@ -485,6 +494,9 @@ ${keybrViewSwitch}`;
   must(phoneticModel.includes("this.map.get(indexedCodePoint)!.push(prefix)") && !phoneticModel.includes("this.map.get(codePoint)!.push(prefix)"),
     "bugfix: Keybr phonetic prefixes must be indexed under every letter they contain");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
+  must(sharedCss.includes(".samey-theme-panel{position:fixed;left:8px;top:calc(var(--site-topbar-height) + 4px);z-index:var(--samey-z-theme);width:max-content;max-width:calc(100vw - 16px);min-width:0") &&
+    !sharedCss.includes(".samey-theme-panel{position:fixed;left:8px;top:calc(var(--site-topbar-height) + 4px);z-index:var(--samey-z-theme);min-width:230px"),
+    "ux: compact appearance menu width must follow its entries instead of a fixed minimum");
   must(sharedTheme.includes('globalThis.SameyLoadingBegin = () =>') && sharedTheme.includes('mountLoadingBar()') &&
     sharedTheme.includes('Math.max(0, time - loadingStarted)') &&
     sharedTheme.includes('"--KeyboardKey-pointer__color": theme.text') && sharedCss.includes('.samey-loading-top{') && sharedCss.includes('html[data-site-loading] .samey-loading-top'),

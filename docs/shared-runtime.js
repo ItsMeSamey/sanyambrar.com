@@ -2479,7 +2479,7 @@
 			id: "text",
 			label: "Text",
 			title: "Text Inspector",
-			note: "Word, character, line and Unicode inspection in one editor."
+			note: "Word count and non-ASCII character detection."
 		},
 		{
 			id: "base",
@@ -2527,7 +2527,7 @@
 			title: "Chain Reaction",
 			href: "/chain/",
 			kind: "Game",
-			note: "Canvas-rendered chain reaction with local AI.",
+			note: "Chain reaction clone with local AI.",
 			tags: [
 				"canvas",
 				"game",

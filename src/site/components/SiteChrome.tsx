@@ -1,4 +1,5 @@
 import type { JSX } from 'solid-js';
+import { SmartLink } from '../../shared/components/NavLink.tsx';
 
 const PERSONAL_GITHUB = 'https://github.com/ItsMeSamey';
 const ORG_GITHUB = 'https://github.com/SmallThingz';
@@ -23,8 +24,8 @@ export function Intro() {
   </section>;
 }
 
-export function Section(props:{id:string;title:string;children:JSX.Element}) {
-  return <section aria-labelledby={props.id}><div class="section-head"><h1 id={props.id}>{props.title}</h1></div>{props.children}</section>;
+export function Section(props:{id:string;title:string;href?:string;children:JSX.Element}) {
+  return <section aria-labelledby={props.id}><div class="section-head"><h1 id={props.id}>{props.href ? <SmartLink class="section-head-link" href={props.href}><span>{props.title}</span><span aria-hidden="true">↗</span></SmartLink> : props.title}</h1></div>{props.children}</section>;
 }
 
 export function SiteFooter() {
