@@ -2,12 +2,10 @@ import { mixColors, parseColor } from "@keybr/color";
 import { useComputedStyles } from "@keybr/themes";
 import { type CSSProperties, useMemo } from "@keybr/solid-compat/react";
 export function useKeyStyles() {
-    const { resolveColor } = useComputedStyles();
-    const slow = resolveColor("--slow-key-color", "#cc0000");
-    const fast = resolveColor("--fast-key-color", "#60d788");
+    const computed = useComputedStyles();
     return useMemo(() => {
-        const min = parseColor(slow);
-        const max = parseColor(fast);
+        const min = parseColor(computed.resolveColor("--slow-key-color", "#cc0000"));
+        const max = parseColor(computed.resolveColor("--fast-key-color", "#60d788"));
         function confidenceColor(confidence: number) {
             return mixColors(min, max, confidence);
         }
@@ -22,5 +20,5 @@ export function useKeyStyles() {
             }
         }
         return { confidenceColor, keyStyles };
-    }, [slow, fast]);
+    }, [computed]);
 }

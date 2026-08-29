@@ -360,6 +360,11 @@
 		const keybrCustomProperties = (theme) => {
 			const dark = theme.tone === "dark";
 			const primary = theme.background, secondary = theme.text, accent = theme.accent, error = theme.error;
+			const dataStrength = dark ? .72 : .62;
+			const zoneStrength = dark ? .35 : .27;
+			const accentStrength = dark ? .64 : .54;
+			const data = (value) => mix(primary, value, dataStrength);
+			const zone = (value) => mix(primary, value, zoneStrength);
 			return {
 				"--primary-d2": mix(primary, dark ? "#ffffff" : "#000000", .1),
 				"--primary-d1": mix(primary, dark ? "#ffffff" : "#000000", .05),
@@ -381,36 +386,36 @@
 				"--error": error,
 				"--error-l1": mix(error, dark ? "#000000" : "#ffffff", .1),
 				"--shadow-color": dark ? "#00000088" : "#00000044",
-				"--slow-key-color": theme.slow,
-				"--fast-key-color": theme.fast,
-				"--effort-color": theme.effort,
+				"--slow-key-color": data(theme.slow),
+				"--fast-key-color": data(theme.fast),
+				"--effort-color": data(theme.effort),
 				"--textinput__color": secondary,
 				"--textinput--special__color": mix(secondary, primary, .5),
 				"--textinput--hit__color": mix(secondary, primary, .4),
 				"--textinput--miss__color": error,
 				"--Name-color": mix(secondary, primary, .2),
 				"--Value-color": mix(secondary, primary, .1),
-				"--Value--more__color": theme.fast,
-				"--Value--less__color": theme.slow,
-				"--Chart-speed__color": theme.fast,
-				"--Chart-accuracy__color": theme.error,
-				"--Chart-complexity__color": theme.effort,
-				"--Chart-threshold__color": theme.accent,
-				"--Chart-hist-h__color": theme.effort,
-				"--Chart-hist-m__color": theme.error,
-				"--Chart-hist-r__color": mix(theme.error, theme.effort, .5),
-				"--KeyboardKey-pointer__color": theme.accent,
-				"--KeyboardKey-symbol--dead__color": theme.error,
-				"--KeyboardKey-symbol--ligature__color": theme.effort,
-				"--pinky-zone-color": theme.fast,
-				"--ring-zone-color": mix(theme.fast, theme.accent, .45),
-				"--middle-zone-color": theme.accent,
-				"--left-index-zone-color": theme.effort,
-				"--right-index-zone-color": mix(theme.effort, theme.error, .45),
-				"--thumb-zone-color": theme.error,
-				"--syntax-keyword": theme.accent,
-				"--syntax-string": theme.fast,
-				"--syntax-number": theme.effort,
+				"--Value--more__color": data(theme.fast),
+				"--Value--less__color": data(theme.slow),
+				"--Chart-speed__color": data(theme.fast),
+				"--Chart-accuracy__color": data(theme.error),
+				"--Chart-complexity__color": data(theme.effort),
+				"--Chart-threshold__color": data(theme.accent),
+				"--Chart-hist-h__color": data(theme.effort),
+				"--Chart-hist-m__color": data(theme.error),
+				"--Chart-hist-r__color": mix(data(theme.error), data(theme.effort), .5),
+				"--KeyboardKey-pointer__color": mix(primary, theme.accent, accentStrength),
+				"--KeyboardKey-symbol--dead__color": data(theme.error),
+				"--KeyboardKey-symbol--ligature__color": data(theme.effort),
+				"--pinky-zone-color": zone(theme.fast),
+				"--ring-zone-color": zone(theme.warning),
+				"--middle-zone-color": zone(theme.warning),
+				"--left-index-zone-color": zone(theme.accent),
+				"--right-index-zone-color": zone(theme.effort),
+				"--thumb-zone-color": zone(theme.error),
+				"--syntax-keyword": mix(primary, theme.accent, .68),
+				"--syntax-string": mix(primary, theme.fast, .68),
+				"--syntax-number": mix(primary, theme.effort, .68),
 				"--syntax-comment": mix(secondary, primary, .42)
 			};
 		};

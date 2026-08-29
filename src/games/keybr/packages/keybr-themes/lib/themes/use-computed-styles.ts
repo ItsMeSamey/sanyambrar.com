@@ -6,11 +6,11 @@ import { useTheme } from "./context.ts";
 import { useDynamicStyles } from "./dynamic-styles-context.tsx";
 import { type PropName } from "./theme-props.ts";
 export const useComputedStyles = () => {
-    const { color, font, hash } = useTheme();
+    const theme = useTheme();
     const { getStyledElement } = useDynamicStyles();
     const element = getStyledElement();
     return useMemo(() => {
-        use(color, font, hash);
+        use(theme.color, theme.font, theme.hash);
         const style = getComputedStyle(element);
         const getPropertyValue = (name: PropName): string => {
             return style.getPropertyValue(name);
@@ -142,7 +142,7 @@ export const useComputedStyles = () => {
             return value;
         };
         return { getPropertyValue, resolveColor, computeStyle, computeLineHeight };
-    }, [color, font, hash, element]);
+    }, () => [theme.color, theme.font, theme.hash, element]);
 };
 function use(...arg: any) { }
 const createElement = (tagName: string, className: ClassValue): HTMLElement => {

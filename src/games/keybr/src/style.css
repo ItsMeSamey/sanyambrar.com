@@ -25,9 +25,12 @@
   --error-d1: color-mix(in srgb, var(--error) 90%, var(--secondary));
   --error-l1: color-mix(in srgb, var(--error) 90%, var(--primary));
   --shadow-color: color-mix(in srgb, var(--secondary) 27%, transparent);
-  --slow-key-color: var(--site-slow-color, var(--error));
-  --fast-key-color: var(--site-fast-color, var(--accent));
-  --effort-color: var(--site-effort-color, var(--accent));
+  --keybr-data-strength: 62%;
+  --keybr-zone-strength: 27%;
+  --keybr-accent-strength: 54%;
+  --slow-key-color: color-mix(in srgb, var(--site-slow-color, var(--error)) var(--keybr-data-strength), var(--primary));
+  --fast-key-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) var(--keybr-data-strength), var(--primary));
+  --effort-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) var(--keybr-data-strength), var(--primary));
 
   --background-color: var(--primary);
   --background-image: none;
@@ -62,24 +65,24 @@
   --KeyboardKey-button--depressed__color: var(--secondary);
   --KeyboardKey-symbol__color: var(--secondary);
   --KeyboardKey-symbol--depressed__color: var(--primary);
-  --KeyboardKey-symbol--dead__color: var(--site-error, var(--error));
-  --KeyboardKey-symbol--ligature__color: var(--site-effort-color, var(--accent));
-  --KeyboardKey-pointer__color: var(--site-accent, var(--accent));
-  --pinky-zone-color: var(--site-fast-color, var(--accent));
-  --ring-zone-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) 55%, var(--site-accent, var(--accent)));
-  --middle-zone-color: var(--site-accent, var(--accent));
-  --left-index-zone-color: var(--site-effort-color, var(--accent));
-  --right-index-zone-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) 55%, var(--site-error, var(--error)));
-  --thumb-zone-color: var(--site-error, var(--error));
+  --KeyboardKey-symbol--dead__color: var(--slow-key-color);
+  --KeyboardKey-symbol--ligature__color: var(--effort-color);
+  --KeyboardKey-pointer__color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-accent-strength), var(--primary));
+  --pinky-zone-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
+  --ring-zone-color: color-mix(in srgb, var(--site-warning-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
+  --middle-zone-color: color-mix(in srgb, var(--site-warning-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
+  --left-index-zone-color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-zone-strength), var(--primary));
+  --right-index-zone-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
+  --thumb-zone-color: color-mix(in srgb, var(--site-error, var(--error)) var(--keybr-zone-strength), var(--primary));
 
   --Chart-frame__color: var(--primary-d2);
-  --Chart-speed__color: var(--site-fast-color, var(--accent));
-  --Chart-accuracy__color: var(--site-error, var(--error));
-  --Chart-complexity__color: var(--site-effort-color, var(--accent));
-  --Chart-threshold__color: var(--site-accent, var(--accent));
-  --Chart-hist-h__color: var(--site-effort-color, var(--accent));
-  --Chart-hist-m__color: var(--site-error, var(--error));
-  --Chart-hist-r__color: color-mix(in srgb, var(--site-error, var(--error)) 50%, var(--site-effort-color, var(--accent)));
+  --Chart-speed__color: var(--fast-key-color);
+  --Chart-accuracy__color: var(--slow-key-color);
+  --Chart-complexity__color: var(--effort-color);
+  --Chart-threshold__color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-data-strength), var(--primary));
+  --Chart-hist-h__color: var(--effort-color);
+  --Chart-hist-m__color: var(--slow-key-color);
+  --Chart-hist-r__color: color-mix(in srgb, var(--slow-key-color) 50%, var(--effort-color));
 
   --DailyGoal-bar__color: var(--primary-l2);
   --DailyGoal-frame__color: var(--primary-d2);
@@ -95,20 +98,20 @@
 
   --Name-color: var(--secondary-l2);
   --Value-color: var(--secondary-d1);
-  --Value--more__color: var(--site-fast-color, var(--accent));
-  --Value--less__color: var(--site-slow-color, var(--error));
+  --Value--more__color: var(--fast-key-color);
+  --Value--less__color: var(--slow-key-color);
 
-  --Button__color: var(--primary-l2);
-  --Button__background-color: var(--accent);
-  --Button--focused__color: var(--primary-l2);
-  --Button--focused__background-color: var(--accent-l2);
+  --Button__color: var(--secondary);
+  --Button__background-color: var(--primary-d1);
+  --Button--focused__color: var(--secondary);
+  --Button--focused__background-color: var(--primary-d2);
 
-  --MenuItem__color: var(--primary-l2);
-  --MenuItem__background-color: var(--accent-l1);
-  --MenuItem--hover__color: var(--primary-l2);
-  --MenuItem--hover__background-color: var(--accent-l2);
-  --MenuItem--selected__color: var(--primary-l2);
-  --MenuItem--selected__background-color: var(--accent-d1);
+  --MenuItem__color: var(--secondary);
+  --MenuItem__background-color: var(--primary-l1);
+  --MenuItem--hover__color: var(--secondary);
+  --MenuItem--hover__background-color: var(--primary-d1);
+  --MenuItem--selected__color: var(--secondary);
+  --MenuItem--selected__background-color: var(--primary-d2);
 
   --TextField__color: var(--secondary);
   --TextField__background-color: var(--primary-l1);
@@ -127,9 +130,9 @@
   --Surface__box-shadow: none;
   --Surface__backdrop-filter: none;
 
-  --syntax-keyword: var(--site-accent, var(--accent));
-  --syntax-string: var(--site-fast-color, var(--accent));
-  --syntax-number: var(--site-effort-color, var(--accent));
+  --syntax-keyword: color-mix(in srgb, var(--site-accent, var(--accent)) 68%, var(--primary));
+  --syntax-string: color-mix(in srgb, var(--site-fast-color, var(--accent)) 68%, var(--primary));
+  --syntax-number: color-mix(in srgb, var(--site-effort-color, var(--accent)) 68%, var(--primary));
   --syntax-comment: var(--site-muted, var(--secondary-f2));
 
   font-family: var(--default-font-family);
@@ -140,6 +143,9 @@
 
 html[data-site-theme="dark"], html[data-color="dark"], html[data-color="clear-dark"] {
   --shadow-color: color-mix(in srgb, var(--secondary) 48%, transparent);
+  --keybr-data-strength: 72%;
+  --keybr-zone-strength: 35%;
+  --keybr-accent-strength: 64%;
 }
 
 html[data-font="sans-serif"] { --default-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --header-font-family: var(--default-font-family); --value-font-family: var(--default-font-family); --monospace-font-family: var(--default-font-family); }

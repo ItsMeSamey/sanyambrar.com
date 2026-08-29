@@ -231,10 +231,29 @@ ${keybrViewSwitch}`;
     keybrTabList.includes("const selectedIndex = () => props.selectedIndex ?? 0"),
     "ux: Keybr settings must keep draft state, lesson loading, and selected tabs reactive");
   const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
-  must(keybrStyle.includes("--KeyboardKey-symbol--dead__color: var(--site-error") &&
-    keybrStyle.includes("--Chart-speed__color: var(--site-fast-color") &&
-    keybrStyle.includes("--syntax-number: var(--site-effort-color"),
-    "ux: Keybr semantic colors must derive from the shared site theme");
+  must(keybrStyle.includes("--slow-key-color: color-mix(in srgb, var(--site-slow-color") &&
+    keybrStyle.includes("--fast-key-color: color-mix(in srgb, var(--site-fast-color") &&
+    keybrStyle.includes("--syntax-number: color-mix(in srgb, var(--site-effort-color") &&
+    keybrStyle.includes("--Button__background-color: var(--primary-d1)"),
+    "ux: Keybr semantic colors must derive from the shared site theme without accent-washing controls");
+  const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
+  const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
+  const keybrIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/icon/Icon.module.css"), "utf8");
+  const keybrCheckableStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/Checkable.module.css"), "utf8");
+  const keybrEventIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/state/event-icons.module.css"), "utf8");
+  const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
+  const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
+  const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
+  must(keybrControls.includes('data-samey-appearance=""') &&
+    keybrControlsStyle.includes("grid-template-columns: repeat(4, 2rem)") &&
+    keybrIconStyle.includes("fill: none") && keybrIconStyle.includes("stroke: currentColor") &&
+    keybrCheckableStyle.includes("fill: none") && keybrCheckableStyle.includes("stroke: currentColor") &&
+    keybrEventIconStyle.includes("fill: none") &&
+    keybrSettingsScreen.includes("snapshotSettings(settings)") && keybrSettingsScreen.includes("snapshotSettings(newSettings())") &&
+    !keybrBookPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
+    !keybrLessonPreview.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s) &&
+    !keybrCustomTextSettings.match(/const\s*\{[^;]+\}\s*=\s*useMemo\(/s),
+    "ux: Keybr controls, theme trigger, Lucide rendering, settings draft, and memo values must retain Solid-port fixes");
   const keybrScreenStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/Screen.module.css"), "utf8");
   const keybrTabStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/tablist/TabList.module.css"), "utf8");
   const keybrFieldListStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/fieldlist/FieldList.module.css"), "utf8");

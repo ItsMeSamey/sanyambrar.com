@@ -1,12 +1,16 @@
-/* Generated from the original Keybr Less module. */
+/* Lucide icons are stroke-based. Keep them neutral and inherit the control text color. */
 .root {
   display: inline-block;
   vertical-align: middle;
   inline-size: 1.8rem;
   block-size: 1.8rem;
-  fill: var(--Button__background-color);
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
 }
 
 .altIcon .root {
-  fill: var(--Button__color);
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
 }

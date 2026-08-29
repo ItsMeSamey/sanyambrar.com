@@ -1,6 +1,6 @@
 import { KeyboardProvider } from "@keybr/keyboard";
 import { Screen } from "@keybr/pages-shared";
-import { SettingsContext, useSettings } from "@keybr/settings";
+import { Settings, SettingsContext, useSettings } from "@keybr/settings";
 import { TypingSettings } from "@keybr/textinput-ui";
 import { Button, ExplainerBoundary, Field, FieldList, Header, Icon, Spacer, useView, } from "@keybr/widget";
 import { mdiCheckCircle, mdiDeleteForever } from "@keybr/solid-compat/mdi";
@@ -16,7 +16,7 @@ import * as styles from "./SettingsScreen.module.css";
 export function SettingsScreen() {
     const { settings, updateSettings } = useSettings();
     const { setView } = useView(views);
-    const [newSettings, updateNewSettings] = useState(settings);
+    const [newSettings, updateNewSettings] = useState(() => snapshotSettings(settings));
     const draftContext = {
         settings: liveObject(newSettings),
         updateSettings: updateNewSettings,
@@ -24,12 +24,17 @@ export function SettingsScreen() {
     return (<SettingsContext.Provider value={draftContext}>
       <KeyboardProvider>
         <Content onSubmit={() => {
-            updateSettings(newSettings());
+            updateSettings(snapshotSettings(newSettings()));
             setView("practice");
         }}/>
       </KeyboardProvider>
     </SettingsContext.Provider>);
 }
+
+function snapshotSettings(settings: Settings): Settings {
+    return new Settings(settings.toJSON(), settings.isNew);
+}
+
 function Content(solidProps: {
     readonly onSubmit: () => void;
 }) {

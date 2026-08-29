@@ -1,5 +1,5 @@
 import { catchError } from "@keybr/debug";
-import { type Settings, SettingsContext, type SettingsStorage } from "@keybr/settings";
+import { Settings, SettingsContext, type SettingsStorage } from "@keybr/settings";
 import { liveObject } from "@keybr/solid-compat/live";
 import { createSignal, type JSX } from "solid-js";
 
@@ -8,13 +8,15 @@ export function SettingsProvider(props: {
   readonly initialSettings: Settings;
   readonly children: JSX.Element;
 }) {
-  const [settings, setSettings] = createSignal(props.initialSettings, { equals: false });
+  const snapshot = (value: Settings) => new Settings(value.toJSON(), value.isNew);
+  const [settings, setSettings] = createSignal(snapshot(props.initialSettings), { equals: false });
   const liveSettings = liveObject(settings);
   const value = {
     settings: liveSettings,
     updateSettings(newSettings: Settings) {
-      setSettings(newSettings);
-      props.storage.store(newSettings).catch(catchError);
+      const next = snapshot(newSettings);
+      setSettings(next);
+      props.storage.store(next).catch(catchError);
     },
   };
   return <SettingsContext.Provider value={value}>{props.children}</SettingsContext.Provider>;

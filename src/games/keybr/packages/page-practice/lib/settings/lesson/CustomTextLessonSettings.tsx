@@ -64,25 +64,25 @@ function CustomTextStats(solidProps: {
 }): ReactNode {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { numWords, numUniqueWords, avgWordLength } = useMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText), () => [solidProps.language, solidProps.customText]);
+    const stats = useMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText), () => [solidProps.language, solidProps.customText]);
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({
             id: "t_num_All_words",
             defaultMessage: "All words",
-        })} value={formatNumber(numWords)}/>
+        })} value={formatNumber(stats.numWords)}/>
       </Field>
       <Field>
         <NameValue name={formatMessage({
             id: "t_num_Unique_words",
             defaultMessage: "Unique words",
-        })} value={formatNumber(numUniqueWords)}/>
+        })} value={formatNumber(stats.numUniqueWords)}/>
       </Field>
       <Field>
         <NameValue name={formatMessage({
             id: "t_Average_word_length",
             defaultMessage: "Average word length",
-        })} value={formatNumber(avgWordLength, 2)}/>
+        })} value={formatNumber(stats.avgWordLength, 2)}/>
       </Field>
     </FieldList>);
 }

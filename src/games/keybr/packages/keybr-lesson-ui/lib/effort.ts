@@ -9,9 +9,9 @@ export type Effort = {
 };
 export function useEffort(): Effort {
     const { settings } = useSettings();
-    const { resolveColor } = useComputedStyles();
-    const color = resolveColor("--effort-color", "#000000");
+    const computed = useComputedStyles();
     return useMemo(() => {
+        const color = computed.resolveColor("--effort-color", "#000000");
         const dailyGoal = new MutableDailyGoal(settings);
         const effort = (time: number) => {
             return dailyGoal.goal > 0 ? dailyGoal.measure(time) : 1.0;
@@ -20,5 +20,5 @@ export function useEffort(): Effort {
             return parseColor(color).fade(effort);
         };
         return { effort, shade };
-    }, [settings, color]);
+    }, [settings, computed]);
 }

@@ -15,7 +15,7 @@ export function LessonPreview(solidProps: {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();
-    const { lessonKeys, textInput } = useMemo(() => {
+    const preview = useMemo(() => {
         const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results)));
         const textInput = new TextInput(solidProps.lesson.generate(lessonKeys, LCG(123)), toTextInputSettings(settings));
         return { lessonKeys, textInput };
@@ -25,10 +25,10 @@ export function LessonPreview(solidProps: {
             defaultMessage: "Lesson preview",
         })}>
       <div class={styles.root}>
-        <KeySetRow lessonKeys={lessonKeys}/>
-        <CurrentKeyRow lessonKeys={lessonKeys}/>
+        <KeySetRow lessonKeys={preview.lessonKeys}/>
+        <CurrentKeyRow lessonKeys={preview.lessonKeys}/>
         <div class={styles.text}>
-          <StaticText settings={toTextDisplaySettings(settings)} lines={textInput.lines}/>
+          <StaticText settings={toTextDisplaySettings(settings)} lines={preview.textInput.lines}/>
         </div>
       </div>
     </FieldSet>);

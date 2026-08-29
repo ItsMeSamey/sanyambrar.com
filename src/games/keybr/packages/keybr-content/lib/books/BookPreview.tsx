@@ -9,7 +9,7 @@ import { flattenContent } from "./util.ts";
 export const BookPreview = memo(function BookPreview(solidProps: BookContent): ReactNode {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const { numChapters, numParagraphs, numWords, numUniqueWords, numCharacters, avgWordLength, } = useMemo(() => {
+    const stats = useMemo(() => {
         const paragraphs = flattenContent(solidProps.content);
         const numChapters = solidProps.content.length;
         const numParagraphs = paragraphs.length;
@@ -30,29 +30,29 @@ export const BookPreview = memo(function BookPreview(solidProps: BookContent): R
           <NameValue name={formatMessage({
             id: "t_num_Chapters",
             defaultMessage: "Chapters",
-        })} value={formatNumber(numChapters)}/>
+        })} value={formatNumber(stats.numChapters)}/>
           <NameValue name={formatMessage({
             id: "t_num_Paragraphs",
             defaultMessage: "Paragraphs",
-        })} value={formatNumber(numParagraphs)}/>
+        })} value={formatNumber(stats.numParagraphs)}/>
           <NameValue name={formatMessage({
             id: "t_num_All_words",
             defaultMessage: "All words",
-        })} value={formatNumber(numWords)}/>
+        })} value={formatNumber(stats.numWords)}/>
           <NameValue name={formatMessage({
             id: "t_num_Unique_words",
             defaultMessage: "Unique words",
-        })} value={formatNumber(numUniqueWords)}/>
+        })} value={formatNumber(stats.numUniqueWords)}/>
           <NameValue name={formatMessage({
             id: "t_num_Characters",
             defaultMessage: "Characters",
-        })} value={formatNumber(numCharacters)}/>
+        })} value={formatNumber(stats.numCharacters)}/>
         </p>
         <p>
           <NameValue name={formatMessage({
             id: "t_Average_word_length",
             defaultMessage: "Average word length",
-        })} value={formatNumber(avgWordLength, 2)}/>
+        })} value={formatNumber(stats.avgWordLength, 2)}/>
         </p>
       </div>
     </div>);

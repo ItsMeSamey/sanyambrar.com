@@ -8,5 +8,7 @@ export type IconButtonProps = {
     readonly label?: ReactNode;
     readonly ref?: RefObject<IconButtonRef | null>;
     readonly title?: string;
+    readonly "data-samey-appearance"?: string;
+    readonly "aria-expanded"?: "true" | "false";
 } & FocusProps & MouseProps & KeyboardProps & AnchorProps;
 export type IconButtonRef = Focusable;

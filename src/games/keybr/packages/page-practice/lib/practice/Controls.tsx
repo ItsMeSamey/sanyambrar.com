@@ -24,7 +24,7 @@ export const Controls = memo(function Controls(solidProps: {
             else
                 location.assign(href);
         }}/>
-      <IconButton icon={<Icon shape={mdiThemeLightDark}/>} title="Appearance" onClick={(event) => { event.stopPropagation(); (globalThis as any).SameyOpenAppearance?.(event.currentTarget); }}/>
+      <IconButton icon={<Icon shape={mdiThemeLightDark}/>} title="Appearance" data-samey-appearance="" aria-expanded="false"/>
       <IconButton icon={<Icon shape={mdiHelpCircleOutline}/>} title={formatMessage({
             id: "practice.widget.showTour.description",
             defaultMessage: "Show a guided tour with help slides.",

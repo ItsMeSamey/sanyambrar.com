@@ -1,13 +1,19 @@
 @import "../../styles/components.less";
 
+// The Solid port uses Lucide, which is stroke-based. The original MDI icons
+// were filled paths, so carrying the old fill rule over paints Lucide interiors.
 .root {
   display: inline-block;
   vertical-align: middle;
   inline-size: 1.8rem;
   block-size: 1.8rem;
-  fill: var(--Button__background-color);
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
 }
 
 .altIcon .root {
-  fill: var(--Button__color);
+  color: inherit;
+  fill: none;
+  stroke: currentColor;
 }
