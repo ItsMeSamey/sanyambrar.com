@@ -4,15 +4,18 @@ import * as styles from "./Alert.module.css";
 import { CloseButton } from "./CloseButton.tsx";
 import { toastProps, useToast } from "./context.tsx";
 import { SeverityIcon } from "./SeverityIcon.tsx";
-export function Alert({ children, severity = null, closeButton = false, ...props }: {
+import { splitProps, mergeProps } from "solid-js";
+export function Alert(solidAllProps: {
     readonly children: ReactNode;
     readonly severity?: "info" | "success" | "error" | null;
     readonly closeButton?: boolean;
 } & MouseProps): ReactNode {
+    const solidMergedProps = mergeProps({ severity: null, closeButton: false }, solidAllProps);
+    const [solidLocal, props] = splitProps(solidMergedProps, ["children", "severity", "closeButton"]);
     const toast = useToast();
     return (<div {...props} class={styles.alert} {...toastProps(toast)}>
-      {severity && <SeverityIcon severity={severity}/>}
-      <div class={styles.message}>{children}</div>
-      {closeButton && <CloseButton />}
+      {solidLocal.severity && <SeverityIcon severity={solidLocal.severity}/>}
+      <div class={styles.message}>{solidLocal.children}</div>
+      {solidLocal.closeButton && <CloseButton />}
     </div>);
 }

@@ -4,7 +4,7 @@ import { type CodePoint } from "@keybr/unicode";
 import { memo, type ReactNode, useEffect, useRef, useState } from "@keybr/solid-compat/react";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const PointersLayer = memo(function PointersLayer({ suffix, delay = 1000, }: {
+export const PointersLayer = memo(function PointersLayer(props: {
     readonly suffix: readonly CodePoint[];
     readonly delay?: number;
 }): ReactNode {
@@ -14,10 +14,10 @@ export const PointersLayer = memo(function PointersLayer({ suffix, delay = 1000,
     useEffect(() => {
         const tasks = new Tasks();
         setCombo(null);
-        if (suffix.length > 0) {
-            const combo = keyboard.getCombo(suffix[0]);
+        if (props.suffix.length > 0) {
+            const combo = keyboard.getCombo(props.suffix[0]);
             if (combo != null) {
-                tasks.delayed(delay, () => {
+                tasks.delayed(props.delay ?? 1000, () => {
                     setCombo(combo);
                 });
             }
@@ -25,7 +25,7 @@ export const PointersLayer = memo(function PointersLayer({ suffix, delay = 1000,
         return () => {
             tasks.cancelAll();
         };
-    }, () => [keyboard, suffix, delay]);
+    }, () => [keyboard, props.suffix, props.delay]);
     useEffect(() => {
         const svg = svgRef.current;
         if (svg != null) {
@@ -34,7 +34,7 @@ export const PointersLayer = memo(function PointersLayer({ suffix, delay = 1000,
             }
         }
     }, () => [combo()]);
-    return <Surface ref={svgRef}>{...pointers(keyboard, combo())}</Surface>;
+    return <Surface ref={svgRef}>{pointers(keyboard, combo())}</Surface>;
 });
 function pointers(keyboard: Keyboard, combo: KeyCombo | null): ReactNode[] {
     const children = [];

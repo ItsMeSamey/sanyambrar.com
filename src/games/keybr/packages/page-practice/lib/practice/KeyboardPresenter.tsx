@@ -5,7 +5,7 @@ import { type CodePoint } from "@keybr/unicode";
 import { withDeferred } from "@keybr/widget";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { type LastLesson } from "./state/index.ts";
-export const KeyboardPresenter = memo(function KeyboardPresenter({ focus, depressedKeys, toggledKeys, suffix, lastLesson, }: {
+export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
     readonly focus: boolean;
     readonly depressedKeys: readonly string[];
     readonly toggledKeys: readonly string[];
@@ -17,13 +17,13 @@ export const KeyboardPresenter = memo(function KeyboardPresenter({ focus, depres
     const colors = settings.get(keyboardProps.colors);
     const pointers = settings.get(keyboardProps.pointers);
     return (<VirtualKeyboard keyboard={keyboard} height="16rem">
-      <KeyLayer depressedKeys={depressedKeys} toggledKeys={toggledKeys} showColors={colors}/>
-      {focus && pointers && <PointersLayer suffix={suffix}/>}
-      {focus && lastLesson && (<HeatmapLayer histogram={flatten(lastLesson.misses)} modifier="m"/>)}
-      {focus && lastLesson && (<HeatmapLayer histogram={flatten(lastLesson.hits)} modifier="h"/>)}
-      {focus && lastLesson && (<TransitionsLayer histogram={lastLesson.misses2} modifier="m"/>)}
-      {focus && lastLesson && (<TransitionsLayer histogram={lastLesson.hits2} modifier="h"/>)}
-      {focus || <ZonesLayer />}
+      <KeyLayer depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} showColors={colors}/>
+      {props.focus && pointers && <PointersLayer suffix={props.suffix}/>}
+      {props.focus && props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.misses)} modifier="m"/>)}
+      {props.focus && props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.hits)} modifier="h"/>)}
+      {props.focus && props.lastLesson && (<TransitionsLayer histogram={props.lastLesson.misses2} modifier="m"/>)}
+      {props.focus && props.lastLesson && (<TransitionsLayer histogram={props.lastLesson.hits2} modifier="h"/>)}
+      {props.focus || <ZonesLayer />}
     </VirtualKeyboard>);
 });
 export const DeferredKeyboardPresenter = withDeferred(KeyboardPresenter);

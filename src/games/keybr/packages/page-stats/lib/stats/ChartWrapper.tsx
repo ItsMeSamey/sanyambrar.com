@@ -1,7 +1,7 @@
 import { type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./ChartWrapper.module.css";
-export function ChartWrapper({ children }: {
+export function ChartWrapper(solidProps: {
     children: ReactNode;
 }) {
-    return <div class={styles.root}>{children}</div>;
+    return <div class={styles.root}>{solidProps.children}</div>;
 }

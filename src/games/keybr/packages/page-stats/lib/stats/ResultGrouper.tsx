@@ -7,7 +7,7 @@ import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";
 import { type ReactNode, useState } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
-export function ResultGrouper({ children, }: {
+export function ResultGrouper(solidProps: {
     children: (keyStatsMap: KeyStatsMap) => ReactNode;
 }) {
     const { formatMessage } = useIntl();
@@ -81,13 +81,13 @@ export function ResultGrouper({ children, }: {
           {({ letters }) => {
             switch (characterClass()) {
                 case "letters":
-                    return children(makeKeyStatsMap(Letter.restrict(letters, keyboard.getCodePoints()), group));
+                    return solidProps.children(makeKeyStatsMap(Letter.restrict(letters, keyboard.getCodePoints()), group));
                 case "digits":
-                    return children(makeKeyStatsMap(Letter.digits, group));
+                    return solidProps.children(makeKeyStatsMap(Letter.digits, group));
                 case "punctuators":
-                    return children(makeKeyStatsMap(Letter.punctuators, group));
+                    return solidProps.children(makeKeyStatsMap(Letter.punctuators, group));
                 case "specials":
-                    return children(makeKeyStatsMap(Letter.specials, group));
+                    return solidProps.children(makeKeyStatsMap(Letter.specials, group));
                 default:
                     throw new Error();
             }

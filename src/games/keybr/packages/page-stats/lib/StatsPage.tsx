@@ -19,14 +19,14 @@ import { SpeedChartSection } from "./stats/SpeedChartSection.tsx";
 import { AllTimeSummary, TodaySummary } from "./stats/Summary.tsx";
 
 /** Local statistics only; there is no user identity or public stats. */
-export function StatsPage({ onDone }: { readonly onDone?: () => void }) {
+export function StatsPage(solidProps: { readonly onDone?: () => void }) {
   return (
     <Screen>
       <ExplainerBoundary>
         <ExplainStats />
         <ResultGrouper>
           {(keyStatsMap) => (
-            <Content keyStatsMap={keyStatsMap} onDone={onDone} />
+            <Content keyStatsMap={keyStatsMap} onDone={solidProps.onDone} />
           )}
         </ResultGrouper>
       </ExplainerBoundary>
@@ -34,14 +34,11 @@ export function StatsPage({ onDone }: { readonly onDone?: () => void }) {
   );
 }
 
-function Content({
-  keyStatsMap,
-  onDone,
-}: {
+function Content(solidProps: {
   readonly keyStatsMap: KeyStatsMap;
   readonly onDone?: () => void;
 }) {
-  const { results } = keyStatsMap;
+  const { results } = solidProps.keyStatsMap;
   const stats = makeSummaryStats(results);
   const dailyStatsMap = new DailyStatsMap(results);
   return (
@@ -49,14 +46,14 @@ function Content({
       <AllTimeSummary stats={stats} />
       <TodaySummary stats={dailyStatsMap.today.stats} />
       <AccuracyStreaksSection results={results} />
-      <ProgressOverviewSection keyStatsMap={keyStatsMap} />
+      <ProgressOverviewSection keyStatsMap={solidProps.keyStatsMap} />
       <SpeedChartSection results={results} />
-      <KeySpeedChartSection keyStatsMap={keyStatsMap} />
-      <KeySpeedHistogramSection keyStatsMap={keyStatsMap} />
-      <KeyFrequencyHistogramSection keyStatsMap={keyStatsMap} />
-      <KeyFrequencyHeatmapSection keyStatsMap={keyStatsMap} />
+      <KeySpeedChartSection keyStatsMap={solidProps.keyStatsMap} />
+      <KeySpeedHistogramSection keyStatsMap={solidProps.keyStatsMap} />
+      <KeyFrequencyHistogramSection keyStatsMap={solidProps.keyStatsMap} />
+      <KeyFrequencyHeatmapSection keyStatsMap={solidProps.keyStatsMap} />
       <CalendarSection dailyStatsMap={dailyStatsMap} />
-      <FooterSection onDone={onDone} />
+      <FooterSection onDone={solidProps.onDone} />
     </>
   );
 }

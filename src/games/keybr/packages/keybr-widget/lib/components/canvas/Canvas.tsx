@@ -2,10 +2,12 @@ import { memo, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compa
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import { type CanvasProps } from "./Canvas.types.ts";
 import { Graphics } from "./graphics.ts";
-export const Canvas = memo(function Canvas({ className, id, paint, ref, style, title, onResize, ...props }: CanvasProps) {
+import { splitProps } from "solid-js";
+export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
+    const [solidLocal, props] = splitProps(solidAllProps, ["className", "id", "paint", "ref", "style", "title", "onResize"]);
     const element = useRef<HTMLCanvasElement>(null);
     const size = useElementSize(element);
-    useImperativeHandle(ref, () => ({
+    useImperativeHandle(solidLocal.ref, () => ({
         getSize: () => size,
         getContext: (...args) => {
             const canvas = element.current!;
@@ -41,13 +43,13 @@ export const Canvas = memo(function Canvas({ className, id, paint, ref, style, t
         if (size != null && size.width > 0 && size.height > 0) {
             const canvas = element.current!;
             const context = canvas.getContext("2d")!;
-            new Graphics(context).paint(paint(size));
+            new Graphics(context).paint(solidLocal.paint(size));
         }
-    }, () => [size, paint]);
-    return (<canvas {...props} ref={el => element.current = el} id={id} class={className} style={{
+    }, () => [size, solidLocal.paint]);
+    return (<canvas {...props} ref={el => element.current = el} id={solidLocal.id} class={solidLocal.className} style={{
             display: "block",
             inlineSize: "100%",
             blockSize: "100%",
-            ...style,
-        }} title={title}/>);
+            ...solidLocal.style,
+        }} title={solidLocal.title}/>);
 });

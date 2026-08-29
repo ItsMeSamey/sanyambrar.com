@@ -5,9 +5,9 @@ import { type ReactElement, type ReactNode } from "@keybr/solid-compat/react";
  * The active call sites perform their direction-aware icon selection before
  * rendering because Solid JSX does not expose mutable React vnode props.
  */
-export function Dir({ children }: {
+export function Dir(solidProps: {
     readonly children: readonly [ReactElement<any>, ReactElement<any>];
     readonly swap: string;
 }): ReactNode {
-    return children as unknown as ReactNode;
+    return solidProps.children as unknown as ReactNode;
 }

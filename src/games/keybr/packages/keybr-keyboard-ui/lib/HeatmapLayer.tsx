@@ -4,7 +4,7 @@ import { clsx } from "@keybr/solid-compat/clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./HeatmapLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const HeatmapLayer = memo(function HeatmapLayer({ histogram, modifier, }: {
+export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
     readonly histogram: Iterable<readonly [
         codePoint: CodePoint,
         f: number
@@ -19,7 +19,7 @@ export const HeatmapLayer = memo(function HeatmapLayer({ histogram, modifier, }:
     return <Surface>{items().map(draw)}</Surface>;
     function items() {
         const map = new Map<KeyShape, number>();
-        for (const [codePoint, f] of histogram) {
+        for (const [codePoint, f] of solidProps.histogram) {
             if (f > 0) {
                 const shape = getShape(codePoint);
                 if (shape != null) {
@@ -53,7 +53,7 @@ export const HeatmapLayer = memo(function HeatmapLayer({ histogram, modifier, }:
     }
     function draw([shape, f]: Item, index: number): ReactNode {
         const { x, y } = getKeyCenter(shape);
-        switch (modifier) {
+        switch (solidProps.modifier) {
             case "h": {
                 // Top left semicircle.
                 const r = f * 15 + 5;

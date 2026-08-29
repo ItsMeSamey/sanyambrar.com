@@ -1,19 +1,19 @@
 import { type Focusable } from "@keybr/widget";
 import { type CSSProperties, memo, type ReactNode, type RefObject, useEffect, useImperativeHandle, useRef, } from "@keybr/solid-compat/react";
 import { type Callbacks, InputHandler } from "./inputhandler.ts";
-export const TextEvents = memo(function TextEvents({ onFocus, onBlur, onKeyDown, onKeyUp, onInput, focusRef, }: Callbacks & {
+export const TextEvents = memo(function TextEvents(solidProps: Callbacks & {
     readonly focusRef?: RefObject<Focusable | null>;
 }): ReactNode {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const handler = useInputHandler();
-    useImperativeHandle(focusRef, () => handler);
+    useImperativeHandle(solidProps.focusRef, () => handler);
     useEffect(() => {
         handler.setInput(inputRef.current);
         return () => {
             handler.setInput(null);
         };
     }, () => [handler]);
-    handler.setCallbacks({ onFocus, onBlur, onKeyDown, onKeyUp, onInput });
+    handler.setCallbacks({ onFocus: solidProps.onFocus, onBlur: solidProps.onBlur, onKeyDown: solidProps.onKeyDown, onKeyUp: solidProps.onKeyUp, onInput: solidProps.onInput });
     return (<div style={divStyle as any}>
       <textarea ref={el => inputRef.current = el} autoCapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle as any}/>
     </div>);

@@ -5,7 +5,7 @@ import { mdiCheckCircle, mdiDeleteForever, mdiDownload, mdiUpload, } from "@keyb
 import { useRef } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./FooterSection.module.css";
-export function FooterSection({ onDone }: {
+export function FooterSection(solidProps: {
     readonly onDone?: () => void;
 }) {
     const { formatMessage } = useIntl();
@@ -51,11 +51,11 @@ export function FooterSection({ onDone }: {
             handleResetData();
         }}/>
         </Field>
-        {onDone != null && (<Field>
+        {solidProps.onDone != null && (<Field>
             <Button size={16} icon={<Icon shape={mdiCheckCircle}/>} label={formatMessage({
                 id: "t_Done",
                 defaultMessage: "Done",
-            })} onClick={onDone}/>
+            })} onClick={solidProps.onDone}/>
           </Field>)}
       </FieldList>
       </div>

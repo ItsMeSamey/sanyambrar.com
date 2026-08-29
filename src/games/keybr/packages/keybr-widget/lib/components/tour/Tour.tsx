@@ -11,14 +11,16 @@ import { Portal } from "../portal/Portal.tsx";
 import { Meter } from "./Meter.tsx";
 import { Slide, type SlideProps } from "./Slide.tsx";
 import * as styles from "./Tour.module.css";
+import { splitProps } from "solid-js";
 export type TourProps = {
     readonly children?: readonly ReactElement<SlideProps>[];
     readonly onClose?: () => void;
 };
-export function Tour({ children, onClose, ...props }: TourProps): ReactNode {
+export function Tour(solidAllProps: TourProps): ReactNode {
+    const [solidLocal, props] = splitProps(solidAllProps, ["children", "onClose"]);
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = useState(0);
-    const slides = Children.toArray(children).filter((child): child is HTMLElement => child instanceof HTMLElement);
+    const slides = Children.toArray(solidLocal.children).filter((child): child is HTMLElement => child instanceof HTMLElement);
     const { length } = slides;
     if (length > 0 && slideIndex() > length - 1) {
         setSlideIndex(length - 1);
@@ -38,7 +40,7 @@ export function Tour({ children, onClose, ...props }: TourProps): ReactNode {
         }
     };
     const close = () => {
-        onClose?.();
+        solidLocal.onClose?.();
     };
     useHotkeys({
         ["ArrowLeft"]: selectPrev,

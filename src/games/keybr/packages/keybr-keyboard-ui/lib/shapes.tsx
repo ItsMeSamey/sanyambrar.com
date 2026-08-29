@@ -1,6 +1,7 @@
 import { type Keyboard, type KeyShape } from "@keybr/keyboard";
 import { type MouseProps, Point, Size } from "@keybr/widget";
 import { type ReactNode, type RefObject } from "@keybr/solid-compat/react";
+import { splitProps } from "solid-js";
 export const margin = 15;
 export const keySize = 40;
 export const keyGap = 2;
@@ -16,11 +17,12 @@ export const getFrameSize = (keyboard: Keyboard): Size => {
     }
     return new Size(margin * 2 + cols * keySize - keyGap, margin * 2 + rows * keySize - keyGap);
 };
-export const Surface = ({ children, ref, ...props }: {
+export const Surface = (solidAllProps: {
     children: ReactNode;
     ref?: RefObject<SVGSVGElement | null>;
 } & MouseProps) => {
-    return (<svg {...props} ref={el => { if (ref) ref.current = el; }} x={margin} y={margin} overflow="visible">
-      {children}
+    const [solidLocal, props] = splitProps(solidAllProps, ["children", "ref"]);
+    return (<svg {...props} ref={el => { if (solidLocal.ref) solidLocal.ref.current = el; }} x={margin} y={margin} overflow="visible">
+      {solidLocal.children}
     </svg>);
 };

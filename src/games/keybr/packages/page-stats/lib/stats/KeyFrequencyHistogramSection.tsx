@@ -3,7 +3,7 @@ import { type KeyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
-export function KeyFrequencyHistogramSection({ keyStatsMap, }: {
+export function KeyFrequencyHistogramSection(solidProps: {
     keyStatsMap: KeyStatsMap;
 }) {
     return (<Figure>
@@ -18,7 +18,7 @@ export function KeyFrequencyHistogramSection({ keyStatsMap, }: {
       </Explainer>
 
       <ChartWrapper>
-        <KeyFrequencyHistogram keyStatsMap={keyStatsMap} width="100%" height="28rem"/>
+        <KeyFrequencyHistogram keyStatsMap={solidProps.keyStatsMap} width="100%" height="28rem"/>
       </ChartWrapper>
 
       <Figure.Legend>

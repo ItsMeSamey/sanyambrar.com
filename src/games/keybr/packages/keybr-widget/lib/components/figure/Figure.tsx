@@ -5,30 +5,26 @@ import * as styles from "./Figure.module.css";
 import { type FigureCaptionProps, type FigureDescriptionProps, type FigureLegendProps, type FigureProps, } from "./Figure.types.ts";
 
 export function Figure(props: FigureProps): ReactNode {
-    const { as: component = "figure", id, title, className, children, caption, description, legend, } = props;
-    return (<Dynamic component={component as any} id={id} class={clsx(styles.root, className)} title={title}>
-      {caption && <Figure.Caption>{caption}</Figure.Caption>}
-      {description && <Figure.Description>{description}</Figure.Description>}
-      {children}
-      {legend && <Figure.Legend>{legend}</Figure.Legend>}
+    return (<Dynamic component={(props.as ?? "figure") as any} id={props.id} title={props.title} class={clsx(styles.root, props.className)}>
+      {props.caption && <Figure.Caption>{props.caption}</Figure.Caption>}
+      {props.description && <Figure.Description>{props.description}</Figure.Description>}
+      {props.children}
+      {props.legend && <Figure.Legend>{props.legend}</Figure.Legend>}
     </Dynamic>);
 }
 function FigureCaption(props: FigureCaptionProps): ReactNode {
-    const { as: component = "figcaption", id, title, className, children, } = props;
-    return (<Dynamic component={component as any} id={id} class={clsx(styles.caption, className)} title={title}>
-      {children}
+    return (<Dynamic component={(props.as ?? "figcaption") as any} id={props.id} title={props.title} class={clsx(styles.caption, props.className)}>
+      {props.children}
     </Dynamic>);
 }
 function FigureDescription(props: FigureDescriptionProps): ReactNode {
-    const { as: component = "p", id, title, className, children } = props;
-    return (<Dynamic component={component as any} id={id} class={clsx(styles.description, className)} title={title}>
-      {children}
+    return (<Dynamic component={(props.as ?? "p") as any} id={props.id} title={props.title} class={clsx(styles.description, props.className)}>
+      {props.children}
     </Dynamic>);
 }
 function FigureLegend(props: FigureLegendProps): ReactNode {
-    const { as: component = "p", id, title, className, children } = props;
-    return (<Dynamic component={component as any} id={id} class={clsx(styles.legend, className)} title={title}>
-      {children}
+    return (<Dynamic component={(props.as ?? "p") as any} id={props.id} title={props.title} class={clsx(styles.legend, props.className)}>
+      {props.children}
     </Dynamic>);
 }
 Figure.Caption = FigureCaption;

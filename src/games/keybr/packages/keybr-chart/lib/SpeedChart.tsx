@@ -9,13 +9,13 @@ import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function SpeedChart({ results, smoothness, width, height, }: {
+export function SpeedChart(solidProps: {
     readonly results: readonly Result[];
     readonly smoothness: number;
 } & SizeProps): ReactNode {
     const styles = useChartStyles();
-    const paint = usePaint(styles, results, smoothness);
-    return <ChartCanvas styles={styles} paint={paint} width={width} height={height}/>;
+    const paint = usePaint(styles, solidProps.results, solidProps.smoothness);
+    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
 function usePaint(styles: ChartStyles, results: readonly Result[], smoothness: number) {
     const { formatMessage } = useIntl();

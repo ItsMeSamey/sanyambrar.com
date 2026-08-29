@@ -1,8 +1,8 @@
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { useExplainerState } from "./context.ts";
-export function Explainer({ children, }: {
+export function Explainer(solidProps: {
     readonly children?: ReactNode;
 }): ReactNode {
     const { explainersVisible } = useExplainerState();
-    return explainersVisible && children;
+    return explainersVisible && solidProps.children;
 }

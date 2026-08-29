@@ -9,10 +9,10 @@ export function TrophyIcon() {
 export function DailyGoalIcon() {
     return <Icon shape={mdiAlarmCheck}/>;
 }
-function Icon({ shape, className, }: {
+function Icon(solidProps: {
     readonly shape: string | ((props: any) => any);
     readonly className?: ClassName;
 }) {
-    if (typeof shape === "function") return <Dynamic component={shape as any} class={clsx(styles.icon, className)} />;
-    return (<svg class={clsx(styles.icon, className)} viewBox="0 0 24 24"><path d={shape}/></svg>);
+    if (typeof solidProps.shape === "function") return <Dynamic component={solidProps.shape as any} class={clsx(styles.icon, solidProps.className)} />;
+    return (<svg class={clsx(styles.icon, solidProps.className)} viewBox="0 0 24 24"><path d={solidProps.shape}/></svg>);
 }

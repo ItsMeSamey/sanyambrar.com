@@ -3,27 +3,24 @@ import { useHotkeysHandler } from "../../hooks/use-hotkeys.ts";
 import { type OptionListProps } from "./OptionList.types.ts";
 import { OptionListButton } from "./OptionListButton.tsx";
 import { OptionListMenu } from "./OptionListMenu.tsx";
-export function OptionList({ disabled, options, size, tabIndex, title, value, onBlur, onFocus, onSelect, ...props }: OptionListProps): ReactNode {
+import { splitProps } from "solid-js";
+export function OptionList(solidAllProps: OptionListProps): ReactNode {
+    const [solidLocal, props] = splitProps(solidAllProps, ["disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect"]);
     const [focused, setFocused] = useState(false);
-    const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList({
-        disabled,
-        options,
-        value,
-        onSelect,
-    });
-    return (<OptionListButton {...props} focused={focused()} open={open()} option={option} size={size} tabIndex={tabIndex} title={title} onBlur={(event) => {
-            if (!disabled) {
+    const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(solidLocal);
+    return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} size={solidLocal.size} tabIndex={solidLocal.tabIndex} title={solidLocal.title} onBlur={(event) => {
+            if (!solidLocal.disabled) {
                 setFocused(false);
                 setOpen(false);
-                if (onBlur != null) {
-                    onBlur(event);
+                if (solidLocal.onBlur != null) {
+                    solidLocal.onBlur(event);
                 }
             }
         }} onFocus={(event) => {
-            if (!disabled) {
+            if (!solidLocal.disabled) {
                 setFocused(true);
-                if (onFocus != null) {
-                    onFocus(event);
+                if (solidLocal.onFocus != null) {
+                    solidLocal.onFocus(event);
                 }
             }
         }} onKeyDown={useHotkeysHandler({
@@ -37,44 +34,44 @@ export function OptionList({ disabled, options, size, tabIndex, title, value, on
             event.preventDefault();
             handleOpen();
         }}>
-      {open() && (<OptionListMenu options={options} selectedOption={selectedOption()} onSelect={(option) => {
+      {open() && (<OptionListMenu options={solidLocal.options} selectedOption={selectedOption()} onSelect={(option) => {
                 setOpen(false);
-                if (onSelect != null) {
-                    onSelect(option.value);
+                if (solidLocal.onSelect != null) {
+                    solidLocal.onSelect(option.value);
                 }
             }}/>)}
     </OptionListButton>);
 }
-function useOptionList({ options, disabled, value, onSelect, }: OptionListProps) {
-    const option = options.find((option) => option.value === value) ?? {
+function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "value" | "onSelect">) {
+    const option = () => props.options.find((option) => option.value === props.value) ?? {
         value: "",
         name: "-",
     };
     const [open, setOpen] = useState(false);
-    const [selectedOption, setSelectedOption] = useState(option);
+    const [selectedOption, setSelectedOption] = useState(option());
     const handleOpen = () => {
-        if (disabled) {
+        if (props.disabled) {
             return;
         }
         if (!open()) {
             setOpen(true);
-            setSelectedOption(option);
+            setSelectedOption(option());
         }
         else {
             setOpen(false);
         }
     };
     const handleNavigate = (dir: "first" | "prev" | "next" | "last") => {
-        if (disabled) {
+        if (props.disabled) {
             return;
         }
         if (!open()) {
             setOpen(true);
-            setSelectedOption(option);
+            setSelectedOption(option());
         }
         else {
-            const { length } = options;
-            let index = options.indexOf(selectedOption());
+            const { length } = props.options;
+            let index = props.options.indexOf(selectedOption());
             if (index === -1) {
                 index = 0;
             }
@@ -98,17 +95,17 @@ function useOptionList({ options, disabled, value, onSelect, }: OptionListProps)
                     index = length - 1;
                     break;
             }
-            setSelectedOption(options[index]);
+            setSelectedOption(props.options[index]);
         }
     };
     const handleSelect = () => {
-        if (disabled) {
+        if (props.disabled) {
             return;
         }
         if (open()) {
             setOpen(false);
-            if (onSelect != null) {
-                onSelect(selectedOption().value);
+            if (props.onSelect != null) {
+                props.onSelect(selectedOption().value);
             }
         }
     };

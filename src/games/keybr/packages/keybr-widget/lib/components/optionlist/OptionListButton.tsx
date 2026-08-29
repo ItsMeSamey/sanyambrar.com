@@ -4,7 +4,8 @@ import { sizeClassName, type SizeName } from "../../styles/index.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 import { type OptionListOption } from "./OptionList.types.ts";
 import * as styles from "./OptionListButton.module.css";
-export function OptionListButton({ children, size, disabled, focused, open, option, tabIndex, title, onClick, ...props }: {
+import { splitProps } from "solid-js";
+export function OptionListButton(solidAllProps: {
     readonly children: ReactNode;
     readonly size?: SizeName;
     readonly focused: boolean;
@@ -12,14 +13,15 @@ export function OptionListButton({ children, size, disabled, focused, open, opti
     readonly option: OptionListOption;
     readonly title?: string;
 } & FocusProps & MouseProps & KeyboardProps): ReactNode {
+    const [solidLocal, props] = splitProps(solidAllProps, ["children", "size", "disabled", "focused", "open", "option", "tabIndex", "title", "onClick"]);
     const element = useRef<HTMLSpanElement>(null);
-    return (<span {...props} ref={el => element.current = el} class={clsx(styles.root, focused && styles.focused, disabled && styles.disabled, sizeClassName(size))} tabIndex={disabled ? undefined : (tabIndex ?? 0)} title={title}>
-      <span class={styles.placeholder} onClick={onClick}>
-        <span class={styles.placeholderName}>{option.name}</span>
+    return (<span {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.focused && styles.focused, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} tabIndex={solidLocal.disabled ? undefined : (solidLocal.tabIndex ?? 0)} title={solidLocal.title}>
+      <span class={styles.placeholder} onClick={solidLocal.onClick}>
+        <span class={styles.placeholderName}>{solidLocal.option.name}</span>
         <span class={styles.placeholderArrow}>
-          {open ? "\u25BC" : "\u25BA"}
+          {solidLocal.open ? "\u25BC" : "\u25BA"}
         </span>
       </span>
-      {children}
+      {solidLocal.children}
     </span>);
 }

@@ -2,14 +2,14 @@ import { useIntlNumbers } from "@keybr/intl";
 import { type StreakList as StreakListType } from "@keybr/result";
 import { type ClassName, styleTextTruncate, Value } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
-export const StreakList = ({ id, className, streakList, }: {
+export const StreakList = (solidProps: {
     id?: string;
     className?: ClassName;
     streakList: StreakListType;
 }) => {
     const { formatPercents } = useIntlNumbers();
     const children = [];
-    for (const { level, results } of streakList) {
+    for (const { level, results } of solidProps.streakList) {
         if (results.length > 0) {
             if (children.length > 0) {
                 children.push(" ");
@@ -23,7 +23,7 @@ export const StreakList = ({ id, className, streakList, }: {
     if (children.length === 0) {
         children.push(<FormattedMessage id="streakList.noStreaks" defaultMessage="No accuracy streaks."/>);
     }
-    return (<span id={id} class={className}>
-      <span class={styleTextTruncate}>{...children}</span>
+    return (<span id={solidProps.id} class={solidProps.className}>
+      <span class={styleTextTruncate}>{children}</span>
     </span>);
 };

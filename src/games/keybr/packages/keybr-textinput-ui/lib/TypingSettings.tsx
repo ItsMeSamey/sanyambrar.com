@@ -5,7 +5,8 @@ import { CaretMovementStyle, CaretShapeStyle, Feedback, Font, textDisplayProps, 
 import { makeSoundPlayer, PlaySounds, soundProps, SoundTheme, } from "@keybr/textinput-sounds";
 import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, Icon, IconButton, OptionList, RadioBox, Range, } from "@keybr/widget";
 import { mdiPlayCircleOutline, mdiStopCircleOutline } from "@keybr/solid-compat/mdi";
-import { useEffect, useMemo, useState } from "@keybr/solid-compat/react";
+import { useEffect, useState } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { AnimatedText } from "./AnimatedText.tsx";
 import * as styles from "./TypingSettings.module.css";
@@ -111,18 +112,18 @@ function SpaceSkipsWordsProp() {
 }
 function FontProp() {
     const { settings, updateSettings } = useSettings();
-    const { language } = KeyboardOptions.from(settings);
-    const fonts = Font.select(language);
-    const font = Font.find(fonts, settings.get(textDisplayProps.font));
+    const language = () => KeyboardOptions.from(settings).language;
+    const fonts = () => Font.select(language());
+    const font = () => Font.find(fonts(), settings.get(textDisplayProps.font));
     return (<FieldList>
       <Field size={10}>
         <FormattedMessage id="t_Font:" defaultMessage="Font:"/>
       </Field>
       <Field>
-        <OptionList options={fonts.map((item) => ({
+        <OptionList options={fonts().map((item) => ({
             value: item.id,
             name: <span style={item.cssProperties}>{item.name}</span>,
-        }))} value={font.id} onSelect={(id) => {
+        }))} value={font().id} onSelect={(id) => {
             updateSettings(settings.set(textDisplayProps.font, Font.ALL.get(id)));
         }}/>
       </Field>
@@ -306,24 +307,21 @@ function SoundsThemeProp() {
 }
 function SoundThemePreview() {
     const { settings } = useSettings();
-    const soundVolume = settings.get(soundProps.soundVolume);
-    const soundTheme = settings.get(soundProps.soundTheme);
-    const player = useMemo(() => {
+    const player = createMemo(() => {
         if (process.env.NODE_ENV === "test") {
-            // Do not load sound assets in tests.
             return () => { };
         }
         return makeSoundPlayer(new Settings()
             .set(soundProps.playSounds, PlaySounds.All)
-            .set(soundProps.soundVolume, soundVolume)
-            .set(soundProps.soundTheme, soundTheme));
-    }, () => [soundVolume, soundTheme]);
+            .set(soundProps.soundVolume, settings.get(soundProps.soundVolume))
+            .set(soundProps.soundTheme, settings.get(soundProps.soundTheme)));
+    });
     const [playing, setPlaying] = useState(false);
     useEffect(() => {
         const tasks = new Tasks();
         if (playing()) {
             tasks.repeated(300, () => {
-                player(Feedback.Succeeded);
+                player()(Feedback.Succeeded);
             });
         }
         return () => {

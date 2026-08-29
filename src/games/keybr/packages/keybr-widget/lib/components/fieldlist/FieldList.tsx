@@ -5,15 +5,13 @@ import * as styles from "./FieldList.module.css";
 import { type FieldListProps, type FieldProps } from "./FieldList.types.ts";
 
 export function FieldList(props: FieldListProps): ReactNode {
-    const { as: component = "div", title, children } = props;
-    return (<Dynamic component={component as any} class={styles.root} title={title}>
-      {children}
+    return (<Dynamic component={(props.as ?? "div") as any} class={styles.root} title={props.title}>
+      {props.children}
     </Dynamic>);
 }
 export function Field(props: FieldProps): ReactNode {
-    const { as: component = "span", size, title, children } = props;
-    return (<Dynamic component={component as any} class={sizeClassName(size)} title={title}>
-      {children}
+    return (<Dynamic component={(props.as ?? "span") as any} class={sizeClassName(props.size)} title={props.title}>
+      {props.children}
     </Dynamic>);
 }
 Field.Filler = function Filler(): ReactNode {

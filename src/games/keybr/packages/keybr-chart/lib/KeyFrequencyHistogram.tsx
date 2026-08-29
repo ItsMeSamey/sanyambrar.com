@@ -8,12 +8,12 @@ import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
 import { keyUsage } from "./keyusage.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function KeyFrequencyHistogram({ keyStatsMap, width, height, }: {
+export function KeyFrequencyHistogram(solidProps: {
     readonly keyStatsMap: KeyStatsMap;
 } & SizeProps): ReactNode {
     const styles = useChartStyles();
-    const paint = usePaint(styles, keyStatsMap);
-    return <ChartCanvas styles={styles} paint={paint} width={width} height={height}/>;
+    const paint = usePaint(styles, solidProps.keyStatsMap);
+    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
 function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {
     const { formatMessage } = useIntl();
