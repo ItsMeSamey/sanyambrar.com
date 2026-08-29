@@ -230,12 +230,19 @@ ${keybrViewSwitch}`;
     keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
     keybrTabList.includes("const selectedIndex = () => props.selectedIndex ?? 0"),
     "ux: Keybr settings must keep draft state, lesson loading, and selected tabs reactive");
+  const keybrSolidReactCompat = await readFile(join(ROOT, "src/games/keybr/packages/keybr-solid-compat/react.tsx"), "utf8");
+  const keybrLayoutEffectStart = keybrSolidReactCompat.indexOf("export function useLayoutEffect");
+  const keybrLayoutEffectEnd = keybrSolidReactCompat.indexOf("\n}", keybrLayoutEffectStart) + 2;
+  const keybrLayoutEffect = keybrSolidReactCompat.slice(keybrLayoutEffectStart, keybrLayoutEffectEnd);
+  must(keybrLayoutEffectStart >= 0 && keybrLayoutEffect.includes("createEffect(() =>") && !keybrLayoutEffect.includes("createRenderEffect(() =>"),
+    "ux: Keybr React layout effects must run after DOM refs are attached");
   const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
-  must(keybrStyle.includes("--slow-key-color: color-mix(in srgb, var(--site-slow-color") &&
-    keybrStyle.includes("--fast-key-color: color-mix(in srgb, var(--site-fast-color") &&
+  must(keybrStyle.includes("--keybr-chart-speed: color-mix(in srgb, #6fb48c") &&
+    keybrStyle.includes("--pinky-zone-color: color-mix(in srgb, #8ec07c") &&
+    keybrStyle.includes("--right-index-zone-color: color-mix(in srgb, #c98298") &&
     keybrStyle.includes("--syntax-number: color-mix(in srgb, var(--site-effort-color") &&
     keybrStyle.includes("--Button__background-color: var(--primary-d1)"),
-    "ux: Keybr semantic colors must derive from the shared site theme without accent-washing controls");
+    "ux: Keybr data colors must stay distinct and subdued without accent-washing controls");
   const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
   const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
   const keybrIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/icon/Icon.module.css"), "utf8");

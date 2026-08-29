@@ -87,8 +87,14 @@ export function useEffect(effect: () => void | (() => void), deps?: (() => reado
   }
 }
 export function useLayoutEffect(effect: () => void | (() => void), deps?: (() => readonly unknown[]) | readonly unknown[]): void {
-  createRenderEffect(() => {
-    if (typeof deps === "function") deps();
+  // React runs layout effects after refs have been attached to the committed DOM.
+  // A Solid render effect can run while the component is still constructing its
+  // JSX, before refs in the returned tree exist. A normal Solid effect is queued
+  // until the render phase has completed, which preserves the ordering that the
+  // ported React components rely on while still tracking reactive dependencies.
+  createEffect(() => {
+    if (typeof deps === "function") touchDeps(deps());
+    else if (deps != null) touchDeps(deps);
     const cleanup = untrack(effect);
     if (typeof cleanup === "function") onCleanup(cleanup);
   });

@@ -25,12 +25,22 @@
   --error-d1: color-mix(in srgb, var(--error) 90%, var(--secondary));
   --error-l1: color-mix(in srgb, var(--error) 90%, var(--primary));
   --shadow-color: color-mix(in srgb, var(--secondary) 27%, transparent);
-  --keybr-data-strength: 62%;
-  --keybr-zone-strength: 27%;
-  --keybr-accent-strength: 54%;
-  --slow-key-color: color-mix(in srgb, var(--site-slow-color, var(--error)) var(--keybr-data-strength), var(--primary));
-  --fast-key-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) var(--keybr-data-strength), var(--primary));
-  --effort-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) var(--keybr-data-strength), var(--primary));
+  /* Keybr uses several semantic data colors at once. Keep those colors distinct
+     instead of reusing the site's blue accent for unrelated keyboard zones. */
+  --keybr-data-strength: 52%;
+  --keybr-zone-strength: 24%;
+  --keybr-accent-strength: 46%;
+  --slow-key-color: color-mix(in srgb, #a1464e var(--keybr-data-strength), var(--primary));
+  --fast-key-color: color-mix(in srgb, #2a7e21 var(--keybr-data-strength), var(--primary));
+  --effort-color: color-mix(in srgb, #8664a5 var(--keybr-data-strength), var(--primary));
+
+  --keybr-chart-speed: color-mix(in srgb, #6fb48c var(--keybr-data-strength), var(--primary));
+  --keybr-chart-accuracy: color-mix(in srgb, #c95c46 var(--keybr-data-strength), var(--primary));
+  --keybr-chart-complexity: color-mix(in srgb, #9b78b2 var(--keybr-data-strength), var(--primary));
+  --keybr-chart-threshold: color-mix(in srgb, #b56f92 var(--keybr-data-strength), var(--primary));
+  --keybr-chart-hist-h: color-mix(in srgb, #6673a5 var(--keybr-data-strength), var(--primary));
+  --keybr-chart-hist-m: color-mix(in srgb, #a75555 var(--keybr-data-strength), var(--primary));
+  --keybr-chart-hist-r: color-mix(in srgb, #96679b var(--keybr-data-strength), var(--primary));
 
   --background-color: var(--primary);
   --background-image: none;
@@ -68,21 +78,21 @@
   --KeyboardKey-symbol--dead__color: var(--slow-key-color);
   --KeyboardKey-symbol--ligature__color: var(--effort-color);
   --KeyboardKey-pointer__color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-accent-strength), var(--primary));
-  --pinky-zone-color: color-mix(in srgb, var(--site-fast-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
-  --ring-zone-color: color-mix(in srgb, var(--site-warning-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
-  --middle-zone-color: color-mix(in srgb, var(--site-warning-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
-  --left-index-zone-color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-zone-strength), var(--primary));
-  --right-index-zone-color: color-mix(in srgb, var(--site-effort-color, var(--accent)) var(--keybr-zone-strength), var(--primary));
-  --thumb-zone-color: color-mix(in srgb, var(--site-error, var(--error)) var(--keybr-zone-strength), var(--primary));
+  --pinky-zone-color: color-mix(in srgb, #8ec07c var(--keybr-zone-strength), var(--primary));
+  --ring-zone-color: color-mix(in srgb, #b8bb26 var(--keybr-zone-strength), var(--primary));
+  --middle-zone-color: color-mix(in srgb, #d9a52c var(--keybr-zone-strength), var(--primary));
+  --left-index-zone-color: color-mix(in srgb, #83a698 var(--keybr-zone-strength), var(--primary));
+  --right-index-zone-color: color-mix(in srgb, #c98298 var(--keybr-zone-strength), var(--primary));
+  --thumb-zone-color: color-mix(in srgb, #c96e62 var(--keybr-zone-strength), var(--primary));
 
   --Chart-frame__color: var(--primary-d2);
-  --Chart-speed__color: var(--fast-key-color);
-  --Chart-accuracy__color: var(--slow-key-color);
-  --Chart-complexity__color: var(--effort-color);
-  --Chart-threshold__color: color-mix(in srgb, var(--site-accent, var(--accent)) var(--keybr-data-strength), var(--primary));
-  --Chart-hist-h__color: var(--effort-color);
-  --Chart-hist-m__color: var(--slow-key-color);
-  --Chart-hist-r__color: color-mix(in srgb, var(--slow-key-color) 50%, var(--effort-color));
+  --Chart-speed__color: var(--keybr-chart-speed);
+  --Chart-accuracy__color: var(--keybr-chart-accuracy);
+  --Chart-complexity__color: var(--keybr-chart-complexity);
+  --Chart-threshold__color: var(--keybr-chart-threshold);
+  --Chart-hist-h__color: var(--keybr-chart-hist-h);
+  --Chart-hist-m__color: var(--keybr-chart-hist-m);
+  --Chart-hist-r__color: var(--keybr-chart-hist-r);
 
   --DailyGoal-bar__color: var(--primary-l2);
   --DailyGoal-frame__color: var(--primary-d2);
@@ -143,9 +153,9 @@
 
 html[data-site-theme="dark"], html[data-color="dark"], html[data-color="clear-dark"] {
   --shadow-color: color-mix(in srgb, var(--secondary) 48%, transparent);
-  --keybr-data-strength: 72%;
-  --keybr-zone-strength: 35%;
-  --keybr-accent-strength: 64%;
+  --keybr-data-strength: 58%;
+  --keybr-zone-strength: 28%;
+  --keybr-accent-strength: 54%;
 }
 
 html[data-font="sans-serif"] { --default-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --header-font-family: var(--default-font-family); --value-font-family: var(--default-font-family); --monospace-font-family: var(--default-font-family); }
@@ -184,6 +194,7 @@ input, button, textarea, select { font: inherit; }
 
 a { color: var(--text-color); text-decoration: underline; }
 a:focus-visible { outline: 1px dotted var(--text-color); }
+button:focus-visible { outline: 1px solid var(--secondary-l2); outline-offset: 1px; }
 h1, h2, h3 { font-family: var(--header-font-family); }
 h1, h2, h3, p, dl, dt, dd, ol, ul, li { margin-block: 0; padding-block: 0; font-style: normal; line-height: 1.5; text-align: start; }
 h1, h2, h3, p, dl, dt, dd, ol, ul, li { margin-inline: 0; }
