@@ -1,39 +1,59 @@
 # Sanyam Brar
 
-A static portfolio that behaves like one application.
+My personal site, plus a pile of small games and tools. It ships as static files, but navigation still feels like one app.
 
-## Architecture
+**[Live site](https://itsmesamey.github.io/)** · [Work](https://itsmesamey.github.io/work/) · [Writing](https://itsmesamey.github.io/blog/) · [Tools](https://itsmesamey.github.io/tools/)
 
-`site.ts` is the content and page-generation source of truth for Home, Work, project pages, navigation metadata, and the static search index. `build.ts` builds into temporary state and publishes transactionally into `docs/`.
+## What's here
 
-The shared browser shell lives in `src/shared/runtime.ts`, `src/shared/theme.ts`, `src/shared/site.ts`, `src/shared/transitions.ts`, and `src/shared/styles/site.css`. It owns appearance, custom cursors, loading state, virtual scrollbars, context menus, search, same-origin navigation, prefetching, recoverable load errors, and mounted-root transition animations. Home, Work, Writing, Projects, Tools, and Chain Reaction are one code-split Solid SPA. Wordle and Keybr remain standalone applications, but same-origin navigation swaps their real application roots into the current document with no iframe path.
+| | |
+|---|---|
+| **Games** | Wordle, Keybr, Chain Reaction |
+| **Tools** | Live diff, Markdown preview, text inspector, encoders, converters |
+| **Work** | Projects and open-source work |
+| **Writing** | Notes and longer technical posts |
 
-`src/ui-kit/` contains the reusable Solid controls used by Wordle. Tools are a lazy Solid route with one shared `TopBar`; tool selection and tool-specific status/actions reuse that row instead of creating nested or floating toolbars. Text-heavy tools use lazily loaded Monaco editors with the shared appearance palette; Diff uses Monaco Diff Editor and Markdown uses Monaco plus source-aware linked preview scrolling. `src/shared/styles/game-settings.css` is the shared game-settings contract used by Wordle and Chain Reaction. Controls intentionally share geometry, focus behavior, pressed states, surfaces, motion timings, and theme tokens rather than maintaining app-specific visual systems.
-
-## Site map
+## Shape of the site
 
 ```text
-Home
-  Games
-  Tools
-  Writing
-
-Work
-  Projects
-  Open-source contributions
-
-  Small interactive experiments
-
-Projects
-  Focused detail pages
+src/ + site.ts
+      │
+      ▼
+   build.ts ──► docs/ ──► GitHub Pages
+      │
+      ├── Site / Work / Writing / Projects
+      ├── Tools + Monaco workers
+      ├── Wordle
+      ├── Keybr
+      └── Chain Reaction
 ```
 
-`⌘ K` on macOS and `Ctrl K` on Windows/Linux opens the site search/command palette. Same-origin links are prefetched on intent and navigated through the shared shell. Tool URLs contain only the selected tool; editor contents and tool settings stay in per-tool local storage rather than being serialized into URLs.
+Most pages share the same shell for navigation, themes, search, transitions, context menus, and the custom cursor. Same-origin navigation swaps real page roots instead of using iframes.
+
+Wordle is Solid/Vite. Keybr keeps its React/Webpack app. The rest of the site is Solid, with larger pieces loaded only when they are opened.
+
+Diff uses two editable Monaco panes. A worker keeps incremental line state and computes bounded diffs, keeping that work off the main thread.
 
 ## Build
 
 ```sh
-bun build.ts
+bun install
+bun run build
 ```
 
-GitHub Pages publishes `docs/`. Wordle is the Vite/Solid build, Keybr remains its own React/Webpack application, Tools are a lightweight shared-runtime page, and Chain Reaction remains a deliberately small canvas application.
+`docs/` is the deployable site.
+
+Monaco has a small version-pinned patch under [`patches/`](./patches/). It is applied with `patch-package` during install, not by keeping edited `node_modules` files around.
+
+## Repository map
+
+```text
+src/site/       home, work, project pages
+src/shared/     browser shell, navigation, themes, shared UI
+src/tools/      tools, Monaco editors, diff worker
+src/games/      Wordle, Keybr, Chain Reaction
+src/blogs/      writing source
+src/static/     static page sources
+patches/        dependency patches
+docs/           generated site served by GitHub Pages
+```
