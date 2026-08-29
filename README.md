@@ -22,7 +22,7 @@ src/ + site.ts
    build.ts ──► docs/ ──► GitHub Pages
       │
       ├── Site / Work / Writing / Projects
-      ├── Tools + Monaco workers
+      ├── Tools + Monaco DiffEditor
       ├── Wordle
       ├── Keybr
       └── Chain Reaction
@@ -32,7 +32,7 @@ Most pages share the same shell for navigation, themes, search, transitions, con
 
 Wordle is Solid/Vite. Keybr keeps its React/Webpack app. The rest of the site is Solid, with larger pieces loaded only when they are opened.
 
-Diff uses two editable Monaco panes. A worker keeps incremental line state and computes bounded diffs, keeping that work off the main thread.
+Diff uses one editable Monaco DiffEditor. Monaco owns line alignment, gap zones, and character-level highlighting, while the patched advanced diff path keeps computation bounded.
 
 ## Build
 
@@ -50,7 +50,7 @@ Monaco has a small version-pinned patch under [`patches/`](./patches/). It is ap
 ```text
 src/site/       home, work, project pages
 src/shared/     browser shell, navigation, themes, shared UI
-src/tools/      tools, Monaco editors, diff worker
+src/tools/      tools, Monaco editors and DiffEditor
 src/games/      Wordle, Keybr, Chain Reaction
 src/blogs/      writing source
 src/static/     static page sources

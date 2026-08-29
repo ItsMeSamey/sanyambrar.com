@@ -477,36 +477,31 @@ ${keybrViewSwitch}`;
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
   const rootPackage = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
-  const diffWorkerSource = await readFile(join(ROOT, "src/tools/diff-worker.ts"), "utf8");
   const monacoDiffPatch = await readFile(join(ROOT, "patches", "monaco-editor+0.56.0.patch"), "utf8");
   must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" &&
     rootPackage.devDependencies?.["patch-package"] === "8.0.1" && rootPackage.scripts?.postinstall === "patch-package --error-on-fail" &&
     monacoDiffPatch.includes("node_modules/monaco-editor/esm/vs/editor/common/diff/defaultLinesDiffComputer/defaultLinesDiffComputer.js") &&
     monacoDiffPatch.includes("_sameyPerfectHashes") && monacoDiffPatch.includes("perfectHashes.size > 500000") && monacoDiffPatch.includes("if (!hitTimeout)") && monacoDiffPatch.includes("if (!timeout.isValid())") && monacoDiffPatch.includes("if (diffResult.hitTimeout)") &&
-    toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('const diffWorker = new DiffWorker()') &&
-    toolsSource.includes('const mapDiffLine =') && !toolsSource.includes("#diff-compute") && !toolsSource.includes('createDiffEditor(') &&
-    toolsSource.includes('const serializeChanges = event => event.changes.map(change => ({') && toolsSource.includes('startLineNumber:change.range.startLineNumber') &&
+    !toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('monaco.editor.createDiffEditor(') &&
+    toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
+    toolsSource.includes('enableSplitViewResizing:true') && toolsSource.includes('useInlineViewWhenSpaceIsLimited:false') &&
+    toolsSource.includes("diffAlgorithm:'advanced'") && toolsSource.includes('maxComputationTime:75') &&
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
-    !toolsSource.includes("const save = () => { set('left'") &&
-    diffWorkerSource.includes('DefaultLinesDiffComputer') && diffWorkerSource.includes('maxComputationTimeMs: 75') &&
-    diffWorkerSource.includes("let originalLines = ['']") && diffWorkerSource.includes('const splitLines = text => text.split(/\\r\\n|\\r|\\n/)') &&
-    diffWorkerSource.includes('const applyChanges = (lines, changes) =>') &&
-    !diffWorkerSource.includes("originalText.split('\n')") && !diffWorkerSource.includes("modifiedText.split('\n')"),
-    "ux: Diff must use patch-package, incremental worker text state, bounded advanced diffing, semantic scroll mapping, and deferred persistence");
-  must(toolsStyle.includes('.diff-panes{display:grid;grid-template-columns:minmax(0,var(--diff-split,50%)) 5px minmax(0,1fr)') &&
-    toolsStyle.includes('.diff-splitter') && toolsStyle.includes('.diff-combined-table') &&
-    toolsSource.includes('aria-label="Resize diff panes"') && toolsSource.includes("data-diff-layout=\"combined\"") &&
-    toolsSource.includes("wordWrap:'off'") && toolsSource.includes('const renderCombined = () =>') &&
+    !toolsSource.includes("const save = () => { set('left'"),
+    "ux: Diff must use one editable Monaco DiffEditor, patched bounded advanced diffing, and deferred persistence");
+  must(toolsStyle.includes('/* One Monaco DiffEditor owns alignment, padding view-zones, and split resizing. */') &&
+    toolsStyle.includes('.diff-monaco .monaco-diff-editor') && !toolsStyle.includes('.diff-panes') && !toolsStyle.includes('.diff-combined-table') &&
+    toolsSource.includes("wordWrap:'off'") && !toolsSource.includes('const renderCombined = () =>') &&
     toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
-    "ux: Diff must keep the compact resizable side-by-side layout plus a bounded combined view, while narrow Markdown remains stacked");
+    "ux: Diff must be a single Monaco DiffEditor with native aligned view zones, while narrow Markdown remains stacked");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
     toolsStyle.includes('.text-stat:nth-child(3) b,.text-stat:nth-child(3) strong{color:var(--site-error)}'),
     "ux: text counts must remain legible and retain word/non-ASCII colors");
-  must(toolsStyle.includes("var(--site-effort-color") && toolsStyle.includes("var(--site-fast-color") &&
-    toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')"),
+  must(toolsStyle.includes("var(--site-effort-color") &&
+    toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')") && toolsSource.includes("const effort = style.getPropertyValue('--site-effort-color')"),
     "ux: Tools highlights and Diff colors must derive from the shared theme");
   must(toolsStyle.includes("width:var(--kb-popper-anchor-width)") && toolsStyle.includes("box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 16px") &&
     toolsStyle.includes(".tools-page>.site-topbar{--site-topbar-height:72px;flex-basis:72px;height:72px}") && toolsStyle.includes(".tool-switcher>[role=group]{width:100%;min-width:0}") && toolsStyle.includes("overflow-x:auto"),
