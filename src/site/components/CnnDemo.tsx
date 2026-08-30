@@ -253,13 +253,8 @@ export function CnnDemo() {
   return <section class="detail-copy cnn-demo-section" aria-labelledby="cnn-demo-title">
     <div class="cnn-demo-head">
       <div>
-        <p class="cnn-demo-kicker">Browser inference</p>
         <h2 id="cnn-demo-title">Draw something</h2>
-        <p>Sketch a digit, symbol, or noise. The pad preserves grayscale intensity before 28 × 28 inference.</p>
-      </div>
-      <div class="cnn-demo-status" data-state={modelError() || modelState() === 'error' ? 'error' : modelState() === 'ready' ? 'ready' : 'pending'}>
-        <span class="cnn-demo-status-dot" aria-hidden="true" />
-        {modelState() === 'loading' ? 'LOADING WASM' : modelState() === 'error' ? 'WASM ERROR' : modelError() ? 'INFERENCE ERROR' : 'WASM LIVE'}
+        <p>Sketch a digit, symbol, or noise. Greys work too.</p>
       </div>
     </div>
 
@@ -283,14 +278,12 @@ export function CnnDemo() {
               <small>0–9, symbols, greys, noise</small>
             </div>
           </Show>
+          <canvas ref={sampleCanvas} class="cnn-sample-canvas" aria-hidden="true" />
         </div>
+      </div>
 
-        <div class="cnn-pad-footer">
-          <div class="cnn-input-preview">
-            <div class="cnn-input-thumb"><canvas ref={sampleCanvas} class="cnn-sample-canvas" aria-hidden="true" /></div>
-            <div class="cnn-input-meta"><span>MODEL INPUT</span><strong>28 × 28 · U8 GRAYSCALE</strong></div>
-          </div>
-
+      <div class="cnn-settings-pane">
+        <div class="cnn-controls-row">
           <label class="cnn-ink-control">
             <span><b>INTENSITY</b><output>{Math.round(inkLevel() * 100)}%</output></span>
             <input
@@ -311,9 +304,7 @@ export function CnnDemo() {
             Clear
           </button>
         </div>
-      </div>
 
-      <div class="cnn-output-pane">
         <div class="cnn-output-summary">
           <div>
             <span class="cnn-output-label">PREDICTION</span>
@@ -336,7 +327,6 @@ export function CnnDemo() {
           }}</For>
         </div>
         <div class="cnn-output-foot">
-          <span>11-way softmax</span>
           <span class="cnn-unknown-key"><b>?</b> unknown</span>
         </div>
       </div>

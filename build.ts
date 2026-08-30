@@ -581,7 +581,7 @@ ${keybrViewSwitch}`;
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
-    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("Browser inference") && cnnDemo.includes("11-way softmax"),
+    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT"),
     "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
