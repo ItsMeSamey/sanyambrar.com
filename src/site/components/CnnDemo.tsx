@@ -252,7 +252,7 @@ export function CnnDemo() {
     window.removeEventListener('samey-themechange', recolorForTheme);
   });
 
-  return <section class="detail-copy cnn-demo-section" aria-labelledby="cnn-demo-title">
+  return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">
     <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw something</h2></div>
 
     <div class="cnn-demo-shell">
@@ -269,9 +269,7 @@ export function CnnDemo() {
             onPointerCancel={endStroke}
           />
         </div>
-      </div>
 
-      <div class="cnn-settings-pane">
         <div class="cnn-controls-row">
           <label class="game-settings-slider cnn-ink-control" style={`--range-fill-width:${inkFill()}`}>
             <span class="game-settings-slider-head">
@@ -297,7 +295,9 @@ export function CnnDemo() {
             Clear
           </button>
         </div>
+      </div>
 
+      <div class="cnn-output-pane">
         <div class="cnn-output-summary">
           <div>
             <span class="cnn-output-label">PREDICTION</span>

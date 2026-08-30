@@ -418,11 +418,12 @@ ${keybrViewSwitch}`;
     "ux: Reverb UI demo must be an in-page compiled element, never eval/iframe/nested document");
   const homeStyle = await readFile(join(ROOT, "src/site/styles/home.css"), "utf8");
   const appSource = await readFile(join(ROOT, "src/site/App.tsx"), "utf8");
+  const projectPageSource = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
   const sharedSiteStyle = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
   const keybrIndicators = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.tsx"), "utf8");
   const keybrIndicatorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.module.css"), "utf8");
-  must(homeStyle.includes(".reverb-demo-frame-shell{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,calc(100% - 36px));height:min(820px,calc(100% - 36px));min-height:0") &&
-    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && reverbDemoHtml.includes(".stage{padding:0 12px;background:var(--surface)}") && !reverbDemoHtml.includes("@media(max-height:"),
+  must(homeStyle.includes(".reverb-demo-frame-shell{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,100%);height:min(820px,100%);min-height:0") &&
+    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && reverbDemoHtml.includes(".stage{padding:0 12px;background:transparent}") && !reverbDemoHtml.includes("@media(max-height:"),
     "ux: Reverb mobile demo must size against its host, keep side margins, and avoid viewport-height compression");
   must(reverbDemoHtml.includes("touch-action:pan-y") && reverbDemoHtml.includes("user-select:none") &&
     reverbRuntimeSource.includes("if(clientY<blobRect.top)return 'settings'") && reverbRuntimeSource.includes("if(clientY>blobRect.bottom)return 'library'") &&
@@ -430,8 +431,13 @@ ${keybrViewSwitch}`;
     "ux: Reverb page scrolling must remain available through the blob while source gestures are limited to regions above/below it");
   must(reverbDemoSource.includes('class="reverb-demo-fullscreen-button"') && !reverbDemoHtml.includes('demoFullscreen') && reverbDemoSource.includes("FULLSCREEN_STATE_KEY") &&
     reverbDemoSource.includes("history.pushState") && reverbDemoSource.includes("history.back()") && reverbDemoSource.includes("window.addEventListener('popstate'") &&
-    reverbDemoSource.includes("frame.animate([") && reverbDemoSource.includes("installFullscreen(frame, fullscreenButton)") && homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed"),
-    "ux: Reverb demo fullscreen must animate and participate in browser back/forward history");
+    reverbDemoSource.includes("frame.animate([") && reverbDemoSource.includes("installFullscreen(frame, host, fullscreenButton)") && reverbDemoSource.includes("host.setAttribute('data-fullscreen', '')") &&
+    homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") && reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;box-shadow:none"),
+    "ux: Reverb fullscreen must fill the viewport with the actual UI, animate, and participate in browser back/forward history");
+  must(reverbDemoHtml.includes("animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) 3") && reverbDemoHtml.includes("@keyframes gesture-hint-life") &&
+    reverbDemoHtml.includes("--primary:var(--site-accent-fg") && reverbDemoHtml.includes("--surface:color-mix(in srgb,var(--site-bg") &&
+    homeStyle.includes("color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg"),
+    "ux: Reverb gesture teaching must stop after a few loops and its app/page palette must follow the site theme");
   must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
     reverbRuntimeSource.includes("settingsInitial.get('oneLimitSeconds')") && reverbRuntimeSource.includes("settingsInitial.get('retentionMode')"),
     "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
@@ -452,9 +458,17 @@ ${keybrViewSwitch}`;
     cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
     !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
     homeStyle.includes(".site-standard:has(.cnn-demo-section)") && homeStyle.includes(".site-standard:has(.reverb-demo-section)") &&
-    homeStyle.includes(".cnn-demo-shell") && homeStyle.includes("touch-action:none") && !homeStyle.includes(".cnn-ink-range") &&
-    !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && homeStyle.includes("var(--site-accent)"),
-    "ux: CNN demo must keep drawing responsive with worker-backed WASM inference, one visible input, and shared themed controls");
+    homeStyle.includes(".cnn-demo-shell{position:relative;display:grid;grid-template-columns:") && homeStyle.includes("@media(max-width:700px){.site-standard .cnn-demo-section") &&
+    homeStyle.includes(".cnn-demo-shell{grid-template-columns:1fr") && homeStyle.includes(".cnn-pad{position:absolute") && homeStyle.includes("border:0;border-radius:0;touch-action:none") &&
+    !homeStyle.includes(".cnn-ink-range") && !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && !homeStyle.includes(".cnn-settings-pane") && homeStyle.includes("var(--site-accent)"),
+    "ux: CNN demo must keep worker-backed inference, one visible square canvas, desktop side-by-side predictions, mobile stacking, and shared themed controls");
+  must(projectPageSource.includes('class="project-source-link"') && projectPageSource.indexOf('class="project-source-link"') < projectPageSource.indexOf('class="fact-strip"') &&
+    projectPageSource.includes('class="project-description"') && !projectPageSource.includes('class="dek"') && !projectPageSource.includes("What it is") && !projectPageSource.includes("Related") &&
+    !reverbDemoSource.includes("Interactive mock of Reverb's current Android interface") && !reverbDemoSource.includes('class="detail-copy reverb-demo-section"') &&
+    !cnnDemoSource.includes('class="detail-copy cnn-demo-section"') && homeStyle.includes(".reverb-demo-host{display:block;width:100%;height:100%;min-height:0;overflow:hidden;border:0;border-radius:0") &&
+    reverbDemoHtml.includes("html,body{margin:0;min-height:100%;background:transparent") && reverbDemoHtml.includes("padding:18px;background:transparent") && reverbDemoHtml.includes("box-shadow:none;isolation:isolate") &&
+    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("border:0;border-radius:0"),
+    "ux: project pages must keep source near the title, avoid redundant dek/Related/What-it-is chrome, and render both demos seamlessly without outer borders or rounding");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
@@ -591,7 +605,7 @@ ${keybrViewSwitch}`;
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
-    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise"),
+    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise"),
     "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&

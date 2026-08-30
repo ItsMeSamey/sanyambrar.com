@@ -29,7 +29,7 @@ function animateFrame(frame: HTMLDivElement, before: DOMRect, reduceMotion: bool
   });
 }
 
-function installFullscreen(frame: HTMLDivElement, button: HTMLButtonElement) {
+function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: HTMLButtonElement) {
   const token = `reverb-${Math.random().toString(36).slice(2)}`;
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let active = false;
@@ -52,8 +52,10 @@ function installFullscreen(frame: HTMLDivElement, button: HTMLButtonElement) {
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
       frame.classList.add('is-fullscreen');
+      host.setAttribute('data-fullscreen', '');
     } else {
       frame.classList.remove('is-fullscreen');
+      host.removeAttribute('data-fullscreen');
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     }
@@ -84,6 +86,7 @@ function installFullscreen(frame: HTMLDivElement, button: HTMLButtonElement) {
     window.removeEventListener('popstate', onPopState);
     if (active) {
       frame.classList.remove('is-fullscreen');
+      host.removeAttribute('data-fullscreen');
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
     }
@@ -141,10 +144,13 @@ function mountReverbDemo(host: HTMLDivElement) {
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };
 
-  runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
+  const runtime = runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
+  const refreshTheme = () => runtime?.refreshTheme?.();
+  window.addEventListener('samey-themechange', refreshTheme);
 
   return () => {
     disposed = true;
+    window.removeEventListener('samey-themechange', refreshTheme);
     for (const id of rafs) window.cancelAnimationFrame(id);
     for (const id of timers) window.clearTimeout(id);
     rafs.clear();
@@ -160,17 +166,12 @@ export function ReverbDemo() {
   let dispose = () => {};
   onMount(() => {
     const disposeDemo = mountReverbDemo(host);
-    const disposeFullscreen = installFullscreen(frame, fullscreenButton);
+    const disposeFullscreen = installFullscreen(frame, host, fullscreenButton);
     dispose = () => { disposeFullscreen(); disposeDemo(); };
   });
   onCleanup(() => dispose());
-  return <section class="detail-copy reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
-    <div class="reverb-demo-head">
-      <div>
-        <h2 id="reverb-ui-demo-title">UI demo</h2>
-        <p>Interactive mock of Reverb's current Android interface.</p>
-      </div>
-    </div>
+  return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
+    <div class="reverb-demo-head"><h2 id="reverb-ui-demo-title">UI demo</h2></div>
     <div class="reverb-demo-frame-shell">
       <div ref={frame} class="reverb-demo-frame">
         <div ref={host} class="reverb-demo-host" role="group" aria-label="Interactive Reverb UI demo" />

@@ -240,6 +240,15 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
   phone.addEventListener('touchend',clearTouchGesture); phone.addEventListener('touchcancel',clearTouchGesture);
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
+  function resolveCssColor(element, variable, fallback){
+    const probe=document.createElement('span');
+    probe.style.cssText=`position:absolute;pointer-events:none;visibility:hidden;color:var(${variable},${fallback})`;
+    (element.parentNode||document.documentElement)?.appendChild(probe);
+    const color=getComputedStyle(probe).color||fallback;
+    probe.remove();
+    return color;
+  }
+
   function makeWebGLBlob(canvas){
     const gl=canvas.getContext('webgl',{alpha:true,premultipliedAlpha:true,antialias:true});
     if(!gl){ return makeFallbackBlob(canvas); }
@@ -280,16 +289,26 @@ void main(){
     const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
     const locA=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(locA);gl.vertexAttribPointer(locA,2,gl.FLOAT,false,0,0);
     const u={};['resolution','time','activity','life','active','bands0','bands1','primaryColor','tertiaryColor','pausedColor'].forEach(n=>u[n]=gl.getUniformLocation(prog,n));
-    const hex=h=>[parseInt(h.slice(1,3),16)/255,parseInt(h.slice(3,5),16)/255,parseInt(h.slice(5,7),16)/255,1];
-    const p=hex('#2DD4BF'),t=hex('#ACCBE5'),q=hex('#2A3244');
-    gl.uniform4fv(u.primaryColor,p);gl.uniform4fv(u.tertiaryColor,t);gl.uniform4fv(u.pausedColor,q);
+    const colorCanvas=document.createElement('canvas'),colorCtx=colorCanvas.getContext('2d'); colorCanvas.width=colorCanvas.height=1;
+    function colorVector(variable,fallback){
+      if(!colorCtx)return [0,0,0,1];
+      colorCtx.clearRect(0,0,1,1); colorCtx.fillStyle='#000'; colorCtx.fillStyle=resolveCssColor(canvas,variable,fallback); colorCtx.fillRect(0,0,1,1);
+      const pixel=colorCtx.getImageData(0,0,1,1).data; return [pixel[0]/255,pixel[1]/255,pixel[2]/255,pixel[3]/255];
+    }
+    function refreshTheme(){
+      gl.useProgram(prog);
+      gl.uniform4fv(u.primaryColor,colorVector('--primary','#2DD4BF'));
+      gl.uniform4fv(u.tertiaryColor,colorVector('--tertiary','#ACCBE5'));
+      gl.uniform4fv(u.pausedColor,colorVector('--surface-container-highest','#2A3244'));
+    }
+    refreshTheme();
     let targetLife=.38,currentLife=.38,targetActivity=0,currentActivity=0;const targetBands=new Float32Array(8),currentBands=new Float32Array(8);let activeState=false,last=performance.now(),signalClock=0;
     function resize(){const dpr=Math.min(devicePixelRatio||1,2);const r=canvas.getBoundingClientRect();const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h)}gl.uniform2f(u.resolution,w,h)}
     function advance(dt){const normalized=Math.max(.25,Math.min(3,dt*30));let rate=targetActivity>currentActivity?.34:.16,mix=Math.min(.82,rate*normalized);currentActivity+=(targetActivity-currentActivity)*mix;for(let i=0;i<8;i++){rate=targetBands[i]>currentBands[i]?.30:.13;mix=Math.min(.8,rate*normalized);currentBands[i]+=(targetBands[i]-currentBands[i])*mix}rate=targetLife>currentLife?.18:.15;mix=Math.min(.65,rate*normalized);currentLife+=(targetLife-currentLife)*mix;if(Math.abs(currentLife-targetLife)<=.006)currentLife=targetLife}
     function syntheticSignal(ts){if(!activeState){targetActivity=0;targetBands.fill(0);return}if(ts-signalClock<85)return;signalClock=ts;const x=ts/1000;targetActivity=.20+.22*(.5+.5*Math.sin(x*1.7))+.09*Math.random();for(let i=0;i<8;i++){const harmonic=.5+.5*Math.sin(x*(1.13+i*.16)+i*.83);const pulse=.5+.5*Math.sin(x*.41+i*1.7);targetBands[i]=Math.max(.025,Math.min(.82,.07+harmonic*(.12+.21*targetActivity)+pulse*.07+Math.random()*.09))}}
     function frame(now){resize();const dt=Math.max(.001,Math.min(.1,(now-last)/1000));last=now;syntheticSignal(now);advance(dt);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(prog);gl.uniform1f(u.time,now/1000);gl.uniform1f(u.activity,currentActivity);gl.uniform1f(u.life,currentLife);gl.uniform1f(u.active,activeState?1:0);gl.uniform4fv(u.bands0,currentBands.subarray(0,4));gl.uniform4fv(u.bands1,currentBands.subarray(4,8));gl.drawArrays(gl.TRIANGLES,0,6);requestAnimationFrame(frame)}
     requestAnimationFrame(frame);
-    return {setActive(v){activeState=v;targetLife=v?1:.38;if(!v){targetActivity=0;targetBands.fill(0)}}};
+    return {setActive(v){activeState=v;targetLife=v?1:.38;if(!v){targetActivity=0;targetBands.fill(0)}},refreshTheme};
   }
   function makeBlobShader(canvas){
     try { return makeWebGLBlob(canvas); }
@@ -308,9 +327,16 @@ void main(){
       canvas.replaceWith(replacement); canvas=replacement; ctx=canvas.getContext('2d');
     }
     if(!ctx){
-      canvas.style.background='radial-gradient(circle at 45% 42%,rgba(45,212,191,.9) 0 13%,rgba(172,203,229,.45) 22%,transparent 42%)';
-      return {setActive(v){canvas.style.opacity=v?'1':'.56'}};
+      canvas.style.background='radial-gradient(circle at 45% 42%,color-mix(in srgb,var(--primary) 90%,transparent) 0 13%,color-mix(in srgb,var(--tertiary) 45%,transparent) 22%,transparent 42%)';
+      return {setActive(v){canvas.style.opacity=v?'1':'.56'},refreshTheme(){}};
     }
+    let primaryColor='#2DD4BF',tertiaryColor='#ACCBE5',pausedColor='#2A3244';
+    function refreshTheme(){
+      primaryColor=resolveCssColor(canvas,'--primary','#2DD4BF');
+      tertiaryColor=resolveCssColor(canvas,'--tertiary','#ACCBE5');
+      pausedColor=resolveCssColor(canvas,'--surface-container-highest','#2A3244');
+    }
+    refreshTheme();
     let targetLife=.38,currentLife=.38,targetActivity=0,currentActivity=0,activeState=false,last=performance.now(),signalClock=0;
     const targetBands=new Float32Array(8),currentBands=new Float32Array(8),x=new Float32Array(40),y=new Float32Array(40);
     function syntheticSignal(ts){
@@ -345,12 +371,13 @@ void main(){
       }
       ctx.beginPath(); ctx.moveTo((x[0]+x[1])*.5,(y[0]+y[1])*.5);
       for(let i=1;i<=40;i++){const cur=i%40,next=(i+1)%40;ctx.quadraticCurveTo(x[cur],y[cur],(x[cur]+x[next])*.5,(y[cur]+y[next])*.5)}ctx.closePath();
-      if(activeState){const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#2DD4BF');g.addColorStop(1,'#ACCBE5');ctx.fillStyle=g}else ctx.fillStyle='#2A3244';
+      if(activeState){const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,primaryColor);g.addColorStop(1,tertiaryColor);ctx.fillStyle=g}else ctx.fillStyle=pausedColor;
       ctx.fill(); requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
-    return{setActive(v){activeState=v;targetLife=v?1:.38;if(!v){targetActivity=0;targetBands.fill(0)}}};
+    return{setActive(v){activeState=v;targetLife=v?1:.38;if(!v){targetActivity=0;targetBands.fill(0)}},refreshTheme};
   }
   const blobShader=makeBlobShader(document.getElementById('blobCanvas'));
+  return {refreshTheme(){blobShader.refreshTheme?.()}};
 
 }
