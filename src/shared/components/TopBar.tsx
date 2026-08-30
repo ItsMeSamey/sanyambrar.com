@@ -12,6 +12,7 @@ type TopBarButtonProps = {
   role?: JSX.ButtonHTMLAttributes<HTMLButtonElement>['role'];
   ariaControls?: string;
   ariaExpanded?: boolean | 'true' | 'false';
+  disabled?: boolean;
   ref?: (element: HTMLButtonElement) => void;
   onClick?: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
   children: JSX.Element;
@@ -27,6 +28,7 @@ export function TopBarIconButton(props: TopBarButtonProps) {
     aria-label={props.label}
     aria-controls={props.ariaControls}
     aria-expanded={props.ariaExpanded}
+    disabled={props.disabled}
     title={props.title ?? props.label}
     onClick={props.onClick}
   >{props.children}</button>;

@@ -413,6 +413,9 @@ ${keybrViewSwitch}`;
   const sharedGameActions = sharedTopBar.slice(sharedTopBar.indexOf("export function GameTopBarActions"), sharedTopBar.indexOf("export function PrimaryNav"));
   must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") && keybrTopBar.includes("<GameTopBarActions") &&
     keybrTopBar.indexOf('label="Statistics"') < keybrTopBar.indexOf('label="Settings"') &&
+    keybrTopBar.includes('disabled={currentView() === "statistics"}') &&
+    keybrTopBar.includes('disabled={currentView() === "settings"}') &&
+    sharedTopBar.includes('disabled={props.disabled}') &&
     sharedGameActions.indexOf("<AppearanceButton/>") < sharedGameActions.indexOf("{props.children}") &&
     sharedGameActions.indexOf("{props.children}") < sharedGameActions.indexOf("<SearchButton/>") &&
     keybrTopBar.includes("<Show") && keybrTopBar.includes('fallback={<HomeBrand class="brand home-brand-link" />}') && keybrTopBar.includes("<KeybrMark") &&
@@ -460,6 +463,10 @@ ${keybrViewSwitch}`;
     "ux: Chain orb lighting must not invert its highlight/shadow in dark themes");
 
   const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
+  const reverbDemoSource = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
+  must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
+    !reverbDemoSource.includes("<iframe") && !reverbDemoSource.includes("srcdoc=") && !reverbDemoSource.includes("sandbox="),
+    "ux: Reverb UI demo must be an in-page element, never a nested iframe/document");
   const homeStyle = await readFile(join(ROOT, "src/site/styles/home.css"), "utf8");
   const siteData = await readFile(join(ROOT, "src/site/data.ts"), "utf8");
   const siteCatalog = await readFile(join(ROOT, "src/shared/catalog.ts"), "utf8");
@@ -578,10 +585,11 @@ ${keybrViewSwitch}`;
   const projectPage = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
-  must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html?raw") &&
-    reverbDemo.includes('sandbox="allow-scripts"') && reverbDemo.includes("srcdoc={demoHtml}") &&
-    reverbDemoHtml.includes('<title>Reverb</title>') && !reverbDemo.includes('src="/'),
-    "ux: Reverb UI demo must stay embedded via iframe srcdoc on the project page, never as a standalone route");
+  must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
+    reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
+    reverbDemoHtml.includes('<title>Reverb</title>') && !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") &&
+    !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),
+    "ux: Reverb UI demo must stay an in-page project element, never a standalone route or nested iframe document");
   const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",

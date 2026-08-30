@@ -69,7 +69,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     setViewState([nextName, nextProps]);
   };
   const swapView = (nextName: ViewName, nextProps: ViewProps = {}, syncUrl = true) => {
-    if (props.views[nextName] == null) return;
+    if (props.views[nextName] == null || (nextName === currentView() && Object.keys(nextProps).length === 0)) return;
     const commit = () => commitView(nextName, nextProps, syncUrl);
     const root = document.getElementById("app");
     const animate = (globalThis as any).SameyAnimateLocalSwap;

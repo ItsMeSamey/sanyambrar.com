@@ -16,8 +16,8 @@ export function KeybrTopBar() {
       <BackLink class="keybr-view-back" onClick={() => setView("practice")}><KeybrMark /></BackLink>
     </Show>}
     nav={<GameTopBarActions ariaLabel="Keybr">
-      <TopBarIconButton label="Statistics" onClick={() => setView("statistics")}><BarChart3 aria-hidden="true" /></TopBarIconButton>
-      <TopBarIconButton label="Settings" onClick={() => setView("settings")}><SettingsIcon aria-hidden="true" /></TopBarIconButton>
+      <TopBarIconButton label="Statistics" disabled={currentView() === "statistics"} onClick={() => setView("statistics")}><BarChart3 aria-hidden="true" /></TopBarIconButton>
+      <TopBarIconButton label="Settings" disabled={currentView() === "settings"} onClick={() => setView("settings")}><SettingsIcon aria-hidden="true" /></TopBarIconButton>
     </GameTopBarActions>}
   />;
 }
