@@ -3,6 +3,7 @@ import demoHtml from '../demos/reverb-home.html' with { type: 'text' };
 
 type DemoDocument = Pick<Document, 'createElement'> & {
   getElementById(id: string): HTMLElement | null;
+  querySelector<E extends Element = Element>(selectors: string): E | null;
   querySelectorAll<E extends Element = Element>(selectors: string): NodeListOf<E>;
   addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
 };
@@ -58,6 +59,7 @@ function mountReverbDemo(host: HTMLDivElement) {
   const demoDocument: DemoDocument = {
     createElement: document.createElement.bind(document),
     getElementById: id => shadow.getElementById(id),
+    querySelector: selectors => shadow.querySelector(selectors),
     querySelectorAll: selectors => shadow.querySelectorAll(selectors),
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };

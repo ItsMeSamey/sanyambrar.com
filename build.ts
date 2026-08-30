@@ -587,9 +587,14 @@ ${keybrViewSwitch}`;
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
-    reverbDemoHtml.includes('<title>Reverb</title>') && !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") &&
-    !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),
-    "ux: Reverb UI demo must stay an in-page project element, never a standalone route or nested iframe document");
+    reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
+    reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes('@media(pointer:fine){*{cursor:none!important}}') &&
+    reverbDemoHtml.includes('function appendCapture(seconds)') && reverbDemoHtml.includes('const overflow=seconds-toOne') &&
+    reverbDemoHtml.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
+    reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&
+    reverbDemoHtml.includes('class="about-sheet"') && reverbDemoHtml.includes('https://github.com/SmallThingz/reverb') &&
+    !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") && !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),
+    "ux: Reverb demo must remain inline, hide the native cursor, model bounded buffers, show gesture hints, and keep its faithful About sheet");
   const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",

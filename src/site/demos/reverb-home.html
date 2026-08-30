@@ -22,8 +22,18 @@
 html,body{margin:0;min-height:100%;background:#080B12;color:var(--on-surface);font-family:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,input{font:inherit}
 button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.stage{min-height:100vh;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at 50% 40%,#111728 0,#080b12 62%)}
-.phone{width:min(412px,100vw - 16px);height:min(820px,calc(100vh - 16px));min-height:640px;position:relative;overflow:hidden;background:var(--surface);color:var(--on-surface);box-shadow:0 28px 90px rgba(0,0,0,.58);isolation:isolate}
+@media(pointer:fine){*{cursor:none!important}}
+.stage{min-height:100vh;display:grid;place-items:center;padding:18px;background:radial-gradient(circle at 50% 40%,#111728 0,#080b12 62%);position:relative;overflow:hidden}
+.phone{width:min(412px,100vw - 16px);height:min(820px,calc(100vh - 16px));min-height:640px;position:relative;overflow:hidden;background:var(--surface);color:var(--on-surface);box-shadow:0 28px 90px rgba(0,0,0,.58);isolation:isolate;z-index:2}
+.gesture-hint{position:absolute;z-index:3;width:54px;height:96px;pointer-events:none;color:var(--on-surface-variant);opacity:.48;filter:drop-shadow(0 2px 7px rgba(0,0,0,.35))}
+.gesture-hint.left{left:max(10px,calc(50% - 270px));top:22%}
+.gesture-hint.right{right:max(10px,calc(50% - 270px));bottom:18%}
+.gesture-hint svg{width:100%;height:100%;overflow:visible}
+.gesture-hint .gesture-finger{transform-origin:50% 50%;animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) infinite}
+.gesture-hint.right .gesture-finger{animation-name:gesture-up}
+.gesture-hint .gesture-path{opacity:.38;stroke-dasharray:4 5}
+@keyframes gesture-down{0%,16%{transform:translateY(-10px);opacity:.18}38%,68%{opacity:.78}78%,100%{transform:translateY(14px);opacity:.12}}
+@keyframes gesture-up{0%,16%{transform:translateY(12px);opacity:.18}38%,68%{opacity:.78}78%,100%{transform:translateY(-14px);opacity:.12}}
 .screen{position:absolute;inset:0;background:var(--surface)}
 .home{display:flex;flex-direction:column;transform:translateY(0);opacity:1;transition:transform 180ms cubic-bezier(.2,0,0,1),opacity 160ms linear}
 .statusbar{height:var(--status-h);flex:none;background:var(--surface)}
@@ -143,13 +153,31 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
 .dialog-title-row{display:flex;align-items:center;margin-bottom:12px}
 .dialog-title{font-size:22px;line-height:28px;font-weight:700;flex:1}
 .dialog-body{font-size:14px;line-height:20px;color:var(--on-surface-variant)}
+.about-scrim{position:absolute;inset:0;z-index:41;background:rgba(0,0,0,0);pointer-events:none;transition:background 160ms linear}
+.about-sheet{position:absolute;z-index:42;left:0;right:0;top:0;border-radius:0 0 32px 32px;background:var(--surface-container-high);box-shadow:0 16px 42px rgba(0,0,0,.5);padding:calc(var(--status-h) + 12px) 24px 26px;transform:translateY(-105%);opacity:.96;transition:transform 220ms cubic-bezier(.2,0,0,1),opacity 160ms linear}
+.phone.about-open .about-scrim{background:var(--scrim);pointer-events:auto}
+.phone.about-open .about-sheet{transform:translateY(0);opacity:1}
+.about-close{position:absolute;right:12px;top:calc(var(--status-h) + 4px);margin:0}
+.about-logo{width:104px;height:104px;margin:0 auto;border-radius:30px;background:#0D1324;display:grid;place-items:center}
+.about-logo svg{width:90px;height:90px}
+.about-name{margin-top:14px;text-align:center;font-size:24px;line-height:30px;font-weight:600}
+.about-version{text-align:center;margin-top:2px;color:var(--on-surface-variant);font-size:14px;line-height:20px}
+.about-repo{width:100%;margin-top:18px;text-decoration:none;color:inherit;border-radius:20px;background:var(--surface-container-highest);padding:15px 18px;display:flex;align-items:center;gap:14px;text-align:left}
+.about-repo:active{background:color-mix(in srgb,var(--surface-container-highest) 88%,var(--on-surface) 12%)}
+.about-repo svg{width:24px;height:24px;flex:none}
+.about-repo-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+.about-repo-copy strong{font-size:14px;line-height:20px;font-weight:600}
+.about-repo-copy span{color:var(--on-surface-variant);font-size:12px;line-height:16px}
 .toast{position:absolute;left:50%;bottom:92px;z-index:50;transform:translate(-50%,10px);background:var(--surface-container-highest);color:var(--on-surface);padding:10px 14px;border-radius:12px;font-size:13px;line-height:18px;opacity:0;pointer-events:none;transition:opacity 160ms,transform 160ms;white-space:nowrap}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media(max-width:500px){
   .stage{padding:0;background:var(--surface)}
   .phone{width:100vw;height:100vh;min-height:0;box-shadow:none}
+  .gesture-hint.left{left:4px}.gesture-hint.right{right:4px}
+  .gesture-hint{opacity:.28;z-index:4}
 }
+@media(prefers-reduced-motion:reduce){.gesture-hint .gesture-finger{animation:none}}
 @media(max-height:700px){
   :root{--status-h:18px;--nav-h:12px}
   .capture-bottom{height:10px}
@@ -158,6 +186,26 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
 </head>
 <body>
 <div class="stage">
+  <div class="gesture-hint left" aria-hidden="true">
+    <svg viewBox="0 0 54 96" fill="none">
+      <path class="gesture-path" d="M27 12v56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M20 61l7 8 7-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="gesture-finger">
+        <path d="M23 30v20.5c0 7.5 5 12.5 11.5 12.5S46 58.7 46 51.7V42c0-2.4-1.3-4-3.2-4-1.2 0-2.2.6-2.8 1.7v-3.1c0-2.5-1.4-4.2-3.4-4.2-1.4 0-2.5.8-3.1 2.1v-3.2c0-2.5-1.4-4.2-3.4-4.2-1.5 0-2.7.9-3.2 2.4V30c0-2.7-1.5-4.5-3.7-4.5S20 27.3 20 30v13.3l-2.3-3.1c-1.5-2-3.7-2.3-5.3-.8-1.5 1.4-1.5 3.5 0 5.5l8.1 10.8" fill="var(--surface-container-highest)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="23.2" cy="21.2" r="3.2" fill="var(--primary)"/>
+      </g>
+    </svg>
+  </div>
+  <div class="gesture-hint right" aria-hidden="true">
+    <svg viewBox="0 0 54 96" fill="none">
+      <path class="gesture-path" d="M27 84V28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M20 35l7-8 7 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="gesture-finger">
+        <path d="M23 50v20.5c0 7.5 5 12.5 11.5 12.5S46 78.7 46 71.7V62c0-2.4-1.3-4-3.2-4-1.2 0-2.2.6-2.8 1.7v-3.1c0-2.5-1.4-4.2-3.4-4.2-1.4 0-2.5.8-3.1 2.1v-3.2c0-2.5-1.4-4.2-3.4-4.2-1.5 0-2.7.9-3.2 2.4V50c0-2.7-1.5-4.5-3.7-4.5S20 47.3 20 50v13.3l-2.3-3.1c-1.5-2-3.7-2.3-5.3-.8-1.5 1.4-1.5 3.5 0 5.5l8.1 10.8" fill="var(--surface-container-highest)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="23.2" cy="41.2" r="3.2" fill="var(--primary)"/>
+      </g>
+    </svg>
+  </div>
 <div class="phone" id="phone">
   <section class="screen home" id="homeScreen">
     <div class="statusbar"></div>
@@ -231,7 +279,7 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
       <div class="spacer12"></div>
 
       <div class="section-title">Retention</div>
-      <div class="retention-block">
+      <div class="retention-block" data-buffer-retention="one">
         <div class="buffer-label">One-shot</div>
         <div class="retention-fields">
           <div class="field-shell" data-retention="time">
@@ -244,7 +292,7 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
         </div>
       </div>
       <div class="spacer8"></div>
-      <div class="retention-block">
+      <div class="retention-block" data-buffer-retention="loop">
         <div class="buffer-label">Looping</div>
         <div class="retention-fields">
           <div class="field-shell" data-retention="time">
@@ -319,6 +367,25 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
   </section>
 
   <div class="dropdown-menu" id="dropdownMenu"></div>
+  <div class="about-scrim" id="aboutScrim"></div>
+  <section class="about-sheet" id="aboutSheet" role="dialog" aria-modal="true" aria-label="About Reverb">
+    <button class="icon-button about-close" id="aboutClose" aria-label="Close"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5,6.5L17.5,17.5M17.5,6.5L6.5,17.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>
+    <div class="about-logo" aria-hidden="true">
+      <svg viewBox="0 0 512 512">
+        <g transform="translate(44.5 0)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26">
+          <path d="M183.686,358 L212.357,154 L278.357,154 C328.357,154 357.859,186 351.676,230 C345.492,274 306.995,306 256.995,306 L190.995,306" stroke="#2DD4BF" stroke-opacity=".16"/><path d="M252.995,306 L337.686,358" stroke="#2DD4BF" stroke-opacity=".16"/>
+          <path d="M155.686,358 L184.357,154 L250.357,154 C300.357,154 329.859,186 323.676,230 C317.492,274 278.995,306 228.995,306 L162.995,306" stroke="#2DD4BF" stroke-opacity=".34"/><path d="M224.995,306 L309.686,358" stroke="#2DD4BF" stroke-opacity=".34"/>
+          <path d="M127.686,358 L156.357,154 L222.357,154 C272.357,154 301.859,186 295.676,230 C289.492,274 250.995,306 200.995,306 L134.995,306" stroke="#FFF"/><path d="M196.995,306 L281.686,358" stroke="#FFF"/>
+        </g>
+      </svg>
+    </div>
+    <div class="about-name">Reverb</div>
+    <div class="about-version">Version 0.1.0</div>
+    <a class="about-repo" id="aboutRepo" href="https://github.com/SmallThingz/reverb" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository SmallThingz/reverb">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12,2C6.48,2 2,6.58 2,12.22c0,4.5 2.87,8.31 6.84,9.65c0.5,0.1 0.68,-0.22 0.68,-0.49c0,-0.24 -0.01,-1.04 -0.01,-1.89c-2.78,0.62 -3.37,-1.21 -3.37,-1.21c-0.45,-1.18 -1.11,-1.49 -1.11,-1.49c-0.91,-0.64 0.07,-0.63 0.07,-0.63c1,0.07 1.53,1.05 1.53,1.05c0.9,1.57 2.36,1.12 2.94,0.85c0.09,-0.67 0.35,-1.12 0.63,-1.37c-2.22,-0.26 -4.55,-1.14 -4.55,-5.06c0,-1.12 0.39,-2.03 1.03,-2.75c-0.1,-0.26 -0.45,-1.31 0.1,-2.73c0,0 0.84,-0.28 2.75,1.05c0.8,-0.23 1.65,-0.35 2.5,-0.35c0.85,0 1.7,0.12 2.5,0.35c1.91,-1.33 2.75,-1.05 2.75,-1.05c0.55,1.42 0.2,2.47 0.1,2.73c0.64,0.72 1.03,1.63 1.03,2.75c0,3.93 -2.33,4.8 -4.56,5.05c0.36,0.32 0.68,0.93 0.68,1.88c0,1.36 -0.01,2.45 -0.01,2.78c0,0.27 0.18,0.6 0.69,0.49C19.13,20.52 22,16.72 22,12.22C22,6.58 17.52,2 12,2z"/></svg>
+      <span class="about-repo-copy"><strong>GitHub repository</strong><span>SmallThingz/reverb</span></span>
+    </a>
+  </section>
   <div class="dialog-layer" id="dialogLayer"><div class="dialog"><div class="dialog-title-row"><div class="dialog-title" id="dialogTitle">Reverb</div><button class="icon-button" id="dialogClose"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5,6.5L17.5,17.5M17.5,6.5L6.5,17.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="dialog-body" id="dialogBody"></div></div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -344,6 +411,8 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
   let selectedBuffer = 'one';
   let oneSeconds = 12 * 60 + 48;
   let loopSeconds = 47 * 60 + 19;
+  let oneLimitSeconds = 30 * 60;
+  let loopLimitSeconds = 2 * 60 * 60;
   const bytesPerSecond = 44100 * 2;
   let lastTick = performance.now();
   let toastTimer = 0;
@@ -357,12 +426,49 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
     return m>=10 ? `${m}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
   }
   function formatMiB(sec){ return `${(sec*bytesPerSecond/(1024*1024)).toFixed(1)} MiB`; }
+  function parseDuration(value){
+    const parts=String(value||'').trim().split(':');
+    if(parts.length<1||parts.length>3||parts.some(x=>!/^\d+$/.test(x))) return null;
+    const nums=parts.map(Number);
+    if(nums.some(x=>!Number.isFinite(x)||x<0)) return null;
+    if(parts.length===3 && (nums[1]>=60||nums[2]>=60)) return null;
+    if(parts.length===2 && nums[1]>=60) return null;
+    return parts.length===3?nums[0]*3600+nums[1]*60+nums[2]:parts.length===2?nums[0]*60+nums[1]:nums[0];
+  }
   function currentSeconds(){ return selectedBuffer==='one' ? oneSeconds : loopSeconds; }
   function updateMetrics(){
     oneStat.textContent = formatShortTimer(oneSeconds);
     loopStat.textContent = formatShortTimer(loopSeconds);
     blobTime.textContent = formatShortTimer(currentSeconds());
     blobSummary.textContent = formatMiB(currentSeconds());
+  }
+  function syncRetentionFields(slot){
+    const limit=slot==='one'?oneLimitSeconds:loopLimitSeconds;
+    const time=document.querySelector(`[data-buffer-retention="${slot}"] [data-retention="time"] input`);
+    const size=document.querySelector(`[data-buffer-retention="${slot}"] [data-retention="size"] input`);
+    const supporting=document.querySelector(`[data-buffer-retention="${slot}"] [data-retention="size"] .supporting`);
+    if(time) time.value=formatShortTimer(limit);
+    const mib=(limit*bytesPerSecond/(1024*1024)).toFixed(1);
+    if(size) size.value=mib;
+    if(supporting) supporting.textContent=`Estimated file size: ${mib} MiB`;
+  }
+  function applyRetention(slot,seconds){
+    seconds=Math.max(0,Math.floor(seconds));
+    if(slot==='one'){oneLimitSeconds=seconds;oneSeconds=Math.min(oneSeconds,oneLimitSeconds)}
+    else{loopLimitSeconds=seconds;loopSeconds=Math.min(loopSeconds,loopLimitSeconds)}
+    syncRetentionFields(slot);
+    updateMetrics();
+  }
+  function appendCapture(seconds){
+    if(seconds<=0) return;
+    // Reverb writes into the non-overwriting one-shot store first. Only the
+    // overflow reaches the looping store, whose oldest samples are replaced
+    // once its retention window is full.
+    const oneRoom=Math.max(0,oneLimitSeconds-oneSeconds);
+    const toOne=Math.min(seconds,oneRoom);
+    oneSeconds+=toOne;
+    const overflow=seconds-toOne;
+    if(overflow>0 && loopLimitSeconds>0) loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow);
   }
   function showToast(message){
     clearTimeout(toastTimer); toast.textContent = message; toast.classList.add('show');
@@ -375,7 +481,11 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
   document.getElementById('libraryScrim').onclick = () => phone.classList.remove('library-open');
   document.getElementById('dialogClose').onclick = () => dialogLayer.classList.remove('show');
   dialogLayer.addEventListener('click',e=>{if(e.target===dialogLayer) dialogLayer.classList.remove('show')});
-  document.getElementById('brandButton').onclick = () => showDialog('Reverb','Version 0.1.0\n\nRolling audio buffer recorder for Android.');
+  const aboutScrim=document.getElementById('aboutScrim');
+  const closeAbout=()=>phone.classList.remove('about-open');
+  document.getElementById('brandButton').onclick = () => phone.classList.add('about-open');
+  document.getElementById('aboutClose').onclick = closeAbout;
+  aboutScrim.onclick = closeAbout;
 
   document.querySelectorAll('[data-toast]').forEach(el=>el.addEventListener('click',()=>showToast(el.dataset.toast)));
   document.querySelectorAll('.recording-card').forEach(el=>el.addEventListener('click',()=>showDialog(el.dataset.recording,'In the Android app this opens RecordingPlayerDialog.')));
@@ -400,7 +510,7 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
   function tick(now){
     if(live && now-lastTick>=1000){
       const n=Math.floor((now-lastTick)/1000); lastTick += n*1000;
-      if(selectedBuffer==='one') oneSeconds += n; else loopSeconds += n;
+      appendCapture(n);
       updateMetrics();
     } else if(!live) lastTick=now;
     requestAnimationFrame(tick);
@@ -420,12 +530,22 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
   }
   function restoreSettings(){
     tracked.forEach((el,i)=>{const v=settingsInitial.get(i); if(el instanceof HTMLInputElement) el.value=v; else el.textContent=v;});
+    oneLimitSeconds=30*60; loopLimitSeconds=2*60*60;
+    oneSeconds=Math.min(oneSeconds,oneLimitSeconds); loopSeconds=Math.min(loopSeconds,loopLimitSeconds);
+    syncRetentionFields('one'); syncRetentionFields('loop'); updateMetrics();
     document.getElementById('wakeSwitch').classList.remove('on'); document.getElementById('wakeSwitch').setAttribute('aria-checked','false');
     setRetentionMode('time',false); setDirty(false);
   }
   document.getElementById('settingsNav').onclick=()=>{ if(settingsDirty) restoreSettings(); else phone.classList.remove('settings-open'); };
   document.getElementById('settingsDone').onclick=()=>{ if(!settingsDirty)return; setDirty(false); phone.classList.remove('settings-open'); };
   document.querySelectorAll('.settings-body input').forEach(inp=>inp.addEventListener('input',()=>setDirty(true)));
+  document.querySelectorAll('[data-buffer-retention]').forEach(block=>{
+    const slot=block.dataset.bufferRetention;
+    const time=block.querySelector('[data-retention="time"] input');
+    const size=block.querySelector('[data-retention="size"] input');
+    time?.addEventListener('change',()=>{const seconds=parseDuration(time.value);if(seconds!=null)applyRetention(slot,seconds);else syncRetentionFields(slot)});
+    size?.addEventListener('change',()=>{const mib=Number.parseFloat(size.value);if(Number.isFinite(mib)&&mib>=0)applyRetention(slot,mib*1024*1024/bytesPerSecond);else syncRetentionFields(slot)});
+  });
   const wakeSwitch=document.getElementById('wakeSwitch');
   wakeSwitch.onclick=()=>{const on=!wakeSwitch.classList.contains('on');wakeSwitch.classList.toggle('on',on);wakeSwitch.setAttribute('aria-checked',String(on));setDirty(true)};
 
