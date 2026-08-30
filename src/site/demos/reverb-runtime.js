@@ -126,10 +126,18 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
   }
   updateMetrics(); requestAnimationFrame(tick);
 
-  // Settings: source-faithful dirty / undo / done behavior.
+  // Settings: dirty state is relative to the last applied (Done) snapshot.
   const tracked = [...document.querySelectorAll('.settings-body input,.settings-body .m3-value')];
-  tracked.forEach((el,i)=>settingsInitial.set(i,el instanceof HTMLInputElement?el.value:el.textContent));
-  settingsInitial.set('wake',false);
+  const wakeSwitch=document.getElementById('wakeSwitch');
+  let retentionMode='time';
+  function captureSettingsSnapshot(){
+    tracked.forEach((el,i)=>settingsInitial.set(i,el instanceof HTMLInputElement?el.value:el.textContent));
+    settingsInitial.set('oneLimitSeconds',oneLimitSeconds);
+    settingsInitial.set('loopLimitSeconds',loopLimitSeconds);
+    settingsInitial.set('wake',wakeSwitch.classList.contains('on'));
+    settingsInitial.set('retentionMode',retentionMode);
+  }
+  captureSettingsSnapshot();
   function setDirty(v=true){
     settingsDirty=v;
     document.getElementById('settingsDone').classList.toggle('disabled',!v);
@@ -139,14 +147,14 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
   }
   function restoreSettings(){
     tracked.forEach((el,i)=>{const v=settingsInitial.get(i); if(el instanceof HTMLInputElement) el.value=v; else el.textContent=v;});
-    oneLimitSeconds=30*60; loopLimitSeconds=2*60*60;
+    oneLimitSeconds=settingsInitial.get('oneLimitSeconds'); loopLimitSeconds=settingsInitial.get('loopLimitSeconds');
     oneSeconds=Math.min(oneSeconds,oneLimitSeconds); loopSeconds=Math.min(loopSeconds,loopLimitSeconds);
     syncRetentionFields('one'); syncRetentionFields('loop'); updateMetrics();
-    document.getElementById('wakeSwitch').classList.remove('on'); document.getElementById('wakeSwitch').setAttribute('aria-checked','false');
-    setRetentionMode('time',false); setDirty(false);
+    const wake=settingsInitial.get('wake'); wakeSwitch.classList.toggle('on',wake); wakeSwitch.setAttribute('aria-checked',String(wake));
+    setRetentionMode(settingsInitial.get('retentionMode'),false); setDirty(false);
   }
   document.getElementById('settingsNav').onclick=()=>{ if(settingsDirty) restoreSettings(); else phone.classList.remove('settings-open'); };
-  document.getElementById('settingsDone').onclick=()=>{ if(!settingsDirty)return; setDirty(false); phone.classList.remove('settings-open'); };
+  document.getElementById('settingsDone').onclick=()=>{ if(!settingsDirty)return; captureSettingsSnapshot(); setDirty(false); phone.classList.remove('settings-open'); };
   document.querySelectorAll('.settings-body input').forEach(inp=>inp.addEventListener('input',()=>setDirty(true)));
   document.querySelectorAll('[data-buffer-retention]').forEach(block=>{
     const slot=block.dataset.bufferRetention;
@@ -155,10 +163,10 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
     if(time) time.addEventListener('change',()=>{const seconds=parseDuration(time.value);if(seconds!=null)applyRetention(slot,seconds);else syncRetentionFields(slot)});
     if(size) size.addEventListener('change',()=>{const mib=Number.parseFloat(size.value);if(Number.isFinite(mib)&&mib>=0)applyRetention(slot,mib*1024*1024/bytesPerSecond);else syncRetentionFields(slot)});
   });
-  const wakeSwitch=document.getElementById('wakeSwitch');
   wakeSwitch.onclick=()=>{const on=!wakeSwitch.classList.contains('on');wakeSwitch.classList.toggle('on',on);wakeSwitch.setAttribute('aria-checked',String(on));setDirty(true)};
 
   function setRetentionMode(mode,dirty=true){
+    retentionMode=mode;
     document.querySelectorAll('[data-retention]').forEach(shell=>{
       const active=shell.dataset.retention===mode; shell.classList.toggle('inactive',!active);
       const prefix=shell.querySelector('.m3-prefix'); if(prefix) prefix.textContent=active?'':'=';

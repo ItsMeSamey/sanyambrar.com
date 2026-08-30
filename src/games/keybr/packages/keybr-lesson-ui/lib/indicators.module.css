@@ -25,20 +25,23 @@
 
 .keySetValue {
   min-inline-size: 0;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  overscroll-behavior-inline: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.keySetValue::-webkit-scrollbar {
-  display: none;
 }
 
 @media (max-width: 700px) {
+  .keySetValue {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .keySetValue::-webkit-scrollbar {
+    display: none;
+  }
+
   .keySetRow .name {
     inline-size: 8rem;
     padding-inline-end: 0.5rem;

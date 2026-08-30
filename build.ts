@@ -420,10 +420,16 @@ ${keybrViewSwitch}`;
   const keybrIndicators = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.tsx"), "utf8");
   const keybrIndicatorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.module.css"), "utf8");
   must(homeStyle.includes(".reverb-demo-host{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,calc(100% - 36px));height:min(820px,calc(100% - 36px));min-height:0") &&
-    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0"),
-    "ux: Reverb mobile demo must size against its host rather than clipping to viewport units");
-  must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") && keybrIndicatorStyle.includes("flex-wrap: nowrap") && keybrIndicatorStyle.includes("overflow-x: auto"),
-    "ux: Keybr all-keys indicator must remain on one row on narrow screens");
+    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && !reverbDemoHtml.includes("@media(max-height:"),
+    "ux: Reverb mobile demo must size against its host rather than clipping to viewport dimensions");
+  must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
+    reverbRuntimeSource.includes("settingsInitial.get('oneLimitSeconds')") && reverbRuntimeSource.includes("settingsInitial.get('retentionMode')"),
+    "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
+  const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
+  must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
+    keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
+    keybrIndicatorStyle.slice(keybrMobileRules).includes("flex-wrap: nowrap") && keybrIndicatorStyle.slice(keybrMobileRules).includes("overflow-x: auto"),
+    "ux: Keybr all-keys indicator must nowrap only on narrow screens and retain desktop wrapping");
   must(appSource.includes("formatThrownError") && appSource.includes("site-fatal-error-stack") && appSource.includes("<TopBar />") &&
     appSource.includes("Go back to home") && appSource.includes("location.reload()") && appSource.includes("retryRenderedRoute") &&
     sharedSiteStyle.includes(".site-fatal-error-stack") && sharedSiteStyle.includes(".site-fatal-topbar-fallback"),
