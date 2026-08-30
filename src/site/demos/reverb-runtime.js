@@ -191,11 +191,53 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
     dropdownMenu.classList.add('show');
   }));
 
-  // Source gestures: downward from top opens Settings; upward from bottom opens Library.
-  let dragStartY=null,dragY=0;
-  phone.addEventListener('pointerdown',e=>{ if(phone.classList.contains('settings-open')||phone.classList.contains('library-open'))return; dragStartY=e.clientY-phone.getBoundingClientRect().top;dragY=0; });
-  phone.addEventListener('pointermove',e=>{ if(dragStartY===null)return; dragY=e.clientY-phone.getBoundingClientRect().top-dragStartY; const h=phone.clientHeight; if(dragStartY<=h*.48&&dragY>=52){phone.classList.add('settings-open');dragStartY=null}else if(dragStartY>=h*.52&&dragY<=-52){phone.classList.add('library-open');dragStartY=null} });
-  phone.addEventListener('pointerup',()=>dragStartY=null); phone.addEventListener('pointercancel',()=>dragStartY=null);
+  // Source gestures are armed only outside the blob. The blob itself remains a
+  // normal vertical-pan surface so the surrounding portfolio page can scroll.
+  const gestureInteractive='button,input,a,[role=\"button\"],[role=\"switch\"],.m3-fieldset';
+  function gestureMode(clientY,target){
+    if(phone.classList.contains('settings-open')||phone.classList.contains('library-open'))return null;
+    if(target instanceof Element && target.closest(gestureInteractive))return null;
+    const blobRect=blobControl.getBoundingClientRect();
+    if(clientY<blobRect.top)return 'settings';
+    if(clientY>blobRect.bottom)return 'library';
+    return null;
+  }
+  function completeGesture(mode,deltaY){
+    if(mode==='settings'&&deltaY>=52){phone.classList.add('settings-open');return true}
+    if(mode==='library'&&deltaY<=-52){phone.classList.add('library-open');return true}
+    return false;
+  }
+
+  let dragStartY=null,dragMode=null;
+  phone.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='touch')return;
+    dragMode=gestureMode(e.clientY,e.target);
+    dragStartY=dragMode?e.clientY:null;
+  });
+  phone.addEventListener('pointermove',e=>{
+    if(dragStartY===null||!dragMode)return;
+    if(completeGesture(dragMode,e.clientY-dragStartY)){dragStartY=null;dragMode=null}
+  });
+  const clearPointerGesture=()=>{dragStartY=null;dragMode=null};
+  phone.addEventListener('pointerup',clearPointerGesture); phone.addEventListener('pointercancel',clearPointerGesture);
+
+  let touchStartY=null,touchMode=null;
+  phone.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
+    const touch=e.touches[0];
+    touchMode=gestureMode(touch.clientY,e.target);
+    touchStartY=touchMode?touch.clientY:null;
+    // Only the reduced gesture regions suppress page scrolling.
+    if(touchMode)e.preventDefault();
+  },{passive:false});
+  phone.addEventListener('touchmove',e=>{
+    if(touchStartY===null||!touchMode||e.touches.length!==1)return;
+    e.preventDefault();
+    const touch=e.touches[0];
+    if(completeGesture(touchMode,touch.clientY-touchStartY)){touchStartY=null;touchMode=null}
+  },{passive:false});
+  const clearTouchGesture=()=>{touchStartY=null;touchMode=null};
+  phone.addEventListener('touchend',clearTouchGesture); phone.addEventListener('touchcancel',clearTouchGesture);
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
   function makeWebGLBlob(canvas){

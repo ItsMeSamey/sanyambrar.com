@@ -18,7 +18,7 @@
   --error:#FFB4AB; --scrim:rgba(0,0,0,.32);
   --status-h:24px; --nav-h:24px;
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none}
 html,body{margin:0;min-height:100%;background:#080B12;color:var(--on-surface);font-family:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,input{font:inherit}
 button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -47,7 +47,7 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
 .settings-button:active,.icon-button:active,.action-button:active{background:rgba(226,233,231,.08)}
 .capture{flex:1;min-height:0;padding:0 18px;display:flex;flex-direction:column;align-items:center}
 .blob-area{width:100%;min-height:0;flex:1;display:grid;place-items:center}
-.blob-control{background:transparent;border:0;padding:0;color:inherit;position:relative;display:grid;place-items:center;width:min(90%,372px);aspect-ratio:1;user-select:none;touch-action:none;transition:transform 100ms linear}
+.blob-control{background:transparent;border:0;padding:0;color:inherit;position:relative;display:grid;place-items:center;width:min(90%,372px);aspect-ratio:1;user-select:none;touch-action:pan-y;transition:transform 100ms linear}
 .blob-control.pressed{transform:scale(.96)}
 #blobCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .blob-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;pointer-events:none;color:var(--on-surface-variant)}
@@ -172,9 +172,9 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media(max-width:500px){
-  .stage{padding:0;background:var(--surface)}
+  .stage{padding:0 12px;background:var(--surface)}
   .phone{width:100%;height:100%;max-height:none;box-shadow:none}
-  .gesture-hint.left{left:4px}.gesture-hint.right{right:4px}
+  .gesture-hint.left{left:14px}.gesture-hint.right{right:14px}
   .gesture-hint{opacity:.38;z-index:4}
 }
 @media(prefers-reduced-motion:reduce){.gesture-hint .gesture-finger{animation:none}}

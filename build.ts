@@ -419,9 +419,17 @@ ${keybrViewSwitch}`;
   const sharedSiteStyle = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
   const keybrIndicators = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.tsx"), "utf8");
   const keybrIndicatorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.module.css"), "utf8");
-  must(homeStyle.includes(".reverb-demo-host{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,calc(100% - 36px));height:min(820px,calc(100% - 36px));min-height:0") &&
-    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && !reverbDemoHtml.includes("@media(max-height:"),
-    "ux: Reverb mobile demo must size against its host rather than clipping to viewport dimensions");
+  must(homeStyle.includes(".reverb-demo-frame-shell{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,calc(100% - 36px));height:min(820px,calc(100% - 36px));min-height:0") &&
+    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && reverbDemoHtml.includes(".stage{padding:0 12px;background:var(--surface)}") && !reverbDemoHtml.includes("@media(max-height:"),
+    "ux: Reverb mobile demo must size against its host, keep side margins, and avoid viewport-height compression");
+  must(reverbDemoHtml.includes("touch-action:pan-y") && reverbDemoHtml.includes("user-select:none") &&
+    reverbRuntimeSource.includes("if(clientY<blobRect.top)return 'settings'") && reverbRuntimeSource.includes("if(clientY>blobRect.bottom)return 'library'") &&
+    reverbRuntimeSource.includes("Only the reduced gesture regions suppress page scrolling"),
+    "ux: Reverb page scrolling must remain available through the blob while source gestures are limited to regions above/below it");
+  must(reverbDemoSource.includes('class="reverb-demo-fullscreen-button"') && !reverbDemoHtml.includes('demoFullscreen') && reverbDemoSource.includes("FULLSCREEN_STATE_KEY") &&
+    reverbDemoSource.includes("history.pushState") && reverbDemoSource.includes("history.back()") && reverbDemoSource.includes("window.addEventListener('popstate'") &&
+    reverbDemoSource.includes("frame.animate([") && reverbDemoSource.includes("installFullscreen(frame, fullscreenButton)") && homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed"),
+    "ux: Reverb demo fullscreen must animate and participate in browser back/forward history");
   must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
     reverbRuntimeSource.includes("settingsInitial.get('oneLimitSeconds')") && reverbRuntimeSource.includes("settingsInitial.get('retentionMode')"),
     "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
