@@ -434,7 +434,7 @@ ${keybrViewSwitch}`;
   must(reverbDemoSource.includes('class="reverb-demo-fullscreen-button"') && !reverbDemoHtml.includes('demoFullscreen') && reverbDemoSource.includes("FULLSCREEN_STATE_KEY") &&
     reverbDemoSource.includes("history.pushState") && reverbDemoSource.includes("history.back()") && reverbDemoSource.includes("window.addEventListener('popstate'") &&
     reverbDemoSource.includes("frame.animate([") && reverbDemoSource.includes("installFullscreen(frame, host, fullscreenButton)") && reverbDemoSource.includes("host.setAttribute('data-fullscreen', '')") &&
-    homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") && reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;box-shadow:none"),
+    homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") && reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none"),
     "ux: Reverb fullscreen must fill the viewport with the actual UI, animate, and participate in browser back/forward history");
   must(reverbDemoHtml.includes("animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) 3") && reverbDemoHtml.includes("@keyframes gesture-hint-life") &&
     reverbDemoHtml.includes('M27 21a4 4 0 0 1 4 4v18.5') && reverbDemoHtml.includes('M27 41a4 4 0 0 1 4 4v18.5') &&
@@ -463,16 +463,21 @@ ${keybrViewSwitch}`;
     !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
     homeStyle.includes(".site-standard:has(.cnn-demo-section)") && homeStyle.includes(".site-standard:has(.reverb-demo-section)") &&
     homeStyle.includes(".cnn-demo-shell{position:relative;display:grid;grid-template-columns:") && homeStyle.includes("@media(max-width:700px){.site-standard .cnn-demo-section") &&
-    homeStyle.includes(".cnn-demo-shell{grid-template-columns:1fr") && homeStyle.includes(".cnn-pad{position:absolute") && homeStyle.includes("border:0;border-radius:0;touch-action:none") &&
+    homeStyle.includes(".cnn-demo-shell{grid-template-columns:1fr") && homeStyle.includes(".cnn-pad{position:absolute") && homeStyle.includes("border:0;border-radius:inherit;touch-action:none") &&
+    homeStyle.includes(".cnn-demo-shell{position:relative;display:grid;grid-template-columns:") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") &&
+    homeStyle.includes(".cnn-output-pane{position:relative") && homeStyle.includes("border-left:1px solid") && homeStyle.includes("border-top:1px solid") &&
     !homeStyle.includes(".cnn-ink-range") && !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && !homeStyle.includes(".cnn-settings-pane") && homeStyle.includes("var(--site-accent)"),
     "ux: CNN demo must keep worker-backed inference, one visible square canvas, desktop side-by-side predictions, mobile stacking, and shared themed controls");
   must(projectPageSource.includes('class="project-source-link"') && projectPageSource.indexOf('class="project-source-link"') < projectPageSource.indexOf('class="fact-strip"') &&
     projectPageSource.includes('class="project-description"') && !projectPageSource.includes('class="dek"') && !projectPageSource.includes("What it is") && !projectPageSource.includes("Related") &&
     !reverbDemoSource.includes("Interactive mock of Reverb's current Android interface") && !reverbDemoSource.includes('class="detail-copy reverb-demo-section"') &&
     !cnnDemoSource.includes('class="detail-copy cnn-demo-section"') && homeStyle.includes(".reverb-demo-host{display:block;width:100%;height:100%;min-height:0;overflow:hidden;border:0;border-radius:0") &&
-    reverbDemoHtml.includes("html,body{margin:0;min-height:100%;background:transparent") && reverbDemoHtml.includes("padding:18px;background:transparent") && reverbDemoHtml.includes("box-shadow:none;isolation:isolate") &&
-    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("border:0;border-radius:0"),
-    "ux: project pages must keep source near the title, avoid redundant dek/Related/What-it-is chrome, and render both demos seamlessly without outer borders or rounding");
+    reverbDemoHtml.includes("html,body{margin:0;min-height:100%;background:transparent") && reverbDemoHtml.includes("padding:18px;background:transparent") &&
+    reverbDemoHtml.includes("border:6px solid var(--phone-frame);border-radius:38px") && reverbDemoHtml.includes(".phone::before") &&
+    reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none}") &&
+    reverbDemoHtml.includes("--blob-primary:color-mix") && reverbRuntimeSource.includes("--blob-primary") && reverbRuntimeSource.includes("--blob-tertiary") &&
+    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") && homeStyle.includes("border-radius:10px"),
+    "ux: project pages must keep source near the title, retain a phone frame only in embedded Reverb, keep fullscreen seamless, theme the blob, and visually frame the CNN demo");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&

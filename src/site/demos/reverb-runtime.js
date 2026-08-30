@@ -301,8 +301,8 @@ void main(){
     }
     function refreshTheme(){
       gl.useProgram(prog);
-      gl.uniform4fv(u.primaryColor,colorVector('--primary','#2DD4BF'));
-      gl.uniform4fv(u.tertiaryColor,colorVector('--tertiary','#ACCBE5'));
+      gl.uniform4fv(u.primaryColor,colorVector('--blob-primary','#2DD4BF'));
+      gl.uniform4fv(u.tertiaryColor,colorVector('--blob-tertiary','#ACCBE5'));
       gl.uniform4fv(u.pausedColor,colorVector('--surface-container-highest','#2A3244'));
     }
     refreshTheme();
@@ -331,13 +331,13 @@ void main(){
       canvas.replaceWith(replacement); canvas=replacement; ctx=canvas.getContext('2d');
     }
     if(!ctx){
-      canvas.style.background='radial-gradient(circle at 45% 42%,color-mix(in srgb,var(--primary) 90%,transparent) 0 13%,color-mix(in srgb,var(--tertiary) 45%,transparent) 22%,transparent 42%)';
+      canvas.style.background='radial-gradient(circle at 45% 42%,color-mix(in srgb,var(--blob-primary) 90%,transparent) 0 13%,color-mix(in srgb,var(--blob-tertiary) 45%,transparent) 22%,transparent 42%)';
       return {setActive(v){canvas.style.opacity=v?'1':'.56'},refreshTheme(){}};
     }
     let primaryColor='#2DD4BF',tertiaryColor='#ACCBE5',pausedColor='#2A3244';
     function refreshTheme(){
-      primaryColor=resolveCssColor(canvas,'--primary','#2DD4BF');
-      tertiaryColor=resolveCssColor(canvas,'--tertiary','#ACCBE5');
+      primaryColor=resolveCssColor(canvas,'--blob-primary','#2DD4BF');
+      tertiaryColor=resolveCssColor(canvas,'--blob-tertiary','#ACCBE5');
       pausedColor=resolveCssColor(canvas,'--surface-container-highest','#2A3244');
     }
     refreshTheme();
