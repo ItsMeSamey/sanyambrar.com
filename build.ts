@@ -601,6 +601,12 @@ ${keybrViewSwitch}`;
     sharedTheme.includes("scale3d(${width / fillDot},${height / fillDot},1)") &&
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
     "ux: the virtual cursor must only idle-hide on Keybr, Wordle, and static blog articles while keeping the low-latency raw-pointer/compositor path");
+  must(sharedTheme.includes('CURSOR_MODES = Object.freeze(["invert", "hardware", "native"])') &&
+    sharedTheme.includes('data-cursor-mode-toggle') && sharedTheme.includes('applyHardwareCursorTheme') &&
+    sharedTheme.includes('root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware")') &&
+    sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
+    sharedSiteStyle.includes('var(--samey-hw-loading),wait!important'),
+    "ux: cursor appearance must offer invert/hardware/native tri-state modes and regenerate themed hardware cursor assets");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&
@@ -620,13 +626,13 @@ ${keybrViewSwitch}`;
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
-    reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes('@media(pointer:fine){*{cursor:none!important}}') &&
+    reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *{cursor:var(--samey-hw-dot),auto!important}') &&
     reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
     reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&
     reverbDemoHtml.includes('class="about-sheet"') && reverbDemoHtml.includes('https://github.com/SmallThingz/reverb') &&
     !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") && !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),
-    "ux: Reverb demo must remain inline, hide the native cursor, model bounded buffers, show gesture hints, and keep its faithful About sheet");
+    "ux: Reverb demo must remain inline, follow the selected cursor mode, model bounded buffers, show gesture hints, and keep its faithful About sheet");
   const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",

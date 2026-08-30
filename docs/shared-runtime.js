@@ -368,6 +368,9 @@
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
 		const KEY = "keybr.theme";
 		const FONT_KEY = "samey.font";
+		const CURSOR_MODES = Object.freeze(["invert", "hardware", "native"]);
+		const CURSOR_LABELS = Object.freeze({ invert: "Invert", hardware: "Hardware", native: "Native" });
+		const normalizeCursorMode = (value) => CURSOR_MODES.includes(value) ? value : "invert";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
 		const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
@@ -399,6 +402,24 @@
 			"\"": "&quot;",
 			"'": "&#39;"
 		})[c]);
+		const cursorDataUrl = (svg, hotspotX = 32, hotspotY = 32) => `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspotX} ${hotspotY}`;
+		const hardwareLoadingPath = generateLoadingFrames()[0];
+		const hardwareCursorSvgs = (theme) => {
+			const fg = theme.text, bg = theme.background;
+			const shell = (body) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">${body}</svg>`;
+			const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`);
+			const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`);
+			const grab = shell(`<defs><mask id="b"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="29.7" y="21.9" width="4.6" height="20.2" fill="black"/><rect x="21.9" y="29.7" width="20.2" height="4.6" fill="black"/></mask><mask id="f"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`);
+			const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`);
+			return { dot, text, grab, loading };
+		};
+		const applyHardwareCursorTheme = (root, theme) => {
+			const svgs = hardwareCursorSvgs(theme);
+			root.style.setProperty("--samey-hw-dot", cursorDataUrl(svgs.dot));
+			root.style.setProperty("--samey-hw-text", cursorDataUrl(svgs.text));
+			root.style.setProperty("--samey-hw-grab", cursorDataUrl(svgs.grab));
+			root.style.setProperty("--samey-hw-loading", cursorDataUrl(svgs.loading));
+		};
 		const semanticRoles = [
 			"accent",
 			"error",
@@ -495,12 +516,14 @@
 			const savedThemes = normalizedSavedThemes(raw);
 			const selected = migrateColor(raw.color, savedThemes);
 			const font = readFont();
+			const cursorMode = normalizeCursorMode(raw.cursorMode);
 			if (selected === "system") {
 				const color = matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 				return {
 					color,
 					selected: "system",
 					font,
+					cursorMode,
 					...colors[color],
 					custom: { ...colors[color] }
 				};
@@ -513,6 +536,7 @@
 					color: "custom",
 					selected: "custom",
 					font,
+					cursorMode,
 					...theme,
 					custom: { ...theme }
 				};
@@ -524,6 +548,7 @@
 					color: selected,
 					selected,
 					font,
+					cursorMode,
 					...theme,
 					custom: { ...theme },
 					savedName: saved?.name || "Saved theme"
@@ -534,6 +559,7 @@
 				color: selected,
 				selected,
 				font,
+				cursorMode,
 				...theme,
 				custom: { ...theme }
 			};
@@ -619,6 +645,11 @@
 			root.dataset.color = theme.color;
 			root.classList.toggle("dark", theme.tone === "dark");
 			root.style.colorScheme = theme.tone;
+			root.dataset.cursorMode = theme.cursorMode;
+			root.classList.toggle("samey-custom-cursor", theme.cursorMode === "invert");
+			root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware");
+			root.classList.toggle("samey-native-cursor", theme.cursorMode === "native");
+			applyHardwareCursorTheme(root, theme);
 			const line = mix(theme.text, theme.background, theme.tone === "dark" ? .72 : .82);
 			const soft = mix(theme.text, theme.background, theme.tone === "dark" ? .9 : .96);
 			root.style.setProperty("--site-bg", theme.background);
@@ -775,15 +806,21 @@
 			return `<div class="samey-panel-title">Themes</div>${themeCatalog().filter(([id]) => allowed.has(id)).map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}`;
 		};
 		const fontSection = () => `<div class="samey-panel-title">Fonts</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
+		const CURSOR_TOGGLE_POINTS = [[0,-13.1991],[-12.235,8.0898],[12.235,8.0898]];
+		const CURSOR_TOGGLE_EDGES = [[0,-13.1991,-1.8964,-.1064,-12.235,8.0898,93.282],[-12.235,8.0898,0,3.1933,12.235,8.0898,92.994],[12.235,8.0898,1.8964,-.1064,0,-13.1991,93.282]];
+		const CURSOR_TOGGLE_RAIL = "M 0 -13.1991 Q 1.8964 -0.1064 12.235 8.0898 Q 0 3.1933 -12.235 8.0898 Q -1.8964 -0.1064 0 -13.1991 Z";
+		const cursorSection = () => { const mode=read().cursorMode,state=CURSOR_MODES.indexOf(mode),[x,y]=CURSOR_TOGGLE_POINTS[state]; return `<div class="samey-panel-title">Cursor</div><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div>`; };
+		const bindCursorToggle = () => { const button=appearancePanel?.querySelector("[data-cursor-mode-toggle]"); if(!button)return; const knob=button.querySelector("[data-cursor-toggle-knob]"),gradient=button.querySelector("radialGradient"),name=appearancePanel.querySelector("[data-cursor-mode-name]"); let state=Number(button.getAttribute("aria-valuenow"))||0,raf=0,queued=0; const ease=t=>t<.5?4*t*t*t:1-((-2*t+2)**3)/2; const setPoint=(x,y)=>{const transform=`translate(${x} ${y})`;knob?.setAttribute("transform",transform);gradient?.setAttribute("gradientTransform",transform)}; const run=()=>{if(raf){queued++;return}const from=state,to=(from+1)%3,[x0,y0,cx,cy,x1,y1,duration]=CURSOR_TOGGLE_EDGES[from],start=performance.now();button.setAttribute("aria-valuenow",String(to));button.setAttribute("aria-valuetext",CURSOR_LABELS[CURSOR_MODES[to]]);button.setAttribute("aria-label",`Cursor mode: ${CURSOR_LABELS[CURSOR_MODES[to]]}`);if(name)name.textContent=CURSOR_LABELS[CURSOR_MODES[to]];const frame=now=>{const raw=Math.min(1,(now-start)/duration),t=ease(raw),u=1-t;setPoint(u*u*x0+2*u*t*cx+t*t*x1,u*u*y0+2*u*t*cy+t*t*y1);if(raw<1){raf=requestAnimationFrame(frame);return}state=to;const[px,py]=CURSOR_TOGGLE_POINTS[state];setPoint(px,py);raf=0;setPrefs({cursorMode:CURSOR_MODES[state]});if(queued){queued--;run()}};raf=requestAnimationFrame(frame)};button.addEventListener("click",event=>{event.stopPropagation();run()});button.addEventListener("keydown",event=>{if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();run()}}); };
 		const advancedSection = () => `<div class="samey-panel-advanced"><button type="button" data-open-advanced><span>Advanced theming &amp;<br>colorblind modes</span></button></div>`;
 		function renderAppearancePanel() {
 			if (!appearancePanel) return;
 			const wasHidden = appearancePanel.hidden;
-			appearancePanel.innerHTML = themeSection() + fontSection() + advancedSection();
+			appearancePanel.innerHTML = themeSection() + fontSection() + cursorSection() + advancedSection();
 			appearancePanel.hidden = wasHidden;
 			const theme = read();
 			appearancePanel.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
 			appearancePanel.querySelectorAll("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
+			bindCursorToggle();
 		}
 		const positionAppearancePanel = (trigger) => {
 			if (!appearancePanel || !trigger) return;
@@ -1155,8 +1192,8 @@
 			const dragPreview = runtimeNode(document.createElement("div"));
 			dragPreview.className = "samey-drag-preview";
 			dragPreview.hidden = true;
-			document.documentElement.classList.add("samey-custom-cursor");
 			document.body.append(linkFill, dragPreview, cursor);
+			let cursorMode = read().cursorMode;
 			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
 			loadingPath?.querySelector("animate")?.remove();
 			let cursorVisible = false;
@@ -1336,10 +1373,11 @@
 				return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
 			};
 			const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
-			const setTextState = (text) => cursor.toggleAttribute("data-text", !!text);
+			const setTextState = (text) => { cursor.toggleAttribute("data-text", !!text); if (text) document.documentElement.dataset.sameyCursorShape = "text"; else if (!cursor.hasAttribute("data-grab")) document.documentElement.dataset.sameyCursorShape = "dot"; };
 			const setGrabState = (grab) => {
 				const wasGrab = cursor.hasAttribute("data-grab");
 				cursor.toggleAttribute("data-grab", grab);
+				if (grab) document.documentElement.dataset.sameyCursorShape = "grab"; else if (!cursor.hasAttribute("data-text")) document.documentElement.dataset.sameyCursorShape = "dot";
 				if (grab) setTextState(false);
 				if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
 			};
@@ -1667,18 +1705,34 @@
 				return grabModeValue = wantsGrab(target);
 			};
 			const setMode = (target) => {
-				updateBlendSource(target);
 				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrabCached(target);
-				let link = grab || selectingText ? null : linkTarget(target);
+				const link = grab || selectingText ? null : linkTarget(target);
+				const text = !grab && (selectingText || !link && wantsText(target));
+				if (cursorMode === "hardware") { document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot"; hideFillImmediate(); return; }
+				updateBlendSource(target);
 				setFillLayer(link);
 				setGrabState(grab);
-				setTextState(!grab && (selectingText || !link && wantsText(target)));
+				setTextState(text);
 				setFillTarget(link);
 			};
 			refreshCursorMode = () => cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
+			const syncCursorPresentation = (theme = read()) => {
+				cursorMode = theme.cursorMode;
+				document.documentElement.dataset.cursorMode = cursorMode;
+				document.documentElement.classList.toggle("samey-custom-cursor", cursorMode === "invert");
+				document.documentElement.classList.toggle("samey-hardware-cursor", cursorMode === "hardware");
+				document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
+				applyHardwareCursorTheme(document.documentElement, theme);
+				cursor.hidden = cursorMode !== "invert";
+				if (cursorMode !== "invert") { linkFill.hidden = true; setCursorVisible(false); }
+				if (cursorMode === "hardware" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
+				if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
+			};
+			addEventListener("samey-themechange", (event) => syncCursorPresentation(event.detail || read()));
+			syncCursorPresentation(read());
 			const hasRawPointer = "onpointerrawupdate" in window;
 			const moveCursorOnly = (event) => {
-				if (nativeDragging) return;
+				if (cursorMode !== "invert" || nativeDragging) return;
 				const x = event.clientX, y = event.clientY;
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 				hasPointerPosition = true;
@@ -1688,6 +1742,7 @@
 				if (!cursorVisible && !cursorLoading) setCursorVisible(true);
 			};
 			const moveCursorFallback = (event) => {
+				if (cursorMode !== "invert") return;
 				if (nativeDragging) {
 					hidePointerVisuals();
 					return;
@@ -1696,6 +1751,8 @@
 				wakeCursor();
 			};
 			const refreshPointerTarget = (event) => {
+				if (cursorMode === "native") return;
+				if (cursorMode === "hardware") { const x=event.clientX,y=event.clientY; if(Number.isFinite(x)&&Number.isFinite(y)){hasPointerPosition=true;lastX=pendingX=x;lastY=pendingY=y} setMode(event.target instanceof Element?event.target:elementAt(event)); return; }
 				if (nativeDragging) {
 					hidePointerVisuals();
 					return;

@@ -144,8 +144,10 @@ function mountReverbDemo(host: HTMLDivElement) {
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };
 
+  const syncCursorMode = () => host.setAttribute('data-cursor-mode', document.documentElement.dataset.cursorMode || 'invert');
+  syncCursorMode();
   const runtime = runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
-  const refreshTheme = () => runtime?.refreshTheme?.();
+  const refreshTheme = () => { syncCursorMode(); runtime?.refreshTheme?.(); };
   window.addEventListener('samey-themechange', refreshTheme);
 
   return () => {
