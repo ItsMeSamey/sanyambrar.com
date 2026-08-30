@@ -407,6 +407,7 @@ ${keybrViewSwitch}`;
 
   const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
   const reverbDemoSource = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
+  const cnnDemoSource = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.js"), "utf8");
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
@@ -433,6 +434,15 @@ ${keybrViewSwitch}`;
   must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
     reverbRuntimeSource.includes("settingsInitial.get('oneLimitSeconds')") && reverbRuntimeSource.includes("settingsInitial.get('retentionMode')"),
     "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
+  must(cnnDemoSource.includes("const INPUT_SIZE = 28") && cnnDemoSource.includes("const DRAW_SIZE = 280") &&
+    cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
+    cnnDemoSource.includes("new Float32Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3] / 255") &&
+    cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('type="range"') &&
+    cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes("__sameyCnnInfer") &&
+    cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
+    homeStyle.includes(".cnn-demo-shell") && homeStyle.includes("touch-action:none") &&
+    homeStyle.includes(".cnn-ink-range") && homeStyle.includes("var(--site-accent)"),
+    "ux: CNN project demo must expose themed grayscale drawing, 28x28 input, and 11-way inference output UI");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
@@ -557,6 +567,10 @@ ${keybrViewSwitch}`;
   const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
   const projectPage = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
+  const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
+  must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
+    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("Browser inference") && cnnDemo.includes("11-way softmax"),
+    "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
