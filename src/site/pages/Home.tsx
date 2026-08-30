@@ -9,11 +9,11 @@ import { TopBar } from '../../shared/components/TopBar.tsx';
 const writingPreview = {
   kicker: 'C++ / CONCURRENCY / BTOP',
   date: '25 AUG 2026',
-  summary: 'A debugging trail through btop that uncovered two synchronization bugs: a compare-exchange loop that could admit multiple owners, and relaxed atomic waits being treated as a thread hand-off.',
+  summary: 'I went looking at a btop crash and ended up finding a lock that could let two threads in at once. There was a second race hiding around Runner::active too.',
   points: [
-    'A failed compare-exchange mutated expected, turning the next retry into a successful no-op.',
-    'Observing an atomic flag change did not synchronize the ordinary writes around it.',
-    'The fixes became part of btop PR #1649 without claiming to solve the original CPU-hotplug crash.',
+    'A failed compare-exchange changed expected. The next retry could then succeed without acquiring anything.',
+    'Runner::active was treated like a hand-off, but the relaxed wait did not actually make it one.',
+    'Those fixes landed in btop PR #1649. The old CPU-hotplug crash is a separate thing and still not something I can claim was fixed.',
   ],
 };
 
@@ -52,4 +52,4 @@ function WritingSplit() {
   </div>;
 }
 
-export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Work" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main></>}
+export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Projects with demos" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main></>}

@@ -453,17 +453,26 @@ ${keybrViewSwitch}`;
     sharedSiteStyle.includes(".site-fatal-error-stack") && sharedSiteStyle.includes(".site-fatal-topbar-fallback"),
     "ux: fatal route errors must keep navigation, expose full stacks, truly reload, and reset on navigation");
   const siteData = await readFile(join(ROOT, "src/site/data.ts"), "utf8");
+  const entriesSource = await readFile(join(ROOT, "src/site/components/Entries.tsx"), "utf8");
+  const workSource = await readFile(join(ROOT, "src/site/pages/Work.tsx"), "utf8");
+  must((siteData.match(/demo:true/g) || []).length === 2 &&
+    siteData.includes("title:'Reverb'") && siteData.includes("title:'CNN'") &&
+    !siteData.includes("export const moreProjects") &&
+    entriesSource.includes('class="demo-badge"') && entriesSource.includes('Demo') &&
+    homeSource.includes('title="Projects with demos"') && workSource.includes('title="Projects with demos"') &&
+    !workSource.includes('moreProjects'),
+    "ux: portfolio project lists must show only the two projects with demos and label them clearly");
   const siteCatalog = await readFile(join(ROOT, "src/shared/catalog.ts"), "utf8");
   const toolsPageSource = await readFile(join(ROOT, "src/tools/Tools.tsx"), "utf8");
   const blogSource = await readFile(join(ROOT, "src/blogs/Blog.tsx"), "utf8");
   must(homeSource.includes("home-tool-matrix") && homeSource.includes("home-writing-split") &&
     !toolsPageSource.includes("home-tool-matrix") && !blogSource.includes("home-writing-split"),
     "ux: editorial tools and split writing index belong on Home, not the Tools/Writing pages");
-  must(homeSource.includes('title="Work" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
+  must(homeSource.includes('title="Projects with demos" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
     !sharedTopBar.includes("showWork") && !sharedTopBar.includes("SITE_NAV") &&
     siteData.includes("Chain reaction clone with local AI.") && siteCatalog.includes("Word count and non-ASCII character detection.") &&
     homeStyle.includes(".site-standard .intro{display:flex;justify-content:space-between;align-items:center;gap:18px;min-height:72px"),
-    "ux: Work/Writing must be Home sections, card copy must stay concise, and the intro must stay compact");
+    "ux: Projects/Writing must be Home sections, card copy must stay concise, and the intro must stay compact");
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");

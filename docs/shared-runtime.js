@@ -2569,63 +2569,22 @@
 	}));
 	var projects = [
 		{
-			title: "zhtml",
-			href: "/projects/zhtml/",
-			kind: "Project",
-			note: "Throughput-oriented HTML parser in Zig.",
-			tags: [
-				"zig",
-				"parser",
-				"performance"
-			]
-		},
-		{
 			title: "Reverb",
 			href: "/projects/reverb/",
 			kind: "Project",
-			note: "Android rolling audio recorder backed by an in-memory circular buffer.",
-			tags: [
-				"kotlin",
-				"android",
-				"audio"
-			]
-		},
-		{
-			title: "OneSerial",
-			href: "/projects/oneserial/",
-			kind: "Project",
-			note: "Nested Zig data structures in one contiguous allocation.",
-			tags: [
-				"zig",
-				"serialization",
-				"memory"
-			]
+			note: "Android recorder that keeps a rolling audio window in memory.",
+			tags: ["kotlin", "android", "audio"],
+			demo: true
 		},
 		{
 			title: "CNN",
 			href: "/projects/cnn/",
 			kind: "Project",
-			note: "Convolutional network implemented from scratch in Zig.",
-			tags: [
-				"zig",
-				"ml",
-				"mnist"
-			]
+			note: "CNN in Zig. Draw the input in-browser; the WASM inference plugs in next.",
+			tags: ["zig", "ml", "mnist"],
+			demo: true
 		}
 	];
-	var moreProjects = [{
-		title: "zxml",
-		href: "https://github.com/SmallThingz/zxml",
-		kind: "Project",
-		note: "Fast XML parsing with explicit memory management.",
-		tags: ["zig", "xml"]
-	}, {
-		title: "java debug shell",
-		href: "https://github.com/SmallThingz/java_debug_shell",
-		kind: "Project",
-		note: "Attach, inspect and evaluate inside a running JVM.",
-		tags: ["java", "jvm"]
-	}];
 	var posts = [{
 		title: "btop's broken lock",
 		href: "/blog/posts/btop-mutex.html",
@@ -2665,7 +2624,6 @@
 		...tools,
 		...posts,
 		...projects,
-		...moreProjects,
 		...contributions,
 		{
 			title: "Home",

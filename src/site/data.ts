@@ -1,6 +1,6 @@
 import { TOOLS } from '../shared/catalog.ts';
 
-export type Entry={title:string;href:string;kind:string;note:string;tags?:string[]};
+export type Entry={title:string;href:string;kind:string;note:string;tags?:string[];demo?:boolean};
 export type ProjectDetail={title:string;dek:string;facts:string[];body:string;links:Entry[];demo?:'reverb-ui'|'cnn-draw'};
 
 export const games:Entry[]=[
@@ -10,15 +10,10 @@ export const games:Entry[]=[
 ];
 export const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[
-  {title:'zhtml',href:'/projects/zhtml/',kind:'Project',note:'Throughput-oriented HTML parser in Zig.',tags:['zig','parser','performance']},
-  {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android rolling audio recorder backed by an in-memory circular buffer.',tags:['kotlin','android','audio']},
-  {title:'OneSerial',href:'/projects/oneserial/',kind:'Project',note:'Nested Zig data structures in one contiguous allocation.',tags:['zig','serialization','memory']},
-  {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'Convolutional network implemented from scratch in Zig.',tags:['zig','ml','mnist']},
+  {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android recorder that keeps a rolling audio window in memory.',tags:['kotlin','android','audio'],demo:true},
+  {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw the input in-browser; the WASM inference plugs in next.',tags:['zig','ml','mnist'],demo:true},
 ];
-export const moreProjects:Entry[]=[
-  {title:'zxml',href:'https://github.com/SmallThingz/zxml',kind:'Project',note:'Fast XML parsing with explicit memory management.',tags:['zig','xml']},
-  {title:'java debug shell',href:'https://github.com/SmallThingz/java_debug_shell',kind:'Project',note:'Attach, inspect and evaluate inside a running JVM.',tags:['java','jvm']},
-];
+
 export const posts:Entry[]=[{title:"btop's broken lock",href:'/blog/posts/btop-mutex.html',kind:'Writing',note:"the mutex that wasn't",tags:['c++','concurrency','btop']}];
 export const contributions:Entry[]=[
   {title:'aristocratos/btop · PR #1649',href:'https://github.com/aristocratos/btop/pull/1649',kind:'OSS',note:'Data races, mutex-like locking and signal-safety fixes.',tags:['c++','concurrency']},
@@ -31,4 +26,4 @@ export const details:Record<string,ProjectDetail>={
  oneserial:{title:'OneSerial',dek:'Nested structures in one contiguous allocation.',facts:['Zig','single allocation','zero-copy serialization'],body:'OneSerial treats layout as the API. Nested structures are packed into one allocation so ownership, locality and serialization remain explicit. It is useful when pointer-heavy object graphs are the thing getting in the way.',links:[{title:'Source',href:'https://github.com/SmallThingz/oneserial',kind:'GitHub',note:'SmallThingz/oneserial'}]},
  cnn:{title:'CNN',dek:'A convolutional neural network implemented from scratch in Zig.',facts:['Zig','~99% MNIST','Python weight interoperability'],body:'The project implements the network primitives rather than wrapping a machine-learning runtime. The interesting constraints are explicit buffers, predictable allocation behavior and moving weights between the Zig implementation and Python tooling.',demo:'cnn-draw',links:[{title:'Source',href:'https://github.com/ItsMeSamey/cnn_digit_recognition_zig',kind:'GitHub',note:'cnn_digit_recognition_zig'}]},
 };
-export const searchIndex=[...games,...tools,...posts,...projects,...moreProjects,...contributions,{title:'Home',href:'/',kind:'Page',note:'Games, tools and writing.'},{title:'Work',href:'/work/',kind:'Page',note:'Projects and open-source contributions.'}];
+export const searchIndex=[...games,...tools,...posts,...projects,...contributions,{title:'Home',href:'/',kind:'Page',note:'Games, tools and writing.'},{title:'Work',href:'/work/',kind:'Page',note:'Projects and open-source contributions.'}];

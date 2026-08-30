@@ -122,3 +122,8 @@
 @media(max-width:500px){.site-standard .cnn-pad-footer{grid-template-columns:minmax(0,1fr) auto;gap:12px}.site-standard .cnn-input-preview{grid-column:1/-1}.site-standard .cnn-ink-control{min-width:0}.site-standard .cnn-clear{align-self:end}}
 @media(max-width:390px){.site-standard .cnn-output-pane{padding-inline:13px}.site-standard .cnn-probability-row{grid-template-columns:16px minmax(0,1fr) 43px;gap:7px}.site-standard .cnn-input-thumb{width:39px;height:39px}}
 @media(prefers-reduced-motion:reduce){.site-standard .cnn-clear,.site-standard .cnn-meter i{transition:none!important}}
+
+/* Demo-project labels stay quiet but unambiguous. */
+.site-standard .project-meta{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.site-standard .demo-badge{border:1px solid color-mix(in srgb,var(--site-accent,#2563eb) 38%,var(--site-line,#d3d6da));background:color-mix(in srgb,var(--site-accent,#2563eb) 8%,var(--site-bg,#fff));color:color-mix(in srgb,var(--site-accent,#2563eb) 82%,var(--site-fg,#121213));border-radius:999px;padding:4px 7px;font:650 8px/1 var(--site-font,system-ui);letter-spacing:.075em;text-transform:uppercase;white-space:nowrap}
+@media(max-width:440px){.site-standard .project-meta{gap:6px}.site-standard .demo-badge{padding:4px 6px}}
