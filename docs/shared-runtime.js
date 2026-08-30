@@ -1159,10 +1159,18 @@
 			document.body.append(linkFill, dragPreview, cursor);
 			const loadingPath = cursor.querySelector(".samey-cursor-loading path");
 			loadingPath?.querySelector("animate")?.remove();
+			let cursorVisible = false;
+			let cursorLoading = false;
+			const setCursorVisible = (visible) => {
+				if (cursorVisible === visible) return;
+				cursorVisible = visible;
+				if (visible) cursor.dataset.visible = "";
+				else delete cursor.dataset.visible;
+			};
 			let loadingRaf = 0, loadingStarted = 0;
 			let refreshCursorMode = () => {};
 			const animateLoadingPaths = (time) => {
-				if (!cursor.hasAttribute("data-loading")) {
+				if (!cursorLoading) {
 					loadingRaf = 0;
 					return;
 				}
@@ -1174,12 +1182,13 @@
 				loadingRaf = requestAnimationFrame(animateLoadingPaths);
 			};
 			const setLoading = (loading) => {
-				cursor.toggleAttribute("data-loading", !!loading);
+				cursorLoading = !!loading;
+				cursor.toggleAttribute("data-loading", cursorLoading);
 				if (loading) {
 					clearCursorIdle();
 					cursor.removeAttribute("data-grab");
 					cursor.removeAttribute("data-text");
-					cursor.dataset.visible = "";
+					setCursorVisible(true);
 					linkFill.hidden = true;
 				}
 				document.documentElement.toggleAttribute("data-site-loading", !!loading);
@@ -1194,7 +1203,7 @@
 				}
 				if (!loading) {
 					refreshCursorMode();
-					if (cursor.hasAttribute("data-visible")) armCursorIdle();
+					if (cursorVisible) armCursorIdle();
 				}
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
@@ -1546,7 +1555,7 @@
 				}
 			};
 			const hidePointerVisuals = () => {
-				delete cursor.dataset.visible;
+				setCursorVisible(false);
 				hideFillImmediate();
 			};
 			const runCursorIdle = () => {
@@ -1562,7 +1571,7 @@
 					return;
 				}
 				cursorIdleDeadline = 0;
-				if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+				if (!nativeDragging && !cursorLoading) hidePointerVisuals();
 			};
 			const armCursorIdle = () => {
 				if (!cursorIdleHidingEnabled()) {
@@ -1573,24 +1582,24 @@
 				if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
 			};
 			const wakeCursor = () => {
-				if (nativeDragging || cursor.hasAttribute("data-loading")) return;
-				if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
+				if (nativeDragging || cursorLoading) return;
+				setCursorVisible(true);
 				armCursorIdle();
 			};
 			const syncCursorIdlePolicy = () => {
 				if (cursorIdleHidingEnabled()) {
-					if (cursor.hasAttribute("data-visible")) armCursorIdle();
+					if (cursorVisible) armCursorIdle();
 					return;
 				}
 				clearCursorIdle();
-				if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;
-				cursor.dataset.visible = "";
+				if (!hasPointerPosition || nativeDragging || cursorLoading) return;
+				setCursorVisible(true);
 				refreshCursorMode();
 			};
 			addEventListener("samey-pageload", syncCursorIdlePolicy);
 			addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
 			function setFillTarget(link) {
-				if (cursor.hasAttribute("data-loading")) {
+				if (cursorLoading) {
 					hideFillImmediate();
 					return;
 				}
@@ -1666,34 +1675,43 @@
 				setTextState(!grab && (selectingText || !link && wantsText(target)));
 				setFillTarget(link);
 			};
-			refreshCursorMode = () => cursor.hasAttribute("data-visible") ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
+			refreshCursorMode = () => cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
 			const hasRawPointer = "onpointerrawupdate" in window;
 			const moveCursorOnly = (event) => {
+				if (nativeDragging) return;
+				const x = event.clientX, y = event.clientY;
+				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+				hasPointerPosition = true;
+				lastX = pendingX = x;
+				lastY = pendingY = y;
+				cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
+				if (!cursorVisible && !cursorLoading) setCursorVisible(true);
+			};
+			const moveCursorFallback = (event) => {
+				if (nativeDragging) {
+					hidePointerVisuals();
+					return;
+				}
+				if (!hasRawPointer || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
+				wakeCursor();
+			};
+			const refreshPointerTarget = (event) => {
 				if (nativeDragging) {
 					hidePointerVisuals();
 					return;
 				}
 				place(event);
-				wakeCursor();
-			};
-			const refreshAt = (event, moved = false) => {
-				if (nativeDragging) {
-					hidePointerVisuals();
-					return;
-				}
-				if (!hasRawPointer || !moved || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
-				if (moved) wakeCursor();
 				setMode(event.target instanceof Element ? event.target : elementAt(event));
 			};
 			if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, {
 				capture: true,
 				passive: true
 			});
-			document.addEventListener("pointermove", (event) => refreshAt(event, true), {
+			document.addEventListener("pointermove", moveCursorFallback, {
 				capture: true,
 				passive: true
 			});
-			document.addEventListener("pointerover", (event) => refreshAt(event, false), {
+			document.addEventListener("pointerover", refreshPointerTarget, {
 				capture: true,
 				passive: true
 			});

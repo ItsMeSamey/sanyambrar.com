@@ -696,10 +696,18 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     // cursor advances the same path explicitly, so disable the duplicate SVG
     // animation here instead of running both animation engines while loading.
     loadingPath?.querySelector("animate")?.remove();
+    let cursorVisible = false;
+    let cursorLoading = false;
+    const setCursorVisible = (visible) => {
+      if (cursorVisible === visible) return;
+      cursorVisible = visible;
+      if (visible) cursor.dataset.visible = "";
+      else delete cursor.dataset.visible;
+    };
     let loadingRaf = 0, loadingStarted = 0;
     let refreshCursorMode = () => {};
     const animateLoadingPaths = (time) => {
-      if (!cursor.hasAttribute("data-loading")) { loadingRaf = 0; return; }
+      if (!cursorLoading) { loadingRaf = 0; return; }
       const frames = loadingFrames();
       const duration = loadingGeometry.duration * 1000;
       const progress = (Math.max(0, time - loadingStarted) % duration) / duration;
@@ -708,12 +716,13 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       loadingRaf = requestAnimationFrame(animateLoadingPaths);
     };
     const setLoading = (loading) => {
-      cursor.toggleAttribute("data-loading", !!loading);
+      cursorLoading = !!loading;
+      cursor.toggleAttribute("data-loading", cursorLoading);
       if (loading) {
         clearCursorIdle();
         cursor.removeAttribute("data-grab");
         cursor.removeAttribute("data-text");
-        cursor.dataset.visible = "";
+        setCursorVisible(true);
         linkFill.hidden = true;
       }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
@@ -721,7 +730,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
       if (!loading) {
         refreshCursorMode();
-        if (cursor.hasAttribute("data-visible")) armCursorIdle();
+        if (cursorVisible) armCursorIdle();
       }
     };
     addEventListener("samey-loading", event => setLoading(!!event.detail));
@@ -1043,7 +1052,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       }
     };
     const hidePointerVisuals = () => {
-      delete cursor.dataset.visible;
+      setCursorVisible(false);
       hideFillImmediate();
     };
     const runCursorIdle = () => {
@@ -1053,7 +1062,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const remaining = cursorIdleDeadline - performance.now();
       if (remaining > 1) { cursorIdleTimer = window.setTimeout(runCursorIdle, remaining); return; }
       cursorIdleDeadline = 0;
-      if (!nativeDragging && !cursor.hasAttribute("data-loading")) hidePointerVisuals();
+      if (!nativeDragging && !cursorLoading) hidePointerVisuals();
     };
     const armCursorIdle = () => {
       if (!cursorIdleHidingEnabled()) { clearCursorIdle(); return; }
@@ -1063,24 +1072,24 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
     };
     const wakeCursor = () => {
-      if (nativeDragging || cursor.hasAttribute("data-loading")) return;
-      if (!cursor.hasAttribute("data-visible")) cursor.dataset.visible = "";
+      if (nativeDragging || cursorLoading) return;
+      setCursorVisible(true);
       armCursorIdle();
     };
     const syncCursorIdlePolicy = () => {
       if (cursorIdleHidingEnabled()) {
-        if (cursor.hasAttribute("data-visible")) armCursorIdle();
+        if (cursorVisible) armCursorIdle();
         return;
       }
       clearCursorIdle();
-      if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;
-      cursor.dataset.visible = "";
+      if (!hasPointerPosition || nativeDragging || cursorLoading) return;
+      setCursorVisible(true);
       refreshCursorMode();
     };
     addEventListener("samey-pageload", syncCursorIdlePolicy);
     addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link) {
-      if (cursor.hasAttribute("data-loading")) { hideFillImmediate(); return; }
+      if (cursorLoading) { hideFillImmediate(); return; }
       if (!link) {
         fillTarget = null;
         setFillLayer(null);
@@ -1139,31 +1148,44 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       setTextState(!grab && (selectingText || !link && wantsText(target)));
       setFillTarget(link);
     };
-    refreshCursorMode = () => cursor.hasAttribute("data-visible")
+    refreshCursorMode = () => cursorVisible
       ? setMode(document.elementFromPoint(pendingX, pendingY))
       : setFillTarget(null);
     const hasRawPointer = "onpointerrawupdate" in window;
     const moveCursorOnly = (event) => {
+      if (nativeDragging) return;
+      // pointerrawupdate is already the freshest sample the browser exposes. Keep
+      // this handler brutally small: no coalesced-event array, hit testing, style
+      // reads, timers, or cursor-mode work. A single compositor-only transform is
+      // the only per-sample DOM mutation.
+      const x = event.clientX, y = event.clientY;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      hasPointerPosition = true;
+      lastX = pendingX = x; lastY = pendingY = y;
+      cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
+      // Waking is normally handled by the lower-frequency pointermove event. If
+      // idle hiding left the cursor invisible, expose the already-positioned layer
+      // immediately without dragging idle/mode bookkeeping onto the raw path.
+      if (!cursorVisible && !cursorLoading) setCursorVisible(true);
+    };
+    const moveCursorFallback = (event) => {
       if (nativeDragging) { hidePointerVisuals(); return; }
-      place(event);
+      // Raw samples normally arrive first. pointermove still catches up for input
+      // sources that do not emit pointerrawupdate, and also owns the low-frequency
+      // visibility/idle bookkeeping. Cursor mode is intentionally *not* recomputed
+      // here; pointerover already tells us when the hit-tested target changes.
+      if (!hasRawPointer || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
       wakeCursor();
     };
-    const refreshAt = (event, moved = false) => {
+    const refreshPointerTarget = (event) => {
       if (nativeDragging) { hidePointerVisuals(); return; }
-      // Raw pointer samples normally arrive first. If a browser advertises
-      // pointerrawupdate but does not emit it for a particular input source
-      // (automation, remote desktop, accessibility hardware), pointermove still
-      // catches up immediately instead of leaving the virtual cursor behind.
-      if (!hasRawPointer || !moved || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
-      if (moved) wakeCursor();
-      // pointermove/pointerover are already browser hit-tested. Avoid a second
-      // elementFromPoint() query on the hottest cursor path.
+      place(event);
       setMode(event.target instanceof Element ? event.target : elementAt(event));
     };
 
     if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, { capture: true, passive: true });
-    document.addEventListener("pointermove", (event) => refreshAt(event, true), { capture: true, passive: true });
-    document.addEventListener("pointerover", (event) => refreshAt(event, false), { capture: true, passive: true });
+    document.addEventListener("pointermove", moveCursorFallback, { capture: true, passive: true });
+    document.addEventListener("pointerover", refreshPointerTarget, { capture: true, passive: true });
     addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true, capture: true });
     addEventListener("resize", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true });
     addEventListener("samey-pageleave", () => setFillTarget(null));

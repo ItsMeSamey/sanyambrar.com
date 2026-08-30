@@ -209,16 +209,20 @@ export function runReverbDemoRuntime(document, requestAnimationFrame, setTimeout
   }
 
   let dragStartY=null,dragMode=null;
+  const trackPointerGesture=e=>{
+    if(dragStartY===null||!dragMode)return;
+    if(completeGesture(dragMode,e.clientY-dragStartY))clearPointerGesture();
+  };
+  const clearPointerGesture=()=>{
+    dragStartY=null; dragMode=null;
+    phone.removeEventListener('pointermove',trackPointerGesture);
+  };
   phone.addEventListener('pointerdown',e=>{
     if(e.pointerType==='touch')return;
     dragMode=gestureMode(e.clientY,e.target);
     dragStartY=dragMode?e.clientY:null;
+    if(dragMode)phone.addEventListener('pointermove',trackPointerGesture,{passive:true});
   });
-  phone.addEventListener('pointermove',e=>{
-    if(dragStartY===null||!dragMode)return;
-    if(completeGesture(dragMode,e.clientY-dragStartY)){dragStartY=null;dragMode=null}
-  });
-  const clearPointerGesture=()=>{dragStartY=null;dragMode=null};
   phone.addEventListener('pointerup',clearPointerGesture); phone.addEventListener('pointercancel',clearPointerGesture);
 
   let touchStartY=null,touchMode=null;

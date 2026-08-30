@@ -427,6 +427,8 @@ ${keybrViewSwitch}`;
     "ux: Reverb mobile demo must size against its host, keep side margins, and avoid viewport-height compression");
   must(reverbDemoHtml.includes("touch-action:pan-y") && reverbDemoHtml.includes("user-select:none") &&
     reverbRuntimeSource.includes("if(clientY<blobRect.top)return 'settings'") && reverbRuntimeSource.includes("if(clientY>blobRect.bottom)return 'library'") &&
+    reverbRuntimeSource.includes("if(dragMode)phone.addEventListener('pointermove',trackPointerGesture,{passive:true})") &&
+    reverbRuntimeSource.includes("phone.removeEventListener('pointermove',trackPointerGesture)") &&
     reverbRuntimeSource.includes("Only the reduced gesture regions suppress page scrolling"),
     "ux: Reverb page scrolling must remain available through the blob while source gestures are limited to regions above/below it");
   must(reverbDemoSource.includes('class="reverb-demo-fullscreen-button"') && !reverbDemoHtml.includes('demoFullscreen') && reverbDemoSource.includes("FULLSCREEN_STATE_KEY") &&
@@ -435,6 +437,8 @@ ${keybrViewSwitch}`;
     homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") && reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;box-shadow:none"),
     "ux: Reverb fullscreen must fill the viewport with the actual UI, animate, and participate in browser back/forward history");
   must(reverbDemoHtml.includes("animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) 3") && reverbDemoHtml.includes("@keyframes gesture-hint-life") &&
+    reverbDemoHtml.includes('M27 21a4 4 0 0 1 4 4v18.5') && reverbDemoHtml.includes('M27 41a4 4 0 0 1 4 4v18.5') &&
+    !reverbDemoHtml.includes('M23 30v20.5c0 7.5') && !reverbDemoHtml.includes('M23 50v20.5c0 7.5') &&
     reverbDemoHtml.includes("--primary:var(--site-accent-fg") && reverbDemoHtml.includes("--surface:color-mix(in srgb,var(--site-bg") &&
     homeStyle.includes("color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg"),
     "ux: Reverb gesture teaching must stop after a few loops and its app/page palette must follow the site theme");
@@ -583,9 +587,15 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('if (!cursorIdleHidingEnabled()) { clearCursorIdle(); return; }') &&
     sharedTheme.includes('addEventListener("samey-pageload", syncCursorIdlePolicy)') &&
     sharedTheme.includes('addEventListener("samey-solid-routechange", syncCursorIdlePolicy)') &&
-    sharedTheme.includes('if (!hasPointerPosition || nativeDragging || cursor.hasAttribute("data-loading")) return;') &&
+    sharedTheme.includes('if (!hasPointerPosition || nativeDragging || cursorLoading) return;') &&
+    sharedTheme.includes('const setCursorVisible = (visible) =>') &&
     sharedTheme.includes('const hasRawPointer = "onpointerrawupdate" in window') &&
     sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
+    sharedTheme.includes('document.addEventListener("pointermove", moveCursorFallback') &&
+    sharedTheme.includes('document.addEventListener("pointerover", refreshPointerTarget') &&
+    sharedTheme.includes('cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`') &&
+    sharedTheme.includes("no coalesced-event array, hit testing, style") &&
+    sharedSiteStyle.includes("contain:layout paint style;backface-visibility:hidden;transform:translate3d(-96px,-96px,0);will-change:transform") &&
     sharedTheme.includes("deadline is enough; one timer follows it") &&
     sharedTheme.includes("Stay hidden after the native/system cursor releases control") &&
     sharedTheme.includes("scale3d(${width / fillDot},${height / fillDot},1)") &&
