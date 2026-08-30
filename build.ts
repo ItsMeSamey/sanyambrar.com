@@ -486,8 +486,9 @@ ${keybrViewSwitch}`;
     toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
     toolsSource.includes('enableSplitViewResizing:true') && toolsSource.includes('useInlineViewWhenSpaceIsLimited:false') &&
     toolsSource.includes("diffAlgorithm:'advanced'") && toolsSource.includes('maxComputationTime:75') &&
-    toolsSource.includes("'diffEditor.insertedTextBackground': `${fast}57`") && toolsSource.includes("'diffEditor.removedTextBackground': `${error}57`") &&
-    toolsSource.includes("'diffEditor.insertedLineBackground': `${fast}1a`") && toolsSource.includes("'diffEditor.removedLineBackground': `${error}1a`") &&
+    toolsSource.includes("const fastBg = style.getPropertyValue('--site-fast-bg').trim()") && toolsSource.includes("const errorBg = style.getPropertyValue('--site-error-bg').trim()") &&
+    toolsSource.includes("'diffEditor.insertedTextBackground': fastBg") && toolsSource.includes("'diffEditor.removedTextBackground': errorBg") &&
+    toolsSource.includes("'diffEditor.insertedLineBackground': fastLineBg") && toolsSource.includes("'diffEditor.removedLineBackground': errorLineBg") &&
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'"),

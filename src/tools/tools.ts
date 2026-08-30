@@ -65,6 +65,15 @@ export function mountTool(toolId, root, context) {
     const accent = style.getPropertyValue('--site-accent').trim() || '#58a6ff';
     const error = style.getPropertyValue('--site-error').trim() || '#f85149';
     const fast = style.getPropertyValue('--site-fast-color').trim() || accent;
+    const fastBg = style.getPropertyValue('--site-fast-bg').trim() || '#1f3d29';
+    const errorBg = style.getPropertyValue('--site-error-bg').trim() || '#3d2024';
+    const mixHex = (from, to, weight) => {
+      const channel = (value, offset) => parseInt(value.slice(offset, offset + 2), 16);
+      if (!/^#[0-9a-f]{6}$/i.test(from) || !/^#[0-9a-f]{6}$/i.test(to)) return to;
+      return '#' + [1, 3, 5].map(offset => Math.round(channel(from, offset) * (1 - weight) + channel(to, offset) * weight).toString(16).padStart(2, '0')).join('');
+    };
+    const fastLineBg = mixHex(bg, fastBg, .58);
+    const errorLineBg = mixHex(bg, errorBg, .58);
     const effort = style.getPropertyValue('--site-effort-color').trim() || accent;
     const dark = document.documentElement.classList.contains('dark') || document.documentElement.dataset.kbTheme === 'dark';
     monaco.editor.defineTheme('samey-site', {
@@ -91,13 +100,14 @@ export function mountTool(toolId, root, context) {
         'editorIndentGuide.activeBackground1': muted,
         'editorWhitespace.foreground': line,
         'editorError.foreground': error,
-        // Match the pre-DiffEditor palette: 34% inline changes over 10% changed lines.
-        'diffEditor.insertedTextBackground': `${fast}57`,
-        'diffEditor.removedTextBackground': `${error}57`,
-        'diffEditor.insertedLineBackground': `${fast}1a`,
-        'diffEditor.removedLineBackground': `${error}1a`,
-        'diffEditorGutter.insertedLineBackground': `${fast}1a`,
-        'diffEditorGutter.removedLineBackground': `${error}1a`,
+        // Diff surfaces use the theme's semantic background roles. Inner changes use
+        // the full background role; changed lines use a quieter blend with the editor.
+        'diffEditor.insertedTextBackground': fastBg,
+        'diffEditor.removedTextBackground': errorBg,
+        'diffEditor.insertedLineBackground': fastLineBg,
+        'diffEditor.removedLineBackground': errorLineBg,
+        'diffEditorGutter.insertedLineBackground': fastLineBg,
+        'diffEditorGutter.removedLineBackground': errorLineBg,
         'diffEditorOverview.insertedForeground': fast,
         'diffEditorOverview.removedForeground': error,
         'diffEditor.diagonalFill': line,
