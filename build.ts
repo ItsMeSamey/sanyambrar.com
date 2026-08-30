@@ -35,60 +35,12 @@ async function run(cwd: string, file: string, args: string[], env: NodeJS.Proces
   if (stderr.trim()) process.stderr.write(stderr);
 }
 
-async function dependencyPatchFiles(dir: string) {
-  const patchesDir = join(dir, "patches");
-  if (!existsSync(patchesDir)) return [] as string[];
-  return (await readdir(patchesDir, { withFileTypes: true }))
-    .filter(entry => entry.isFile() && entry.name.endsWith(".patch"))
-    .map(entry => join(patchesDir, entry.name))
-    .sort();
-}
-
-async function dependencyPatchSignature(dir: string) {
-  const files = await dependencyPatchFiles(dir);
-  if (files.length === 0) return "";
-  const hash = createHash("sha256");
-  for (const file of files) {
-    hash.update(relative(dir, file));
-    hash.update("\0");
-    hash.update(await readFile(file));
-  }
-  return hash.digest("hex");
-}
-
 async function dependencySignature(dir: string) {
   const files = ["package.json", "bun.lock"].map(name => join(dir, name)).filter(existsSync);
   must(files.length > 0, `dependencies: ${relative(ROOT, dir) || "."} has no package.json or bun.lock`);
   const hash = createHash("sha256");
   for (const file of files) hash.update(await readFile(file));
-  const patchSignature = await dependencyPatchSignature(dir);
-  if (patchSignature) hash.update(`patches:${patchSignature}`);
   return hash.digest("hex");
-}
-
-async function verifyDependencyPatches(dir: string) {
-  const monacoPatch = join(dir, "patches", "monaco-editor+0.56.0.patch");
-  if (!existsSync(monacoPatch)) return;
-  const target = join(dir, "node_modules", "monaco-editor", "esm", "vs", "editor", "common", "diff", "defaultLinesDiffComputer", "defaultLinesDiffComputer.js");
-  must(existsSync(target), "patched Monaco diff implementation is missing");
-  const source = await readFile(target, "utf8");
-  must(source.includes("this._sameyPerfectHashes = new Map()") && source.includes("perfectHashes.size > 500000") && source.includes("if (!hitTimeout) {") && source.includes("Once the shared budget has expired") && source.includes("A timed-out character diff is already coarse"),
-    "Monaco diff patch is not applied; run patch-package rather than editing node_modules directly");
-}
-
-async function ensureDependencyPatches(dir: string) {
-  const wanted = await dependencyPatchSignature(dir);
-  if (!wanted) return;
-  const stamp = join(dir, "node_modules", ".samey-patches-sha256");
-  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted) {
-    await verifyDependencyPatches(dir);
-    return;
-  }
-  const patchPackage = join(dir, "node_modules", "patch-package", "index.js");
-  must(existsSync(patchPackage), "patch-package is required to apply dependency patches");
-  await run(dir, process.execPath, [patchPackage, "--error-on-fail"]);
-  await verifyDependencyPatches(dir);
-  await writeFile(stamp, `${wanted}\n`);
 }
 
 async function directDependenciesPresent(dir: string) {
@@ -114,16 +66,12 @@ async function ensureDepsUnlocked(dir: string) {
   const lock = join(dir, "bun.lock");
   const stamp = join(dir, "node_modules/.samey-deps-sha256");
   const wanted = await dependencySignature(dir);
-  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted && await directDependenciesPresent(dir)) {
-    await ensureDependencyPatches(dir);
-    return;
-  }
+  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted && await directDependenciesPresent(dir)) return;
 
   // Dependency archives are valid build inputs even if bun.lock is absent or
   // older than package.json. Verify the installed direct dependency versions
   // and avoid a network install when the local tree already satisfies them.
   if (await directDependenciesPresent(dir)) {
-    await ensureDependencyPatches(dir);
     await writeFile(stamp, `${wanted}\n`);
     return;
   }
@@ -147,11 +95,6 @@ async function ensureDepsUnlocked(dir: string) {
   }
   await mkdir(join(dir, "node_modules"), { recursive: true });
   must(await directDependenciesPresent(dir), `dependencies for ${relative(ROOT, dir) || "."} are incomplete after install`);
-  // The root postinstall invokes patch-package. Verify its result before a
-  // dependency tree is accepted as build-ready, then stamp that exact patch set.
-  await verifyDependencyPatches(dir);
-  const patchSignature = await dependencyPatchSignature(dir);
-  if (patchSignature) await writeFile(join(dir, "node_modules", ".samey-patches-sha256"), `${patchSignature}\n`);
   await writeFile(stamp, `${await dependencySignature(dir)}\n`);
 }
 
@@ -464,10 +407,27 @@ ${keybrViewSwitch}`;
 
   const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
   const reverbDemoSource = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
+  const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.js"), "utf8");
+  const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
+    reverbDemoSource.includes("runReverbDemoRuntime(") && !reverbDemoSource.includes("new Function(") && !reverbDemoSource.includes("replaceAll(") && !reverbDemoSource.includes("CSS.escape") &&
+    reverbRuntimeSource.includes("export function runReverbDemoRuntime") && reverbRuntimeSource.includes("function makeBlobShader(canvas)") && reverbRuntimeSource.includes("using 2D fallback") && reverbRuntimeSource.includes("canvas.cloneNode(false)") && reverbRuntimeSource.includes("return makeFallbackBlob(canvas)") && !reverbDemoHtml.includes("<script>") &&
     !reverbDemoSource.includes("<iframe") && !reverbDemoSource.includes("srcdoc=") && !reverbDemoSource.includes("sandbox="),
-    "ux: Reverb UI demo must be an in-page element, never a nested iframe/document");
+    "ux: Reverb UI demo must be an in-page compiled element, never eval/iframe/nested document");
   const homeStyle = await readFile(join(ROOT, "src/site/styles/home.css"), "utf8");
+  const appSource = await readFile(join(ROOT, "src/site/App.tsx"), "utf8");
+  const sharedSiteStyle = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
+  const keybrIndicators = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.tsx"), "utf8");
+  const keybrIndicatorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.module.css"), "utf8");
+  must(homeStyle.includes(".reverb-demo-host{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,calc(100% - 36px));height:min(820px,calc(100% - 36px));min-height:0") &&
+    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0"),
+    "ux: Reverb mobile demo must size against its host rather than clipping to viewport units");
+  must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") && keybrIndicatorStyle.includes("flex-wrap: nowrap") && keybrIndicatorStyle.includes("overflow-x: auto"),
+    "ux: Keybr all-keys indicator must remain on one row on narrow screens");
+  must(appSource.includes("formatThrownError") && appSource.includes("site-fatal-error-stack") && appSource.includes("<TopBar />") &&
+    appSource.includes("Go back to home") && appSource.includes("location.reload()") && appSource.includes("retryRenderedRoute") &&
+    sharedSiteStyle.includes(".site-fatal-error-stack") && sharedSiteStyle.includes(".site-fatal-topbar-fallback"),
+    "ux: fatal route errors must keep navigation, expose full stacks, truly reload, and reset on navigation");
   const siteData = await readFile(join(ROOT, "src/site/data.ts"), "utf8");
   const siteCatalog = await readFile(join(ROOT, "src/shared/catalog.ts"), "utf8");
   const toolsPageSource = await readFile(join(ROOT, "src/tools/Tools.tsx"), "utf8");
@@ -484,12 +444,10 @@ ${keybrViewSwitch}`;
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
   const rootPackage = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
-  const monacoDiffPatch = await readFile(join(ROOT, "patches", "monaco-editor+0.56.0.patch"), "utf8");
-  must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" &&
-    rootPackage.devDependencies?.["patch-package"] === "8.0.1" && rootPackage.scripts?.postinstall === "patch-package --error-on-fail" &&
-    monacoDiffPatch.includes("node_modules/monaco-editor/esm/vs/editor/common/diff/defaultLinesDiffComputer/defaultLinesDiffComputer.js") &&
-    monacoDiffPatch.includes("_sameyPerfectHashes") && monacoDiffPatch.includes("perfectHashes.size > 500000") && monacoDiffPatch.includes("if (!hitTimeout)") && monacoDiffPatch.includes("if (!timeout.isValid())") && monacoDiffPatch.includes("if (diffResult.hitTimeout)") &&
-    !monacoDiffPatch.split('\n').some(line => /^[ +\-]\t/.test(line)) &&
+  const siteViteConfig = await readFile(join(ROOT, "vite.site.config.ts"), "utf8");
+  must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" && !existsSync(join(ROOT, "patches")) &&
+    rootPackage.devDependencies?.["patch-package"] === undefined && rootPackage.scripts?.postinstall === undefined &&
+    !siteViteConfig.includes("samey-monaco-bounded-diff") && !siteViteConfig.includes("monaco-default-lines-diff-computer") &&
     !toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('monaco.editor.createDiffEditor(') &&
     toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
     toolsSource.includes('enableSplitViewResizing:true') && toolsSource.includes('useInlineViewWhenSpaceIsLimited:false') &&
@@ -500,7 +458,7 @@ ${keybrViewSwitch}`;
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'"),
-    "ux: Diff must use one editable Monaco DiffEditor, patched bounded advanced diffing, and deferred persistence");
+    "ux: Diff must use one editable Monaco DiffEditor, native advanced diffing, and deferred persistence");
   must(toolsStyle.includes('/* One Monaco DiffEditor owns alignment, padding view-zones, and split resizing. */') &&
     toolsStyle.includes('.diff-monaco .monaco-diff-editor') && !toolsStyle.includes('.diff-panes') && !toolsStyle.includes('.diff-combined-table') &&
     toolsSource.includes("wordWrap:'off'") && !toolsSource.includes('const renderCombined = () =>') &&
@@ -585,13 +543,12 @@ ${keybrViewSwitch}`;
   const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
   const projectPage = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
-  const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
     reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes('@media(pointer:fine){*{cursor:none!important}}') &&
-    reverbDemoHtml.includes('function appendCapture(seconds)') && reverbDemoHtml.includes('const overflow=seconds-toOne') &&
-    reverbDemoHtml.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
+    reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
+    reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&
     reverbDemoHtml.includes('class="about-sheet"') && reverbDemoHtml.includes('https://github.com/SmallThingz/reverb') &&
     !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") && !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),

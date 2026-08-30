@@ -43,7 +43,7 @@ bun run build
 
 `docs/` is the deployable site.
 
-Monaco has a small version-pinned patch under [`patches/`](./patches/). It is applied with `patch-package` during install, not by keeping edited `node_modules` files around.
+Monaco is used as a normal pinned dependency; the repository does not patch or modify `node_modules` during install.
 
 ## Repository map
 
@@ -54,6 +54,5 @@ src/tools/      tools, Monaco editors and DiffEditor
 src/games/      Wordle, Keybr, Chain Reaction
 src/blogs/      writing source
 src/static/     static page sources
-patches/        dependency patches
 docs/           generated site served by GitHub Pages
 ```

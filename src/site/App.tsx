@@ -1,4 +1,5 @@
 import { ErrorBoundary, Match, Show, Suspense, Switch, createSignal, lazy, onCleanup, onMount } from 'solid-js';
+import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
 import { details } from './data';
 
@@ -33,7 +34,7 @@ const Project = lazy(() => loadModule('project').then(m => ({ default: m.Project
 const Blog = lazy(() => loadModule('blog').then(m => ({ default: m.Blog })));
 
 type Route = { key: string; kind: RouteKind; slug?: string };
-type NavigationError = { url: string; message: string };
+type NavigationError = { url: string; message: string; detail: string };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 
 function routeFromUrl(url: URL): Route | null {
@@ -94,9 +95,45 @@ function RouteLoading() {
   return <div class="site-route-loading" role="status" aria-live="polite"><span>Loading page</span></div>;
 }
 
+
+function formatThrownError(value: unknown): string {
+  const seen = new Set<unknown>();
+  const format = (error: unknown, depth = 0): string => {
+    if (seen.has(error)) return '[circular error cause]';
+    if (error && (typeof error === 'object' || typeof error === 'function')) seen.add(error);
+    if (error instanceof Error) {
+      let text = error.stack || `${error.name}: ${error.message}`;
+      if (typeof AggregateError !== 'undefined' && error instanceof AggregateError && error.errors.length) {
+        text += error.errors.map((nested, index) => `\n\nAggregate error ${index + 1}:\n${format(nested, depth + 1)}`).join('');
+      }
+      if ('cause' in error && error.cause !== undefined) text += `\n\nCaused by:\n${format(error.cause, depth + 1)}`;
+      return text;
+    }
+    if (typeof error === 'string') return error;
+    try { return JSON.stringify(error, null, 2) || String(error); } catch { return String(error); }
+  };
+  return format(value);
+}
+
+function FatalRouteError(props: { error: unknown; reset: () => void }) {
+  return <div class="site-fatal-shell">
+    <ErrorBoundary fallback={<header class="site-fatal-topbar-fallback"><a href="/">Go back to home</a></header>}>
+      <TopBar />
+    </ErrorBoundary>
+    <main class="site-fatal-error" role="alert">
+      <strong>This view failed to render.</strong>
+      <pre class="site-fatal-error-stack">{formatThrownError(props.error)}</pre>
+      <div>
+        <button type="button" onClick={props.reset}>Retry view</button>
+        <button type="button" onClick={() => location.reload()}>Reload page</button>
+      </div>
+    </main>
+  </div>;
+}
+
 function RouteError(props: { error: NavigationError; onRetry: () => void; onDismiss: () => void }) {
   return <aside class="site-route-error" role="alert" aria-live="assertive">
-    <div><strong>Page failed to load</strong><span>{props.error.message}</span></div>
+    <div><strong>Page failed to load</strong><span>{props.error.message}</span><pre class="site-route-error-stack">{props.error.detail}</pre></div>
     <div class="site-route-error-actions">
       <button type="button" onClick={props.onRetry}>Retry</button>
       <a href={props.error.url}>Open normally</a>
@@ -110,6 +147,12 @@ export function App() {
   const [route, setRoute] = createSignal<Route>(initial);
   const [navigationError, setNavigationError] = createSignal<NavigationError | null>(null);
   let navigationId = 0;
+  let resetRouteError: (() => void) | undefined;
+  const retryRenderedRoute = () => {
+    const reset = resetRouteError;
+    resetRouteError = undefined;
+    reset?.();
+  };
 
   const syncDocument = (next: Route) => {
     document.body.classList.toggle('site-tools-active', next.kind === 'tools');
@@ -131,6 +174,7 @@ export function App() {
     dispatchEvent(new Event('samey-pageleave'));
     setRoute(next);
     setNavigationError(null);
+    queueMicrotask(retryRenderedRoute);
     syncDocument(next);
     if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
@@ -156,7 +200,7 @@ export function App() {
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     cancelSharedPageSwap();
     setNavigationError(null);
-    if (url.href === location.href) { setLoading(false); return; }
+    if (url.href === location.href) { retryRenderedRoute(); setLoading(false); return; }
     if (isStandaloneApp(url)) {
       const pageSwap = pageSwapNavigate();
       setLoading(true);
@@ -165,7 +209,7 @@ export function App() {
         location.assign(url.href);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'The game could not be loaded.';
-        setNavigationError({ url: url.href, message });
+        setNavigationError({ url: url.href, message, detail: formatThrownError(error) });
       } finally { if (id === navigationId) setLoading(false); }
       return;
     }
@@ -183,7 +227,7 @@ export function App() {
         if (pageSwap) await pageSwap(url.href, {replace});
         else location.assign(url.href);
       } catch (error) {
-        if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.'});
+        if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.',detail:formatThrownError(error)});
       } finally { if (id === navigationId) setLoading(false); }
       return;
     }
@@ -191,7 +235,7 @@ export function App() {
       if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
       syncDocument(next);
       dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
-      queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })));
+      queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })); });
       setLoading(false);
       return;
     }
@@ -203,7 +247,7 @@ export function App() {
     } catch (error) {
       if (id === navigationId) {
         const message = error instanceof Error ? error.message : 'The page module could not be loaded.';
-        setNavigationError({ url: url.href, message });
+        setNavigationError({ url: url.href, message, detail: formatThrownError(error) });
         dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: url.href, error } }));
       }
     } finally {
@@ -254,7 +298,7 @@ export function App() {
         if (!pageSwap) { location.reload(); return; }
         setLoading(true);
         void pageSwap(url.href, {replace: true, force: true}).catch(error => {
-          if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be restored.'});
+          if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be restored.',detail:formatThrownError(error)});
         }).finally(() => { if (id === navigationId) setLoading(false); });
         return;
       }
@@ -262,7 +306,7 @@ export function App() {
         setLoading(false);
         syncDocument(next);
         dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
-        queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })));
+        queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })); });
         return;
       }
       setLoading(true);
@@ -274,7 +318,7 @@ export function App() {
             dispatchEvent(new Event('samey-pageleave'));
             setRoute(next);
             syncDocument(next);
-            queueMicrotask(() => dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })));
+            queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })); });
           }, next.kind === 'home');
         } finally {
           delete document.documentElement.dataset.navDirection;
@@ -283,7 +327,7 @@ export function App() {
       }).catch(error => {
         if (id === navigationId) {
           setLoading(false);
-          setNavigationError({ url: url.href, message: error instanceof Error ? error.message : 'The page could not be restored.' });
+          setNavigationError({ url: url.href, message: error instanceof Error ? error.message : 'The page could not be restored.', detail: formatThrownError(error) });
           dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: location.href, error } }));
         }
       });
@@ -301,11 +345,10 @@ export function App() {
   });
 
   return <div id="solid-site-app">
-    <ErrorBoundary fallback={(error, reset) => <div class="site-fatal-error" role="alert">
-      <strong>This view failed to render.</strong>
-      <span>{error instanceof Error ? error.message : String(error)}</span>
-      <div><button type="button" onClick={reset}>Retry view</button><a href={location.href}>Reload page</a></div>
-    </div>}>
+    <ErrorBoundary fallback={(error, reset) => {
+      resetRouteError = reset;
+      return <FatalRouteError error={error} reset={() => { resetRouteError = undefined; reset(); }} />;
+    }}>
       <Suspense fallback={<RouteLoading/>}>
         <Switch>
           <Match when={route().kind === 'home'}><div class="site-route site-standard"><Home /></div></Match>

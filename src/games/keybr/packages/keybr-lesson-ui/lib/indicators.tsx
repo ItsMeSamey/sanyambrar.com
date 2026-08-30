@@ -31,12 +31,12 @@ export const KeySetRow = memo(function KeySetRow(solidProps: {
     onKeyClick?: (key: LessonKey, elem: Element) => void;
 }) {
     const { formatMessage } = useIntl();
-    return (<div class={styles.row}>
+    return (<div class={`${styles.row} ${styles.keySetRow}`}>
       <Name className={styles.name} name={formatMessage({
             id: "t_All_keys",
             defaultMessage: "All keys",
         })}/>
-      <KeySet id={solidProps.names?.keySet} className={styles.value} lessonKeys={solidProps.lessonKeys} onKeyHoverIn={solidProps.onKeyHoverIn} onKeyHoverOut={solidProps.onKeyHoverOut} onKeyClick={solidProps.onKeyClick}/>
+      <KeySet id={solidProps.names?.keySet} className={`${styles.value} ${styles.keySetValue}`} lessonKeys={solidProps.lessonKeys} onKeyHoverIn={solidProps.onKeyHoverIn} onKeyHoverOut={solidProps.onKeyHoverOut} onKeyClick={solidProps.onKeyClick}/>
     </div>);
 });
 export const CurrentKeyRow = memo(function CurrentKeyRow(solidProps: {

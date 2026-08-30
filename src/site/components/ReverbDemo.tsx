@@ -1,5 +1,6 @@
 import { onCleanup, onMount } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html' with { type: 'text' };
+import { runReverbDemoRuntime } from '../demos/reverb-runtime.js';
 
 type DemoDocument = Pick<Document, 'createElement'> & {
   getElementById(id: string): HTMLElement | null;
@@ -11,14 +12,12 @@ type DemoDocument = Pick<Document, 'createElement'> & {
 function mountReverbDemo(host: HTMLDivElement) {
   const parsed = new DOMParser().parseFromString(demoHtml, 'text/html');
   const sourceStyle = parsed.querySelector('style')?.textContent ?? '';
-  const sourceScript = parsed.querySelector('script')?.textContent ?? '';
   const shadow = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
   style.textContent = sourceStyle
-    .replaceAll(':root', ':host')
-    .replaceAll('html,body', ':host')
-    .replace('.stage{min-height:100vh', '.stage{min-height:100%');
+    .split(':root').join(':host')
+    .split('html,body').join(':host');
   shadow.append(style);
 
   for (const node of Array.from(parsed.body.childNodes)) {
@@ -38,14 +37,11 @@ function mountReverbDemo(host: HTMLDivElement) {
     rafs.add(id);
     return id;
   };
-  const setDemoTimeout = (handler: TimerHandler, timeout?: number, ...args: any[]) => {
+  const setDemoTimeout = (handler: (...args: any[]) => void, timeout?: number, ...args: any[]) => {
     let id = 0;
     id = window.setTimeout(() => {
       timers.delete(id);
-      if (!disposed) {
-        if (typeof handler === 'function') handler(...args);
-        else Function(handler)();
-      }
+      if (!disposed) handler(...args);
     }, timeout);
     timers.add(id);
     return id;
@@ -58,27 +54,13 @@ function mountReverbDemo(host: HTMLDivElement) {
 
   const demoDocument: DemoDocument = {
     createElement: document.createElement.bind(document),
-    getElementById: id => shadow.getElementById(id),
+    getElementById: id => shadow.querySelector<HTMLElement>(`#${id}`),
     querySelector: selectors => shadow.querySelector(selectors),
     querySelectorAll: selectors => shadow.querySelectorAll(selectors),
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };
 
-  const run = new Function(
-    'document',
-    'requestAnimationFrame',
-    'setTimeout',
-    'clearTimeout',
-    'devicePixelRatio',
-    sourceScript,
-  ) as (
-    document: DemoDocument,
-    requestAnimationFrame: typeof requestDemoFrame,
-    setTimeout: typeof setDemoTimeout,
-    clearTimeout: typeof clearDemoTimeout,
-    devicePixelRatio: number,
-  ) => void;
-  run(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
+  runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
 
   return () => {
     disposed = true;

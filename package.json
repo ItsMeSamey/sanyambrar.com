@@ -8,8 +8,7 @@
     "build": "bun build.ts",
     "build:solid": "bun build.ts solid",
     "build:keybr": "bun build.ts keybr",
-    "build:tools": "bun build.ts static",
-    "postinstall": "patch-package --error-on-fail"
+    "build:tools": "bun build.ts static"
   },
   "dependencies": {
     "@kobalte/core": "^0.13.13",
@@ -23,7 +22,6 @@
     "@types/node": "^26.4.0",
     "typescript": "^6.0.3",
     "vite": "^8.2.2",
-    "vite-plugin-solid": "^2.11.14",
-    "patch-package": "8.0.1"
+    "vite-plugin-solid": "^2.11.14"
   }
 }
