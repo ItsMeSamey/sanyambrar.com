@@ -2580,7 +2580,7 @@
 			title: "CNN",
 			href: "/projects/cnn/",
 			kind: "Project",
-			note: "CNN in Zig. Draw the input in-browser; the WASM inference plugs in next.",
+			note: "CNN in Zig. Draw something and run the model in-browser with WASM.",
 			tags: ["zig", "ml", "mnist"],
 			demo: true
 		}

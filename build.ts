@@ -436,13 +436,16 @@ ${keybrViewSwitch}`;
     "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
   must(cnnDemoSource.includes("const INPUT_SIZE = 28") && cnnDemoSource.includes("const DRAW_SIZE = 280") &&
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
-    cnnDemoSource.includes("new Float32Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3] / 255") &&
-    cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('type="range"') &&
-    cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes("__sameyCnnInfer") &&
-    cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
+    cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
+    cnnDemoSource.includes("WebAssembly.instantiateStreaming") && cnnDemoSource.includes("fetch('/cnn.wasm')") &&
+    cnnDemoSource.includes("wasm.image_ptr()") && cnnDemoSource.includes("wasm.probabilities_ptr()") &&
+    cnnDemoSource.includes("wasm.class_count()") && cnnDemoSource.includes("wasm.unknown_class()") &&
+    !cnnDemoSource.includes("__sameyCnnInfer") && !cnnDemoSource.includes("CnnInference") &&
+    existsSync(join(STATIC, "cnn.wasm")) && cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('type="range"') &&
+    cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
     homeStyle.includes(".cnn-demo-shell") && homeStyle.includes("touch-action:none") &&
     homeStyle.includes(".cnn-ink-range") && homeStyle.includes("var(--site-accent)"),
-    "ux: CNN project demo must expose themed grayscale drawing, 28x28 input, and 11-way inference output UI");
+    "ux: CNN project demo must expose themed u8 grayscale drawing and real self-contained WASM inference");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
@@ -654,7 +657,7 @@ async function copyStatic() {
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
     "index.html", "work.html", "tools.html", "chain.html", "work", "tools", "chain",
-    "blog", "projects", "site-app.js", "site-chunks", "assets",
+    "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm",
     "site.css", "shared-runtime.js",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
@@ -747,7 +750,7 @@ async function buildKeybr() {
 }
 
 async function deployAssets() {
-  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js)$/.test(name) && name !== "sw.js"))
+  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"));
 }
 

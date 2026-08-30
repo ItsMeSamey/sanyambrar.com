@@ -1,7 +1,5 @@
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 
-export type CnnInference = (input: Float32Array) => ArrayLike<number>;
-
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
 const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?'] as const;
@@ -11,15 +9,47 @@ function emptyScores(): Array<number | null> {
   return Array.from({ length: OUTPUTS.length }, () => null);
 }
 
-function normalizedScores(values: ArrayLike<number>): number[] | null {
+function validScores(values: ArrayLike<number>): number[] | null {
   if (values.length !== OUTPUTS.length) return null;
-  const scores = Array.from(values, value => Number.isFinite(value) ? Math.max(0, Number(value)) : 0);
-  const total = scores.reduce((sum, value) => sum + value, 0);
-  if (total <= 0) return scores;
-  return scores.map(value => value / total);
+  return Array.from(values, value => Number.isFinite(value) ? Math.max(0, Number(value)) : 0);
 }
 
-export function CnnDemo(props: { infer?: CnnInference }) {
+type CnnWasm = {
+  memory: WebAssembly.Memory;
+  image_ptr(): number;
+  probabilities_ptr(): number;
+  predict(): number;
+  class_count(): number;
+  unknown_class(): number;
+};
+
+type ModelState = 'loading' | 'ready' | 'error';
+
+async function loadCnnWasm(): Promise<CnnWasm> {
+  const response = await fetch('/cnn.wasm');
+  if (!response.ok) throw new Error(`cnn.wasm: HTTP ${response.status}`);
+
+  let result: WebAssembly.WebAssemblyInstantiatedSource;
+  try {
+    result = await WebAssembly.instantiateStreaming(response.clone());
+  } catch {
+    result = await WebAssembly.instantiate(await response.arrayBuffer());
+  }
+
+  const wasm = result.instance.exports as unknown as CnnWasm;
+  if (!(wasm.memory instanceof WebAssembly.Memory) ||
+      typeof wasm.image_ptr !== 'function' || typeof wasm.probabilities_ptr !== 'function' ||
+      typeof wasm.predict !== 'function' || typeof wasm.class_count !== 'function' ||
+      typeof wasm.unknown_class !== 'function') {
+    throw new Error('cnn.wasm has an incompatible ABI');
+  }
+  if (wasm.class_count() !== OUTPUTS.length || wasm.unknown_class() !== OUTPUTS.indexOf('?')) {
+    throw new Error(`cnn.wasm metadata mismatch: ${wasm.class_count()} classes, unknown=${wasm.unknown_class()}`);
+  }
+  return wasm;
+}
+
+export function CnnDemo() {
   let canvas!: HTMLCanvasElement;
   let sampleCanvas!: HTMLCanvasElement;
   let drawing = false;
@@ -27,13 +57,16 @@ export function CnnDemo(props: { infer?: CnnInference }) {
   let lastY = 0;
   let inferenceFrame = 0;
   const [scores, setScores] = createSignal<Array<number | null>>(emptyScores());
+  const [predictedClass, setPredictedClass] = createSignal<number | null>(null);
   const [hasInk, setHasInk] = createSignal(false);
+  const [modelState, setModelState] = createSignal<ModelState>('loading');
   const [modelError, setModelError] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
 
   const context = () => canvas.getContext('2d', { willReadFrequently: true })!;
   const sampleContext = () => sampleCanvas.getContext('2d', { willReadFrequently: true })!;
-  const model = () => props.infer ?? (globalThis as typeof globalThis & { __sameyCnnInfer?: CnnInference }).__sameyCnnInfer;
+  let wasm: CnnWasm | undefined;
+  let disposed = false;
 
   const themeInk = () => {
     const style = getComputedStyle(document.documentElement);
@@ -77,10 +110,10 @@ export function CnnDemo(props: { infer?: CnnInference }) {
     ctx.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
     ctx.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE);
     const rgba = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
-    const input = new Float32Array(INPUT_SIZE * INPUT_SIZE);
-    // Alpha is the model grayscale channel. A translucent stroke is a real
-    // intermediate value, and overlapping strokes naturally accumulate.
-    for (let i = 0; i < input.length; i++) input[i] = rgba[i * 4 + 3] / 255;
+    const input = new Uint8Array(INPUT_SIZE * INPUT_SIZE);
+    // The WASM ABI is 784 u8 grayscale pixels. Alpha is the model channel,
+    // so translucent strokes remain real intermediate grayscale values.
+    for (let i = 0; i < input.length; i++) input[i] = rgba[i * 4 + 3];
     return input;
   };
 
@@ -89,25 +122,32 @@ export function CnnDemo(props: { infer?: CnnInference }) {
     if (!hasInk()) {
       sampleContext().clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
       setScores(emptyScores());
+      setPredictedClass(null);
       setModelError(false);
       return;
     }
     const input = extractInput();
-    const inference = model();
-    if (!inference) {
+    if (!wasm || modelState() !== 'ready') {
       setScores(emptyScores());
-      setModelError(false);
+      setPredictedClass(null);
       return;
     }
     try {
-      const raw = inference(input);
-      const next = normalizedScores(raw);
+      const imagePtr = wasm.image_ptr();
+      new Uint8Array(wasm.memory.buffer, imagePtr, input.length).set(input);
+      const classId = wasm.predict();
+      // Recreate the view after inference in case WASM memory ever grows.
+      const raw = new Float32Array(wasm.memory.buffer, wasm.probabilities_ptr(), wasm.class_count());
+      const next = validScores(raw);
       if (!next) throw new Error(`CNN inference returned ${raw.length} outputs; expected ${OUTPUTS.length}`);
+      if (classId >= OUTPUTS.length) throw new Error(`CNN inference returned invalid class ${classId}`);
       setScores(next);
+      setPredictedClass(classId);
       setModelError(false);
     } catch (error) {
       console.error('CNN demo inference failed', error);
       setScores(emptyScores());
+      setPredictedClass(null);
       setModelError(true);
     }
   };
@@ -166,22 +206,16 @@ export function CnnDemo(props: { infer?: CnnInference }) {
     sampleContext().clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
     setHasInk(false);
     setScores(emptyScores());
+    setPredictedClass(null);
     setModelError(false);
     applyBrush();
   };
 
   const winner = () => {
-    const values = scores();
-    let best = -1;
-    let bestScore = -1;
-    for (let i = 0; i < values.length; i++) {
-      const score = values[i];
-      if (score != null && score > bestScore) {
-        best = i;
-        bestScore = score;
-      }
-    }
-    return best < 0 ? null : { label: OUTPUTS[best], score: bestScore };
+    const classId = predictedClass();
+    if (classId == null) return null;
+    const score = scores()[classId];
+    return score == null ? null : { label: OUTPUTS[classId], score };
   };
 
   const onInkInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
@@ -196,9 +230,22 @@ export function CnnDemo(props: { infer?: CnnInference }) {
     sampleCanvas.height = INPUT_SIZE;
     applyBrush();
     window.addEventListener('samey-themechange', recolorForTheme);
+    void loadCnnWasm().then(instance => {
+      if (disposed) return;
+      wasm = instance;
+      setModelState('ready');
+      setModelError(false);
+      if (hasInk()) queueInference();
+    }).catch(error => {
+      if (disposed) return;
+      console.error('CNN demo WASM load failed', error);
+      setModelState('error');
+      setModelError(true);
+    });
   });
 
   onCleanup(() => {
+    disposed = true;
     if (inferenceFrame) cancelAnimationFrame(inferenceFrame);
     window.removeEventListener('samey-themechange', recolorForTheme);
   });
@@ -210,9 +257,9 @@ export function CnnDemo(props: { infer?: CnnInference }) {
         <h2 id="cnn-demo-title">Draw something</h2>
         <p>Sketch a digit, symbol, or noise. The pad preserves grayscale intensity before 28 × 28 inference.</p>
       </div>
-      <div class="cnn-demo-status" data-state={modelError() ? 'error' : model() ? 'ready' : 'pending'}>
+      <div class="cnn-demo-status" data-state={modelError() || modelState() === 'error' ? 'error' : modelState() === 'ready' ? 'ready' : 'pending'}>
         <span class="cnn-demo-status-dot" aria-hidden="true" />
-        {modelError() ? 'INFERENCE ERROR' : model() ? 'WASM CONNECTED' : 'WASM HOOK READY'}
+        {modelState() === 'loading' ? 'LOADING WASM' : modelState() === 'error' ? 'WASM ERROR' : modelError() ? 'INFERENCE ERROR' : 'WASM LIVE'}
       </div>
     </div>
 
@@ -241,7 +288,7 @@ export function CnnDemo(props: { infer?: CnnInference }) {
         <div class="cnn-pad-footer">
           <div class="cnn-input-preview">
             <div class="cnn-input-thumb"><canvas ref={sampleCanvas} class="cnn-sample-canvas" aria-hidden="true" /></div>
-            <div class="cnn-input-meta"><span>MODEL INPUT</span><strong>28 × 28 · FLOAT32</strong></div>
+            <div class="cnn-input-meta"><span>MODEL INPUT</span><strong>28 × 28 · U8 GRAYSCALE</strong></div>
           </div>
 
           <label class="cnn-ink-control">
