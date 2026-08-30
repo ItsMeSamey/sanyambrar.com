@@ -611,14 +611,17 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware")') &&
     sharedTheme.includes('data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button>') &&
     sharedTheme.includes('openAdvanced("colorblind")') && sharedTheme.includes('data-colorblind-section') &&
-    sharedTheme.includes('if (cursorMode === "hardware") {') && sharedTheme.includes('setFillTarget(link);') &&
-    sharedTheme.includes('if (cursorMode === "native") hideFillImmediate();') &&
-    sharedTheme.includes('refreshCursorMode = () => cursorMode === "hardware" && hasPointerPosition') &&
+    sharedTheme.includes('if (cursorMode !== "invert") {') && sharedTheme.includes('setFillTarget(link);') &&
+    !sharedTheme.includes('if (cursorMode === "native") hideFillImmediate();') &&
+    !sharedTheme.includes('if (cursorLoading) { hideFillImmediate(); return; }') &&
+    !sharedTheme.includes('setCursorVisible(true);\n        linkFill.hidden = true;') &&
+    sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
     sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
-    sharedSiteStyle.includes('var(--samey-hw-loading),wait!important'),
-    "ux: cursor appearance must offer themed invert/hardware/native modes, preserve the link blob highlight in hardware mode, and keep Advanced/Colorblind beside the tri-state");
+    sharedSiteStyle.includes('html.samey-hardware-cursor *::before') &&
+    sharedSiteStyle.includes('var(--samey-hw-loading),var(--samey-hw-dot),wait!important'),
+    "ux: cursor appearance must offer themed invert/hardware/native modes, keep the link blob highlight in every mode, prevent hardware cursor fallback leaks, and keep Advanced/Colorblind beside the tri-state");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&
@@ -638,7 +641,7 @@ ${keybrViewSwitch}`;
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
-    reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *{cursor:var(--samey-hw-dot),auto!important}') &&
+    reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}') &&
     reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
     reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&

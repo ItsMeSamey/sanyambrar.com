@@ -795,7 +795,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         cursor.removeAttribute("data-grab");
         cursor.removeAttribute("data-text");
         setCursorVisible(true);
-        linkFill.hidden = true;
       }
       document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
@@ -1162,7 +1161,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     addEventListener("samey-pageload", syncCursorIdlePolicy);
     addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link) {
-      if (cursorLoading) { hideFillImmediate(); return; }
       if (!link) {
         fillTarget = null;
         setFillLayer(null);
@@ -1216,8 +1214,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
       const link = grab || selectingText ? null : linkTarget(target);
       const text = !grab && (selectingText || !link && wantsText(target));
-      if (cursorMode === "hardware") {
-        document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
+      if (cursorMode !== "invert") {
+        if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
         updateBlendSource(target);
         setFillLayer(link);
         setFillTarget(link);
@@ -1229,7 +1227,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       setTextState(text);
       setFillTarget(link);
     };
-    refreshCursorMode = () => cursorMode === "hardware" && hasPointerPosition
+    refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition
       ? setMode(document.elementFromPoint(pendingX, pendingY))
       : cursorVisible
         ? setMode(document.elementFromPoint(pendingX, pendingY))
@@ -1242,9 +1240,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
       applyHardwareCursorTheme(document.documentElement, theme);
       cursor.hidden = cursorMode !== "invert";
-      if (cursorMode === "native") hideFillImmediate();
       if (cursorMode !== "invert") setCursorVisible(false);
-      if (cursorMode === "hardware" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
+      if (cursorMode !== "invert" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
       if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
     };
     addEventListener("samey-themechange", (event) => syncCursorPresentation(event.detail || read()));
@@ -1277,8 +1274,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       wakeCursor();
     };
     const refreshPointerTarget = (event) => {
-      if (cursorMode === "native") return;
-      if (cursorMode === "hardware") { const x=event.clientX,y=event.clientY; if (Number.isFinite(x)&&Number.isFinite(y)) { hasPointerPosition=true; lastX=pendingX=x; lastY=pendingY=y; } setMode(event.target instanceof Element ? event.target : elementAt(event)); return; }
+      if (cursorMode !== "invert") { const x=event.clientX,y=event.clientY; if (Number.isFinite(x)&&Number.isFinite(y)) { hasPointerPosition=true; lastX=pendingX=x; lastY=pendingY=y; } setMode(event.target instanceof Element ? event.target : elementAt(event)); return; }
       if (nativeDragging) { hidePointerVisuals(); return; }
       place(event);
       setMode(event.target instanceof Element ? event.target : elementAt(event));
