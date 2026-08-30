@@ -486,6 +486,8 @@ ${keybrViewSwitch}`;
     toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
     toolsSource.includes('enableSplitViewResizing:true') && toolsSource.includes('useInlineViewWhenSpaceIsLimited:false') &&
     toolsSource.includes("diffAlgorithm:'advanced'") && toolsSource.includes('maxComputationTime:75') &&
+    toolsSource.includes("'diffEditor.insertedTextBackground': `${fast}57`") && toolsSource.includes("'diffEditor.removedTextBackground': `${error}57`") &&
+    toolsSource.includes("'diffEditor.insertedLineBackground': `${fast}1a`") && toolsSource.includes("'diffEditor.removedLineBackground': `${error}1a`") &&
     toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'"),
@@ -572,6 +574,13 @@ ${keybrViewSwitch}`;
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
+  const projectPage = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
+  const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
+  const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
+  must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html?raw") &&
+    reverbDemo.includes('sandbox="allow-scripts"') && reverbDemo.includes("srcdoc={demoHtml}") &&
+    reverbDemoHtml.includes('<title>Reverb</title>') && !reverbDemo.includes('src="/'),
+    "ux: Reverb UI demo must stay embedded via iframe srcdoc on the project page, never as a standalone route");
   const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",
