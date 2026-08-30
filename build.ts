@@ -489,6 +489,7 @@ ${keybrViewSwitch}`;
     rootPackage.devDependencies?.["patch-package"] === "8.0.1" && rootPackage.scripts?.postinstall === "patch-package --error-on-fail" &&
     monacoDiffPatch.includes("node_modules/monaco-editor/esm/vs/editor/common/diff/defaultLinesDiffComputer/defaultLinesDiffComputer.js") &&
     monacoDiffPatch.includes("_sameyPerfectHashes") && monacoDiffPatch.includes("perfectHashes.size > 500000") && monacoDiffPatch.includes("if (!hitTimeout)") && monacoDiffPatch.includes("if (!timeout.isValid())") && monacoDiffPatch.includes("if (diffResult.hitTimeout)") &&
+    !monacoDiffPatch.split('\n').some(line => /^[ +\-]\t/.test(line)) &&
     !toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('monaco.editor.createDiffEditor(') &&
     toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
     toolsSource.includes('enableSplitViewResizing:true') && toolsSource.includes('useInlineViewWhenSpaceIsLimited:false') &&
