@@ -604,9 +604,16 @@ ${keybrViewSwitch}`;
   must(sharedTheme.includes('CURSOR_MODES = Object.freeze(["invert", "hardware", "native"])') &&
     sharedTheme.includes('data-cursor-mode-toggle') && sharedTheme.includes('applyHardwareCursorTheme') &&
     sharedTheme.includes('root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware")') &&
+    sharedTheme.includes('data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button>') &&
+    sharedTheme.includes('openAdvanced("colorblind")') && sharedTheme.includes('data-colorblind-section') &&
+    sharedTheme.includes('if (cursorMode === "hardware") {') && sharedTheme.includes('setFillTarget(link);') &&
+    sharedTheme.includes('if (cursorMode === "native") hideFillImmediate();') &&
+    sharedTheme.includes('refreshCursorMode = () => cursorMode === "hardware" && hasPointerPosition') &&
+    sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
+    sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
     sharedSiteStyle.includes('var(--samey-hw-loading),wait!important'),
-    "ux: cursor appearance must offer invert/hardware/native tri-state modes and regenerate themed hardware cursor assets");
+    "ux: cursor appearance must offer themed invert/hardware/native modes, preserve the link blob highlight in hardware mode, and keep Advanced/Colorblind beside the tri-state");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&

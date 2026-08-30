@@ -409,7 +409,7 @@
 			const shell = (body) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">${body}</svg>`;
 			const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`);
 			const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`);
-			const grab = shell(`<defs><mask id="b"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="29.7" y="21.9" width="4.6" height="20.2" fill="black"/><rect x="21.9" y="29.7" width="20.2" height="4.6" fill="black"/></mask><mask id="f"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`);
+			const grab = shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`);
 			const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`);
 			return { dot, text, grab, loading };
 		};
@@ -809,13 +809,12 @@
 		const CURSOR_TOGGLE_POINTS = [[0,-13.1991],[-12.235,8.0898],[12.235,8.0898]];
 		const CURSOR_TOGGLE_EDGES = [[0,-13.1991,-1.8964,-.1064,-12.235,8.0898,93.282],[-12.235,8.0898,0,3.1933,12.235,8.0898,92.994],[12.235,8.0898,1.8964,-.1064,0,-13.1991,93.282]];
 		const CURSOR_TOGGLE_RAIL = "M 0 -13.1991 Q 1.8964 -0.1064 12.235 8.0898 Q 0 3.1933 -12.235 8.0898 Q -1.8964 -0.1064 0 -13.1991 Z";
-		const cursorSection = () => { const mode=read().cursorMode,state=CURSOR_MODES.indexOf(mode),[x,y]=CURSOR_TOGGLE_POINTS[state]; return `<div class="samey-panel-title">Cursor</div><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div>`; };
+		const cursorSection = () => { const mode=read().cursorMode,state=CURSOR_MODES.indexOf(mode),[x,y]=CURSOR_TOGGLE_POINTS[state]; return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button></div></div>`; };
 		const bindCursorToggle = () => { const button=appearancePanel?.querySelector("[data-cursor-mode-toggle]"); if(!button)return; const knob=button.querySelector("[data-cursor-toggle-knob]"),gradient=button.querySelector("radialGradient"),name=appearancePanel.querySelector("[data-cursor-mode-name]"); let state=Number(button.getAttribute("aria-valuenow"))||0,raf=0,queued=0; const ease=t=>t<.5?4*t*t*t:1-((-2*t+2)**3)/2; const setPoint=(x,y)=>{const transform=`translate(${x} ${y})`;knob?.setAttribute("transform",transform);gradient?.setAttribute("gradientTransform",transform)}; const run=()=>{if(raf){queued++;return}const from=state,to=(from+1)%3,[x0,y0,cx,cy,x1,y1,duration]=CURSOR_TOGGLE_EDGES[from],start=performance.now();button.setAttribute("aria-valuenow",String(to));button.setAttribute("aria-valuetext",CURSOR_LABELS[CURSOR_MODES[to]]);button.setAttribute("aria-label",`Cursor mode: ${CURSOR_LABELS[CURSOR_MODES[to]]}`);if(name)name.textContent=CURSOR_LABELS[CURSOR_MODES[to]];const frame=now=>{const raw=Math.min(1,(now-start)/duration),t=ease(raw),u=1-t;setPoint(u*u*x0+2*u*t*cx+t*t*x1,u*u*y0+2*u*t*cy+t*t*y1);if(raw<1){raf=requestAnimationFrame(frame);return}state=to;const[px,py]=CURSOR_TOGGLE_POINTS[state];setPoint(px,py);raf=0;setPrefs({cursorMode:CURSOR_MODES[state]});if(queued){queued--;run()}};raf=requestAnimationFrame(frame)};button.addEventListener("click",event=>{event.stopPropagation();run()});button.addEventListener("keydown",event=>{if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();run()}}); };
-		const advancedSection = () => `<div class="samey-panel-advanced"><button type="button" data-open-advanced><span>Advanced theming &amp;<br>colorblind modes</span></button></div>`;
 		function renderAppearancePanel() {
 			if (!appearancePanel) return;
 			const wasHidden = appearancePanel.hidden;
-			appearancePanel.innerHTML = themeSection() + fontSection() + cursorSection() + advancedSection();
+			appearancePanel.innerHTML = themeSection() + fontSection() + cursorSection();
 			appearancePanel.hidden = wasHidden;
 			const theme = read();
 			appearancePanel.querySelectorAll("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
@@ -1003,7 +1002,7 @@
 			page.dataset.sameyOverlay = "";
 			page.dataset.sameyRuntime = "";
 			page.hidden = true;
-			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theming &amp; colorblind modes</h1></div><button type="button" data-close-advanced aria-label="Close advanced theming and colorblind modes">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section><h2>Colorblind modes</h2><p>Each mode has light, dark, and cool dark variants. Load one, then edit or save it.</p><div class="samey-advanced-preset-list">${colorblindPresetIds.map((id) => `<button type="button" data-load-preset="${escapeHtml(id)}">${escapeHtml(config.colors[id]?.label || id)}</button>`).join("")}</div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theming &amp; colorblind modes</h1></div><button type="button" data-close-advanced aria-label="Close advanced theming and colorblind modes">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind modes</h2><p>Each mode has light, dark, and cool dark variants. Load one, then edit or save it.</p><div class="samey-advanced-preset-list">${colorblindPresetIds.map((id) => `<button type="button" data-load-preset="${escapeHtml(id)}">${escapeHtml(config.colors[id]?.label || id)}</button>`).join("")}</div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
 			document.body.append(page);
 			advancedPage = page;
 			advancedEditor = page.querySelector("[data-advanced-editor]");
@@ -1038,7 +1037,7 @@
 				if (input) setMenuThemeAllowed(input.dataset.menuTheme, input.checked);
 			});
 		};
-		const openAdvanced = () => {
+		const openAdvanced = (target = "advanced") => {
 			mountAdvancedPage();
 			closeAppearance();
 			advancedEditor.querySelector("[name=\"themeName\"]").value = read().savedName || "My theme";
@@ -1046,6 +1045,8 @@
 			renderAdvancedSavedThemes();
 			advancedPage.hidden = false;
 			document.documentElement.classList.add("samey-advanced-open");
+			advancedPage.scrollTop = 0;
+			if (target === "colorblind") requestAnimationFrame(() => { const section = advancedPage.querySelector("[data-colorblind-section]"); if (!section) return; if (matchMedia?.("(max-width:760px)").matches) section.scrollIntoView({ block: "start" }); else section.querySelector("button")?.focus({ preventScroll: true }); });
 		};
 		const closeAdvanced = () => {
 			if (!advancedPage) return;
@@ -1066,6 +1067,7 @@
 				const fontButton = event.target.closest("[data-font-choice]");
 				if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
 				if (event.target.closest("[data-open-advanced]")) openAdvanced();
+				else if (event.target.closest("[data-open-colorblind]")) openAdvanced("colorblind");
 			});
 			document.body.append(panel);
 			appearancePanel = panel;
@@ -1708,14 +1710,14 @@
 				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrabCached(target);
 				const link = grab || selectingText ? null : linkTarget(target);
 				const text = !grab && (selectingText || !link && wantsText(target));
-				if (cursorMode === "hardware") { document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot"; hideFillImmediate(); return; }
+				if (cursorMode === "hardware") { document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot"; updateBlendSource(target); setFillLayer(link); setFillTarget(link); return; }
 				updateBlendSource(target);
 				setFillLayer(link);
 				setGrabState(grab);
 				setTextState(text);
 				setFillTarget(link);
 			};
-			refreshCursorMode = () => cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
+			refreshCursorMode = () => cursorMode === "hardware" && hasPointerPosition ? setMode(document.elementFromPoint(pendingX, pendingY)) : cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
 			const syncCursorPresentation = (theme = read()) => {
 				cursorMode = theme.cursorMode;
 				document.documentElement.dataset.cursorMode = cursorMode;
@@ -1724,7 +1726,8 @@
 				document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
 				applyHardwareCursorTheme(document.documentElement, theme);
 				cursor.hidden = cursorMode !== "invert";
-				if (cursorMode !== "invert") { linkFill.hidden = true; setCursorVisible(false); }
+				if (cursorMode === "native") hideFillImmediate();
+				if (cursorMode !== "invert") setCursorVisible(false);
 				if (cursorMode === "hardware" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
 				if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
 			};
