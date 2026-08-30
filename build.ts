@@ -408,6 +408,7 @@ ${keybrViewSwitch}`;
   const homeSource = await readFile(join(ROOT, "src/site/pages/Home.tsx"), "utf8");
   const reverbDemoSource = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemoSource = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
+  const cnnWorkerSource = await readFile(join(STATIC, "cnn-worker.js"), "utf8");
   const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.js"), "utf8");
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
@@ -437,15 +438,23 @@ ${keybrViewSwitch}`;
   must(cnnDemoSource.includes("const INPUT_SIZE = 28") && cnnDemoSource.includes("const DRAW_SIZE = 280") &&
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
     cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
-    cnnDemoSource.includes("WebAssembly.instantiateStreaming") && cnnDemoSource.includes("fetch('/cnn.wasm')") &&
-    cnnDemoSource.includes("wasm.image_ptr()") && cnnDemoSource.includes("wasm.probabilities_ptr()") &&
-    cnnDemoSource.includes("wasm.class_count()") && cnnDemoSource.includes("wasm.unknown_class()") &&
+    cnnDemoSource.includes("document.createElement('canvas')") && !cnnDemoSource.includes('class="cnn-sample-canvas"') &&
+    cnnDemoSource.includes("new Worker('/cnn-worker.js')") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("queuedInference") &&
+    cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("pending.input.buffer as ArrayBuffer") && cnnDemoSource.includes("message.id === generation") &&
+    !cnnDemoSource.includes("WebAssembly.instantiate") && !cnnDemoSource.includes("wasm.predict()") &&
     !cnnDemoSource.includes("__sameyCnnInfer") && !cnnDemoSource.includes("CnnInference") &&
-    existsSync(join(STATIC, "cnn.wasm")) && cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('type="range"') &&
+    cnnWorkerSource.includes("WebAssembly.instantiateStreaming") && cnnWorkerSource.includes("fetch('/cnn.wasm')") &&
+    cnnWorkerSource.includes("wasm.predict()") && cnnWorkerSource.includes("wasm.image_ptr()") && cnnWorkerSource.includes("wasm.probabilities_ptr()") &&
+    cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
+    existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
+    cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
+    cnnDemoSource.includes('class="game-range-shell"') && cnnDemoSource.includes('class="game-settings-action cnn-clear"') &&
     cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
-    homeStyle.includes(".cnn-demo-shell") && homeStyle.includes("touch-action:none") &&
-    homeStyle.includes(".cnn-ink-range") && homeStyle.includes("var(--site-accent)"),
-    "ux: CNN project demo must expose themed u8 grayscale drawing and real self-contained WASM inference");
+    !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
+    homeStyle.includes(".site-standard:has(.cnn-demo-section)") && homeStyle.includes(".site-standard:has(.reverb-demo-section)") &&
+    homeStyle.includes(".cnn-demo-shell") && homeStyle.includes("touch-action:none") && !homeStyle.includes(".cnn-ink-range") &&
+    !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && homeStyle.includes("var(--site-accent)"),
+    "ux: CNN demo must keep drawing responsive with worker-backed WASM inference, one visible input, and shared themed controls");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
@@ -460,18 +469,19 @@ ${keybrViewSwitch}`;
   const workSource = await readFile(join(ROOT, "src/site/pages/Work.tsx"), "utf8");
   must((siteData.match(/demo:true/g) || []).length === 2 &&
     siteData.includes("title:'Reverb'") && siteData.includes("title:'CNN'") &&
+    siteData.includes("tags:['python / zig','ml','mnist']") && siteData.includes("facts:['Python / Zig','99.43% MNIST','WASM inference']") &&
     !siteData.includes("export const moreProjects") &&
-    entriesSource.includes('class="demo-badge"') && entriesSource.includes('Demo') &&
-    homeSource.includes('title="Projects with demos"') && workSource.includes('title="Projects with demos"') &&
-    !workSource.includes('moreProjects'),
-    "ux: portfolio project lists must show only the two projects with demos and label them clearly");
+    !entriesSource.includes('demo-badge') && !entriesSource.includes('project-meta') &&
+    homeSource.includes('title="Projects and demos"') && workSource.includes('title="Projects and demos"') &&
+    !homeSource.includes('Projects with demos') && !workSource.includes('Projects with demos') && !workSource.includes('moreProjects'),
+    "ux: portfolio project lists must show only the two interactive projects under the concise Projects and demos heading");
   const siteCatalog = await readFile(join(ROOT, "src/shared/catalog.ts"), "utf8");
   const toolsPageSource = await readFile(join(ROOT, "src/tools/Tools.tsx"), "utf8");
   const blogSource = await readFile(join(ROOT, "src/blogs/Blog.tsx"), "utf8");
   must(homeSource.includes("home-tool-matrix") && homeSource.includes("home-writing-split") &&
     !toolsPageSource.includes("home-tool-matrix") && !blogSource.includes("home-writing-split"),
     "ux: editorial tools and split writing index belong on Home, not the Tools/Writing pages");
-  must(homeSource.includes('title="Projects with demos" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
+  must(homeSource.includes('title="Projects and demos" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
     !sharedTopBar.includes("showWork") && !sharedTopBar.includes("SITE_NAV") &&
     siteData.includes("Chain reaction clone with local AI.") && siteCatalog.includes("Word count and non-ASCII character detection.") &&
     homeStyle.includes(".site-standard .intro{display:flex;justify-content:space-between;align-items:center;gap:18px;min-height:72px"),
@@ -581,7 +591,7 @@ ${keybrViewSwitch}`;
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
-    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT"),
+    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise"),
     "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
@@ -657,7 +667,7 @@ async function copyStatic() {
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
     "index.html", "work.html", "tools.html", "chain.html", "work", "tools", "chain",
-    "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm",
+    "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm", "cnn-worker.js",
     "site.css", "shared-runtime.js",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));

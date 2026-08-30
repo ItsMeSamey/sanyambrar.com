@@ -52,4 +52,4 @@ function WritingSplit() {
   </div>;
 }
 
-export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Projects with demos" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main></>}
+export function Home(){return <><TopBar/><main><Intro/><Section id="games-title" title="Games"><GameCards entries={games}/></Section><Section id="work-title" title="Projects and demos" href="/work/"><ProjectCards entries={projects}/></Section><Section id="tools-title" title="Tools"><EditorialTools/></Section><Section id="writing-title" title="Writing" href="/blog/"><WritingSplit/></Section></main></>}

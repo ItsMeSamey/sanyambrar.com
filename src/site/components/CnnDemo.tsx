@@ -1,9 +1,16 @@
-import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { createSignal, For, onCleanup, onMount } from 'solid-js';
 
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
 const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?'] as const;
 const DEFAULT_INK = 0.72;
+
+type WorkerMessage =
+  | { type: 'ready' }
+  | { type: 'result'; id: number; classId: number; probabilities: number[] }
+  | { type: 'error'; id?: number; message: string };
+
+type PendingInference = { id: number; input: Uint8Array };
 
 function emptyScores(): Array<number | null> {
   return Array.from({ length: OUTPUTS.length }, () => null);
@@ -14,59 +21,27 @@ function validScores(values: ArrayLike<number>): number[] | null {
   return Array.from(values, value => Number.isFinite(value) ? Math.max(0, Number(value)) : 0);
 }
 
-type CnnWasm = {
-  memory: WebAssembly.Memory;
-  image_ptr(): number;
-  probabilities_ptr(): number;
-  predict(): number;
-  class_count(): number;
-  unknown_class(): number;
-};
-
-type ModelState = 'loading' | 'ready' | 'error';
-
-async function loadCnnWasm(): Promise<CnnWasm> {
-  const response = await fetch('/cnn.wasm');
-  if (!response.ok) throw new Error(`cnn.wasm: HTTP ${response.status}`);
-
-  let result: WebAssembly.WebAssemblyInstantiatedSource;
-  try {
-    result = await WebAssembly.instantiateStreaming(response.clone());
-  } catch {
-    result = await WebAssembly.instantiate(await response.arrayBuffer());
-  }
-
-  const wasm = result.instance.exports as unknown as CnnWasm;
-  if (!(wasm.memory instanceof WebAssembly.Memory) ||
-      typeof wasm.image_ptr !== 'function' || typeof wasm.probabilities_ptr !== 'function' ||
-      typeof wasm.predict !== 'function' || typeof wasm.class_count !== 'function' ||
-      typeof wasm.unknown_class !== 'function') {
-    throw new Error('cnn.wasm has an incompatible ABI');
-  }
-  if (wasm.class_count() !== OUTPUTS.length || wasm.unknown_class() !== OUTPUTS.indexOf('?')) {
-    throw new Error(`cnn.wasm metadata mismatch: ${wasm.class_count()} classes, unknown=${wasm.unknown_class()}`);
-  }
-  return wasm;
-}
-
 export function CnnDemo() {
   let canvas!: HTMLCanvasElement;
   let sampleCanvas!: HTMLCanvasElement;
+  let worker: Worker | undefined;
   let drawing = false;
   let lastX = 0;
   let lastY = 0;
   let inferenceFrame = 0;
+  let inferenceBusy = false;
+  let workerReady = false;
+  let generation = 0;
+  let queuedInference: PendingInference | null = null;
+  let disposed = false;
+
   const [scores, setScores] = createSignal<Array<number | null>>(emptyScores());
   const [predictedClass, setPredictedClass] = createSignal<number | null>(null);
   const [hasInk, setHasInk] = createSignal(false);
-  const [modelState, setModelState] = createSignal<ModelState>('loading');
-  const [modelError, setModelError] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
 
   const context = () => canvas.getContext('2d', { willReadFrequently: true })!;
   const sampleContext = () => sampleCanvas.getContext('2d', { willReadFrequently: true })!;
-  let wasm: CnnWasm | undefined;
-  let disposed = false;
 
   const themeInk = () => {
     const style = getComputedStyle(document.documentElement);
@@ -111,49 +86,41 @@ export function CnnDemo() {
     ctx.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE);
     const rgba = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
     const input = new Uint8Array(INPUT_SIZE * INPUT_SIZE);
-    // The WASM ABI is 784 u8 grayscale pixels. Alpha is the model channel,
-    // so translucent strokes remain real intermediate grayscale values.
     for (let i = 0; i < input.length; i++) input[i] = rgba[i * 4 + 3];
     return input;
   };
 
-  const infer = () => {
+  const clearResult = () => {
+    setScores(emptyScores());
+    setPredictedClass(null);
+  };
+
+  const launchInference = (pending: PendingInference) => {
+    if (!worker || !workerReady || inferenceBusy) {
+      queuedInference = pending;
+      return;
+    }
+    inferenceBusy = true;
+    worker.postMessage({ type: 'predict', id: pending.id, input: pending.input }, [pending.input.buffer as ArrayBuffer]);
+  };
+
+  const flushQueuedInference = () => {
+    if (!workerReady || inferenceBusy || !queuedInference) return;
+    const pending = queuedInference;
+    queuedInference = null;
+    launchInference(pending);
+  };
+
+  const inferLatest = () => {
     inferenceFrame = 0;
-    if (!hasInk()) {
-      sampleContext().clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
-      setScores(emptyScores());
-      setPredictedClass(null);
-      setModelError(false);
-      return;
-    }
-    const input = extractInput();
-    if (!wasm || modelState() !== 'ready') {
-      setScores(emptyScores());
-      setPredictedClass(null);
-      return;
-    }
-    try {
-      const imagePtr = wasm.image_ptr();
-      new Uint8Array(wasm.memory.buffer, imagePtr, input.length).set(input);
-      const classId = wasm.predict();
-      // Recreate the view after inference in case WASM memory ever grows.
-      const raw = new Float32Array(wasm.memory.buffer, wasm.probabilities_ptr(), wasm.class_count());
-      const next = validScores(raw);
-      if (!next) throw new Error(`CNN inference returned ${raw.length} outputs; expected ${OUTPUTS.length}`);
-      if (classId >= OUTPUTS.length) throw new Error(`CNN inference returned invalid class ${classId}`);
-      setScores(next);
-      setPredictedClass(classId);
-      setModelError(false);
-    } catch (error) {
-      console.error('CNN demo inference failed', error);
-      setScores(emptyScores());
-      setPredictedClass(null);
-      setModelError(true);
-    }
+    if (!hasInk()) return;
+    const pending = { id: ++generation, input: extractInput() };
+    if (!workerReady || inferenceBusy) queuedInference = pending;
+    else launchInference(pending);
   };
 
   const queueInference = () => {
-    if (!inferenceFrame) inferenceFrame = requestAnimationFrame(infer);
+    if (!inferenceFrame) inferenceFrame = requestAnimationFrame(inferLatest);
   };
 
   const beginStroke = (event: PointerEvent) => {
@@ -198,6 +165,8 @@ export function CnnDemo() {
 
   const clear = () => {
     drawing = false;
+    generation++;
+    queuedInference = null;
     const ctx = context();
     ctx.save();
     ctx.globalAlpha = 1;
@@ -205,9 +174,7 @@ export function CnnDemo() {
     ctx.restore();
     sampleContext().clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
     setHasInk(false);
-    setScores(emptyScores());
-    setPredictedClass(null);
-    setModelError(false);
+    clearResult();
     applyBrush();
   };
 
@@ -223,45 +190,74 @@ export function CnnDemo() {
     applyBrush();
   };
 
+  const inkFill = () => {
+    const ratio = Math.max(0, Math.min(1, (inkLevel() * 100 - 10) / 90));
+    return `calc(${ratio * 100}% + ${8 - ratio * 16}px)`;
+  };
+
   onMount(() => {
     canvas.width = DRAW_SIZE;
     canvas.height = DRAW_SIZE;
+    sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = INPUT_SIZE;
     sampleCanvas.height = INPUT_SIZE;
     applyBrush();
     window.addEventListener('samey-themechange', recolorForTheme);
-    void loadCnnWasm().then(instance => {
+
+    worker = new Worker('/cnn-worker.js');
+    worker.addEventListener('message', event => {
       if (disposed) return;
-      wasm = instance;
-      setModelState('ready');
-      setModelError(false);
-      if (hasInk()) queueInference();
-    }).catch(error => {
+      const message = event.data as WorkerMessage;
+      if (message.type === 'ready') {
+        workerReady = true;
+        flushQueuedInference();
+        if (hasInk() && !queuedInference && !inferenceBusy) queueInference();
+        return;
+      }
+      if (message.type === 'result') {
+        inferenceBusy = false;
+        const next = validScores(message.probabilities);
+        if (!next || message.classId < 0 || message.classId >= OUTPUTS.length) {
+          console.error('CNN worker returned an invalid result');
+          if (message.id === generation) clearResult();
+        } else if (message.id === generation) {
+          setScores(next);
+          setPredictedClass(message.classId);
+        }
+        flushQueuedInference();
+        return;
+      }
+      inferenceBusy = false;
+      if (message.id == null) workerReady = false;
+      if (message.id == null || message.id === generation) clearResult();
+      console.error('CNN worker failed', message.message);
+      flushQueuedInference();
+    });
+    worker.addEventListener('error', error => {
       if (disposed) return;
-      console.error('CNN demo WASM load failed', error);
-      setModelState('error');
-      setModelError(true);
+      workerReady = false;
+      inferenceBusy = false;
+      queuedInference = null;
+      clearResult();
+      console.error('CNN worker crashed', error);
     });
   });
 
   onCleanup(() => {
     disposed = true;
+    generation++;
+    queuedInference = null;
     if (inferenceFrame) cancelAnimationFrame(inferenceFrame);
+    worker?.terminate();
     window.removeEventListener('samey-themechange', recolorForTheme);
   });
 
   return <section class="detail-copy cnn-demo-section" aria-labelledby="cnn-demo-title">
-    <div class="cnn-demo-head">
-      <div>
-        <h2 id="cnn-demo-title">Draw something</h2>
-        <p>Sketch a digit, symbol, or noise. Greys work too.</p>
-      </div>
-    </div>
+    <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw something</h2></div>
 
     <div class="cnn-demo-shell">
       <div class="cnn-draw-pane">
         <div class="cnn-pad-wrap">
-          <div class="cnn-pad-glow" aria-hidden="true" />
           <div class="cnn-pad-grid" aria-hidden="true" />
           <canvas
             ref={canvas}
@@ -272,34 +268,31 @@ export function CnnDemo() {
             onPointerUp={endStroke}
             onPointerCancel={endStroke}
           />
-          <Show when={!hasInk()}>
-            <div class="cnn-pad-empty" aria-hidden="true">
-              <span>DRAW</span>
-              <small>0–9, symbols, greys, noise</small>
-            </div>
-          </Show>
-          <canvas ref={sampleCanvas} class="cnn-sample-canvas" aria-hidden="true" />
         </div>
       </div>
 
       <div class="cnn-settings-pane">
         <div class="cnn-controls-row">
-          <label class="cnn-ink-control">
-            <span><b>INTENSITY</b><output>{Math.round(inkLevel() * 100)}%</output></span>
-            <input
-              class="cnn-ink-range"
-              type="range"
-              min="10"
-              max="100"
-              step="2"
-              value={Math.round(inkLevel() * 100)}
-              aria-label="Drawing intensity"
-              style={`--cnn-ink:${Math.round(inkLevel() * 100)}%`}
-              onInput={onInkInput}
-            />
+          <label class="game-settings-slider cnn-ink-control" style={`--range-fill-width:${inkFill()}`}>
+            <span class="game-settings-slider-head">
+              <span class="game-settings-slider-label">Intensity</span>
+              <output class="game-settings-slider-value">{Math.round(inkLevel() * 100)}%</output>
+            </span>
+            <span class="game-range-shell">
+              <span class="game-range-track" aria-hidden="true"><span class="game-range-fill" /></span>
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="2"
+                value={Math.round(inkLevel() * 100)}
+                aria-label="Drawing intensity"
+                onInput={onInkInput}
+              />
+            </span>
           </label>
 
-          <button type="button" class="cnn-clear" onClick={clear} disabled={!hasInk()}>
+          <button type="button" class="game-settings-action cnn-clear" onClick={clear} disabled={!hasInk()}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg>
             Clear
           </button>
@@ -308,7 +301,7 @@ export function CnnDemo() {
         <div class="cnn-output-summary">
           <div>
             <span class="cnn-output-label">PREDICTION</span>
-            <strong>{winner()?.label ?? '—'}</strong>
+            <strong class="cnn-prediction">{winner()?.label ?? '—'}</strong>
           </div>
           <div class="cnn-confidence">
             <span>CONFIDENCE</span>
