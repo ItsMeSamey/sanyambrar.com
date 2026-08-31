@@ -598,6 +598,8 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
     sharedTheme.includes('document.addEventListener("pointermove", moveCursorFallback') &&
     sharedTheme.includes('document.addEventListener("pointerover", refreshPointerTarget') &&
+    sharedTheme.includes('schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event))') &&
+    sharedTheme.includes('if (!nativeDragging && !cursorLoading) hideCursorVisual();') &&
     sharedTheme.includes('cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`') &&
     sharedTheme.includes("no coalesced-event array, hit testing, style") &&
     sharedSiteStyle.includes("contain:layout paint style;backface-visibility:hidden;transform:translate3d(-96px,-96px,0);will-change:transform") &&
@@ -617,11 +619,16 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes('setCursorVisible(true);\n        linkFill.hidden = true;') &&
     sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
+    sharedTheme.includes('const hardwareCursorPngs = (theme) =>') &&
+    sharedTheme.includes('canvas.toDataURL("image/png")') &&
+    sharedTheme.includes('20, 20, "22 22 20 20"') && sharedTheme.includes('6, 26, "29 19 6 26"') &&
+    sharedTheme.includes('chain(pngs.dot, svgs.dot, 10, 10)') && sharedTheme.includes('chain(pngs.text, svgs.text, 3, 13)') &&
+    sharedTheme.includes('textModeNeedsPointRefresh') && sharedTheme.includes('pointerover only fires when the DOM hit target changes') &&
     sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor *::before') &&
     sharedSiteStyle.includes('var(--samey-hw-loading),var(--samey-hw-dot),wait!important'),
-    "ux: cursor appearance must offer themed invert/hardware/native modes, keep the link blob highlight in every mode, prevent hardware cursor fallback leaks, and keep Advanced/Colorblind beside the tri-state");
+    "ux: cursor appearance must offer themed invert/hardware/native modes, keep the link blob highlight in every mode, use tight PNG-first hardware assets, refresh point-sensitive text cursors, prevent hardware fallback leaks, and keep Advanced/Colorblind beside the tri-state");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&

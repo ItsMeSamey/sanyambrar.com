@@ -404,22 +404,80 @@
 		})[c]);
 		const cursorDataUrl = (svg, hotspotX = 32, hotspotY = 32) => `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspotX} ${hotspotY}`;
 		const hardwareLoadingPath = generateLoadingFrames()[0];
-		const hardwareCursorSvgs = (theme) => {
-			const fg = theme.text, bg = theme.background;
-			const shell = (body) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">${body}</svg>`;
-			const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`);
-			const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`);
-			const grab = shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`);
-			const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`);
-			return { dot, text, grab, loading };
-		};
-		const applyHardwareCursorTheme = (root, theme) => {
-			const svgs = hardwareCursorSvgs(theme);
-			root.style.setProperty("--samey-hw-dot", cursorDataUrl(svgs.dot));
-			root.style.setProperty("--samey-hw-text", cursorDataUrl(svgs.text));
-			root.style.setProperty("--samey-hw-grab", cursorDataUrl(svgs.grab));
-			root.style.setProperty("--samey-hw-loading", cursorDataUrl(svgs.loading));
-		};
+  const hardwareCursorSvgs = (theme) => {
+    const fg = theme.text;
+    const bg = theme.background;
+    // Keep custom cursor bitmaps as tight as possible around the visible shape.
+    // Chromium can suppress oversized custom cursors near browser chrome, which
+    // made the old 64px assets silently fall back to native cursors in the top bar.
+    const shell = (body, width, height, viewBox) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${body}</svg>`;
+    const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`, 20, 20, "22 22 20 20");
+    const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`, 6, 26, "29 19 6 26");
+    const grab = shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`, 20, 20, "22 22 20 20");
+    const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`, 22, 22, "21 21 22 22");
+    return { dot, text, grab, loading };
+  };
+  const hardwareCursorCache = new Map();
+  const hardwareCursorPngs = (theme) => {
+    const cacheKey = `${theme.text}|${theme.background}`;
+    if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
+    const make = (width, height, draw) => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return "";
+        if (draw(ctx, width, height) === false) return "";
+        return `url("${canvas.toDataURL("image/png")}")`;
+      } catch { return ""; }
+    };
+    const circle = (ctx, x, y, r, fill) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
+    const capsule = (ctx, x, y, width, height, fill) => {
+      const r = width / 2, cx = x + r;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y + r, width, Math.max(0, height - width));
+      circle(ctx, cx, y + r, r, fill);
+      circle(ctx, cx, y + height - r, r, fill);
+    };
+    const maskedCircle = (ctx, size, radius, fill, cutWidth, cutLength) => {
+      const layer = document.createElement("canvas"); layer.width = layer.height = size;
+      const lctx = layer.getContext("2d"); if (!lctx) return;
+      const c = size / 2;
+      circle(lctx, c, c, radius, fill);
+      lctx.globalCompositeOperation = "destination-out";
+      lctx.fillRect(c - cutWidth / 2, c - cutLength / 2, cutWidth, cutLength);
+      lctx.fillRect(c - cutLength / 2, c - cutWidth / 2, cutLength, cutWidth);
+      ctx.drawImage(layer, 0, 0);
+    };
+    const fg = theme.text, bg = theme.background;
+    const out = {
+      dot: make(20, 20, (ctx) => { circle(ctx, 10, 10, 9.4, bg); circle(ctx, 10, 10, 8.4, fg); }),
+      text: make(6, 26, (ctx) => { capsule(ctx, 1, 1, 4, 24, bg); capsule(ctx, 2, 2, 2, 22, fg); }),
+      grab: make(20, 20, (ctx) => {
+        maskedCircle(ctx, 20, 9.4, bg, 1.6, 17.2);
+        maskedCircle(ctx, 20, 8.4, fg, 3.6, 19.2);
+        circle(ctx, 10, 10, 5.8, bg); circle(ctx, 10, 10, 4.8, fg);
+      }),
+      loading: make(22, 22, (ctx) => {
+        if (typeof Path2D !== "function") return false;
+        ctx.save(); ctx.translate(-21, -21);
+        const path = new Path2D(hardwareLoadingPath);
+        ctx.lineJoin = "round"; ctx.lineWidth = 2; ctx.strokeStyle = bg; ctx.stroke(path);
+        ctx.fillStyle = fg; ctx.fill(path); ctx.restore();
+      }),
+    };
+    hardwareCursorCache.set(cacheKey, out);
+    return out;
+  };
+  const applyHardwareCursorTheme = (root, theme) => {
+    const svgs = hardwareCursorSvgs(theme);
+    const pngs = hardwareCursorPngs(theme);
+    const chain = (png, svg, x, y) => [png && `${png} ${x} ${y}`, cursorDataUrl(svg, x, y)].filter(Boolean).join(",");
+    root.style.setProperty("--samey-hw-dot", chain(pngs.dot, svgs.dot, 10, 10));
+    root.style.setProperty("--samey-hw-text", chain(pngs.text, svgs.text, 3, 13));
+    root.style.setProperty("--samey-hw-grab", chain(pngs.grab, svgs.grab, 10, 10));
+    root.style.setProperty("--samey-hw-loading", chain(pngs.loading, svgs.loading, 11, 11));
+  };
 		const semanticRoles = [
 			"accent",
 			"error",
@@ -1593,8 +1651,9 @@
 					cursorIdleTimer = 0;
 				}
 			};
+			const hideCursorVisual = () => setCursorVisible(false);
 			const hidePointerVisuals = () => {
-				setCursorVisible(false);
+				hideCursorVisual();
 				hideFillImmediate();
 			};
 			const runCursorIdle = () => {
@@ -1610,7 +1669,7 @@
 					return;
 				}
 				cursorIdleDeadline = 0;
-				if (!nativeDragging && !cursorLoading) hidePointerVisuals();
+				if (!nativeDragging && !cursorLoading) hideCursorVisual();
 			};
 			const armCursorIdle = () => {
 				if (!cursorIdleHidingEnabled()) {
@@ -1663,55 +1722,73 @@
 				updateFillGoal();
 				ensureFillFrame();
 			}
-			const textInput = (target) => target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement && ![
-				"button",
-				"checkbox",
-				"color",
-				"file",
-				"hidden",
-				"image",
-				"radio",
-				"range",
-				"reset",
-				"submit"
-			].includes(target.type);
-			const wantsText = (target) => {
-				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return false;
-				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]")) return true;
-				if (target.closest("[data-text-cursor-zone]")) return true;
-				const style = getComputedStyle(target);
-				if (style.userSelect === "none") return false;
-				if (style.cursor === "text" || style.cursor === "vertical-text") return true;
-				if (!target.textContent?.trim()) return false;
-				const pos = document.caretPositionFromPoint?.(pendingX, pendingY);
-				const fallback = pos ? null : document.caretRangeFromPoint?.(pendingX, pendingY);
-				const node = pos?.offsetNode ?? fallback?.startContainer;
-				const caretOffset = pos?.offset ?? fallback?.startOffset;
-				if (!(node instanceof Text) || !target.contains(node.parentElement) || !node.data || caretOffset == null) return false;
-				const range = document.createRange();
-				const offset = Math.max(0, Math.min(node.length - 1, caretOffset === node.length ? caretOffset - 1 : caretOffset));
-				range.setStart(node, offset);
-				range.setEnd(node, Math.min(node.length, offset + 1));
-				const rect = range.getBoundingClientRect();
-				return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
-			};
-			let grabModeTarget = null, grabModeValue = false;
-			const wantsGrabCached = (target) => {
-				if (target === grabModeTarget) return grabModeValue;
-				grabModeTarget = target;
-				return grabModeValue = wantsGrab(target);
-			};
-			const setMode = (target) => {
-				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrabCached(target);
-				const link = grab || selectingText ? null : linkTarget(target);
-				const text = !grab && (selectingText || !link && wantsText(target));
-				if (cursorMode !== "invert") { if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot"; updateBlendSource(target); setFillLayer(link); setFillTarget(link); return; }
-				updateBlendSource(target);
-				setFillLayer(link);
-				setGrabState(grab);
-				setTextState(text);
-				setFillTarget(link);
-			};
+    const textInput = (target) => target instanceof HTMLTextAreaElement
+      || target instanceof HTMLInputElement && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(target.type);
+    const wantsText = (target) => {
+      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return false;
+      if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
+      // A text-cursor zone makes prose-like regions behave as one selectable
+      // surface. Interactive descendants above override it and keep their
+      // normal round/link cursor semantics.
+      if (target.closest('[data-text-cursor-zone]')) return true;
+      const style = getComputedStyle(target);
+      if (style.userSelect === "none") return false;
+      if (style.cursor === "text" || style.cursor === "vertical-text") return true;
+      if (!target.textContent?.trim()) return false;
+      const pos = document.caretPositionFromPoint?.(pendingX, pendingY);
+      const fallback = pos ? null : document.caretRangeFromPoint?.(pendingX, pendingY);
+      const node = pos?.offsetNode ?? fallback?.startContainer;
+      const caretOffset = pos?.offset ?? fallback?.startOffset;
+      if (!(node instanceof Text) || !target.contains(node.parentElement) || !node.data || caretOffset == null) return false;
+      const range = document.createRange();
+      const offset = Math.max(0, Math.min(node.length - 1, caretOffset === node.length ? caretOffset - 1 : caretOffset));
+      range.setStart(node, offset);
+      range.setEnd(node, Math.min(node.length, offset + 1));
+      const rect = range.getBoundingClientRect();
+      return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
+    };
+    let grabModeTarget = null, grabModeValue = false;
+    const wantsGrabCached = (target) => {
+      if (target === grabModeTarget) return grabModeValue;
+      grabModeTarget = target;
+      return grabModeValue = wantsGrab(target);
+    };
+    const setMode = (target) => {
+      const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
+      const link = grab || selectingText ? null : linkTarget(target);
+      const text = !grab && (selectingText || !link && wantsText(target));
+      if (cursorMode !== "invert") {
+        if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
+        updateBlendSource(target);
+        setFillLayer(link);
+        setFillTarget(link);
+        return;
+      }
+      updateBlendSource(target);
+      setFillLayer(link);
+      setGrabState(grab);
+      setTextState(text);
+      setFillTarget(link);
+    };
+    let pointTextTarget = null, pointTextSensitive = false, pointModeFrame = 0;
+    const textModeNeedsPointRefresh = (target) => {
+      if (target === pointTextTarget) return pointTextSensitive;
+      pointTextTarget = target;
+      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return pointTextSensitive = false;
+      if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"],[data-text-cursor-zone]')) return pointTextSensitive = false;
+      const style = getComputedStyle(target);
+      if (style.userSelect === "none" || style.cursor === "text" || style.cursor === "vertical-text") return pointTextSensitive = false;
+      return pointTextSensitive = !!target.textContent?.trim();
+    };
+    const schedulePointModeRefresh = (target) => {
+      if (!textModeNeedsPointRefresh(target) || pointModeFrame) return;
+      pointModeFrame = requestAnimationFrame(() => {
+        pointModeFrame = 0;
+        const actual = document.elementFromPoint(pendingX, pendingY) || pointTextTarget;
+        if (actual !== pointTextTarget) { pointTextTarget = null; textModeNeedsPointRefresh(actual); }
+        setMode(actual);
+      });
+    };
 			refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition ? setMode(document.elementFromPoint(pendingX, pendingY)) : cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
 			const syncCursorPresentation = (theme = read()) => {
 				cursorMode = theme.cursorMode;
@@ -1738,24 +1815,35 @@
 				cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
 				if (!cursorVisible && !cursorLoading) setCursorVisible(true);
 			};
-			const moveCursorFallback = (event) => {
-				if (cursorMode !== "invert") return;
-				if (nativeDragging) {
-					hidePointerVisuals();
-					return;
-				}
-				if (!hasRawPointer || event.clientX !== pendingX || event.clientY !== pendingY) place(event);
-				wakeCursor();
-			};
-			const refreshPointerTarget = (event) => {
-				if (cursorMode !== "invert") { const x=event.clientX,y=event.clientY; if(Number.isFinite(x)&&Number.isFinite(y)){hasPointerPosition=true;lastX=pendingX=x;lastY=pendingY=y} setMode(event.target instanceof Element?event.target:elementAt(event)); return; }
-				if (nativeDragging) {
-					hidePointerVisuals();
-					return;
-				}
-				place(event);
-				setMode(event.target instanceof Element ? event.target : elementAt(event));
-			};
+    const moveCursorFallback = (event) => {
+      if (nativeDragging) { hidePointerVisuals(); return; }
+      const x = event.clientX, y = event.clientY;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      if (cursorMode === "invert") {
+        // Raw samples normally arrive first. pointermove still catches up for input
+        // sources that do not emit pointerrawupdate, and owns visibility/idle work.
+        if (!hasRawPointer || x !== pendingX || y !== pendingY) place(event);
+        wakeCursor();
+      } else {
+        hasPointerPosition = true;
+        lastX = pendingX = x; lastY = pendingY = y;
+      }
+      // pointerover only fires when the DOM hit target changes. A text glyph can
+      // begin several pixels inside the same element, so very slow movement used
+      // to leave the round cursor stuck. Only those position-sensitive text zones
+      // get a once-per-frame geometry refresh; raw cursor positioning stays clean.
+      schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
+    };
+    const refreshPointerTarget = (event) => {
+      if (cursorMode !== "invert") { const x=event.clientX,y=event.clientY; if (Number.isFinite(x)&&Number.isFinite(y)) { hasPointerPosition=true; lastX=pendingX=x; lastY=pendingY=y; } const target=event.target instanceof Element ? event.target : elementAt(event); pointTextTarget=null; textModeNeedsPointRefresh(target); setMode(target); return; }
+      if (nativeDragging) { hidePointerVisuals(); return; }
+      place(event);
+      const target = event.target instanceof Element ? event.target : elementAt(event);
+      pointTextTarget = null;
+      textModeNeedsPointRefresh(target);
+      setMode(target);
+    };
+
 			if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, {
 				capture: true,
 				passive: true
