@@ -449,25 +449,31 @@ ${keybrViewSwitch}`;
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
     cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
     cnnDemoSource.includes("document.createElement('canvas')") && !cnnDemoSource.includes('class="cnn-sample-canvas"') &&
-    cnnDemoSource.includes("new Worker('/cnn-worker.js')") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("queuedInference") &&
-    cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("pending.input.buffer as ArrayBuffer") && cnnDemoSource.includes("message.id === generation") &&
+    cnnDemoSource.includes("new Worker('/cnn-worker.js')") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("inferenceDirty") && cnnDemoSource.includes("activeRequestEpoch") &&
+    cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("input.buffer as ArrayBuffer") && cnnDemoSource.includes("message.id === activeRequestId") &&
     !cnnDemoSource.includes("WebAssembly.instantiate") && !cnnDemoSource.includes("wasm.predict()") &&
     !cnnDemoSource.includes("__sameyCnnInfer") && !cnnDemoSource.includes("CnnInference") &&
+    cnnDemoSource.includes("canvas.getContext('2d', { desynchronized: true })") && cnnDemoSource.includes("getCoalescedEvents") &&
+    cnnDemoSource.includes("canvasRect = canvas.getBoundingClientRect()") && cnnDemoSource.includes("new ResizeObserver") &&
+    (cnnDemoSource.match(/getComputedStyle\(/g) || []).length === 1 && (cnnDemoSource.match(/getBoundingClientRect\(\)/g) || []).length === 2 &&
+    cnnDemoSource.includes("sampleContext.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE)") &&
     cnnWorkerSource.includes("WebAssembly.instantiateStreaming") && cnnWorkerSource.includes("fetch('/cnn.wasm')") &&
     cnnWorkerSource.includes("wasm.predict()") && cnnWorkerSource.includes("wasm.image_ptr()") && cnnWorkerSource.includes("wasm.probabilities_ptr()") &&
     cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
     existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
-    cnnDemoSource.includes("ctx.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
+    cnnDemoSource.includes("drawContext.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
     cnnDemoSource.includes('class="game-range-shell"') && cnnDemoSource.includes('class="game-settings-action cnn-clear"') &&
     cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
     !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
     homeStyle.includes(".site-standard:has(.cnn-demo-section)") && homeStyle.includes(".site-standard:has(.reverb-demo-section)") &&
     homeStyle.includes(".cnn-demo-shell{position:relative;display:grid;grid-template-columns:") && homeStyle.includes("@media(max-width:700px){.site-standard .cnn-demo-section") &&
     homeStyle.includes(".cnn-demo-shell{grid-template-columns:1fr") && homeStyle.includes(".cnn-pad{position:absolute") && homeStyle.includes("border:0;border-radius:inherit;touch-action:none") &&
+    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("overflow:hidden;border:0;border-radius:0;padding:0") && homeStyle.includes("box-shadow:none;isolation:isolate;contain:paint") &&
+    homeStyle.includes(".cnn-controls-row{display:grid") && homeStyle.includes("border-top:1px solid color-mix(in srgb,var(--site-line)") &&
     homeStyle.includes(".cnn-demo-shell{position:relative;display:grid;grid-template-columns:") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") &&
     homeStyle.includes(".cnn-output-pane{position:relative") && homeStyle.includes("border-left:1px solid") && homeStyle.includes("border-top:1px solid") &&
-    !homeStyle.includes(".cnn-ink-range") && !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && !homeStyle.includes(".cnn-settings-pane") && homeStyle.includes("var(--site-accent)"),
-    "ux: CNN demo must keep worker-backed inference, one visible square canvas, desktop side-by-side predictions, mobile stacking, and shared themed controls");
+    !homeStyle.includes("transition:width 90ms linear") && !homeStyle.includes(".cnn-ink-range") && !homeStyle.includes(".cnn-sample-canvas") && !homeStyle.includes(".cnn-pad-empty") && !homeStyle.includes(".cnn-settings-pane") && homeStyle.includes("var(--site-accent)"),
+    "ux: CNN demo must keep low-latency worker inference, an accelerated/coalesced draw path, one unframed square canvas above its separated controls, desktop side-by-side predictions, and mobile stacking");
   must(projectPageSource.includes('class="project-source-link"') && projectPageSource.indexOf('class="project-source-link"') < projectPageSource.indexOf('class="fact-strip"') &&
     projectPageSource.includes('class="project-description"') && !projectPageSource.includes('class="dek"') && !projectPageSource.includes("What it is") && !projectPageSource.includes("Related") &&
     !reverbDemoSource.includes("Interactive mock of Reverb's current Android interface") && !reverbDemoSource.includes('class="detail-copy reverb-demo-section"') &&
@@ -476,8 +482,9 @@ ${keybrViewSwitch}`;
     reverbDemoHtml.includes("border:6px solid var(--phone-frame);border-radius:38px") && reverbDemoHtml.includes(".phone::before") &&
     reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none}") &&
     reverbDemoHtml.includes("--blob-primary:color-mix") && reverbRuntimeSource.includes("--blob-primary") && reverbRuntimeSource.includes("--blob-tertiary") &&
-    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") && homeStyle.includes("border-radius:10px"),
-    "ux: project pages must keep source near the title, retain a phone frame only in embedded Reverb, keep fullscreen seamless, theme the blob, and visually frame the CNN demo");
+    homeStyle.includes(".cnn-demo-shell{position:relative") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") &&
+    homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("overflow:hidden;border:0;border-radius:0;padding:0"),
+    "ux: project pages must keep source near the title, retain a phone frame only in embedded Reverb, keep fullscreen seamless, theme the blob, frame the CNN demo shell, and leave its canvas unframed");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&

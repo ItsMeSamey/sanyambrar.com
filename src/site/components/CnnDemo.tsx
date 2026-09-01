@@ -1,4 +1,4 @@
-import { createSignal, For, onCleanup, onMount } from 'solid-js';
+import { batch, createSignal, For, onCleanup, onMount } from 'solid-js';
 
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
@@ -9,8 +9,6 @@ type WorkerMessage =
   | { type: 'ready' }
   | { type: 'result'; id: number; classId: number; probabilities: number[] }
   | { type: 'error'; id?: number; message: string };
-
-type PendingInference = { id: number; input: Uint8Array };
 
 function emptyScores(): Array<number | null> {
   return Array.from({ length: OUTPUTS.length }, () => null);
@@ -24,15 +22,24 @@ function validScores(values: ArrayLike<number>): number[] | null {
 export function CnnDemo() {
   let canvas!: HTMLCanvasElement;
   let sampleCanvas!: HTMLCanvasElement;
+  let drawContext!: CanvasRenderingContext2D;
+  let sampleContext!: CanvasRenderingContext2D;
   let worker: Worker | undefined;
+  let resizeObserver: ResizeObserver | undefined;
+  let canvasRect: DOMRect | null = null;
+  let inkColor = '#777';
   let drawing = false;
+  let inkPresent = false;
   let lastX = 0;
   let lastY = 0;
   let inferenceFrame = 0;
   let inferenceBusy = false;
+  let inferenceDirty = false;
   let workerReady = false;
-  let generation = 0;
-  let queuedInference: PendingInference | null = null;
+  let requestId = 0;
+  let activeRequestId = 0;
+  let contentEpoch = 0;
+  let activeRequestEpoch = 0;
   let disposed = false;
 
   const [scores, setScores] = createSignal<Array<number | null>>(emptyScores());
@@ -40,40 +47,36 @@ export function CnnDemo() {
   const [hasInk, setHasInk] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
 
-  const context = () => canvas.getContext('2d', { willReadFrequently: true })!;
-  const sampleContext = () => sampleCanvas.getContext('2d', { willReadFrequently: true })!;
-
-  const themeInk = () => {
+  const readThemeInk = () => {
     const style = getComputedStyle(document.documentElement);
-    return style.getPropertyValue('--site-accent').trim() || style.getPropertyValue('--site-fg').trim() || '#777';
+    inkColor = style.getPropertyValue('--site-accent').trim() || style.getPropertyValue('--site-fg').trim() || '#777';
   };
 
-  const applyBrush = () => {
-    const ctx = context();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = inkLevel();
-    ctx.fillStyle = themeInk();
-    ctx.strokeStyle = themeInk();
-    ctx.lineWidth = 19;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  const configureBrush = () => {
+    drawContext.globalCompositeOperation = 'source-over';
+    drawContext.globalAlpha = inkLevel();
+    drawContext.fillStyle = inkColor;
+    drawContext.strokeStyle = inkColor;
+    drawContext.lineWidth = 19;
+    drawContext.lineCap = 'round';
+    drawContext.lineJoin = 'round';
   };
 
   const recolorForTheme = () => {
-    const ctx = context();
-    if (hasInk()) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = themeInk();
-      ctx.fillRect(0, 0, DRAW_SIZE, DRAW_SIZE);
-      ctx.restore();
+    readThemeInk();
+    if (inkPresent) {
+      drawContext.save();
+      drawContext.globalCompositeOperation = 'source-in';
+      drawContext.globalAlpha = 1;
+      drawContext.fillStyle = inkColor;
+      drawContext.fillRect(0, 0, DRAW_SIZE, DRAW_SIZE);
+      drawContext.restore();
     }
-    applyBrush();
+    configureBrush();
   };
 
   const point = (event: PointerEvent) => {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRect ?? (canvasRect = canvas.getBoundingClientRect());
     return {
       x: (event.clientX - rect.left) * DRAW_SIZE / rect.width,
       y: (event.clientY - rect.top) * DRAW_SIZE / rect.height,
@@ -81,79 +84,76 @@ export function CnnDemo() {
   };
 
   const extractInput = () => {
-    const ctx = sampleContext();
-    ctx.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
-    ctx.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE);
-    const rgba = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
+    sampleContext.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+    sampleContext.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE);
+    const rgba = sampleContext.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE).data;
     const input = new Uint8Array(INPUT_SIZE * INPUT_SIZE);
     for (let i = 0; i < input.length; i++) input[i] = rgba[i * 4 + 3];
     return input;
   };
 
-  const clearResult = () => {
+  const clearResult = () => batch(() => {
     setScores(emptyScores());
     setPredictedClass(null);
-  };
-
-  const launchInference = (pending: PendingInference) => {
-    if (!worker || !workerReady || inferenceBusy) {
-      queuedInference = pending;
-      return;
-    }
-    inferenceBusy = true;
-    worker.postMessage({ type: 'predict', id: pending.id, input: pending.input }, [pending.input.buffer as ArrayBuffer]);
-  };
-
-  const flushQueuedInference = () => {
-    if (!workerReady || inferenceBusy || !queuedInference) return;
-    const pending = queuedInference;
-    queuedInference = null;
-    launchInference(pending);
-  };
+  });
 
   const inferLatest = () => {
     inferenceFrame = 0;
-    if (!hasInk()) return;
-    const pending = { id: ++generation, input: extractInput() };
-    if (!workerReady || inferenceBusy) queuedInference = pending;
-    else launchInference(pending);
+    if (!worker || !workerReady || inferenceBusy || !inferenceDirty || !inkPresent) return;
+    inferenceDirty = false;
+    const id = ++requestId;
+    activeRequestId = id;
+    activeRequestEpoch = contentEpoch;
+    inferenceBusy = true;
+    const input = extractInput();
+    worker.postMessage({ type: 'predict', id, input }, [input.buffer as ArrayBuffer]);
   };
 
   const queueInference = () => {
-    if (!inferenceFrame) inferenceFrame = requestAnimationFrame(inferLatest);
+    inferenceDirty = true;
+    if (workerReady && !inferenceBusy && !inferenceFrame && inkPresent) {
+      inferenceFrame = requestAnimationFrame(inferLatest);
+    }
+  };
+
+  const markInkChanged = () => {
+    if (!inkPresent) {
+      inkPresent = true;
+      setHasInk(true);
+    }
+    queueInference();
   };
 
   const beginStroke = (event: PointerEvent) => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
+    canvasRect = canvas.getBoundingClientRect();
     const p = point(event);
     drawing = true;
     lastX = p.x;
     lastY = p.y;
-    applyBrush();
-    const ctx = context();
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 9.5, 0, Math.PI * 2);
-    ctx.fill();
-    setHasInk(true);
-    queueInference();
+    drawContext.beginPath();
+    drawContext.arc(p.x, p.y, 9.5, 0, Math.PI * 2);
+    drawContext.fill();
+    markInkChanged();
   };
 
   const moveStroke = (event: PointerEvent) => {
     if (!drawing) return;
     event.preventDefault();
-    const p = point(event);
-    applyBrush();
-    const ctx = context();
-    ctx.beginPath();
-    ctx.moveTo(lastX, lastY);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    lastX = p.x;
-    lastY = p.y;
-    setHasInk(true);
-    queueInference();
+    const samples = event.getCoalescedEvents?.() ?? [];
+    const events = samples.length ? samples : [event];
+    drawContext.beginPath();
+    drawContext.moveTo(lastX, lastY);
+    for (const sample of events) {
+      const p = point(sample);
+      drawContext.lineTo(p.x, p.y);
+      lastX = p.x;
+      lastY = p.y;
+    }
+    drawContext.stroke();
+    markInkChanged();
   };
 
   const endStroke = (event: PointerEvent) => {
@@ -165,17 +165,21 @@ export function CnnDemo() {
 
   const clear = () => {
     drawing = false;
-    generation++;
-    queuedInference = null;
-    const ctx = context();
-    ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.clearRect(0, 0, DRAW_SIZE, DRAW_SIZE);
-    ctx.restore();
-    sampleContext().clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
+    inkPresent = false;
+    contentEpoch++;
+    inferenceDirty = false;
+    if (inferenceFrame) {
+      cancelAnimationFrame(inferenceFrame);
+      inferenceFrame = 0;
+    }
+    drawContext.save();
+    drawContext.globalAlpha = 1;
+    drawContext.clearRect(0, 0, DRAW_SIZE, DRAW_SIZE);
+    drawContext.restore();
+    sampleContext.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
     setHasInk(false);
     clearResult();
-    applyBrush();
+    configureBrush();
   };
 
   const winner = () => {
@@ -187,7 +191,7 @@ export function CnnDemo() {
 
   const onInkInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
     setInkLevel(Number(event.currentTarget.value) / 100);
-    applyBrush();
+    configureBrush();
   };
 
   const inkFill = () => {
@@ -198,11 +202,19 @@ export function CnnDemo() {
   onMount(() => {
     canvas.width = DRAW_SIZE;
     canvas.height = DRAW_SIZE;
+    // The visible canvas is draw-only. Keeping willReadFrequently off lets
+    // Chromium retain its accelerated Android path; only the tiny 28x28
+    // sampling canvas needs frequent CPU reads.
+    drawContext = canvas.getContext('2d', { desynchronized: true })!;
     sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = INPUT_SIZE;
     sampleCanvas.height = INPUT_SIZE;
-    applyBrush();
+    sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true })!;
+    readThemeInk();
+    configureBrush();
     window.addEventListener('samey-themechange', recolorForTheme);
+    resizeObserver = new ResizeObserver(() => { canvasRect = null; });
+    resizeObserver.observe(canvas);
 
     worker = new Worker('/cnn-worker.js');
     worker.addEventListener('message', event => {
@@ -210,8 +222,7 @@ export function CnnDemo() {
       const message = event.data as WorkerMessage;
       if (message.type === 'ready') {
         workerReady = true;
-        flushQueuedInference();
-        if (hasInk() && !queuedInference && !inferenceBusy) queueInference();
+        if (inferenceDirty && inkPresent) queueInference();
         return;
       }
       if (message.type === 'result') {
@@ -219,25 +230,30 @@ export function CnnDemo() {
         const next = validScores(message.probabilities);
         if (!next || message.classId < 0 || message.classId >= OUTPUTS.length) {
           console.error('CNN worker returned an invalid result');
-          if (message.id === generation) clearResult();
-        } else if (message.id === generation) {
-          setScores(next);
-          setPredictedClass(message.classId);
+          if (message.id === activeRequestId && activeRequestEpoch === contentEpoch) clearResult();
+        } else if (message.id === activeRequestId && activeRequestEpoch === contentEpoch && inkPresent) {
+          // Show every completed prediction even if a newer canvas state is
+          // already dirty. The next inference immediately catches up instead
+          // of hiding useful in-flight results until drawing stops.
+          batch(() => {
+            setScores(next);
+            setPredictedClass(message.classId);
+          });
         }
-        flushQueuedInference();
+        if (inferenceDirty && inkPresent) queueInference();
         return;
       }
       inferenceBusy = false;
       if (message.id == null) workerReady = false;
-      if (message.id == null || message.id === generation) clearResult();
+      if (message.id == null || (message.id === activeRequestId && activeRequestEpoch === contentEpoch)) clearResult();
       console.error('CNN worker failed', message.message);
-      flushQueuedInference();
+      if (inferenceDirty && inkPresent) queueInference();
     });
     worker.addEventListener('error', error => {
       if (disposed) return;
       workerReady = false;
       inferenceBusy = false;
-      queuedInference = null;
+      inferenceDirty = false;
       clearResult();
       console.error('CNN worker crashed', error);
     });
@@ -245,9 +261,10 @@ export function CnnDemo() {
 
   onCleanup(() => {
     disposed = true;
-    generation++;
-    queuedInference = null;
+    contentEpoch++;
+    inferenceDirty = false;
     if (inferenceFrame) cancelAnimationFrame(inferenceFrame);
+    resizeObserver?.disconnect();
     worker?.terminate();
     window.removeEventListener('samey-themechange', recolorForTheme);
   });
