@@ -639,6 +639,11 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('chain(pngs.dot, svgs.dot, 10, 10)') && sharedTheme.includes('chain(pngs.text, svgs.text, 2, 12)') &&
     sharedTheme.includes('textModeNeedsPointRefresh') && sharedTheme.includes('pointerover only fires when the DOM hit target changes') &&
     sharedTheme.includes('scalar position writes for every mode') && sharedTheme.includes('if (cursorMode !== "invert") return;') &&
+    sharedTheme.includes('visible = !!visible && cursorMode === "invert"') &&
+    sharedTheme.includes('if (cursorMode !== "invert" || nativeDragging || cursorLoading) return;') &&
+    sharedTheme.includes('cursor.hidden = cursorMode !== "invert"') &&
+    sharedTheme.includes('if (cursorMode === "invert") renderCursorPosition(x, y);') &&
+    sharedSiteStyle.includes('html:not(.samey-custom-cursor) .samey-cursor{display:none!important}') &&
     !sharedTheme.includes('HARDWARE_EDGE_BROWSER_GUARD') && !sharedTheme.includes('data-hardware-edge') &&
     !sharedTheme.includes('samey-hardware-edgechange') && !sharedSiteStyle.includes('.samey-cursor-hardware-edge') &&
     sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&

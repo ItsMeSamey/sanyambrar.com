@@ -884,6 +884,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let cursorVisible = false;
     let cursorLoading = false;
     const setCursorVisible = (visible) => {
+      visible = !!visible && cursorMode === "invert";
       if (cursorVisible === visible) return;
       cursorVisible = visible;
       if (visible) cursor.dataset.visible = "";
@@ -1074,7 +1075,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     // old cursor path added (up to a full display frame), while the more expensive
     // hit-testing/mode work remains on ordinary pointermove events.
     const renderCursorPosition = (x = pendingX, y = pendingY) => {
-      lastX = pendingX = x; lastY = pendingY = y;
       cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
     };
     const latestPointerSample = (event) => {
@@ -1084,7 +1084,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const placeXY = (x, y) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       hasPointerPosition = true;
-      renderCursorPosition(x, y);
+      lastX = pendingX = x; lastY = pendingY = y;
+      if (cursorMode === "invert") renderCursorPosition(x, y);
     };
     const place = (event) => {
       const sample = latestPointerSample(event);
@@ -1274,7 +1275,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (!cursorIdleTimer) cursorIdleTimer = window.setTimeout(runCursorIdle, cursorIdleMs);
     };
     const wakeCursor = () => {
-      if (nativeDragging || cursorLoading) return;
+      if (cursorMode !== "invert" || nativeDragging || cursorLoading) return;
       setCursorVisible(true);
       armCursorIdle();
     };
@@ -1392,7 +1393,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       document.documentElement.classList.toggle("samey-hardware-cursor", cursorMode === "hardware");
       document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
       applyHardwareCursorTheme(document.documentElement, theme);
-      cursor.hidden = cursorMode === "native";
+      cursor.hidden = cursorMode !== "invert";
       if (cursorMode !== "invert") setCursorVisible(false);
       if (cursorMode !== "invert" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
       if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
