@@ -625,13 +625,13 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('text: make(4, 24, 2, 12') && !sharedTheme.includes('text: make(6, 26') &&
     sharedTheme.includes('chain(pngs.dot, svgs.dot, 10, 10)') && sharedTheme.includes('chain(pngs.text, svgs.text, 2, 12)') &&
     sharedTheme.includes('textModeNeedsPointRefresh') && sharedTheme.includes('pointerover only fires when the DOM hit target changes') &&
-    sharedTheme.includes('const HARDWARE_EDGE_BROWSER_GUARD = 6') && sharedTheme.includes('data-hardware-edge') &&
-    sharedTheme.includes('samey-hardware-edgechange') && sharedSiteStyle.includes('.samey-cursor-hardware-edge') &&
+    !sharedTheme.includes('HARDWARE_EDGE_BROWSER_GUARD') && !sharedTheme.includes('data-hardware-edge') &&
+    !sharedTheme.includes('samey-hardware-edgechange') && !sharedSiteStyle.includes('.samey-cursor-hardware-edge') &&
     sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor *::before') &&
     sharedSiteStyle.includes('var(--samey-hw-loading),var(--samey-hw-dot),wait!important'),
-    "ux: cursor appearance must offer themed invert/hardware/native modes, keep the link blob highlight in every mode, use tight PNG-first hardware assets, refresh point-sensitive text cursors, prevent hardware fallback leaks, and keep Advanced/Colorblind beside the tri-state");
+    "ux: cursor appearance must offer themed invert/hardware/native modes, keep the link blob highlight in every mode, use exact PNG-first hardware assets without software edge substitution, refresh point-sensitive text cursors, and keep Advanced/Colorblind beside the tri-state");
   const keybrCaret = await readFile(join(ROOT, "src/games/keybr/packages/keybr-textinput-ui/lib/Cursor.tsx"), "utf8");
   const settingsMotionCss = await readFile(join(ROOT, "src/shared/styles/game-settings.css"), "utf8");
   must(keybrCaret.includes('duration: 48') && keybrCaret.includes('transform: `translate3d(${fromLeft - left}px,${fromTop - top}px,0)`') &&
@@ -652,7 +652,7 @@ ${keybrViewSwitch}`;
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
     reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}') &&
-    reverbDemoHtml.includes(':host([data-cursor-mode="hardware"][data-hardware-edge])') && reverbDemo.includes('samey-hardware-edgechange') &&
+    !reverbDemoHtml.includes('data-hardware-edge') && !reverbDemo.includes('samey-hardware-edgechange') &&
     reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
     reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&

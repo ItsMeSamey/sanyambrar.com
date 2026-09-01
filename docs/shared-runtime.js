@@ -368,8 +368,16 @@
 		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
 		const KEY = "keybr.theme";
 		const FONT_KEY = "samey.font";
-		const CURSOR_MODES = Object.freeze(["invert", "hardware", "native"]);
-		const CURSOR_LABELS = Object.freeze({ invert: "Invert", hardware: "Hardware", native: "Native" });
+		const CURSOR_MODES = Object.freeze([
+			"invert",
+			"hardware",
+			"native"
+		]);
+		const CURSOR_LABELS = Object.freeze({
+			invert: "Invert",
+			hardware: "Hardware",
+			native: "Native"
+		});
 		const normalizeCursorMode = (value) => CURSOR_MODES.includes(value) ? value : "invert";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
@@ -404,105 +412,124 @@
 		})[c]);
 		const cursorDataUrl = (svg, hotspotX = 32, hotspotY = 32) => `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspotX} ${hotspotY}`;
 		const hardwareLoadingPath = generateLoadingFrames()[0];
-  const hardwareCursorSvgs = (theme) => {
-    const fg = theme.text;
-    const bg = theme.background;
-    // Keep custom cursor bitmaps as tight as possible around the visible shape.
-    // Chromium can suppress oversized custom cursors near browser chrome, which
-    // made the old 64px assets silently fall back to native cursors in the top bar.
-    const shell = (body, width, height, viewBox) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${body}</svg>`;
-    const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`, 20, 20, "22 22 20 20");
-    const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`, 4, 24, "30 20 4 24");
-    const grab = shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`, 20, 20, "22 22 20 20");
-    const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`, 22, 22, "21 21 22 22");
-    return { dot, text, grab, loading };
-  };
-  const hardwareCursorCache = new Map();
-  const hardwareCursorPngs = (theme) => {
-    const cacheKey = `${theme.text}|${theme.background}`;
-    if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
-    const make = (width, height, hotspotX, hotspotY, draw) => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return null;
-        if (draw(ctx, width, height) === false) return null;
-        const pixels = ctx.getImageData(0, 0, width, height).data;
-        let minX = width, minY = height, maxX = -1, maxY = -1;
-        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-          if (!pixels[(y * width + x) * 4 + 3]) continue;
-          if (x < minX) minX = x; if (x > maxX) maxX = x;
-          if (y < minY) minY = y; if (y > maxY) maxY = y;
-        }
-        if (maxX < minX || maxY < minY) return null;
-        const croppedWidth = maxX - minX + 1, croppedHeight = maxY - minY + 1;
-        const cropped = document.createElement("canvas");
-        cropped.width = croppedWidth; cropped.height = croppedHeight;
-        const croppedCtx = cropped.getContext("2d");
-        if (!croppedCtx) return null;
-        croppedCtx.drawImage(canvas, -minX, -minY);
-        return {
-          url: `url("${cropped.toDataURL("image/png")}")`,
-          x: Math.max(0, Math.min(croppedWidth - 1, hotspotX - minX)),
-          y: Math.max(0, Math.min(croppedHeight - 1, hotspotY - minY)),
-          width: croppedWidth, height: croppedHeight,
-        };
-      } catch { return null; }
-    };
-    const circle = (ctx, x, y, r, fill) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
-    const capsule = (ctx, x, y, width, height, fill) => {
-      const r = width / 2, cx = x + r;
-      ctx.fillStyle = fill;
-      ctx.fillRect(x, y + r, width, Math.max(0, height - width));
-      circle(ctx, cx, y + r, r, fill);
-      circle(ctx, cx, y + height - r, r, fill);
-    };
-    const maskedCircle = (ctx, size, radius, fill, cutWidth, cutLength) => {
-      const layer = document.createElement("canvas"); layer.width = layer.height = size;
-      const lctx = layer.getContext("2d"); if (!lctx) return;
-      const c = size / 2;
-      circle(lctx, c, c, radius, fill);
-      lctx.globalCompositeOperation = "destination-out";
-      lctx.fillRect(c - cutWidth / 2, c - cutLength / 2, cutWidth, cutLength);
-      lctx.fillRect(c - cutLength / 2, c - cutWidth / 2, cutLength, cutWidth);
-      ctx.drawImage(layer, 0, 0);
-    };
-    const fg = theme.text, bg = theme.background;
-    const out = {
-      dot: make(20, 20, 10, 10, (ctx) => { circle(ctx, 10, 10, 9.4, bg); circle(ctx, 10, 10, 8.4, fg); }),
-      text: make(4, 24, 2, 12, (ctx) => { capsule(ctx, 0, 0, 4, 24, bg); capsule(ctx, 1, 1, 2, 22, fg); }),
-      grab: make(20, 20, 10, 10, (ctx) => {
-        maskedCircle(ctx, 20, 9.4, bg, 1.6, 17.2);
-        maskedCircle(ctx, 20, 8.4, fg, 3.6, 19.2);
-        circle(ctx, 10, 10, 5.8, bg); circle(ctx, 10, 10, 4.8, fg);
-      }),
-      loading: make(22, 22, 11, 11, (ctx) => {
-        if (typeof Path2D !== "function") return false;
-        ctx.save(); ctx.translate(-21, -21);
-        const path = new Path2D(hardwareLoadingPath);
-        ctx.lineJoin = "round"; ctx.lineWidth = 2; ctx.strokeStyle = bg; ctx.stroke(path);
-        ctx.fillStyle = fg; ctx.fill(path); ctx.restore();
-      }),
-    };
-    hardwareCursorCache.set(cacheKey, out);
-    return out;
-  };
-  const applyHardwareCursorTheme = (root, theme) => {
-    const svgs = hardwareCursorSvgs(theme);
-    const pngs = hardwareCursorPngs(theme);
-    const svgImage = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-    const chain = (png, svg, x, y) => [png && `${png.url} ${png.x} ${png.y}`, cursorDataUrl(svg, x, y)].filter(Boolean).join(",");
-    const image = (png, svg) => png?.url || svgImage(svg);
-    root.style.setProperty("--samey-hw-dot", chain(pngs.dot, svgs.dot, 10, 10));
-    root.style.setProperty("--samey-hw-text", chain(pngs.text, svgs.text, 2, 12));
-    root.style.setProperty("--samey-hw-grab", chain(pngs.grab, svgs.grab, 10, 10));
-    root.style.setProperty("--samey-hw-loading", chain(pngs.loading, svgs.loading, 11, 11));
-    root.style.setProperty("--samey-hw-dot-image", image(pngs.dot, svgs.dot));
-    root.style.setProperty("--samey-hw-text-image", image(pngs.text, svgs.text));
-    root.style.setProperty("--samey-hw-grab-image", image(pngs.grab, svgs.grab));
-    root.style.setProperty("--samey-hw-loading-image", image(pngs.loading, svgs.loading));
-  };
+		const hardwareCursorSvgs = (theme) => {
+			const fg = theme.text;
+			const bg = theme.background;
+			const shell = (body, width, height, viewBox) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${body}</svg>`;
+			return {
+				dot: shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`, 20, 20, "22 22 20 20"),
+				text: shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`, 4, 24, "30 20 4 24"),
+				grab: shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`, 20, 20, "22 22 20 20"),
+				loading: shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`, 22, 22, "21 21 22 22")
+			};
+		};
+		const hardwareCursorCache = /* @__PURE__ */ new Map();
+		const hardwareCursorPngs = (theme) => {
+			const cacheKey = `${theme.text}|${theme.background}`;
+			if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
+			const make = (width, height, hotspotX, hotspotY, draw) => {
+				try {
+					const canvas = document.createElement("canvas");
+					canvas.width = width;
+					canvas.height = height;
+					const ctx = canvas.getContext("2d", { willReadFrequently: true });
+					if (!ctx) return null;
+					if (draw(ctx, width, height) === false) return null;
+					const pixels = ctx.getImageData(0, 0, width, height).data;
+					let minX = width, minY = height, maxX = -1, maxY = -1;
+					for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+						if (!pixels[(y * width + x) * 4 + 3]) continue;
+						if (x < minX) minX = x;
+						if (x > maxX) maxX = x;
+						if (y < minY) minY = y;
+						if (y > maxY) maxY = y;
+					}
+					if (maxX < minX || maxY < minY) return null;
+					const croppedWidth = maxX - minX + 1, croppedHeight = maxY - minY + 1;
+					const cropped = document.createElement("canvas");
+					cropped.width = croppedWidth;
+					cropped.height = croppedHeight;
+					const croppedCtx = cropped.getContext("2d");
+					if (!croppedCtx) return null;
+					croppedCtx.drawImage(canvas, -minX, -minY);
+					return {
+						url: `url("${cropped.toDataURL("image/png")}")`,
+						x: Math.max(0, Math.min(croppedWidth - 1, hotspotX - minX)),
+						y: Math.max(0, Math.min(croppedHeight - 1, hotspotY - minY)),
+						width: croppedWidth,
+						height: croppedHeight
+					};
+				} catch {
+					return null;
+				}
+			};
+			const circle = (ctx, x, y, r, fill) => {
+				ctx.beginPath();
+				ctx.arc(x, y, r, 0, Math.PI * 2);
+				ctx.fillStyle = fill;
+				ctx.fill();
+			};
+			const capsule = (ctx, x, y, width, height, fill) => {
+				const r = width / 2, cx = x + r;
+				ctx.fillStyle = fill;
+				ctx.fillRect(x, y + r, width, Math.max(0, height - width));
+				circle(ctx, cx, y + r, r, fill);
+				circle(ctx, cx, y + height - r, r, fill);
+			};
+			const maskedCircle = (ctx, size, radius, fill, cutWidth, cutLength) => {
+				const layer = document.createElement("canvas");
+				layer.width = layer.height = size;
+				const lctx = layer.getContext("2d");
+				if (!lctx) return;
+				const c = size / 2;
+				circle(lctx, c, c, radius, fill);
+				lctx.globalCompositeOperation = "destination-out";
+				lctx.fillRect(c - cutWidth / 2, c - cutLength / 2, cutWidth, cutLength);
+				lctx.fillRect(c - cutLength / 2, c - cutWidth / 2, cutLength, cutWidth);
+				ctx.drawImage(layer, 0, 0);
+			};
+			const fg = theme.text, bg = theme.background;
+			const out = {
+				dot: make(20, 20, 10, 10, (ctx) => {
+					circle(ctx, 10, 10, 9.4, bg);
+					circle(ctx, 10, 10, 8.4, fg);
+				}),
+				text: make(4, 24, 2, 12, (ctx) => {
+					capsule(ctx, 0, 0, 4, 24, bg);
+					capsule(ctx, 1, 1, 2, 22, fg);
+				}),
+				grab: make(20, 20, 10, 10, (ctx) => {
+					maskedCircle(ctx, 20, 9.4, bg, 1.6, 17.2);
+					maskedCircle(ctx, 20, 8.4, fg, 3.6, 19.2);
+					circle(ctx, 10, 10, 5.8, bg);
+					circle(ctx, 10, 10, 4.8, fg);
+				}),
+				loading: make(22, 22, 11, 11, (ctx) => {
+					if (typeof Path2D !== "function") return false;
+					ctx.save();
+					ctx.translate(-21, -21);
+					const path = new Path2D(hardwareLoadingPath);
+					ctx.lineJoin = "round";
+					ctx.lineWidth = 2;
+					ctx.strokeStyle = bg;
+					ctx.stroke(path);
+					ctx.fillStyle = fg;
+					ctx.fill(path);
+					ctx.restore();
+				})
+			};
+			hardwareCursorCache.set(cacheKey, out);
+			return out;
+		};
+		const applyHardwareCursorTheme = (root, theme) => {
+			const svgs = hardwareCursorSvgs(theme);
+			const pngs = hardwareCursorPngs(theme);
+			const chain = (png, svg, x, y) => [png && `${png.url} ${png.x} ${png.y}`, cursorDataUrl(svg, x, y)].filter(Boolean).join(",");
+			root.style.setProperty("--samey-hw-dot", chain(pngs.dot, svgs.dot, 10, 10));
+			root.style.setProperty("--samey-hw-text", chain(pngs.text, svgs.text, 2, 12));
+			root.style.setProperty("--samey-hw-grab", chain(pngs.grab, svgs.grab, 10, 10));
+			root.style.setProperty("--samey-hw-loading", chain(pngs.loading, svgs.loading, 11, 11));
+		};
 		const semanticRoles = [
 			"accent",
 			"error",
@@ -889,11 +916,103 @@
 			return `<div class="samey-panel-title">Themes</div>${themeCatalog().filter(([id]) => allowed.has(id)).map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}`;
 		};
 		const fontSection = () => `<div class="samey-panel-title">Fonts</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
-		const CURSOR_TOGGLE_POINTS = [[0,-13.1991],[-12.235,8.0898],[12.235,8.0898]];
-		const CURSOR_TOGGLE_EDGES = [[0,-13.1991,-1.8964,-.1064,-12.235,8.0898,93.282],[-12.235,8.0898,0,3.1933,12.235,8.0898,92.994],[12.235,8.0898,1.8964,-.1064,0,-13.1991,93.282]];
+		const CURSOR_TOGGLE_POINTS = [
+			[0, -13.1991],
+			[-12.235, 8.0898],
+			[12.235, 8.0898]
+		];
+		const CURSOR_TOGGLE_EDGES = [
+			[
+				0,
+				-13.1991,
+				-1.8964,
+				-.1064,
+				-12.235,
+				8.0898,
+				93.282
+			],
+			[
+				-12.235,
+				8.0898,
+				0,
+				3.1933,
+				12.235,
+				8.0898,
+				92.994
+			],
+			[
+				12.235,
+				8.0898,
+				1.8964,
+				-.1064,
+				0,
+				-13.1991,
+				93.282
+			]
+		];
 		const CURSOR_TOGGLE_RAIL = "M 0 -13.1991 Q 1.8964 -0.1064 12.235 8.0898 Q 0 3.1933 -12.235 8.0898 Q -1.8964 -0.1064 0 -13.1991 Z";
-		const cursorSection = () => { const mode=read().cursorMode,state=CURSOR_MODES.indexOf(mode),[x,y]=CURSOR_TOGGLE_POINTS[state]; return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button></div></div>`; };
-		const bindCursorToggle = () => { const button=appearancePanel?.querySelector("[data-cursor-mode-toggle]"); if(!button)return; const knob=button.querySelector("[data-cursor-toggle-knob]"),gradient=button.querySelector("radialGradient"),name=appearancePanel.querySelector("[data-cursor-mode-name]"); let state=Number(button.getAttribute("aria-valuenow"))||0,raf=0,queued=0; const ease=t=>t<.5?4*t*t*t:1-((-2*t+2)**3)/2; const setPoint=(x,y)=>{const transform=`translate(${x} ${y})`;knob?.setAttribute("transform",transform);gradient?.setAttribute("gradientTransform",transform)}; const run=()=>{if(raf){queued++;return}const from=state,to=(from+1)%3,[x0,y0,cx,cy,x1,y1,duration]=CURSOR_TOGGLE_EDGES[from],start=performance.now();button.setAttribute("aria-valuenow",String(to));button.setAttribute("aria-valuetext",CURSOR_LABELS[CURSOR_MODES[to]]);button.setAttribute("aria-label",`Cursor mode: ${CURSOR_LABELS[CURSOR_MODES[to]]}`);if(name)name.textContent=CURSOR_LABELS[CURSOR_MODES[to]];const frame=now=>{const raw=Math.min(1,(now-start)/duration),t=ease(raw),u=1-t;setPoint(u*u*x0+2*u*t*cx+t*t*x1,u*u*y0+2*u*t*cy+t*t*y1);if(raw<1){raf=requestAnimationFrame(frame);return}state=to;const[px,py]=CURSOR_TOGGLE_POINTS[state];setPoint(px,py);raf=0;setPrefs({cursorMode:CURSOR_MODES[state]});if(queued){queued--;run()}};raf=requestAnimationFrame(frame)};button.addEventListener("click",event=>{event.stopPropagation();run()});button.addEventListener("keydown",event=>{if(event.key==="ArrowRight"||event.key==="ArrowDown"){event.preventDefault();run()}}); };
+		const cursorSection = () => {
+			const mode = read().cursorMode;
+			const state = CURSOR_MODES.indexOf(mode);
+			const [x, y] = CURSOR_TOGGLE_POINTS[state];
+			return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button></div></div>`;
+		};
+		const bindCursorToggle = () => {
+			const button = appearancePanel?.querySelector("[data-cursor-mode-toggle]");
+			if (!button) return;
+			const knob = button.querySelector("[data-cursor-toggle-knob]");
+			const gradient = button.querySelector("radialGradient");
+			const name = appearancePanel.querySelector("[data-cursor-mode-name]");
+			let state = Number(button.getAttribute("aria-valuenow")) || 0;
+			let raf = 0, queued = 0;
+			const ease = (t) => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+			const setPoint = (x, y) => {
+				const transform = `translate(${x} ${y})`;
+				knob?.setAttribute("transform", transform);
+				gradient?.setAttribute("gradientTransform", transform);
+			};
+			const run = () => {
+				if (raf) {
+					queued++;
+					return;
+				}
+				const from = state, to = (from + 1) % 3;
+				const [x0, y0, cx, cy, x1, y1, duration] = CURSOR_TOGGLE_EDGES[from];
+				const start = performance.now();
+				button.setAttribute("aria-valuenow", String(to));
+				button.setAttribute("aria-valuetext", CURSOR_LABELS[CURSOR_MODES[to]]);
+				button.setAttribute("aria-label", `Cursor mode: ${CURSOR_LABELS[CURSOR_MODES[to]]}`);
+				if (name) name.textContent = CURSOR_LABELS[CURSOR_MODES[to]];
+				const frame = (now) => {
+					const raw = Math.min(1, (now - start) / duration), t = ease(raw), u = 1 - t;
+					setPoint(u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1);
+					if (raw < 1) {
+						raf = requestAnimationFrame(frame);
+						return;
+					}
+					state = to;
+					const [px, py] = CURSOR_TOGGLE_POINTS[state];
+					setPoint(px, py);
+					raf = 0;
+					setPrefs({ cursorMode: CURSOR_MODES[state] });
+					if (queued) {
+						queued--;
+						run();
+					}
+				};
+				raf = requestAnimationFrame(frame);
+			};
+			button.addEventListener("click", (event) => {
+				event.stopPropagation();
+				run();
+			});
+			button.addEventListener("keydown", (event) => {
+				if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+					event.preventDefault();
+					run();
+				}
+			});
+		};
 		function renderAppearancePanel() {
 			if (!appearancePanel) return;
 			const wasHidden = appearancePanel.hidden;
@@ -1129,7 +1248,12 @@
 			advancedPage.hidden = false;
 			document.documentElement.classList.add("samey-advanced-open");
 			advancedPage.scrollTop = 0;
-			if (target === "colorblind") requestAnimationFrame(() => { const section = advancedPage.querySelector("[data-colorblind-section]"); if (!section) return; if (matchMedia?.("(max-width:760px)").matches) section.scrollIntoView({ block: "start" }); else section.querySelector("button")?.focus({ preventScroll: true }); });
+			if (target === "colorblind") requestAnimationFrame(() => {
+				const section = advancedPage.querySelector("[data-colorblind-section]");
+				if (!section) return;
+				if (matchMedia?.("(max-width:760px)").matches) section.scrollIntoView({ block: "start" });
+				else section.querySelector("button")?.focus({ preventScroll: true });
+			});
 		};
 		const closeAdvanced = () => {
 			if (!advancedPage) return;
@@ -1259,7 +1383,7 @@
 			const cursor = runtimeNode(document.createElement("div"));
 			cursor.id = "samey-cursor";
 			cursor.className = "samey-cursor";
-			cursor.innerHTML = `<span class="samey-cursor-hardware-edge" aria-hidden="true"></span><span class="samey-cursor-dot"></span><span class="samey-cursor-text"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
+			cursor.innerHTML = `<span class="samey-cursor-dot"></span><span class="samey-cursor-text"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
 			const linkFill = runtimeNode(document.createElement("div"));
 			linkFill.className = "samey-cursor-link-fill";
 			linkFill.hidden = true;
@@ -1291,17 +1415,6 @@
 			};
 			let loadingRaf = 0, loadingStarted = 0;
 			let refreshCursorMode = () => {};
-			let hardwareEdgeFallback = false;
-			let syncHardwareEdgeFallback = () => {};
-			const setHardwareEdgeFallback = (active) => {
-				active = cursorMode === "hardware" && !!active;
-				if (hardwareEdgeFallback === active) return;
-				hardwareEdgeFallback = active;
-				document.documentElement.toggleAttribute("data-hardware-edge", active);
-				cursor.toggleAttribute("data-hardware-edge", active);
-				if (cursorMode === "hardware") { cursor.hidden = false; setCursorVisible(active); }
-				dispatchEvent(new CustomEvent("samey-hardware-edgechange", { detail: active }));
-			};
 			const animateLoadingPaths = (time) => {
 				if (!cursorLoading) {
 					loadingRaf = 0;
@@ -1321,10 +1434,9 @@
 					clearCursorIdle();
 					cursor.removeAttribute("data-grab");
 					cursor.removeAttribute("data-text");
-					setCursorVisible(true);
+					if (cursorMode === "invert") setCursorVisible(true);
 				}
 				document.documentElement.toggleAttribute("data-site-loading", !!loading);
-				if (cursorMode === "hardware" && hasPointerPosition) syncHardwareEdgeFallback(pendingX, pendingY);
 				if (loading && !loadingRaf) {
 					loadingStarted = performance.now();
 					loadingPath?.setAttribute("d", loadingFrames()[0]);
@@ -1336,7 +1448,7 @@
 				}
 				if (!loading) {
 					refreshCursorMode();
-					if (cursorVisible) armCursorIdle();
+					if (cursorMode === "invert" && cursorVisible) armCursorIdle();
 				}
 			};
 			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
@@ -1469,11 +1581,16 @@
 				return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
 			};
 			const grabPulse = cursor.querySelector(".samey-cursor-grab-pulse");
-			const setTextState = (text) => { cursor.toggleAttribute("data-text", !!text); if (text) document.documentElement.dataset.sameyCursorShape = "text"; else if (!cursor.hasAttribute("data-grab")) document.documentElement.dataset.sameyCursorShape = "dot"; };
+			const setTextState = (text) => {
+				cursor.toggleAttribute("data-text", !!text);
+				if (text) document.documentElement.dataset.sameyCursorShape = "text";
+				else if (!cursor.hasAttribute("data-grab")) document.documentElement.dataset.sameyCursorShape = "dot";
+			};
 			const setGrabState = (grab) => {
 				const wasGrab = cursor.hasAttribute("data-grab");
 				cursor.toggleAttribute("data-grab", grab);
-				if (grab) document.documentElement.dataset.sameyCursorShape = "grab"; else if (!cursor.hasAttribute("data-text")) document.documentElement.dataset.sameyCursorShape = "dot";
+				if (grab) document.documentElement.dataset.sameyCursorShape = "grab";
+				else if (!cursor.hasAttribute("data-text")) document.documentElement.dataset.sameyCursorShape = "dot";
 				if (grab) setTextState(false);
 				if (grab && !wasGrab && !matchMedia?.("(prefers-reduced-motion: reduce)").matches && typeof grabPulse?.beginElement === "function") grabPulse.beginElement();
 			};
@@ -1760,96 +1877,86 @@
 				updateFillGoal();
 				ensureFillFrame();
 			}
-    const textInput = (target) => target instanceof HTMLTextAreaElement
-      || target instanceof HTMLInputElement && !["button", "checkbox", "color", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(target.type);
-    const wantsText = (target) => {
-      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return false;
-      if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
-      // A text-cursor zone makes prose-like regions behave as one selectable
-      // surface. Interactive descendants above override it and keep their
-      // normal round/link cursor semantics.
-      if (target.closest('[data-text-cursor-zone]')) return true;
-      const style = getComputedStyle(target);
-      if (style.userSelect === "none") return false;
-      if (style.cursor === "text" || style.cursor === "vertical-text") return true;
-      if (!target.textContent?.trim()) return false;
-      const pos = document.caretPositionFromPoint?.(pendingX, pendingY);
-      const fallback = pos ? null : document.caretRangeFromPoint?.(pendingX, pendingY);
-      const node = pos?.offsetNode ?? fallback?.startContainer;
-      const caretOffset = pos?.offset ?? fallback?.startOffset;
-      if (!(node instanceof Text) || !target.contains(node.parentElement) || !node.data || caretOffset == null) return false;
-      const range = document.createRange();
-      const offset = Math.max(0, Math.min(node.length - 1, caretOffset === node.length ? caretOffset - 1 : caretOffset));
-      range.setStart(node, offset);
-      range.setEnd(node, Math.min(node.length, offset + 1));
-      const rect = range.getBoundingClientRect();
-      return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
-    };
-    let grabModeTarget = null, grabModeValue = false;
-    const wantsGrabCached = (target) => {
-      if (target === grabModeTarget) return grabModeValue;
-      grabModeTarget = target;
-      return grabModeValue = wantsGrab(target);
-    };
-    const setMode = (target) => {
-      const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
-      const link = grab || selectingText ? null : linkTarget(target);
-      const text = !grab && (selectingText || !link && wantsText(target));
-      if (cursorMode !== "invert") {
-        if (cursorMode === "hardware") {
-          document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
-          if (hasPointerPosition) syncHardwareEdgeFallback(pendingX, pendingY);
-        }
-        updateBlendSource(target);
-        setFillLayer(link);
-        setFillTarget(link);
-        return;
-      }
-      updateBlendSource(target);
-      setFillLayer(link);
-      setGrabState(grab);
-      setTextState(text);
-      setFillTarget(link);
-    };
-    let pointTextTarget = null, pointTextSensitive = false, pointModeFrame = 0;
-    const textModeNeedsPointRefresh = (target) => {
-      if (target === pointTextTarget) return pointTextSensitive;
-      pointTextTarget = target;
-      if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return pointTextSensitive = false;
-      if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"],[data-text-cursor-zone]')) return pointTextSensitive = false;
-      const style = getComputedStyle(target);
-      if (style.userSelect === "none" || style.cursor === "text" || style.cursor === "vertical-text") return pointTextSensitive = false;
-      return pointTextSensitive = !!target.textContent?.trim();
-    };
-    const schedulePointModeRefresh = (target) => {
-      if (!textModeNeedsPointRefresh(target) || pointModeFrame) return;
-      pointModeFrame = requestAnimationFrame(() => {
-        pointModeFrame = 0;
-        const actual = document.elementFromPoint(pendingX, pendingY) || pointTextTarget;
-        if (actual !== pointTextTarget) { pointTextTarget = null; textModeNeedsPointRefresh(actual); }
-        setMode(actual);
-      });
-    };
+			const textInput = (target) => target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement && ![
+				"button",
+				"checkbox",
+				"color",
+				"file",
+				"hidden",
+				"image",
+				"radio",
+				"range",
+				"reset",
+				"submit"
+			].includes(target.type);
+			const wantsText = (target) => {
+				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return false;
+				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]")) return true;
+				if (target.closest("[data-text-cursor-zone]")) return true;
+				const style = getComputedStyle(target);
+				if (style.userSelect === "none") return false;
+				if (style.cursor === "text" || style.cursor === "vertical-text") return true;
+				if (!target.textContent?.trim()) return false;
+				const pos = document.caretPositionFromPoint?.(pendingX, pendingY);
+				const fallback = pos ? null : document.caretRangeFromPoint?.(pendingX, pendingY);
+				const node = pos?.offsetNode ?? fallback?.startContainer;
+				const caretOffset = pos?.offset ?? fallback?.startOffset;
+				if (!(node instanceof Text) || !target.contains(node.parentElement) || !node.data || caretOffset == null) return false;
+				const range = document.createRange();
+				const offset = Math.max(0, Math.min(node.length - 1, caretOffset === node.length ? caretOffset - 1 : caretOffset));
+				range.setStart(node, offset);
+				range.setEnd(node, Math.min(node.length, offset + 1));
+				const rect = range.getBoundingClientRect();
+				return rect.height > 0 && pendingX >= rect.left - 5 && pendingX <= rect.right + 5 && pendingY >= rect.top - 2 && pendingY <= rect.bottom + 2;
+			};
+			let grabModeTarget = null, grabModeValue = false;
+			const wantsGrabCached = (target) => {
+				if (target === grabModeTarget) return grabModeValue;
+				grabModeTarget = target;
+				return grabModeValue = wantsGrab(target);
+			};
+			const setMode = (target) => {
+				const grab = nativeDragging || pressedGrab || !selectingText && wantsGrabCached(target);
+				const link = grab || selectingText ? null : linkTarget(target);
+				const text = !grab && (selectingText || !link && wantsText(target));
+				if (cursorMode !== "invert") {
+					if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
+					updateBlendSource(target);
+					setFillLayer(link);
+					setFillTarget(link);
+					return;
+				}
+				updateBlendSource(target);
+				setFillLayer(link);
+				setGrabState(grab);
+				setTextState(text);
+				setFillTarget(link);
+			};
+			let pointTextTarget = null, pointTextSensitive = false, pointModeFrame = 0;
+			const textModeNeedsPointRefresh = (target) => {
+				if (target === pointTextTarget) return pointTextSensitive;
+				pointTextTarget = target;
+				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return pointTextSensitive = false;
+				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"],[data-text-cursor-zone]")) return pointTextSensitive = false;
+				const style = getComputedStyle(target);
+				if (style.userSelect === "none" || style.cursor === "text" || style.cursor === "vertical-text") return pointTextSensitive = false;
+				return pointTextSensitive = !!target.textContent?.trim();
+			};
+			const schedulePointModeRefresh = (target) => {
+				if (!textModeNeedsPointRefresh(target) || pointModeFrame) return;
+				pointModeFrame = requestAnimationFrame(() => {
+					pointModeFrame = 0;
+					const actual = document.elementFromPoint(pendingX, pendingY) || pointTextTarget;
+					if (actual !== pointTextTarget) {
+						pointTextTarget = null;
+						textModeNeedsPointRefresh(actual);
+					}
+					setMode(actual);
+				});
+			};
 			refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition ? setMode(document.elementFromPoint(pendingX, pendingY)) : cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
-			const HARDWARE_EDGE_BROWSER_GUARD = 6;
-			const hardwareEdgeMetrics = () => {
-				if (cursorLoading) return { left: 11, right: 11, top: 11, bottom: 11 };
-				if (document.documentElement.dataset.sameyCursorShape === "text") return { left: 2, right: 2, top: 12, bottom: 12 };
-				return { left: 10, right: 10, top: 10, bottom: 10 };
-			};
-			const hardwareEdgeRisk = (x, y) => {
-				if (cursorMode !== "hardware" || !Number.isFinite(x) || !Number.isFinite(y)) return false;
-				const edge = hardwareEdgeMetrics(), pad = HARDWARE_EDGE_BROWSER_GUARD;
-				return x <= edge.left + pad || y <= edge.top + pad || x >= innerWidth - edge.right - pad || y >= innerHeight - edge.bottom - pad;
-			};
-			syncHardwareEdgeFallback = (x, y) => {
-				const active = hardwareEdgeRisk(x, y);
-				setHardwareEdgeFallback(active);
-				if (active) cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
-			};
 			const syncCursorPresentation = (theme = read()) => {
 				cursorMode = theme.cursorMode;
-				if (cursorMode !== "hardware") setHardwareEdgeFallback(false);
 				document.documentElement.dataset.cursorMode = cursorMode;
 				document.documentElement.classList.toggle("samey-custom-cursor", cursorMode === "invert");
 				document.documentElement.classList.toggle("samey-hardware-cursor", cursorMode === "hardware");
@@ -1857,60 +1964,67 @@
 				applyHardwareCursorTheme(document.documentElement, theme);
 				cursor.hidden = cursorMode === "native";
 				if (cursorMode !== "invert") setCursorVisible(false);
-				if (cursorMode !== "invert" && hasPointerPosition) { setMode(document.elementFromPoint(pendingX, pendingY)); if (cursorMode === "hardware") syncHardwareEdgeFallback(pendingX, pendingY); }
-				if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
+				if (cursorMode !== "invert" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
+				if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) {
+					setCursorVisible(true);
+					setMode(document.elementFromPoint(pendingX, pendingY));
+					armCursorIdle();
+				}
 			};
 			addEventListener("samey-themechange", (event) => syncCursorPresentation(event.detail || read()));
 			syncCursorPresentation(read());
 			const hasRawPointer = "onpointerrawupdate" in window;
 			const moveCursorOnly = (event) => {
-				if (nativeDragging) return;
+				if (nativeDragging || cursorMode !== "invert") return;
 				const x = event.clientX, y = event.clientY;
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-				if (cursorMode === "hardware") {
-					hasPointerPosition = true; lastX = pendingX = x; lastY = pendingY = y;
-					const edge = hardwareEdgeRisk(x, y);
-					if (edge !== hardwareEdgeFallback) setHardwareEdgeFallback(edge);
-					if (edge) cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
-					return;
-				}
-				if (cursorMode !== "invert") return;
 				hasPointerPosition = true;
 				lastX = pendingX = x;
 				lastY = pendingY = y;
 				cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
 				if (!cursorVisible && !cursorLoading) setCursorVisible(true);
 			};
-    const moveCursorFallback = (event) => {
-      if (nativeDragging) { hidePointerVisuals(); return; }
-      const x = event.clientX, y = event.clientY;
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      if (cursorMode === "invert") {
-        // Raw samples normally arrive first. pointermove still catches up for input
-        // sources that do not emit pointerrawupdate, and owns visibility/idle work.
-        if (!hasRawPointer || x !== pendingX || y !== pendingY) place(event);
-        wakeCursor();
-      } else {
-        hasPointerPosition = true;
-        lastX = pendingX = x; lastY = pendingY = y;
-        if (cursorMode === "hardware") syncHardwareEdgeFallback(x, y);
-      }
-      // pointerover only fires when the DOM hit target changes. A text glyph can
-      // begin several pixels inside the same element, so very slow movement used
-      // to leave the round cursor stuck. Only those position-sensitive text zones
-      // get a once-per-frame geometry refresh; raw cursor positioning stays clean.
-      schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
-    };
-    const refreshPointerTarget = (event) => {
-      if (cursorMode !== "invert") { const x=event.clientX,y=event.clientY; if (Number.isFinite(x)&&Number.isFinite(y)) { hasPointerPosition=true; lastX=pendingX=x; lastY=pendingY=y; } const target=event.target instanceof Element ? event.target : elementAt(event); pointTextTarget=null; textModeNeedsPointRefresh(target); setMode(target); return; }
-      if (nativeDragging) { hidePointerVisuals(); return; }
-      place(event);
-      const target = event.target instanceof Element ? event.target : elementAt(event);
-      pointTextTarget = null;
-      textModeNeedsPointRefresh(target);
-      setMode(target);
-    };
-
+			const moveCursorFallback = (event) => {
+				if (nativeDragging) {
+					hidePointerVisuals();
+					return;
+				}
+				const x = event.clientX, y = event.clientY;
+				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+				if (cursorMode === "invert") {
+					if (!hasRawPointer || x !== pendingX || y !== pendingY) place(event);
+					wakeCursor();
+				} else {
+					hasPointerPosition = true;
+					lastX = pendingX = x;
+					lastY = pendingY = y;
+				}
+				schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
+			};
+			const refreshPointerTarget = (event) => {
+				if (cursorMode !== "invert") {
+					const x = event.clientX, y = event.clientY;
+					if (Number.isFinite(x) && Number.isFinite(y)) {
+						hasPointerPosition = true;
+						lastX = pendingX = x;
+						lastY = pendingY = y;
+					}
+					const target = event.target instanceof Element ? event.target : elementAt(event);
+					pointTextTarget = null;
+					textModeNeedsPointRefresh(target);
+					setMode(target);
+					return;
+				}
+				if (nativeDragging) {
+					hidePointerVisuals();
+					return;
+				}
+				place(event);
+				const target = event.target instanceof Element ? event.target : elementAt(event);
+				pointTextTarget = null;
+				textModeNeedsPointRefresh(target);
+				setMode(target);
+			};
 			if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, {
 				capture: true,
 				passive: true
@@ -2793,24 +2907,29 @@
 		kind: "Tool",
 		note: tool.note
 	}));
-	var projects = [
-		{
-			title: "Reverb",
-			href: "/projects/reverb/",
-			kind: "Project",
-			note: "Android recorder that keeps a rolling audio window in memory.",
-			tags: ["kotlin", "android", "audio"],
-			demo: true
-		},
-		{
-			title: "CNN",
-			href: "/projects/cnn/",
-			kind: "Project",
-			note: "CNN in Zig. Draw something and run the model in-browser with WASM.",
-			tags: ["zig", "ml", "mnist"],
-			demo: true
-		}
-	];
+	var projects = [{
+		title: "Reverb",
+		href: "/projects/reverb/",
+		kind: "Project",
+		note: "Android recorder that keeps a rolling audio window in memory.",
+		tags: [
+			"kotlin",
+			"android",
+			"audio"
+		],
+		demo: true
+	}, {
+		title: "CNN",
+		href: "/projects/cnn/",
+		kind: "Project",
+		note: "CNN in Zig. Draw something and run the model in-browser with WASM.",
+		tags: [
+			"python / zig",
+			"ml",
+			"mnist"
+		],
+		demo: true
+	}];
 	var posts = [{
 		title: "btop's broken lock",
 		href: "/blog/posts/btop-mutex.html",
