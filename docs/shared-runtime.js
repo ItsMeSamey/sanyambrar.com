@@ -412,7 +412,7 @@
     // made the old 64px assets silently fall back to native cursors in the top bar.
     const shell = (body, width, height, viewBox) => `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}">${body}</svg>`;
     const dot = shell(`<circle cx="32" cy="32" r="9.4" fill="${bg}"/><circle cx="32" cy="32" r="8.4" fill="${fg}"/>`, 20, 20, "22 22 20 20");
-    const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`, 6, 26, "29 19 6 26");
+    const text = shell(`<rect x="30" y="20" width="4" height="24" rx="2" fill="${bg}"/><rect x="31" y="21" width="2" height="22" rx="1" fill="${fg}"/>`, 4, 24, "30 20 4 24");
     const grab = shell(`<defs><mask id="b" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="9.4" fill="white"/><rect x="31.2" y="23.4" width="1.6" height="17.2" fill="black"/><rect x="23.4" y="31.2" width="17.2" height="1.6" fill="black"/></mask><mask id="f" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask></defs><circle cx="32" cy="32" r="9.4" fill="${bg}" mask="url(#b)"/><circle cx="32" cy="32" r="8.4" fill="${fg}" mask="url(#f)"/><circle cx="32" cy="32" r="5.8" fill="${bg}"/><circle cx="32" cy="32" r="4.8" fill="${fg}"/>`, 20, 20, "22 22 20 20");
     const loading = shell(`<path d="${hardwareLoadingPath}" fill="${fg}" stroke="${bg}" stroke-width="2" stroke-linejoin="round" paint-order="stroke fill"/>`, 22, 22, "21 21 22 22");
     return { dot, text, grab, loading };
@@ -421,15 +421,34 @@
   const hardwareCursorPngs = (theme) => {
     const cacheKey = `${theme.text}|${theme.background}`;
     if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
-    const make = (width, height, draw) => {
+    const make = (width, height, hotspotX, hotspotY, draw) => {
       try {
         const canvas = document.createElement("canvas");
         canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return "";
-        if (draw(ctx, width, height) === false) return "";
-        return `url("${canvas.toDataURL("image/png")}")`;
-      } catch { return ""; }
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return null;
+        if (draw(ctx, width, height) === false) return null;
+        const pixels = ctx.getImageData(0, 0, width, height).data;
+        let minX = width, minY = height, maxX = -1, maxY = -1;
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+          if (!pixels[(y * width + x) * 4 + 3]) continue;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+        if (maxX < minX || maxY < minY) return null;
+        const croppedWidth = maxX - minX + 1, croppedHeight = maxY - minY + 1;
+        const cropped = document.createElement("canvas");
+        cropped.width = croppedWidth; cropped.height = croppedHeight;
+        const croppedCtx = cropped.getContext("2d");
+        if (!croppedCtx) return null;
+        croppedCtx.drawImage(canvas, -minX, -minY);
+        return {
+          url: `url("${cropped.toDataURL("image/png")}")`,
+          x: Math.max(0, Math.min(croppedWidth - 1, hotspotX - minX)),
+          y: Math.max(0, Math.min(croppedHeight - 1, hotspotY - minY)),
+          width: croppedWidth, height: croppedHeight,
+        };
+      } catch { return null; }
     };
     const circle = (ctx, x, y, r, fill) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); };
     const capsule = (ctx, x, y, width, height, fill) => {
@@ -451,14 +470,14 @@
     };
     const fg = theme.text, bg = theme.background;
     const out = {
-      dot: make(20, 20, (ctx) => { circle(ctx, 10, 10, 9.4, bg); circle(ctx, 10, 10, 8.4, fg); }),
-      text: make(6, 26, (ctx) => { capsule(ctx, 1, 1, 4, 24, bg); capsule(ctx, 2, 2, 2, 22, fg); }),
-      grab: make(20, 20, (ctx) => {
+      dot: make(20, 20, 10, 10, (ctx) => { circle(ctx, 10, 10, 9.4, bg); circle(ctx, 10, 10, 8.4, fg); }),
+      text: make(4, 24, 2, 12, (ctx) => { capsule(ctx, 0, 0, 4, 24, bg); capsule(ctx, 1, 1, 2, 22, fg); }),
+      grab: make(20, 20, 10, 10, (ctx) => {
         maskedCircle(ctx, 20, 9.4, bg, 1.6, 17.2);
         maskedCircle(ctx, 20, 8.4, fg, 3.6, 19.2);
         circle(ctx, 10, 10, 5.8, bg); circle(ctx, 10, 10, 4.8, fg);
       }),
-      loading: make(22, 22, (ctx) => {
+      loading: make(22, 22, 11, 11, (ctx) => {
         if (typeof Path2D !== "function") return false;
         ctx.save(); ctx.translate(-21, -21);
         const path = new Path2D(hardwareLoadingPath);
@@ -472,11 +491,17 @@
   const applyHardwareCursorTheme = (root, theme) => {
     const svgs = hardwareCursorSvgs(theme);
     const pngs = hardwareCursorPngs(theme);
-    const chain = (png, svg, x, y) => [png && `${png} ${x} ${y}`, cursorDataUrl(svg, x, y)].filter(Boolean).join(",");
+    const svgImage = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    const chain = (png, svg, x, y) => [png && `${png.url} ${png.x} ${png.y}`, cursorDataUrl(svg, x, y)].filter(Boolean).join(",");
+    const image = (png, svg) => png?.url || svgImage(svg);
     root.style.setProperty("--samey-hw-dot", chain(pngs.dot, svgs.dot, 10, 10));
-    root.style.setProperty("--samey-hw-text", chain(pngs.text, svgs.text, 3, 13));
+    root.style.setProperty("--samey-hw-text", chain(pngs.text, svgs.text, 2, 12));
     root.style.setProperty("--samey-hw-grab", chain(pngs.grab, svgs.grab, 10, 10));
     root.style.setProperty("--samey-hw-loading", chain(pngs.loading, svgs.loading, 11, 11));
+    root.style.setProperty("--samey-hw-dot-image", image(pngs.dot, svgs.dot));
+    root.style.setProperty("--samey-hw-text-image", image(pngs.text, svgs.text));
+    root.style.setProperty("--samey-hw-grab-image", image(pngs.grab, svgs.grab));
+    root.style.setProperty("--samey-hw-loading-image", image(pngs.loading, svgs.loading));
   };
 		const semanticRoles = [
 			"accent",
@@ -1234,7 +1259,7 @@
 			const cursor = runtimeNode(document.createElement("div"));
 			cursor.id = "samey-cursor";
 			cursor.className = "samey-cursor";
-			cursor.innerHTML = `<span class="samey-cursor-dot"></span><span class="samey-cursor-text"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
+			cursor.innerHTML = `<span class="samey-cursor-hardware-edge" aria-hidden="true"></span><span class="samey-cursor-dot"></span><span class="samey-cursor-text"></span><svg class="samey-cursor-grab" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><mask id="samey-grab-mask" x="0" y="0" width="64" height="64" maskUnits="userSpaceOnUse" style="mask-type:luminance"><circle cx="32" cy="32" r="8.4" fill="white"/><rect x="30.2" y="22.4" width="3.6" height="19.2" fill="black"/><rect x="22.4" y="30.2" width="19.2" height="3.6" fill="black"/></mask><circle cx="32" cy="32" r="8.4" fill="currentColor" mask="url(#samey-grab-mask)"/><circle cx="32" cy="32" r="4.8" fill="currentColor"><animate class="samey-cursor-grab-pulse" attributeName="r" values="8.4;4.8" dur=".18s" repeatCount="1" calcMode="linear" begin="indefinite" fill="remove"/></circle></svg>${loadingCursorSvg()}`;
 			const linkFill = runtimeNode(document.createElement("div"));
 			linkFill.className = "samey-cursor-link-fill";
 			linkFill.hidden = true;
@@ -1266,6 +1291,17 @@
 			};
 			let loadingRaf = 0, loadingStarted = 0;
 			let refreshCursorMode = () => {};
+			let hardwareEdgeFallback = false;
+			let syncHardwareEdgeFallback = () => {};
+			const setHardwareEdgeFallback = (active) => {
+				active = cursorMode === "hardware" && !!active;
+				if (hardwareEdgeFallback === active) return;
+				hardwareEdgeFallback = active;
+				document.documentElement.toggleAttribute("data-hardware-edge", active);
+				cursor.toggleAttribute("data-hardware-edge", active);
+				if (cursorMode === "hardware") { cursor.hidden = false; setCursorVisible(active); }
+				dispatchEvent(new CustomEvent("samey-hardware-edgechange", { detail: active }));
+			};
 			const animateLoadingPaths = (time) => {
 				if (!cursorLoading) {
 					loadingRaf = 0;
@@ -1288,6 +1324,7 @@
 					setCursorVisible(true);
 				}
 				document.documentElement.toggleAttribute("data-site-loading", !!loading);
+				if (cursorMode === "hardware" && hasPointerPosition) syncHardwareEdgeFallback(pendingX, pendingY);
 				if (loading && !loadingRaf) {
 					loadingStarted = performance.now();
 					loadingPath?.setAttribute("d", loadingFrames()[0]);
@@ -1640,6 +1677,7 @@
 			};
 			const cursorIdleMs = 2200;
 			const cursorIdleHidingEnabled = () => {
+				if (cursorMode !== "invert") return false;
 				const root = document.documentElement;
 				return root.dataset.siteKind === "keybr" || root.dataset.siteKind === "wordle" || root.dataset.siteKind === "blog-post";
 			};
@@ -1758,7 +1796,10 @@
       const link = grab || selectingText ? null : linkTarget(target);
       const text = !grab && (selectingText || !link && wantsText(target));
       if (cursorMode !== "invert") {
-        if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
+        if (cursorMode === "hardware") {
+          document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
+          if (hasPointerPosition) syncHardwareEdgeFallback(pendingX, pendingY);
+        }
         updateBlendSource(target);
         setFillLayer(link);
         setFillTarget(link);
@@ -1790,25 +1831,50 @@
       });
     };
 			refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition ? setMode(document.elementFromPoint(pendingX, pendingY)) : cursorVisible ? setMode(document.elementFromPoint(pendingX, pendingY)) : setFillTarget(null);
+			const HARDWARE_EDGE_BROWSER_GUARD = 6;
+			const hardwareEdgeMetrics = () => {
+				if (cursorLoading) return { left: 11, right: 11, top: 11, bottom: 11 };
+				if (document.documentElement.dataset.sameyCursorShape === "text") return { left: 2, right: 2, top: 12, bottom: 12 };
+				return { left: 10, right: 10, top: 10, bottom: 10 };
+			};
+			const hardwareEdgeRisk = (x, y) => {
+				if (cursorMode !== "hardware" || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+				const edge = hardwareEdgeMetrics(), pad = HARDWARE_EDGE_BROWSER_GUARD;
+				return x <= edge.left + pad || y <= edge.top + pad || x >= innerWidth - edge.right - pad || y >= innerHeight - edge.bottom - pad;
+			};
+			syncHardwareEdgeFallback = (x, y) => {
+				const active = hardwareEdgeRisk(x, y);
+				setHardwareEdgeFallback(active);
+				if (active) cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
+			};
 			const syncCursorPresentation = (theme = read()) => {
 				cursorMode = theme.cursorMode;
+				if (cursorMode !== "hardware") setHardwareEdgeFallback(false);
 				document.documentElement.dataset.cursorMode = cursorMode;
 				document.documentElement.classList.toggle("samey-custom-cursor", cursorMode === "invert");
 				document.documentElement.classList.toggle("samey-hardware-cursor", cursorMode === "hardware");
 				document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
 				applyHardwareCursorTheme(document.documentElement, theme);
-				cursor.hidden = cursorMode !== "invert";
+				cursor.hidden = cursorMode === "native";
 				if (cursorMode !== "invert") setCursorVisible(false);
-				if (cursorMode !== "invert" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
+				if (cursorMode !== "invert" && hasPointerPosition) { setMode(document.elementFromPoint(pendingX, pendingY)); if (cursorMode === "hardware") syncHardwareEdgeFallback(pendingX, pendingY); }
 				if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
 			};
 			addEventListener("samey-themechange", (event) => syncCursorPresentation(event.detail || read()));
 			syncCursorPresentation(read());
 			const hasRawPointer = "onpointerrawupdate" in window;
 			const moveCursorOnly = (event) => {
-				if (cursorMode !== "invert" || nativeDragging) return;
+				if (nativeDragging) return;
 				const x = event.clientX, y = event.clientY;
 				if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+				if (cursorMode === "hardware") {
+					hasPointerPosition = true; lastX = pendingX = x; lastY = pendingY = y;
+					const edge = hardwareEdgeRisk(x, y);
+					if (edge !== hardwareEdgeFallback) setHardwareEdgeFallback(edge);
+					if (edge) cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
+					return;
+				}
+				if (cursorMode !== "invert") return;
 				hasPointerPosition = true;
 				lastX = pendingX = x;
 				lastY = pendingY = y;
@@ -1827,6 +1893,7 @@
       } else {
         hasPointerPosition = true;
         lastX = pendingX = x; lastY = pendingY = y;
+        if (cursorMode === "hardware") syncHardwareEdgeFallback(x, y);
       }
       // pointerover only fires when the DOM hit target changes. A text glyph can
       // begin several pixels inside the same element, so very slow movement used

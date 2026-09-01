@@ -620,10 +620,13 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
     sharedTheme.includes('const hardwareCursorPngs = (theme) =>') &&
-    sharedTheme.includes('canvas.toDataURL("image/png")') &&
-    sharedTheme.includes('20, 20, "22 22 20 20"') && sharedTheme.includes('6, 26, "29 19 6 26"') &&
-    sharedTheme.includes('chain(pngs.dot, svgs.dot, 10, 10)') && sharedTheme.includes('chain(pngs.text, svgs.text, 3, 13)') &&
+    sharedTheme.includes('cropped.toDataURL("image/png")') && sharedTheme.includes('ctx.getImageData(0, 0, width, height).data') &&
+    sharedTheme.includes('20, 20, "22 22 20 20"') && sharedTheme.includes('4, 24, "30 20 4 24"') &&
+    sharedTheme.includes('text: make(4, 24, 2, 12') && !sharedTheme.includes('text: make(6, 26') &&
+    sharedTheme.includes('chain(pngs.dot, svgs.dot, 10, 10)') && sharedTheme.includes('chain(pngs.text, svgs.text, 2, 12)') &&
     sharedTheme.includes('textModeNeedsPointRefresh') && sharedTheme.includes('pointerover only fires when the DOM hit target changes') &&
+    sharedTheme.includes('const HARDWARE_EDGE_BROWSER_GUARD = 6') && sharedTheme.includes('data-hardware-edge') &&
+    sharedTheme.includes('samey-hardware-edgechange') && sharedSiteStyle.includes('.samey-cursor-hardware-edge') &&
     sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor *::before') &&
@@ -645,10 +648,11 @@ ${keybrViewSwitch}`;
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
     siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise"),
     "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
-  must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html' with { type: 'text' }") &&
+  must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html?raw'") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
     reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}') &&
+    reverbDemoHtml.includes(':host([data-cursor-mode="hardware"][data-hardware-edge])') && reverbDemo.includes('samey-hardware-edgechange') &&
     reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
     reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&

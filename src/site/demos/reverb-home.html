@@ -46,6 +46,7 @@ button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-col
 :host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}
 :host([data-cursor-mode="hardware"]) input,:host([data-cursor-mode="hardware"]) textarea{cursor:var(--samey-hw-text),var(--samey-hw-dot),text!important}
 :host([data-cursor-mode="hardware"]) input[type=range],:host([data-cursor-mode="hardware"]) [role=slider]{cursor:var(--samey-hw-grab),var(--samey-hw-dot),grab!important}
+:host([data-cursor-mode="hardware"][data-hardware-edge]) *,:host([data-cursor-mode="hardware"][data-hardware-edge]) *::before,:host([data-cursor-mode="hardware"][data-hardware-edge]) *::after{cursor:none!important}
 }
 .stage{width:100%;height:100%;min-height:0;display:grid;place-items:center;padding:18px;background:transparent;position:relative;overflow:hidden}
 .phone{width:min(412px,100%);height:min(820px,100%);min-height:0;max-height:820px;position:relative;overflow:hidden;border:6px solid var(--phone-frame);border-radius:38px;background:var(--surface);color:var(--on-surface);box-shadow:0 22px 56px color-mix(in srgb,var(--site-shadow-tint,#000) 22%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--on-surface) 9%,transparent);isolation:isolate;z-index:2}

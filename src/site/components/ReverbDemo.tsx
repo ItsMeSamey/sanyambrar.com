@@ -1,5 +1,5 @@
 import { onCleanup, onMount } from 'solid-js';
-import demoHtml from '../demos/reverb-home.html' with { type: 'text' };
+import demoHtml from '../demos/reverb-home.html?raw';
 import { runReverbDemoRuntime } from '../demos/reverb-runtime.js';
 
 type DemoDocument = Pick<Document, 'createElement'> & {
@@ -144,15 +144,21 @@ function mountReverbDemo(host: HTMLDivElement) {
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };
 
-  const syncCursorMode = () => host.setAttribute('data-cursor-mode', document.documentElement.dataset.cursorMode || 'invert');
+  const syncCursorMode = () => {
+    host.setAttribute('data-cursor-mode', document.documentElement.dataset.cursorMode || 'invert');
+    host.toggleAttribute('data-hardware-edge', document.documentElement.hasAttribute('data-hardware-edge'));
+  };
   syncCursorMode();
   const runtime = runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
   const refreshTheme = () => { syncCursorMode(); runtime?.refreshTheme?.(); };
+  const refreshHardwareEdge = () => syncCursorMode();
   window.addEventListener('samey-themechange', refreshTheme);
+  window.addEventListener('samey-hardware-edgechange', refreshHardwareEdge);
 
   return () => {
     disposed = true;
     window.removeEventListener('samey-themechange', refreshTheme);
+    window.removeEventListener('samey-hardware-edgechange', refreshHardwareEdge);
     for (const id of rafs) window.cancelAnimationFrame(id);
     for (const id of timers) window.clearTimeout(id);
     rafs.clear();
