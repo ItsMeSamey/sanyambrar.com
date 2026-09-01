@@ -29,6 +29,7 @@ export function CnnDemo() {
   let canvasRect: DOMRect | null = null;
   let inkColor = '#777';
   let drawing = false;
+  let activePointerId: number | null = null;
   let inkPresent = false;
   let lastX = 0;
   let lastY = 0;
@@ -125,9 +126,10 @@ export function CnnDemo() {
   };
 
   const beginStroke = (event: PointerEvent) => {
-    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    if (activePointerId != null || event.button !== 0) return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
+    activePointerId = event.pointerId;
     canvasRect = canvas.getBoundingClientRect();
     const p = point(event);
     drawing = true;
@@ -140,7 +142,7 @@ export function CnnDemo() {
   };
 
   const moveStroke = (event: PointerEvent) => {
-    if (!drawing) return;
+    if (!drawing || event.pointerId !== activePointerId) return;
     event.preventDefault();
     const samples = event.getCoalescedEvents?.() ?? [];
     const events = samples.length ? samples : [event];
@@ -157,14 +159,26 @@ export function CnnDemo() {
   };
 
   const endStroke = (event: PointerEvent) => {
-    if (!drawing) return;
+    if (!drawing || event.pointerId !== activePointerId) return;
     drawing = false;
+    activePointerId = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     queueInference();
   };
 
-  const clear = () => {
+  const loseStrokeCapture = (event: PointerEvent) => {
+    if (event.pointerId !== activePointerId) return;
     drawing = false;
+    activePointerId = null;
+    queueInference();
+  };
+
+  const clear = () => {
+    if (activePointerId != null && canvas.hasPointerCapture(activePointerId)) {
+      canvas.releasePointerCapture(activePointerId);
+    }
+    drawing = false;
+    activePointerId = null;
     inkPresent = false;
     contentEpoch++;
     inferenceDirty = false;
@@ -284,6 +298,7 @@ export function CnnDemo() {
             onPointerMove={moveStroke}
             onPointerUp={endStroke}
             onPointerCancel={endStroke}
+            onLostPointerCapture={loseStrokeCapture}
           />
         </div>
 

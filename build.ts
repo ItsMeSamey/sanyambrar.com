@@ -660,8 +660,10 @@ ${keybrViewSwitch}`;
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
-    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise"),
-    "ux: CNN project detail must keep its live-drawing demo mounted on the project page");
+    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise") &&
+    cnnDemo.includes("let activePointerId: number | null = null") && cnnDemo.includes("event.pointerId !== activePointerId") &&
+    cnnDemo.includes("onLostPointerCapture={loseStrokeCapture}"),
+    "ux: CNN project detail must keep its live-drawing demo mounted on the project page and bind each stroke to exactly one active pointer");
   must(projectPage.includes("props.detail.demo === 'reverb-ui'") && reverbDemo.includes("reverb-home.html?raw'") &&
     reverbDemo.includes("attachShadow({ mode: 'open' })") && reverbDemo.includes('class="reverb-demo-host"') &&
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
