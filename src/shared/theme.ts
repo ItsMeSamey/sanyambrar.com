@@ -8,7 +8,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const FONT_KEY = "samey.font";
   const CURSOR_MODES = Object.freeze(["invert", "hardware", "native"]);
   const CURSOR_LABELS = Object.freeze({ invert: "Invert", hardware: "Hardware", native: "Native" });
-  const normalizeCursorMode = (value) => CURSOR_MODES.includes(value) ? value : "invert";
+  const normalizeCursorMode = (value) => CURSOR_MODES.includes(value) ? value : "hardware";
   const config = globalThis.SameyAppearanceConfig;
   if (config == null) throw new Error("Shared appearance config is not loaded");
 
@@ -164,6 +164,22 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   const fontLabels = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.label]));
   const fontStacks = Object.fromEntries(Object.entries(config.fonts).map(([id, value]) => [id, value.stack]));
   const DEFAULT_THEME_MENU = ["system", "light", "dark", "clear-dark"];
+  const COLORBLIND_PROFILES = Object.freeze([
+    ["deuteranopia", "Deuteranopia"],
+    ["protanopia", "Protanopia"],
+    ["tritanopia", "Tritanopia"],
+  ]);
+  const COLORBLIND_VARIANTS = Object.freeze([
+    ["light", "Light", ""],
+    ["dark", "Dark", "-dark"],
+    ["cool-dark", "Cool dark", "-cool-dark"],
+  ]);
+  const COLORBLIND_PRESET_IDS = Object.freeze(COLORBLIND_PROFILES.flatMap(([profile]) => COLORBLIND_VARIANTS.map(([, , suffix]) => `${profile}${suffix}`)));
+  const isColorblindPresetId = (id) => COLORBLIND_PRESET_IDS.includes(id);
+  const colorblindPresetId = (profile, variant) => {
+    const suffix = COLORBLIND_VARIANTS.find(([id]) => id === variant)?.[2] ?? "";
+    return `${profile}${suffix}`;
+  };
 
   let volatileThemePrefs = {};
   let volatileFont;
@@ -449,7 +465,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const raw = rawPrefs();
     const catalog = new Set(themeCatalog().map(([id]) => id));
     const requested = Array.isArray(raw.menuThemes) ? raw.menuThemes : DEFAULT_THEME_MENU;
-    const result = requested.filter((id) => catalog.has(id) && id !== "clear-light");
+    const result = requested.filter((id) => catalog.has(id) && id !== "clear-light" && !isColorblindPresetId(id));
     return result.length ? result : [...DEFAULT_THEME_MENU];
   };
   const themeSection = () => {
@@ -465,7 +481,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const mode = read().cursorMode;
     const state = CURSOR_MODES.indexOf(mode);
     const [x,y] = CURSOR_TOGGLE_POINTS[state];
-    return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced</button><button type="button" data-open-colorblind>Colorblind</button></div></div>`;
+    return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced &amp; Colorblind</button></div></div>`;
   };
   const bindCursorToggle = () => {
     const button = appearancePanel?.querySelector("[data-cursor-mode-toggle]");
@@ -601,9 +617,10 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     setPrefs({ savedThemes, menuThemes, color: savedThemeId(id) });
     renderAdvancedSavedThemes();
   };
-  const advancedMenuList = () => themeCatalog().filter(([id]) => id !== "clear-light").map(([id, label]) => {
+  const checkIcon = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.1 6.2 4.8 8.8 9.9 3.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const advancedMenuList = () => themeCatalog().filter(([id]) => id !== "clear-light" && !isColorblindPresetId(id)).map(([id, label]) => {
     const checked = menuThemeIds().includes(id) ? " checked" : "";
-    return `<label class="samey-advanced-check"><input type="checkbox" data-menu-theme="${escapeHtml(id)}"${checked}><span>${escapeHtml(label)}</span></label>`;
+    return `<label class="samey-control samey-control-checkbox"><input class="samey-control-native" type="checkbox" data-menu-theme="${escapeHtml(id)}"${checked}><span class="samey-checkbox-indicator" aria-hidden="true">${checkIcon}</span><span class="samey-control-text">${escapeHtml(label)}</span></label>`;
   }).join("");
   const renderAdvancedSavedThemes = () => {
     if (!advancedPage) return;
@@ -642,19 +659,28 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     fillAdvancedEditor(saved);
     previewAdvanced();
   };
-  const loadPresetIntoEditor = (id) => {
+  const loadPresetIntoEditor = (id, extraPrefs = {}) => {
     const preset = colors[id];
     if (!preset) return;
     const name = advancedEditor.querySelector('[name="themeName"]');
     if (name) name.value = `${config.colors[id]?.label || id} custom`;
     fillAdvancedEditor(preset);
-    previewAdvanced();
+    setPrefs({ color: "custom", custom: editorThemeFromInputs(), ...extraPrefs });
   };
-  const colorblindPresetIds = [
-    "deuteranopia", "deuteranopia-dark", "deuteranopia-cool-dark",
-    "protanopia", "protanopia-dark", "protanopia-cool-dark",
-    "tritanopia", "tritanopia-dark", "tritanopia-cool-dark",
-  ].filter((id) => colors[id]);
+  const rawColorblindChoice = () => {
+    const raw = rawPrefs();
+    return {
+      profile: COLORBLIND_PROFILES.some(([id]) => id === raw.colorblindProfile) ? raw.colorblindProfile : "deuteranopia",
+      variant: COLORBLIND_VARIANTS.some(([id]) => id === raw.colorblindVariant) ? raw.colorblindVariant : "light",
+    };
+  };
+  let colorblindChoice = rawColorblindChoice();
+  const radioControl = (name, value, label, checked) => `<label class="samey-control samey-control-radio"><input class="samey-control-native" type="radio" name="${name}" value="${escapeHtml(value)}"${checked ? " checked" : ""}><span class="samey-radio-indicator" aria-hidden="true"><span></span></span><span class="samey-control-text">${escapeHtml(label)}</span></label>`;
+  const colorblindControls = () => `<div class="samey-colorblind-chooser"><fieldset><legend>Profile</legend><div class="samey-control-list" data-colorblind-profile>${COLORBLIND_PROFILES.map(([id, label]) => radioControl("samey-colorblind-profile", id, label, colorblindChoice.profile === id)).join("")}</div></fieldset><fieldset><legend>Variant</legend><div class="samey-control-list" data-colorblind-variant>${COLORBLIND_VARIANTS.map(([id, label]) => radioControl("samey-colorblind-variant", id, label, colorblindChoice.variant === id)).join("")}</div></fieldset></div>`;
+  const applyColorblindChoice = () => {
+    const id = colorblindPresetId(colorblindChoice.profile, colorblindChoice.variant);
+    loadPresetIntoEditor(id, { colorblindProfile: colorblindChoice.profile, colorblindVariant: colorblindChoice.variant });
+  };
   const mountAdvancedPage = () => {
     if (advancedPage) return;
     const page = document.createElement("div");
@@ -662,7 +688,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     page.dataset.sameyOverlay = "";
     page.dataset.sameyRuntime = "";
     page.hidden = true;
-    page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced theming &amp; colorblind modes</h1></div><button type="button" data-close-advanced aria-label="Close advanced theming and colorblind modes">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label>Theme name<input name="themeName" value="My theme" maxlength="80"></label><label>Tone<select name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input type="color" data-color-for="${key}"><input name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" data-save-theme>Save theme</button><button type="button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind modes</h2><p>Each mode has light, dark, and cool dark variants. Load one, then edit or save it.</p><div class="samey-advanced-preset-list">${colorblindPresetIds.map((id) => `<button type="button" data-load-preset="${escapeHtml(id)}">${escapeHtml(config.colors[id]?.label || id)}</button>`).join("")}</div></section><section><h2>Theme menu</h2><p>Choose which themes appear in the compact menu.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+    page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced &amp; Colorblind</h1></div><button type="button" class="samey-ui-button samey-icon-button" data-close-advanced aria-label="Close Advanced &amp; Colorblind">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label><span>Theme name</span><input class="samey-ui-input" name="themeName" value="My theme" maxlength="80"></label><label><span>Tone</span><select class="samey-ui-select" name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input class="samey-ui-color" type="color" data-color-for="${key}" aria-label="${escapeHtml(label)} color"><input class="samey-ui-input" name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" class="samey-ui-button samey-ui-button-primary" data-save-theme>Save theme</button><button type="button" class="samey-ui-button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind</h2><p>Choose the vision profile and luminance variant independently. Changes preview immediately and remain editable.</p>${colorblindControls()}</section><section><h2>Theme menu</h2><p>Choose which standard and saved themes appear in the compact menu. Colorblind choices stay in this page instead of becoming nine separate menu entries.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
     document.body.append(page);
     advancedPage = page;
     advancedEditor = page.querySelector("[data-advanced-editor]");
@@ -683,25 +709,37 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       if (target.hasAttribute("data-close-advanced")) closeAdvanced();
       else if (target.hasAttribute("data-save-theme")) saveAdvancedTheme();
       else if (target.hasAttribute("data-reset-editor")) { advancedEditor.querySelector('[name="themeName"]').value = read().savedName || "My theme"; fillAdvancedEditor(read()); }
-      else if (target.dataset.loadPreset) loadPresetIntoEditor(target.dataset.loadPreset);
       else if (target.dataset.loadSaved) loadSavedIntoEditor(target.dataset.loadSaved);
       else if (target.dataset.deleteSaved) deleteSavedTheme(target.dataset.deleteSaved);
     });
     page.addEventListener("change", (event) => {
-      const input = event.target.closest?.("[data-menu-theme]");
-      if (input) setMenuThemeAllowed(input.dataset.menuTheme, input.checked);
+      const input = event.target;
+      if (input.matches?.('[name="samey-colorblind-profile"]')) {
+        colorblindChoice = { ...colorblindChoice, profile: input.value };
+        applyColorblindChoice();
+        return;
+      }
+      if (input.matches?.('[name="samey-colorblind-variant"]')) {
+        colorblindChoice = { ...colorblindChoice, variant: input.value };
+        applyColorblindChoice();
+        return;
+      }
+      const menuInput = input.closest?.("[data-menu-theme]");
+      if (menuInput) setMenuThemeAllowed(menuInput.dataset.menuTheme, menuInput.checked);
     });
   };
-  const openAdvanced = (target = "advanced") => {
+  const openAdvanced = () => {
     mountAdvancedPage();
     closeAppearance();
+    colorblindChoice = rawColorblindChoice();
+    advancedPage.querySelectorAll('[name="samey-colorblind-profile"]').forEach((input) => { input.checked = input.value === colorblindChoice.profile; });
+    advancedPage.querySelectorAll('[name="samey-colorblind-variant"]').forEach((input) => { input.checked = input.value === colorblindChoice.variant; });
     advancedEditor.querySelector('[name="themeName"]').value = read().savedName || "My theme";
     fillAdvancedEditor(read());
     renderAdvancedSavedThemes();
     advancedPage.hidden = false;
     document.documentElement.classList.add("samey-advanced-open");
     advancedPage.scrollTop = 0;
-    if (target === "colorblind") requestAnimationFrame(() => { const section = advancedPage.querySelector("[data-colorblind-section]"); if (!section) return; if (matchMedia?.("(max-width:760px)").matches) section.scrollIntoView({ block: "start" }); else section.querySelector("button")?.focus({ preventScroll: true }); });
   };
   const closeAdvanced = () => {
     if (!advancedPage) return;
@@ -723,7 +761,6 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const fontButton = event.target.closest("[data-font-choice]");
       if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
       if (event.target.closest("[data-open-advanced]")) openAdvanced();
-      else if (event.target.closest("[data-open-colorblind]")) openAdvanced("colorblind");
     });
     document.body.append(panel);
     appearancePanel = panel;
@@ -1089,6 +1126,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     let fillTarget = null, fillVisible = false, fillCollapsing = false, fillFrame = 0, fillLastTime = 0;
     let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
     let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
+    let fillCollapseStart = 0, fillCollapseFromX = 0, fillCollapseFromY = 0, fillCollapseFromW = fillDot, fillCollapseFromH = fillDot;
+    const fillCollapseDuration = 132;
+    // Finite S curve: unlike exponential decay it reaches the cursor on time,
+    // and keeps non-zero endpoint velocity so the last few pixels never crawl.
+    const fillCollapseCurve = (t) => t - Math.sin(Math.PI * 2 * t) * .1;
     let geometryLink = null, geometryRects = [], geometryBounds = null;
     const subtractRect = (rect, hole) => {
       const left = Math.max(rect.left, hole.left), top = Math.max(rect.top, hole.top);
@@ -1150,14 +1192,28 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     const renderFill = (time) => {
       fillFrame = 0;
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (fillCollapsing) {
+        if (!fillCollapseStart) fillCollapseStart = time;
+        const raw = reduced ? 1 : Math.min(1, Math.max(0, (time - fillCollapseStart) / fillCollapseDuration));
+        const t = fillCollapseCurve(raw);
+        fillX = fillCollapseFromX + (wantedFillX - fillCollapseFromX) * t;
+        fillY = fillCollapseFromY + (wantedFillY - fillCollapseFromY) * t;
+        fillW = fillCollapseFromW + (wantedFillW - fillCollapseFromW) * t;
+        fillH = fillCollapseFromH + (wantedFillH - fillCollapseFromH) * t;
+        renderFillSlices();
+        if (raw >= 1) {
+          fillX = wantedFillX; fillY = wantedFillY; fillW = wantedFillW; fillH = wantedFillH;
+          fillVisible = fillCollapsing = false;
+          fillCollapseStart = fillLastTime = 0;
+          linkFill.hidden = true;
+        } else fillFrame = requestAnimationFrame(renderFill);
+        return;
+      }
       const dt = fillLastTime ? Math.min(34, Math.max(1, time - fillLastTime)) : 16.667;
       fillLastTime = time;
       const alpha = (tau) => reduced ? 1 : 1 - Math.exp(-dt / tau);
-      // Time-based easing has the same feel at 60/120/144 Hz. Position responds
-      // a little faster than size so the blob follows the pointer without the
-      // old rubber-band lag, while still expanding/collapsing smoothly.
-      const posEase = alpha(fillCollapsing ? 34 : 42);
-      const sizeEase = alpha(fillCollapsing ? 42 : 62);
+      const posEase = alpha(42);
+      const sizeEase = alpha(62);
       fillX += (wantedFillX - fillX) * posEase;
       fillY += (wantedFillY - fillY) * posEase;
       fillW += (wantedFillW - fillW) * sizeEase;
@@ -1168,11 +1224,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       renderFillSlices();
       const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35
         && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35;
-      if (fillCollapsing && done) {
-        fillVisible = fillCollapsing = false;
-        linkFill.hidden = true;
-        fillLastTime = 0;
-      } else if (!done) fillFrame = requestAnimationFrame(renderFill);
+      if (!done) fillFrame = requestAnimationFrame(renderFill);
       else fillLastTime = 0;
     };
     const ensureFillFrame = () => { if (!fillFrame) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
@@ -1180,7 +1232,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       fillTarget = null;
       geometryLink = null; geometryRects = []; geometryBounds = null;
       setFillLayer(null);
-      fillVisible = fillCollapsing = false; fillLastTime = 0;
+      fillVisible = fillCollapsing = false; fillCollapseStart = fillLastTime = 0;
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
       linkFill.hidden = true;
     };
@@ -1243,7 +1295,11 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         fillTarget = null;
         setFillLayer(null);
         if (!fillVisible) return;
-        fillCollapsing = true;
+        if (!fillCollapsing) {
+          fillCollapsing = true;
+          fillCollapseStart = 0;
+          fillCollapseFromX = fillX; fillCollapseFromY = fillY; fillCollapseFromW = fillW; fillCollapseFromH = fillH;
+        }
         wantedFillX = pendingX; wantedFillY = pendingY; wantedFillW = wantedFillH = fillDot;
         ensureFillFrame();
         return;
@@ -1253,7 +1309,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         fillVisible = true; linkFill.hidden = false;
       }
       if (fillTarget !== link) refreshLinkGeometry(link);
-      fillTarget = link; fillCollapsing = false; linkFill.hidden = false;
+      fillTarget = link; fillCollapsing = false; fillCollapseStart = 0; linkFill.hidden = false;
       updateFillGoal();
       ensureFillFrame();
     }
@@ -1345,15 +1401,16 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     syncCursorPresentation(read());
     const hasRawPointer = "onpointerrawupdate" in window;
     const moveCursorOnly = (event) => {
-      if (nativeDragging || cursorMode !== "invert") return;
+      if (nativeDragging) return;
       const x = event.clientX, y = event.clientY;
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       // pointerrawupdate is already the freshest sample the browser exposes. Keep
-      // this handler brutally small: no coalesced-event array, hit testing, style
-      // reads, timers, or cursor-mode work. A single compositor-only transform is
-      // the only per-sample DOM mutation.
+      // this handler brutally small: scalar position writes for every mode, and the
+      // single compositor transform only for the virtual cursor. No hit testing,
+      // style reads, timers, geometry work, or animation scheduling lives here.
       hasPointerPosition = true;
       lastX = pendingX = x; lastY = pendingY = y;
+      if (cursorMode !== "invert") return;
       cursor.style.transform = `translate3d(${x - 32}px,${y - 32}px,0)`;
       // Waking is normally handled by the lower-frequency pointermove event. If
       // idle hiding left the cursor invisible, expose the already-positioned layer
@@ -1377,6 +1434,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       // begin several pixels inside the same element, so very slow movement used
       // to leave the round cursor stuck. Only those position-sensitive text zones
       // get a once-per-frame geometry refresh; raw cursor positioning stays clean.
+      if (fillTarget) { updateFillGoal(); ensureFillFrame(); }
       schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
     };
     const refreshPointerTarget = (event) => {
