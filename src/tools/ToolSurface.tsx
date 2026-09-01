@@ -1,5 +1,6 @@
 import { createContext, onCleanup, onMount, useContext, type Accessor } from 'solid-js';
 import type { ToolId } from '../shared/catalog.ts';
+import { resilientImport } from '../shared/resilientImport.ts';
 
 export const ToolContext = createContext<Accessor<HTMLDivElement | undefined>>(() => undefined);
 
@@ -12,7 +13,7 @@ function loadToolsModule(): Promise<ToolsModule> {
   if (toolsModulePromise) return toolsModulePromise;
   const api = globalThis as typeof globalThis & { SameyLoadingBeginAfterDelay?: (delay?: number) => () => void };
   const releaseLoading = api.SameyLoadingBeginAfterDelay?.() ?? (() => {});
-  toolsModulePromise = import('./tools.ts').then(module => {
+  toolsModulePromise = resilientImport(() => import('./tools.ts')).then(module => {
     toolsModule = module;
     return module;
   }).catch(error => {

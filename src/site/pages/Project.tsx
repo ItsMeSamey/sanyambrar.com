@@ -2,9 +2,10 @@ import { lazy, Show } from 'solid-js';
 import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx';
+import { resilientImport } from '../../shared/resilientImport.ts';
 
-const ReverbDemo = lazy(() => import('../components/ReverbDemo.tsx').then(module => ({ default: module.ReverbDemo })));
-const CnnDemo = lazy(() => import('../components/CnnDemo.tsx').then(module => ({ default: module.CnnDemo })));
+const ReverbDemo = lazy(() => resilientImport(() => import('../components/ReverbDemo.tsx')).then(module => ({ default: module.ReverbDemo })));
+const CnnDemo = lazy(() => resilientImport(() => import('../components/CnnDemo.tsx')).then(module => ({ default: module.CnnDemo })));
 
 export function ProjectPage(props:{detail:ProjectDetailData}) {
   const source = () => props.detail.links.find(link => link.title === 'Source') ?? props.detail.links[0];

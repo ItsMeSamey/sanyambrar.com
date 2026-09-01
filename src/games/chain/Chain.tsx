@@ -4,6 +4,7 @@ import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
 import Settings from 'lucide-solid/icons/settings';
 import BarChart3 from 'lucide-solid/icons/chart-no-axes-column';
 import { createChainRefs } from './dom.ts';
+import { resilientImport } from '../../shared/resilientImport.ts';
 
 function Slider(props:{label:string;min:number;max:number;inputRef:(el:HTMLInputElement)=>void;outputRef:(el:HTMLOutputElement)=>void}) {
   return <label class="game-settings-slider">
@@ -26,7 +27,7 @@ export function ChainPage() {
     ><Settings aria-hidden="true"/></TopBarIconButton>}
   </GameTopBarActions>;
 
-  return <EngineBoundary label="Chain Reaction" load={() => import('./chain.ts')} mount={module => module.mountChain(refs)}>
+  return <EngineBoundary label="Chain Reaction" load={() => resilientImport(() => import('./chain.ts'))} mount={module => module.mountChain(refs)}>
     <div class="chain-shell">
       <section ref={el => refs.openingView = el} class="chain-opening chain-view">
         <TopBar nav={gameActions()}/>

@@ -1,12 +1,13 @@
 // @ts-nocheck
 import { TOOLS } from '../shared/catalog.ts';
+import { resilientImport } from '../shared/resilientImport.ts';
 import { renderMarkdown } from './markdown.ts';
 let sharedMonacoPromise;
 
 function loadMonacoModule() {
   if (sharedMonacoPromise) return sharedMonacoPromise;
   const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
-  sharedMonacoPromise = import('../site/monaco.ts').catch(error => {
+  sharedMonacoPromise = resilientImport(() => import('../site/monaco.ts')).catch(error => {
     sharedMonacoPromise = undefined;
     throw error;
   }).finally(releaseLoading);

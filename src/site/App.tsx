@@ -1,15 +1,16 @@
 import { ErrorBoundary, Match, Show, Suspense, Switch, createSignal, lazy, onCleanup, onMount } from 'solid-js';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
+import { resilientImport } from '../shared/resilientImport.ts';
 import { details } from './data';
 
 const rawLoaders = {
-  home: () => import('./pages/Home'),
-  work: () => import('./pages/Work'),
-  tools: () => import('../tools/Tools'),
-  chain: () => import('../games/chain/Chain'),
-  project: () => import('./pages/Project'),
-  blog: () => import('../blogs/Blog'),
+  home: () => resilientImport(() => import('./pages/Home')),
+  work: () => resilientImport(() => import('./pages/Work')),
+  tools: () => resilientImport(() => import('../tools/Tools')),
+  chain: () => resilientImport(() => import('../games/chain/Chain')),
+  project: () => resilientImport(() => import('./pages/Project')),
+  blog: () => resilientImport(() => import('../blogs/Blog')),
 } as const;
 
 type RouteKind = keyof typeof rawLoaders;

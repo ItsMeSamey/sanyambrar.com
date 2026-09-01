@@ -2,6 +2,7 @@ import * as monaco from 'monaco-editor/editor/editor.api';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import JsonWorker from 'monaco-editor/language/json/json.worker?worker';
 
+import { resilientImport } from '../shared/resilientImport.ts';
 type MonacoEnvironment = {
   getWorker(_: string, label: string): Worker;
 };
@@ -42,7 +43,7 @@ export function ensureMonacoLanguage(language: string) {
   let promise = loading.get(language);
   if (!promise) {
     const releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
-    promise = loader().finally(releaseLoading);
+    promise = resilientImport(loader).finally(releaseLoading);
     loading.set(language, promise);
   }
   return promise;

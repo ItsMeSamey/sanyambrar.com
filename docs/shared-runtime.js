@@ -365,7 +365,9 @@
 	//#endregion
 	//#region src/shared/theme.ts
 	(() => {
-		const SCRIPT_ROOT = new URL(".", document.currentScript?.src || location.href);
+		const SCRIPT_URL = new URL(document.currentScript?.src || location.href);
+		const SCRIPT_ROOT = new URL(".", SCRIPT_URL);
+		const BUILD_VERSION = SCRIPT_URL.searchParams.get("v") || "";
 		const KEY = "keybr.theme";
 		const FONT_KEY = "samey.font";
 		const CURSOR_MODES = Object.freeze([
@@ -2922,7 +2924,11 @@
 		};
 		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
 		else mountRuntime();
-		if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register(new URL("sw.js", SCRIPT_ROOT).href).catch(() => {});
+		if ("serviceWorker" in navigator && location.protocol !== "file:") {
+			const serviceWorkerUrl = new URL("sw.js", SCRIPT_ROOT);
+			if (BUILD_VERSION) serviceWorkerUrl.searchParams.set("v", BUILD_VERSION);
+			navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: "none" }).catch(() => {});
+		}
 	})();
 	//#endregion
 	//#region src/shared/catalog.ts

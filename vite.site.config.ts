@@ -13,7 +13,7 @@ export default defineConfig({
     cssCodeSplit: true,
     rolldownOptions: {
       output: {
-        entryFileNames: 'site-app.js',
+        entryFileNames: 'site-chunks/site-app-[hash].js',
         chunkFileNames: 'site-chunks/[name]-[hash].js',
         assetFileNames: 'site-chunks/[name]-[hash][extname]',
       },

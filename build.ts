@@ -449,7 +449,7 @@ ${keybrViewSwitch}`;
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
     cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
     cnnDemoSource.includes("document.createElement('canvas')") && !cnnDemoSource.includes('class="cnn-sample-canvas"') &&
-    cnnDemoSource.includes("new Worker('/cnn-worker.js')") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("inferenceDirty") && cnnDemoSource.includes("activeRequestEpoch") &&
+    cnnDemoSource.includes("new Worker(versionedRootAsset('/cnn-worker.js'))") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("inferenceDirty") && cnnDemoSource.includes("activeRequestEpoch") &&
     cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("input.buffer as ArrayBuffer") && cnnDemoSource.includes("message.id === activeRequestId") &&
     !cnnDemoSource.includes("WebAssembly.instantiate") && !cnnDemoSource.includes("wasm.predict()") &&
     !cnnDemoSource.includes("__sameyCnnInfer") && !cnnDemoSource.includes("CnnInference") &&
@@ -457,7 +457,7 @@ ${keybrViewSwitch}`;
     cnnDemoSource.includes("canvasRect = canvas.getBoundingClientRect()") && cnnDemoSource.includes("new ResizeObserver") &&
     (cnnDemoSource.match(/getComputedStyle\(/g) || []).length === 1 && (cnnDemoSource.match(/getBoundingClientRect\(\)/g) || []).length === 2 &&
     cnnDemoSource.includes("sampleContext.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE)") &&
-    cnnWorkerSource.includes("WebAssembly.instantiateStreaming") && cnnWorkerSource.includes("fetch('/cnn.wasm')") &&
+    cnnWorkerSource.includes("WebAssembly.instantiateStreaming") && cnnWorkerSource.includes("const wasmUrl = new URL('/cnn.wasm', self.location.origin)") && cnnWorkerSource.includes("wasmUrl.search = self.location.search") && cnnWorkerSource.includes("fetch(wasmUrl)") &&
     cnnWorkerSource.includes("wasm.predict()") && cnnWorkerSource.includes("wasm.image_ptr()") && cnnWorkerSource.includes("wasm.probabilities_ptr()") &&
     cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
     existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
@@ -660,12 +660,19 @@ ${keybrViewSwitch}`;
   must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
+  const siteAppSource = await readFile(join(ROOT, "src/site/App.tsx"), "utf8");
+  const resilientImportSource = await readFile(join(ROOT, "src/shared/resilientImport.ts"), "utf8");
+  must(siteAppSource.includes("resilientImport(() => import('./pages/Project'))") &&
+    resilientImportSource.includes('Failed to fetch dynamically imported module') &&
+    resilientImportSource.includes('location.reload()') &&
+    sharedTheme.includes('updateViaCache: "none"') && sharedTheme.includes('BUILD_VERSION'),
+    "deployment: stale SPA chunks must recover by reloading a cache-busted current shell");
   const siteChrome = await readFile(join(ROOT, "src/site/components/SiteChrome.tsx"), "utf8");
   const projectPage = await readFile(join(ROOT, "src/site/pages/Project.tsx"), "utf8");
   const reverbDemo = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemo = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   must(projectPage.includes("props.detail.demo === 'cnn-draw'") && projectPage.includes("import('../components/CnnDemo.tsx')") &&
-    siteData.includes("demo:'cnn-draw'") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise") &&
+    siteData.includes("demo:'cnn-draw'") && projectPage.includes("resilientImport(() => import('../components/CnnDemo.tsx'))") && cnnDemo.includes("versionedRootAsset('/cnn-worker.js')") && cnnDemo.includes("cnn-output-pane") && !cnnDemo.includes("cnn-settings-pane") && !cnnDemo.includes("Browser inference") && !cnnDemo.includes("WASM LIVE") && !cnnDemo.includes("11-way softmax") && !cnnDemo.includes("MODEL INPUT") && !cnnDemo.includes("0–9, symbols, greys, noise") && !cnnDemo.includes("Sketch a digit, symbol, or noise") &&
     cnnDemo.includes("let activePointerId: number | null = null") && cnnDemo.includes("event.pointerId !== activePointerId") &&
     cnnDemo.includes("onLostPointerCapture={loseStrokeCapture}"),
     "ux: CNN project detail must keep its live-drawing demo mounted on the project page and bind each stroke to exactly one active pointer");
@@ -797,7 +804,8 @@ async function buildBlogPost() {
 async function buildSiteRuntime() {
   await ensureDeps(ROOT);
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.site.config.ts"]);
-  must(existsSync(join(GENERATED_SITE_RUNTIME, "site-app.js")), "site runtime bundle missing");
+  const siteEntries = await walk(GENERATED_SITE_RUNTIME, (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
+  must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
   log("solid site SPA -> .build/site-runtime");
 }
 
@@ -841,12 +849,147 @@ async function deployAssets() {
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"));
 }
 
+async function versionMutableShellReferences() {
+  const siteEntries = await walk(join(DOCS, "site-chunks"), (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
+  must(siteEntries.length === 1, `deployment: expected one hashed site entry, found ${siteEntries.length}`);
+  const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
+  const mutableAssets = ["site.css", "shared-runtime.js", "cnn-worker.js", "cnn.wasm"]
+    .filter(name => existsSync(join(DOCS, name)));
+  must(mutableAssets.includes("site.css") && mutableAssets.includes("shared-runtime.js"),
+    "deployment: mutable site shell assets are incomplete");
+  const hash = createHash("sha256");
+  hash.update(siteEntry).update("\0");
+  for (const name of mutableAssets) hash.update(name).update("\0").update(await readFile(join(DOCS, name))).update("\0");
+  const version = hash.digest("hex").slice(0, 16);
+  const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
+  const mutableRef = /((?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js))(?:\?v=[^"']*)?(["'])/g;
+  for (const file of htmlFiles) {
+    let source = await readFile(file, "utf8");
+    if (source.includes("data-solid-spa"))
+      source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
+    source = source.replace(mutableRef, `$1?v=${version}$2`);
+    if (!/<meta\s+name=["']samey-build["']/i.test(source))
+      source = source.replace(/<head>/i, `<head><meta name="samey-build" content="${version}">`);
+    await writeFile(file, source);
+  }
+  for (const file of htmlFiles) {
+    const source = await readFile(file, "utf8");
+    const refs = [...source.matchAll(/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/g)].map(match => match[0]);
+    must(refs.every(ref => ref.includes(`?v=${version}`)), `deployment: stale mutable shell reference remains in ${relative(DOCS, file)}`);
+    must(!source.includes("site-app.js"), `deployment: mutable site-app reference remains in ${relative(DOCS, file)}`);
+    if (source.includes("data-solid-spa"))
+      must(source.includes(siteEntry), `deployment: hashed site entry missing in ${relative(DOCS, file)}`);
+    must(source.includes(`<meta name="samey-build" content="${version}">`), `deployment: missing build version in ${relative(DOCS, file)}`);
+  }
+  must(!existsSync(join(DOCS, "site-app.js")), "deployment: mutable site-app.js must not be emitted");
+  log(`versioned mutable shell references -> ${version}; site entry -> ${siteEntry}`);
+  return version;
+}
+
 async function generateServiceWorker() {
   const files = await deployAssets();
   const hash = createHash("sha256");
   for (const file of files) hash.update(file).update("\0").update(await readFile(join(DOCS, file))).update("\0");
   const version = hash.digest("hex").slice(0, 16);
-  const source = `// Generated by build.ts. Do not edit.\nconst CACHE_PREFIX = 'samey-site-';\nconst CACHE = CACHE_PREFIX + '${version}';\nconst ROOT = new URL('./', self.registration.scope);\nconst CORE = ${JSON.stringify(files)};\n\nself.addEventListener('install', event => {\n  event.waitUntil(Promise.all([\n    caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new URL(path, ROOT)))),\n    self.skipWaiting(),\n  ]));\n});\n\nself.addEventListener('activate', event => {\n  event.waitUntil(Promise.all([\n    caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).map(key => caches.delete(key)))),\n    self.clients.claim(),\n  ]));\n});\n\nconst offlineNavigation = async request => {\n  const cached = await caches.match(request);\n  if (cached) return cached;\n  const url = new URL(request.url);\n  if (url.pathname.endsWith('/')) {\n    const directoryIndex = await caches.match(new URL('index.html', url));\n    if (directoryIndex) return directoryIndex;\n  } else if (!url.pathname.split('/').pop()?.includes('.')) {\n    const htmlPage = await caches.match(new URL(url.pathname + '.html', url.origin));\n    if (htmlPage) return htmlPage;\n    const directoryIndex = await caches.match(new URL(url.pathname + '/index.html', url.origin));\n    if (directoryIndex) return directoryIndex;\n  }\n  return caches.match(new URL('index.html', ROOT));\n};\n\nself.addEventListener('fetch', event => {\n  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;\n  if (event.request.mode === 'navigate') {\n    event.respondWith((async () => {\n      try {\n        const response = await fetch(event.request);\n        if (response.ok) {\n          (await caches.open(CACHE)).put(event.request, response.clone());\n          return response;\n        }\n        return (await offlineNavigation(event.request)) || response;\n      } catch { return offlineNavigation(event.request); }\n    })());\n    return;\n  }\n  const refresh = fetch(event.request).then(async response => {\n    if (response.ok) (await caches.open(CACHE)).put(event.request, response.clone());\n    return response;\n  });\n  event.respondWith(caches.match(event.request).then(cached => cached || refresh).catch(() => refresh));\n  event.waitUntil(refresh.catch(() => undefined));\n});\n`;
+  const source = `// Generated by build.ts. Do not edit.
+const CACHE_PREFIX = 'samey-site-';
+const CACHE = CACHE_PREFIX + '${version}';
+const ROOT = new URL('./', self.registration.scope);
+const CORE = ${JSON.stringify(files)};
+
+const relativePath = request => {
+  const url = new URL(request.url);
+  return url.pathname.startsWith(ROOT.pathname) ? url.pathname.slice(ROOT.pathname.length) : '';
+};
+const immutableAsset = request => {
+  const path = relativePath(request);
+  return path.startsWith('site-chunks/') || path.startsWith('assets/');
+};
+const cacheKey = request => {
+  const url = new URL(request.url);
+  url.searchParams.delete('v');
+  return url.href;
+};
+const cacheResponse = async (request, response) => {
+  if (response.ok) (await caches.open(CACHE)).put(cacheKey(request), response.clone());
+  return response;
+};
+const staleChunkResponse = request => new Response(
+  'location.reload();\\nawait new Promise(() => {});\\n//# sourceURL=' + request.url,
+  { status: 200, headers: { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' } },
+);
+const fetchFresh = async request => {
+  const response = await fetch(request);
+  if ((response.status === 404 || response.status === 410) && immutableAsset(request) && new URL(request.url).pathname.endsWith('.js'))
+    return staleChunkResponse(request);
+  return cacheResponse(request, response);
+};
+const networkFirst = async request => {
+  try { return await fetchFresh(request); }
+  catch (error) {
+    const cached = await (await caches.open(CACHE)).match(cacheKey(request));
+    if (cached) return cached;
+    throw error;
+  }
+};
+const cacheFirstImmutable = async request => {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  return fetchFresh(request);
+};
+
+self.addEventListener('install', event => {
+  event.waitUntil(Promise.all([
+    caches.open(CACHE).then(cache => cache.addAll(CORE.map(path => new URL(path, ROOT)))),
+    self.skipWaiting(),
+  ]));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(Promise.all([
+    caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).map(key => caches.delete(key)))),
+    self.clients.claim(),
+  ]));
+});
+
+const offlineNavigation = async request => {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const url = new URL(request.url);
+  if (url.pathname.endsWith('/')) {
+    const directoryIndex = await cache.match(new URL('index.html', url));
+    if (directoryIndex) return directoryIndex;
+  } else if (!url.pathname.split('/').pop()?.includes('.')) {
+    const htmlPage = await cache.match(new URL(url.pathname + '.html', url.origin));
+    if (htmlPage) return htmlPage;
+    const directoryIndex = await cache.match(new URL(url.pathname + '/index.html', url.origin));
+    if (directoryIndex) return directoryIndex;
+  }
+  return cache.match(new URL('index.html', ROOT));
+};
+
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          (await caches.open(CACHE)).put(event.request, response.clone());
+          return response;
+        }
+        return (await offlineNavigation(event.request)) || response;
+      } catch { return offlineNavigation(event.request); }
+    })());
+    return;
+  }
+  // Only content-hashed Vite assets are cache-first. Mutable shell/runtime,
+  // workers and WASM are network-first so a deployment cannot mix generations.
+  event.respondWith(immutableAsset(event.request) ? cacheFirstImmutable(event.request) : networkFirst(event.request));
+});
+`;
   await writeFile(join(DOCS, "sw.js"), source);
 }
 
@@ -874,7 +1017,10 @@ async function main() {
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
   await removeCompressionSidecars();
-  if (targets.has("static")) await generateServiceWorker();
+  if (targets.has("static")) {
+    await versionMutableShellReferences();
+    await generateServiceWorker();
+  }
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");
 }
 

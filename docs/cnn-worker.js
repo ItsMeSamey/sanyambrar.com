@@ -5,7 +5,9 @@ const UNKNOWN_CLASS = 10;
 let wasm;
 
 async function instantiateCnn() {
-  const response = await fetch('/cnn.wasm');
+  const wasmUrl = new URL('/cnn.wasm', self.location.origin);
+  wasmUrl.search = self.location.search;
+  const response = await fetch(wasmUrl);
   if (!response.ok) throw new Error(`cnn.wasm: HTTP ${response.status}`);
 
   let result;

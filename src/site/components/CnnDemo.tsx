@@ -10,6 +10,15 @@ type WorkerMessage =
   | { type: 'result'; id: number; classId: number; probabilities: number[] }
   | { type: 'error'; id?: number; message: string };
 
+
+function versionedRootAsset(path: string): string {
+  const version = document.querySelector<HTMLMetaElement>('meta[name="samey-build"]')?.content.trim();
+  if (!version) return path;
+  const url = new URL(path, location.origin);
+  url.searchParams.set('v', version);
+  return `${url.pathname}${url.search}`;
+}
+
 function emptyScores(): Array<number | null> {
   return Array.from({ length: OUTPUTS.length }, () => null);
 }
@@ -230,7 +239,7 @@ export function CnnDemo() {
     resizeObserver = new ResizeObserver(() => { canvasRect = null; });
     resizeObserver.observe(canvas);
 
-    worker = new Worker('/cnn-worker.js');
+    worker = new Worker(versionedRootAsset('/cnn-worker.js'));
     worker.addEventListener('message', event => {
       if (disposed) return;
       const message = event.data as WorkerMessage;
