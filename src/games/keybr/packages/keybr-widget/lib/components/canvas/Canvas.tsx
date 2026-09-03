@@ -50,12 +50,16 @@ export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
     }, () => [size()]);
     useEffect(() => {
         const currentSize = size();
+        themeRevision();
         if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
             const canvas = element.current!;
             const context = canvas.getContext("2d")!;
+            // Keep this effect tracked. Chart paint functions can depend on Solid
+            // memos even when their callback identity is stable. Explicit React-style
+            // deps would untrack the paint call and turn those controls into no-ops.
             new Graphics(context).paint(solidLocal.paint(currentSize));
         }
-    }, () => [size(), solidLocal.paint, themeRevision()]);
+    });
     return (<canvas {...props} ref={el => element.current = el} id={solidLocal.id} class={solidLocal.className} style={{
             display: "block",
             "inline-size": "100%",

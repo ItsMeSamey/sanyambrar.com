@@ -43,7 +43,7 @@ export function ResultGrouper(solidProps: {
             setSelectedLayout(Layout.ALL.get(value));
         }}/>
         </Field>
-        <Field>
+        <Field size={16}>
           <OptionList options={[
             {
                 name: formatMessage({
@@ -62,14 +62,14 @@ export function ResultGrouper(solidProps: {
             {
                 name: formatMessage({
                     id: "t_cc_Punctuation_characters",
-                    defaultMessage: "Punctuation characters",
+                    defaultMessage: "Punctuation",
                 }),
                 value: "punctuators",
             },
             {
                 name: formatMessage({
                     id: "t_cc_Special_characters",
-                    defaultMessage: "Special characters",
+                    defaultMessage: "Special",
                 }),
                 value: "specials",
             },

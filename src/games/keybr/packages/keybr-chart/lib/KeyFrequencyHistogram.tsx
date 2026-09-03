@@ -7,55 +7,59 @@ import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
 import { keyUsage } from "./keyusage.ts";
+import { reactivePaint } from "./reactive-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeyFrequencyHistogram(solidProps: {
     readonly keyStatsMap: KeyStatsMap;
 } & SizeProps): ReactNode {
     const styles = useChartStyles();
-    const paint = usePaint(styles, solidProps.keyStatsMap);
+    const paint = usePaint(styles, () => solidProps.keyStatsMap);
     return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, keyStatsMap: KeyStatsMap) {
+function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
-    const g = withStyles(styles);
-    const { letters, results } = keyStatsMap;
-    if (!hasData(results)) {
+    return reactivePaint(() => {
+        const currentKeyStatsMap = keyStatsMap();
+        const g = withStyles(styles);
+        const { letters, results } = currentKeyStatsMap;
+        if (!hasData(results)) {
+            return (box: Rect): ShapeList => {
+                const [boxHit, boxMiss, boxRatio] = boxes(box);
+                return [
+                    g.paintFrame(boxHit),
+                    g.paintFrame(boxMiss),
+                    g.paintFrame(boxRatio),
+                    g.paintKeyTicks(box, letters, "bottom"),
+                    g.paintNoData(boxHit, formatMessage),
+                ];
+            };
+        }
+        const { hit, miss, ratio } = keyUsage(currentKeyStatsMap);
+        const vHit = hit.asVector();
+        const vMiss = miss.asVector();
+        const vRatio = ratio.asVector();
+        const rHit = Range.from(vHit);
+        const rMiss = Range.from(vMiss);
+        const rRatio = Range.from(vRatio);
         return (box: Rect): ShapeList => {
             const [boxHit, boxMiss, boxRatio] = boxes(box);
             return [
+                paintHistogram(boxHit, vHit, rHit, {
+                    style: styles.histHit,
+                }),
+                paintHistogram(boxMiss, vMiss, rMiss, {
+                    style: styles.histMiss,
+                }),
+                paintHistogram(boxRatio, vRatio, rRatio, {
+                    style: styles.histRatio,
+                }),
                 g.paintFrame(boxHit),
                 g.paintFrame(boxMiss),
                 g.paintFrame(boxRatio),
                 g.paintKeyTicks(box, letters, "bottom"),
-                g.paintNoData(boxHit, formatMessage),
             ];
         };
-    }
-    const { hit, miss, ratio } = keyUsage(keyStatsMap);
-    const vHit = hit.asVector();
-    const vMiss = miss.asVector();
-    const vRatio = ratio.asVector();
-    const rHit = Range.from(vHit);
-    const rMiss = Range.from(vMiss);
-    const rRatio = Range.from(vRatio);
-    return (box: Rect): ShapeList => {
-        const [boxHit, boxMiss, boxRatio] = boxes(box);
-        return [
-            paintHistogram(boxHit, vHit, rHit, {
-                style: styles.histHit,
-            }),
-            paintHistogram(boxMiss, vMiss, rMiss, {
-                style: styles.histMiss,
-            }),
-            paintHistogram(boxRatio, vRatio, rRatio, {
-                style: styles.histRatio,
-            }),
-            g.paintFrame(boxHit),
-            g.paintFrame(boxMiss),
-            g.paintFrame(boxRatio),
-            g.paintKeyTicks(box, letters, "bottom"),
-        ];
-    };
+    });
 }
 function boxes(box: Rect) {
     const boxHit = new Rect(box.x, box.y, box.width, box.height * 0.34);

@@ -200,8 +200,11 @@ ${keybrViewSwitch}`;
     "architecture: Solid routes must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Wordle views must use the shared transition runtime");
-  must((await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8")).includes("animateMountedViewSwap"),
-    "architecture: Chain views must use the shared transition runtime");
+  const chainTransitionSource = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
+  must(chainTransitionSource.includes("animateMountedViewSwap") && chainTransitionSource.includes("function showView(to, commit, direction = 'forward')") &&
+    chainTransitionSource.includes("showView(openingView, commit, 'back')") && chainTransitionSource.includes("showView(statsView, commit, 'forward')") &&
+    chainTransitionSource.includes("showView(gameView, commit, fromStats ? 'back' : 'forward')"),
+    "architecture: every Chain page view must use the shared transition runtime");
   must(keybrSolidRuntime.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
 
@@ -333,6 +336,22 @@ ${keybrViewSwitch}`;
     keybrCanvas.includes('addEventListener("samey-themechange", repaint)') && keybrCanvas.includes("themeRevision()") &&
     keybrElementSize.includes("return size;") && !keybrElementSize.includes("return size();"),
     "ux: Keybr canvas sizing and theme repainting must stay reactive so statistics charts update immediately");
+  const keybrReactivePaint = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/reactive-paint.ts"), "utf8");
+  const keybrSpeedChart = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/SpeedChart.tsx"), "utf8");
+  const keybrKeySpeedChart = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/KeySpeedChart.tsx"), "utf8");
+  const keybrFrequencyHeatmap = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/KeyFrequencyHeatmap.tsx"), "utf8");
+  const keybrResultGrouper = await readFile(join(ROOT, "src/games/keybr/packages/page-stats/lib/stats/ResultGrouper.tsx"), "utf8");
+  const keybrMessages = await readFile(join(ROOT, "src/games/keybr/packages/keybr-intl/lib/messages/en.json"), "utf8");
+  must(keybrCanvas.includes("new Graphics(context).paint(solidLocal.paint(currentSize));") &&
+    !keybrCanvas.includes("[size(), solidLocal.paint, themeRevision()]") &&
+    keybrReactivePaint.includes("const current = createMemo(factory)") && keybrReactivePaint.includes("current()(box)") &&
+    keybrSpeedChart.includes("() => solidProps.smoothness") && keybrKeySpeedChart.includes("() => solidProps.samples") &&
+    keybrKeySpeedChart.includes("() => solidProps.smoothness") && keybrSpeedHistogram.includes("() => props.thresholds") &&
+    keybrProgressOverview.includes("() => solidProps.keyStatsMap") && keybrFrequencyHeatmap.includes("createMemo(() => keyUsage(solidProps.keyStatsMap))") &&
+    keybrResultGrouper.includes("<Field size={16}>") && keybrResultGrouper.includes('defaultMessage: "Punctuation"') &&
+    keybrResultGrouper.includes('defaultMessage: "Special"') && keybrMessages.includes('"t_cc_Punctuation_characters": "Punctuation"') &&
+    keybrMessages.includes('"t_cc_Special_characters": "Special"'),
+    "ux: Keybr statistics controls must drive live chart data, key selection, and compact non-wrapping character labels");
   const keybrControls = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.tsx"), "utf8");
   const keybrControlsStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/Controls.module.css"), "utf8");
   const keybrTopBar = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/KeybrTopBar.tsx"), "utf8");
@@ -412,6 +431,7 @@ ${keybrViewSwitch}`;
   const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.js"), "utf8");
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
+    reverbDemoSource.includes("Available on F-Droid") && reverbDemoSource.includes("https://f-droid.org/packages/app.smallthingz.reverb/") &&
     reverbDemoSource.includes("runReverbDemoRuntime(") && !reverbDemoSource.includes("new Function(") && !reverbDemoSource.includes("replaceAll(") && !reverbDemoSource.includes("CSS.escape") &&
     reverbRuntimeSource.includes("export function runReverbDemoRuntime") && reverbRuntimeSource.includes("function makeBlobShader(canvas)") && reverbRuntimeSource.includes("using 2D fallback") && reverbRuntimeSource.includes("canvas.cloneNode(false)") && reverbRuntimeSource.includes("return makeFallbackBlob(canvas)") && !reverbDemoHtml.includes("<script>") &&
     !reverbDemoSource.includes("<iframe") && !reverbDemoSource.includes("srcdoc=") && !reverbDemoSource.includes("sandbox="),
@@ -632,7 +652,8 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes('setCursorVisible(true);\n        linkFill.hidden = true;') &&
     sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
-    sharedTheme.includes('const hardwareCursorPngs = (theme) =>') &&
+    sharedTheme.includes('const hardwareCursorPngs = (theme) =>') && sharedTheme.includes('const CURSOR_SUPERSAMPLE = 4') &&
+    sharedTheme.includes('source.width = width * CURSOR_SUPERSAMPLE') && sharedTheme.includes('ctx.imageSmoothingQuality = "high"') &&
     sharedTheme.includes('cropped.toDataURL("image/png")') && sharedTheme.includes('ctx.getImageData(0, 0, width, height).data') &&
     sharedTheme.includes('20, 20, "22 22 20 20"') && sharedTheme.includes('4, 24, "30 20 4 24"') &&
     sharedTheme.includes('text: make(4, 24, 2, 12') && !sharedTheme.includes('text: make(6, 26') &&

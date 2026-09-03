@@ -173,7 +173,10 @@ export function ReverbDemo() {
   });
   onCleanup(() => dispose());
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
-    <div class="reverb-demo-head"><h2 id="reverb-ui-demo-title">UI demo</h2></div>
+    <div class="reverb-demo-head">
+      <h2 id="reverb-ui-demo-title">UI demo</h2>
+      <a class="reverb-demo-store-link" href="https://f-droid.org/packages/app.smallthingz.reverb/" target="_blank" rel="noopener noreferrer">Available on F-Droid <span aria-hidden="true">↗</span></a>
+    </div>
     <div class="reverb-demo-frame-shell">
       <div ref={frame} class="reverb-demo-frame">
         <div ref={host} class="reverb-demo-host" role="group" aria-label="Interactive Reverb UI demo" />

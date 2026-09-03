@@ -1175,8 +1175,27 @@ export function mountChain(refs) {
     resumeButton.textContent = saved.gameOver ? 'View board' : 'Continue game';
   }
 
+  let currentView = openingView;
+  let viewTransitionsReady = false;
+
+  function showView(to, commit, direction = 'forward') {
+    const from = currentView;
+    currentView = to;
+    if (from === to) {
+      commit();
+      return;
+    }
+    if (!viewTransitionsReady) {
+      commit();
+      from.hidden = true;
+      to.hidden = false;
+      return;
+    }
+    void animateMountedViewSwap(from, to, commit, direction);
+  }
+
   function showMenu(syncUrl = true) {
-    const wasInGame = !gameView.hidden;
+    const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_MENU);
     if (wasInGame && locked) {
       pendingPage = PAGE_MENU;
@@ -1188,42 +1207,35 @@ export function mountChain(refs) {
       if (wasInGame) gameVersion++;
       setSettingsOpen(false);
       resultPanel.hidden = true;
-      statsView.hidden = true;
       if (wasInGame || readSavedGame()) saveGameState(false);
       updateResumeCard();
     };
-    if (wasInGame) {
-      void animateMountedViewSwap(gameView, openingView, commit, 'back');
-    } else {
-      commit();
-      gameView.hidden = true;
-      openingView.hidden = false;
-    }
+    showView(openingView, commit, 'back');
   }
 
   function showStats(syncUrl = true) {
+    const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_STATS);
-    if (!gameView.hidden && locked) {
+    if (wasInGame && locked) {
       pendingPage = PAGE_STATS;
       statusEl.textContent = 'Finishing cascade before opening statistics';
       return;
     }
     pendingPage = null;
-    if (!gameView.hidden) saveGameState(false);
-    setSettingsOpen(false);
-    resultPanel.hidden = true;
-    openingView.hidden = true;
-    gameView.hidden = true;
-    statsView.hidden = false;
-    renderStats();
+    const commit = () => {
+      if (wasInGame) saveGameState(false);
+      setSettingsOpen(false);
+      resultPanel.hidden = true;
+      renderStats();
+    };
+    showView(statsView, commit, 'forward');
   }
 
   function showGame(syncUrl = true) {
+    const fromStats = currentView === statsView;
     pendingPage = null;
     closeReplay();
     if (syncUrl) writePage(PAGE_GAME);
-    statsView.hidden = true;
-    const wasInMenu = !openingView.hidden;
     const commit = () => {
       saveGameState(true);
       requestAnimationFrame(() => {
@@ -1233,13 +1245,7 @@ export function mountChain(refs) {
         else if (turn !== HUMAN) continueTurns();
       });
     };
-    if (wasInMenu) {
-      void animateMountedViewSwap(openingView, gameView, commit, 'forward');
-    } else {
-      openingView.hidden = true;
-      gameView.hidden = false;
-      commit();
-    }
+    showView(gameView, commit, fromStats ? 'back' : 'forward');
   }
 
   function showResult() {
@@ -1389,6 +1395,7 @@ export function mountChain(refs) {
   if (initialPage === PAGE_STATS) showStats(false);
   else if (initialPage === PAGE_GAME) showGame(false);
   else showMenu(false);
+  viewTransitionsReady = true;
 
   return () => {
     gameVersion++;

@@ -46,16 +46,27 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     return { dot, text, grab, loading };
   };
   const hardwareCursorCache = new Map();
+  const CURSOR_SUPERSAMPLE = 4;
   const hardwareCursorPngs = (theme) => {
     const cacheKey = `${theme.text}|${theme.background}`;
     if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
     const make = (width, height, hotspotX, hotspotY, draw) => {
       try {
+        const source = document.createElement("canvas");
+        source.width = width * CURSOR_SUPERSAMPLE;
+        source.height = height * CURSOR_SUPERSAMPLE;
+        const sourceCtx = source.getContext("2d");
+        if (!sourceCtx) return null;
+        sourceCtx.scale(CURSOR_SUPERSAMPLE, CURSOR_SUPERSAMPLE);
+        if (draw(sourceCtx, width, height) === false) return null;
+
         const canvas = document.createElement("canvas");
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext("2d", { willReadFrequently: true });
         if (!ctx) return null;
-        if (draw(ctx, width, height) === false) return null;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(source, 0, 0, width, height);
         const pixels = ctx.getImageData(0, 0, width, height).data;
         let minX = width, minY = height, maxX = -1, maxY = -1;
         for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
@@ -87,14 +98,16 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       circle(ctx, cx, y + height - r, r, fill);
     };
     const maskedCircle = (ctx, size, radius, fill, cutWidth, cutLength) => {
-      const layer = document.createElement("canvas"); layer.width = layer.height = size;
+      const layer = document.createElement("canvas");
+      layer.width = layer.height = size * CURSOR_SUPERSAMPLE;
       const lctx = layer.getContext("2d"); if (!lctx) return;
+      lctx.scale(CURSOR_SUPERSAMPLE, CURSOR_SUPERSAMPLE);
       const c = size / 2;
       circle(lctx, c, c, radius, fill);
       lctx.globalCompositeOperation = "destination-out";
       lctx.fillRect(c - cutWidth / 2, c - cutLength / 2, cutWidth, cutLength);
       lctx.fillRect(c - cutLength / 2, c - cutWidth / 2, cutLength, cutWidth);
-      ctx.drawImage(layer, 0, 0);
+      ctx.drawImage(layer, 0, 0, size, size);
     };
     const fg = theme.text, bg = theme.background;
     const out = {
