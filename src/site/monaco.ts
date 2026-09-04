@@ -14,7 +14,7 @@ const environment: MonacoEnvironment = {
   },
 };
 
-(globalThis as typeof globalThis & { MonacoEnvironment?: MonacoEnvironment }).MonacoEnvironment = environment;
+globalThis.MonacoEnvironment = environment;
 
 type LanguageLoader = () => Promise<unknown>;
 const languageLoaders: Record<string, LanguageLoader> = {

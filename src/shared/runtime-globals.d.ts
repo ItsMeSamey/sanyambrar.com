@@ -14,6 +14,7 @@ type AppearanceConfig = { colors: Record<string, AppearanceColorConfig>; fonts: 
 
 declare global {
   interface DocumentEventMap { pointerrawupdate: PointerEvent; }
+  var MonacoEnvironment: ({ getWorker(moduleId: string, label: string): Worker }) | undefined;
   var SameyAppearanceConfig: AppearanceConfig | undefined;
   var SameyOpenAppearance: ((trigger: HTMLElement) => void) | undefined;
   var SameyLoadingSvg: (() => string) | undefined;

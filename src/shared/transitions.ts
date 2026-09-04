@@ -108,8 +108,7 @@ function makeConstructionLayer(root: HTMLElement) {
 }
 
 function animateConstructionLines(layer: HTMLElement, phase: Phase, direction: Direction) {
-  return [...layer.children].map((child, index) => {
-    const line = child as HTMLElement;
+  return [...layer.querySelectorAll<HTMLElement>(':scope > .samey-construction-line')].map((line, index) => {
     const horizontal = line.dataset.axis === 'x';
     const entering = phase === 'in';
     const forward = direction === 'forward';

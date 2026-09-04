@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/python-HHKZN340.js","site-chunks/monaco-CiN4-tSM.js","site-chunks/site-app-DG9Z8hdK.js","site-chunks/monaco-BJ215w34.css"])))=>i.map(i=>d[i]);
+import{t as e}from"./site-app-DG9Z8hdK.js";import{t}from"./_.contribution-Bk21vLZ-.js";t({id:`python`,extensions:[`.py`,`.rpy`,`.pyw`,`.cpy`,`.gyp`,`.gypi`],aliases:[`Python`,`py`],firstLine:`^#!/.*\\bpython[0-9.-]*\\b`,loader:()=>e(()=>import(`./python-HHKZN340.js`),__vite__mapDeps([0,1,2,3]))});

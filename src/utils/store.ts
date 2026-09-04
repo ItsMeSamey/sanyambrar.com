@@ -10,9 +10,9 @@ export class LocalstorageStore<T> {
 
   constructor(
     key: string,
-    defaultValue?: T,
-    fromString: (value: string) => T = value => value as T,
-    toString: (value: T) => string | undefined = value => String(value),
+    defaultValue: T | undefined,
+    fromString: (value: string) => T,
+    toString: (value: T) => string | undefined,
   ) {
     this.key = key
     this.fromString = fromString
@@ -66,9 +66,9 @@ export class UrlSearchStore<T> {
 
   constructor(
     key: string,
-    defaultValue?: T,
-    fromString: (value: string) => T = value => value as T,
-    toString: (value: T) => string = value => String(value),
+    defaultValue: T | undefined,
+    fromString: (value: string) => T,
+    toString: (value: T) => string,
   ) {
     this.key = key
     this.defaultValue = defaultValue

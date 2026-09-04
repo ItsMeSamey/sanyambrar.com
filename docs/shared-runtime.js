@@ -380,8 +380,7 @@
 		return layer;
 	}
 	function animateConstructionLines(layer, phase, direction) {
-		return [...layer.children].map((child, index) => {
-			const line = child;
+		return [...layer.querySelectorAll(":scope > .samey-construction-line")].map((line, index) => {
 			const horizontal = line.dataset.axis === "x";
 			const entering = phase === "in";
 			const forward = direction === "forward";

@@ -50,7 +50,7 @@ export function EngineBoundary<T>(props: {
     <Show when={error()}>{cause =>
       <aside class="engine-state engine-state-error" role="alert" aria-live="assertive">
         <strong>{props.label} failed to start</strong>
-        <span>{cause() instanceof Error ? (cause() as Error).message : String(cause())}</span>
+        <span>{(() => { const value = cause(); return value instanceof Error ? value.message : String(value); })()}</span>
         <button type="button" onClick={() => void start()}>Retry</button>
       </aside>
     }</Show>

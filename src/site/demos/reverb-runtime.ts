@@ -212,8 +212,9 @@ export function runReverbDemoRuntime(document: ReverbDemoDocument, requestAnimat
     e.stopPropagation(); closeDropdown(); activeDropdown=field;
     const rect=field.getBoundingClientRect(); const phoneRect=phone.getBoundingClientRect();
     const options=(field.dataset.options||'').split('|');
+    const valueNode=field.querySelector<HTMLElement>('.m3-value'); if(!valueNode)return;
     dropdownMenu.innerHTML='';
-    options.forEach(opt=>{const b=document.createElement('button');b.className='dropdown-item';b.textContent=opt;b.onclick=()=>{field.querySelector<HTMLElement>('.m3-value')!.textContent=opt;setDirty(true);closeDropdown()};dropdownMenu.appendChild(b)});
+    options.forEach(opt=>{const b=document.createElement('button');b.className='dropdown-item';b.textContent=opt;b.onclick=()=>{valueNode.textContent=opt;setDirty(true);closeDropdown()};dropdownMenu.appendChild(b)});
     dropdownMenu.style.left=`${Math.min(rect.left,phoneRect.right-Math.max(180,rect.width))}px`;
     dropdownMenu.style.top=`${Math.min(rect.bottom+2,window.innerHeight-12-options.length*48)}px`;
     dropdownMenu.style.width=`${Math.max(180,rect.width)}px`;
@@ -357,7 +358,8 @@ void main(){
     if(!ctx && canvas.parentNode){
       // Once a WebGL context has been created the same canvas cannot switch to
       // 2D. Replace it so shader/link failures still get the animated fallback.
-      const replacement=canvas.cloneNode(false) as HTMLCanvasElement;
+      const replacement=canvas.cloneNode(false);
+      if(!(replacement instanceof HTMLCanvasElement))throw new Error('Unable to clone Reverb demo canvas');
       canvas.replaceWith(replacement); canvas=replacement; ctx=canvas.getContext('2d');
     }
     if(!ctx){
