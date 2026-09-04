@@ -29,6 +29,7 @@ export function mountChain(refs) {
   const PAGE_MENU = 'menu';
   const PAGE_GAME = 'game';
   const PAGE_STATS = 'stats';
+  let pageHistoryIndex = typeof history.state?.chainPageIndex === 'number' ? history.state.chainPageIndex : 0;
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
@@ -69,7 +70,8 @@ export function mountChain(refs) {
     if (page === PAGE_MENU) url.searchParams.delete(PAGE_QUERY);
     else url.searchParams.set(PAGE_QUERY, page);
     if (url.href === location.href) return;
-    history[replace ? 'replaceState' : 'pushState']({...(history.state || {}), chainPage: page}, '', url);
+    if (!replace) pageHistoryIndex++;
+    history[replace ? 'replaceState' : 'pushState']({...(history.state || {}), chainPage: page, chainPageIndex: pageHistoryIndex}, '', url);
   }
 
   function clampInt(value, min, max, fallback) {
@@ -1194,7 +1196,7 @@ export function mountChain(refs) {
     void animateMountedViewSwap(from, to, commit, direction);
   }
 
-  function showMenu(syncUrl = true) {
+  function showMenu(syncUrl = true, direction = 'back') {
     const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_MENU);
     if (wasInGame && locked) {
@@ -1210,10 +1212,10 @@ export function mountChain(refs) {
       if (wasInGame || readSavedGame()) saveGameState(false);
       updateResumeCard();
     };
-    showView(openingView, commit, 'back');
+    showView(openingView, commit, direction);
   }
 
-  function showStats(syncUrl = true) {
+  function showStats(syncUrl = true, direction = 'forward') {
     const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_STATS);
     if (wasInGame && locked) {
@@ -1228,10 +1230,10 @@ export function mountChain(refs) {
       resultPanel.hidden = true;
       renderStats();
     };
-    showView(statsView, commit, 'forward');
+    showView(statsView, commit, direction);
   }
 
-  function showGame(syncUrl = true) {
+  function showGame(syncUrl = true, requestedDirection = null) {
     const fromStats = currentView === statsView;
     pendingPage = null;
     closeReplay();
@@ -1245,7 +1247,7 @@ export function mountChain(refs) {
         else if (turn !== HUMAN) continueTurns();
       });
     };
-    showView(gameView, commit, fromStats ? 'back' : 'forward');
+    showView(gameView, commit, requestedDirection ?? (fromStats ? 'back' : 'forward'));
   }
 
   function showResult() {
@@ -1376,10 +1378,15 @@ export function mountChain(refs) {
   updateResumeCard();
   const onPopState = () => {
     const page = pageFromLocation();
-    if (page === PAGE_STATS) showStats(false);
-    else if (page === PAGE_GAME) showGame(false);
-    else showMenu(false);
+    const nextIndex = typeof history.state?.chainPageIndex === 'number' ? history.state.chainPageIndex : null;
+    const direction = nextIndex != null && nextIndex < pageHistoryIndex ? 'back' : 'forward';
+    if (nextIndex != null) pageHistoryIndex = nextIndex;
+    if (page === PAGE_STATS) showStats(false, direction);
+    else if (page === PAGE_GAME) showGame(false, direction);
+    else showMenu(false, direction);
   };
+  if (typeof history.state?.chainPageIndex !== 'number')
+    history.replaceState({...(history.state || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
   addEventListener('popstate', onPopState);
   const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); drawReplay(); };
   const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); drawReplay(); };

@@ -221,3 +221,6 @@ ol, ul { padding-inline: 2rem 0; font-weight: normal; }
 text { text-rendering: optimizeLegibility; }
 
 ::selection { color: var(--primary); background-color: var(--secondary); }
+
+/* Keybr buttons use straight edges; filled widget buttons remain filled at rest. */
+#app button{border-radius:0!important}

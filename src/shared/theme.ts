@@ -794,6 +794,16 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
 
   const pushState = history.pushState.bind(history);
   const replaceState = history.replaceState.bind(history);
+  const NAV_INDEX_KEY = "__sameyNavIndex";
+  const readNavigationIndex = () => Number.isFinite(history.state?.[NAV_INDEX_KEY]) ? history.state[NAV_INDEX_KEY] : null;
+  let pageHistoryIndex = readNavigationIndex() ?? 0;
+  const writePageHistory = (url, replace) => {
+    const current = readNavigationIndex();
+    if (current != null) pageHistoryIndex = current;
+    if (!replace) pageHistoryIndex += 1;
+    const state = {...(history.state || {}), [NAV_INDEX_KEY]: pageHistoryIndex};
+    (replace ? replaceState : pushState)(state, "", url.href);
+  };
 
   const runtimeNode = (el) => { el.dataset.sameyRuntime = ""; return el; };
 
@@ -1924,7 +1934,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
     for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
     document.title = doc.title; syncHtmlData(doc, baseUrl);
     currentPagePath = url.pathname;
-    (replace ? replaceState : pushState)({}, "", url.href);
+    writePageHistory(url, replace);
     runBodyScripts(baseUrl);
     runHeadScripts(doc, baseUrl);
     queueMicrotask(() => globalThis.SameyMountSolid?.());
@@ -1969,7 +1979,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   let pageNavigationId = 0;
   const cancelPageNavigation = () => { pageNavigationId++; setLoading(false); };
   globalThis.SameyCancelPageSwap = cancelPageNavigation;
-  const loadPage = async (href, { replace = false, force = false } = {}) => {
+  const loadPage = async (href, { replace = false, force = false, direction } = {}) => {
     const id = ++pageNavigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.href = url.href; return; }
@@ -1988,7 +1998,8 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
         document.getElementById("samey-boot")?.remove();
         document.getElementById("samey-boot-style")?.remove();
       };
-      await animateRootSwap(current, commit, destinationRoot, url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
+      const swapDirection = direction ?? (url.pathname === '/' || /\/index(?:\.html)?$/.test(url.pathname) ? 'back' : 'forward');
+      await animateRootSwap(current, commit, destinationRoot, swapDirection);
     } catch (error) {
       if (id !== pageNavigationId) return;
       showLoadError(url, error, () => loadPage(url.href, { replace, force }));
@@ -2020,11 +2031,17 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
       const a = event.target.closest?.("a[href]"); if (!a || a.target || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
       if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
-      event.preventDefault(); void loadPage(url.href).catch(() => {});
+      event.preventDefault();
+      const direction = a.dataset.navDirection === "back" || url.pathname === "/" ? "back" : "forward";
+      void loadPage(url.href, { direction }).catch(() => {});
     });
     addEventListener("popstate", () => {
       if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
-      void loadPage(location.href, { replace: true, force: true }).catch(() => {});
+      const previousIndex = pageHistoryIndex;
+      const nextIndex = readNavigationIndex();
+      const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";
+      if (nextIndex != null) pageHistoryIndex = nextIndex;
+      void loadPage(location.href, { replace: true, force: true, direction }).catch(() => {});
     });
   };
 
@@ -2035,6 +2052,7 @@ import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry }
   });
   apply();
   const mountRuntime = () => {
+    if (readNavigationIndex() == null) replaceState({...(history.state || {}), [NAV_INDEX_KEY]: pageHistoryIndex}, "", location.href);
     normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars();
     // Only styles present on a directly loaded non-Solid document are initial page styles.
     // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;

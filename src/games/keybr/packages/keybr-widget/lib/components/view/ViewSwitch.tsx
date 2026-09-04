@@ -36,6 +36,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     return value != null && props.views[value] != null ? value : first;
   };
   const [viewState, setViewState] = createSignal<[ViewName, ViewProps]>([readView(), {}], { equals: false });
+  let viewHistoryIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : 0;
   const currentView = () => viewState()[0];
   const current = createMemo(() => {
     const [name, viewProps] = viewState();
@@ -64,21 +65,34 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
       const url = new URL(location.href);
       if (nextName === first) url.searchParams.delete("p");
       else url.searchParams.set("p", nextName);
-      if (url.href !== location.href) history.pushState({...(history.state ?? {}), keybrView: nextName}, "", url);
+      if (url.href !== location.href) {
+        viewHistoryIndex += 1;
+        history.pushState({...(history.state ?? {}), keybrView: nextName, keybrViewIndex: viewHistoryIndex}, "", url);
+      }
     }
     setViewState([nextName, nextProps]);
   };
-  const swapView = (nextName: ViewName, nextProps: ViewProps = {}, syncUrl = true) => {
+  const swapView = (nextName: ViewName, nextProps: ViewProps = {}, syncUrl = true, requestedDirection?: "forward" | "back") => {
     if (props.views[nextName] == null || (nextName === currentView() && Object.keys(nextProps).length === 0)) return;
     const commit = () => commitView(nextName, nextProps, syncUrl);
     const root = document.getElementById("app");
     const animate = (globalThis as any).SameyAnimateLocalSwap;
-    if (root && animate) void animate(root, commit, nextName === first ? "back" : "forward");
+    const direction = requestedDirection ?? (nextName === first ? "back" : "forward");
+    if (root && animate) void animate(root, commit, direction);
     else commit();
   };
   const setView = (nextName: ViewName, nextProps: ViewProps = {}) => swapView(nextName, nextProps, true);
-  const onPopState = () => swapView(readView(), {}, false);
-  onMount(() => addEventListener("popstate", onPopState));
+  const onPopState = () => {
+    const nextIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : null;
+    const direction = nextIndex != null && nextIndex < viewHistoryIndex ? "back" : "forward";
+    if (nextIndex != null) viewHistoryIndex = nextIndex;
+    swapView(readView(), {}, false, direction);
+  };
+  onMount(() => {
+    if (typeof history.state?.keybrViewIndex !== "number")
+      history.replaceState({...(history.state ?? {}), keybrView: currentView(), keybrViewIndex: viewHistoryIndex}, "", location.href);
+    addEventListener("popstate", onPopState);
+  });
   onCleanup(() => removeEventListener("popstate", onPopState));
   return <ViewContext.Provider value={{ setView, currentView, setBeforeLeave }}>
     {props.header?.()}

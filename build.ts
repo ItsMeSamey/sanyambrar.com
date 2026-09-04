@@ -196,17 +196,30 @@ ${keybrViewSwitch}`;
   must(transitions.includes("duration: 210") && !transitions.includes("clipPath") &&
     !transitions.includes("querySelectorAll<HTMLElement>('*')") && transitions.includes("querySelectorAll<HTMLCanvasElement>('canvas')"),
     "performance: page transitions must stay compositor-only and avoid walking every descendant during snapshot setup");
+  must(transitions.includes("Every routed and local view deconstructs into rules") &&
+    transitions.includes("return element?.isConnected ? element : null") &&
+    transitions.includes("animateConstructionExit(from, direction)") &&
+    transitions.includes("animateConstructionEntrance(to, direction)"),
+    "architecture: every connected page and mounted game view must use the constructed transition");
   must((await readFile(join(ROOT, "src/site/App.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Solid routes must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Wordle views must use the shared transition runtime");
   const chainTransitionSource = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
   must(chainTransitionSource.includes("animateMountedViewSwap") && chainTransitionSource.includes("function showView(to, commit, direction = 'forward')") &&
-    chainTransitionSource.includes("showView(openingView, commit, 'back')") && chainTransitionSource.includes("showView(statsView, commit, 'forward')") &&
-    chainTransitionSource.includes("showView(gameView, commit, fromStats ? 'back' : 'forward')"),
-    "architecture: every Chain page view must use the shared transition runtime");
+    chainTransitionSource.includes("showView(openingView, commit, direction)") && chainTransitionSource.includes("showView(statsView, commit, direction)") &&
+    chainTransitionSource.includes("showView(gameView, commit, requestedDirection ?? (fromStats ? 'back' : 'forward'))") &&
+    chainTransitionSource.includes("chainPageIndex") && chainTransitionSource.includes("nextIndex < pageHistoryIndex"),
+    "architecture: every Chain page view must use the shared transition runtime with reversible history direction");
   must(keybrSolidRuntime.includes("SameyAnimateLocalSwap"),
     "architecture: Keybr views must use the shared transition runtime");
+  const wordleStyleSource = await readFile(join(ROOT, "src/games/wordle/style.css"), "utf8");
+  const chainStyleSource = await readFile(join(ROOT, "src/games/chain/style.css"), "utf8");
+  const keybrStyleSource = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
+  must(wordleStyleSource.includes("[data-wordle-root] button{border-radius:0!important}") &&
+    chainStyleSource.includes(".chain-shell button{border-radius:0!important}") &&
+    keybrStyleSource.includes("#app button{border-radius:0!important}"),
+    "ux: game buttons must remain rectilinear for constructed transitions");
 
   // UX contracts that are easy to regress because desktop and narrow layouts
   // intentionally diverge. Keep these assertions close to the build so every

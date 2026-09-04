@@ -53,19 +53,19 @@ export function SpeedHistogramSection(props: { readonly stats: SummaryStats }) {
 
       <Para align="center">
         {value() > 0 ? (
-          <FormattedMessage
-            id={
-              period() === "average"
-                ? "profile.chart.compareAverageSpeed.description"
-                : "profile.chart.compareTopSpeed.description"
-            }
-            defaultMessage={
-              period() === "average"
-                ? "Your all time average speed beats {value} of all other people."
-                : "Your all time top speed beats {value} of all other people."
-            }
-            values={{ value: <Value value={formatPercents(percentile())} /> }}
-          />
+          period() === "average" ? (
+            <FormattedMessage
+              id="profile.chart.compareAverageSpeed.description"
+              defaultMessage="Your all time average speed beats {value} of all other people."
+              values={{ value: <Value value={formatPercents(percentile())} /> }}
+            />
+          ) : (
+            <FormattedMessage
+              id="profile.chart.compareTopSpeed.description"
+              defaultMessage="Your all time top speed beats {value} of all other people."
+              values={{ value: <Value value={formatPercents(percentile())} /> }}
+            />
+          )
         ) : (
           <FormattedMessage
             id="profile.chart.populationOnly.description"

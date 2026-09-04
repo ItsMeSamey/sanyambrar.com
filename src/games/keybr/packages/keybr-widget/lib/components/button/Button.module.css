@@ -18,7 +18,7 @@
   padding-inline: 1.5rem;
   padding-block: 0;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 0;
   color: var(--Button__color);
   background-color: var(--Button__background-color);
   font-family: var(--default-font-family);

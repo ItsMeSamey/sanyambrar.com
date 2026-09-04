@@ -35,8 +35,18 @@ const Project = lazy(() => loadModule('project').then(m => ({ default: m.Project
 const Blog = lazy(() => loadModule('blog').then(m => ({ default: m.Blog })));
 
 type Route = { key: string; kind: RouteKind; slug?: string };
+type NavigationDirection = 'forward' | 'back';
 type NavigationError = { url: string; message: string; detail: string };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
+const NAV_INDEX_KEY = '__sameyNavIndex';
+const readNavigationIndex = () => {
+  const value = history.state?.[NAV_INDEX_KEY];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+};
+const navigationState = (index: number) => ({
+  ...(history.state && typeof history.state === 'object' ? history.state : {}),
+  [NAV_INDEX_KEY]: index,
+});
 
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
@@ -78,12 +88,12 @@ const preloadUrl = (url: URL) => {
   if (next) void preload(next);
 };
 
-async function animateRouteSwap(commit: () => void, homeward = false) {
+async function animateRouteSwap(commit: () => void, direction: NavigationDirection = 'forward') {
   await animateRootSwap(
     document.querySelector<HTMLElement>('.site-route'),
     commit,
     () => document.querySelector<HTMLElement>('.site-route'),
-    homeward ? 'back' : 'forward',
+    direction,
   );
 }
 
@@ -148,6 +158,7 @@ export function App() {
   const [route, setRoute] = createSignal<Route>(initial);
   const [navigationError, setNavigationError] = createSignal<NavigationError | null>(null);
   let navigationId = 0;
+  let navigationIndex = readNavigationIndex() ?? 0;
   let resetRouteError: (() => void) | undefined;
   const retryRenderedRoute = () => {
     const reset = resetRouteError;
@@ -171,13 +182,21 @@ export function App() {
       : `${details[next.slug!]?.title || 'Project'} · Sanyam Brar`;
   };
 
+  const writeHistory = (url: URL, replace: boolean) => {
+    if (replace) history.replaceState(navigationState(navigationIndex), '', url);
+    else {
+      navigationIndex += 1;
+      history.pushState(navigationState(navigationIndex), '', url);
+    }
+  };
+
   const commitNavigation = (next: Route, url: URL, replace: boolean) => {
     dispatchEvent(new Event('samey-pageleave'));
     setRoute(next);
     setNavigationError(null);
     queueMicrotask(retryRenderedRoute);
     syncDocument(next);
-    if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
+    writeHistory(url, replace);
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
     queueMicrotask(() => {
       if (url.hash) document.getElementById(hashTarget(url))?.scrollIntoView();
@@ -186,16 +205,17 @@ export function App() {
     });
   };
 
-  const finishNavigation = async (next: Route, url: URL, replace: boolean) => {
-    document.documentElement.dataset.navDirection = next.kind === 'home' ? 'home' : 'forward';
+  const finishNavigation = async (next: Route, url: URL, replace: boolean, requestedDirection?: NavigationDirection) => {
+    const direction: NavigationDirection = requestedDirection ?? (next.kind === 'home' ? 'back' : 'forward');
+    document.documentElement.dataset.navDirection = direction;
     try {
-      await animateRouteSwap(() => commitNavigation(next, url, replace), next.kind === 'home');
+      await animateRouteSwap(() => commitNavigation(next, url, replace), direction);
     } finally {
       delete document.documentElement.dataset.navDirection;
     }
   };
 
-  const navigate = async (href: string, replace = false) => {
+  const navigate = async (href: string, replace = false, direction?: NavigationDirection) => {
     const id = ++navigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
@@ -216,7 +236,7 @@ export function App() {
     }
     if (sameDocumentHash(url)) {
       setLoading(false);
-      if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
+      writeHistory(url, replace);
       document.getElementById(hashTarget(url))?.scrollIntoView();
       return;
     }
@@ -233,7 +253,7 @@ export function App() {
       return;
     }
     if (next.kind === route().kind && cleanPath(url.pathname) === cleanPath(location.pathname)) {
-      if (replace) history.replaceState({}, '', url); else history.pushState({}, '', url);
+      writeHistory(url, replace);
       syncDocument(next);
       dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
       queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })); });
@@ -244,7 +264,7 @@ export function App() {
     try {
       await preload(next);
       if (id !== navigationId) return;
-      await finishNavigation(next, url, replace);
+      await finishNavigation(next, url, replace, direction);
     } catch (error) {
       if (id === navigationId) {
         const message = error instanceof Error ? error.message : 'The page module could not be loaded.';
@@ -267,6 +287,7 @@ export function App() {
   };
 
   onMount(() => {
+    if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
     const api = globalThis as typeof globalThis & {
       SameySolidNavigate?: typeof navigate;
@@ -286,13 +307,20 @@ export function App() {
       if (url.origin !== location.origin) return;
       if (sameDocumentHash(url)) return;
       event.preventDefault();
-      void navigate(url.href);
+      const direction = anchor.dataset.navDirection === 'back' ? 'back' : undefined;
+      void navigate(url.href, false, direction);
     };
     const pop = () => {
       const id = ++navigationId;
       cancelSharedPageSwap();
       const url = new URL(location.href);
       const next = routeFromUrl(url);
+      const previousIndex = navigationIndex;
+      const targetIndex = readNavigationIndex();
+      const direction: NavigationDirection = targetIndex == null
+        ? (next?.kind === 'home' ? 'back' : 'forward')
+        : targetIndex < previousIndex ? 'back' : 'forward';
+      if (targetIndex != null) navigationIndex = targetIndex;
       setNavigationError(null);
       if (!next) {
         const pageSwap = pageSwapNavigate();
@@ -313,14 +341,14 @@ export function App() {
       setLoading(true);
       void preload(next).then(async () => {
         if (id !== navigationId) return;
-        document.documentElement.dataset.navDirection = next.kind === 'home' ? 'home' : 'forward';
+        document.documentElement.dataset.navDirection = direction;
         try {
           await animateRouteSwap(() => {
             dispatchEvent(new Event('samey-pageleave'));
             setRoute(next);
             syncDocument(next);
             queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })); });
-          }, next.kind === 'home');
+          }, direction);
         } finally {
           delete document.documentElement.dataset.navDirection;
           if (id === navigationId) setLoading(false);

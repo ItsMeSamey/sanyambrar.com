@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/yaml-CGaR6omX.js","site-chunks/monaco-D-38O1pX.js","site-chunks/site-app-pj3KhGxn.js","site-chunks/monaco-BJ215w34.css"])))=>i.map(i=>d[i]);
+import{t as e}from"./site-app-pj3KhGxn.js";import{t}from"./_.contribution-NQXaua3e.js";t({id:`yaml`,extensions:[`.yaml`,`.yml`],aliases:[`YAML`,`yaml`,`YML`,`yml`],mimetypes:[`application/x-yaml`,`text/x-yaml`],loader:()=>e(()=>import(`./yaml-CGaR6omX.js`),__vite__mapDeps([0,1,2,3]))});
