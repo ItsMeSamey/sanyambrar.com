@@ -245,6 +245,7 @@
 		".home-tool-matrix",
 		".home-tool",
 		".home-writing-split",
+		".home-writing-read",
 		".home-writing-index",
 		".home-writing-link",
 		".fact-strip",
@@ -313,9 +314,9 @@
 		".home-writing-detail time",
 		".home-writing-detail h2",
 		".home-writing-dek",
+		".home-writing-read",
 		".home-writing-summary",
 		".home-writing-detail li",
-		".home-writing-detail footer > *",
 		".page-intro > *",
 		".project-detail > .eyebrow",
 		".project-detail > h1",
@@ -2338,12 +2339,12 @@
 				const text = !grab && (selectingText || !link && wantsText(target));
 				if (cursorMode !== "invert") {
 					if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
-					updateBlendSource(target);
+					updateBlendSource(link ?? target);
 					setFillLayer(link);
 					setFillTarget(link);
 					return;
 				}
-				updateBlendSource(target);
+				updateBlendSource(link ?? target);
 				setFillLayer(link);
 				setGrabState(grab);
 				setTextState(text);
@@ -3251,6 +3252,103 @@
 			if (!raw.color || raw.color === "system") apply();
 		});
 		apply();
+		const mountSmoothSliderMotion = () => {
+			let active = null;
+			let frame = 0;
+			let snapTimer = 0;
+			const sliderParts = (target) => {
+				if (!(target instanceof Element)) return null;
+				const root = target.closest(".game-settings-slider");
+				if (!(root instanceof HTMLElement)) return null;
+				const native = root.querySelector("input[type=\"range\"]");
+				const thumb = root.querySelector("[role=\"slider\"]");
+				const track = native?.closest(".game-range-shell") || root.querySelector("[data-kb-slider-track],.samey-slider-track");
+				const hit = target.closest("input[type=\"range\"],[role=\"slider\"],.game-range-shell,[data-kb-slider-track],.samey-slider-track");
+				if (!hit || !root.contains(hit) || !(track instanceof HTMLElement) || !(native instanceof HTMLInputElement) && !(thumb instanceof HTMLElement)) return null;
+				return {
+					root,
+					native: native instanceof HTMLInputElement ? native : null,
+					thumb: thumb instanceof HTMLElement ? thumb : null,
+					track
+				};
+			};
+			const clamp01 = (value) => Math.max(0, Math.min(1, value));
+			const actualRatio = (parts) => {
+				if (parts.native) {
+					const min = Number(parts.native.min || 0), max = Number(parts.native.max || 100), value = Number(parts.native.value);
+					return max > min ? clamp01((value - min) / (max - min)) : 0;
+				}
+				const min = Number(parts.thumb?.getAttribute("aria-valuemin") ?? 0);
+				const max = Number(parts.thumb?.getAttribute("aria-valuemax") ?? 100);
+				const value = Number(parts.thumb?.getAttribute("aria-valuenow") ?? min);
+				return max > min ? clamp01((value - min) / (max - min)) : 0;
+			};
+			const paintDrag = () => {
+				frame = 0;
+				if (!active?.root.isConnected) return;
+				const rect = active.track.getBoundingClientRect();
+				if (!(rect.width > 0)) return;
+				const nativeInset = active.native ? 8 : 0;
+				const usable = Math.max(1, rect.width - nativeInset * 2);
+				const x = Math.max(rect.left + nativeInset, Math.min(rect.right - nativeInset, active.clientX));
+				const pointerRatio = clamp01((x - rect.left - nativeInset) / usable);
+				const currentRatio = actualRatio(active);
+				active.root.style.setProperty("--samey-slider-drag-offset", `${(pointerRatio - currentRatio) * usable}px`);
+				active.root.style.setProperty("--samey-slider-drag-fill", `${nativeInset + pointerRatio * usable}px`);
+			};
+			const queuePaint = () => {
+				if (!frame) frame = requestAnimationFrame(paintDrag);
+			};
+			const clearRoot = (root) => {
+				root.removeAttribute("data-samey-slider-dragging");
+				root.removeAttribute("data-samey-slider-snapping");
+				root.style.removeProperty("--samey-slider-drag-offset");
+				root.style.removeProperty("--samey-slider-drag-fill");
+			};
+			const release = (pointerId) => {
+				if (!active || active.pointerId !== pointerId) return;
+				if (frame) {
+					cancelAnimationFrame(frame);
+					frame = 0;
+					paintDrag();
+				}
+				const root = active.root;
+				active = null;
+				root.setAttribute("data-samey-slider-snapping", "");
+				root.removeAttribute("data-samey-slider-dragging");
+				clearTimeout(snapTimer);
+				snapTimer = setTimeout(() => clearRoot(root), 150);
+			};
+			document.addEventListener("pointerdown", (event) => {
+				if (event.button !== 0) return;
+				const parts = sliderParts(event.target);
+				if (!parts) return;
+				if (parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
+				if (active) clearRoot(active.root);
+				clearTimeout(snapTimer);
+				active = {
+					...parts,
+					pointerId: event.pointerId,
+					clientX: event.clientX
+				};
+				parts.root.removeAttribute("data-samey-slider-snapping");
+				parts.root.setAttribute("data-samey-slider-dragging", "");
+				queuePaint();
+			}, true);
+			document.addEventListener("pointermove", (event) => {
+				if (!active || event.pointerId !== active.pointerId) return;
+				active.clientX = event.clientX;
+				queuePaint();
+			}, true);
+			document.addEventListener("pointerup", (event) => release(event.pointerId), true);
+			document.addEventListener("pointercancel", (event) => release(event.pointerId), true);
+			addEventListener("samey-pageleave", () => {
+				if (frame) cancelAnimationFrame(frame);
+				frame = 0;
+				if (active) clearRoot(active.root);
+				active = null;
+			});
+		};
 		const mountRuntime = () => {
 			if (readNavigationIndex() == null) replaceState({
 				...history.state || {},
@@ -3263,6 +3361,7 @@
 			mountCursor();
 			mountContextMenu();
 			mountVirtualScrollbars();
+			mountSmoothSliderMotion();
 			if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();
 			mountSpa();
 			addEventListener("samey-pageload", mountSpa);

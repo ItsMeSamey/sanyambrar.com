@@ -45,7 +45,7 @@ html.samey-hardware-cursor[data-site-loading],html.samey-hardware-cursor[data-si
 button,[role=button],.samey-icon,.game-settings-action,.top-nav a,.compact-row,.card,.project{
   -webkit-tap-highlight-color:transparent;
 }
-button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:transform var(--site-fast) var(--site-ease-out),background-color var(--site-fast) var(--site-ease-out),border-color var(--site-fast) var(--site-ease-out),color var(--site-fast) var(--site-ease-out)}
+button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:transform var(--site-fast) var(--site-ease-out),background-color var(--site-fast) var(--site-ease-out),border-color var(--site-fast) var(--site-ease-out),color var(--site-fast) var(--site-ease-out),box-shadow var(--site-fast) var(--site-ease-out),opacity var(--site-fast) var(--site-ease-out)}
 button:not(:disabled):active,[role=button]:not([aria-disabled=true]):active{transform:scale(.98)}
 :focus-visible{outline:2px solid color-mix(in srgb,var(--site-accent,#787c7e) 72%,transparent);outline-offset:2px}
 
@@ -62,6 +62,45 @@ button:not(:disabled):active,[role=button]:not([aria-disabled=true]):active{tran
 .game-settings-slider [role=slider][data-orientation=horizontal]{top:50%!important;margin-top:-8px!important}
 .game-settings-slider input[type=range]{height:16px!important;margin:0!important;width:100%!important}
 .game-settings-slider input[type=range]::-webkit-slider-thumb{margin-top:0!important}
+
+/* Pointer drags stay continuous even for coarse/discrete sliders. The control keeps its
+   semantic stepped value underneath; only the visual thumb/fill follows the pointer until
+   release, then eases to the selected step. Keyboard interaction remains natively stepped. */
+.game-settings-slider[data-samey-slider-dragging] [role=slider]{
+  transform:translateX(calc(-50% + var(--samey-slider-drag-offset,0px)))!important;
+  transition:none!important;
+}
+.game-settings-slider[data-samey-slider-dragging] input[type=range]::-webkit-slider-thumb{
+  transform:translateX(var(--samey-slider-drag-offset,0px));
+  transition:none!important;
+}
+.game-settings-slider[data-samey-slider-dragging] input[type=range]::-moz-range-thumb{
+  transform:translateX(var(--samey-slider-drag-offset,0px));
+  transition:none!important;
+}
+.game-settings-slider[data-samey-slider-dragging] .game-range-fill,
+.game-settings-slider[data-samey-slider-dragging] .samey-slider-fill,
+.game-settings-slider[data-samey-slider-dragging] [data-kb-slider-fill]{
+  width:var(--samey-slider-drag-fill)!important;
+  transition:none!important;
+}
+.game-settings-slider[data-samey-slider-snapping] [role=slider]{
+  transform:translateX(-50%)!important;
+  transition:transform 130ms var(--site-ease-out)!important;
+}
+.game-settings-slider[data-samey-slider-snapping] input[type=range]::-webkit-slider-thumb{
+  transform:translateX(0);
+  transition:transform 130ms var(--site-ease-out)!important;
+}
+.game-settings-slider[data-samey-slider-snapping] input[type=range]::-moz-range-thumb{
+  transform:translateX(0);
+  transition:transform 130ms var(--site-ease-out)!important;
+}
+.game-settings-slider[data-samey-slider-snapping] .game-range-fill,
+.game-settings-slider[data-samey-slider-snapping] .samey-slider-fill,
+.game-settings-slider[data-samey-slider-snapping] [data-kb-slider-fill]{
+  transition:width 130ms var(--site-ease-out)!important;
+}
 
 /* Shared overlays use compositor-only motion: no clip-path/layout animation on open. */
 @keyframes samey-surface-in{
@@ -107,6 +146,12 @@ html[data-site-loading] .samey-loading-top{visibility:visible;transform:translat
 @media(prefers-reduced-motion:reduce){
   .samey-loading-top{transition:none!important}
   .samey-loading-top-bar{animation:none!important;background:color-mix(in srgb,var(--site-fg,#121213) 42%,transparent)}
+  .game-settings-slider[data-samey-slider-snapping] [role=slider],
+  .game-settings-slider[data-samey-slider-snapping] .game-range-fill,
+  .game-settings-slider[data-samey-slider-snapping] .samey-slider-fill,
+  .game-settings-slider[data-samey-slider-snapping] [data-kb-slider-fill]{transition:none!important}
+  .game-settings-slider[data-samey-slider-snapping] input[type=range]::-webkit-slider-thumb,
+  .game-settings-slider[data-samey-slider-snapping] input[type=range]::-moz-range-thumb{transition:none!important}
   .game-settings-popover,.samey-theme-panel:not([hidden]),body [role=dialog],.site-search-panel,.site-search-backdrop{animation:none!important}
 }
 
@@ -137,7 +182,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .site-topbar-inner-contained{position:relative;width:min(var(--site-content-width,1080px),100%);margin-inline:auto;padding-inline:22px}
 .site-topbar-inner-contained::after{content:"";position:absolute;left:22px;bottom:-1px;width:42px;height:1px;background:var(--site-accent,#787c7e)}
 .site-topbar-nav{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0}
-.site-topbar-nav>a,.site-topbar-search,.site-topbar-icon{box-sizing:border-box;display:inline-grid;place-items:center;min-height:26px;border:0;border-radius:0;background:transparent;text-decoration:none;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease),color var(--site-fast,110ms) var(--site-ease-out,ease),transform var(--site-fast,110ms) var(--site-ease-out,ease)}.site-topbar-nav>a{color:var(--site-muted,#787c7e)}.site-topbar-search,.site-topbar-icon{color:var(--site-fg,#121213)}
+.site-topbar-nav>a,.site-topbar-search,.site-topbar-icon{box-sizing:border-box;display:inline-grid;place-items:center;min-height:26px;border:0;border-radius:0;background:transparent;text-decoration:none;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease),color var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease),opacity var(--site-fast,110ms) var(--site-ease-out,ease),transform var(--site-fast,110ms) var(--site-ease-out,ease)}.site-topbar-nav>a{color:var(--site-muted,#787c7e)}.site-topbar-search,.site-topbar-icon{color:var(--site-fg,#121213)}
 .site-topbar-nav>a{padding:3px 8px;line-height:1}.site-topbar-search{padding:2px 6px}.site-topbar-icon{width:26px;height:26px;padding:4px}
 .site-topbar-nav>a:hover,.site-topbar-nav>a:focus-visible,.site-topbar-nav>a[aria-current=page],.site-topbar-search:hover,.site-topbar-search:focus-visible,.site-topbar-icon:hover,.site-topbar-icon:focus-visible{background:transparent;color:var(--site-fg,#121213);box-shadow:inset 0 -1px var(--site-fg,#121213)}
 .site-topbar-nav>a:active,.site-topbar-search:active,.site-topbar-icon:active{transform:scale(.96)}.site-topbar-icon:disabled{background:var(--site-soft,#eee);color:var(--site-fg,#121213);cursor:default;box-shadow:none}

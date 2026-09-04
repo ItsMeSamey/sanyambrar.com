@@ -544,6 +544,11 @@ ${keybrViewSwitch}`;
   must(homeSource.includes("home-tool-matrix") && homeSource.includes("home-writing-split") &&
     !toolsPageSource.includes("home-tool-matrix") && !blogSource.includes("home-writing-split"),
     "ux: editorial tools and split writing index belong on Home, not the Tools/Writing pages");
+  must(homeSource.includes("const kicker = post.tags?.map(tag => tag.toUpperCase()).join(' / ')") &&
+    homeSource.includes('class="home-writing-heading"') && homeSource.includes('class="home-writing-read"') &&
+    !homeSource.includes("kicker: 'C++ / CONCURRENCY / BTOP'") && !homeSource.includes('<footer><span>{post.tags?.map') &&
+    homeStyle.includes('min-height:46px;padding:0 18px'),
+    "ux: writing metadata must appear once and the article CTA must stay prominent beside the title");
   must(homeSource.includes('title="Projects and demos" href="/work/"') && homeSource.includes('title="Writing" href="/blog/"') &&
     !sharedTopBar.includes("showWork") && !sharedTopBar.includes("SITE_NAV") &&
     siteData.includes("Chain reaction clone with local AI.") && siteCatalog.includes("Word count and non-ASCII character detection.") &&
@@ -664,6 +669,7 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes('if (cursorLoading) { hideFillImmediate(); return; }') &&
     !sharedTheme.includes('setCursorVisible(true);\n        linkFill.hidden = true;') &&
     sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
+    (sharedTheme.match(/updateBlendSource\(link \?\? target\)/g) || []).length === 2 &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
     sharedTheme.includes('const hardwareCursorPngs = (theme) =>') && sharedTheme.includes('const CURSOR_SUPERSAMPLE = 4') &&
     sharedTheme.includes('source.width = width * CURSOR_SUPERSAMPLE') && sharedTheme.includes('ctx.imageSmoothingQuality = "high"') &&
@@ -694,6 +700,13 @@ ${keybrViewSwitch}`;
   must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
+  must(keybrLessonSettings.includes('SameyAnimateLocalSwap') &&
+    keybrLessonSettings.includes('class="keybr-lesson-settings"') &&
+    keybrLessonSettings.includes('data-keybr-lesson-type') &&
+    keybrLessonSettings.includes('await waitForLesson(value)') &&
+    keybrLessonSettings.includes('const direction = to < from ? "back" : "forward"'),
+    "ux: switching lesson types in Keybr settings must use the shared constructed transition and wait for the selected lesson UI before entering");
+
   const siteAppSource = await readFile(join(ROOT, "src/site/App.tsx"), "utf8");
   const resilientImportSource = await readFile(join(ROOT, "src/shared/resilientImport.ts"), "utf8");
   must(siteAppSource.includes("resilientImport(() => import('./pages/Project'))") &&
