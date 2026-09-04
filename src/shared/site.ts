@@ -1,8 +1,5 @@
 import { searchIndex, type Entry } from '../site/data.ts'
 
-const api = globalThis as typeof globalThis & {
-  SameyNavigate?: (href: string, options?: {replace?: boolean}) => Promise<void> | void
-}
 const nav = navigator as Navigator & {userAgentData?: {platform?: string}}
 const currentScript = document.currentScript
 const SCRIPT_ROOT = new URL('.', currentScript instanceof HTMLScriptElement ? currentScript.src : location.href)
@@ -111,7 +108,7 @@ function ensure() {
       const targetUrl = new URL(visible[active].href, SCRIPT_ROOT)
       close(false)
       if (targetUrl.origin !== location.origin) window.open(targetUrl.href, '_blank', 'noopener,noreferrer')
-      else if (api.SameyNavigate) void api.SameyNavigate(targetUrl.href)
+      else if (globalThis.SameyNavigate) void globalThis.SameyNavigate(targetUrl.href)
       else location.assign(targetUrl.href)
     }
   })

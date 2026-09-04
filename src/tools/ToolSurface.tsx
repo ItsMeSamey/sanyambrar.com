@@ -11,8 +11,7 @@ let toolsModulePromise: Promise<ToolsModule> | undefined;
 function loadToolsModule(): Promise<ToolsModule> {
   if (toolsModule) return Promise.resolve(toolsModule);
   if (toolsModulePromise) return toolsModulePromise;
-  const api = globalThis as typeof globalThis & { SameyLoadingBeginAfterDelay?: (delay?: number) => () => void };
-  const releaseLoading = api.SameyLoadingBeginAfterDelay?.() ?? (() => {});
+  const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
   toolsModulePromise = resilientImport(() => import('./tools.ts')).then(module => {
     toolsModule = module;
     return module;

@@ -1,0 +1,1 @@
+import{t as e}from"./site-app-CB5ukqJE.js";import{t}from"./_.contribution-BZqx0zoR.js";t({id:`go`,extensions:[`.go`],aliases:[`Go`],loader:()=>e(()=>import(`./go-C-y9NEjX.js`),[])});

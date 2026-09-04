@@ -8,7 +8,7 @@ export function LoadingProgress(solidProps: {
 }): ReactNode {
     let releaseLoading = () => {};
     onMount(() => {
-      releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
+      releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
     });
     onCleanup(() => releaseLoading());
     return (<div class={styles.root}>

@@ -2,10 +2,6 @@ import { createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { liveObject } from "@keybr/solid-compat/live";
 import { ThemeContext, type ThemeValue } from "./context.ts";
 
-type AppearanceSnapshot = { readonly color: string; readonly font: string };
-type AppearanceApi = { get(): AppearanceSnapshot };
-declare global { var SameyAppearance: AppearanceApi | undefined; }
-
 function readTheme(): Omit<ThemeValue, "hash"> {
   const api = globalThis.SameyAppearance;
   if (api == null) throw new Error("Shared appearance runtime is not loaded");

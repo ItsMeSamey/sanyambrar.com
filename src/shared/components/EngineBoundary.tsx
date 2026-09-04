@@ -15,7 +15,7 @@ export function EngineBoundary<T>(props: {
   let disposeEngine: Disposer = () => {};
 
   const start = async () => {
-    const releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
+    const releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
     const id = ++generation;
     setError(null);
     setLoading(true);

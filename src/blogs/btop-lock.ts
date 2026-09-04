@@ -1,11 +1,14 @@
-// @ts-nocheck
 import './btop-mutex.css';
 import { highlightBlogCode } from './highlight-code.ts';
 (() => {
   highlightBlogCode();
+  const $ = (id: string) => {
+    const element = document.getElementById(id);
+    if (!element) throw new Error(`Missing #${id}`);
+    return element;
+  };
   const root = document.getElementById('cas-viz');
   if (root) {
-    const $ = (id) => document.getElementById(id);
     const pill = $('atom-pill');
     const owners = $('owners');
     const ownerSlots = [...$('owner-slots').children];
@@ -23,7 +26,7 @@ import { highlightBlogCode } from './highlight-code.ts';
     const count = $('cas-count');
     const play = $('cas-play');
     const codeLine = $('cas-code-line');
-    const jumps = [...root.querySelectorAll('[data-cas-jump]')];
+    const jumps = [...root.querySelectorAll<HTMLElement>('[data-cas-jump]')];
 
     const states = [
       {
@@ -78,7 +81,7 @@ import { highlightBlogCode } from './highlight-code.ts';
     ];
 
     let step = 0;
-    let timer = null;
+    let timer: number | null = null;
 
     const stop = () => {
       if (timer) clearInterval(timer);
@@ -115,7 +118,7 @@ import { highlightBlogCode } from './highlight-code.ts';
       aCard.classList.toggle('breach', s.owners.length > 1);
 
       eventBox.className = `cas-event ${s.kind}`;
-      eventBox.querySelector('.event-tag').textContent = s.tag;
+      eventBox.querySelector<HTMLElement>('.event-tag')!.textContent = s.tag;
       eventText.textContent = s.event;
       caption.textContent = s.caption;
       count.textContent = `${step} / 6`;
@@ -128,7 +131,7 @@ import { highlightBlogCode } from './highlight-code.ts';
       });
     };
 
-    const go = (next) => {
+    const go = (next: number) => {
       step = Math.max(0, Math.min(states.length - 1, next));
       paint();
       if (step === states.length - 1) stop();
@@ -144,7 +147,7 @@ import { highlightBlogCode } from './highlight-code.ts';
       paint();
       timer = setInterval(() => go(step + 1), 1050);
     });
-    jumps.forEach((button) => button.addEventListener('click', () => { stop(); go(+button.dataset.casJump); }));
+    jumps.forEach((button) => button.addEventListener('click', () => { stop(); go(Number(button.dataset.casJump)); }));
     root.addEventListener('keydown', (event) => {
       if (event.key === 'ArrowRight') { event.preventDefault(); stop(); go(step + 1); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); stop(); go(step - 1); }
@@ -155,12 +158,12 @@ import { highlightBlogCode } from './highlight-code.ts';
 
   const ordering = document.getElementById('ordering-viz');
   if (ordering) {
-    const buttons = [...ordering.querySelectorAll('[data-order]')];
-    const release = document.getElementById('release-op');
-    const acquire = document.getElementById('acquire-op');
-    const arrow = document.getElementById('hb-arrow');
-    const caption = document.getElementById('ordering-caption');
-    const setMode = mode => {
+    const buttons = [...ordering.querySelectorAll<HTMLElement>('[data-order]')];
+    const release = $('release-op');
+    const acquire = $('acquire-op');
+    const arrow = $('hb-arrow');
+    const caption = $('ordering-caption');
+    const setMode = (mode?: string) => {
       buttons.forEach(b => b.classList.toggle('on', b.dataset.order === mode));
       const fixed = mode === 'fixed';
       release.innerHTML = fixed ? 'active = false<small>release</small>' : 'active = false<small>relaxed / no release edge</small>';

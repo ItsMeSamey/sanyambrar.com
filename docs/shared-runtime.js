@@ -3395,7 +3395,6 @@
 	];
 	//#endregion
 	//#region src/shared/site.ts
-	var api = globalThis;
 	var nav = navigator;
 	var currentScript = document.currentScript;
 	var SCRIPT_ROOT = new URL(".", currentScript instanceof HTMLScriptElement ? currentScript.src : location.href);
@@ -3498,7 +3497,7 @@
 				const targetUrl = new URL(visible[active].href, SCRIPT_ROOT);
 				close(false);
 				if (targetUrl.origin !== location.origin) window.open(targetUrl.href, "_blank", "noopener,noreferrer");
-				else if (api.SameyNavigate) api.SameyNavigate(targetUrl.href);
+				else if (globalThis.SameyNavigate) globalThis.SameyNavigate(targetUrl.href);
 				else location.assign(targetUrl.href);
 			}
 		});

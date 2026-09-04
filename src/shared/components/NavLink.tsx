@@ -7,12 +7,8 @@ function prefetch(href: string | undefined) {
   try {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) return;
-    const api = globalThis as typeof globalThis & {
-      SameySolidPreload?: (href: string) => void;
-      SameyPreloadPage?: (href: string) => void;
-    };
-    if (api.SameySolidPreload) api.SameySolidPreload(url.href);
-    else api.SameyPreloadPage?.(url.href);
+    if (globalThis.SameySolidPreload) globalThis.SameySolidPreload(url.href);
+    else globalThis.SameyPreloadPage?.(url.href);
   } catch {}
 }
 

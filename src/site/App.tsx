@@ -68,20 +68,16 @@ const hashTarget = (url: URL) => {
 };
 const preload = (route: Route) => loadModule(route.kind);
 const setLoading = (value: boolean) => {
-  const api = globalThis as typeof globalThis & { SameyLoading?: (loading: boolean) => void };
-  if (api.SameyLoading) api.SameyLoading(value);
+  if (globalThis.SameyLoading) globalThis.SameyLoading(value);
   else dispatchEvent(new CustomEvent('samey-loading', { detail: value }));
   document.documentElement.toggleAttribute('data-solid-loading', value);
 };
-const cancelSharedPageSwap = () =>
-  (globalThis as typeof globalThis & { SameyCancelPageSwap?: () => void }).SameyCancelPageSwap?.();
-type PageSwapNavigate = (href: string, opts?: { replace?: boolean; force?: boolean }) => Promise<void>;
-const pageSwapNavigate = () =>
-  (globalThis as typeof globalThis & { SameyPageSwapNavigate?: PageSwapNavigate }).SameyPageSwapNavigate;
+const cancelSharedPageSwap = () => globalThis.SameyCancelPageSwap?.();
+const pageSwapNavigate = () => globalThis.SameyPageSwapNavigate;
 const preloadUrl = (url: URL) => {
   if (url.origin !== location.origin) return;
   if (isStandaloneApp(url)) {
-    (globalThis as typeof globalThis & { SameyPreloadPage?: (href: string) => void }).SameyPreloadPage?.(url.href);
+    globalThis.SameyPreloadPage?.(url.href);
     return;
   }
   const next = routeFromUrl(url);
@@ -100,7 +96,7 @@ async function animateRouteSwap(commit: () => void, direction: NavigationDirecti
 function RouteLoading() {
   let releaseLoading = () => {};
   onMount(() => {
-    releaseLoading = (globalThis as typeof globalThis & { SameyLoadingBegin?: () => () => void }).SameyLoadingBegin?.() ?? (() => {});
+    releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
   });
   onCleanup(() => releaseLoading());
   return <div class="site-route-loading" role="status" aria-live="polite"><span>Loading page</span></div>;
@@ -289,14 +285,9 @@ export function App() {
   onMount(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
-    const api = globalThis as typeof globalThis & {
-      SameySolidNavigate?: typeof navigate;
-      SameyNavigate?: (href: string, opts?: { replace?: boolean }) => Promise<void>;
-      SameySolidPreload?: (href: string) => void;
-    };
-    api.SameySolidNavigate = navigate;
-    api.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
-    api.SameySolidPreload = href => preloadUrl(new URL(href, location.href));
+    globalThis.SameySolidNavigate = navigate;
+    globalThis.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
+    globalThis.SameySolidPreload = href => preloadUrl(new URL(href, location.href));
 
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -367,9 +358,9 @@ export function App() {
     onCleanup(() => {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
-      delete api.SameySolidNavigate;
-      delete api.SameyNavigate;
-      delete api.SameySolidPreload;
+      globalThis.SameySolidNavigate = undefined;
+      globalThis.SameyNavigate = undefined;
+      globalThis.SameySolidPreload = undefined;
     });
   });
 
