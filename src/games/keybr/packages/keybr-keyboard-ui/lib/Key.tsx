@@ -5,6 +5,7 @@ import { clsx } from "@keybr/solid-compat/clsx";
 import { type FunctionComponent, memo, type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
+import { splitProps } from "solid-js";
 export type KeyProps = {
     readonly depressed?: boolean;
     readonly toggled?: boolean;
@@ -75,7 +76,8 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
     }
     const zoneClassName = zoneClassNameOf(shape);
     function KeyComponent(props: KeyProps): ReactNode {
-        return (<svg {...props as any} class={clsx(styles.key, props.depressed && styles.depressedKey, props.toggled && styles.toggledKey, props.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
+        const [local, mouse] = splitProps(props, ["depressed", "toggled", "showColors"]);
+        return (<svg {...mouse} class={clsx(styles.key, local.depressed && styles.depressedKey, local.toggled && styles.toggledKey, local.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
         {children}
       </svg>);
     }
@@ -111,7 +113,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
         }, clsx(className, styles.ligatureSymbol));
     }
 }
-function makeLabel(label: LabelShape, className: ClassName = null): ReactNode {
+function makeLabel(label: LabelShape, className: ClassName = undefined): ReactNode {
     const { text, pos = [10, 20], align = ["s", "m"] } = label;
     const [x, y] = pos;
     const [ha, va] = align;

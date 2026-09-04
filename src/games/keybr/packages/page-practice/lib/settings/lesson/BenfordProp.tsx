@@ -20,7 +20,7 @@ export function BenfordProp(): ReactNode {
       <Explainer>
         <Description>
           <FormattedMessage id="settings.benfordsLaw.description" defaultMessage="<a>Benford’s law</a> is an observation that in many real-life numerical data sets, the leading digit is likely to be small." values={{
-            a: (chunks) => (<Link href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank">
+            a: (chunks: ReactNode) => (<Link href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank">
                   {chunks}
                 </Link>),
         }}/>

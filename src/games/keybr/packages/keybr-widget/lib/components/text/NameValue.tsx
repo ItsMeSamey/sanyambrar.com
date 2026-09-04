@@ -8,7 +8,7 @@ export function NameValue(solidProps: NameValueProps): ReactNode {
       {asValue(solidProps.value)}
     </span>);
 }
-export function asName(v: any): ReactElement<NameProps> {
+export function asName(v: ReactNode): ReactElement<NameProps> {
     // Solid JSX is eagerly rendered. A component passed here is already a DOM
     // node, not a React vnode that can be inspected through `.type`. Preserve
     // rendered nodes and only wrap primitive labels.
@@ -21,7 +21,7 @@ export function Name(solidProps: NameProps): ReactNode {
       {solidProps.children ?? (solidProps.name != null ? solidProps.name + ":" : null)}
     </span>);
 }
-export function asValue(v: any): ReactElement<ValueProps> {
+export function asValue(v: ReactNode): ReactElement<ValueProps> {
     return typeof v === "string" || typeof v === "number"
         ? <Value value={v}/>
         : v;

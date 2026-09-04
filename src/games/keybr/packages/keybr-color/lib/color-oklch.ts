@@ -17,7 +17,7 @@ export class OklchColor extends Color implements Oklch {
   constructor();
   constructor(l: number, c: number, h: number, alpha?: number);
   constructor(value: Readonly<Oklch>);
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     super();
     const l = args.length;
     if (l === 0) {
@@ -95,7 +95,7 @@ export class OklchColor extends Color implements Oklch {
     this.#alpha = clamp(value, 0, 1);
   }
 
-  override toRgb(clone?: boolean) {
+  override toRgb() {
     return oklchToRgb(this);
   }
 

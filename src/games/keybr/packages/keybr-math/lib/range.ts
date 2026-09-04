@@ -14,24 +14,16 @@ export class Range {
   constructor();
   constructor(that: Range);
   constructor(min: number, max: number);
-  constructor(...args: any) {
-    const l = args.length;
-    let a0, a1;
-    if (l === 0) {
+  constructor(...args: unknown[]) {
+    if (args.length === 0) return;
+    if (args.length === 1 && args[0] instanceof Range) {
+      this.#min = args[0].#min;
+      this.#max = args[0].#max;
       return;
     }
-    if (l === 1 && (a0 = args[0]) instanceof Range) {
-      this.#min = a0.#min;
-      this.#max = a0.#max;
-      return;
-    }
-    if (
-      l === 2 &&
-      typeof (a0 = args[0]) === "number" &&
-      typeof (a1 = args[1]) === "number"
-    ) {
-      this.#min = a0;
-      this.#max = a1;
+    if (args.length === 2 && typeof args[0] === "number" && typeof args[1] === "number") {
+      this.#min = args[0];
+      this.#max = args[1];
       return;
     }
     throw new TypeError();

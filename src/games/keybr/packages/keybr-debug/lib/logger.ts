@@ -4,17 +4,17 @@ type Handler = (report: string) => void;
 
 const handlers = new Set<Handler>();
 
-export function catchError(error: any) {
+export function catchError(error: unknown) {
   console.error(error);
   silentCatchError(error);
 }
 
-export function silentCatchError(error: any) {
+export function silentCatchError(error: unknown) {
   const report = formatReport(inspectError(error));
   for (const handler of handlers) {
     try {
       handler(report);
-    } catch (tmp: any) {
+    } catch (tmp: unknown) {
       console.error(tmp);
     }
   }

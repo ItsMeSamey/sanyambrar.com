@@ -14,7 +14,7 @@ export function Header(props: HeaderProps): ReactNode {
         }
         return component;
     };
-    return (<Dynamic component={component() as any} id={props.id} class={props.className} title={props.title}>
+    return (<Dynamic component={component()} id={props.id} class={props.className} title={props.title}>
       {props.children}
     </Dynamic>);
 }

@@ -22,7 +22,7 @@ export class RgbColor extends Color implements Rgb {
   constructor();
   constructor(r: number, g: number, b: number, alpha?: number);
   constructor(value: Readonly<Rgb>);
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     super();
     const l = args.length;
     if (l === 0) {
@@ -150,7 +150,7 @@ export class RgbColor extends Color implements Rgb {
     return "RgbColor";
   }
 
-  static is(o: any): o is Rgb {
+  static is(o: unknown): o is Rgb {
     return (
       isObjectLike(o) &&
       isNumber(o.r) &&

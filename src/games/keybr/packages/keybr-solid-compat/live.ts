@@ -9,7 +9,7 @@ export const LIVE_ACCESSOR = Symbol("keybr.liveAccessor");
  */
 export function liveObject<T extends object>(read: Accessor<T>): T {
   const target = untrack(read);
-  const methodCache = new Map<PropertyKey, (...args: any[]) => any>();
+  const methodCache = new Map<PropertyKey, (...args: unknown[]) => unknown>();
   return new Proxy(target, {
     get(_target, key) {
       if (key === LIVE_ACCESSOR) return read;
@@ -18,7 +18,7 @@ export function liveObject<T extends object>(read: Accessor<T>): T {
       if (typeof value !== "function") return value;
       let forward = methodCache.get(key);
       if (forward == null) {
-        forward = (...args: any[]) => {
+        forward = (...args: unknown[]) => {
           const latest = read();
           const fn = Reflect.get(latest, key, latest);
           if (typeof fn !== "function") {
@@ -41,4 +41,9 @@ export function liveObject<T extends object>(read: Accessor<T>): T {
 
 export function liveArray<T>(read: Accessor<readonly T[]>): readonly T[] {
   return liveObject(read);
+}
+
+export function touchLive(value: object): void {
+  const read = Reflect.get(value, LIVE_ACCESSOR);
+  if (typeof read === "function") read();
 }

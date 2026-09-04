@@ -14,8 +14,8 @@ export const TextEvents = memo(function TextEvents(solidProps: Callbacks & {
         };
     }, () => [handler]);
     handler.setCallbacks({ onFocus: solidProps.onFocus, onBlur: solidProps.onBlur, onKeyDown: solidProps.onKeyDown, onKeyUp: solidProps.onKeyUp, onInput: solidProps.onInput });
-    return (<div style={divStyle as any}>
-      <textarea ref={el => inputRef.current = el} autoCapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle as any}/>
+    return (<div style={divStyle}>
+      <textarea ref={el => inputRef.current = el} autoCapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
     </div>);
 });
 function useInputHandler() {

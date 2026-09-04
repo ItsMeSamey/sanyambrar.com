@@ -6,7 +6,8 @@ import './error_page.css'
 import { Button } from '~/registry/ui/button'
 import { stripStack } from '../utils/toast'
 
-function SwingingLight(err: any, reset: () => void): JSX.Element {
+function SwingingLight(value: unknown, reset: () => void): JSX.Element {
+  const err = value instanceof Error ? value : new Error(String(value))
   const retry = () => { reset(); resetErrorBoundaries() }
   return <div class='__error_page_swinging_light_parent'>
     <h1 class='__error_page_swinging_light_text'>Oops</h1>
@@ -26,6 +27,6 @@ function SwingingLight(err: any, reset: () => void): JSX.Element {
   </div>
 }
 
-export default function ErrorPage(err: any, reset: () => void): JSX.Element {
+export default function ErrorPage(err: unknown, reset: () => void): JSX.Element {
   return SwingingLight(err, reset)
 }

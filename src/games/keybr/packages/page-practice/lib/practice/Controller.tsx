@@ -1,6 +1,6 @@
 import { type KeyId, useKeyboard } from "@keybr/keyboard";
 import { type Result } from "@keybr/result";
-import { LIVE_ACCESSOR } from "@keybr/solid-compat/live";
+import { touchLive } from "@keybr/solid-compat/live";
 import { type LineList } from "@keybr/textinput";
 import { addKey, deleteKey, emulateLayout } from "@keybr/textinput-events";
 import { makeSoundPlayer } from "@keybr/textinput-sounds";
@@ -51,7 +51,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
 
   const state = createMemo(() => {
     lessonRevision();
-    (keyboard as any)[LIVE_ACCESSOR]?.();
+    touchLive(keyboard);
     return new LessonState(progress());
   });
 

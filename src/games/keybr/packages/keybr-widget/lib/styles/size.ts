@@ -42,5 +42,5 @@ export const sizeClassName = (value?: SizeName | null): ClassName => {
     case 32:
       return styleWidth32;
   }
-  return null;
+  return undefined;
 };

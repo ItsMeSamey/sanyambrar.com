@@ -217,14 +217,14 @@
       "vite/client",
       "node"
     ],
-    "strict": false,
-    "noImplicitAny": false
+    "strict": true
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "packages/**/*.ts",
     "packages/**/*.tsx",
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "../../shared/runtime-globals.d.ts"
   ]
 }

@@ -239,7 +239,7 @@ export function RawIntlProvider(props: { value: IntlShape; children?: JSX.Elemen
 export const IntlProvider = RawIntlProvider;
 
 export function createIntlCache(): Record<string, never> { return {}; }
-export function createIntl(config: any, _cache?: unknown): IntlShape {
+export function createIntl(config: { locale?: string; defaultLocale?: string; messages?: Record<string, string>; defaultRichTextElements?: Record<string, RichTextHandler>; onWarn?: (warning: unknown) => void; onError?: (error: Error & { code?: string }) => void }, _cache?: unknown): IntlShape {
   return makeIntl(
     config?.locale ?? "en",
     config?.messages ?? {},

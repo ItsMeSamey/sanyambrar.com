@@ -121,7 +121,7 @@ function mountReverbDemo(host: HTMLDivElement) {
     rafs.add(id);
     return id;
   };
-  const setDemoTimeout = (handler: (...args: any[]) => void, timeout?: number, ...args: any[]) => {
+  const setDemoTimeout = (handler: (...args: unknown[]) => void, timeout?: number, ...args: unknown[]) => {
     let id = 0;
     id = window.setTimeout(() => {
       timers.delete(id);

@@ -25,11 +25,11 @@ const lessonTypes = [
 export function LessonSettings(): ReactNode {
   const { formatMessage } = useIntl();
   const { settings, updateSettings } = useSettings();
-  let root!: HTMLDivElement;
+  let lessonBody!: HTMLDivElement;
   let switching = false;
 
   const waitForLesson = (type: LessonType) => new Promise<void>((resolve) => {
-    const ready = () => root.querySelector(`[data-keybr-lesson-type="${type.id}"]`) != null;
+    const ready = () => lessonBody.querySelector(`[data-keybr-lesson-type="${type.id}"]`) != null;
     if (ready()) { resolve(); return; }
     const observer = new MutationObserver(() => {
       if (!ready()) return;
@@ -41,7 +41,7 @@ export function LessonSettings(): ReactNode {
       observer.disconnect();
       resolve();
     }, 3000);
-    observer.observe(root, { childList: true, subtree: true });
+    observer.observe(lessonBody, { childList: true, subtree: true });
   });
 
   const changeLessonType = (value: LessonType) => {
@@ -54,15 +54,15 @@ export function LessonSettings(): ReactNode {
       updateSettings(settings.set(lessonProps.type, value));
       await waitForLesson(value);
     };
-    const animate = (globalThis as any).SameyAnimateLocalSwap;
-    if (typeof animate !== "function") { void commit(); return; }
+    const animate = globalThis.SameyAnimateLocalSwap;
+    if (!animate) { void commit(); return; }
     switching = true;
-    void Promise.resolve(animate(root, commit, direction))
+    void animate(lessonBody, commit, direction)
       .catch((error) => console.error("Lesson type transition failed", error))
       .finally(() => { switching = false; });
   };
 
-  return <div ref={root} class="keybr-lesson-settings">
+  return <>
     <SegmentedControl
       label="Lesson type"
       comfortable
@@ -77,14 +77,16 @@ export function LessonSettings(): ReactNode {
       ]}
       onChange={changeLessonType}
     />
-    <LessonLoader>
-      {(lesson) => <div data-keybr-lesson-type={settings.get(lessonProps.type).id}>
-        {tabBody(settings, lesson)}
-        <LessonPreview lesson={lesson}/>
-        <DailyGoalSettings />
-      </div>}
-    </LessonLoader>
-  </div>;
+    <div ref={lessonBody} class="keybr-lesson-settings-body">
+      <LessonLoader>
+        {(lesson) => <div data-keybr-lesson-type={settings.get(lessonProps.type).id}>
+          {tabBody(settings, lesson)}
+          <LessonPreview lesson={lesson}/>
+        </div>}
+      </LessonLoader>
+    </div>
+    <DailyGoalSettings />
+  </>;
 }
 
 function tabBody(settings: Settings, lesson: Lesson): ReactNode {

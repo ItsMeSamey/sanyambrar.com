@@ -14,9 +14,9 @@ export function main(): void {
   const element = document.getElementById("app");
   if (element == null) throw new Error("Missing #app root element");
   const dispose = render(() => <ThemeProvider><Bootstrap /></ThemeProvider>, element);
-  (globalThis as any).SameyKeybrDispose = () => {
+  globalThis.SameyKeybrDispose = () => {
     dispose();
-    delete (globalThis as any).SameyKeybrDispose;
+    delete globalThis.SameyKeybrDispose;
   };
 }
 

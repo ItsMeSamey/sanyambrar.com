@@ -17,7 +17,7 @@ export class OklabColor extends Color implements Oklab {
   constructor();
   constructor(l: number, a: number, b: number, alpha?: number);
   constructor(value: Readonly<Oklab>);
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     super();
     const l = args.length;
     if (l === 0) {
@@ -95,7 +95,7 @@ export class OklabColor extends Color implements Oklab {
     this.#alpha = clamp(value, 0, 1);
   }
 
-  override toRgb(clone?: boolean) {
+  override toRgb() {
     return oklabToRgb(this);
   }
 

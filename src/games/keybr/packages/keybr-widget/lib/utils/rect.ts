@@ -13,48 +13,24 @@ export class Rect implements Readonly<TRect> {
   constructor(x: number, y: number, width: number, height: number);
   constructor(point: Readonly<TPoint>, size: Readonly<TSize>);
   constructor(rect: Readonly<TRect>);
-  constructor(...args: any[]) {
-    const l = args.length;
-    let p: TPoint,
-      s: TSize,
-      o: TRect,
-      x: number,
-      y: number,
-      w: number,
-      h: number;
-    if (
-      l === 4 &&
-      isNumber((x = args[0])) &&
-      isNumber((y = args[1])) &&
-      isNumber((w = args[2])) &&
-      isNumber((h = args[3]))
-    ) {
-      this.x = x;
-      this.y = y;
-      this.width = w;
-      this.height = h;
-      return this;
+  constructor(...args: unknown[]) {
+    if (args.length === 4 && args.every(isNumber)) {
+      [this.x, this.y, this.width, this.height] = args as [number, number, number, number];
+      return;
     }
-    if (l === 2 && Point.isPoint((p = args[0])) && Size.isSize((s = args[1]))) {
-      this.x = p.x;
-      this.y = p.y;
-      this.width = s.width;
-      this.height = s.height;
-      return this;
+    if (args.length === 2 && Point.isPoint(args[0]) && Size.isSize(args[1])) {
+      this.x = args[0].x;
+      this.y = args[0].y;
+      this.width = args[1].width;
+      this.height = args[1].height;
+      return;
     }
-    if (
-      l === 1 &&
-      isObjectLike((o = args[0])) &&
-      isNumber((x = o.x)) &&
-      isNumber((y = o.y)) &&
-      isNumber((w = o.width)) &&
-      isNumber((h = o.height))
-    ) {
-      this.x = x;
-      this.y = y;
-      this.width = w;
-      this.height = h;
-      return this;
+    if (args.length === 1 && Rect.isRect(args[0])) {
+      this.x = args[0].x;
+      this.y = args[0].y;
+      this.width = args[0].width;
+      this.height = args[0].height;
+      return;
     }
     throw new TypeError();
   }
@@ -101,7 +77,7 @@ export class Rect implements Readonly<TRect> {
     return Math.max(this.y, this.y + this.height);
   }
 
-  static isRect(o: any): o is TRect {
+  static isRect(o: unknown): o is TRect {
     return (
       isObjectLike(o) &&
       isNumber(o.x) &&

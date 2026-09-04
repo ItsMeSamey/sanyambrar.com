@@ -239,7 +239,7 @@ class GameState {
 
 export class WordleModel {
   state: GameState
-  currentBlock: HTMLDivElement = undefined as any
+  currentBlock?: HTMLDivElement
 
   constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>, private onNextChallenge: () => void, private onChooseMode: () => void) {
     this.state = new GameState(soft, hard, stateStore)
@@ -381,9 +381,10 @@ export class WordleModel {
         <For each={this.state.history.length ? this.state.history.slice(0, -1) : []}>{([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}</For>
         {(() => {
           const last = this.state.history.at(-1)!
-this.currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).render() as HTMLDivElement
-          onMount(() => this.currentBlock.scrollIntoView({behavior: 'smooth', block: 'nearest'}))
-          return this.currentBlock as JSX.Element
+          const currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).render() as HTMLDivElement
+          this.currentBlock = currentBlock
+          onMount(() => currentBlock.scrollIntoView({behavior: 'smooth', block: 'nearest'}))
+          return currentBlock as JSX.Element
         })()}
         <Show when={this.state.hard.maxTries !== 1}>
           <For each={Array.from({length: Math.max(0, this.state.hard.maxTries - this.state.history.length)}).fill(undefined)}>{() => new Block(this.state.hard.wordLength, '', '').render()}</For>

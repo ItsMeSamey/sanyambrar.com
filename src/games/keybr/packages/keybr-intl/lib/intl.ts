@@ -9,7 +9,7 @@ export async function loadIntl(): Promise<IntlShape> {
         defaultRichTextElements,
         messages,
         onWarn: () => { },
-        onError: (error) => {
+        onError: (error: Error & { code?: string }) => {
             if (error.code !== "MISSING_TRANSLATION") {
                 console.error("Intl error", error);
             }

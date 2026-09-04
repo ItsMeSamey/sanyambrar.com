@@ -191,17 +191,6 @@
 	//#region src/shared/transitions.ts
 	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 	var nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-	/** Compatibility timing retained for callers that inspect the shared contract. */
-	var PAGE_TRANSITION = {
-		duration: 210,
-		leaveRatio: .72,
-		enterEasing: "cubic-bezier(.16,1,.3,1)",
-		leaveEasing: "cubic-bezier(.4,0,.2,1)",
-		opacity: .32,
-		forwardScale: .982,
-		backScale: .992,
-		leaveScale: 1.006
-	};
 	/** Every routed and local view deconstructs into rules, then rebuilds before content. */
 	var CONSTRUCTED_TRANSITION = {
 		out: 260,
@@ -343,14 +332,9 @@
 		".game-settings-slider-head",
 		".keybr-segmented-item"
 	].join(",");
-	var leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
-	var startScale = (direction) => `scale(${direction === "back" ? PAGE_TRANSITION.backScale : PAGE_TRANSITION.forwardScale})`;
 	var stagger = (index) => Math.min(index * CONSTRUCTED_TRANSITION.stagger, CONSTRUCTED_TRANSITION.maxStagger);
 	var animationFinished = (animation) => animation.finished.catch(() => void 0);
 	var waitAnimations = (animations) => Promise.all(animations.map(animationFinished));
-	function constructionRoot(element) {
-		return element?.isConnected ? element : null;
-	}
 	function inViewport(rect) {
 		return rect.width > 0 && rect.height > 0 && rect.right > -2 && rect.bottom > -2 && rect.left < innerWidth + 2 && rect.top < innerHeight + 2;
 	}
@@ -481,85 +465,6 @@
 		for (const animation of animations) animation.cancel();
 		layer.remove();
 	}
-	function snapshotElement(element) {
-		const rect = element.getBoundingClientRect();
-		const shell = document.createElement("div");
-		shell.className = "samey-route-snapshot";
-		shell.setAttribute("aria-hidden", "true");
-		shell.inert = true;
-		shell.style.setProperty("--snapshot-top", `${rect.top}px`);
-		shell.style.setProperty("--snapshot-left", `${rect.left}px`);
-		shell.style.setProperty("--snapshot-width", `${rect.width}px`);
-		shell.style.setProperty("--snapshot-height", `${rect.height}px`);
-		const clone = element.cloneNode(true);
-		clone.removeAttribute("id");
-		clone.querySelectorAll("[id]").forEach((node) => node.removeAttribute("id"));
-		clone.querySelectorAll("[aria-controls],[aria-labelledby],[aria-describedby]").forEach((node) => {
-			node.removeAttribute("aria-controls");
-			node.removeAttribute("aria-labelledby");
-			node.removeAttribute("aria-describedby");
-		});
-		clone.scrollTop = element.scrollTop;
-		clone.scrollLeft = element.scrollLeft;
-		const sourceState = element.querySelectorAll("input,textarea,select");
-		const targetState = clone.querySelectorAll("input,textarea,select");
-		for (let i = 0; i < Math.min(sourceState.length, targetState.length); i++) {
-			const source = sourceState[i], target = targetState[i];
-			if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
-				target.value = source.value;
-				target.checked = source.checked;
-			} else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
-			else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
-		}
-		const sourceCanvases = element.querySelectorAll("canvas");
-		const targetCanvases = clone.querySelectorAll("canvas");
-		for (let i = 0; i < Math.min(sourceCanvases.length, targetCanvases.length); i++) {
-			const source = sourceCanvases[i], target = targetCanvases[i];
-			target.width = source.width;
-			target.height = source.height;
-			try {
-				target.getContext("2d")?.drawImage(source, 0, 0);
-			} catch {}
-		}
-		shell.append(clone);
-		document.body.append(shell);
-		return shell;
-	}
-	function primeIncoming(element, direction) {
-		element.style.opacity = String(PAGE_TRANSITION.opacity);
-		element.style.transform = startScale(direction);
-	}
-	function animateIncoming(element, direction) {
-		return element.animate([{
-			opacity: PAGE_TRANSITION.opacity,
-			transform: startScale(direction)
-		}, {
-			opacity: 1,
-			transform: "scale(1)"
-		}], {
-			duration: PAGE_TRANSITION.duration,
-			easing: PAGE_TRANSITION.enterEasing,
-			fill: "both"
-		});
-	}
-	function animateOutgoing(element) {
-		return element.animate([{
-			opacity: 1,
-			transform: "scale(1)"
-		}, {
-			opacity: 0,
-			transform: `scale(${PAGE_TRANSITION.leaveScale})`
-		}], {
-			duration: leaveDuration(),
-			easing: PAGE_TRANSITION.leaveEasing,
-			fill: "both"
-		});
-	}
-	function clearIncoming(element) {
-		element.style.opacity = "";
-		element.style.transform = "";
-		element.style.pointerEvents = "";
-	}
 	async function resolveIncoming(next, current) {
 		await Promise.resolve();
 		let incoming = next();
@@ -569,56 +474,25 @@
 		}
 		return incoming;
 	}
+	function cleanupConstruction(run) {
+		run.layer.remove();
+		for (const animation of run.animations) animation.cancel();
+	}
 	async function animateRootSwap(current, commit, next, direction = "forward") {
 		if (!current || reducedMotion() || !current.animate) {
 			await commit();
 			return;
 		}
-		const constructedCurrent = constructionRoot(current);
-		if (constructedCurrent) {
-			const outgoing = await animateConstructionExit(constructedCurrent, direction);
-			try {
-				await commit();
-			} catch (error) {
-				outgoing.layer.remove();
-				for (const animation of outgoing.animations) animation.cancel();
-				throw error;
-			}
-			outgoing.layer.remove();
-			for (const animation of outgoing.animations) animation.cancel();
-			const incoming = await resolveIncoming(next, current);
-			const constructedIncoming = constructionRoot(incoming);
-			if (constructedIncoming) await animateConstructionEntrance(constructedIncoming, direction);
-			else if (incoming?.animate) {
-				primeIncoming(incoming, direction);
-				const enter = animateIncoming(incoming, direction);
-				await animationFinished(enter);
-				enter.cancel();
-				clearIncoming(incoming);
-			}
-			return;
-		}
-		const snapshot = snapshotElement(current);
+		const outgoing = await animateConstructionExit(current, direction);
 		try {
 			await commit();
 		} catch (error) {
-			snapshot.remove();
+			cleanupConstruction(outgoing);
 			throw error;
 		}
+		cleanupConstruction(outgoing);
 		const incoming = await resolveIncoming(next, current);
-		const constructedIncoming = constructionRoot(incoming);
-		const leave = animateOutgoing(snapshot);
-		if (constructedIncoming) {
-			await Promise.all([animationFinished(leave), animateConstructionEntrance(constructedIncoming, direction)]);
-			snapshot.remove();
-			return;
-		}
-		if (incoming) primeIncoming(incoming, direction);
-		const enter = incoming?.animate ? animateIncoming(incoming, direction) : void 0;
-		await Promise.all([animationFinished(leave), enter ? animationFinished(enter) : Promise.resolve()]);
-		snapshot.remove();
-		enter?.cancel();
-		if (incoming) clearIncoming(incoming);
+		if (incoming?.isConnected) await animateConstructionEntrance(incoming, direction);
 	}
 	//#endregion
 	//#region src/shared/contrast.ts

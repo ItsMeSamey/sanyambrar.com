@@ -7,6 +7,12 @@ import { promisify } from "node:util";
 import { generateSite } from "./site.ts";
 
 const runFile = promisify(execFile);
+type BunSemver = { semver?: { satisfies?: (version: string, range: string) => boolean } };
+const APPEARANCE_COLOR_KEYS = ['background', 'text', 'accent', 'error', 'slow', 'fast', 'effort'] as const;
+type AppearanceConfig = {
+  colors: Record<string, { tone: string } & Record<(typeof APPEARANCE_COLOR_KEYS)[number], string>>;
+  fonts: Record<string, { label?: string; stack?: string }>;
+};
 
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "src/static");
@@ -48,7 +54,7 @@ async function directDependenciesPresent(dir: string) {
   if (!existsSync(packagePath) || !existsSync(join(dir, "node_modules"))) return false;
   const pkg = JSON.parse(await readFile(packagePath, "utf8"));
   const requested = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-  const satisfies = (globalThis as any).Bun?.semver?.satisfies as ((version: string, range: string) => boolean) | undefined;
+  const satisfies = (globalThis as typeof globalThis & { Bun?: BunSemver }).Bun?.semver?.satisfies;
   for (const [name, range] of Object.entries<string>(requested)) {
     const installed = join(dir, "node_modules", ...name.split("/"), "package.json");
     if (!existsSync(installed)) return false;
@@ -79,15 +85,16 @@ async function ensureDepsUnlocked(dir: string) {
   const installArgs = existsSync(lock) ? ["install", "--frozen-lockfile"] : ["install"];
   try {
     await run(dir, process.execPath, installArgs);
-  } catch (error: any) {
-    if (error?.code === "ENOENT" && !existsSync(process.execPath))
+  } catch (error: unknown) {
+    const failure = error as { code?: string; message?: string; stderr?: string };
+    if (failure.code === "ENOENT" && !existsSync(process.execPath))
       throw new Error(`dependencies for ${relative(ROOT, dir) || "."} are missing/stale and Bun is not installed`);
 
     // Bun can leave a partially-populated package cache/tree after an
     // interrupted install. A common symptom is ENOENT while linking a package
     // binary (for example TypeScript's bin/tsc). Retry once from clean inputs,
     // bypassing both the cache and hardlink backend.
-    const detail = `${error?.message || ""}\n${error?.stderr || ""}`;
+    const detail = `${failure.message ?? ""}\n${failure.stderr ?? ""}`;
     if (!/ENOENT: (?:copying|linking) file/i.test(detail)) throw error;
     log(`dependency install hit a stale package tree; retrying cleanly for ${relative(ROOT, dir) || "."}`);
     await rm(join(dir, "node_modules"), { recursive: true, force: true });
@@ -113,13 +120,13 @@ async function ensureDeps(dir: string) {
 }
 
 async function generateAppearance() {
-  const config = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8"));
+  const config = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8")) as AppearanceConfig;
   const hex = /^#[0-9a-f]{6}$/i;
-  for (const [id, color] of Object.entries<any>(config.colors)) {
+  for (const [id, color] of Object.entries(config.colors)) {
     must(["light", "dark"].includes(color.tone), `appearance: ${id} has invalid tone`);
-    for (const key of ["background", "text", "accent", "error", "slow", "fast", "effort"]) must(hex.test(color[key]), `appearance: ${id}.${key} is not #rrggbb`);
+    for (const key of APPEARANCE_COLOR_KEYS) must(hex.test(color[key]), `appearance: ${id}.${key} is not #rrggbb`);
   }
-  for (const [id, font] of Object.entries<any>(config.fonts)) must(font.label && font.stack, `appearance: incomplete font ${id}`);
+  for (const [id, font] of Object.entries(config.fonts)) must(font.label && font.stack, `appearance: incomplete font ${id}`);
 
 }
 
@@ -191,16 +198,16 @@ ${keybrViewSwitch}`;
     must(!text.includes("rollupOptions"), `architecture: ${name} uses deprecated Vite rollupOptions`);
 
   const transitions = await readFile(join(ROOT, "src/shared/transitions.ts"), "utf8");
-  must(/duration:\s*\d+/.test(transitions) && !/enterDuration:|leaveDuration:/.test(transitions),
-    "architecture: page transition timing must come from PAGE_TRANSITION.duration");
-  must(transitions.includes("duration: 210") && !transitions.includes("clipPath") &&
-    !transitions.includes("querySelectorAll<HTMLElement>('*')") && transitions.includes("querySelectorAll<HTMLCanvasElement>('canvas')"),
-    "performance: page transitions must stay compositor-only and avoid walking every descendant during snapshot setup");
+  must(transitions.includes("const CONSTRUCTED_TRANSITION") && !transitions.includes("PAGE_TRANSITION") &&
+    !transitions.includes("snapshotElement") && !transitions.includes("clipPath") &&
+    !transitions.includes("querySelectorAll<HTMLElement>('*')"),
+    "architecture: constructed transitions must be the single page/view transition engine");
   must(transitions.includes("Every routed and local view deconstructs into rules") &&
-    transitions.includes("return element?.isConnected ? element : null") &&
+    transitions.includes("animateConstructionExit(current, direction)") &&
+    transitions.includes("animateConstructionEntrance(incoming, direction)") &&
     transitions.includes("animateConstructionExit(from, direction)") &&
     transitions.includes("animateConstructionEntrance(to, direction)"),
-    "architecture: every connected page and mounted game view must use the constructed transition");
+    "architecture: every page and mounted game view must use the constructed transition");
   must((await readFile(join(ROOT, "src/site/App.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Solid routes must use the shared transition runtime");
   must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
@@ -701,8 +708,9 @@ ${keybrViewSwitch}`;
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   must(keybrLessonSettings.includes('SameyAnimateLocalSwap') &&
-    keybrLessonSettings.includes('class="keybr-lesson-settings"') &&
+    keybrLessonSettings.includes('class="keybr-lesson-settings-body"') &&
     keybrLessonSettings.includes('data-keybr-lesson-type') &&
+    keybrLessonSettings.includes('animate(lessonBody, commit, direction)') &&
     keybrLessonSettings.includes('await waitForLesson(value)') &&
     keybrLessonSettings.includes('const direction = to < from ? "back" : "forward"'),
     "ux: switching lesson types in Keybr settings must use the shared constructed transition and wait for the selected lesson UI before entering");

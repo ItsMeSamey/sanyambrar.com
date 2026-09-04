@@ -65,7 +65,7 @@ const factory = (intl: IntlShape): IntlDurations => {
         humanizeDuration,
     };
 };
-export const makeIntlDurations = intlMemo(Symbol("durations"), factory);
+export const makeIntlDurations = intlMemo(factory);
 export const useIntlDurations = (): IntlDurations => {
     return makeIntlDurations(useIntl());
 };

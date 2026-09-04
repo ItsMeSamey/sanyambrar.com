@@ -16,7 +16,7 @@ export class HslColor extends Color implements Hsl {
   constructor();
   constructor(h: number, s: number, l: number, alpha?: number);
   constructor(value: Readonly<Hsl>);
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     super();
     const l = args.length;
     if (l === 0) {
@@ -105,7 +105,7 @@ export class HslColor extends Color implements Hsl {
     return this;
   }
 
-  override toHsv(clone?: boolean) {
+  override toHsv() {
     return hslToHsv(this);
   }
 

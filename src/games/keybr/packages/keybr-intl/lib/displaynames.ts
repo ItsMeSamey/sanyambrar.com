@@ -36,7 +36,7 @@ const factory = (intl: IntlShape): IntlDisplayNames => {
         formatLocalLanguageName,
     };
 };
-export const makeIntlDisplayNames = intlMemo(Symbol("displayNames"), factory);
+export const makeIntlDisplayNames = intlMemo(factory);
 export const useIntlDisplayNames = (): IntlDisplayNames => {
     return makeIntlDisplayNames(useIntl());
 };

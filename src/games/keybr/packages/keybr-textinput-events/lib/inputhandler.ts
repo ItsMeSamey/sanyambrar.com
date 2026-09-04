@@ -49,7 +49,7 @@ export class InputHandler implements Focusable {
       input.addEventListener("blur", this.handleBlur);
       input.addEventListener("keydown", this.handleKeyboard);
       input.addEventListener("keyup", this.handleKeyboard);
-      input.addEventListener("input", this.handleInput as any);
+      input.addEventListener("input", this.handleInput as EventListener);
       input.addEventListener("compositionstart", this.handleComposition);
       input.addEventListener("compositionupdate", this.handleComposition);
       input.addEventListener("compositionend", this.handleComposition);
@@ -65,7 +65,7 @@ export class InputHandler implements Focusable {
       input.removeEventListener("blur", this.handleBlur);
       input.removeEventListener("keydown", this.handleKeyboard);
       input.removeEventListener("keyup", this.handleKeyboard);
-      input.removeEventListener("input", this.handleInput as any);
+      input.removeEventListener("input", this.handleInput as EventListener);
       input.removeEventListener("compositionstart", this.handleComposition);
       input.removeEventListener("compositionupdate", this.handleComposition);
       input.removeEventListener("compositionend", this.handleComposition);

@@ -1,4 +1,4 @@
-import { isNumber, isObject, isObjectLike } from "@keybr/lang";
+import { isNumber, isObjectLike } from "@keybr/lang";
 
 export type TPoint = {
   x: number;
@@ -11,23 +11,16 @@ export class Point implements Readonly<TPoint> {
 
   constructor(x: number, y: number);
   constructor(point: Readonly<TPoint>);
-  constructor(...args: any[]) {
-    const l = args.length;
-    let o: TPoint, x: number, y: number;
-    if (l === 2 && isNumber((x = args[0])) && isNumber((y = args[1]))) {
-      this.x = x;
-      this.y = y;
-      return this;
+  constructor(...args: unknown[]) {
+    if (args.length === 2 && isNumber(args[0]) && isNumber(args[1])) {
+      this.x = args[0];
+      this.y = args[1];
+      return;
     }
-    if (
-      l === 1 &&
-      isObject((o = args[0])) &&
-      isNumber((x = o.x)) &&
-      isNumber((y = o.y))
-    ) {
-      this.x = x;
-      this.y = y;
-      return this;
+    if (args.length === 1 && Point.isPoint(args[0])) {
+      this.x = args[0].x;
+      this.y = args[0].y;
+      return;
     }
     throw new TypeError();
   }
@@ -40,7 +33,7 @@ export class Point implements Readonly<TPoint> {
     return new Point(Math.round(this.x), Math.round(this.y));
   }
 
-  static isPoint(o: any): o is TPoint {
+  static isPoint(o: unknown): o is TPoint {
     return isObjectLike(o) && isNumber(o.x) && isNumber(o.y);
   }
 }

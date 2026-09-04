@@ -1,14 +1,13 @@
-import { createContext, createMemo, createSignal, onCleanup, onMount, useContext, type Accessor, type Component } from "solid-js";
+import { createContext, createMemo, createSignal, onCleanup, onMount, useContext, type Accessor, type Component, type JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 export type ViewName = string;
-export type ViewProps = Record<string, any>;
-export type ViewMap = { readonly [name: ViewName]: Component<any> };
+export type ViewMap = { readonly [name: ViewName]: Component };
 
 type BeforeLeave = () => void;
 
 type ViewContextValue = {
-  readonly setView: (name: ViewName, props?: ViewProps) => void;
+  readonly setView: (name: ViewName) => void;
   readonly currentView: Accessor<ViewName>;
   readonly setBeforeLeave: (handler: BeforeLeave) => () => void;
 };
@@ -23,26 +22,25 @@ export const ViewContext = createContext<ViewContextValue>({
 
 export function useView<T extends ViewMap>(_views: T) {
   return useContext(ViewContext) as {
-    readonly setView: (name: keyof T, props?: ViewProps) => void;
+    readonly setView: (name: keyof T) => void;
     readonly currentView: Accessor<keyof T>;
     readonly setBeforeLeave: (handler: BeforeLeave) => () => void;
   };
 }
 
-export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: () => any }) {
+export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: () => JSX.Element }) {
   const first = Object.keys(props.views)[0];
   const readView = (): ViewName => {
     const value = new URL(location.href).searchParams.get("p");
     return value != null && props.views[value] != null ? value : first;
   };
-  const [viewState, setViewState] = createSignal<[ViewName, ViewProps]>([readView(), {}], { equals: false });
+  const [currentView, setCurrentView] = createSignal<ViewName>(readView());
   let viewHistoryIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : 0;
-  const currentView = () => viewState()[0];
   const current = createMemo(() => {
-    const [name, viewProps] = viewState();
+    const name = currentView();
     const View = props.views[name];
     if (View == null) throw new Error(process.env.NODE_ENV !== "production" ? `Unknown view [${name}]` : undefined);
-    return { View, viewProps };
+    return View;
   });
 
   let beforeLeave: BeforeLeave | null = null;
@@ -59,7 +57,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     handler?.();
   };
 
-  const commitView = (nextName: ViewName, nextProps: ViewProps, syncUrl: boolean) => {
+  const commitView = (nextName: ViewName, syncUrl: boolean) => {
     runBeforeLeave(nextName);
     if (syncUrl) {
       const url = new URL(location.href);
@@ -70,23 +68,23 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
         history.pushState({...(history.state ?? {}), keybrView: nextName, keybrViewIndex: viewHistoryIndex}, "", url);
       }
     }
-    setViewState([nextName, nextProps]);
+    setCurrentView(nextName);
   };
-  const swapView = (nextName: ViewName, nextProps: ViewProps = {}, syncUrl = true, requestedDirection?: "forward" | "back") => {
-    if (props.views[nextName] == null || (nextName === currentView() && Object.keys(nextProps).length === 0)) return;
-    const commit = () => commitView(nextName, nextProps, syncUrl);
+  const swapView = (nextName: ViewName, syncUrl = true, requestedDirection?: "forward" | "back") => {
+    if (props.views[nextName] == null || nextName === currentView()) return;
+    const commit = () => commitView(nextName, syncUrl);
     const root = document.getElementById("app");
-    const animate = (globalThis as any).SameyAnimateLocalSwap;
+    const animate = globalThis.SameyAnimateLocalSwap;
     const direction = requestedDirection ?? (nextName === first ? "back" : "forward");
     if (root && animate) void animate(root, commit, direction);
     else commit();
   };
-  const setView = (nextName: ViewName, nextProps: ViewProps = {}) => swapView(nextName, nextProps, true);
+  const setView = (nextName: ViewName) => swapView(nextName, true);
   const onPopState = () => {
     const nextIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : null;
     const direction = nextIndex != null && nextIndex < viewHistoryIndex ? "back" : "forward";
     if (nextIndex != null) viewHistoryIndex = nextIndex;
-    swapView(readView(), {}, false, direction);
+    swapView(readView(), false, direction);
   };
   onMount(() => {
     if (typeof history.state?.keybrViewIndex !== "number")
@@ -96,6 +94,6 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
   onCleanup(() => removeEventListener("popstate", onPopState));
   return <ViewContext.Provider value={{ setView, currentView, setBeforeLeave }}>
     {props.header?.()}
-    <Dynamic component={current().View} {...current().viewProps}/>
+    <Dynamic component={current()}/>
   </ViewContext.Provider>;
 }

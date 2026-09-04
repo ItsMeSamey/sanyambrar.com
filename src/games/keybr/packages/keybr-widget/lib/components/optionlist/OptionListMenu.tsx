@@ -9,8 +9,8 @@ export function OptionListMenu(solidProps: {
     readonly selectedOption: OptionListOption;
     readonly onSelect: (value: OptionListOption) => void;
 }): ReactNode {
-    const list = useRef(null);
-    const item = useRef(null);
+    const list = useRef<HTMLUListElement>();
+    const item = useRef<HTMLLIElement>();
     useEffect(() => {
         ensureVisible(list.current, item.current);
     });

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { Block, WordLocalStorageState } from './page'
 import { SettingsHardProps } from './popup_settings'
 import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion } from './challenge'
-import { binarySearch, wordCount } from './word-list'
+import { binarySearch, wordCount, type WordLength } from './word-list'
 
 interface ActiveGame {
   key: string
@@ -28,14 +28,14 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
   if (!config) {
     let match = MODERN_ADVANCED_RE.exec(key)
     if (match) config = {
-      mode: 'advanced', wordLength: Number(match[1]) as any, maxTries: Number(match[2]),
+      mode: 'advanced', wordLength: Number(match[1]) as WordLength, maxTries: Number(match[2]),
       disabledLetters: Number(match[3]), allowAny: match[4] === '1',
       wordIndex: match[5] ? Number.parseInt(match[5], 16) : undefined,
     }
 
     match = ADVANCED_RE.exec(key)
     if (!config && match) config = {
-      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
+      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as WordLength,
       maxTries: Number(match[3]), disabledLetters: Number(match[4]),
     }
 
@@ -50,7 +50,7 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
 
     match = LEGACY_RE.exec(key)
     if (!config && match) config = {
-      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as any,
+      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as WordLength,
       maxTries: Number(match[3]), disabledLetters: 0,
     }
   }

@@ -12,7 +12,7 @@ export const TextLines = memo(function TextLines(props: {
     readonly settings?: TextDisplaySettings;
     readonly wrap?: boolean;
     readonly size?: TextLineSize;
-    readonly lineTemplate?: ComponentType<any>;
+    readonly lineTemplate?: ComponentType;
     readonly cursor: boolean;
     readonly focus: boolean;
 }): ReactNode {

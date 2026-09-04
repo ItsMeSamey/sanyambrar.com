@@ -1,6 +1,6 @@
 import { type ElementType, type FocusEventHandler, type KeyboardEventHandler, type MouseEventHandler, type HTMLAttributes, type ReactNode, type RefObject, type WheelEventHandler, } from "@keybr/solid-compat/react";
 import { type Anchor } from "../floating/index.ts";
-export type ClassName = any;
+export type ClassName = string | undefined;
 export type ElementProps = {
     readonly as?: ElementType<HTMLAttributes<HTMLElement>>;
     readonly className?: ClassName;

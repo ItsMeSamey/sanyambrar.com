@@ -82,6 +82,6 @@ export const useFormatter = (): Formatter => {
         };
     }, [formatMessage, formatNumber, formatPercents, settings]);
 };
-function signed(value: any, learningRate: number) {
+function signed(value: string, learningRate: number) {
     return learningRate > 0 ? `+${value}` : `${value}`;
 }

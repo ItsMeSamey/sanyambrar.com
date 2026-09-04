@@ -1,4 +1,4 @@
-import { isNumber, isObject } from "@keybr/lang";
+import { isNumber } from "@keybr/lang";
 
 export enum Month {
   January = 1,
@@ -64,62 +64,30 @@ export class LocalDate {
    * @param date A date instance.
    */
   constructor(date: Date);
-  constructor(...args: any[]) {
-    const { length } = args;
-    let year: number;
-    let month: number;
-    let day: number;
-    let timeStamp: number;
+  constructor(...args: unknown[]) {
     let date: Date;
-    if (
-      length === 3 &&
-      isNumber((year = args[0])) &&
-      isNumber((month = args[1])) &&
-      isNumber((day = args[2]))
-    ) {
+    if (args.length === 3 && isNumber(args[0]) && isNumber(args[1]) && isNumber(args[2])) {
+      const [year, month, day] = args;
       date = new Date(year, month - 1, day);
-      if (
-        date.getFullYear() !== year ||
-        date.getMonth() !== month - 1 ||
-        date.getDate() !== day
-      ) {
-        throw new Error(
-          process.env.NODE_ENV !== "production"
-            ? "Invalid local date arguments"
-            : undefined,
-        );
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        throw new Error(process.env.NODE_ENV !== "production" ? "Invalid local date arguments" : undefined);
       }
-    } else if (length === 1 && isNumber((timeStamp = args[0]))) {
-      date = new Date(timeStamp);
-    } else if (length === 1 && isObject((date = args[0]))) {
-      date = new Date(date.getTime());
+    } else if (args.length === 1 && isNumber(args[0])) {
+      date = new Date(args[0]);
+    } else if (args.length === 1 && args[0] instanceof Date) {
+      date = new Date(args[0].getTime());
     } else {
-      throw new TypeError(
-        process.env.NODE_ENV !== "production"
-          ? "Invalid local date arguments"
-          : undefined,
-      );
+      throw new TypeError(process.env.NODE_ENV !== "production" ? "Invalid local date arguments" : undefined);
     }
-    date.setHours(0);
-    date.setMinutes(0);
-    date.setSeconds(0);
-    date.setMilliseconds(0);
+    date.setHours(0, 0, 0, 0);
     this.year = date.getFullYear();
     this.month = date.getMonth() + 1;
     this.dayOfMonth = date.getDate();
-    let dayOfWeek = date.getDay();
-    if (dayOfWeek === 0) {
-      dayOfWeek = 7;
-    }
+    const dayOfWeek = date.getDay() || 7;
     this.dayOfWeek = dayOfWeek;
     this.timeStamp = date.getTime();
-    this.value =
-      String(this.year) +
-      "-" +
-      String(this.month).padStart(2, "0") +
-      "-" +
-      String(this.dayOfMonth).padStart(2, "0");
-    return Object.freeze(this);
+    this.value = `${this.year}-${String(this.month).padStart(2, "0")}-${String(this.dayOfMonth).padStart(2, "0")}`;
+    Object.freeze(this);
   }
 
   plusDays(days: number): LocalDate {

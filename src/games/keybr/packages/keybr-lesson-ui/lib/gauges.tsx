@@ -87,7 +87,7 @@ export const Gauge = memo(function Gauge(solidProps: {
       {solidProps.name} {solidProps.value} ({solidProps.delta})
     </span>);
 });
-function signed(value: any, delta: number): string {
+function signed(value: string, delta: number): string {
     const s = String(value);
     if (delta > 0) {
         return `\u2191+${s}`;

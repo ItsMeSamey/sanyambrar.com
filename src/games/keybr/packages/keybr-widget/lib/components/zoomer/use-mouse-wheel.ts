@@ -10,7 +10,7 @@ export function useMouseWheel(element: HTMLElement | null, handler: (event: Whee
             return;
         }
         const handler = (ev: WheelEvent): void => {
-            ref.current.call(element, ev);
+            ref.current?.call(element, ev);
         };
         element.addEventListener("wheel", handler);
         return () => {

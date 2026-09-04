@@ -16,7 +16,7 @@ export class HwbColor extends Color implements Hwb {
   constructor();
   constructor(h: number, w: number, b: number, alpha?: number);
   constructor(value: Readonly<Hwb>);
-  constructor(...args: any[]) {
+  constructor(...args: unknown[]) {
     super();
     const l = args.length;
     if (l === 0) {

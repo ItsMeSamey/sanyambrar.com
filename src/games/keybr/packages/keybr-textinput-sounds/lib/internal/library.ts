@@ -85,6 +85,6 @@ class PlayerLoader {
   }
 }
 
-function catchError(err: any) {
+function catchError(err: unknown) {
   console.error(err);
 }

@@ -15,10 +15,7 @@ export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
     });
     useImperativeHandle(solidLocal.ref, () => ({
         getSize: () => size(),
-        getContext: (...args) => {
-            const canvas = element.current!;
-            return canvas.getContext.call(canvas, ...args) as any;
-        },
+        getContext: element.current!.getContext.bind(element.current!),
         toBlob: (...args) => {
             const canvas = element.current!;
             canvas.toBlob.call(canvas, ...args);

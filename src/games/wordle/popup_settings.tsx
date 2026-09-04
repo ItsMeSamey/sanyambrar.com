@@ -58,18 +58,18 @@ export function SettingsKnobs({soft, hard, showWordLength, onHardChange}: {soft:
       <div class='game-settings-section-title'>ADVANCED</div>
 
       <Show when={showWordLength}>
-        <Slider minValue={3} maxValue={20} value={[wordLength()]} getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any} onChange={([len]) => { const value = len as WordLength; setWordLength(value); commit('wordLength', value) }} class='game-settings-slider'>
+        <Slider minValue={3} maxValue={20} value={[wordLength()]} getValueLabel={({values}) => String(values[0])} onChange={([len]) => { const value = len as WordLength; setWordLength(value); commit('wordLength', value) }} class='game-settings-slider'>
           <div class='flex w-full justify-between'><SliderLabel>Word length</SliderLabel><SliderValueLabel /></div>
           <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
         </Slider>
       </Show>
 
-      <Slider minValue={1} maxValue={50} value={[maxTries()]} getValueLabel={(params) => <strong class='mr-1'>{params.values[0] === 1 ? 'INF' : params.values}</strong> as any} onChange={([len]) => { setMaxTries(len); commit('maxTries', len) }} class='game-settings-slider'>
+      <Slider minValue={1} maxValue={50} value={[maxTries()]} getValueLabel={({values}) => values[0] === 1 ? 'INF' : String(values[0])} onChange={([len]) => { setMaxTries(len); commit('maxTries', len) }} class='game-settings-slider'>
         <div class='flex w-full justify-between'><SliderLabel>Max guesses</SliderLabel><SliderValueLabel /></div>
         <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
       </Slider>
 
-      <Slider minValue={0} maxValue={12} value={[disabledLetters()]} getValueLabel={(params) => <strong class='mr-1'>{params.values}</strong> as any} onChange={([count]) => { setDisabledLetters(count); commit('disabledLetters', count) }} class='game-settings-slider'>
+      <Slider minValue={0} maxValue={12} value={[disabledLetters()]} getValueLabel={({values}) => String(values[0])} onChange={([count]) => { setDisabledLetters(count); commit('disabledLetters', count) }} class='game-settings-slider'>
         <div class='flex w-full justify-between'><SliderLabel>Disabled letters</SliderLabel><SliderValueLabel /></div>
         <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
       </Slider>

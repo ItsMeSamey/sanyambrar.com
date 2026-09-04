@@ -23,8 +23,8 @@ export function CheckBox(props: CheckBoxProps): ReactNode {
       <CheckboxPrimitive.Input
         ref={(el) => (input.current = el)}
         tabIndex={props.tabIndex}
-        onFocus={props.onFocus as any}
-        onBlur={props.onBlur as any}
+        onFocus={(event) => props.onFocus?.(event)}
+        onBlur={(event) => props.onBlur?.(event)}
       />
       <CheckboxPrimitive.Control class="keybr-checkbox-control">
         <CheckboxPrimitive.Indicator class="keybr-checkbox-indicator">

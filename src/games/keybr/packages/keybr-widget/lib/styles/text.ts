@@ -17,5 +17,5 @@ export const alignClassName = (value?: AlignName | null): ClassName => {
     case "end":
       return styleTextEnd;
   }
-  return null;
+  return undefined;
 };

@@ -31,7 +31,7 @@ export const useHotkeysHandler = (map: HotkeyMap) => {
         ref.current = parseHotkeyMap(map);
     }, () => [map]);
     return useCallback((event: KeyEvent): void => {
-        for (const [hotkey, handler] of ref.current) {
+        for (const [hotkey, handler] of ref.current ?? []) {
             if ((event.key === hotkey.key || event.code === hotkey.key) &&
                 event.altKey === hotkey.alt &&
                 event.ctrlKey === hotkey.ctrl &&

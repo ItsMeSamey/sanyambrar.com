@@ -1,10 +1,9 @@
 import { type IntlShape } from "@keybr/solid-compat/intl";
-export const intlMemo = <T>(key: symbol, factory: (intl: IntlShape) => T) => {
+export const intlMemo = <T>(factory: (intl: IntlShape) => T) => {
+    const cache = new WeakMap<IntlShape, T>();
     return (intl: IntlShape): T => {
-        let v = (intl as any)[key];
-        if (v == null) {
-            (intl as any)[key] = v = factory(intl);
-        }
-        return v;
+        let value = cache.get(intl);
+        if (value === undefined) cache.set(intl, value = factory(intl));
+        return value;
     };
 };

@@ -12,7 +12,7 @@ export function TextArea(props: {
   readonly lines: LineList;
   readonly wrap?: boolean;
   readonly size?: TextLineSize;
-  readonly lineTemplate?: ComponentType<any>;
+  readonly lineTemplate?: ComponentType;
   readonly demo?: boolean;
   readonly focusRef?: RefObject<Focusable | null>;
   readonly onFocus?: () => void;

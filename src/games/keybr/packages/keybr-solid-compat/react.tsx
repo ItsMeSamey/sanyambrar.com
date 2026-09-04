@@ -9,28 +9,30 @@ import {
   untrack,
   useContext,
   type JSX,
+  type ValidComponent,
 } from "solid-js";
-import { LIVE_ACCESSOR, liveObject } from "./live.ts";
+import { liveObject, touchLive } from "./live.ts";
 
 export { createContext, useContext };
 export type ReactNode = JSX.Element;
-export type ReactElement<P = Record<string, unknown>> = any;
-export type ComponentType<P extends Record<string, any> = Record<string, any>> = any;
-export type FunctionComponent<P extends Record<string, any> = Record<string, any>> = any;
-export type FC<P extends Record<string, any> = Record<string, any>> = any;
-export type CSSProperties = any;
+export type ReactElement<_P = Record<string, unknown>> = JSX.Element;
+export type ComponentType<P = Record<string, unknown>> = (props: P) => JSX.Element;
+export type FunctionComponent<P = Record<string, unknown>> = (props: P) => JSX.Element;
+export type FC<P = Record<string, unknown>> = (props: P) => JSX.Element;
+export type CSSProperties = JSX.CSSProperties;
 export type BaseSyntheticEvent = Event;
-export type ElementType<P extends Record<string, any> = Record<string, any>> = any;
-export type HTMLAttributes<T extends HTMLElement = HTMLElement> = any;
+export type ElementType<_P = unknown> = ValidComponent;
+export type HTMLAttributes<T extends HTMLElement = HTMLElement> = JSX.HTMLAttributes<T>;
 export type RefObject<T> = { current: T | null };
 export type ErrorInfo = { componentStack?: string | null };
 
-export type FocusEventHandler<T extends Element = Element> = (event: any) => void;
-export type KeyboardEventHandler<T extends Element = Element> = (event: any) => void;
-export type MouseEventHandler<T extends Element = Element> = (event: any) => void;
-export type WheelEventHandler<T extends Element = Element> = (event: any) => void;
+export type FocusEventHandler<T extends Element = Element> = (event: FocusEvent & { currentTarget: T }) => void;
+export type KeyboardEventHandler<T extends Element = Element> = (event: KeyboardEvent & { currentTarget: T }) => void;
+export type MouseEventHandler<T extends Element = Element> = (event: MouseEvent & { currentTarget: T }) => void;
+export type WheelEventHandler<T extends Element = Element> = (event: WheelEvent & { currentTarget: T }) => void;
 
-export function memo<T>(component: T, _compare?: (prev: any, next: any) => boolean): T { return component; }
+type PropsOf<T> = T extends (props: infer P) => unknown ? P : never;
+export function memo<T>(component: T, _compare?: (prev: PropsOf<T>, next: PropsOf<T>) => boolean): T { return component; }
 export function useState<T>(initial: T | (() => T)) {
   return createSignal(typeof initial === "function" ? (initial as () => T)() : initial);
 }
@@ -41,18 +43,13 @@ export function useMemo<T>(factory: () => T, deps?: (() => readonly unknown[]) |
     return factory();
   });
   const initial = untrack(value);
-  return (initial != null && typeof initial === "object" ? liveObject(value as any) : initial) as T;
+  return (initial != null && typeof initial === "object" ? liveObject(value as unknown as import("solid-js").Accessor<object>) : initial) as T;
 }
 
 function touchDeps(values: readonly unknown[]): void {
-  for (const value of values) {
-    if (value != null && typeof value === "object") {
-      const read = (value as any)[LIVE_ACCESSOR];
-      if (typeof read === "function") read();
-    }
-  }
+  for (const value of values) if (value != null && typeof value === "object") touchLive(value);
 }
-export function useCallback<T extends (...args: any[]) => any>(callback: T, _deps?: unknown): T { return callback; }
+export function useCallback<T extends (...args: never[]) => unknown>(callback: T, _deps?: unknown): T { return callback; }
 export function useRef<T>(initial: T | null = null): RefObject<T> { return { current: initial }; }
 export function createRef<T>(): RefObject<T> { return { current: null }; }
 export function useImperativeHandle<T>(ref: RefObject<T> | undefined, factory: () => T): void {
@@ -64,12 +61,7 @@ export function useEffect(effect: () => void | (() => void), deps?: (() => reado
   if (typeof deps === "function") {
     createEffect(() => {
       const values = deps();
-      for (const value of values) {
-        if (value != null && typeof value === "object") {
-          const read = (value as any)[LIVE_ACCESSOR];
-          if (typeof read === "function") read();
-        }
-      }
+      touchDeps(values);
       const cleanup = untrack(effect);
       if (typeof cleanup === "function") onCleanup(cleanup);
     });
@@ -100,8 +92,8 @@ export function useLayoutEffect(effect: () => void | (() => void), deps?: (() =>
 }
 
 export const Children = {
-  toArray(value: any): any[] {
-    return resolveChildren(() => value as JSX.Element).toArray() as any[];
+  toArray(value: unknown): JSX.Element[] {
+    return resolveChildren(() => value as JSX.Element).toArray();
   },
 };
 
@@ -109,7 +101,7 @@ export const Children = {
 // Ported call sites that rely on prop replacement are rewritten manually. This fallback
 // preserves children for call sites that only use cloning as a transparent wrapper.
 export function cloneElement<T>(element: T, _props?: Record<string, unknown>): T { return element; }
-export function isValidElement<P = any>(value: unknown): value is ReactElement<P> { return value != null; }
+export function isValidElement<P = Record<string, unknown>>(value: unknown): value is ReactElement<P> { return value != null; }
 
 // Kept only as type-level migration aids. All class component call sites are ported to
 // functions and these constructors should never be instantiated by the Solid runtime.

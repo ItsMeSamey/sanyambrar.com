@@ -1,7 +1,6 @@
-import { Tasks } from "@keybr/lang";
 import { type DailyStats, type DailyStatsMap, LocalDate } from "@keybr/result";
-import { Popup, Portal } from "@keybr/widget";
-import { useEffect, useRef, useState } from "@keybr/solid-compat/react";
+import { Popup, Portal, useHoverPopup } from "@keybr/widget";
+import { useRef } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Calendar.module.css";
 import { createMemo, For, Show } from "solid-js";
@@ -11,47 +10,18 @@ export function Calendar(solidProps: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
 }) {
-    const [state, setState] = useState<any>({ type: "hidden" });
-    useEffect(() => {
-        const tasks = new Tasks();
-        switch (state().type) {
-            case "visible-in":
-                tasks.delayed(300, () => {
-                    setState({ ...state(), type: "visible" });
-                });
-                break;
-            case "visible-out":
-                tasks.delayed(300, () => {
-                    setState({ type: "hidden" });
-                });
-                break;
-        }
-        return () => {
-            tasks.cancelAll();
-        };
-    }, () => [state()]);
+    const popup = useHoverPopup<{ stats: DailyStats; elem: Element }>();
     return (<>
       <BlockList dailyStatsMap={solidProps.dailyStatsMap} effort={solidProps.effort} onCellHoverIn={(stats, elem) => {
-            setState({ type: "visible-in", stats, elem });
-        }} onCellHoverOut={() => {
-            switch (state().type) {
-                case "visible-in":
-                    setState({ type: "hidden" });
-                    break;
-                case "visible":
-                    setState({ ...state(), type: "visible-out" });
-                    break;
-            }
-        }}/>
-      {(state().type === "visible" || state().type === "visible-out") && (<Portal>
-          <Popup anchor={state().elem} onMouseEnter={() => {
-                setState({ ...state(), type: "visible" });
-            }} onMouseLeave={() => {
-                setState({ ...state(), type: "visible-out" });
-            }}>
-            <DailyStatsWidget stats={state().stats} effort={solidProps.effort}/>
+            popup.show({ stats, elem });
+        }} onCellHoverOut={popup.leave}/>
+      <Show when={popup.state().type === "visible" || popup.state().type === "visible-out" ? popup.state() : null} keyed>
+        {(current) => current.type === "hidden" ? null : <Portal>
+          <Popup anchor={current.elem} onMouseEnter={popup.hold} onMouseLeave={popup.dismiss}>
+            <DailyStatsWidget stats={current.stats} effort={solidProps.effort}/>
           </Popup>
-        </Portal>)}
+        </Portal>}
+      </Show>
     </>);
 }
 function BlockList(solidProps: {
@@ -74,7 +44,7 @@ function BlockList(solidProps: {
     </div>);
 }
 function relayEvent(root: Element, { target }: {
-    target: any;
+    target: EventTarget | null;
 }, handler?: (stats: DailyStats, elem: Element) => void) {
     while (handler != null &&
         target instanceof Element &&
@@ -142,17 +112,12 @@ function Cell(solidProps: {
       </td>)}
     </Show>);
 }
-const attachment = Symbol();
-Cell.attach = (stats: DailyStats) => {
-    return (target: Element | null): void => {
-        if (target != null) {
-            (target as any)[attachment] = stats;
-        }
-    };
+const attachedStats = new WeakMap<Element, DailyStats>();
+Cell.attach = (stats: DailyStats) => (target: Element | null): void => {
+  if (target) attachedStats.set(target, stats);
 };
-Cell.attached = (target: Element | null): DailyStats | null => {
-    return (target as any)?.[attachment] ?? null;
-};
+Cell.attached = (target: Element | null): DailyStats | null =>
+  target ? attachedStats.get(target) ?? null : null;
 function blockList(map: DailyStatsMap): BlockCells[] {
     const blocks = new Map<string, BlockCells>();
     for (const { date } of map) {

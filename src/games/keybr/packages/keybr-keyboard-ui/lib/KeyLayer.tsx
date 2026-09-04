@@ -32,7 +32,7 @@ export const KeyLayer = memo(function KeyLayer(props: {
 });
 
 function relayEvent(root: Element, { target }: {
-    readonly target: any;
+    readonly target: EventTarget | null;
 }, handler?: (key: KeyId, elem: Element) => void) {
     while (handler != null && target instanceof Element && root.contains(target)) {
         const key = (target as SVGElement).dataset["key"];

@@ -23,7 +23,7 @@ export function formatReport(
   return lines.join("\n");
 }
 
-export function inspectError(error: any): Report {
+export function inspectError(error: unknown): Report {
   const items = [];
   items.push({ message: formatMessage(error), stack: getStack(error) });
   error = getCause(error);
@@ -34,7 +34,7 @@ export function inspectError(error: any): Report {
   return items;
 }
 
-function formatMessage(error: any): string {
+function formatMessage(error: unknown): string {
   const type = Object.prototype.toString.call(error);
   switch (error) {
     case undefined:
@@ -61,7 +61,7 @@ function formatMessage(error: any): string {
   return `${String(error)} (type=${type})`;
 }
 
-function getName(error: any): string | null {
+function getName(error: unknown): string | null {
   if (hasProp(error, "name")) {
     const { name } = error;
     if (typeof name === "string") {
@@ -71,7 +71,7 @@ function getName(error: any): string | null {
   return null;
 }
 
-function getMessage(error: any): string | null {
+function getMessage(error: unknown): string | null {
   if (hasProp(error, "message")) {
     const { message } = error;
     if (typeof message === "string") {
@@ -81,7 +81,7 @@ function getMessage(error: any): string | null {
   return null;
 }
 
-function getCode(error: any): string | number | null {
+function getCode(error: unknown): string | number | null {
   if (hasProp(error, "code")) {
     const { code } = error;
     if (typeof code === "string") {
@@ -94,7 +94,7 @@ function getCode(error: any): string | number | null {
   return null;
 }
 
-function getStack(error: any): string | null {
+function getStack(error: unknown): string | null {
   if (hasProp(error, "stack")) {
     const { stack } = error;
     if (typeof stack === "string") {
@@ -104,13 +104,13 @@ function getStack(error: any): string | null {
   return null;
 }
 
-function getCause(error: any): any {
+function getCause(error: unknown): unknown {
   if (hasProp(error, "cause")) {
     return error.cause ?? null;
   }
   return null;
 }
 
-function hasProp(error: any, prop: string): boolean {
+function hasProp(error: unknown, prop: string): error is Record<string, unknown> {
   return error != null && typeof error === "object" && prop in error;
 }

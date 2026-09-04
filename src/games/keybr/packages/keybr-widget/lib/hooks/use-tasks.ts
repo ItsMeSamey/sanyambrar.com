@@ -2,13 +2,11 @@ import { Tasks } from "@keybr/lang";
 import { useEffect, useRef } from "@keybr/solid-compat/react";
 export const useTasks = () => {
     const ref = useRef<Tasks>(null!);
-    if (ref.current == null) {
-        ref.current = new Tasks();
-    }
+    const tasks = ref.current ?? (ref.current = new Tasks());
     useEffect(() => {
         return () => {
-            ref.current.cancelAll();
+            tasks.cancelAll();
         };
     }, () => []);
-    return ref.current;
+    return tasks;
 };

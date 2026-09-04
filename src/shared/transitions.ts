@@ -4,18 +4,6 @@ const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() =>
 type Direction = 'forward' | 'back';
 type Phase = 'in' | 'out';
 
-/** Compatibility timing retained for callers that inspect the shared contract. */
-export const PAGE_TRANSITION = {
-  duration: 210,
-  leaveRatio: 0.72,
-  enterEasing: 'cubic-bezier(.16,1,.3,1)',
-  leaveEasing: 'cubic-bezier(.4,0,.2,1)',
-  opacity: .32,
-  forwardScale: .982,
-  backScale: .992,
-  leaveScale: 1.006,
-} as const;
-
 /** Every routed and local view deconstructs into rules, then rebuilds before content. */
 const CONSTRUCTED_TRANSITION = {
   out: 260,
@@ -60,15 +48,9 @@ const CONSTRUCTION_CONTENT_SELECTOR = [
   '.game-settings-section-title', '.game-settings-slider-head', '.keybr-segmented-item',
 ].join(',');
 
-const leaveDuration = () => Math.round(PAGE_TRANSITION.duration * PAGE_TRANSITION.leaveRatio);
-const startScale = (direction: Direction) => `scale(${direction === 'back' ? PAGE_TRANSITION.backScale : PAGE_TRANSITION.forwardScale})`;
 const stagger = (index: number) => Math.min(index * CONSTRUCTED_TRANSITION.stagger, CONSTRUCTED_TRANSITION.maxStagger);
 const animationFinished = (animation: Animation) => animation.finished.catch(() => undefined);
 const waitAnimations = (animations: Animation[]) => Promise.all(animations.map(animationFinished));
-
-function constructionRoot(element: HTMLElement | null): HTMLElement | null {
-  return element?.isConnected ? element : null;
-}
 
 function inViewport(rect: DOMRect) {
   return rect.width > 0 && rect.height > 0 && rect.right > -2 && rect.bottom > -2 && rect.left < innerWidth + 2 && rect.top < innerHeight + 2;
@@ -199,74 +181,6 @@ async function animateConstructionEntrance(root: HTMLElement, direction: Directi
   layer.remove();
 }
 
-function snapshotElement(element: HTMLElement) {
-  const rect = element.getBoundingClientRect();
-  const shell = document.createElement('div');
-  shell.className = 'samey-route-snapshot';
-  shell.setAttribute('aria-hidden', 'true');
-  shell.inert = true;
-  shell.style.setProperty('--snapshot-top', `${rect.top}px`);
-  shell.style.setProperty('--snapshot-left', `${rect.left}px`);
-  shell.style.setProperty('--snapshot-width', `${rect.width}px`);
-  shell.style.setProperty('--snapshot-height', `${rect.height}px`);
-
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.removeAttribute('id');
-  clone.querySelectorAll<HTMLElement>('[id]').forEach(node => node.removeAttribute('id'));
-  clone.querySelectorAll<HTMLElement>('[aria-controls],[aria-labelledby],[aria-describedby]').forEach(node => {
-    node.removeAttribute('aria-controls');
-    node.removeAttribute('aria-labelledby');
-    node.removeAttribute('aria-describedby');
-  });
-
-  clone.scrollTop = element.scrollTop;
-  clone.scrollLeft = element.scrollLeft;
-  const sourceState = element.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input,textarea,select');
-  const targetState = clone.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input,textarea,select');
-  for (let i = 0; i < Math.min(sourceState.length, targetState.length); i++) {
-    const source = sourceState[i], target = targetState[i];
-    if (source instanceof HTMLInputElement && target instanceof HTMLInputElement) {
-      target.value = source.value; target.checked = source.checked;
-    } else if (source instanceof HTMLTextAreaElement && target instanceof HTMLTextAreaElement) target.value = source.value;
-    else if (source instanceof HTMLSelectElement && target instanceof HTMLSelectElement) target.selectedIndex = source.selectedIndex;
-  }
-  const sourceCanvases = element.querySelectorAll<HTMLCanvasElement>('canvas');
-  const targetCanvases = clone.querySelectorAll<HTMLCanvasElement>('canvas');
-  for (let i = 0; i < Math.min(sourceCanvases.length, targetCanvases.length); i++) {
-    const source = sourceCanvases[i], target = targetCanvases[i];
-    target.width = source.width; target.height = source.height;
-    try { target.getContext('2d')?.drawImage(source, 0, 0); } catch {}
-  }
-  shell.append(clone);
-  document.body.append(shell);
-  return shell;
-}
-
-function primeIncoming(element: HTMLElement, direction: Direction) {
-  element.style.opacity = String(PAGE_TRANSITION.opacity);
-  element.style.transform = startScale(direction);
-}
-
-function animateIncoming(element: HTMLElement, direction: Direction) {
-  return element.animate([
-    { opacity: PAGE_TRANSITION.opacity, transform: startScale(direction) },
-    { opacity: 1, transform: 'scale(1)' },
-  ], { duration: PAGE_TRANSITION.duration, easing: PAGE_TRANSITION.enterEasing, fill: 'both' });
-}
-
-function animateOutgoing(element: HTMLElement) {
-  return element.animate([
-    { opacity: 1, transform: 'scale(1)' },
-    { opacity: 0, transform: `scale(${PAGE_TRANSITION.leaveScale})` },
-  ], { duration: leaveDuration(), easing: PAGE_TRANSITION.leaveEasing, fill: 'both' });
-}
-
-function clearIncoming(element: HTMLElement) {
-  element.style.opacity = '';
-  element.style.transform = '';
-  element.style.pointerEvents = '';
-}
-
 async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElement | null) {
   await Promise.resolve();
   let incoming = next();
@@ -277,58 +191,37 @@ async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElem
   return incoming;
 }
 
-export async function animateRootSwap(current: HTMLElement | null, commit: () => void | Promise<void>, next: () => HTMLElement | null, direction: Direction = 'forward') {
+function cleanupConstruction(run: { layer: HTMLElement; animations: Animation[] }) {
+  run.layer.remove();
+  for (const animation of run.animations) animation.cancel();
+}
+
+export async function animateRootSwap(
+  current: HTMLElement | null,
+  commit: () => void | Promise<void>,
+  next: () => HTMLElement | null,
+  direction: Direction = 'forward',
+) {
   if (!current || reducedMotion() || !current.animate) { await commit(); return; }
 
-  const constructedCurrent = constructionRoot(current);
-  if (constructedCurrent) {
-    const outgoing = await animateConstructionExit(constructedCurrent, direction);
-    try {
-      await commit();
-    } catch (error) {
-      outgoing.layer.remove();
-      for (const animation of outgoing.animations) animation.cancel();
-      throw error;
-    }
-    outgoing.layer.remove();
-    for (const animation of outgoing.animations) animation.cancel();
-    const incoming = await resolveIncoming(next, current);
-    const constructedIncoming = constructionRoot(incoming);
-    if (constructedIncoming) await animateConstructionEntrance(constructedIncoming, direction);
-    else if (incoming?.animate) {
-      primeIncoming(incoming, direction);
-      const enter = animateIncoming(incoming, direction);
-      await animationFinished(enter);
-      enter.cancel();
-      clearIncoming(incoming);
-    }
-    return;
+  const outgoing = await animateConstructionExit(current, direction);
+  try {
+    await commit();
+  } catch (error) {
+    cleanupConstruction(outgoing);
+    throw error;
   }
+  cleanupConstruction(outgoing);
 
-  const snapshot = snapshotElement(current);
-  try { await commit(); } catch (error) { snapshot.remove(); throw error; }
   const incoming = await resolveIncoming(next, current);
-  const constructedIncoming = constructionRoot(incoming);
-  const leave = animateOutgoing(snapshot);
-  if (constructedIncoming) {
-    await Promise.all([animationFinished(leave), animateConstructionEntrance(constructedIncoming, direction)]);
-    snapshot.remove();
-    return;
-  }
-  if (incoming) primeIncoming(incoming, direction);
-  const enter = incoming?.animate ? animateIncoming(incoming, direction) : undefined;
-  await Promise.all([animationFinished(leave), enter ? animationFinished(enter) : Promise.resolve()]);
-  snapshot.remove();
-  enter?.cancel();
-  if (incoming) clearIncoming(incoming);
+  if (incoming?.isConnected) await animateConstructionEntrance(incoming, direction);
 }
 
 export async function animateMountedViewSwap(from: HTMLElement, to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
   if (reducedMotion() || !from.animate || !to.animate) { commit(); from.hidden = true; to.hidden = false; return; }
   const outgoing = await animateConstructionExit(from, direction);
   from.hidden = true;
-  outgoing.layer.remove();
-  for (const animation of outgoing.animations) animation.cancel();
+  cleanupConstruction(outgoing);
   to.hidden = false;
   to.style.pointerEvents = 'none';
   commit();

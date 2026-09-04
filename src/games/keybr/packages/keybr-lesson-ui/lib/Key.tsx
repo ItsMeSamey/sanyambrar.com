@@ -56,9 +56,9 @@ export const Key = (allProps: {
   );
 };
 
-const attachment = Symbol();
+const attachedKeys = new WeakMap<Element, LessonKey>();
 Key.attach = (key: LessonKey) => (target: Element | null): void => {
-  if (target != null) (target as any)[attachment] = key;
+  if (target) attachedKeys.set(target, key);
 };
 Key.attached = (target: Element | null): LessonKey | null =>
-  (target as any)?.[attachment] ?? null;
+  target ? attachedKeys.get(target) ?? null : null;

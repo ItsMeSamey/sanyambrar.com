@@ -33,9 +33,9 @@ const disposeWordle = render(function() {
 }, document.getElementById('wordle-app-mount')!)
 
 
-;(globalThis as any).SameyWordleDispose = () => {
+;globalThis.SameyWordleDispose = () => {
   disposePageNavigation()
   setPageRoot()
   disposeWordle()
-  delete (globalThis as any).SameyWordleDispose
+  delete globalThis.SameyWordleDispose
 }

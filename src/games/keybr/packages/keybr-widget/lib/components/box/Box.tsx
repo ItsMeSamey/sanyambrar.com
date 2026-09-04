@@ -6,7 +6,7 @@ import { type BoxProps } from "./Box.types.ts";
 import { getBoxClassNames } from "./classNames.ts";
 
 export function Box(props: BoxProps): ReactNode {
-    return (<Dynamic component={(props.as ?? "div") as any} id={props.id} class={clsx(getBoxClassNames(props), props.className)} title={props.title}>
+    return (<Dynamic component={(props.as ?? "div")} id={props.id} class={clsx(getBoxClassNames(props), props.className)} title={props.title}>
       {props.children}
     </Dynamic>);
 }

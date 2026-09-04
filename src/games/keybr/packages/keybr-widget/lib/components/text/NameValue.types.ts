@@ -15,7 +15,7 @@ export type NameProps = {
 export type ValueProps = {
     readonly className?: ClassName;
     readonly title?: string;
-    readonly value?: any;
+    readonly value?: ReactNode;
     readonly delta?: number;
     readonly children?: ReactNode;
 };

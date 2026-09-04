@@ -63,7 +63,7 @@ const factory = (intl: IntlShape): IntlNumbers => {
         formatPercents,
     };
 };
-export const makeIntlNumbers = intlMemo(Symbol("numbers"), factory);
+export const makeIntlNumbers = intlMemo(factory);
 export const useIntlNumbers = (): IntlNumbers => {
     return makeIntlNumbers(useIntl());
 };

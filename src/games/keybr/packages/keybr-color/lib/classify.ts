@@ -7,7 +7,7 @@ import {
   type Oklch,
 } from "./types.ts";
 
-export const isHsl = (o: any): o is Hsl => {
+export const isHsl = (o: unknown): o is Hsl => {
   return (
     isObjectLike(o) &&
     isNumber(o.h) &&
@@ -17,7 +17,7 @@ export const isHsl = (o: any): o is Hsl => {
   );
 };
 
-export const isHsv = (o: any): o is Hsv => {
+export const isHsv = (o: unknown): o is Hsv => {
   return (
     isObjectLike(o) &&
     isNumber(o.h) &&
@@ -27,7 +27,7 @@ export const isHsv = (o: any): o is Hsv => {
   );
 };
 
-export const isHwb = (o: any): o is Hwb => {
+export const isHwb = (o: unknown): o is Hwb => {
   return (
     isObjectLike(o) &&
     isNumber(o.h) &&
@@ -37,7 +37,7 @@ export const isHwb = (o: any): o is Hwb => {
   );
 };
 
-export const isOklab = (o: any): o is Oklab => {
+export const isOklab = (o: unknown): o is Oklab => {
   return (
     isObjectLike(o) &&
     isNumber(o.l) &&
@@ -47,7 +47,7 @@ export const isOklab = (o: any): o is Oklab => {
   );
 };
 
-export const isOklch = (o: any): o is Oklch => {
+export const isOklch = (o: unknown): o is Oklch => {
   return (
     isObjectLike(o) &&
     isNumber(o.l) &&

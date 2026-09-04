@@ -1,4 +1,4 @@
-import { isNumber, isObject, isObjectLike } from "@keybr/lang";
+import { isNumber, isObjectLike } from "@keybr/lang";
 
 export type TSize = {
   width: number;
@@ -11,23 +11,16 @@ export class Size implements Readonly<TSize> {
 
   constructor(width: number, height: number);
   constructor(size: Readonly<TSize>);
-  constructor(...args: any[]) {
-    const l = args.length;
-    let o: TSize, w: number, h: number;
-    if (l === 2 && isNumber((w = args[0])) && isNumber((h = args[1]))) {
-      this.width = w;
-      this.height = h;
-      return this;
+  constructor(...args: unknown[]) {
+    if (args.length === 2 && isNumber(args[0]) && isNumber(args[1])) {
+      this.width = args[0];
+      this.height = args[1];
+      return;
     }
-    if (
-      l === 1 &&
-      isObject((o = args[0])) &&
-      isNumber((w = o.width)) &&
-      isNumber((h = o.height))
-    ) {
-      this.width = w;
-      this.height = h;
-      return this;
+    if (args.length === 1 && Size.isSize(args[0])) {
+      this.width = args[0].width;
+      this.height = args[0].height;
+      return;
     }
     throw new TypeError();
   }
@@ -40,7 +33,7 @@ export class Size implements Readonly<TSize> {
     return new Size(Math.round(this.width), Math.round(this.height));
   }
 
-  static isSize(o: any): o is TSize {
+  static isSize(o: unknown): o is TSize {
     return isObjectLike(o) && isNumber(o.width) && isNumber(o.height);
   }
 }

@@ -8,13 +8,13 @@ export type SchedulerOptions = {
  * with the browser event loop to avoid freezing of the UI.
  */
 export const schedule = (
-  work: AsyncIterable<any>,
+  work: AsyncIterable<unknown>,
   { delayer = defaultDelayer, signal = null }: Partial<SchedulerOptions> = {},
 ): Promise<void> => {
   const it = work[Symbol.asyncIterator]();
 
   return new Promise((resolve, reject) => {
-    const next = ({ done }: IteratorResult<any>) => {
+    const next = ({ done }: IteratorResult<unknown>) => {
       if (signal?.aborted || done) {
         resolve();
       } else {

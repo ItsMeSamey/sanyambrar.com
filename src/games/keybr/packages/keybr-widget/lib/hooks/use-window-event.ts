@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "@keybr/solid-compat/react";
-export const useWindowEvent = <K extends keyof WindowEventMap>(type: K, listener: (this: Window, ev: WindowEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void => {
+export const useWindowEvent = <K extends keyof WindowEventMap>(type: K, listener: (this: Window, ev: WindowEventMap[K]) => void, options?: boolean | AddEventListenerOptions): void => {
     const listenerRef = useRef(listener);
     listenerRef.current = listener;
     useEffect(() => {
-        const listener = (ev: any): void => {
-            listenerRef.current.call(window, ev);
+        const handler = (ev: WindowEventMap[K]): void => {
+            listenerRef.current?.call(window, ev);
         };
-        window.addEventListener(type, listener, options);
+        window.addEventListener(type, handler as EventListener, options);
         return () => {
-            window.removeEventListener(type, listener);
+            window.removeEventListener(type, handler as EventListener);
         };
     }, () => [type, options]);
 };

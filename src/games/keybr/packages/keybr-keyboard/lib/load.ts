@@ -233,24 +233,12 @@ const geometries = new Map<Geometry, GeometryDict>([
 export function loadKeyboard(options: KeyboardOptions): Keyboard;
 export function loadKeyboard(layout: Layout): Keyboard;
 export function loadKeyboard(layout: Layout, geometry: Geometry): Keyboard;
-export function loadKeyboard(...args: any[]): Keyboard {
-  const { length } = args;
-  let options: KeyboardOptions;
-  if (length === 1 && (options = args[0]) instanceof KeyboardOptions) {
-    return loadImpl(options.layout, options.geometry, options.zones);
-  }
-  let layout: Layout;
-  if (length === 1 && (layout = args[0]) instanceof Layout) {
-    return loadImpl(layout);
-  }
-  let geometry: Geometry;
-  if (
-    length === 2 &&
-    (layout = args[0]) instanceof Layout &&
-    (geometry = args[1]) instanceof Geometry
-  ) {
-    return loadImpl(layout, geometry);
-  }
+export function loadKeyboard(...args: unknown[]): Keyboard {
+  if (args.length === 1 && args[0] instanceof KeyboardOptions)
+    return loadImpl(args[0].layout, args[0].geometry, args[0].zones);
+  if (args.length === 1 && args[0] instanceof Layout) return loadImpl(args[0]);
+  if (args.length === 2 && args[0] instanceof Layout && args[1] instanceof Geometry)
+    return loadImpl(args[0], args[1]);
   throw new TypeError();
 }
 

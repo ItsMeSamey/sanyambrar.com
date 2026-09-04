@@ -22,7 +22,7 @@ export const KeySet = (solidProps: {
     </span>);
 };
 function relayEvent(root: Element, { target }: {
-    target: any;
+    target: EventTarget | null;
 }, handler?: (key: LessonKey, elem: Element) => void) {
     while (handler != null &&
         target instanceof Element &&
