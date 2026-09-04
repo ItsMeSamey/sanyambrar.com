@@ -16,6 +16,11 @@ export interface ChallengeConfig {
   wordIndex?: number
 }
 
+type ChallengeSettings = Pick<ChallengeConfig, 'mode' | 'wordLength' | 'maxTries' | 'disabledLetters' | 'allowAny'>
+type UnknownRecord = Record<string, unknown>
+const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value)
+const isWordLength = (value: unknown): value is WordLength => typeof value === 'number' && Number.isInteger(value) && value >= 3 && value <= 20
+
 export interface DailyChallenge extends ChallengeConfig {
   mode: 'daily'
   dailyDate: string
@@ -153,14 +158,16 @@ export function createRandomChallenge(): ChallengeConfig {
 
 export function legacyGameStorageKey(config: ChallengeConfig): string {
   if (config.mode === 'daily') return `game.wordle.daily.${(config.dailyVersion ?? DAILY_CHALLENGE_VERSION).toString(16)}.${config.dailyDate ?? localDateKey()}`
-  const word = Number.isInteger(config.wordIndex) ? `.${config.wordIndex!.toString(16)}` : ''
+  const wordIndex = config.wordIndex
+  const word = typeof wordIndex === 'number' && Number.isInteger(wordIndex) ? `.${wordIndex.toString(16)}` : ''
   if (config.mode === 'random') return `game.wordle.random.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
   return `game.wordle.advanced.${config.wordLength}.${config.maxTries}.${config.disabledLetters}.${config.allowAny ? 1 : 0}${word}`
 }
 
 export function gameStorageKey(config: ChallengeConfig): string {
-  if (config.mode === 'advanced' && Number.isInteger(config.wordIndex)) {
-    return `game.wordle.advanced.v2.${config.wordLength}.${config.wordIndex!.toString(16)}`
+  const wordIndex = config.wordIndex
+  if (config.mode === 'advanced' && typeof wordIndex === 'number' && Number.isInteger(wordIndex)) {
+    return `game.wordle.advanced.v2.${config.wordLength}.${wordIndex.toString(16)}`
   }
   return legacyGameStorageKey(config)
 }
@@ -188,24 +195,23 @@ export function isValidDateKey(value: string | undefined): value is string {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
-export function isChallengeSettings(value: unknown): value is ChallengeConfig {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
-  const config = value as Partial<ChallengeConfig>
-  return ['daily', 'random', 'advanced'].includes(config.mode ?? '') &&
-    Number.isInteger(config.wordLength) && config.wordLength! >= 3 && config.wordLength! <= 20 &&
-    Number.isInteger(config.maxTries) && config.maxTries! >= 1 && config.maxTries! <= 50 &&
-    Number.isInteger(config.disabledLetters) && config.disabledLetters! >= 0 && config.disabledLetters! <= 12 &&
-    typeof config.allowAny === 'boolean'
+export function isChallengeSettings(value: unknown): value is UnknownRecord & ChallengeSettings {
+  if (!isRecord(value)) return false
+  return (value.mode === 'daily' || value.mode === 'random' || value.mode === 'advanced') &&
+    isWordLength(value.wordLength) &&
+    typeof value.maxTries === 'number' && Number.isInteger(value.maxTries) && value.maxTries >= 1 && value.maxTries <= 50 &&
+    typeof value.disabledLetters === 'number' && Number.isInteger(value.disabledLetters) && value.disabledLetters >= 0 && value.disabledLetters <= 12 &&
+    typeof value.allowAny === 'boolean'
 }
 
 export function isChallengeConfig(value: unknown): value is ChallengeConfig {
-  if (!isChallengeSettings(value)) return false
-  const config = value
-  if (config.wordIndex !== undefined && (!Number.isInteger(config.wordIndex) || config.wordIndex < 0 || config.wordIndex >= wordCount(config.wordLength))) return false
-  if (config.randomId !== undefined && typeof config.randomId !== 'string') return false
-  if (config.mode === 'daily') {
-    if (!isValidDateKey(config.dailyDate)) return false
-    if (config.dailyVersion !== undefined && !isDailyChallengeVersion(config.dailyVersion)) return false
+  if (!isRecord(value) || !isChallengeSettings(value)) return false
+  const wordIndex = value.wordIndex
+  if (wordIndex !== undefined && (typeof wordIndex !== 'number' || !Number.isInteger(wordIndex) || wordIndex < 0 || wordIndex >= wordCount(value.wordLength))) return false
+  if (value.randomId !== undefined && typeof value.randomId !== 'string') return false
+  if (value.mode === 'daily') {
+    if (!isValidDateKey(typeof value.dailyDate === 'string' ? value.dailyDate : undefined)) return false
+    if (value.dailyVersion !== undefined && (typeof value.dailyVersion !== 'number' || !isDailyChallengeVersion(value.dailyVersion))) return false
   }
   return true
 }
@@ -218,9 +224,10 @@ function challengeFlags(fastInvalidate: boolean, allowAny: boolean): string {
 export function serializeChallenge(config: ChallengeConfig, fastInvalidate: boolean): string | undefined {
   const flags = challengeFlags(fastInvalidate, config.allowAny)
   if (config.mode === 'daily') return `${flags},d,${(config.dailyVersion ?? DAILY_CHALLENGE_VERSION).toString(16)},${config.dailyDate ?? localDateKey()}`
-  if (!Number.isInteger(config.wordIndex)) return undefined
+  const wordIndex = config.wordIndex
+  if (typeof wordIndex !== 'number' || !Number.isInteger(wordIndex)) return undefined
   const mode = config.mode === 'random' ? 'r' : 'a'
-  return [flags, mode, config.wordIndex!.toString(16), config.wordLength.toString(16), config.maxTries.toString(16), config.disabledLetters.toString(16)].join(',')
+  return [flags, mode, wordIndex.toString(16), config.wordLength.toString(16), config.maxTries.toString(16), config.disabledLetters.toString(16)].join(',')
 }
 
 export function parseChallenge(raw: string | null): UrlChallenge | undefined {
@@ -245,13 +252,13 @@ export function parseChallenge(raw: string | null): UrlChallenge | undefined {
   }
   if ((mode !== 'r' && mode !== 'a') || parts.length !== 6) return undefined
   const wordIndex = parseHex(a), wordLength = parseHex(b), maxTries = parseHex(c), disabledLetters = parseHex(d)
-  if (wordIndex === undefined || wordLength === undefined || maxTries === undefined || disabledLetters === undefined) return undefined
-  if (wordLength < 3 || wordLength > 20 || maxTries < 1 || maxTries > 50 || disabledLetters > 12) return undefined
-  if (wordIndex >= wordCount(wordLength as WordLength)) return undefined
+  if (wordIndex === undefined || !isWordLength(wordLength) || maxTries === undefined || disabledLetters === undefined) return undefined
+  if (maxTries < 1 || maxTries > 50 || disabledLetters > 12) return undefined
+  if (wordIndex >= wordCount(wordLength)) return undefined
   return {
     hard: {
       mode: mode === 'r' ? 'random' : 'advanced',
-      wordLength: wordLength as WordLength,
+      wordLength,
       maxTries,
       disabledLetters,
       allowAny,
