@@ -150,9 +150,10 @@ function RouteError(props: { error: NavigationError; onRetry: () => void; onDism
 }
 
 export function App() {
-  const initial = routeFromUrl(new URL(location.href)) || { key: 'home', kind: 'home' as const };
+  const initial: Route = routeFromUrl(new URL(location.href)) ?? { key: 'home', kind: 'home' };
   const [route, setRoute] = createSignal<Route>(initial);
   const [navigationError, setNavigationError] = createSignal<NavigationError | null>(null);
+  const projectDetail = () => { const slug = route().slug; return route().kind === 'project' && slug ? details[slug] : undefined; };
   let navigationId = 0;
   let navigationIndex = readNavigationIndex() ?? 0;
   let resetRouteError: (() => void) | undefined;
@@ -175,7 +176,7 @@ export function App() {
       : next.kind === 'tools' ? 'Tools · Sanyam Brar'
       : next.kind === 'chain' ? 'Chain Reaction'
       : next.kind === 'blog' ? 'Writing · Sanyam Brar'
-      : `${details[next.slug!]?.title || 'Project'} · Sanyam Brar`;
+      : `${(next.slug ? details[next.slug] : undefined)?.title || 'Project'} · Sanyam Brar`;
   };
 
   const writeHistory = (url: URL, replace: boolean) => {
@@ -196,7 +197,7 @@ export function App() {
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
     queueMicrotask(() => {
       if (url.hash) document.getElementById(hashTarget(url))?.scrollIntoView();
-      else scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      else scrollTo({ top: 0, left: 0 });
       dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } }));
     });
   };
@@ -291,9 +292,9 @@ export function App() {
 
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target as Element | null;
-      const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null;
-      if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const anchor = target?.closest('a[href]');
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute('download')) return;
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
       if (sameDocumentHash(url)) return;
@@ -376,8 +377,10 @@ export function App() {
           <Match when={route().kind === 'tools'}><div class="site-route tools-page"><Tools /></div></Match>
           <Match when={route().kind === 'chain'}><div class="site-route site-page-chain"><Chain /></div></Match>
           <Match when={route().kind === 'blog'}><div class="site-route site-standard"><Blog /></div></Match>
-          <Match when={route().kind === 'project' && !!route().slug}>
-            <div class="site-route site-standard"><Project detail={details[route().slug!]} /></div>
+          <Match when={route().kind === 'project'}>
+            <Show when={projectDetail()} keyed>{detail =>
+              <div class="site-route site-standard"><Project detail={detail} /></div>
+            }</Show>
           </Match>
         </Switch>
       </Suspense>

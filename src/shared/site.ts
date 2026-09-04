@@ -1,6 +1,11 @@
 import { searchIndex, type Entry } from '../site/data.ts'
 
-const nav = navigator as Navigator & {userAgentData?: {platform?: string}}
+const userAgentPlatform = (() => {
+  const data = Reflect.get(navigator, 'userAgentData')
+  if (!data || typeof data !== 'object') return ''
+  const platform = Reflect.get(data, 'platform')
+  return typeof platform === 'string' ? platform : ''
+})()
 const currentScript = document.currentScript
 const SCRIPT_ROOT = new URL('.', currentScript instanceof HTMLScriptElement ? currentScript.src : location.href)
 const norm = (value: string) => value.toLowerCase()
@@ -17,13 +22,13 @@ function score(item: Entry, query: string): number {
 }
 
 let box: HTMLDivElement | undefined
-let input!: HTMLInputElement
-let results!: HTMLDivElement
+let input: HTMLInputElement | undefined
+let results: HTMLDivElement | undefined
 let opener: HTMLElement | null = null
 let active = 0
 let visible: Entry[] = []
 
-const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(nav.userAgentData?.platform || nav.platform || nav.userAgent) ? '⌘ K' : 'Ctrl K'
+const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K'
 const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
 syncShortcutLabels()
 addEventListener('samey-pageload', syncShortcutLabels)
@@ -56,6 +61,7 @@ function resultNode(item: Entry, index: number): HTMLAnchorElement {
 }
 
 function render() {
+  if (!input || !results) return
   const query = norm(input.value.trim())
   visible = searchIndex
     .map(item => [item, score(item, query)] as const)
@@ -90,15 +96,18 @@ function ensure() {
   box.hidden = true
   box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>'
   document.body.append(box)
-  input = box.querySelector<HTMLInputElement>('input')!
-  results = box.querySelector<HTMLDivElement>('.site-search-results')!
-  input.addEventListener('input', () => { active = 0; render() })
+  const searchInput = box.querySelector<HTMLInputElement>('input')
+  const searchResults = box.querySelector<HTMLDivElement>('.site-search-results')
+  if (!searchInput || !searchResults) { box.remove(); box = undefined; throw new Error('Search UI failed to initialize') }
+  input = searchInput
+  results = searchResults
+  searchInput.addEventListener('input', () => { active = 0; render() })
   box.addEventListener('click', event => {
     const target = event.target instanceof Element ? event.target : null
     if (target?.closest('a.search-result')) close(false)
     else if (target?.closest('[data-close-search]')) close()
   })
-  input.addEventListener('keydown', event => {
+  searchInput.addEventListener('keydown', event => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       active = (active + (event.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1)
@@ -117,11 +126,13 @@ function ensure() {
 function open(trigger?: EventTarget | null) {
   ensure()
   opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null
-  box!.hidden = false
+  if (!box || !input) return
+  box.hidden = false
   active = 0
   input.value = ''
   render()
-  requestAnimationFrame(() => input.focus())
+  const searchInput = input
+  requestAnimationFrame(() => searchInput.focus())
 }
 
 addEventListener('samey-pageleave', () => close(false))

@@ -10,6 +10,7 @@ import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx'
+import { isWordLength } from './challenge'
 import { WordleBackButton } from './WordleBackButton'
 
 interface GameStats {
@@ -124,9 +125,11 @@ function DetailedStats({value}: {value: Value}) {
   const shareSoft: SettingsSoftProps = {reveal: false, fastInvalidate: true}
   const shareHard = (): SettingsHardProps => {
     const entry = latest()
+    const wordLength = value.w.length
+    if (!isWordLength(wordLength)) throw new Error('Invalid word length in statistics')
     return {
       mode: entry?.o ?? 'advanced',
-      wordLength: value.w.length as SettingsHardProps['wordLength'],
+      wordLength,
       allowAny: entry?.a ?? false,
       maxTries: entry?.m ?? 6,
       disabledLetters: entry?.d ?? 0,
@@ -221,8 +224,11 @@ export default function StatsPage() {
     <Switch>
       <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
       <Match when={stats.error}><p class='stats-state text-error-foreground'>Could not load statistics.</p></Match>
-      <Match when={stats() && stats()!.totalGames > 0}><StatsContent stats={stats()!} /></Match>
-      <Match when={stats() && stats()!.totalGames === 0}><p class='stats-state'>No statistics yet.</p></Match>
+      <Match when={!stats.loading && !stats.error}>{(() => {
+        const value = stats()
+        if (!value) return null
+        return value.totalGames > 0 ? <StatsContent stats={value} /> : <p class='stats-state'>No statistics yet.</p>
+      })()}</Match>
     </Switch>
   </main>
 }

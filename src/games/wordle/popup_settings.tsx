@@ -7,7 +7,7 @@ import { Slider, SliderFill, SliderLabel, SliderThumb, SliderTrack, SliderValueL
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import type { WordLength } from './word-list'
 import { ActiveGames } from './popup_active_games'
-import type { GameMode } from './challenge'
+import { isWordLength, type GameMode } from './challenge'
 
 export interface SettingsSoftProps {
   reveal: boolean
@@ -58,7 +58,7 @@ export function SettingsKnobs({soft, hard, showWordLength, onHardChange}: {soft:
       <div class='game-settings-section-title'>ADVANCED</div>
 
       <Show when={showWordLength}>
-        <Slider minValue={3} maxValue={20} value={[wordLength()]} getValueLabel={({values}) => String(values[0])} onChange={([len]) => { const value = len as WordLength; setWordLength(value); commit('wordLength', value) }} class='game-settings-slider'>
+        <Slider minValue={3} maxValue={20} value={[wordLength()]} getValueLabel={({values}) => String(values[0])} onChange={([len]) => { if (isWordLength(len)) { setWordLength(len); commit('wordLength', len) } }} class='game-settings-slider'>
           <div class='flex w-full justify-between'><SliderLabel>Word length</SliderLabel><SliderValueLabel /></div>
           <SliderTrack><SliderFill /><SliderThumb /></SliderTrack>
         </Slider>

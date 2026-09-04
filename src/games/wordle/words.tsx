@@ -4,7 +4,7 @@ import { IDBPDatabase, openDB } from 'idb'
 import { binarySearch, wordAt, wordCount, type WordLength } from './word-list'
 export type { WordLength } from './word-list'
 import { SettingsHardProps } from './popup_settings'
-import type { GameMode } from './challenge'
+import { isWordLength, type GameMode } from './challenge'
 
 export enum KindEnum {
   Correct = 0,
@@ -100,14 +100,17 @@ export function calcDiff(word: string, guess: string): string {
 
 // Gets and returns the record of the word if it exists in db
 export function getGuessWord(guess: string): boolean {
-  if (guess.length < 3 || guess.length > 20) throw new Error('Invalid guess length')
-  return binarySearch(guess.length as WordLength, guess.toLowerCase()) !== -1
+  if (!isWordLength(guess.length)) throw new Error('Invalid guess length')
+  return binarySearch(guess.length, guess.toLowerCase()) !== -1
 }
 
 // Get a random word of length wlen
 export function getRandomWord(wlen: WordLength): string {
-  return wordAt(wlen, Math.floor(Math.random() * wordCount(wlen)))!
+  const word = wordAt(wlen, Math.floor(Math.random() * wordCount(wlen)))
+  if (!word) throw new Error(`No ${wlen}-letter words are available`)
+  return word
 }
+
 
 // Sets the word as done, adding the history to the record
 export async function setDone(entry: {word: string, history: [string, string][]}, hard: SettingsHardProps, kind: KindEnum): Promise<void> {
