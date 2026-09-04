@@ -4,6 +4,7 @@ export type MessageDescriptor = { id?: string; defaultMessage?: string; descript
 export type FormatNumberOptions = Intl.NumberFormatOptions;
 export type IntlShape = ReturnType<typeof makeIntl>;
 type RichTextHandler = (...chunks: JSX.Element[]) => JSX.Element;
+type PrimitiveMessageValues = Record<string, string | number | boolean | null | undefined>;
 type MessageValues = Record<string, unknown>;
 
 function formatTemplate(
@@ -197,6 +198,12 @@ function makeIntl(
   richTextElements: Record<string, RichTextHandler> = {},
 ) {
   const displayNamesCache = new Map<string, Intl.DisplayNames>();
+  function formatMessage(descriptor: MessageDescriptor, values?: PrimitiveMessageValues): string;
+  function formatMessage(descriptor: MessageDescriptor, values?: MessageValues): JSX.Element;
+  function formatMessage(descriptor: MessageDescriptor, values?: MessageValues): JSX.Element {
+    const template = messages[descriptor.id ?? ""] ?? descriptor.defaultMessage ?? descriptor.id ?? "";
+    return formatTemplate(template, values, richTextElements, locale);
+  }
   return {
     locale,
     messages,
@@ -211,10 +218,7 @@ function makeIntl(
         return value;
       },
     },
-    formatMessage(descriptor: MessageDescriptor, values?: MessageValues): any {
-      const template = messages[descriptor.id ?? ""] ?? descriptor.defaultMessage ?? descriptor.id ?? "";
-      return formatTemplate(template, values, richTextElements, locale);
-    },
+    formatMessage,
     formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
       return new Intl.NumberFormat(locale, options).format(value);
     },

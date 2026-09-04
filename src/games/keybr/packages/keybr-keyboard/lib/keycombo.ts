@@ -13,10 +13,10 @@ export class KeyCombo implements HasCodePoint {
     readonly modifier: KeyModifier,
     readonly prefix: KeyCombo | null = null,
   ) {
-    let complexity = 0;
-    let shift = false;
-    let alt = false;
-    let combo: KeyCombo | null = this; // eslint-disable-line @typescript-eslint/no-this-alias
+    let complexity = 1 + modifier.complexity;
+    let shift = modifier.shift;
+    let alt = modifier.alt;
+    let combo = prefix;
     while (combo != null) {
       const { modifier } = combo;
       complexity += 1 + modifier.complexity;
