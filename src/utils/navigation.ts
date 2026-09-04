@@ -1,13 +1,12 @@
 'use strict'
 
-import { createSelector, createSignal, untrack } from 'solid-js'
+import { createSelector, createSignal } from 'solid-js'
 import { UrlSearchStore } from './store'
 import { animateRootSwap } from '../shared/transitions.ts'
 
 export enum Page {
   Wordle,
   Stats,
-  Error,
 }
 
 const parsePage = (value: string): Page => value === String(Page.Stats) ? Page.Stats : Page.Wordle
@@ -54,21 +53,4 @@ export function disposePageNavigation() {
   if (!pageNavigationMounted) return
   removeEventListener('popstate', onPopState)
   pageNavigationMounted = false
-}
-
-class PageError {
-  err: unknown = new Error('Unknown Page')
-  page = Page.Wordle
-
-  reset = () => setPage(this.page)
-}
-
-export const NoPageError = new PageError()
-export const pageError = new PageError()
-
-export function setPageError(err: unknown) {
-  console.error(err)
-  pageError.err = err
-  pageError.page = untrack(page)
-  setPage(Page.Error)
 }

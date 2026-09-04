@@ -69,7 +69,6 @@ const dbReady = openDB<Schema>('game.wordle', 1, {
   }
 }).then(_db => db = _db)
 
-export function getDB(): typeof db { return db }
 export function getReadyDB(): Promise<IDBPDatabase<Schema>> { return db ? Promise.resolve(db) : dbReady }
 
 // Calculates the diff (coloring) from a word and a guess
@@ -132,12 +131,6 @@ export async function setDone(entry: {word: string, history: [string, string][]}
   await store.put(record)
   store.transaction.commit()
   window.dispatchEvent(new Event('wordle:stats-change'))
-}
-
-// Get all the words that have been done
-export async function getDoneWords(wlen: WordLength): Promise<Value[]> {
-  const readyDb = db ?? await dbReady
-  return await readyDb.transaction('w' + wlen, 'readonly').objectStore('w' + wlen).getAll()
 }
 
 

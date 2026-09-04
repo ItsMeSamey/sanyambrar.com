@@ -5,7 +5,7 @@ import StatsPage from './page_stats'
 
 import './style.css'
 
-import { mountPageNavigation, NoPageError, Page, selectP, setPageRoot } from '../../utils/navigation'
+import { mountPageNavigation, Page, selectP, setPageRoot } from '../../utils/navigation'
 import ErrorPage from '../../pages/error_page'
 import Wordle from './page'
 import { Toaster } from '~/registry/ui/toast'
@@ -18,7 +18,7 @@ const disposeWordle = render(function() {
 
     <div ref={setPageRoot} data-wordle-root>
       <ErrorBoundary fallback={ErrorPage}>
-        <Switch fallback={ErrorPage(NoPageError.err, NoPageError.reset)}>
+        <Switch>
           <Match when={selectP(Page.Wordle)}>
             <Wordle />
           </Match>

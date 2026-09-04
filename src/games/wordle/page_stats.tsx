@@ -57,12 +57,6 @@ export async function fetchStats(): Promise<GameStats> {
   return {totalGames, totalWins, averageGuesses: totalWins ? totalGuesses / totalWins : 0, dailyGames, dailyWins, dailyAverageGuesses: dailyWins ? dailyGuesses / dailyWins : 0, words}
 }
 
-export async function hasStats() {
-  const db = await getReadyDB()
-  const counts = await Promise.all(Array.from({length: 18}, (_, index) => db.count(`w${index + 3}` as const)))
-  return counts.some(Boolean)
-}
-
 function entryMeta(entry: HistoryEntry) {
   const mode = entry.o ? entry.o[0].toUpperCase() + entry.o.slice(1) : 'Legacy'
   const date = entry.q ? ` / ${entry.q}` : ''

@@ -36,12 +36,6 @@ function lowerBound(wlen: WordLength, value: string): number {
   return lo
 }
 
-export function hasPrefix(wlen: WordLength, prefix: string): boolean {
-  const index = lowerBound(wlen, prefix)
-  const word = wordAt(wlen, index)
-  return word?.startsWith(prefix) ?? false
-}
-
 /**
  * Returns next letters that have at least one complete dictionary continuation
  * which does not use an excluded letter anywhere in the resulting word.

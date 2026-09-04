@@ -8,5 +8,3 @@ export const TOOLS:readonly ToolInfo[]=[
   {id:'number',label:'Numbers',title:'Number Lab',note:'Inspect and convert integers across bases 2–62.'},
   {id:'markdown',label:'Markdown',title:'Markdown',note:'Live local Markdown editor and preview.'},
 ] as const;
-
-export const toolInfo=(id:string)=>TOOLS.find(tool=>tool.id===id);
