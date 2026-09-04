@@ -549,23 +549,27 @@
 	}
 	//#endregion
 	//#region src/shared/theme.ts
+	var isRecord = (value) => value != null && typeof value === "object";
+	var asRecord = (value) => isRecord(value) ? value : {};
+	var eventElement = (event) => event.target instanceof Element ? event.target : null;
 	(() => {
-		const SCRIPT_URL = new URL(document.currentScript?.src || location.href);
+		const currentScript = document.currentScript;
+		const SCRIPT_URL = new URL(currentScript instanceof HTMLScriptElement ? currentScript.src : location.href);
 		const SCRIPT_ROOT = new URL(".", SCRIPT_URL);
 		const BUILD_VERSION = SCRIPT_URL.searchParams.get("v") || "";
 		const KEY = "keybr.theme";
 		const FONT_KEY = "samey.font";
-		const CURSOR_MODES = Object.freeze([
+		const CURSOR_MODES = [
 			"invert",
 			"hardware",
 			"native"
-		]);
+		];
 		const CURSOR_LABELS = Object.freeze({
 			invert: "Invert",
 			hardware: "Hardware",
 			native: "Native"
 		});
-		const normalizeCursorMode = (value) => CURSOR_MODES.includes(value) ? value : "hardware";
+		const normalizeCursorMode = (value) => typeof value === "string" && CURSOR_MODES.includes(value) ? value : "hardware";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
 		const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
@@ -590,13 +594,14 @@
 			const s = l > .5 ? d / (2 - max - min) : d / (max + min);
 			return `${+((max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4) / 6 * 360).toFixed(2)} ${+(s * 100).toFixed(2)}% ${+(l * 100).toFixed(2)}%`;
 		};
-		const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
+		const HTML_ESCAPES = {
 			"&": "&amp;",
 			"<": "&lt;",
 			">": "&gt;",
 			"\"": "&quot;",
 			"'": "&#39;"
-		})[c]);
+		};
+		const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
 		const cursorDataUrl = (svg, hotspotX = 32, hotspotY = 32) => `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${hotspotX} ${hotspotY}`;
 		const hardwareLoadingPath = generateLoadingFrames()[0];
 		const hardwareCursorSvgs = (theme) => {
@@ -614,7 +619,8 @@
 		const CURSOR_SUPERSAMPLE = 4;
 		const hardwareCursorPngs = (theme) => {
 			const cacheKey = `${theme.text}|${theme.background}`;
-			if (hardwareCursorCache.has(cacheKey)) return hardwareCursorCache.get(cacheKey);
+			const cached = hardwareCursorCache.get(cacheKey);
+			if (cached) return cached;
 			const make = (width, height, hotspotX, hotspotY, draw) => {
 				try {
 					const source = document.createElement("canvas");
@@ -738,29 +744,31 @@
 		];
 		const defaultBgWeight = (tone) => tone === "dark" ? .29 : .17;
 		const normalizeTheme = (value, fallback) => {
-			const tone = value?.tone === "dark" ? "dark" : "light";
-			const background = validHex(value?.background) ? value.background.toLowerCase() : fallback.background;
-			const text = validHex(value?.text) ? value.text.toLowerCase() : fallback.text;
+			const source = asRecord(value), base = asRecord(fallback);
+			const tone = source.tone === "dark" ? "dark" : "light";
+			const background = validHex(source.background) ? source.background.toLowerCase() : validHex(base.background) ? base.background.toLowerCase() : "#ffffff";
+			const text = validHex(source.text) ? source.text.toLowerCase() : validHex(base.text) ? base.text.toLowerCase() : "#121213";
 			const out = {
 				tone,
 				background,
 				text,
-				blurTint: validHex(value?.blurTint) ? value.blurTint.toLowerCase() : validHex(fallback?.blurTint) ? fallback.blurTint.toLowerCase() : "#000000",
-				shadowTint: validHex(value?.shadowTint) ? value.shadowTint.toLowerCase() : validHex(fallback?.shadowTint) ? fallback.shadowTint.toLowerCase() : "#000000"
+				blurTint: validHex(source.blurTint) ? source.blurTint.toLowerCase() : validHex(base.blurTint) ? base.blurTint.toLowerCase() : "#000000",
+				shadowTint: validHex(source.shadowTint) ? source.shadowTint.toLowerCase() : validHex(base.shadowTint) ? base.shadowTint.toLowerCase() : "#000000"
 			};
 			for (const role of semanticRoles) {
-				const fgValue = value?.[`${role}Fg`] ?? value?.[role];
-				const fallbackFg = fallback?.[`${role}Fg`] ?? fallback?.[role] ?? text;
-				const fg = validHex(fgValue) ? fgValue.toLowerCase() : fallbackFg;
-				const bgValue = value?.[`${role}Bg`];
-				const fallbackBg = fallback?.[`${role}Bg`];
+				const fgKey = `${role}Fg`, bgKey = `${role}Bg`;
+				const fgValue = source[fgKey] ?? source[role];
+				const fallbackFg = base[fgKey] ?? base[role] ?? text;
+				const fg = validHex(fgValue) ? fgValue.toLowerCase() : validHex(fallbackFg) ? fallbackFg.toLowerCase() : text;
+				const bgValue = source[bgKey];
+				const fallbackBg = base[bgKey];
 				const bg = validHex(bgValue) ? bgValue.toLowerCase() : validHex(fallbackBg) ? fallbackBg.toLowerCase() : mix(background, fg, defaultBgWeight(tone));
 				out[role] = fg;
-				out[`${role}Fg`] = fg;
-				out[`${role}Bg`] = bg;
+				out[fgKey] = fg;
+				out[bgKey] = bg;
 			}
-			const selectionFg = value?.selectionFg;
-			const selectionBg = value?.selectionBg;
+			const selectionFg = source.selectionFg;
+			const selectionBg = source.selectionBg;
 			out.selectionFg = validHex(selectionFg) ? selectionFg.toLowerCase() : text;
 			out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg, tone === "dark" ? .42 : .27);
 			return out;
@@ -810,7 +818,7 @@
 		const rawPrefs = () => {
 			let stored = {};
 			try {
-				stored = JSON.parse(localStorage.getItem(KEY) || "null") || {};
+				stored = asRecord(JSON.parse(localStorage.getItem(KEY) || "null"));
 			} catch {}
 			return {
 				...stored,
@@ -819,15 +827,15 @@
 		};
 		const defaultFont = () => document.documentElement.dataset.siteKind === "keybr" ? "monospace" : "sans-serif";
 		const readFont = () => {
-			if (FONT_IDS.includes(volatileFont)) return volatileFont;
+			if (volatileFont && FONT_IDS.includes(volatileFont)) return volatileFont;
 			try {
 				const value = localStorage.getItem(FONT_KEY);
-				if (FONT_IDS.includes(value)) return value;
+				if (value && FONT_IDS.includes(value)) return value;
 			} catch {}
 			const legacy = rawPrefs().font;
-			return FONT_IDS.includes(legacy) ? legacy : defaultFont();
+			return typeof legacy === "string" && FONT_IDS.includes(legacy) ? legacy : defaultFont();
 		};
-		const normalizedSavedThemes = (raw = rawPrefs()) => Array.isArray(raw.savedThemes) ? raw.savedThemes.filter((item) => item && typeof item.id === "string" && typeof item.name === "string").map((item) => ({
+		const normalizedSavedThemes = (raw = rawPrefs()) => Array.isArray(raw.savedThemes) ? raw.savedThemes.filter((item) => isRecord(item) && typeof item.id === "string" && typeof item.name === "string").map((item) => ({
 			...normalizeTheme(item, colors.light),
 			id: item.id,
 			name: item.name.slice(0, 80)
@@ -836,7 +844,7 @@
 		const migrateColor = (value, savedThemes) => {
 			if (value === "light-contrast" || value === "clear-light") return "light";
 			if (value === "dark-contrast" || value === "chocolate") return value === "chocolate" ? "dark" : "clear-dark";
-			if ([
+			if (typeof value === "string" && [
 				"gray",
 				"yellow",
 				"garden",
@@ -844,7 +852,7 @@
 				"honey"
 			].includes(value)) return "light";
 			if (typeof value === "string" && value.startsWith("saved:")) return savedThemes.some((theme) => savedThemeId(theme.id) === value) ? value : "system";
-			return value === "system" || value === "custom" || COLOR_IDS.includes(value) ? value : "system";
+			return typeof value === "string" && (value === "system" || value === "custom" || COLOR_IDS.includes(value)) ? value : "system";
 		};
 		const read = () => {
 			const raw = rawPrefs();
@@ -864,7 +872,7 @@
 				};
 			}
 			if (selected === "custom") {
-				const custom = raw.custom || {};
+				const custom = asRecord(raw.custom);
 				const fallback = custom.tone === "dark" ? colors.dark : colors.light;
 				const theme = normalizeTheme(custom, fallback);
 				return {
@@ -1082,7 +1090,7 @@
 			return theme;
 		};
 		const setPrefs = (patch) => {
-			if (Object.hasOwn(patch, "font")) try {
+			if (typeof patch.font === "string") try {
 				nativeSetItem.call(localStorage, FONT_KEY, patch.font);
 				volatileFont = void 0;
 			} catch {
@@ -1133,7 +1141,7 @@
 		const menuThemeIds = () => {
 			const raw = rawPrefs();
 			const catalog = new Set(themeCatalog().map(([id]) => id));
-			const result = (Array.isArray(raw.menuThemes) ? raw.menuThemes : DEFAULT_THEME_MENU).filter((id) => catalog.has(id) && id !== "clear-light" && !isColorblindPresetId(id));
+			const result = (Array.isArray(raw.menuThemes) ? raw.menuThemes.filter((id) => typeof id === "string") : DEFAULT_THEME_MENU).filter((id) => catalog.has(id) && id !== "clear-light" && !isColorblindPresetId(id));
 			return result.length ? result : [...DEFAULT_THEME_MENU];
 		};
 		const themeSection = () => {
@@ -1179,7 +1187,7 @@
 		const cursorSection = () => {
 			const mode = read().cursorMode;
 			const state = CURSOR_MODES.indexOf(mode);
-			const [x, y] = CURSOR_TOGGLE_POINTS[state];
+			const [x, y] = CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0];
 			return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced &amp; Colorblind</button></div></div>`;
 		};
 		const bindCursorToggle = () => {
@@ -1187,7 +1195,9 @@
 			if (!button) return;
 			const knob = button.querySelector("[data-cursor-toggle-knob]");
 			const gradient = button.querySelector("radialGradient");
-			const name = appearancePanel.querySelector("[data-cursor-mode-name]");
+			const panel = appearancePanel;
+			if (!panel) return;
+			const name = panel.querySelector("[data-cursor-mode-name]");
 			let state = Number(button.getAttribute("aria-valuenow")) || 0;
 			let raf = 0, queued = 0;
 			const ease = (t) => t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
@@ -1202,7 +1212,7 @@
 					return;
 				}
 				const from = state, to = (from + 1) % 3;
-				const [x0, y0, cx, cy, x1, y1, duration] = CURSOR_TOGGLE_EDGES[from];
+				const [x0, y0, cx, cy, x1, y1, duration] = CURSOR_TOGGLE_EDGES[from] ?? CURSOR_TOGGLE_EDGES[0];
 				const start = performance.now();
 				button.setAttribute("aria-valuenow", String(to));
 				button.setAttribute("aria-valuetext", CURSOR_LABELS[CURSOR_MODES[to]]);
@@ -1216,7 +1226,7 @@
 						return;
 					}
 					state = to;
-					const [px, py] = CURSOR_TOGGLE_POINTS[state];
+					const [px, py] = CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0];
 					setPoint(px, py);
 					raf = 0;
 					setPrefs({ cursorMode: CURSOR_MODES[state] });
@@ -1312,25 +1322,26 @@
 		};
 		const fillAdvancedEditor = (theme = read()) => {
 			if (!advancedEditor) return;
-			advancedEditor.querySelector("[name=\"tone\"]").value = theme.tone;
+			const tone = advancedEditor.querySelector("[name=\"tone\"]");
+			if (tone) tone.value = theme.tone;
 			for (const [key] of editorFields) {
-				const value = theme[key] || theme.custom?.[key];
+				const value = theme[key];
 				if (!validHex(value)) continue;
 				const color = advancedEditor.querySelector(`[data-color-for="${key}"]`);
 				const text = advancedEditor.querySelector(`[name="${key}"]`);
 				if (color) color.value = value;
 				if (text) text.value = value;
 			}
-			const name = advancedEditor.querySelector("[name=\"themeName\"]");
-			if (name && !name.value) name.value = theme.savedName || "My theme";
+			const name = advancedEditor?.querySelector("[name=\"themeName\"]");
+			if (name && !name.value) name.value = ("savedName" in theme ? theme.savedName : void 0) || "My theme";
 		};
 		const syncColorPair = (target) => {
 			const key = target.dataset.colorFor || target.name;
 			if (!key || !editorFields.some(([field]) => field === key)) return;
-			const color = advancedEditor.querySelector(`[data-color-for="${key}"]`);
-			const text = advancedEditor.querySelector(`[name="${key}"]`);
-			if (target.matches("input[type=\"color\"]")) text.value = target.value;
-			else if (validHex(target.value)) color.value = target.value;
+			const color = advancedEditor?.querySelector(`[data-color-for="${key}"]`);
+			const text = advancedEditor?.querySelector(`[name="${key}"]`);
+			if (target.matches("input[type=\"color\"]") && text) text.value = target.value;
+			else if (validHex(target.value) && color) color.value = target.value;
 		};
 		const previewAdvanced = () => setPrefs({
 			color: "custom",
@@ -1341,6 +1352,7 @@
 		};
 		const saveAdvancedTheme = () => {
 			const raw = rawPrefs();
+			if (!advancedEditor) return;
 			const name = advancedEditor.querySelector("[name=\"themeName\"]")?.value.trim() || "Saved theme";
 			const theme = editorThemeFromInputs();
 			const savedThemes = normalizedSavedThemes(raw);
@@ -1366,6 +1378,7 @@
 		const renderAdvancedSavedThemes = () => {
 			if (!advancedPage) return;
 			const host = advancedPage.querySelector("[data-saved-themes]");
+			if (!host) return;
 			const saved = normalizedSavedThemes();
 			host.innerHTML = saved.length ? saved.map((theme) => `<div class="samey-saved-theme"><button type="button" data-load-saved="${escapeHtml(theme.id)}">${escapeHtml(theme.name)}</button><button type="button" data-delete-saved="${escapeHtml(theme.id)}" aria-label="Delete ${escapeHtml(theme.name)}">×</button></div>`).join("") : `<p class="samey-advanced-empty">No saved themes yet.</p>`;
 			const menu = advancedPage.querySelector("[data-theme-menu-list]");
@@ -1375,7 +1388,7 @@
 			if (!advancedPage || advancedPage.hidden) return;
 			const allowed = new Set(menuThemeIds());
 			advancedPage.querySelectorAll("[data-menu-theme]").forEach((input) => {
-				input.checked = allowed.has(input.dataset.menuTheme);
+				input.checked = allowed.has(input.dataset.menuTheme ?? "");
 			});
 		}
 		const setMenuThemeAllowed = (id, allowed) => {
@@ -1399,7 +1412,7 @@
 		const loadSavedIntoEditor = (id) => {
 			const saved = normalizedSavedThemes().find((theme) => theme.id === id);
 			if (!saved) return;
-			const name = advancedEditor.querySelector("[name=\"themeName\"]");
+			const name = advancedEditor?.querySelector("[name=\"themeName\"]");
 			if (name) name.value = saved.name;
 			fillAdvancedEditor(saved);
 			previewAdvanced();
@@ -1407,7 +1420,7 @@
 		const loadPresetIntoEditor = (id, extraPrefs = {}) => {
 			const preset = colors[id];
 			if (!preset) return;
-			const name = advancedEditor.querySelector("[name=\"themeName\"]");
+			const name = advancedEditor?.querySelector("[name=\"themeName\"]");
 			if (name) name.value = `${config.colors[id]?.label || id} custom`;
 			fillAdvancedEditor(preset);
 			setPrefs({
@@ -1427,7 +1440,7 @@
 		const radioControl = (name, value, label, checked) => `<label class="samey-control samey-control-radio"><input class="samey-control-native" type="radio" name="${name}" value="${escapeHtml(value)}"${checked ? " checked" : ""}><span class="samey-radio-indicator" aria-hidden="true"><span></span></span><span class="samey-control-text">${escapeHtml(label)}</span></label>`;
 		const colorblindControls = () => `<div class="samey-colorblind-chooser"><fieldset><legend>Profile</legend><div class="samey-control-list" data-colorblind-profile>${COLORBLIND_PROFILES.map(([id, label]) => radioControl("samey-colorblind-profile", id, label, colorblindChoice.profile === id)).join("")}</div></fieldset><fieldset><legend>Variant</legend><div class="samey-control-list" data-colorblind-variant>${COLORBLIND_VARIANTS.map(([id, label]) => radioControl("samey-colorblind-variant", id, label, colorblindChoice.variant === id)).join("")}</div></fieldset></div>`;
 		const applyColorblindChoice = () => {
-			const id = colorblindPresetId(colorblindChoice.profile, colorblindChoice.variant);
+			const id = colorblindPresetId(String(colorblindChoice.profile), String(colorblindChoice.variant));
 			loadPresetIntoEditor(id, {
 				colorblindProfile: colorblindChoice.profile,
 				colorblindVariant: colorblindChoice.variant
@@ -1443,11 +1456,13 @@
 			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced &amp; Colorblind</h1></div><button type="button" class="samey-ui-button samey-icon-button" data-close-advanced aria-label="Close Advanced &amp; Colorblind">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label><span>Theme name</span><input class="samey-ui-input" name="themeName" value="My theme" maxlength="80"></label><label><span>Tone</span><select class="samey-ui-select" name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input class="samey-ui-color" type="color" data-color-for="${key}" aria-label="${escapeHtml(label)} color"><input class="samey-ui-input" name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" class="samey-ui-button samey-ui-button-primary" data-save-theme>Save theme</button><button type="button" class="samey-ui-button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind</h2><p>Choose the vision profile and luminance variant independently. Changes preview immediately and remain editable.</p>${colorblindControls()}</section><section><h2>Theme menu</h2><p>Choose which standard and saved themes appear in the compact menu. Colorblind choices stay in this page instead of becoming nine separate menu entries.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
 			document.body.append(page);
 			advancedPage = page;
-			advancedEditor = page.querySelector("[data-advanced-editor]");
-			advancedEditor.addEventListener("input", (event) => {
-				const target = event.target;
-				if (target.name === "themeName") return;
-				syncColorPair(target);
+			const editor = page.querySelector("[data-advanced-editor]");
+			if (!editor) throw new Error("Advanced appearance editor is missing");
+			advancedEditor = editor;
+			editor.addEventListener("input", (event) => {
+				const target = event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement ? event.target : null;
+				if (!target || target.name === "themeName") return;
+				if (target instanceof HTMLInputElement) syncColorPair(target);
 				if (target.name === "tone") {
 					const current = editorThemeFromInputs();
 					const normalized = normalizeTheme({
@@ -1459,19 +1474,21 @@
 				if (target.matches("input[type=\"color\"]") || validHex(target.value) || target.name === "tone") previewAdvanced();
 			});
 			page.addEventListener("click", (event) => {
-				const target = event.target.closest?.("button");
+				const target = eventElement(event)?.closest("button");
 				if (!target) return;
 				if (target.hasAttribute("data-close-advanced")) closeAdvanced();
 				else if (target.hasAttribute("data-save-theme")) saveAdvancedTheme();
 				else if (target.hasAttribute("data-reset-editor")) {
-					advancedEditor.querySelector("[name=\"themeName\"]").value = read().savedName || "My theme";
+					const name = editor.querySelector("[name=\"themeName\"]");
+					if (name) name.value = read().savedName || "My theme";
 					fillAdvancedEditor(read());
 				} else if (target.dataset.loadSaved) loadSavedIntoEditor(target.dataset.loadSaved);
 				else if (target.dataset.deleteSaved) deleteSavedTheme(target.dataset.deleteSaved);
 			});
 			page.addEventListener("change", (event) => {
-				const input = event.target;
-				if (input.matches?.("[name=\"samey-colorblind-profile\"]")) {
+				const input = event.target instanceof HTMLInputElement ? event.target : null;
+				if (!input) return;
+				if (input.matches("[name=\"samey-colorblind-profile\"]")) {
 					colorblindChoice = {
 						...colorblindChoice,
 						profile: input.value
@@ -1479,7 +1496,7 @@
 					applyColorblindChoice();
 					return;
 				}
-				if (input.matches?.("[name=\"samey-colorblind-variant\"]")) {
+				if (input.matches("[name=\"samey-colorblind-variant\"]")) {
 					colorblindChoice = {
 						...colorblindChoice,
 						variant: input.value
@@ -1487,8 +1504,8 @@
 					applyColorblindChoice();
 					return;
 				}
-				const menuInput = input.closest?.("[data-menu-theme]");
-				if (menuInput) setMenuThemeAllowed(menuInput.dataset.menuTheme, menuInput.checked);
+				const menuInput = input.closest("[data-menu-theme]");
+				if (menuInput?.dataset.menuTheme) setMenuThemeAllowed(menuInput.dataset.menuTheme, menuInput.checked);
 			});
 		};
 		const openAdvanced = () => {
@@ -1501,12 +1518,15 @@
 			advancedPage.querySelectorAll("[name=\"samey-colorblind-variant\"]").forEach((input) => {
 				input.checked = input.value === colorblindChoice.variant;
 			});
-			advancedEditor.querySelector("[name=\"themeName\"]").value = read().savedName || "My theme";
+			const themeName = advancedEditor?.querySelector("[name=\"themeName\"]");
+			if (themeName) themeName.value = read().savedName || "My theme";
 			fillAdvancedEditor(read());
 			renderAdvancedSavedThemes();
-			advancedPage.hidden = false;
+			const page = advancedPage;
+			if (!page) return;
+			page.hidden = false;
 			document.documentElement.classList.add("samey-advanced-open");
-			advancedPage.scrollTop = 0;
+			page.scrollTop = 0;
 		};
 		const closeAdvanced = () => {
 			if (!advancedPage) return;
@@ -1522,23 +1542,24 @@
 			panel.dataset.sameyOverlay = "";
 			panel.hidden = true;
 			panel.addEventListener("click", (event) => {
-				const themeButton = event.target.closest("[data-theme-choice]");
+				const target = eventElement(event);
+				const themeButton = target?.closest("[data-theme-choice]");
 				if (themeButton) setPrefs({ color: themeButton.dataset.themeChoice });
-				const fontButton = event.target.closest("[data-font-choice]");
+				const fontButton = target?.closest("[data-font-choice]");
 				if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
-				if (event.target.closest("[data-open-advanced]")) openAdvanced();
+				if (target?.closest("[data-open-advanced]")) openAdvanced();
 			});
 			document.body.append(panel);
 			appearancePanel = panel;
 			document.addEventListener("click", (event) => {
-				const trigger = event.target.closest?.("[data-samey-appearance]");
+				const trigger = eventElement(event)?.closest("[data-samey-appearance]");
 				if (trigger) {
 					event.preventDefault();
 					event.stopPropagation();
 					toggleAppearance(trigger);
 					return;
 				}
-				if (!panel.contains(event.target)) closeAppearance();
+				if (event.target instanceof Node && !panel.contains(event.target)) closeAppearance();
 			});
 			addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
 			addEventListener("samey-pageleave", closeAppearance);
@@ -1569,7 +1590,7 @@
 			return el;
 		};
 		const normalizeExternalLinks = (root = document) => {
-			for (const link of root.querySelectorAll?.("a[href]") || []) {
+			for (const link of root.querySelectorAll("a[href]")) {
 				let url;
 				try {
 					url = new URL(link.href, location.href);
@@ -1585,7 +1606,7 @@
 		const observeExternalLinks = () => new MutationObserver((records) => {
 			for (const record of records) for (const node of record.addedNodes) {
 				if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
-				if (node.matches?.("a[href]")) normalizeExternalLinks(node.parentElement || document);
+				if (node.matches("a[href]")) normalizeExternalLinks(node.parentElement ?? document);
 				else normalizeExternalLinks(node);
 			}
 		}).observe(document.documentElement, {
@@ -1624,7 +1645,7 @@
 			let active = true;
 			let release;
 			const timer = setTimeout(() => {
-				if (active) release = globalThis.SameyLoadingBegin();
+				if (active) release = globalThis.SameyLoadingBegin?.();
 			}, delay);
 			return () => {
 				if (!active) return;
@@ -1717,7 +1738,7 @@
 					if (cursorMode === "invert" && cursorVisible) armCursorIdle();
 				}
 			};
-			addEventListener("samey-loading", (event) => setLoading(!!event.detail));
+			addEventListener("samey-loading", () => setLoading(loadingState));
 			if (loadingState) queueMicrotask(() => {
 				if (loadingState) setLoading(true);
 			});
@@ -2263,7 +2284,7 @@
 					armCursorIdle();
 				}
 			};
-			addEventListener("samey-themechange", (event) => syncCursorPresentation(event.detail || read()));
+			addEventListener("samey-themechange", () => syncCursorPresentation(read()));
 			syncCursorPresentation(read());
 			const hasRawPointer = "onpointerrawupdate" in window;
 			const moveCursorOnly = (event) => {
@@ -2412,7 +2433,7 @@
 				const editable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target : target instanceof Element ? target.closest("input,textarea") : null;
 				if (!(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement)) return "";
 				const start = editable.selectionStart, end = editable.selectionEnd;
-				return Number.isInteger(start) && Number.isInteger(end) && end > start ? editable.value.slice(start, end) : "";
+				return start != null && end != null && end > start ? editable.value.slice(start, end) : "";
 			};
 			const setNativeDragImage = (event, kind, text) => {
 				if (!event.dataTransfer || !text) return;
@@ -2521,7 +2542,7 @@
 			}
 		};
 		const stampLinkCopyLabels = (root = document) => {
-			const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+			const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll("a[href]");
 			for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
 		};
 		stampLinkCopyLabels();
@@ -2591,14 +2612,18 @@
 						const range = document.createRange();
 						range.selectNodeContents(editable);
 						const sel = getSelection();
-						sel.removeAllRanges();
-						sel.addRange(range);
+						if (sel) {
+							sel.removeAllRanges();
+							sel.addRange(range);
+						}
 					} else {
 						const range = document.createRange();
 						range.selectNodeContents(document.body);
 						const sel = getSelection();
-						sel.removeAllRanges();
-						sel.addRange(range);
+						if (sel) {
+							sel.removeAllRanges();
+							sel.addRange(range);
+						}
 					}
 				}, true, navigator.platform?.includes("Mac") ? "⌘A" : "Ctrl+A");
 				if (selection && !editable) {
@@ -2637,7 +2662,7 @@
 				menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
 			}, true);
 			document.addEventListener("pointerdown", (event) => {
-				if (!menu.hidden && !menu.contains(event.target)) close();
+				if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close();
 			}, true);
 			addEventListener("blur", close);
 			addEventListener("resize", close);
@@ -2658,14 +2683,15 @@
 			total: target.scrollHeight
 		};
 		const setScroll = (target, top) => target === document.scrollingElement ? scrollTo({ top }) : target.scrollTop = top;
-		const virtualScrollerOptOut = (target) => target instanceof Element && !!target.closest("[data-samey-runtime], .monaco-host, .monaco-editor, .monaco-diff-editor, [data-samey-native-scrollbars]");
+		const virtualScrollerOptOut = (target) => !!target.closest("[data-samey-runtime], .monaco-host, .monaco-editor, .monaco-diff-editor, [data-samey-native-scrollbars]");
 		const virtualScrollerEligible = (target) => {
+			if (!target) return false;
 			if (target === document.scrollingElement) return true;
-			if (!(target instanceof Element) || !target.isConnected || virtualScrollerOptOut(target)) return false;
+			if (!target.isConnected || virtualScrollerOptOut(target)) return false;
 			const style = getComputedStyle(target);
 			if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= .001) return false;
-			const r = target.getBoundingClientRect();
-			if (r.width < 8 || r.height < 8 || style.pointerEvents === "none") return false;
+			const rect = target.getBoundingClientRect();
+			if (rect.width < 8 || rect.height < 8 || style.pointerEvents === "none") return false;
 			return true;
 		};
 		const updateVirtualBars = () => {
@@ -2682,25 +2708,26 @@
 					continue;
 				}
 				bar.hidden = false;
-				let height, y, x, topPx;
+				let height, x, topPx;
 				if (target === document.scrollingElement) {
 					height = innerHeight;
 					x = innerWidth - 7;
 					topPx = 0;
 				} else {
-					const r = target.getBoundingClientRect();
-					height = Math.max(18, r.height);
-					x = r.right - 7;
-					topPx = r.top;
-					if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) {
+					const rect = target.getBoundingClientRect();
+					height = Math.max(18, rect.height);
+					x = rect.right - 7;
+					topPx = rect.top;
+					if (rect.bottom < 0 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth) {
 						bar.hidden = true;
 						continue;
 					}
 				}
 				bar.style.cssText = `height:${height}px;left:${x}px;top:${topPx}px`;
 				const thumb = bar.firstElementChild;
+				if (!(thumb instanceof HTMLElement)) continue;
 				const thumbH = Math.max(24, height * size / total);
-				y = (height - thumbH) * top / Math.max(1, total - size);
+				const y = (height - thumbH) * top / Math.max(1, total - size);
 				thumb.style.height = `${thumbH}px`;
 				thumb.style.transform = `translateY(${y}px)`;
 			}
@@ -2735,11 +2762,11 @@
 			bar.addEventListener("pointerdown", (event) => {
 				if (event.target === thumb) return;
 				const { size, total } = scrollMetrics(target);
-				const r = bar.getBoundingClientRect();
-				setScroll(target, (event.clientY - r.top) / r.height * Math.max(0, total - size));
+				const rect = bar.getBoundingClientRect();
+				setScroll(target, (event.clientY - rect.top) / rect.height * Math.max(0, total - size));
 				scheduleVirtualBars();
 			});
-			target.addEventListener?.("scroll", scheduleVirtualBars, { passive: true });
+			target.addEventListener("scroll", scheduleVirtualBars, { passive: true });
 			virtualBars.set(target, bar);
 		};
 		const virtualXBars = /* @__PURE__ */ new Map();
@@ -2767,8 +2794,8 @@
 			});
 			bar.addEventListener("pointerdown", (event) => {
 				if (event.target === thumb) return;
-				const r = bar.getBoundingClientRect();
-				target.scrollLeft = (event.clientX - r.left) / r.width * Math.max(0, target.scrollWidth - target.clientWidth);
+				const rect = bar.getBoundingClientRect();
+				target.scrollLeft = (event.clientX - rect.left) / rect.width * Math.max(0, target.scrollWidth - target.clientWidth);
 				scheduleVirtualBars();
 			});
 			target.addEventListener("scroll", scheduleVirtualBars, { passive: true });
@@ -2785,15 +2812,16 @@
 					bar.hidden = true;
 					continue;
 				}
-				const r = target.getBoundingClientRect();
-				if (r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) {
+				const rect = target.getBoundingClientRect();
+				if (rect.bottom < 0 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth) {
 					bar.hidden = true;
 					continue;
 				}
 				bar.hidden = false;
-				const width = Math.max(18, r.width);
-				bar.style.cssText = `width:${width}px;left:${r.left}px;top:${r.bottom - 7}px`;
+				const width = Math.max(18, rect.width);
+				bar.style.cssText = `width:${width}px;left:${rect.left}px;top:${rect.bottom - 7}px`;
 				const thumb = bar.firstElementChild;
+				if (!(thumb instanceof HTMLElement)) continue;
 				const thumbW = Math.max(24, width * target.clientWidth / target.scrollWidth);
 				const x = (width - thumbW) * target.scrollLeft / Math.max(1, target.scrollWidth - target.clientWidth);
 				thumb.style.width = `${thumbW}px`;
@@ -2807,7 +2835,8 @@
 			if ((style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 2) addVirtualXBar(el);
 		};
 		const scanVirtualScrollers = () => {
-			addVirtualBar(document.scrollingElement);
+			const root = document.scrollingElement;
+			if (root) addVirtualBar(root);
 			for (const el of document.querySelectorAll("body *:not([data-samey-runtime])")) considerVirtualScroller(el);
 			scheduleVirtualBars();
 		};
@@ -2822,7 +2851,7 @@
 					scanRaf = 0;
 					for (const target of pending) {
 						considerVirtualScroller(target);
-						for (const el of target.querySelectorAll?.("*:not([data-samey-runtime])") || []) considerVirtualScroller(el);
+						for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
 					}
 					pending.clear();
 					scheduleVirtualBars();
@@ -2857,11 +2886,13 @@
 				return url.hash.slice(1);
 			}
 		};
-		const pageStyleNodes = () => [...document.head.children].filter((el) => (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") && !el.hasAttribute("data-samey-shared"));
-		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => el.dataset.spaPage = "");
+		const pageStyleNodes = () => [...document.head.querySelectorAll("style:not([data-samey-shared]),link[rel=\"stylesheet\"]:not([data-samey-shared])")];
+		const markInitialPageStyles = () => pageStyleNodes().forEach((el) => {
+			el.dataset.spaPage = "";
+		});
 		const pageCache = /* @__PURE__ */ new Map();
 		const setLoading = (value) => {
-			globalThis.SameyLoading?.(!!value);
+			globalThis.SameyLoading?.(value);
 			document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
 		};
 		const syncHtmlData = (doc, baseUrl) => {
@@ -2887,7 +2918,8 @@
 		};
 		const fetchPage = async (url) => {
 			const key = url.href;
-			if (pageCache.has(key)) return pageCache.get(key);
+			const cached = pageCache.get(key);
+			if (cached) return cached;
 			const task = (async () => {
 				const logical = logicalPageUrl(url);
 				const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
@@ -2928,7 +2960,8 @@
 			for (const old of [...document.body.querySelectorAll("script")]) {
 				const fresh = document.createElement("script");
 				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
-				if (old.src || old.getAttribute("src")) fresh.src = new URL(old.getAttribute("src"), baseUrl).href;
+				const source = old.getAttribute("src");
+				if (source) fresh.src = new URL(source, baseUrl).href;
 				else fresh.textContent = old.textContent;
 				old.replaceWith(fresh);
 			}
@@ -2970,10 +3003,14 @@
 			dispatchEvent(new Event("samey-pageleave"));
 			normalizePageUrls(doc, baseUrl);
 			document.querySelectorAll("head > [data-spa-page]").forEach((el) => el.remove());
-			for (const el of [...doc.head.children]) if (el.tagName === "STYLE" || el.tagName === "LINK" && el.rel === "stylesheet") {
+			for (const el of [...doc.head.querySelectorAll("style,link[rel=\"stylesheet\"]")]) {
 				const copy = el.cloneNode(true);
+				if (!(copy instanceof HTMLStyleElement || copy instanceof HTMLLinkElement)) continue;
 				copy.dataset.spaPage = "";
-				if (copy.tagName === "LINK") copy.href = new URL(el.getAttribute("href"), baseUrl).href;
+				if (copy instanceof HTMLLinkElement && el instanceof HTMLLinkElement) {
+					const href = el.getAttribute("href");
+					if (href) copy.href = new URL(href, baseUrl).href;
+				}
 				document.head.append(copy);
 			}
 			const runtimeAnchor = clearPageBody();
@@ -3004,7 +3041,7 @@
 			for (let i = 0; i < 90; i++) {
 				const root = destinationRoot();
 				if (root && root.childElementCount > 0) return root;
-				await new Promise((resolve) => requestAnimationFrame(resolve));
+				await new Promise((resolve) => requestAnimationFrame(() => resolve()));
 			}
 			throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount.`);
 		};
@@ -3017,14 +3054,17 @@
 			panel.setAttribute("role", "alert");
 			const message = error instanceof Error ? error.message : "The page could not be loaded.";
 			panel.innerHTML = `<div><strong>Page failed to load</strong><span></span></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
-			panel.querySelector("span").textContent = message;
+			const messageNode = panel.querySelector("span");
 			const normal = panel.querySelector("a");
-			normal.href = url.href;
-			panel.querySelector("[data-retry]").addEventListener("click", () => {
+			const retryButton = panel.querySelector("[data-retry]");
+			const dismissButton = panel.querySelector("[data-dismiss]");
+			if (messageNode) messageNode.textContent = message;
+			if (normal) normal.href = url.href;
+			retryButton?.addEventListener("click", () => {
 				dismissLoadError();
 				retry();
 			});
-			panel.querySelector("[data-dismiss]").addEventListener("click", dismissLoadError);
+			dismissButton?.addEventListener("click", dismissLoadError);
 			document.body.append(panel);
 		};
 		let pageNavigationId = 0;
@@ -3086,23 +3126,23 @@
 			documentNavigationMounted = true;
 			document.addEventListener("pointerover", (event) => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				const a = event.target.closest?.("a[href]");
-				if (a && !a.target) prefetch(a.href);
+				const link = eventElement(event)?.closest("a[href]");
+				if (link && !link.target) prefetch(link.href);
 			}, { passive: true });
 			document.addEventListener("focusin", (event) => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
-				const a = event.target.closest?.("a[href]");
-				if (a && !a.target) prefetch(a.href);
+				const link = eventElement(event)?.closest("a[href]");
+				if (link && !link.target) prefetch(link.href);
 			});
 			document.addEventListener("click", (event) => {
 				if (document.documentElement.hasAttribute("data-solid-spa")) return;
 				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-				const a = event.target.closest?.("a[href]");
-				if (!a || a.target || a.hasAttribute("download")) return;
-				const url = new URL(a.href, location.href);
+				const link = eventElement(event)?.closest("a[href]");
+				if (!link || link.target || link.hasAttribute("download")) return;
+				const url = new URL(link.href, location.href);
 				if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
 				event.preventDefault();
-				const direction = a.dataset.navDirection === "back" || url.pathname === "/" ? "back" : "forward";
+				const direction = link.dataset.navDirection === "back" || url.pathname === "/" ? "back" : "forward";
 				loadPage(url.href, { direction }).catch(() => {});
 			});
 			addEventListener("popstate", () => {
@@ -3133,16 +3173,16 @@
 			const sliderParts = (target) => {
 				if (!(target instanceof Element)) return null;
 				const root = target.closest(".game-settings-slider");
-				if (!(root instanceof HTMLElement)) return null;
+				if (!root) return null;
 				const native = root.querySelector("input[type=\"range\"]");
 				const thumb = root.querySelector("[role=\"slider\"]");
-				const track = native?.closest(".game-range-shell") || root.querySelector("[data-kb-slider-track],.samey-slider-track");
+				const track = native?.closest(".game-range-shell") ?? root.querySelector("[data-kb-slider-track],.samey-slider-track");
 				const hit = target.closest("input[type=\"range\"],[role=\"slider\"],.game-range-shell,[data-kb-slider-track],.samey-slider-track");
-				if (!hit || !root.contains(hit) || !(track instanceof HTMLElement) || !(native instanceof HTMLInputElement) && !(thumb instanceof HTMLElement)) return null;
+				if (!hit || !root.contains(hit) || !track || !native && !thumb) return null;
 				return {
 					root,
-					native: native instanceof HTMLInputElement ? native : null,
-					thumb: thumb instanceof HTMLElement ? thumb : null,
+					native,
+					thumb,
 					track
 				};
 			};
@@ -3159,16 +3199,17 @@
 			};
 			const paintDrag = () => {
 				frame = 0;
-				if (!active?.root.isConnected) return;
-				const rect = active.track.getBoundingClientRect();
+				const current = active;
+				if (!current?.root.isConnected) return;
+				const rect = current.track.getBoundingClientRect();
 				if (!(rect.width > 0)) return;
-				const nativeInset = active.native ? 8 : 0;
+				const nativeInset = current.native ? 8 : 0;
 				const usable = Math.max(1, rect.width - nativeInset * 2);
-				const x = Math.max(rect.left + nativeInset, Math.min(rect.right - nativeInset, active.clientX));
+				const x = Math.max(rect.left + nativeInset, Math.min(rect.right - nativeInset, current.clientX));
 				const pointerRatio = clamp01((x - rect.left - nativeInset) / usable);
-				const currentRatio = actualRatio(active);
-				active.root.style.setProperty("--samey-slider-drag-offset", `${(pointerRatio - currentRatio) * usable}px`);
-				active.root.style.setProperty("--samey-slider-drag-fill", `${nativeInset + pointerRatio * usable}px`);
+				const currentRatio = actualRatio(current);
+				current.root.style.setProperty("--samey-slider-drag-offset", `${(pointerRatio - currentRatio) * usable}px`);
+				current.root.style.setProperty("--samey-slider-drag-fill", `${nativeInset + pointerRatio * usable}px`);
 			};
 			const queuePaint = () => {
 				if (!frame) frame = requestAnimationFrame(paintDrag);
@@ -3191,13 +3232,12 @@
 				root.setAttribute("data-samey-slider-snapping", "");
 				root.removeAttribute("data-samey-slider-dragging");
 				clearTimeout(snapTimer);
-				snapTimer = setTimeout(() => clearRoot(root), 150);
+				snapTimer = window.setTimeout(() => clearRoot(root), 150);
 			};
 			document.addEventListener("pointerdown", (event) => {
 				if (event.button !== 0) return;
 				const parts = sliderParts(event.target);
-				if (!parts) return;
-				if (parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
+				if (!parts || parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
 				if (active) clearRoot(active.root);
 				clearTimeout(snapTimer);
 				active = {

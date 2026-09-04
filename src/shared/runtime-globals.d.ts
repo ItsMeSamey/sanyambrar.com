@@ -4,7 +4,19 @@ type NavigationDirection = "forward" | "back";
 type NavigationOptions = { replace?: boolean; force?: boolean; direction?: NavigationDirection };
 type AppearanceSnapshot = { readonly color: string; readonly font: string };
 
+type AppearanceColorConfig = {
+  label: string; tone: "light" | "dark"; background: string; text: string;
+  accent: string; error: string; warning: string; slow: string; fast: string; effort: string;
+  blurTint: string; shadowTint: string;
+};
+type AppearanceFontConfig = { label: string; stack: string };
+type AppearanceConfig = { colors: Record<string, AppearanceColorConfig>; fonts: Record<string, AppearanceFontConfig> };
+
 declare global {
+  interface DocumentEventMap { pointerrawupdate: PointerEvent; }
+  var SameyAppearanceConfig: AppearanceConfig | undefined;
+  var SameyOpenAppearance: ((trigger: HTMLElement) => void) | undefined;
+  var SameyLoadingSvg: (() => string) | undefined;
   var SameyAnimateLocalSwap: ((root: HTMLElement, commit: () => void | Promise<void>, direction?: NavigationDirection) => Promise<void>) | undefined;
   var SameyAppearance: ({ get(): AppearanceSnapshot }) | undefined;
   var SameyLoading: ((loading: boolean) => void) | undefined;

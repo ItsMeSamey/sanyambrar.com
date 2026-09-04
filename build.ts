@@ -646,7 +646,7 @@ ${keybrViewSwitch}`;
     sharedTheme.includes('addEventListener("samey-pageload", syncCursorIdlePolicy)') &&
     sharedTheme.includes('addEventListener("samey-solid-routechange", syncCursorIdlePolicy)') &&
     sharedTheme.includes('if (!hasPointerPosition || nativeDragging || cursorLoading) return;') &&
-    sharedTheme.includes('const setCursorVisible = (visible) =>') &&
+    sharedTheme.includes('const setCursorVisible = (visible: boolean) =>') &&
     sharedTheme.includes('const hasRawPointer = "onpointerrawupdate" in window') &&
     sharedTheme.includes('document.addEventListener("pointerrawupdate", moveCursorOnly') &&
     sharedTheme.includes('document.addEventListener("pointermove", moveCursorFallback') &&
@@ -661,8 +661,8 @@ ${keybrViewSwitch}`;
     sharedTheme.includes("scale3d(${width / fillDot},${height / fillDot},1)") &&
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
     "ux: the virtual cursor must only idle-hide on Keybr, Wordle, and static blog articles while keeping the low-latency raw-pointer/compositor path");
-  must(sharedTheme.includes('CURSOR_MODES = Object.freeze(["invert", "hardware", "native"])') &&
-    sharedTheme.includes('CURSOR_MODES.includes(value) ? value : "hardware"') &&
+  must(sharedTheme.includes('const CURSOR_MODES: readonly CursorMode[] = ["invert", "hardware", "native"]') &&
+    sharedTheme.includes('(CURSOR_MODES as readonly string[]).includes(value) ? value as CursorMode : "hardware"') &&
     sharedTheme.includes('data-cursor-mode-toggle') && sharedTheme.includes('applyHardwareCursorTheme') &&
     sharedTheme.includes('root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware")') &&
     sharedTheme.includes('data-open-advanced>Advanced &amp; Colorblind</button>') && !sharedTheme.includes('data-open-colorblind') &&
@@ -672,14 +672,14 @@ ${keybrViewSwitch}`;
     appearanceConfig.includes('"clear-dark":{"label":"Cool dark"') &&
     sharedTheme.includes('if (cursorMode !== "invert") {') && sharedTheme.includes('setFillTarget(link);') &&
     sharedTheme.includes('if (fillTarget) { updateFillGoal(); ensureFillFrame(); }') &&
-    sharedTheme.includes('const fillCollapseDuration = 132') && sharedTheme.includes('const fillCollapseCurve = (t) => t - Math.sin(Math.PI * 2 * t) * .1') &&
+    sharedTheme.includes('const fillCollapseDuration = 132') && sharedTheme.includes('const fillCollapseCurve = (t: number) => t - Math.sin(Math.PI * 2 * t) * .1') &&
     !sharedTheme.includes('if (cursorMode === "native") hideFillImmediate();') &&
     !sharedTheme.includes('if (cursorLoading) { hideFillImmediate(); return; }') &&
     !sharedTheme.includes('setCursorVisible(true);\n        linkFill.hidden = true;') &&
     sharedTheme.includes('refreshCursorMode = () => cursorMode !== "invert" && hasPointerPosition') &&
     (sharedTheme.match(/updateBlendSource\(link \?\? target\)/g) || []).length === 2 &&
     sharedTheme.includes('maskUnits="userSpaceOnUse" style="mask-type:luminance"') &&
-    sharedTheme.includes('const hardwareCursorPngs = (theme) =>') && sharedTheme.includes('const CURSOR_SUPERSAMPLE = 4') &&
+    sharedTheme.includes('const hardwareCursorPngs = (theme: Theme): CursorBitmaps =>') && sharedTheme.includes('const CURSOR_SUPERSAMPLE = 4') &&
     sharedTheme.includes('source.width = width * CURSOR_SUPERSAMPLE') && sharedTheme.includes('ctx.imageSmoothingQuality = "high"') &&
     sharedTheme.includes('cropped.toDataURL("image/png")') && sharedTheme.includes('ctx.getImageData(0, 0, width, height).data') &&
     sharedTheme.includes('20, 20, "22 22 20 20"') && sharedTheme.includes('4, 24, "30 20 4 24"') &&
@@ -771,7 +771,7 @@ ${keybrViewSwitch}`;
   must(sharedCss.includes("--samey-z-link-fill:2147483000") && sharedCss.includes("--samey-z-overlay:2147483644") &&
     sharedCss.includes("[data-samey-overlay]{z-index:var(--samey-z-overlay)!important}") &&
     sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('refreshFillOcclusionRects') &&
-    sharedTheme.includes('zIndexOf(overlay) > fillZ') && sharedTheme.includes('const subtractRect = (rect, hole) =>') &&
+    sharedTheme.includes('zIndexOf(overlay) > fillZ') && sharedTheme.includes('const subtractRect = (rect: FillRect, hole: FillRect): FillRect[] =>') &&
     sharedTheme.includes('samey-cursor-link-fill-slice') &&
     !sharedTheme.includes('linkBlockedByOverlay') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
     popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && tooltipSource.includes("data-samey-overlay=''") &&
