@@ -1,0 +1,1 @@
+import{t as e}from"./site-app-Duner_Mu.js";import{t}from"./_.contribution-a_SchrbZ.js";t({id:`css`,extensions:[`.css`],aliases:[`CSS`,`css`],mimetypes:[`text/css`],loader:()=>e(()=>import(`./css-DIMkf-bt.js`),[])});

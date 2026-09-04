@@ -576,7 +576,7 @@ ${keybrViewSwitch}`;
     toolsSource.includes("const fastBg = style.getPropertyValue('--site-fast-bg').trim()") && toolsSource.includes("const errorBg = style.getPropertyValue('--site-error-bg').trim()") &&
     toolsSource.includes("'diffEditor.insertedTextBackground': fastBg") && toolsSource.includes("'diffEditor.removedTextBackground': errorBg") &&
     toolsSource.includes("'diffEditor.insertedLineBackground': fastLineBg") && toolsSource.includes("'diffEditor.removedLineBackground': errorLineBg") &&
-    toolsSource.includes('const scheduleSave = side =>') && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
+    toolsSource.includes("const scheduleSave = (side: 'original' | 'modified') =>") && toolsSource.includes('saveTimer = setTimeout(flushSave,400)') &&
     toolsSource.includes("addEventListener('pagehide',saveOnPageHide)") && !toolsSource.includes("set('left',value); set('text',value)") &&
     !toolsSource.includes("const save = () => { set('left'"),
     "ux: Diff must use one editable Monaco DiffEditor, native advanced diffing, and deferred persistence");
@@ -591,7 +591,8 @@ ${keybrViewSwitch}`;
     toolsStyle.includes('.text-stat:nth-child(3) b,.text-stat:nth-child(3) strong{color:var(--site-error)}'),
     "ux: text counts must remain legible and retain word/non-ASCII colors");
   must(toolsStyle.includes("var(--site-effort-color") &&
-    toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')") && toolsSource.includes("const effort = style.getPropertyValue('--site-effort-color')"),
+    toolsSource.includes("const fast = style.getPropertyValue('--site-fast-color')") &&
+    toolsStyle.includes('var(--site-effort-color,var(--site-accent))'),
     "ux: Tools highlights and Diff colors must derive from the shared theme");
   must(toolsStyle.includes("width:var(--kb-popper-anchor-width)") && toolsStyle.includes("box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 16px") &&
     toolsStyle.includes(".tools-page>.site-topbar{--site-topbar-height:72px;flex-basis:72px;height:72px}") && toolsStyle.includes(".tool-switcher>[role=group]{width:100%;min-width:0}") && toolsStyle.includes("overflow-x:auto"),

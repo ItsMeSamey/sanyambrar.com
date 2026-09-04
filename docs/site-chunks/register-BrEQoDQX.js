@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/typescript-D_D9mlc1.js","site-chunks/monaco-BPrhcFp7.js","site-chunks/site-app-Duner_Mu.js","site-chunks/monaco-BJ215w34.css"])))=>i.map(i=>d[i]);
+import{t as e}from"./site-app-Duner_Mu.js";import{t}from"./_.contribution-a_SchrbZ.js";t({id:`typescript`,extensions:[`.ts`,`.tsx`,`.cts`,`.mts`],aliases:[`TypeScript`,`ts`,`typescript`],mimetypes:[`text/typescript`],loader:()=>e(()=>import(`./typescript-D_D9mlc1.js`),__vite__mapDeps([0,1,2,3]))});

@@ -1,0 +1,1 @@
+import{t as e}from"./site-app-Duner_Mu.js";import{t}from"./_.contribution-a_SchrbZ.js";t({id:`go`,extensions:[`.go`],aliases:[`Go`],loader:()=>e(()=>import(`./go-C-y9NEjX.js`),[])});

@@ -1,0 +1,1 @@
+import{t as e}from"./site-app-Duner_Mu.js";import{t}from"./_.contribution-a_SchrbZ.js";t({id:`rust`,extensions:[`.rs`,`.rlib`],aliases:[`Rust`,`rust`],loader:()=>e(()=>import(`./rust-DdL9SqIa.js`),[])});
