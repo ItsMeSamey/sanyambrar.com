@@ -88,9 +88,9 @@ body [role=dialog]:not(.site-search-panel){
 
 /* Global loading strip. Keybr's original top progress affordance now belongs
    to the shared runtime so route, engine and lazy-tool loads use one signal. */
-.samey-loading-top{position:fixed;z-index:var(--samey-z-cursor);top:0;left:0;right:0;height:.5rem;overflow:hidden;pointer-events:none;opacity:0;visibility:hidden;background:transparent;transition:opacity var(--site-fast) var(--site-ease-out),visibility 0s linear var(--site-fast)}
-html[data-site-loading] .samey-loading-top{opacity:1;visibility:visible;transition-duration:0s;transition-delay:0s}
-.samey-loading-top-bar{display:block;width:100%;height:100%;background:linear-gradient(-45deg,transparent 0,transparent .707rem,var(--site-fg,#121213) .707rem,var(--site-fg,#121213) 1.414rem,transparent 1.414rem);background-size:2rem 1rem;animation:samey-loading-stripes .5s linear infinite}
+.samey-loading-top{position:fixed;z-index:var(--samey-z-cursor);top:0;left:0;right:0;height:.5rem;overflow:hidden;pointer-events:none;visibility:hidden;transform:translate3d(0,-100%,0);background:transparent;will-change:transform;transition:transform 140ms var(--site-ease-out),visibility 0s linear 140ms}
+html[data-site-loading] .samey-loading-top{visibility:visible;transform:translate3d(0,0,0);transition-delay:0s}
+.samey-loading-top-bar{display:block;width:100%;height:100%;background:linear-gradient(-45deg,transparent 0,transparent .707rem,color-mix(in srgb,var(--site-fg,#121213) 42%,transparent) .707rem,color-mix(in srgb,var(--site-fg,#121213) 42%,transparent) 1.414rem,transparent 1.414rem);background-size:2rem 1rem;animation:samey-loading-stripes .5s linear infinite}
 @keyframes samey-loading-stripes{to{background-position:2rem 0}}
 
 /* Loading cursor: six-lobed sine circle supplied by the site runtime. */
@@ -105,7 +105,8 @@ html[data-site-loading] .samey-loading-top{opacity:1;visibility:visible;transiti
 .samey-vscroll,.samey-hscroll{opacity:.72;transition:opacity var(--site-fast) ease}.samey-vscroll:hover,.samey-hscroll:hover{opacity:1}
 
 @media(prefers-reduced-motion:reduce){
-  .samey-loading-top-bar{animation:none!important;background:var(--site-fg,#121213)}
+  .samey-loading-top{transition:none!important}
+  .samey-loading-top-bar{animation:none!important;background:color-mix(in srgb,var(--site-fg,#121213) 42%,transparent)}
   .game-settings-popover,.samey-theme-panel:not([hidden]),body [role=dialog],.site-search-panel,.site-search-backdrop{animation:none!important}
 }
 
