@@ -448,12 +448,12 @@ ${keybrViewSwitch}`;
   const reverbDemoSource = await readFile(join(ROOT, "src/site/components/ReverbDemo.tsx"), "utf8");
   const cnnDemoSource = await readFile(join(ROOT, "src/site/components/CnnDemo.tsx"), "utf8");
   const cnnWorkerSource = await readFile(join(STATIC, "cnn-worker.js"), "utf8");
-  const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.js"), "utf8");
+  const reverbRuntimeSource = await readFile(join(ROOT, "src/site/demos/reverb-runtime.ts"), "utf8");
   const reverbDemoHtml = await readFile(join(ROOT, "src/site/demos/reverb-home.html"), "utf8");
   must(reverbDemoSource.includes('class="reverb-demo-host"') && reverbDemoSource.includes("attachShadow({ mode: 'open' })") &&
     reverbDemoSource.includes("Available on F-Droid") && reverbDemoSource.includes("https://f-droid.org/packages/app.smallthingz.reverb/") &&
     reverbDemoSource.includes("runReverbDemoRuntime(") && !reverbDemoSource.includes("new Function(") && !reverbDemoSource.includes("replaceAll(") && !reverbDemoSource.includes("CSS.escape") &&
-    reverbRuntimeSource.includes("export function runReverbDemoRuntime") && reverbRuntimeSource.includes("function makeBlobShader(canvas)") && reverbRuntimeSource.includes("using 2D fallback") && reverbRuntimeSource.includes("canvas.cloneNode(false)") && reverbRuntimeSource.includes("return makeFallbackBlob(canvas)") && !reverbDemoHtml.includes("<script>") &&
+    reverbRuntimeSource.includes("export function runReverbDemoRuntime") && reverbRuntimeSource.includes("function makeBlobShader(") && reverbRuntimeSource.includes("using 2D fallback") && reverbRuntimeSource.includes("canvas.cloneNode(false)") && reverbRuntimeSource.includes("return makeFallbackBlob(canvas)") && !reverbDemoHtml.includes("<script>") &&
     !reverbDemoSource.includes("<iframe") && !reverbDemoSource.includes("srcdoc=") && !reverbDemoSource.includes("sandbox="),
     "ux: Reverb UI demo must be an in-page compiled element, never eval/iframe/nested document");
   const homeStyle = await readFile(join(ROOT, "src/site/styles/home.css"), "utf8");
@@ -483,7 +483,7 @@ ${keybrViewSwitch}`;
     homeStyle.includes("color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg"),
     "ux: Reverb gesture teaching must stop after a few loops and its app/page palette must follow the site theme");
   must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
-    reverbRuntimeSource.includes("settingsInitial.get('oneLimitSeconds')") && reverbRuntimeSource.includes("settingsInitial.get('retentionMode')"),
+    reverbRuntimeSource.includes("oneLimitSeconds=settingsInitial.oneLimitSeconds") && reverbRuntimeSource.includes("setRetentionMode(settingsInitial.retentionMode,false)"),
     "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
   must(cnnDemoSource.includes("const INPUT_SIZE = 28") && cnnDemoSource.includes("const DRAW_SIZE = 280") &&
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
@@ -737,7 +737,7 @@ ${keybrViewSwitch}`;
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
     reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}') &&
     !reverbDemoHtml.includes('data-hardware-edge') && !reverbDemo.includes('samey-hardware-edgechange') &&
-    reverbRuntimeSource.includes('function appendCapture(seconds)') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
+    reverbRuntimeSource.includes('function appendCapture(') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
     reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
     reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&
     reverbDemoHtml.includes('class="about-sheet"') && reverbDemoHtml.includes('https://github.com/SmallThingz/reverb') &&

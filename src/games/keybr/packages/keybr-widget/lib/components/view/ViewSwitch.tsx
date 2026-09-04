@@ -13,9 +13,7 @@ type ViewContextValue = {
 };
 
 export const ViewContext = createContext<ViewContextValue>({
-  setView: (name) => {
-    if (process.env.NODE_ENV !== "production") console.log(`Switch view to [${name}]`);
-  },
+  setView: () => {},
   currentView: () => "",
   setBeforeLeave: () => () => {},
 });

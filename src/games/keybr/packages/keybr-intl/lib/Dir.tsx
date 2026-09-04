@@ -9,5 +9,5 @@ export function Dir(solidProps: {
     readonly children: readonly [ReactElement, ReactElement];
     readonly swap: string;
 }): ReactNode {
-    return solidProps.children as unknown as ReactNode;
+    return [...solidProps.children];
 }

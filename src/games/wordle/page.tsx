@@ -106,7 +106,7 @@ export class Block {
     this.word = this.word.slice(0, this.wordLength)
     if (this.word.length < this.wordLength) this.word += ' '.repeat(this.wordLength - this.word.length)
     return <span class='wordle-row text-foreground' style={{'--wordle-length': this.wordLength}}>
-      <For each={this.word as unknown as string[]}>{(char, i) => (
+      <For each={[...this.word]}>{(char, i) => (
         <div
           class={'wordle-cell border capitalize relative ' + (
             this.mask[i()] === 'r' ? 'wordle-state-r' :

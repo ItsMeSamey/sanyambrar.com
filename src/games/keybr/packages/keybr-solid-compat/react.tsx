@@ -43,7 +43,7 @@ export function useMemo<T>(factory: () => T, deps?: (() => readonly unknown[]) |
     return factory();
   });
   const initial = untrack(value);
-  return (initial != null && typeof initial === "object" ? liveObject(value as unknown as import("solid-js").Accessor<object>) : initial) as T;
+  return initial != null && typeof initial === "object" ? liveObject(value as import("solid-js").Accessor<T & object>) : initial;
 }
 
 function touchDeps(values: readonly unknown[]): void {

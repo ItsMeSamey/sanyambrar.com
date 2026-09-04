@@ -1,13 +1,6 @@
 import { onCleanup, onMount } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
-import { runReverbDemoRuntime } from '../demos/reverb-runtime.js';
-
-type DemoDocument = Pick<Document, 'createElement'> & {
-  getElementById(id: string): HTMLElement | null;
-  querySelector<E extends Element = Element>(selectors: string): E | null;
-  querySelectorAll<E extends Element = Element>(selectors: string): NodeListOf<E>;
-  addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-};
+import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
 
@@ -136,9 +129,8 @@ function mountReverbDemo(host: HTMLDivElement) {
     window.clearTimeout(id);
   };
 
-  const demoDocument: DemoDocument = {
+  const demoDocument: ReverbDemoDocument = {
     createElement: document.createElement.bind(document),
-    getElementById: id => shadow.querySelector<HTMLElement>(`#${id}`),
     querySelector: selectors => shadow.querySelector(selectors),
     querySelectorAll: selectors => shadow.querySelectorAll(selectors),
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
