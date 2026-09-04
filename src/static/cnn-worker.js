@@ -1,8 +1,20 @@
+/**
+ * @typedef {{
+ *   memory: WebAssembly.Memory,
+ *   image_ptr: () => number,
+ *   probabilities_ptr: () => number,
+ *   predict: () => number,
+ *   class_count: () => number,
+ *   unknown_class: () => number,
+ * }} CnnExports
+ */
+
 const INPUT_PIXELS = 28 * 28;
 const OUTPUTS = 11;
 const UNKNOWN_CLASS = 10;
 
-let wasm;
+/** @type {CnnExports | null} */
+let wasm = null;
 
 async function instantiateCnn() {
   const wasmUrl = new URL('/cnn.wasm', self.location.origin);
@@ -32,20 +44,30 @@ async function instantiateCnn() {
   // first pointer movement on the UI thread.
   new Uint8Array(exports.memory.buffer, exports.image_ptr(), INPUT_PIXELS).fill(0);
   exports.predict();
-  return exports;
+  return {
+    memory: exports.memory,
+    image_ptr: /** @type {() => number} */ (exports.image_ptr),
+    probabilities_ptr: /** @type {() => number} */ (exports.probabilities_ptr),
+    predict: /** @type {() => number} */ (exports.predict),
+    class_count: /** @type {() => number} */ (exports.class_count),
+    unknown_class: /** @type {() => number} */ (exports.unknown_class),
+  };
 }
 
-function probabilities() {
+/** @param {CnnExports} cnn */
+function probabilities(cnn) {
   return Array.from(new Float32Array(
-    wasm.memory.buffer,
-    wasm.probabilities_ptr(),
-    wasm.class_count(),
+    cnn.memory.buffer,
+    cnn.probabilities_ptr(),
+    cnn.class_count(),
   ));
 }
 
-self.addEventListener('message', event => {
-  const message = event.data;
-  if (!message || message.type !== 'predict' || !Number.isInteger(message.id)) return;
+self.addEventListener('message', /** @param {MessageEvent<unknown>} event */ event => {
+  const raw = event.data;
+  if (!raw || typeof raw !== 'object') return;
+  const message = /** @type {Record<string, unknown>} */ (raw);
+  if (message.type !== 'predict' || typeof message.id !== 'number' || !Number.isInteger(message.id)) return;
   if (!wasm) {
     self.postMessage({ type: 'error', id: message.id, message: 'CNN worker is not ready' });
     return;
@@ -58,7 +80,7 @@ self.addEventListener('message', event => {
     new Uint8Array(wasm.memory.buffer, wasm.image_ptr(), INPUT_PIXELS).set(input);
     const classId = wasm.predict();
     if (classId >= wasm.class_count()) throw new Error(`Invalid class ${classId}`);
-    self.postMessage({ type: 'result', id: message.id, classId, probabilities: probabilities() });
+    self.postMessage({ type: 'result', id: message.id, classId, probabilities: probabilities(wasm) });
   } catch (error) {
     self.postMessage({ type: 'error', id: message.id, message: error instanceof Error ? error.message : String(error) });
   }

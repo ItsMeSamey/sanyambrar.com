@@ -498,7 +498,8 @@ ${keybrViewSwitch}`;
     (cnnDemoSource.match(/getComputedStyle\(/g) || []).length === 1 && (cnnDemoSource.match(/getBoundingClientRect\(\)/g) || []).length === 2 &&
     cnnDemoSource.includes("sampleContext.drawImage(canvas, 0, 0, INPUT_SIZE, INPUT_SIZE)") &&
     cnnWorkerSource.includes("WebAssembly.instantiateStreaming") && cnnWorkerSource.includes("const wasmUrl = new URL('/cnn.wasm', self.location.origin)") && cnnWorkerSource.includes("wasmUrl.search = self.location.search") && cnnWorkerSource.includes("fetch(wasmUrl)") &&
-    cnnWorkerSource.includes("wasm.predict()") && cnnWorkerSource.includes("wasm.image_ptr()") && cnnWorkerSource.includes("wasm.probabilities_ptr()") &&
+    cnnWorkerSource.includes("wasm.predict()") && cnnWorkerSource.includes("wasm.image_ptr()") && cnnWorkerSource.includes("cnn.probabilities_ptr()") &&
+    cnnWorkerSource.includes("MessageEvent<unknown>") && cnnWorkerSource.includes("Record<string, unknown>") &&
     cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
     existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
     cnnDemoSource.includes("drawContext.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
