@@ -216,7 +216,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
           decorations.push({ range: new monaco.Range(lineNumber, match.index + 1, lineNumber, match.index + match[0].length + 1), options: { inlineClassName: 'monaco-word-highlight' } });
         }
         for (let index = 0; index < line.length;) {
-          const cp = line.codePointAt(index)!;
+          const cp = line.codePointAt(index) ?? 0;
           const len = cp > 0xffff ? 2 : 1;
           if (cp > 127) decorations.push({ range: new monaco.Range(lineNumber, index + 1, lineNumber, index + len + 1), options: { inlineClassName: 'monaco-nonascii-highlight' } });
           index += len;
@@ -296,16 +296,17 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     }
     return Uint8Array.from(out);
   };
-  const htmlE = (text: string) => [...text].map(char => { const code = char.codePointAt(0)!; return HTML_ESCAPES[char] ?? (code > 127 ? `&#${code};` : char); }).join('');
+  const htmlE = (text: string) => [...text].map(char => { const code = char.codePointAt(0) ?? 0; return HTML_ESCAPES[char] ?? (code > 127 ? `&#${code};` : char); }).join('');
   const htmlD = (text: string) => { const area = document.createElement('textarea'); area.innerHTML = text; return area.value; };
   const uniE = (text: string) => [...text].map(char => {
-    const value = char.codePointAt(0)!;
+    const value = char.codePointAt(0) ?? 0;
     return value >= 32 && value <= 126 && char !== '\\' ? char : value <= 0xffff ? `\\u${value.toString(16).padStart(4, '0')}` : `\\u{${value.toString(16)}}`;
   }).join('');
   const uniD = (text: string) => text.replace(/\\u\{([\da-f]{1,6})\}|\\u([\da-f]{4})|\\x([\da-f]{2})/gi, (_match, a: string | undefined, b: string | undefined, c: string | undefined) => String.fromCodePoint(parseInt(a ?? b ?? c ?? '0', 16)));
   const rot = (text: string) => text.replace(/[A-Za-z]/g, char => String.fromCharCode((char <= 'Z' ? 65 : 97) + (char.charCodeAt(0) - (char <= 'Z' ? 65 : 97) + 13) % 26));
   const FORMATS = [['base64', 'Base64'], ['base64url', 'Base64URL'], ['base32', 'Base32'], ['base58', 'Base58'], ['base88', 'Base88'], ['hex', 'Hex'], ['binary', 'Binary'], ['url', 'URL'], ['html', 'HTML'], ['json', 'JSON string'], ['unicode', 'Unicode'], ['rot13', 'ROT13']] as const;
   type Format = (typeof FORMATS)[number][0];
+  const isFormat = (value: unknown): value is Format => typeof value === 'string' && FORMATS.some(([format]) => format === value);
   const convert = (format: Format, text: string, decode = false) => {
     if (format === 'base64') return decode ? td.decode(s2b(atob(text.replace(/\s/g, '')))) : btoa(b2s(te.encode(text)));
     if (format === 'base64url') {
@@ -377,7 +378,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     if (!currentRender(generation) || route() !== 'base') return;
     let mode = get('mode', 'decode') === 'encode' ? 'encode' : 'decode';
     const storedFormat = get('format', 'auto');
-    let selection: Format | 'auto' = FORMATS.some(([value]) => value === storedFormat) ? storedFormat as Format : 'auto';
+    let selection: Format | 'auto' = isFormat(storedFormat) ? storedFormat : 'auto';
     let separateLines = get('lines', '0') === '1';
     const initial = get('text', 'https%3A%2F%2Fsanyambrar.com%2Ftools%3Ftool%3Dbase');
     root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto detect</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><button class="codec-line-toggle" type="button" data-codec-lines role="switch" aria-checked="${separateLines}"><span class="codec-switch-track" aria-hidden="true"><span></span></span><span>Per line</span></button><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy aria-label="Copy output" title="Copy output">${icon('copy')}</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="codec-status" data-codec-status></div></div></section>`;
@@ -424,7 +425,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       }
     };
     modeSelect.onchange = () => { mode = modeSelect.value === 'encode' ? 'encode' : 'decode'; paint(); };
-    formatSelect.onchange = () => { const value = formatSelect.value; selection = FORMATS.some(([format]) => format === value) ? value as Format : 'auto'; paint(); };
+    formatSelect.onchange = () => { const value = formatSelect.value; selection = isFormat(value) ? value : 'auto'; paint(); };
     linesToggle.onclick = () => { separateLines = !separateLines; paint(); };
     query<HTMLButtonElement>(root, '[data-codec-copy]').onclick = () => { void copy(outputModel.getValue()); };
     const sub = inputModel.onDidChangeContent(paint);
@@ -542,7 +543,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const negative = value < 0n;
     if (negative) value = -value;
     let out = '';
-    for (; value; value /= BigInt(base)) out = digits[Number(value % BigInt(base))]! + out;
+    for (; value; value /= BigInt(base)) out = digits.charAt(Number(value % BigInt(base))) + out;
     return (negative ? '-' : '') + out;
   }
   const grouped = (value: string, size: number) => {

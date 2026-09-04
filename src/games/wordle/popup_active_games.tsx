@@ -2,10 +2,10 @@
 
 import { batch, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
-import { Block, WordLocalStorageState } from './page'
+import { Block } from './page'
 import { SettingsHardProps } from './popup_settings'
-import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion } from './challenge'
-import { binarySearch, wordCount, type WordLength } from './word-list'
+import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion, isWordLength } from './challenge'
+import { binarySearch, wordCount } from './word-list'
 
 interface ActiveGame {
   key: string
@@ -19,24 +19,35 @@ const MODERN_ADVANCED_RE = /^game\.wordle\.advanced\.(\d+)\.(\d+)\.(\d+)\.([01])
 const DAILY_RE = /^game\.wordle\.daily\.([0-9a-f]+)\.(\d{4}-\d{2}-\d{2})$/i
 const LEGACY_DAILY_RE = /^game\.wordle\.daily\.(\d{4}-\d{2}-\d{2})$/
 
-function readConfig(key: string, value: WordLocalStorageState): SettingsHardProps | undefined {
+type UnknownRecord = Record<string, unknown>
+const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value)
+const isHistory = (value: unknown): value is [string, string][] => Array.isArray(value) && value.every(row =>
+  Array.isArray(row) && row.length === 2 && typeof row[0] === 'string' && typeof row[1] === 'string'
+)
+
+function readConfig(key: string, value: UnknownRecord): SettingsHardProps | undefined {
   let config: SettingsHardProps | undefined
-  if (value.config?.mode) config = value.config.mode === 'daily'
+  if (isChallengeConfig(value.config)) config = value.config.mode === 'daily'
     ? {...value.config, dailyVersion: value.config.dailyVersion ?? LEGACY_DAILY_CHALLENGE_VERSION}
     : {...value.config}
 
   if (!config) {
     let match = MODERN_ADVANCED_RE.exec(key)
-    if (match) config = {
-      mode: 'advanced', wordLength: Number(match[1]) as WordLength, maxTries: Number(match[2]),
-      disabledLetters: Number(match[3]), allowAny: match[4] === '1',
-      wordIndex: match[5] ? Number.parseInt(match[5], 16) : undefined,
+    if (match) {
+      const wordLength = Number(match[1])
+      const candidate = {
+        mode: 'advanced' as const, wordLength, maxTries: Number(match[2]),
+        disabledLetters: Number(match[3]), allowAny: match[4] === '1',
+        wordIndex: match[5] ? Number.parseInt(match[5], 16) : undefined,
+      }
+      if (isWordLength(wordLength) && isChallengeConfig(candidate)) config = candidate
     }
 
     match = ADVANCED_RE.exec(key)
-    if (!config && match) config = {
-      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as WordLength,
-      maxTries: Number(match[3]), disabledLetters: Number(match[4]),
+    if (!config && match) {
+      const wordLength = Number(match[2])
+      const candidate = {mode: 'advanced' as const, allowAny: !!match[1], wordLength, maxTries: Number(match[3]), disabledLetters: Number(match[4])}
+      if (isWordLength(wordLength) && isChallengeConfig(candidate)) config = candidate
     }
 
     match = DAILY_RE.exec(key)
@@ -49,14 +60,16 @@ function readConfig(key: string, value: WordLocalStorageState): SettingsHardProp
     if (!config && match) config = getDailyChallenge(match[1], LEGACY_DAILY_CHALLENGE_VERSION)
 
     match = LEGACY_RE.exec(key)
-    if (!config && match) config = {
-      mode: 'advanced', allowAny: !!match[1], wordLength: Number(match[2]) as WordLength,
-      maxTries: Number(match[3]), disabledLetters: 0,
+    if (!config && match) {
+      const wordLength = Number(match[2])
+      const candidate = {mode: 'advanced' as const, allowAny: !!match[1], wordLength, maxTries: Number(match[3]), disabledLetters: 0}
+      if (isWordLength(wordLength) && isChallengeConfig(candidate)) config = candidate
     }
   }
 
   if (!config || config.mode === 'daily' || Number.isInteger(config.wordIndex)) return config
-  const index = Number.isInteger(value.wordIndex) ? value.wordIndex! : typeof value.word === 'string' ? binarySearch(config.wordLength, value.word.toLowerCase()) : -1
+  const savedIndex = value.wordIndex
+  const index = typeof savedIndex === 'number' && Number.isInteger(savedIndex) ? savedIndex : typeof value.word === 'string' ? binarySearch(config.wordLength, value.word.toLowerCase()) : -1
   if (index >= 0 && index < wordCount(config.wordLength)) config.wordIndex = index
   return config
 }
@@ -66,11 +79,13 @@ const sortGames = (games: ActiveGame[]) => games.sort((a, b) => a.config.mode.lo
 function readActiveGame(key: string): ActiveGame | undefined {
   if (!key.startsWith('game.wordle.') || key.startsWith('game.wordle.settings.')) return
   try {
-    const value = JSON.parse(localStorage.getItem(key)!) as WordLocalStorageState
-    if (!Array.isArray(value?.history) || value.history.length <= 1) return
+    const raw = localStorage.getItem(key)
+    if (!raw) return
+    const value: unknown = JSON.parse(raw)
+    if (!isRecord(value) || !isHistory(value.history) || value.history.length <= 1) return
     const config = readConfig(key, value)
     if (!isChallengeConfig(config) || value.done !== undefined) return
-    const current = value.history.at(-1)!
+    const current = value.history[value.history.length - 1]
     const played = value.history.slice(0, -1)
     if (played.some(row => !Array.isArray(row) || row.length !== 2 || typeof row[0] !== 'string' || typeof row[1] !== 'string' ||
       row[0].length !== config.wordLength || row[1].length !== config.wordLength || !/^[gyr]+$/.test(row[1])) ||
@@ -119,7 +134,8 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
   }
   const onStorage = (event: StorageEvent) => event.key ? refreshKey(event.key) : refresh()
   const onWordleStorage = (event: Event) => {
-    const key = (event as CustomEvent<{key?: string}>).detail?.key
+    const detail = event instanceof CustomEvent ? event.detail : undefined
+    const key = isRecord(detail) && typeof detail.key === 'string' ? detail.key : undefined
     if (key) refreshKey(key); else refresh()
   }
 

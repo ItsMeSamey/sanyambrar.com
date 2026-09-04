@@ -10,6 +10,18 @@ type WorkerMessage =
   | { type: 'result'; id: number; classId: number; probabilities: number[] }
   | { type: 'error'; id?: number; message: string };
 
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isWorkerMessage = (value: unknown): value is WorkerMessage => {
+  if (!isRecord(value) || typeof value.type !== 'string') return false;
+  if (value.type === 'ready') return true;
+  if (value.type === 'result') return typeof value.id === 'number' && Number.isInteger(value.id)
+    && typeof value.classId === 'number' && Number.isInteger(value.classId)
+    && Array.isArray(value.probabilities) && value.probabilities.every(score => typeof score === 'number');
+  return value.type === 'error' && (value.id === undefined || typeof value.id === 'number' && Number.isInteger(value.id))
+    && typeof value.message === 'string';
+};
+
 
 function versionedRootAsset(path: string): string {
   const version = document.querySelector<HTMLMetaElement>('meta[name="samey-build"]')?.content.trim();
@@ -116,7 +128,7 @@ export function CnnDemo() {
     activeRequestEpoch = contentEpoch;
     inferenceBusy = true;
     const input = extractInput();
-    worker.postMessage({ type: 'predict', id, input }, [input.buffer as ArrayBuffer]);
+    worker.postMessage({ type: 'predict', id, input }, input.buffer instanceof ArrayBuffer ? [input.buffer] : []);
   };
 
   const queueInference = () => {
@@ -228,11 +240,15 @@ export function CnnDemo() {
     // The visible canvas is draw-only. Keeping willReadFrequently off lets
     // Chromium retain its accelerated Android path; only the tiny 28x28
     // sampling canvas needs frequent CPU reads.
-    drawContext = canvas.getContext('2d', { desynchronized: true })!;
+    const visibleContext = canvas.getContext('2d', { desynchronized: true });
+    if (!visibleContext) throw new Error('CNN drawing canvas is unavailable');
+    drawContext = visibleContext;
     sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = INPUT_SIZE;
     sampleCanvas.height = INPUT_SIZE;
-    sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true })!;
+    const samplingContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (!samplingContext) throw new Error('CNN sampling canvas is unavailable');
+    sampleContext = samplingContext;
     readThemeInk();
     configureBrush();
     window.addEventListener('samey-themechange', recolorForTheme);
@@ -242,7 +258,15 @@ export function CnnDemo() {
     worker = new Worker(versionedRootAsset('/cnn-worker.js'));
     worker.addEventListener('message', event => {
       if (disposed) return;
-      const message = event.data as WorkerMessage;
+      const message: unknown = event.data;
+      if (!isWorkerMessage(message)) {
+        workerReady = false;
+        inferenceBusy = false;
+        inferenceDirty = false;
+        clearResult();
+        console.error('CNN worker returned an invalid message');
+        return;
+      }
       if (message.type === 'ready') {
         workerReady = true;
         if (inferenceDirty && inkPresent) queueInference();
@@ -346,7 +370,7 @@ export function CnnDemo() {
           </div>
           <div class="cnn-confidence">
             <span>CONFIDENCE</span>
-            <b>{winner() ? `${Math.round(winner()!.score * 100)}%` : '—'}</b>
+            <b>{(() => { const result = winner(); return result ? `${Math.round(result.score * 100)}%` : '—'; })()}</b>
           </div>
         </div>
 
@@ -356,7 +380,7 @@ export function CnnDemo() {
             return <div class="cnn-probability-row" data-leading={winner()?.label === label ? 'true' : 'false'}>
               <span class="cnn-class" title={label === '?' ? 'Unknown symbol' : `Digit ${label}`}>{label}</span>
               <div class="cnn-meter" aria-hidden="true"><i style={{ width: `${(score() ?? 0) * 100}%` }} /></div>
-              <span class="cnn-percent">{score() == null ? '—' : `${(score()! * 100).toFixed(score()! >= .1 ? 1 : 2)}%`}</span>
+              <span class="cnn-percent">{(() => { const value = score(); return value == null ? '—' : `${(value * 100).toFixed(value >= .1 ? 1 : 2)}%`; })()}</span>
             </div>;
           }}</For>
         </div>

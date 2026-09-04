@@ -7,12 +7,13 @@ import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { ToolContext, ToolSurface } from './ToolSurface.tsx';
 
-const validTools = new Set<ToolId>(TOOLS.map(tool => tool.id));
+const validTools = new Set<string>(TOOLS.map(tool => tool.id));
 const toolOptions = [...TOOLS];
+const isToolId = (value: unknown): value is ToolId => typeof value === 'string' && validTools.has(value);
 const selectedTool = ():ToolId => {
   const value = new URLSearchParams(location.search).get('tool');
   if (value === 'ascii' || value === 'words') return 'text';
-  return validTools.has(value as ToolId) ? value as ToolId : 'text';
+  return isToolId(value) ? value : 'text';
 };
 
 const setToolUrl = (tool:ToolId) => {
@@ -27,7 +28,7 @@ const setToolUrl = (tool:ToolId) => {
 function ToolTabs(props:{active:ToolId}) {
   const selected = () => toolOptions.find(tool => tool.id === props.active) ?? toolOptions[0];
   return <div class="tool-switcher">
-    <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => setToolUrl(value as ToolId)}>
+    <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => { if (isToolId(value)) setToolUrl(value); }}>
       <Tabs.List class="tool-tabs" aria-label="Tools">
         {TOOLS.map(tool => <Tabs.Trigger class="tool-tab" value={tool.id}>{tool.label}</Tabs.Trigger>)}
       </Tabs.List>

@@ -490,7 +490,7 @@ ${keybrViewSwitch}`;
     cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
     cnnDemoSource.includes("document.createElement('canvas')") && !cnnDemoSource.includes('class="cnn-sample-canvas"') &&
     cnnDemoSource.includes("new Worker(versionedRootAsset('/cnn-worker.js'))") && cnnDemoSource.includes("inferenceBusy") && cnnDemoSource.includes("inferenceDirty") && cnnDemoSource.includes("activeRequestEpoch") &&
-    cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("input.buffer as ArrayBuffer") && cnnDemoSource.includes("message.id === activeRequestId") &&
+    cnnDemoSource.includes("worker.postMessage") && cnnDemoSource.includes("input.buffer instanceof ArrayBuffer ? [input.buffer] : []") && cnnDemoSource.includes("isWorkerMessage") && cnnDemoSource.includes("message.id === activeRequestId") &&
     !cnnDemoSource.includes("WebAssembly.instantiate") && !cnnDemoSource.includes("wasm.predict()") &&
     !cnnDemoSource.includes("__sameyCnnInfer") && !cnnDemoSource.includes("CnnInference") &&
     cnnDemoSource.includes("canvas.getContext('2d', { desynchronized: true })") && cnnDemoSource.includes("getCoalescedEvents") &&

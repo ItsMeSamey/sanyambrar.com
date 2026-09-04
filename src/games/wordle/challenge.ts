@@ -19,7 +19,7 @@ export interface ChallengeConfig {
 type ChallengeSettings = Pick<ChallengeConfig, 'mode' | 'wordLength' | 'maxTries' | 'disabledLetters' | 'allowAny'>
 type UnknownRecord = Record<string, unknown>
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value)
-const isWordLength = (value: unknown): value is WordLength => typeof value === 'number' && Number.isInteger(value) && value >= 3 && value <= 20
+export const isWordLength = (value: unknown): value is WordLength => typeof value === 'number' && Number.isInteger(value) && value >= 3 && value <= 20
 
 export interface DailyChallenge extends ChallengeConfig {
   mode: 'daily'
