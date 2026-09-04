@@ -47,7 +47,7 @@ export type ChainRefs = {
   replayPanel: HTMLElement;
   replayTitle: HTMLElement;
   replayCopy: HTMLElement;
-  replayStatus: HTMLElement;
+  replayStatus: HTMLOutputElement;
 };
 
 export const createChainRefs = () => {

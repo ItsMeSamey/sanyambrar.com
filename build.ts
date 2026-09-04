@@ -213,7 +213,7 @@ ${keybrViewSwitch}`;
   must((await readFile(join(ROOT, "src/games/wordle/page.tsx"), "utf8")).includes("animateRootSwap"),
     "architecture: Wordle views must use the shared transition runtime");
   const chainTransitionSource = await readFile(join(ROOT, "src/games/chain/chain.ts"), "utf8");
-  must(chainTransitionSource.includes("animateMountedViewSwap") && chainTransitionSource.includes("function showView(to, commit, direction = 'forward')") &&
+  must(chainTransitionSource.includes("animateMountedViewSwap") && chainTransitionSource.includes("function showView(to: HTMLElement, commit: () => void, direction: Direction = 'forward')") &&
     chainTransitionSource.includes("showView(openingView, commit, direction)") && chainTransitionSource.includes("showView(statsView, commit, direction)") &&
     chainTransitionSource.includes("showView(gameView, commit, requestedDirection ?? (fromStats ? 'back' : 'forward'))") &&
     chainTransitionSource.includes("chainPageIndex") && chainTransitionSource.includes("nextIndex < pageHistoryIndex"),

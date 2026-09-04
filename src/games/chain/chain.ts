@@ -1,6 +1,34 @@
-// @ts-nocheck
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
-export function mountChain(refs) {
+import type { ChainRefs } from './dom.ts';
+
+type GridConfig = { rows: number; cols: number };
+type Config = GridConfig & { enemies: number };
+type Limit = readonly [min: number, max: number];
+type Page = 'menu' | 'game' | 'stats';
+type Direction = 'forward' | 'back';
+type BotSettings = { thinkMinMs?: number; thinkMaxMs?: number } & Record<string, unknown>;
+type Bot = { id: string; name: string; version: number; settings: BotSettings };
+type Player = { id: number; name: string; kind: 'human' | 'bot'; color: string; bot?: Bot };
+type Move = { owner: number; index: number };
+type MatchStatus = 'active' | 'completed' | 'abandoned';
+type Match = { id: string; t: number; u: number; end: number; s: MatchStatus; w: number; r: number; c: number; e: number; m: number[]; q: boolean; p: Player[]; parent: string; fork: number };
+type MatchDb = { v: 1; base: { games: number; wins: number; largest: number }; matches: Match[] };
+type RecentStat = { t: number; w: boolean; r: number; c: number; e: number; x: number; m: number[] | null };
+type Stats = { games: number; wins: number; largest: number; recent: RecentStat[] };
+type SavedGame = { config: Config; board: Uint8Array; owners: Uint8Array; entered: Uint8Array; turn: number; gameOver: boolean; inGame: boolean; moves: number[]; replayComplete: boolean; matchId: string; players: Player[] };
+type Transfer = { from: number; to: number; owner: number };
+type Particle = Transfer & { start: number; duration: number };
+type ReplayWave = { board: Uint8Array; owners: Uint8Array; transfers: Transfer[] };
+type ReplayFrame = { board: Uint8Array; owners: Uint8Array; entered: Uint8Array; move: Move | null; waves: ReplayWave[]; winner: number; turn: number };
+type ReplayModel = { cfg: Config; playerCount: number; board: Uint8Array; owners: Uint8Array; entered: Uint8Array; degrees: Uint8Array; links: number[][] };
+type Geometry = { w: number; h: number; cell: number; ox: number; oy: number; scale: number };
+type ReplayGeometry = Geometry & { cfg: GridConfig };
+type ReplayResult = { move: Move; waves: ReplayWave[]; winner: number; turnAfter: number };
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is UnknownRecord => value != null && typeof value === 'object';
+const record = (value: unknown): UnknownRecord => isRecord(value) ? value : {};
+
+export function mountChain(refs: ChainRefs) {
   'use strict';
 
   const {
@@ -12,13 +40,14 @@ export function mountChain(refs) {
     statLargest, statRecent, replayPanel, replayCanvas, replayTitle, replayCopy, replayClose,
     replayPrev, replayPlay, replayNext, replayResume, replayStatus, presets,
   } = refs;
-  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
-  if (!ctx) return () => {};
+  const mainContext = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  if (!mainContext) return () => {};
+  const ctx = mainContext;
 
   const EMPTY = 0;
   const HUMAN = 1;
-  const limits = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
-  const defaults = { rows: 9, cols: 6, enemies: 1 };
+  const limits: Record<keyof Config, Limit> = { rows: [4, 30], cols: [4, 30], enemies: [1, 5] };
+  const defaults: Config = { rows: 9, cols: 6, enemies: 1 };
   const GAME_KEY = 'samey.chain.game.v4';
   const LEGACY_GAME_KEY = 'samey.chain.game.v3';
   const LEGACY_GAME_KEY_V2 = 'samey.chain.game.v2';
@@ -26,46 +55,48 @@ export function mountChain(refs) {
   const STATS_KEY = 'samey.chain.stats.v2';
   const LEGACY_STATS_KEY = 'samey.chain.stats.v1';
   const PAGE_QUERY = 'p';
-  const PAGE_MENU = 'menu';
-  const PAGE_GAME = 'game';
-  const PAGE_STATS = 'stats';
+  const PAGE_MENU: Page = 'menu';
+  const PAGE_GAME: Page = 'game';
+  const PAGE_STATS: Page = 'stats';
   let pageHistoryIndex = typeof history.state?.chainPageIndex === 'number' ? history.state.chainPageIndex : 0;
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
   let playerCount = config.enemies + 1;
-  let board, owners, degree, neighbors, entered;
+  let board = new Uint8Array(0), owners = new Uint8Array(0), degree = new Uint8Array(0), neighbors: number[][] = [], entered = new Uint8Array(0);
   let turn = HUMAN;
   let locked = false;
   let gameOver = false;
   let cssW = 0, cssH = 0, cell = 0, ox = 0, oy = 0, dpr = 1;
   let frame = 0;
   let focusCell = 0;
-  let particles = [];
+  let particles: Particle[] = [];
   let gameVersion = 0;
-  let pendingPage = null;
+  let pendingPage: Page | null = null;
   let resultRecorded = false;
-  let moveHistory = [];
+  let moveHistory: number[] = [];
   let replayComplete = true;
-  let replayEntry = null;
-  let replayFrames = [];
+  let replayEntry: Match | null = null;
+  let replayFrames: ReplayFrame[] = [];
   let replayIndex = 0;
   let replayTimer = 0;
   let replayRunId = 0;
-  let replayDisplay = null;
-  let replayParticles = [];
+  let replayDisplay: ReplayWave | null = null;
+  let replayParticles: Particle[] = [];
   let replayFrame = 0;
   let currentMatchId = '';
-  let gamePlayers = [];
-  const replayCtx = replayCanvas.getContext('2d', { alpha: false });
-  const orbCache = new Map();
+  let gamePlayers: Player[] = [];
+  const replayContext = replayCanvas.getContext('2d', { alpha: false });
+  if (!replayContext) return () => {};
+  const replayCtx = replayContext;
+  const orbCache = new Map<string, HTMLCanvasElement>();
 
-  function pageFromLocation() {
+  function pageFromLocation(): Page {
     const value = new URL(location.href).searchParams.get(PAGE_QUERY);
     return value === PAGE_GAME || value === PAGE_STATS ? value : PAGE_MENU;
   }
 
-  function writePage(page, replace = false) {
+  function writePage(page: Page, replace = false) {
     const url = new URL(location.href);
     if (page === PAGE_MENU) url.searchParams.delete(PAGE_QUERY);
     else url.searchParams.set(PAGE_QUERY, page);
@@ -74,12 +105,12 @@ export function mountChain(refs) {
     history[replace ? 'replaceState' : 'pushState']({...(history.state || {}), chainPage: page, chainPageIndex: pageHistoryIndex}, '', url);
   }
 
-  function clampInt(value, min, max, fallback) {
-    const n = Number.parseInt(value, 10);
+  function clampInt(value: unknown, min: number, max: number, fallback: number) {
+    const n = Number.parseInt(String(value), 10);
     return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
   }
 
-  function loadConfig() {
+  function loadConfig(): Config {
     try {
       const saved = JSON.parse(localStorage.getItem('samey.chain.settings') || '{}');
       return {
@@ -94,15 +125,15 @@ export function mountChain(refs) {
     try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); } catch {}
   }
 
-  function bytesToB64(bytes) {
+  function bytesToB64(bytes: Uint8Array) {
     let out = '';
     for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     return btoa(out);
   }
 
-  function b64ToBytes(text, expected) {
+  function b64ToBytes(text: unknown, expected: number): Uint8Array | null {
     try {
-      const raw = atob(text || '');
+      const raw = atob(String(text || ''));
       if (raw.length !== expected) return null;
       const out = new Uint8Array(raw.length);
       for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
@@ -110,7 +141,7 @@ export function mountChain(refs) {
     } catch { return null; }
   }
 
-  function decodeMove(value, count, maxPlayer) {
+  function decodeMove(value: unknown, count: number, maxPlayer: number): Move | null {
     const encoded = Number(value);
     if (!Number.isInteger(encoded) || encoded < 1024) return null;
     const owner = Math.floor(encoded / 1024);
@@ -119,12 +150,12 @@ export function mountChain(refs) {
     return {owner, index};
   }
 
-  const encodeMove = (owner, index) => owner * 1024 + index;
+  const encodeMove = (owner: number, index: number) => owner * 1024 + index;
 
   const newMatchId = () => `chain-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
 
-  function createPlayers(enemies) {
-    const players = [{id:HUMAN,name:'You',kind:'human',color:semanticPlayerColor(HUMAN)}];
+  function createPlayers(enemies: number): Player[] {
+    const players: Player[] = [{id:HUMAN,name:'You',kind:'human',color:semanticPlayerColor(HUMAN)}];
     for (let i = 1; i <= enemies; i++) players.push({
       id:i+1,
       name:`Random Bot ${i}`,
@@ -135,7 +166,7 @@ export function mountChain(refs) {
     return players;
   }
 
-  function normalizePlayers(raw, enemies) {
+  function normalizePlayers(raw: unknown, enemies: number): Player[] {
     const count = enemies + 1;
     if (!Array.isArray(raw) || raw.length !== count) return createPlayers(enemies);
     const out = [];
@@ -145,14 +176,14 @@ export function mountChain(refs) {
       const kind = id === HUMAN ? 'human' : 'bot';
       const colorValue = typeof item.color === 'string' && item.color.trim() ? item.color.trim() : semanticPlayerColor(id);
       const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim().slice(0,80) : (kind === 'human' ? 'You' : `Random Bot ${id-1}`);
-      const player = {id,name,kind,color:colorValue};
+      const player: Player = {id,name,kind,color:colorValue};
       if (kind === 'bot') {
-        const bot = item.bot && typeof item.bot === 'object' ? item.bot : {};
+        const bot = record(item.bot);
         player.bot = {
           id: typeof bot.id === 'string' && bot.id ? bot.id : 'random',
           name: typeof bot.name === 'string' && bot.name ? bot.name : 'Random Bot',
           version: Number.isInteger(Number(bot.version)) ? Number(bot.version) : 1,
-          settings: bot.settings && typeof bot.settings === 'object' ? {...bot.settings} : {thinkMinMs:65,thinkMaxMs:135},
+          settings: isRecord(bot.settings) ? {...bot.settings} : {thinkMinMs:65,thinkMaxMs:135},
         };
       }
       out.push(player);
@@ -160,10 +191,10 @@ export function mountChain(refs) {
     return out;
   }
 
-  function emptyMatchDb() { return {v:1,base:{games:0,wins:0,largest:0},matches:[]}; }
+  function emptyMatchDb(): MatchDb { return {v:1,base:{games:0,wins:0,largest:0},matches:[]}; }
 
-  function normalizeMatch(raw) {
-    if (!raw || typeof raw !== 'object') return null;
+  function normalizeMatch(raw: unknown): Match | null {
+    if (!isRecord(raw)) return null;
     const r = clampInt(raw.r, ...limits.rows, 0), c = clampInt(raw.c, ...limits.cols, 0), e = clampInt(raw.e, ...limits.enemies, 0);
     if (!r || !c || !e) return null;
     const count = r * c, maxPlayer = e + 1;
@@ -188,20 +219,20 @@ export function mountChain(refs) {
     };
   }
 
-  function loadMatchDb() {
+  function loadMatchDb(): MatchDb {
     try {
       const stored = JSON.parse(localStorage.getItem(MATCHES_KEY) || 'null');
       if (stored?.v === 1 && Array.isArray(stored.matches)) {
         return {
           v:1,
           base:{games:Math.max(0,Number(stored.base?.games)||0),wins:Math.max(0,Number(stored.base?.wins)||0),largest:Math.max(0,Number(stored.base?.largest)||0)},
-          matches:stored.matches.map(normalizeMatch).filter(Boolean).slice(0,120),
+          matches: (stored.matches as unknown[]).map(normalizeMatch).filter((match): match is Match => match != null).slice(0,120),
         };
       }
       const legacy = loadStats();
       const legacyRecent = legacy.recent || [];
       const representedWins = legacyRecent.filter(entry => entry.w).length;
-      const db = {
+      const db: MatchDb = {
         v:1,
         base:{
           games:Math.max(0, legacy.games - legacyRecent.length),
@@ -218,16 +249,12 @@ export function mountChain(refs) {
     } catch { return emptyMatchDb(); }
   }
 
-  function persistMatchDb(db) {
+  function persistMatchDb(db: MatchDb) {
     try { localStorage.setItem(MATCHES_KEY, JSON.stringify({...db,matches:db.matches.slice(0,120)})); } catch {}
   }
 
-  function findMatch(id) {
-    if (!id) return null;
-    return loadMatchDb().matches.find(match => match.id === id) || null;
-  }
 
-  function syncMatchRecord(status = gameOver ? 'completed' : 'active', winner = gameOver ? turn : 0) {
+  function syncMatchRecord(status: MatchStatus = gameOver ? 'completed' : 'active', winner = gameOver ? turn : 0) {
     if (!currentMatchId) return;
     const db = loadMatchDb();
     let match = db.matches.find(item => item.id === currentMatchId);
@@ -253,14 +280,14 @@ export function mountChain(refs) {
     syncMatchRecord('abandoned', 0);
   }
 
-  function readSavedGame() {
+  function readSavedGame(): SavedGame | null {
     try {
       let saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
       let version = 4;
       if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || 'null'); version = 3; }
       if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY_V2) || 'null'); version = 2; }
       if (!saved || Number(saved.v) !== version) return null;
-      const readInt = (value, [min, max]) => {
+      const readInt = (value: unknown, [min, max]: Limit) => {
         const n = Number(value);
         return Number.isInteger(n) && n >= min && n <= max ? n : null;
       };
@@ -332,13 +359,14 @@ export function mountChain(refs) {
     renderStats();
   }
 
-  function emptyStats() { return {games:0,wins:0,largest:0,recent:[]}; }
+  function emptyStats(): Stats { return {games:0,wins:0,largest:0,recent:[]}; }
 
-  function normalizeStats(value) {
-    if (!value || typeof value !== 'object') return emptyStats();
-    const recent = [];
-    if (Array.isArray(value.recent)) for (const raw of value.recent.slice(0, 30)) {
-      const r = clampInt(raw?.r, ...limits.rows, 0), c = clampInt(raw?.c, ...limits.cols, 0), e = clampInt(raw?.e, ...limits.enemies, 0);
+  function normalizeStats(value: unknown): Stats {
+    if (!isRecord(value)) return emptyStats();
+    const recent: RecentStat[] = [];
+    if (Array.isArray(value.recent)) for (const rawValue of value.recent.slice(0, 30)) {
+      const raw = record(rawValue);
+      const r = clampInt(raw.r, ...limits.rows, 0), c = clampInt(raw.c, ...limits.cols, 0), e = clampInt(raw.e, ...limits.enemies, 0);
       if (!r || !c || !e) continue;
       const count = r * c, maxPlayer = e + 1;
       let moves = null;
@@ -367,7 +395,7 @@ export function mountChain(refs) {
     };
   }
 
-  function loadStats() {
+  function loadStats(): Stats {
     try {
       const current = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
       if (current) return normalizeStats(current);
@@ -376,14 +404,8 @@ export function mountChain(refs) {
     } catch { return emptyStats(); }
   }
 
-  function persistStats(stats) {
-    try {
-      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-      localStorage.removeItem(LEGACY_STATS_KEY);
-    } catch {}
-  }
 
-  function recordResult(winner) {
+  function recordResult(winner: number) {
     if (resultRecorded) return;
     resultRecorded = true;
     syncMatchRecord('completed', winner);
@@ -442,10 +464,10 @@ export function mountChain(refs) {
     }
   }
 
-  function topologyFor(cfg) {
+  function topologyFor(cfg: GridConfig) {
     const count = cfg.rows * cfg.cols;
     const degrees = new Uint8Array(count);
-    const links = Array.from({length: count}, () => []);
+    const links: number[][] = Array.from({length: count}, () => []);
     for (let r = 0; r < cfg.rows; r++) for (let c = 0; c < cfg.cols; c++) {
       const i = r * cfg.cols + c;
       if (r) links[i].push(i - cfg.cols);
@@ -457,7 +479,7 @@ export function mountChain(refs) {
     return {degrees, links};
   }
 
-  function replayWinner(model, owner, pending = null) {
+  function replayWinner(model: ReplayModel, owner: number, pending: Uint32Array | null = null) {
     for (let p = 1; p <= model.playerCount; p++) if (!model.entered[p]) return EMPTY;
     const live = new Uint8Array(model.playerCount + 1);
     for (let i = 0; i < model.board.length; i++) if (model.board[i]) live[model.owners[i]] = 1;
@@ -471,12 +493,12 @@ export function mountChain(refs) {
     return sole;
   }
 
-  function modelHasCells(model, owner) {
+  function modelHasCells(model: ReplayModel, owner: number) {
     for (let i = 0; i < model.owners.length; i++) if (model.owners[i] === owner) return true;
     return false;
   }
 
-  function nextPlayerForModel(model, owner) {
+  function nextPlayerForModel(model: ReplayModel, owner: number) {
     for (let step = 1; step <= model.playerCount; step++) {
       const candidate = ((owner - 1 + step) % model.playerCount) + 1;
       if (!model.entered[candidate] || modelHasCells(model, candidate)) return candidate;
@@ -484,18 +506,18 @@ export function mountChain(refs) {
     return HUMAN;
   }
 
-  function simulateReplayMove(model, encoded) {
+  function simulateReplayMove(model: ReplayModel, encoded: number): ReplayResult | null {
     const move = decodeMove(encoded, model.board.length, model.playerCount);
     if (!move) return null;
     model.entered[move.owner] = 1;
     let pending = new Uint32Array(model.board.length);
     pending[move.index] = 1;
     const winningStates = new Set();
-    const waves = [];
+    const waves: ReplayWave[] = [];
     let winner = EMPTY;
     for (let guard = 0; guard < 20000; guard++) {
       const next = new Uint32Array(model.board.length);
-      const transfers = [];
+      const transfers: Transfer[] = [];
       let any = false;
       for (let i = 0; i < pending.length; i++) {
         const incoming = pending[i];
@@ -530,7 +552,7 @@ export function mountChain(refs) {
     return {move,waves,winner,turnAfter};
   }
 
-  function buildReplayFrames(entry) {
+  function buildReplayFrames(entry: Match): ReplayFrame[] {
     const cfg = {rows:entry.r, cols:entry.c, enemies:entry.e};
     const topology = topologyFor(cfg);
     const model = {
@@ -542,7 +564,7 @@ export function mountChain(refs) {
       degrees: topology.degrees,
       links: topology.links,
     };
-    const frames = [{board:model.board.slice(),owners:model.owners.slice(),entered:model.entered.slice(),move:null,waves:[],winner:0,turn:HUMAN}];
+    const frames: ReplayFrame[] = [{board:model.board.slice(),owners:model.owners.slice(),entered:model.entered.slice(),move:null,waves:[],winner:0,turn:HUMAN}];
     for (const encoded of entry.m || []) {
       const result = simulateReplayMove(model, encoded);
       if (!result) break;
@@ -554,9 +576,9 @@ export function mountChain(refs) {
     return frames;
   }
 
-  function replayGeometry() {
-    const cfg = {rows:replayEntry.r,cols:replayEntry.c};
-    const rect = replayCanvas.parentElement.getBoundingClientRect();
+  function replayGeometry(entry: Match): ReplayGeometry {
+    const cfg = {rows:entry.r,cols:entry.c};
+    const rect = replayCanvas.parentElement?.getBoundingClientRect() ?? replayCanvas.getBoundingClientRect();
     const maxW = Math.max(180, Math.min(680, rect.width - 24));
     const maxH = Math.max(180, Math.min(innerHeight * .44, 520));
     const cellSize = Math.max(4, Math.floor(Math.min(maxW / cfg.cols, maxH / cfg.rows)));
@@ -577,7 +599,7 @@ export function mountChain(refs) {
   function drawReplay(now = performance.now()) {
     replayFrame = 0;
     if (!replayCtx || replayPanel.hidden || !replayEntry || !replayFrames.length) return;
-    const geom = replayGeometry();
+    const geom = replayGeometry(replayEntry);
     const frameData = replayDisplay || replayFrames[replayIndex];
     const alive = drawBoardScene(replayCtx, geom.cfg, frameData.board, frameData.owners, geom, replayEntry.p, replayParticles, now, -1);
     replayPrev.disabled = replayIndex <= 0 || !!replayTimer;
@@ -600,13 +622,13 @@ export function mountChain(refs) {
     drawReplay();
   }
 
-  function waitReplay(ms, runId) {
-    return new Promise(resolve => {
+  function waitReplay(ms: number, runId: number): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
       replayTimer = window.setTimeout(() => { replayTimer = 0; resolve(runId === replayRunId); }, ms);
     });
   }
 
-  async function animateReplayMove(targetIndex, runId = ++replayRunId) {
+  async function animateReplayMove(targetIndex: number, runId = ++replayRunId) {
     if (targetIndex <= 0 || targetIndex >= replayFrames.length) return false;
     const target = replayFrames[targetIndex];
     for (const wave of target.waves) {
@@ -624,7 +646,7 @@ export function mountChain(refs) {
     return true;
   }
 
-  function setReplayIndex(next) {
+  function setReplayIndex(next: number) {
     replayRunId++;
     if (replayTimer) clearTimeout(replayTimer);
     replayTimer = 0;
@@ -635,7 +657,7 @@ export function mountChain(refs) {
     drawReplay();
   }
 
-  function openReplay(entry) {
+  function openReplay(entry: Match) {
     stopReplay();
     replayEntry = entry;
     replayFrames = buildReplayFrames(entry);
@@ -726,16 +748,16 @@ export function mountChain(refs) {
   }
 
   const css = () => getComputedStyle(document.documentElement);
-  const color = (name, fallback) => css().getPropertyValue(name).trim() || fallback;
+  const color = (name: string, fallback: string) => css().getPropertyValue(name).trim() || fallback;
   const colorProbe = document.createElement('span');
   colorProbe.hidden = true;
   document.body.append(colorProbe);
-  function resolvedColor(expression, fallback) {
+  function resolvedColor(expression: string, fallback: string) {
     colorProbe.style.color = '';
     colorProbe.style.color = expression;
     return getComputedStyle(colorProbe).color || fallback;
   }
-  function semanticPlayerColor(player) {
+  function semanticPlayerColor(player: number): string {
     const themed = [
       '',
       'var(--site-fast-color, #16a34a)',
@@ -748,7 +770,7 @@ export function mountChain(refs) {
     return resolvedColor(themed[player] || 'var(--site-effort-color)', color('--site-effort-color', '#2563eb'));
   }
 
-  function playerColor(player, players = gamePlayers) {
+  function playerColor(player: number, players: Player[] = gamePlayers): string {
     return players?.[player - 1]?.color || semanticPlayerColor(player);
   }
 
@@ -774,30 +796,27 @@ export function mountChain(refs) {
     draw(performance.now());
   }
 
-  function center(i) {
-    return [ox + (i % cols + .5) * cell, oy + (Math.floor(i / cols) + .5) * cell];
-  }
 
-  function atomOffsets(n, radius) {
+  function atomOffsets(n: number, radius: number): [number, number][] {
     if (n <= 1) return [[0,0]];
     if (n === 2) return [[-radius*.36,0],[radius*.36,0]];
     if (n === 3) return [[0,-radius*.39],[-radius*.36,radius*.28],[radius*.36,radius*.28]];
     return [[-radius*.32,-radius*.32],[radius*.32,-radius*.32],[-radius*.32,radius*.32],[radius*.32,radius*.32]];
   }
 
-  function rgb(value) {
+  function rgb(value: string): [number, number, number] {
     const hex = /^#([0-9a-f]{6})$/i.exec(value);
-    if (hex) return [1,3,5].map(i => Number.parseInt(hex[1].slice(i-1, i+1), 16));
+    if (hex) return [Number.parseInt(hex[1]!.slice(0, 2), 16), Number.parseInt(hex[1]!.slice(2, 4), 16), Number.parseInt(hex[1]!.slice(4, 6), 16)];
     const match = /rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/i.exec(value);
     return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : [106,170,100];
   }
-  function mixColor(a, b, t) {
+  function mixColor(a: string, b: string, t: number) {
     const [ar,ag,ab] = rgb(a), [br,bg,bb] = rgb(b);
-    const c = (x,y) => Math.round(x + (y - x) * t);
+    const c = (x: number, y: number) => Math.round(x + (y - x) * t);
     return `rgb(${c(ar,br)} ${c(ag,bg)} ${c(ab,bb)})`;
   }
 
-  function orbSpriteFor(base, radius, scale) {
+  function orbSpriteFor(base: string, radius: number, scale: number): HTMLCanvasElement {
     const key = `${base}:${radius.toFixed(2)}:${scale.toFixed(2)}`;
     let sprite = orbCache.get(key);
     if (sprite) return sprite;
@@ -806,6 +825,7 @@ export function mountChain(refs) {
     sprite.width = Math.ceil(size * scale);
     sprite.height = Math.ceil(size * scale);
     const g = sprite.getContext('2d');
+    if (!g) return sprite;
     g.scale(scale, scale);
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
@@ -828,7 +848,7 @@ export function mountChain(refs) {
     return sprite;
   }
 
-  function drawOrbTo(targetCtx, x, y, base, radius, scale, alpha = 1) {
+  function drawOrbTo(targetCtx: CanvasRenderingContext2D, x: number, y: number, base: string, radius: number, scale: number, alpha = 1) {
     const sprite = orbSpriteFor(base, radius, scale);
     const w = sprite.width / scale, h = sprite.height / scale;
     const old = targetCtx.globalAlpha;
@@ -837,11 +857,11 @@ export function mountChain(refs) {
     targetCtx.globalAlpha = old;
   }
 
-  function sceneCenter(index, cfg, geom) {
+  function sceneCenter(index: number, cfg: GridConfig, geom: Geometry): [number, number] {
     return [geom.ox + (index % cfg.cols + .5) * geom.cell, geom.oy + (Math.floor(index / cfg.cols) + .5) * geom.cell];
   }
 
-  function drawBoardScene(targetCtx, cfg, boardData, ownerData, geom, players, moving, now, focus = -1) {
+  function drawBoardScene(targetCtx: CanvasRenderingContext2D, cfg: GridConfig, boardData: Uint8Array, ownerData: Uint8Array, geom: Geometry, players: Player[], moving: Particle[], now: number, focus = -1) {
     targetCtx.fillStyle = color('--site-soft', '#f3f4f5');
     targetCtx.fillRect(0, 0, geom.w, geom.h);
     targetCtx.lineWidth = 1;
@@ -881,7 +901,7 @@ export function mountChain(refs) {
     return alive;
   }
 
-  function draw(now) {
+  function draw(now: number) {
     frame = 0;
     const geom = {w:cssW,h:cssH,cell,ox,oy,scale:dpr};
     const alive = drawBoardScene(ctx, {rows,cols}, board, owners, geom, gamePlayers, particles, now, (!gameOver && document.activeElement === canvas) ? focusCell : -1);
@@ -895,7 +915,7 @@ export function mountChain(refs) {
     return true;
   }
 
-  function liveWinner(pendingOwner = EMPTY, pending = null) {
+  function liveWinner(pendingOwner = EMPTY, pending: Uint32Array | null = null) {
     if (!allPlayersEntered()) return EMPTY;
     const live = new Uint8Array(playerCount + 1);
     for (let i = 0; i < board.length; i++) if (board[i]) live[owners[i]] = 1;
@@ -913,7 +933,7 @@ export function mountChain(refs) {
     return sole;
   }
 
-  function finishGame(win) {
+  function finishGame(win: number) {
     gameOver = true;
     turn = win;
     recordResult(win);
@@ -941,7 +961,7 @@ export function mountChain(refs) {
   }
 
 
-  async function playMove(start, owner) {
+  async function playMove(start: number, owner: number) {
     const version = gameVersion;
     locked = true;
     moveHistory.push(encodeMove(owner, start));
@@ -1025,18 +1045,18 @@ export function mountChain(refs) {
     }
   }
 
-  function legalMoves(owner) {
-    const out = [];
+  function legalMoves(owner: number): number[] {
+    const out: number[] = [];
     for (let i = 0; i < board.length; i++) if (board[i] === 0 || owners[i] === owner) out.push(i);
     return out;
   }
 
-  function hasCells(owner) {
+  function hasCells(owner: number) {
     for (let i = 0; i < owners.length; i++) if (owners[i] === owner) return true;
     return false;
   }
 
-  function nextPlayer(owner) {
+  function nextPlayer(owner: number) {
     for (let step = 1; step <= playerCount; step++) {
       const candidate = ((owner - 1 + step) % playerCount) + 1;
       if (!entered[candidate] || hasCells(candidate)) return candidate;
@@ -1060,7 +1080,7 @@ export function mountChain(refs) {
     }
   }
 
-  async function humanMove(i) {
+  async function humanMove(i: number) {
     if (locked || gameOver || turn !== HUMAN) return;
     if (board[i] !== 0 && owners[i] !== HUMAN) {
       canvas.animate([{transform:'translateX(0)'},{transform:'translateX(-2px)'},{transform:'translateX(2px)'},{transform:'translateX(0)'}], {duration:95});
@@ -1070,7 +1090,7 @@ export function mountChain(refs) {
     continueTurns();
   }
 
-  function cellFromEvent(e) {
+  function cellFromEvent(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left - ox;
     const y = e.clientY - rect.top - oy;
@@ -1080,13 +1100,13 @@ export function mountChain(refs) {
     return r * cols + c;
   }
 
-  const onCanvasPointerDown = e => {
+  const onCanvasPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
     const i = cellFromEvent(e);
     if (i >= 0) { focusCell = i; canvas.focus({preventScroll:true}); requestDraw(); void humanMove(i); }
   };
-  const onCanvasKeyDown = e => {
+  const onCanvasKeyDown = (e: KeyboardEvent) => {
     if (gameView.hidden || !board.length) return;
     const row = Math.floor(focusCell / cols), col = focusCell % cols;
     let next = focusCell;
@@ -1129,7 +1149,7 @@ export function mountChain(refs) {
     layout();
   }
 
-  function restoreGame(saved) {
+  function restoreGame(saved: SavedGame) {
     config = {...saved.config};
     rows = config.rows;
     cols = config.cols;
@@ -1154,7 +1174,7 @@ export function mountChain(refs) {
     syncMatchRecord(gameOver ? 'completed' : 'active', gameOver ? turn : 0);
   }
 
-  function boardSummary(cfg = config) {
+  function boardSummary(cfg: Config = config) {
     return `${cfg.rows} × ${cfg.cols} board · ${cfg.enemies} ${cfg.enemies === 1 ? 'enemy' : 'enemies'}`;
   }
 
@@ -1180,7 +1200,7 @@ export function mountChain(refs) {
   let currentView = openingView;
   let viewTransitionsReady = false;
 
-  function showView(to, commit, direction = 'forward') {
+  function showView(to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
     const from = currentView;
     currentView = to;
     if (from === to) {
@@ -1196,7 +1216,7 @@ export function mountChain(refs) {
     void animateMountedViewSwap(from, to, commit, direction);
   }
 
-  function showMenu(syncUrl = true, direction = 'back') {
+  function showMenu(syncUrl = true, direction: Direction = 'back') {
     const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_MENU);
     if (wasInGame && locked) {
@@ -1215,7 +1235,7 @@ export function mountChain(refs) {
     showView(openingView, commit, direction);
   }
 
-  function showStats(syncUrl = true, direction = 'forward') {
+  function showStats(syncUrl = true, direction: Direction = 'forward') {
     const wasInGame = currentView === gameView;
     if (syncUrl) writePage(PAGE_STATS);
     if (wasInGame && locked) {
@@ -1233,7 +1253,7 @@ export function mountChain(refs) {
     showView(statsView, commit, direction);
   }
 
-  function showGame(syncUrl = true, requestedDirection = null) {
+  function showGame(syncUrl = true, requestedDirection: Direction | null = null) {
     const fromStats = currentView === statsView;
     pendingPage = null;
     closeReplay();
@@ -1264,7 +1284,7 @@ export function mountChain(refs) {
     }
   }
 
-  function startNewGame(nextConfig) {
+  function startNewGame(nextConfig: Config) {
     abandonCurrentMatch();
     reset(nextConfig);
     showGame();
@@ -1287,17 +1307,17 @@ export function mountChain(refs) {
     settingsPanel.style.maxHeight = `${Math.max(120, availableHeight)}px`;
   }
 
-  function setSettingsOpen(open) {
+  function setSettingsOpen(open: boolean) {
     settingsPanel.dataset.open = String(open);
     settingsPanel.setAttribute('aria-hidden', String(!open));
     settingsButton.setAttribute('aria-expanded', String(open));
     if (open) requestAnimationFrame(positionSettings);
   }
 
-  function syncRangeProgress(input) {
+  function syncRangeProgress(input: HTMLInputElement) {
     const min = Number(input.min), max = Number(input.max), value = Number(input.value);
     const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0;
-    const shell = input.closest('.game-range-shell');
+    const shell = input.closest<HTMLElement>('.game-range-shell');
     if (shell) shell.style.setProperty('--range-fill-width', `calc(${ratio * 100}% + ${8 - ratio * 16}px)`);
   }
 
@@ -1343,7 +1363,7 @@ export function mountChain(refs) {
 
   settingsButton.addEventListener('click', () => setSettingsOpen(settingsButton.getAttribute('aria-expanded') !== 'true'));
   newGameButton.addEventListener('click', () => { const next = settingsFromControls(); setSettingsOpen(false); startNewGame(next); });
-  menuButton.addEventListener('click', showMenu);
+  menuButton.addEventListener('click', () => showMenu());
   resumeButton.addEventListener('click', () => {
     const saved = readSavedGame();
     if (saved) restoreGame(saved); else reset(config);
@@ -1356,21 +1376,22 @@ export function mountChain(refs) {
     enemies: clampInt(button.dataset.enemies, ...limits.enemies, defaults.enemies),
   })));
   playAgainButton.addEventListener('click', () => startNewGame(config));
-  resultMenuButton.addEventListener('click', showMenu);
-  statsButtons.forEach(button => button.addEventListener('click', showStats));
-  statsBackButton.addEventListener('click', showMenu);
+  resultMenuButton.addEventListener('click', () => showMenu());
+  statsButtons.forEach(button => button.addEventListener('click', () => showStats()));
+  statsBackButton.addEventListener('click', () => showMenu());
   replayClose.addEventListener('click', closeReplay);
   replayPrev.addEventListener('click', () => { stopReplay(); setReplayIndex(replayIndex - 1); });
   replayNext.addEventListener('click', () => { stopReplay(); void animateReplayMove(replayIndex + 1); });
   replayPlay.addEventListener('click', () => { void toggleReplay(); });
   replayResume.addEventListener('click', resumeReplayPoint);
   settingsPanel.addEventListener('pointerdown', e => e.stopPropagation());
-  const onDocumentPointerDown = e => {
-    if (settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(e.target) && !settingsButton.contains(e.target)) setSettingsOpen(false);
+  const onDocumentPointerDown = (e: PointerEvent) => {
+    const target = e.target instanceof Node ? e.target : null;
+    if (target && settingsButton.getAttribute('aria-expanded') === 'true' && !settingsPanel.contains(target) && !settingsButton.contains(target)) setSettingsOpen(false);
   };
   document.addEventListener('pointerdown', onDocumentPointerDown);
   for (const input of [rowsInput, colsInput, enemiesInput]) input.addEventListener('input', previewSettings);
-  const onDocumentKeyDown = e => { if (e.key === 'Escape') setSettingsOpen(false); };
+  const onDocumentKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setSettingsOpen(false); };
   document.addEventListener('keydown', onDocumentKeyDown);
 
   const savedGame = readSavedGame();
