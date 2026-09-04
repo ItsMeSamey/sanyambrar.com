@@ -18,7 +18,7 @@ type FillRect = { left: number; top: number; right: number; bottom: number };
 type ParsedRgb = { r: number; g: number; b: number; a: number };
 type LinkElement = HTMLAnchorElement | HTMLAreaElement | HTMLElement;
 type EditableElement = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
-const isRecord = (value: unknown): value is UnknownRecord => value != null && typeof value === "object";
+const isRecord = (value: unknown): value is UnknownRecord => value != null && typeof value === "object" && !Array.isArray(value);
 const asRecord = (value: unknown): UnknownRecord => isRecord(value) ? value : {};
 const eventElement = (event: Event): Element | null => event.target instanceof Element ? event.target : null;
 (() => {
@@ -30,13 +30,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const FONT_KEY = "samey.font";
   const CURSOR_MODES: readonly CursorMode[] = ["invert", "hardware", "native"];
   const CURSOR_LABELS: Readonly<Record<CursorMode, string>> = Object.freeze({ invert: "Invert", hardware: "Hardware", native: "Native" });
-  const normalizeCursorMode = (value: unknown): CursorMode => typeof value === "string" && (CURSOR_MODES as readonly string[]).includes(value) ? value as CursorMode : "hardware";
+  const isCursorMode = (value: unknown): value is CursorMode => value === "invert" || value === "hardware" || value === "native";
+  const normalizeCursorMode = (value: unknown): CursorMode => isCursorMode(value) ? value : "hardware";
   const config = globalThis.SameyAppearanceConfig;
   if (config == null) throw new Error("Shared appearance config is not loaded");
 
   const validHex = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
   const mix = (a: string, b: string, weight: number) => {
-    const rgb = (value: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16)) as [number, number, number];
+    const rgb = (value: string): [number, number, number] => [
+      parseInt(value.slice(1, 3), 16),
+      parseInt(value.slice(3, 5), 16),
+      parseInt(value.slice(5, 7), 16),
+    ];
     const aa = rgb(a), bb = rgb(b);
     return "#" + aa.map((value, i) => Math.round(value * (1 - weight) + bb[i] * weight).toString(16).padStart(2, "0")).join("");
   };
@@ -191,7 +196,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const selectionFg = source.selectionFg;
     const selectionBg = source.selectionBg;
     out.selectionFg = validHex(selectionFg) ? selectionFg.toLowerCase() : text;
-    out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg!, tone === "dark" ? .42 : .27);
+    out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg ?? text, tone === "dark" ? .42 : .27);
     return out as Theme;
   };
 
@@ -237,8 +242,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const legacy = rawPrefs().font;
     return typeof legacy === "string" && FONT_IDS.includes(legacy) ? legacy : defaultFont();
   };
+  type RawSavedTheme = UnknownRecord & { id: string; name: string };
+  const isRawSavedTheme = (item: unknown): item is RawSavedTheme => isRecord(item) && typeof item.id === "string" && typeof item.name === "string";
   const normalizedSavedThemes = (raw: UnknownRecord = rawPrefs()): SavedTheme[] => Array.isArray(raw.savedThemes)
-    ? raw.savedThemes.filter((item): item is UnknownRecord => isRecord(item) && typeof item.id === "string" && typeof item.name === "string").map((item) => ({ ...normalizeTheme(item, colors.light), id: item.id as string, name: (item.name as string).slice(0, 80) }))
+    ? raw.savedThemes.filter(isRawSavedTheme).map((item) => ({ ...normalizeTheme(item, colors.light), id: item.id, name: item.name.slice(0, 80) }))
     : [];
   const savedThemeId = (id: string) => `saved:${id}`;
   const migrateColor = (value: unknown, savedThemes: SavedTheme[]): string => {
@@ -513,13 +520,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     return `<div class="samey-panel-title">Themes</div>${entries.map(([value, label]) => `<button type="button" data-theme-choice="${escapeHtml(value)}">${escapeHtml(label)}</button>`).join("")}`;
   };
   const fontSection = () => `<div class="samey-panel-title">Fonts</div>${["monospace", "sans-serif"].filter((id) => FONT_IDS.includes(id)).map((id) => `<button type="button" data-font-choice="${id}">${escapeHtml(fontLabels[id])}</button>`).join("")}`;
-  const CURSOR_TOGGLE_POINTS: readonly (readonly [number, number])[] = [[0,-13.1991],[-12.235,8.0898],[12.235,8.0898]];
-  const CURSOR_TOGGLE_EDGES: readonly (readonly [number, number, number, number, number, number, number])[] = [[0,-13.1991,-1.8964,-.1064,-12.235,8.0898,93.282],[-12.235,8.0898,0,3.1933,12.235,8.0898,92.994],[12.235,8.0898,1.8964,-.1064,0,-13.1991,93.282]];
+  const CURSOR_TOGGLE_POINTS = [[0,-13.1991],[-12.235,8.0898],[12.235,8.0898]] as const;
+  const CURSOR_TOGGLE_EDGES = [[0,-13.1991,-1.8964,-.1064,-12.235,8.0898,93.282],[-12.235,8.0898,0,3.1933,12.235,8.0898,92.994],[12.235,8.0898,1.8964,-.1064,0,-13.1991,93.282]] as const;
   const CURSOR_TOGGLE_RAIL = "M 0 -13.1991 Q 1.8964 -0.1064 12.235 8.0898 Q 0 3.1933 -12.235 8.0898 Q -1.8964 -0.1064 0 -13.1991 Z";
   const cursorSection = () => {
     const mode = read().cursorMode;
     const state = CURSOR_MODES.indexOf(mode);
-    const [x,y] = CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0]!;
+    const [x,y] = CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0];
     return `<div class="samey-panel-title">Cursor</div><div class="samey-appearance-tools"><div class="samey-cursor-mode-row"><button type="button" class="samey-cursor-mode-toggle" data-cursor-mode-toggle aria-label="Cursor mode: ${CURSOR_LABELS[mode]}" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${state}" aria-valuetext="${CURSOR_LABELS[mode]}"><svg viewBox="-33.235 -34.1991 66.47 63.2889" aria-hidden="true"><defs><radialGradient id="samey-cursor-toggle-glow" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50" gradientTransform="translate(${x} ${y})"><stop offset="0" stop-color="var(--site-fg)" stop-opacity=".32"/><stop offset=".35" stop-color="var(--site-muted)" stop-opacity=".28"/><stop offset="1" stop-color="var(--site-bg)" stop-opacity=".18"/></radialGradient></defs><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="var(--site-line)" stroke-width="34.2" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="none" stroke="url(#samey-cursor-toggle-glow)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/><path d="${CURSOR_TOGGLE_RAIL}" fill="url(#samey-cursor-toggle-glow)"/><g data-cursor-toggle-knob transform="translate(${x} ${y})"><circle cx="0" cy="0" r="13" fill="var(--site-fg)" stroke="var(--site-bg)" stroke-width="1"/></g></svg></button><span class="samey-cursor-mode-name" data-cursor-mode-name>${CURSOR_LABELS[mode]}</span></div><div class="samey-appearance-tool-actions"><button type="button" data-open-advanced>Advanced &amp; Colorblind</button></div></div>`;
   };
   const bindCursorToggle = () => {
@@ -537,7 +544,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const run = () => {
       if (raf) { queued++; return; }
       const from = state, to = (from + 1) % 3;
-      const [x0,y0,cx,cy,x1,y1,duration] = CURSOR_TOGGLE_EDGES[from] ?? CURSOR_TOGGLE_EDGES[0]!;
+      const [x0,y0,cx,cy,x1,y1,duration] = CURSOR_TOGGLE_EDGES[from] ?? CURSOR_TOGGLE_EDGES[0];
       const start = performance.now();
       button.setAttribute("aria-valuenow", String(to));
       button.setAttribute("aria-valuetext", CURSOR_LABELS[CURSOR_MODES[to]]);
@@ -547,7 +554,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         const raw = Math.min(1,(now-start)/duration), t=ease(raw), u=1-t;
         setPoint(u*u*x0+2*u*t*cx+t*t*x1, u*u*y0+2*u*t*cy+t*t*y1);
         if (raw < 1) { raf=requestAnimationFrame(frame); return; }
-        state=to; const [px,py]=CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0]!; setPoint(px,py); raf=0;
+        state=to; const [px,py]=CURSOR_TOGGLE_POINTS[state] ?? CURSOR_TOGGLE_POINTS[0]; setPoint(px,py); raf=0;
         setPrefs({ cursorMode: CURSOR_MODES[state] });
         if (queued) { queued--; run(); }
       };
@@ -783,15 +790,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const openAdvanced = () => {
     mountAdvancedPage();
     closeAppearance();
+    const page = advancedPage;
+    if (!page) return;
     colorblindChoice = rawColorblindChoice();
-    advancedPage!.querySelectorAll<HTMLInputElement>('[name="samey-colorblind-profile"]').forEach((input) => { input.checked = input.value === colorblindChoice.profile; });
-    advancedPage!.querySelectorAll<HTMLInputElement>('[name="samey-colorblind-variant"]').forEach((input) => { input.checked = input.value === colorblindChoice.variant; });
+    page.querySelectorAll<HTMLInputElement>('[name="samey-colorblind-profile"]').forEach((input) => { input.checked = input.value === colorblindChoice.profile; });
+    page.querySelectorAll<HTMLInputElement>('[name="samey-colorblind-variant"]').forEach((input) => { input.checked = input.value === colorblindChoice.variant; });
     const themeName = advancedEditor?.querySelector<HTMLInputElement>('[name="themeName"]');
     if (themeName) themeName.value = read().savedName || "My theme";
     fillAdvancedEditor(read());
     renderAdvancedSavedThemes();
-    const page = advancedPage;
-    if (!page) return;
     page.hidden = false;
     document.documentElement.classList.add("samey-advanced-open");
     page.scrollTop = 0;

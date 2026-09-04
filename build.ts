@@ -663,7 +663,9 @@ ${keybrViewSwitch}`;
     !sharedTheme.includes("if (event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) { place(event)"),
     "ux: the virtual cursor must only idle-hide on Keybr, Wordle, and static blog articles while keeping the low-latency raw-pointer/compositor path");
   must(sharedTheme.includes('const CURSOR_MODES: readonly CursorMode[] = ["invert", "hardware", "native"]') &&
-    sharedTheme.includes('(CURSOR_MODES as readonly string[]).includes(value) ? value as CursorMode : "hardware"') &&
+    sharedTheme.includes('const isCursorMode = (value: unknown): value is CursorMode') &&
+    sharedTheme.includes('const normalizeCursorMode = (value: unknown): CursorMode => isCursorMode(value) ? value : "hardware"') &&
+    sharedTheme.includes('typeof value === "object" && !Array.isArray(value)') && sharedTheme.includes('filter(isRawSavedTheme)') &&
     sharedTheme.includes('data-cursor-mode-toggle') && sharedTheme.includes('applyHardwareCursorTheme') &&
     sharedTheme.includes('root.classList.toggle("samey-hardware-cursor", theme.cursorMode === "hardware")') &&
     sharedTheme.includes('data-open-advanced>Advanced &amp; Colorblind</button>') && !sharedTheme.includes('data-open-colorblind') &&

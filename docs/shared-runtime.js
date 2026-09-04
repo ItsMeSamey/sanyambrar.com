@@ -549,7 +549,7 @@
 	}
 	//#endregion
 	//#region src/shared/theme.ts
-	var isRecord = (value) => value != null && typeof value === "object";
+	var isRecord = (value) => value != null && typeof value === "object" && !Array.isArray(value);
 	var asRecord = (value) => isRecord(value) ? value : {};
 	var eventElement = (event) => event.target instanceof Element ? event.target : null;
 	(() => {
@@ -569,16 +569,17 @@
 			hardware: "Hardware",
 			native: "Native"
 		});
-		const normalizeCursorMode = (value) => typeof value === "string" && CURSOR_MODES.includes(value) ? value : "hardware";
+		const isCursorMode = (value) => value === "invert" || value === "hardware" || value === "native";
+		const normalizeCursorMode = (value) => isCursorMode(value) ? value : "hardware";
 		const config = globalThis.SameyAppearanceConfig;
 		if (config == null) throw new Error("Shared appearance config is not loaded");
 		const validHex = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 		const mix = (a, b, weight) => {
 			const rgb = (value) => [
-				1,
-				3,
-				5
-			].map((i) => parseInt(value.slice(i, i + 2), 16));
+				parseInt(value.slice(1, 3), 16),
+				parseInt(value.slice(3, 5), 16),
+				parseInt(value.slice(5, 7), 16)
+			];
 			const aa = rgb(a), bb = rgb(b);
 			return "#" + aa.map((value, i) => Math.round(value * (1 - weight) + bb[i] * weight).toString(16).padStart(2, "0")).join("");
 		};
@@ -770,7 +771,7 @@
 			const selectionFg = source.selectionFg;
 			const selectionBg = source.selectionBg;
 			out.selectionFg = validHex(selectionFg) ? selectionFg.toLowerCase() : text;
-			out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg, tone === "dark" ? .42 : .27);
+			out.selectionBg = validHex(selectionBg) ? selectionBg.toLowerCase() : mix(background, out.accentFg ?? text, tone === "dark" ? .42 : .27);
 			return out;
 		};
 		const rawColors = config.colors;
@@ -835,7 +836,8 @@
 			const legacy = rawPrefs().font;
 			return typeof legacy === "string" && FONT_IDS.includes(legacy) ? legacy : defaultFont();
 		};
-		const normalizedSavedThemes = (raw = rawPrefs()) => Array.isArray(raw.savedThemes) ? raw.savedThemes.filter((item) => isRecord(item) && typeof item.id === "string" && typeof item.name === "string").map((item) => ({
+		const isRawSavedTheme = (item) => isRecord(item) && typeof item.id === "string" && typeof item.name === "string";
+		const normalizedSavedThemes = (raw = rawPrefs()) => Array.isArray(raw.savedThemes) ? raw.savedThemes.filter(isRawSavedTheme).map((item) => ({
 			...normalizeTheme(item, colors.light),
 			id: item.id,
 			name: item.name.slice(0, 80)
@@ -1511,19 +1513,19 @@
 		const openAdvanced = () => {
 			mountAdvancedPage();
 			closeAppearance();
+			const page = advancedPage;
+			if (!page) return;
 			colorblindChoice = rawColorblindChoice();
-			advancedPage.querySelectorAll("[name=\"samey-colorblind-profile\"]").forEach((input) => {
+			page.querySelectorAll("[name=\"samey-colorblind-profile\"]").forEach((input) => {
 				input.checked = input.value === colorblindChoice.profile;
 			});
-			advancedPage.querySelectorAll("[name=\"samey-colorblind-variant\"]").forEach((input) => {
+			page.querySelectorAll("[name=\"samey-colorblind-variant\"]").forEach((input) => {
 				input.checked = input.value === colorblindChoice.variant;
 			});
 			const themeName = advancedEditor?.querySelector("[name=\"themeName\"]");
 			if (themeName) themeName.value = read().savedName || "My theme";
 			fillAdvancedEditor(read());
 			renderAdvancedSavedThemes();
-			const page = advancedPage;
-			if (!page) return;
 			page.hidden = false;
 			document.documentElement.classList.add("samey-advanced-open");
 			page.scrollTop = 0;
