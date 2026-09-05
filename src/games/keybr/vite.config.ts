@@ -13,7 +13,8 @@ const workspaceAliases = Object.fromEntries(
     .flatMap((entry) => {
       const dir = join(packagesDir, entry.name);
       try {
-        const { name } = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+        const pkg: unknown = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+        const name = pkg !== null && typeof pkg === "object" && "name" in pkg ? pkg.name : undefined;
         return typeof name === "string" && name.startsWith("@keybr/") ? [[name, dir]] : [];
       } catch {
         return [];

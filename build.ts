@@ -32,6 +32,12 @@ let docsExistedBeforeBuild = false;
 
 const log = (message: string) => console.log(`[build] ${message}`);
 const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
+const requireRecord = (value: unknown, message: string): UnknownRecord => { must(isRecord(value), message); return value; };
+const optionalRecord = (value: unknown, message: string): UnknownRecord => value === undefined ? {} : requireRecord(value, message);
+async function readJsonRecord(path: string) {
+  const value: unknown = JSON.parse(await readFile(path, "utf8"));
+  return requireRecord(value, `${relative(ROOT, path)} must contain a JSON object`);
+}
 
 async function run(cwd: string, file: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   const { stdout, stderr } = await runFile(file, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
@@ -50,15 +56,17 @@ async function dependencySignature(dir: string) {
 async function directDependenciesPresent(dir: string) {
   const packagePath = join(dir, "package.json");
   if (!existsSync(packagePath) || !existsSync(join(dir, "node_modules"))) return false;
-  const pkg = JSON.parse(await readFile(packagePath, "utf8"));
-  const requested = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+  const pkg = await readJsonRecord(packagePath);
+  const label = relative(ROOT, packagePath) || "package.json";
+  const requested = { ...optionalRecord(pkg.dependencies, `${label}: dependencies must be an object`), ...optionalRecord(pkg.devDependencies, `${label}: devDependencies must be an object`) };
   const satisfies = (globalThis as typeof globalThis & { Bun?: BunSemver }).Bun?.semver?.satisfies;
-  for (const [name, range] of Object.entries<string>(requested)) {
+  for (const [name, value] of Object.entries(requested)) {
+    if (typeof value !== "string") return false;
     const installed = join(dir, "node_modules", ...name.split("/"), "package.json");
     if (!existsSync(installed)) return false;
-    if (satisfies && /^[~^<>=*\dv. -]+$/.test(range)) {
-      const version = JSON.parse(await readFile(installed, "utf8")).version;
-      if (!version || !satisfies(version, range)) return false;
+    if (satisfies && /^[~^<>=*\dv. -]+$/.test(value)) {
+      const version = (await readJsonRecord(installed)).version;
+      if (typeof version !== "string" || !satisfies(version, value)) return false;
     }
   }
   return true;
@@ -84,7 +92,7 @@ async function ensureDepsUnlocked(dir: string) {
   try {
     await run(dir, process.execPath, installArgs);
   } catch (error: unknown) {
-    const failure = error as { code?: string; message?: string; stderr?: string };
+    const failure = isRecord(error) ? error : {};
     if (failure.code === "ENOENT" && !existsSync(process.execPath))
       throw new Error(`dependencies for ${relative(ROOT, dir) || "."} are missing/stale and Bun is not installed`);
 
@@ -92,7 +100,7 @@ async function ensureDepsUnlocked(dir: string) {
     // interrupted install. A common symptom is ENOENT while linking a package
     // binary (for example TypeScript's bin/tsc). Retry once from clean inputs,
     // bypassing both the cache and hardlink backend.
-    const detail = `${failure.message ?? ""}\n${failure.stderr ?? ""}`;
+    const detail = `${error instanceof Error ? error.message : typeof failure.message === "string" ? failure.message : ""}\n${typeof failure.stderr === "string" ? failure.stderr : ""}`;
     if (!/ENOENT: (?:copying|linking) file/i.test(detail)) throw error;
     log(`dependency install hit a stale package tree; retrying cleanly for ${relative(ROOT, dir) || "."}`);
     await rm(join(dir, "node_modules"), { recursive: true, force: true });
@@ -118,17 +126,18 @@ async function ensureDeps(dir: string) {
 }
 
 async function generateAppearance() {
-  const config: unknown = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8"));
-  must(isRecord(config) && isRecord(config.colors) && isRecord(config.fonts), "appearance: invalid config");
+  const config = await readJsonRecord(join(STATIC, "shared/appearance.json"));
+  const colors = requireRecord(config.colors, "appearance: colors must be an object");
+  const fonts = requireRecord(config.fonts, "appearance: fonts must be an object");
   const hex = /^#[0-9a-f]{6}$/i;
-  for (const [id, color] of Object.entries(config.colors)) {
+  for (const [id, color] of Object.entries(colors)) {
     must(isRecord(color) && (color.tone === "light" || color.tone === "dark"), `appearance: ${id} has invalid tone`);
     for (const key of APPEARANCE_COLOR_KEYS) {
       const value = color[key];
       must(typeof value === "string" && hex.test(value), `appearance: ${id}.${key} is not #rrggbb`);
     }
   }
-  for (const [id, font] of Object.entries(config.fonts))
+  for (const [id, font] of Object.entries(fonts))
     must(isRecord(font) && typeof font.label === "string" && !!font.label && typeof font.stack === "string" && !!font.stack, `appearance: incomplete font ${id}`);
 }
 
@@ -171,8 +180,8 @@ async function verifySourceArchitecture() {
     ["vite.config.ts", "vite.blog.config.ts", "vite.shared.config.ts", "vite.site.config.ts", "src/games/keybr/vite.config.ts"]
       .map(async name => [name, await readFile(join(ROOT, name), "utf8")] as const),
   );
-  const keybrPackage = JSON.parse(await readFile(join(ROOT, "src/games/keybr/package.json"), "utf8"));
-  const keybrDeps = { ...(keybrPackage.dependencies || {}), ...(keybrPackage.devDependencies || {}) };
+  const keybrPackage = await readJsonRecord(join(ROOT, "src/games/keybr/package.json"));
+  const keybrDeps = { ...optionalRecord(keybrPackage.dependencies, "Keybr dependencies must be an object"), ...optionalRecord(keybrPackage.devDependencies, "Keybr devDependencies must be an object") };
   must(!("react" in keybrDeps) && !("react-dom" in keybrDeps) && !("react-intl" in keybrDeps), "architecture: Keybr must not depend on React");
   must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
   const keybrPackagesDir = join(ROOT, "src/games/keybr/packages");
@@ -180,8 +189,13 @@ async function verifySourceArchitecture() {
     if (!entry.isDirectory()) continue;
     const file = join(keybrPackagesDir, entry.name, "package.json");
     if (!existsSync(file)) continue;
-    const pkg = JSON.parse(await readFile(file, "utf8"));
-    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}), ...(pkg.peerDependencies || {}) };
+    const pkg = await readJsonRecord(file);
+    const label = relative(ROOT, file);
+    const deps = {
+      ...optionalRecord(pkg.dependencies, `${label}: dependencies must be an object`),
+      ...optionalRecord(pkg.devDependencies, `${label}: devDependencies must be an object`),
+      ...optionalRecord(pkg.peerDependencies, `${label}: peerDependencies must be an object`),
+    };
     must(!("react" in deps) && !("react-dom" in deps) && !("react-intl" in deps), `architecture: ${relative(ROOT, file)} must not depend on React`);
   }
   const keybrEntry = await readFile(join(ROOT, "src/games/keybr/src/main.tsx"), "utf8");
@@ -567,10 +581,13 @@ ${keybrViewSwitch}`;
 
   const toolsSource = await readFile(join(ROOT, "src/tools/tools.ts"), "utf8");
   const toolsStyle = await readFile(join(ROOT, "src/tools/style.css"), "utf8");
-  const rootPackage = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const rootPackage = await readJsonRecord(join(ROOT, "package.json"));
+  const rootDependencies = optionalRecord(rootPackage.dependencies, "package.json: dependencies must be an object");
+  const rootDevDependencies = optionalRecord(rootPackage.devDependencies, "package.json: devDependencies must be an object");
+  const rootScripts = optionalRecord(rootPackage.scripts, "package.json: scripts must be an object");
   const siteViteConfig = await readFile(join(ROOT, "vite.site.config.ts"), "utf8");
-  must(rootPackage.dependencies?.["monaco-editor"] === "0.56.0" && !existsSync(join(ROOT, "patches")) &&
-    rootPackage.devDependencies?.["patch-package"] === undefined && rootPackage.scripts?.postinstall === undefined &&
+  must(rootDependencies["monaco-editor"] === "0.56.0" && !existsSync(join(ROOT, "patches")) &&
+    rootDevDependencies["patch-package"] === undefined && rootScripts.postinstall === undefined &&
     !siteViteConfig.includes("samey-monaco-bounded-diff") && !siteViteConfig.includes("monaco-default-lines-diff-computer") &&
     !toolsSource.includes("import DiffWorker from './diff-worker.ts?worker'") && toolsSource.includes('monaco.editor.createDiffEditor(') &&
     toolsSource.includes('originalEditable:true') && toolsSource.includes('renderSideBySide:true') &&
