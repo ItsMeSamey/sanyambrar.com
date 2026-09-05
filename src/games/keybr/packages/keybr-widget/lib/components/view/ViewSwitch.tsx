@@ -33,7 +33,11 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     return value != null && props.views[value] != null ? value : first;
   };
   const [currentView, setCurrentView] = createSignal<ViewName>(readView());
-  let viewHistoryIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : 0;
+  const readViewHistoryIndex = () => {
+    const value: unknown = history.state?.keybrViewIndex;
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  };
+  let viewHistoryIndex = readViewHistoryIndex() ?? 0;
   const current = createMemo(() => {
     const name = currentView();
     const View = props.views[name];
@@ -79,13 +83,13 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
   };
   const setView = (nextName: ViewName) => swapView(nextName, true);
   const onPopState = () => {
-    const nextIndex = typeof history.state?.keybrViewIndex === "number" ? history.state.keybrViewIndex : null;
+    const nextIndex = readViewHistoryIndex();
     const direction = nextIndex != null && nextIndex < viewHistoryIndex ? "back" : "forward";
     if (nextIndex != null) viewHistoryIndex = nextIndex;
     swapView(readView(), false, direction);
   };
   onMount(() => {
-    if (typeof history.state?.keybrViewIndex !== "number")
+    if (readViewHistoryIndex() == null)
       history.replaceState({...(history.state ?? {}), keybrView: currentView(), keybrViewIndex: viewHistoryIndex}, "", location.href);
     addEventListener("popstate", onPopState);
   });
