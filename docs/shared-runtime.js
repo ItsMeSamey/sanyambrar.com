@@ -1574,7 +1574,10 @@
 		const pushState = history.pushState.bind(history);
 		const replaceState = history.replaceState.bind(history);
 		const NAV_INDEX_KEY = "__sameyNavIndex";
-		const readNavigationIndex = () => Number.isFinite(history.state?.[NAV_INDEX_KEY]) ? history.state[NAV_INDEX_KEY] : null;
+		const readNavigationIndex = () => {
+			const value = history.state?.[NAV_INDEX_KEY];
+			return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+		};
 		let pageHistoryIndex = readNavigationIndex() ?? 0;
 		const writePageHistory = (url, replace) => {
 			const current = readNavigationIndex();

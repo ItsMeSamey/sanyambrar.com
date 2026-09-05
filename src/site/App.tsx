@@ -41,7 +41,7 @@ const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index
 const NAV_INDEX_KEY = '__sameyNavIndex';
 const readNavigationIndex = () => {
   const value = history.state?.[NAV_INDEX_KEY];
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 const navigationState = (index: number) => ({
   ...(history.state && typeof history.state === 'object' ? history.state : {}),
