@@ -650,24 +650,64 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   }
 
   type SourceEntry = { start: number; end: number; top: number; bottom: number };
-  type MarkdownView = 'combined' | 'source' | 'preview';
+  type MarkdownView = 'merged' | 'split';
   async function markdownTool(generation: number) {
     loadingEditor();
     const monaco = await ensureMonaco();
     if (!currentRender(generation) || route() !== 'markdown') return;
     await ensureLanguage('markdown');
     if (!currentRender(generation) || route() !== 'markdown') return;
-    const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Live local preview\n- Source-aware linked scrolling');
+    const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Edit here or in Monaco\n- Both sides stay live');
     let linked = localGet('markdown', 'linked', '1') !== '0';
-    const storedView = localGet('markdown', 'view', 'combined');
-    let viewMode: MarkdownView = storedView === 'source' || storedView === 'preview' ? storedView : 'combined';
-    root.innerHTML = `<section class="markdown-tool" data-view="${viewMode}"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><article id="md-output" class="markdown-preview"></article></section>`;
+    const storedView = localGet('markdown', 'view', 'split');
+    let viewMode: MarkdownView = storedView === 'merged' || storedView === 'preview' ? 'merged' : 'split';
+    const storedSplit = Number(localGet('markdown', 'split', '50'));
+    let split = Number.isFinite(storedSplit) ? Math.max(20, Math.min(80, storedSplit)) : 50;
+    root.innerHTML = `<section class="markdown-tool" data-view="${viewMode}" style="--md-split:${split}%"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><div class="markdown-divider" role="separator" tabindex="0" aria-label="Resize Markdown panes"></div><article id="md-output" class="markdown-preview" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></article></section>`;
+    const toolRoot = query<HTMLElement>(root, '.markdown-tool');
+    const divider = query<HTMLElement>(root, '.markdown-divider');
     const model = monaco.editor.createModel(value, 'markdown');
     const editor = monaco.editor.create(query<HTMLElement>(root, '#md-input'), editorOptions('markdown'));
     editor.setModel(model);
     const output = query<HTMLElement>(root, '#md-output');
     let syncing = false;
+    let editingPreview = false;
     let sourceEntries: SourceEntry[] = [];
+    const markdownText = (text: string) => text.replace(/([\\`*_\[\]])/g, '\\$1');
+    const inlineMarkdown = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return markdownText(node.textContent ?? '');
+      if (!(node instanceof HTMLElement)) return '';
+      const children = () => [...node.childNodes].map(inlineMarkdown).join('');
+      switch (node.tagName) {
+        case 'BR': return '\n';
+        case 'STRONG': case 'B': return `**${children()}**`;
+        case 'EM': case 'I': return `*${children()}*`;
+        case 'DEL': case 'S': return `~~${children()}~~`;
+        case 'CODE': return `\`${(node.textContent ?? '').replace(/`/g, '\\`')}\``;
+        case 'A': {
+          const href = node.getAttribute('href');
+          return href ? `[${children()}](${href})` : children();
+        }
+        default: return children();
+      }
+    };
+    const blockMarkdown = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() ? `${markdownText(node.textContent)}\n\n` : '';
+      if (!(node instanceof HTMLElement)) return '';
+      if (node.tagName === 'DIV' && node.hasAttribute('data-source-start')) return [...node.childNodes].map(blockMarkdown).join('');
+      if (/^H[1-6]$/.test(node.tagName)) return `${'#'.repeat(Number(node.tagName[1]))} ${inlineMarkdown(node)}\n\n`;
+      if (node.tagName === 'P') return `${inlineMarkdown(node)}\n\n`;
+      if (node.tagName === 'UL' || node.tagName === 'OL') {
+        const ordered = node.tagName === 'OL';
+        return `${[...node.children].filter(child => child.tagName === 'LI').map((item, index) => `${ordered ? `${index + 1}.` : '-'} ${inlineMarkdown(item)}`).join('\n')}\n\n`;
+      }
+      if (node.tagName === 'BLOCKQUOTE') return `${inlineMarkdown(node).split('\n').map(line => `> ${line}`).join('\n')}\n\n`;
+      if (node.tagName === 'PRE') return `\`\`\`${node.dataset.language ?? ''}\n${node.textContent ?? ''}\n\`\`\`\n\n`;
+      if (node.tagName === 'HR') return '---\n\n';
+      const blockChildren = [...node.childNodes].map(blockMarkdown).join('');
+      return blockChildren || `${inlineMarkdown(node)}\n\n`;
+    };
+    const markdownFromPreview = () => [...output.childNodes].map(blockMarkdown).join('').trimEnd();
     const rebuildMap = () => {
       const rootRect = output.getBoundingClientRect();
       sourceEntries = [...output.querySelectorAll<HTMLElement>('[data-source-start]')].map(element => {
@@ -694,13 +734,13 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       return line - 1 + Math.max(0, Math.min(1, (editor.getScrollTop() - top) / Math.max(1, next - top)));
     };
     const syncPreview = () => {
-      if (!linked || syncing || !sourceEntries.length || viewMode === 'source') return;
+      if (!linked || syncing || editingPreview || !sourceEntries.length || viewMode !== 'split') return;
       syncing = true;
       output.scrollTop = Math.max(0, sourceToPreview(editorSourcePosition()) - 24);
       requestAnimationFrame(() => { syncing = false; });
     };
     const syncEditor = () => {
-      if (!linked || syncing || !sourceEntries.length || viewMode === 'preview') return;
+      if (!linked || syncing || editingPreview || !sourceEntries.length || viewMode !== 'split') return;
       syncing = true;
       const position = previewToSource(output.scrollTop + 24);
       const line = Math.max(1, Math.min(model.getLineCount(), Math.floor(position) + 1));
@@ -709,25 +749,72 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       editor.setScrollTop(top + (position - Math.floor(position)) * Math.max(1, next - top), monaco.editor.ScrollType.Immediate);
       requestAnimationFrame(() => { syncing = false; });
     };
-    const contextMarkup = () => `<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="combined" aria-pressed="${viewMode === 'combined'}">Combined</button><button type="button" data-md-view="source" aria-pressed="${viewMode === 'source'}">Source</button><button type="button" data-md-view="preview" aria-pressed="${viewMode === 'preview'}">Preview</button></span><button type="button" data-md-link aria-pressed="${linked}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>`;
+    const renderPreview = () => { output.innerHTML = renderMarkdown(model.getValue()); rebuildMap(); };
+    const updateModelFromPreview = () => {
+      const text = markdownFromPreview();
+      if (text === model.getValue()) return;
+      editingPreview = true;
+      model.pushEditOperations([], [{ range: model.getFullModelRange(), text }], () => null);
+      editingPreview = false;
+      set('text', text);
+      sourceEntries = [];
+    };
+    const contextMarkup = () => `<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="merged" aria-pressed="${viewMode === 'merged'}">Merged</button><button type="button" data-md-view="split" aria-pressed="${viewMode === 'split'}">Split</button></span>${viewMode === 'split' ? `<button type="button" data-md-link aria-pressed="${linked}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>` : ''}`;
+    const applySplit = (value: number) => {
+      split = Math.max(20, Math.min(80, value));
+      toolRoot.style.setProperty('--md-split', `${split}%`);
+      localSet('markdown', 'split', split.toFixed(2));
+      editor.layout();
+      rebuildMap();
+    };
     const bindContext = () => {
       setContext(contextMarkup());
       contextRoot.querySelectorAll<HTMLButtonElement>('[data-md-view]').forEach(button => button.onclick = () => {
-        const next = button.dataset.mdView;
-        viewMode = next === 'source' || next === 'preview' ? next : 'combined';
+        viewMode = button.dataset.mdView === 'merged' ? 'merged' : 'split';
         localSet('markdown', 'view', viewMode);
-        query<HTMLElement>(root, '.markdown-tool').dataset.view = viewMode;
+        toolRoot.dataset.view = viewMode;
         bindContext();
-        requestAnimationFrame(() => { editor.layout(); rebuildMap(); if (linked && viewMode === 'combined') syncPreview(); });
+        requestAnimationFrame(() => { editor.layout(); rebuildMap(); if (linked) syncPreview(); });
       });
-      query<HTMLButtonElement>(contextRoot, '[data-md-link]').onclick = () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); bindContext(); if (linked) syncPreview(); };
+      contextRoot.querySelector<HTMLButtonElement>('[data-md-link]')?.addEventListener('click', () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); bindContext(); if (linked) syncPreview(); });
     };
-    const paint = () => { const text = model.getValue(); set('text', text); output.innerHTML = renderMarkdown(text); rebuildMap(); bindContext(); if (linked) syncPreview(); };
+    const paint = () => {
+      const text = model.getValue();
+      set('text', text);
+      if (!editingPreview) renderPreview();
+      bindContext();
+      if (linked) syncPreview();
+    };
     const change = model.onDidChangeContent(paint);
     const scroll = editor.onDidScrollChange(event => { if (event.scrollTopChanged) syncPreview(); });
+    const previewInput = () => updateModelFromPreview();
+    const previewBlur = () => { editingPreview = false; renderPreview(); if (linked) syncPreview(); };
+    output.addEventListener('input', previewInput);
+    output.addEventListener('blur', previewBlur);
     output.addEventListener('scroll', syncEditor, { passive: true });
+    divider.addEventListener('pointerdown', event => {
+      if (viewMode !== 'split') return;
+      divider.setPointerCapture(event.pointerId);
+      const move = (pointer: PointerEvent) => {
+        const rect = toolRoot.getBoundingClientRect();
+        const stacked = matchMedia('(max-width:700px)').matches;
+        const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
+        applySplit(ratio * 100);
+      };
+      const up = () => { divider.removeEventListener('pointermove', move); divider.removeEventListener('pointerup', up); divider.removeEventListener('pointercancel', up); };
+      divider.addEventListener('pointermove', move);
+      divider.addEventListener('pointerup', up);
+      divider.addEventListener('pointercancel', up);
+    });
+    divider.addEventListener('keydown', event => {
+      const stacked = matchMedia('(max-width:700px)').matches;
+      const delta = event.key === (stacked ? 'ArrowUp' : 'ArrowLeft') ? -2 : event.key === (stacked ? 'ArrowDown' : 'ArrowRight') ? 2 : 0;
+      if (!delta) return;
+      event.preventDefault();
+      applySplit(split + delta);
+    });
     paint();
-    disposeTool = () => { change.dispose(); scroll.dispose(); output.removeEventListener('scroll', syncEditor); editor.dispose(); model.dispose(); };
+    disposeTool = () => { change.dispose(); scroll.dispose(); output.removeEventListener('input', previewInput); output.removeEventListener('blur', previewBlur); output.removeEventListener('scroll', syncEditor); editor.dispose(); model.dispose(); };
   }
 
   function render() {

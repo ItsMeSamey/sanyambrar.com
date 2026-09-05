@@ -603,8 +603,10 @@ ${keybrViewSwitch}`;
   must(toolsStyle.includes('/* One Monaco DiffEditor owns alignment, padding view-zones, and split resizing. */') &&
     toolsStyle.includes('.diff-monaco .monaco-diff-editor') && !toolsStyle.includes('.diff-panes') && !toolsStyle.includes('.diff-combined-table') &&
     toolsSource.includes("wordWrap:'off'") && !toolsSource.includes('const renderCombined = () =>') &&
-    toolsStyle.includes('.markdown-tool[data-view="combined"]{grid-template-columns:1fr 1fr}') && toolsStyle.includes('grid-template-rows:1fr 1fr}.markdown-tool[data-view="combined"]'),
-    "ux: Diff must be a single Monaco DiffEditor with native aligned view zones, while narrow Markdown remains stacked");
+    toolsSource.includes("type MarkdownView = 'merged' | 'split'") && toolsSource.includes('contenteditable="true"') &&
+    toolsSource.includes("model.pushEditOperations") && toolsSource.includes("divider.addEventListener('pointerdown'") &&
+    toolsStyle.includes('.markdown-tool[data-view="merged"]{grid-template-columns:1fr}') && toolsStyle.includes('.markdown-tool[data-view="split"]{grid-template-columns:1fr;grid-template-rows:minmax(0,var(--md-split,50%)) 7px minmax(0,1fr)}'),
+    "ux: Diff must remain native Monaco; Markdown must keep bidirectional Merged/Split editing with a resizable narrow split");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
