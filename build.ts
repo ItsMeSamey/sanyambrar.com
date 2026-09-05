@@ -9,10 +9,8 @@ import { generateSite } from "./site.ts";
 const runFile = promisify(execFile);
 type BunSemver = { semver?: { satisfies?: (version: string, range: string) => boolean } };
 const APPEARANCE_COLOR_KEYS = ['background', 'text', 'accent', 'error', 'slow', 'fast', 'effort'] as const;
-type AppearanceConfig = {
-  colors: Record<string, { tone: string } & Record<(typeof APPEARANCE_COLOR_KEYS)[number], string>>;
-  fonts: Record<string, { label?: string; stack?: string }>;
-};
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
 
 const ROOT = import.meta.dirname;
 const STATIC = join(ROOT, "src/static");
@@ -120,14 +118,18 @@ async function ensureDeps(dir: string) {
 }
 
 async function generateAppearance() {
-  const config = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8")) as AppearanceConfig;
+  const config: unknown = JSON.parse(await readFile(join(STATIC, "shared/appearance.json"), "utf8"));
+  must(isRecord(config) && isRecord(config.colors) && isRecord(config.fonts), "appearance: invalid config");
   const hex = /^#[0-9a-f]{6}$/i;
   for (const [id, color] of Object.entries(config.colors)) {
-    must(["light", "dark"].includes(color.tone), `appearance: ${id} has invalid tone`);
-    for (const key of APPEARANCE_COLOR_KEYS) must(hex.test(color[key]), `appearance: ${id}.${key} is not #rrggbb`);
+    must(isRecord(color) && (color.tone === "light" || color.tone === "dark"), `appearance: ${id} has invalid tone`);
+    for (const key of APPEARANCE_COLOR_KEYS) {
+      const value = color[key];
+      must(typeof value === "string" && hex.test(value), `appearance: ${id}.${key} is not #rrggbb`);
+    }
   }
-  for (const [id, font] of Object.entries(config.fonts)) must(font.label && font.stack, `appearance: incomplete font ${id}`);
-
+  for (const [id, font] of Object.entries(config.fonts))
+    must(isRecord(font) && typeof font.label === "string" && !!font.label && typeof font.stack === "string" && !!font.stack, `appearance: incomplete font ${id}`);
 }
 
 async function walk(root: string, accept: (path: string, name: string) => boolean) {
