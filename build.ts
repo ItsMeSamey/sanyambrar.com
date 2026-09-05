@@ -611,7 +611,7 @@ ${keybrViewSwitch}`;
     toolsSource.includes("const richResize = new ResizeObserver(scheduleLayout)") && toolsSource.includes("model.getPositionAt(start)") &&
     !toolsSource.includes("range: model.getFullModelRange(), text") && toolsStyle.includes('.markdown-rich.vditor{height:100%!important') && toolsStyle.includes('.markdown-tool[data-view="split"] .vditor-toolbar{display:none}') &&
     toolsStyle.includes('.markdown-rich .vditor-reset table{display:table;width:100%;min-width:0;max-width:100%') &&
-    toolsStyle.includes('.markdown-tool[data-view="merged"]{grid-template-columns:1fr}') && toolsStyle.includes('.markdown-tool[data-view="split"]{grid-template-columns:1fr;grid-template-rows:minmax(0,var(--md-split,50%)) 7px minmax(0,1fr)}'),
+    toolsStyle.includes('.markdown-tool[data-view="merged"]{grid-template-columns:1fr}') && toolsStyle.includes('.markdown-tool[data-view="split"]{grid-template-columns:1fr;grid-template-rows:minmax(0,var(--md-split,50%)) 4px minmax(0,1fr)}'),
     "ux: Diff must remain native Monaco; Markdown must use themed Vditor with minimal model edits, merged-only toolbar, and resize-safe rich content");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
@@ -659,7 +659,7 @@ ${keybrViewSwitch}`;
     wordleStyle.includes(".wordle-state-y { background: var(--wordle-state-y-bg)"),
     "ux: built-in themes and Wordle states must retain explicit red/yellow/green/blue semantics");
   must(sharedTheme.includes("setDragImage(dragPreview, Math.round(dragPreviewW / 2), Math.round(dragPreviewH / 2))") &&
-    sharedTheme.includes("target.closest('[data-text-cursor-zone]')") && sharedTheme.includes("samey-cursor-link-fill") &&
+    sharedTheme.includes("target.closest('[data-text-cursor-zone]')") && sharedTheme.includes("target.closest('.monaco-host,.monaco-editor,.monaco-diff-editor')") && sharedTheme.includes("samey-cursor-link-fill") &&
     !sharedTheme.includes("selectionDragCandidate") && !sharedTheme.includes("startEmulatedDrag"),
     "ux: text/link dragging must stay native, center the custom drag image, and support wrapper-level text cursors");
   const keybrPracticeScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/PracticeScreen.tsx"), "utf8");

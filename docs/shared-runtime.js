@@ -2209,6 +2209,7 @@
 			const wantsText = (target) => {
 				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return false;
 				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"]")) return true;
+				if (target.closest(".monaco-host,.monaco-editor,.monaco-diff-editor")) return true;
 				if (target.closest("[data-text-cursor-zone]")) return true;
 				const style = getComputedStyle(target);
 				if (style.userSelect === "none") return false;
@@ -2254,6 +2255,7 @@
 				if (target === pointTextTarget) return pointTextSensitive;
 				pointTextTarget = target;
 				if (!(target instanceof Element) || linkTarget(target) || target.closest("button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]")) return pointTextSensitive = false;
+				if (target.closest(".monaco-host,.monaco-editor,.monaco-diff-editor")) return pointTextSensitive = true;
 				if (textInput(target) || target.closest("[contenteditable=\"true\"],[contenteditable=\"plaintext-only\"],[data-text-cursor-zone]")) return pointTextSensitive = false;
 				const style = getComputedStyle(target);
 				if (style.userSelect === "none" || style.cursor === "text" || style.cursor === "vertical-text") return pointTextSensitive = false;

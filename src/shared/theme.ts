@@ -1393,6 +1393,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const wantsText = (target: EventTarget | null) => {
       if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return false;
       if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"]')) return true;
+      if (target.closest('.monaco-host,.monaco-editor,.monaco-diff-editor')) return true;
       // A text-cursor zone makes prose-like regions behave as one selectable
       // surface. Interactive descendants above override it and keep their
       // normal round/link cursor semantics.
@@ -1445,6 +1446,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (target === pointTextTarget) return pointTextSensitive;
       pointTextTarget = target;
       if (!(target instanceof Element) || linkTarget(target) || target.closest('button,select,option,summary,[role=button],[role=slider],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-grab-cursor],[data-cursor-round]')) return pointTextSensitive = false;
+      if (target.closest('.monaco-host,.monaco-editor,.monaco-diff-editor')) return pointTextSensitive = true;
       if (textInput(target) || target.closest('[contenteditable="true"],[contenteditable="plaintext-only"],[data-text-cursor-zone]')) return pointTextSensitive = false;
       const style = getComputedStyle(target);
       if (style.userSelect === "none" || style.cursor === "text" || style.cursor === "vertical-text") return pointTextSensitive = false;
