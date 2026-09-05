@@ -525,7 +525,7 @@ export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftPr
     return {reveal: false, fastInvalidate: value.fastInvalidate}
   }
   const parseHard = (raw: string): SettingsHardProps => {
-    const value = JSON.parse(raw)
+    const value: unknown = JSON.parse(raw)
     if (!isChallengeSettings(value)) throw new Error('Invalid Wordle hard settings')
     return {mode: value.mode, wordLength: value.wordLength, maxTries: value.maxTries, disabledLetters: value.disabledLetters, allowAny: value.allowAny}
   }
@@ -647,7 +647,8 @@ export default function Wordle() {
   const startAdvanced = () => {
     let saved: SettingsHardProps = {mode: 'advanced', wordLength: 6, maxTries: 6, disabledLetters: 0, allowAny: false}
     try {
-      const candidate = {...saved, ...JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}'), mode: 'advanced'}
+      const stored: unknown = JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}')
+      const candidate = {...saved, ...(isRecord(stored) ? stored : {}), mode: 'advanced'}
       if (isChallengeSettings(candidate)) saved = candidate
     } catch {}
     void applyConfig({...saved, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined})

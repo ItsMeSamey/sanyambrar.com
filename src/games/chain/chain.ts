@@ -25,8 +25,12 @@ type Geometry = { w: number; h: number; cell: number; ox: number; oy: number; sc
 type ReplayGeometry = Geometry & { cfg: GridConfig };
 type ReplayResult = { move: Move; waves: ReplayWave[]; winner: number; turnAfter: number };
 type UnknownRecord = Record<string, unknown>;
-const isRecord = (value: unknown): value is UnknownRecord => value != null && typeof value === 'object';
+const isRecord = (value: unknown): value is UnknownRecord => value != null && typeof value === 'object' && !Array.isArray(value);
 const record = (value: unknown): UnknownRecord => isRecord(value) ? value : {};
+const parseRecord = (raw: string | null): UnknownRecord | null => {
+  const value: unknown = JSON.parse(raw ?? 'null');
+  return isRecord(value) ? value : null;
+};
 
 export function mountChain(refs: ChainRefs) {
   'use strict';
@@ -112,7 +116,7 @@ export function mountChain(refs: ChainRefs) {
 
   function loadConfig(): Config {
     try {
-      const saved = JSON.parse(localStorage.getItem('samey.chain.settings') || '{}');
+      const saved = parseRecord(localStorage.getItem('samey.chain.settings')) ?? {};
       return {
         rows: clampInt(saved.rows, ...limits.rows, defaults.rows),
         cols: clampInt(saved.cols, ...limits.cols, defaults.cols),
@@ -221,8 +225,8 @@ export function mountChain(refs: ChainRefs) {
 
   function loadMatchDb(): MatchDb {
     try {
-      const stored: unknown = JSON.parse(localStorage.getItem(MATCHES_KEY) || 'null');
-      if (isRecord(stored) && stored.v === 1 && Array.isArray(stored.matches)) {
+      const stored = parseRecord(localStorage.getItem(MATCHES_KEY));
+      if (stored?.v === 1 && Array.isArray(stored.matches)) {
         const base = record(stored.base);
         return {
           v:1,
@@ -283,10 +287,10 @@ export function mountChain(refs: ChainRefs) {
 
   function readSavedGame(): SavedGame | null {
     try {
-      let saved = JSON.parse(localStorage.getItem(GAME_KEY) || 'null');
+      let saved = parseRecord(localStorage.getItem(GAME_KEY));
       let version = 4;
-      if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY) || 'null'); version = 3; }
-      if (!saved) { saved = JSON.parse(localStorage.getItem(LEGACY_GAME_KEY_V2) || 'null'); version = 2; }
+      if (!saved) { saved = parseRecord(localStorage.getItem(LEGACY_GAME_KEY)); version = 3; }
+      if (!saved) { saved = parseRecord(localStorage.getItem(LEGACY_GAME_KEY_V2)); version = 2; }
       if (!saved || Number(saved.v) !== version) return null;
       const readInt = (value: unknown, [min, max]: Limit) => {
         const n = Number(value);
@@ -398,9 +402,9 @@ export function mountChain(refs: ChainRefs) {
 
   function loadStats(): Stats {
     try {
-      const current = JSON.parse(localStorage.getItem(STATS_KEY) || 'null');
+      const current = parseRecord(localStorage.getItem(STATS_KEY));
       if (current) return normalizeStats(current);
-      const legacy = JSON.parse(localStorage.getItem(LEGACY_STATS_KEY) || 'null');
+      const legacy = parseRecord(localStorage.getItem(LEGACY_STATS_KEY));
       return normalizeStats(legacy);
     } catch { return emptyStats(); }
   }
