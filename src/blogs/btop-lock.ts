@@ -14,6 +14,8 @@ import { highlightBlogCode } from './highlight-code.ts';
     const ownerSlots = [...$('owner-slots').children];
     const caption = $('cas-caption');
     const eventBox = $('cas-event');
+    const eventTag = eventBox.querySelector<HTMLElement>('.event-tag');
+    if (!eventTag) throw new Error('Missing .event-tag');
     const eventText = $('cas-event-text');
     const aCard = $('thread-a-card');
     const bCard = $('thread-b-card');
@@ -118,7 +120,7 @@ import { highlightBlogCode } from './highlight-code.ts';
       aCard.classList.toggle('breach', s.owners.length > 1);
 
       eventBox.className = `cas-event ${s.kind}`;
-      eventBox.querySelector<HTMLElement>('.event-tag')!.textContent = s.tag;
+      eventTag.textContent = s.tag;
       eventText.textContent = s.event;
       caption.textContent = s.caption;
       count.textContent = `${step} / 6`;

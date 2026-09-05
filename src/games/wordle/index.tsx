@@ -11,6 +11,8 @@ import Wordle from './page'
 import { Toaster } from '~/registry/ui/toast'
 
 const disposePageNavigation = mountPageNavigation()
+const mount = document.getElementById('wordle-app-mount')
+if (!mount) throw new Error('Wordle mount node is missing')
 
 const disposeWordle = render(function() {
   return <>
@@ -30,7 +32,7 @@ const disposeWordle = render(function() {
     </div>
 
   </>
-}, document.getElementById('wordle-app-mount')!)
+}, mount)
 
 
 ;globalThis.SameyWordleDispose = () => {

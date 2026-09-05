@@ -221,12 +221,13 @@ export function mountChain(refs: ChainRefs) {
 
   function loadMatchDb(): MatchDb {
     try {
-      const stored = JSON.parse(localStorage.getItem(MATCHES_KEY) || 'null');
-      if (stored?.v === 1 && Array.isArray(stored.matches)) {
+      const stored: unknown = JSON.parse(localStorage.getItem(MATCHES_KEY) || 'null');
+      if (isRecord(stored) && stored.v === 1 && Array.isArray(stored.matches)) {
+        const base = record(stored.base);
         return {
           v:1,
-          base:{games:Math.max(0,Number(stored.base?.games)||0),wins:Math.max(0,Number(stored.base?.wins)||0),largest:Math.max(0,Number(stored.base?.largest)||0)},
-          matches: (stored.matches as unknown[]).map(normalizeMatch).filter((match): match is Match => match != null).slice(0,120),
+          base:{games:Math.max(0,Number(base.games)||0),wins:Math.max(0,Number(base.wins)||0),largest:Math.max(0,Number(base.largest)||0)},
+          matches: stored.matches.map(normalizeMatch).filter((match): match is Match => match != null).slice(0,120),
         };
       }
       const legacy = loadStats();
@@ -805,8 +806,8 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function rgb(value: string): [number, number, number] {
-    const hex = /^#([0-9a-f]{6})$/i.exec(value);
-    if (hex) return [Number.parseInt(hex[1]!.slice(0, 2), 16), Number.parseInt(hex[1]!.slice(2, 4), 16), Number.parseInt(hex[1]!.slice(4, 6), 16)];
+    const hex = /^#([0-9a-f]{6})$/i.exec(value)?.[1];
+    if (hex) return [Number.parseInt(hex.slice(0, 2), 16), Number.parseInt(hex.slice(2, 4), 16), Number.parseInt(hex.slice(4, 6), 16)];
     const match = /rgba?\(\s*([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/i.exec(value);
     return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : [106,170,100];
   }

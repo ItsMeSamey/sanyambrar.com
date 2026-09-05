@@ -8,8 +8,8 @@ import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_set
 import { Button } from '~/registry/ui/button'
 import { createMutable, unwrap } from 'solid-js/store'
 import { showError } from '../../utils/toast'
-import { binarySearch, type WordLength } from './word-list'
-import { challengeUrl } from './challenge'
+import { binarySearch } from './word-list'
+import { challengeUrl, isWordLength } from './challenge'
 
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
@@ -40,15 +40,16 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
           class='wordle-copy-button'
           onClick={async () => {
             const wlen = props.word().length
+            if (!isWordLength(wlen)) return showError(new Error('Invalid word length'))
             if (idx === -1) {
-              idx = binarySearch(wlen as WordLength, props.word().toLowerCase())
+              idx = binarySearch(wlen, props.word().toLowerCase())
 
               if (idx === -1) {
                 return showError(new Error('Word not found in the database'))
               }
             }
 
-            const config: SettingsHardProps = {...hard, wordLength: wlen as WordLength, wordIndex: idx}
+            const config: SettingsHardProps = {...hard, wordLength: wlen, wordIndex: idx}
             const url = challengeUrl(config, soft.fastInvalidate)
             if (!url) return showError(new Error('Could not create share URL'))
             try {
