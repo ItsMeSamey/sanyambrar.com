@@ -1,1 +1,2 @@
 docs/site-chunks/*.js -whitespace
+docs/vditor/** -whitespace

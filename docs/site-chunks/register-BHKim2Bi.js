@@ -1,2 +1,0 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/typescript-FZHw7AWV.js","site-chunks/monaco-BNOGOERp.js","site-chunks/site-app-CICenxyw.js","site-chunks/monaco-BJ215w34.css"])))=>i.map(i=>d[i]);
-import{t as e}from"./site-app-CICenxyw.js";import{t}from"./_.contribution-CyS4O1dw.js";t({id:`typescript`,extensions:[`.ts`,`.tsx`,`.cts`,`.mts`],aliases:[`TypeScript`,`ts`,`typescript`],mimetypes:[`text/typescript`],loader:()=>e(()=>import(`./typescript-FZHw7AWV.js`),__vite__mapDeps([0,1,2,3]))});

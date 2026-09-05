@@ -1,10 +1,10 @@
 import type * as Monaco from 'monaco-editor/editor/editor.api';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
-import { renderMarkdown } from './markdown.ts';
 
 type MonacoModule = typeof import('../site/monaco.ts');
 type MonacoApi = MonacoModule['monaco'];
+type VditorModule = typeof import('vditor');
 type EditorOptions = Monaco.editor.IStandaloneEditorConstructionOptions & Monaco.editor.IDiffEditorConstructionOptions;
 const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -14,6 +14,7 @@ const query = <T extends Element>(root: ParentNode, selector: string): T => {
   return element;
 };
 let sharedMonacoPromise: Promise<MonacoModule> | undefined;
+let sharedVditorPromise: Promise<VditorModule> | undefined;
 
 function loadMonacoModule() {
   if (sharedMonacoPromise) return sharedMonacoPromise;
@@ -23,6 +24,19 @@ function loadMonacoModule() {
     throw error;
   }).finally(releaseLoading);
   return sharedMonacoPromise;
+}
+
+function loadVditorModule() {
+  if (sharedVditorPromise) return sharedVditorPromise;
+  const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
+  sharedVditorPromise = Promise.all([
+    resilientImport(() => import('vditor')),
+    import('vditor/dist/index.css'),
+  ]).then(([module]) => module).catch(error => {
+    sharedVditorPromise = undefined;
+    throw error;
+  }).finally(releaseLoading);
+  return sharedVditorPromise;
 }
 export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDivElement) {
   'use strict';
@@ -41,10 +55,9 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   const get = (name: string, fallback = '') => localGet(route(), name, fallback);
   const set = (name: string, value: unknown) => localSet(route(), name, value);
   const esc = (value: unknown) => String(value).replace(/[&<>"']/g, char => HTML_ESCAPES[char] ?? char);
-  const icon = (name: 'copy' | 'swap' | 'link') => ({
+  const icon = (name: 'copy' | 'swap') => ({
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
     swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>',
-    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   })[name] || '';
   const copy = async (value: unknown) => {
     try {
@@ -649,124 +662,35 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     disposeTool = () => {};
   }
 
-  type SourceEntry = { start: number; end: number; top: number; bottom: number };
   type MarkdownView = 'merged' | 'split';
   async function markdownTool(generation: number) {
-    loadingEditor();
-    const monaco = await ensureMonaco();
+    loadingEditor('Loading Markdown editor…');
+    const [monaco, { default: Vditor }] = await Promise.all([ensureMonaco(), loadVditorModule()]);
     if (!currentRender(generation) || route() !== 'markdown') return;
     await ensureLanguage('markdown');
     if (!currentRender(generation) || route() !== 'markdown') return;
-    const value = get('text', '# Markdown\n\n**Bold**, *italic*, `code`.\n\n- Edit here or in Monaco\n- Both sides stay live');
-    let linked = localGet('markdown', 'linked', '1') !== '0';
+
+    const value = get('text', '# Markdown\n\n## Fully featured\n\n- CommonMark + GFM\n- Tables, tasks, footnotes, math, diagrams, and more');
     const storedView = localGet('markdown', 'view', 'split');
     let viewMode: MarkdownView = storedView === 'merged' || storedView === 'preview' ? 'merged' : 'split';
     const storedSplit = Number(localGet('markdown', 'split', '50'));
     let split = Number.isFinite(storedSplit) ? Math.max(20, Math.min(80, storedSplit)) : 50;
-    root.innerHTML = `<section class="markdown-tool" data-view="${viewMode}" style="--md-split:${split}%"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><div class="markdown-divider" role="separator" tabindex="0" aria-label="Resize Markdown panes"></div><article id="md-output" class="markdown-preview" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true"></article></section>`;
+    root.innerHTML = `<section class="markdown-tool" data-view="${viewMode}" style="--md-split:${split}%"><div class="markdown-source"><div id="md-input" class="monaco-host"></div></div><div class="markdown-divider" role="separator" tabindex="0" aria-label="Resize Markdown panes"></div><div id="md-rich" class="markdown-rich" aria-busy="true"></div></section>`;
+
     const toolRoot = query<HTMLElement>(root, '.markdown-tool');
     const divider = query<HTMLElement>(root, '.markdown-divider');
+    const richHost = query<HTMLElement>(root, '#md-rich');
     const model = monaco.editor.createModel(value, 'markdown');
     const editor = monaco.editor.create(query<HTMLElement>(root, '#md-input'), editorOptions('markdown'));
     editor.setModel(model);
-    const output = query<HTMLElement>(root, '#md-output');
-    let syncing = false;
-    let editingPreview = false;
-    let sourceEntries: SourceEntry[] = [];
-    const markdownText = (text: string) => text.replace(/([\\`*_\[\]])/g, '\\$1');
-    const inlineMarkdown = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) return markdownText(node.textContent ?? '');
-      if (!(node instanceof HTMLElement)) return '';
-      const children = () => [...node.childNodes].map(inlineMarkdown).join('');
-      switch (node.tagName) {
-        case 'BR': return '\n';
-        case 'STRONG': case 'B': return `**${children()}**`;
-        case 'EM': case 'I': return `*${children()}*`;
-        case 'DEL': case 'S': return `~~${children()}~~`;
-        case 'CODE': return `\`${(node.textContent ?? '').replace(/`/g, '\\`')}\``;
-        case 'A': {
-          const href = node.getAttribute('href');
-          return href ? `[${children()}](${href})` : children();
-        }
-        default: return children();
-      }
-    };
-    const blockMarkdown = (node: Node): string => {
-      if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() ? `${markdownText(node.textContent)}\n\n` : '';
-      if (!(node instanceof HTMLElement)) return '';
-      if (node.tagName === 'DIV' && node.hasAttribute('data-source-start')) return [...node.childNodes].map(blockMarkdown).join('');
-      if (/^H[1-6]$/.test(node.tagName)) return `${'#'.repeat(Number(node.tagName[1]))} ${inlineMarkdown(node)}\n\n`;
-      if (node.tagName === 'P') return `${inlineMarkdown(node)}\n\n`;
-      if (node.tagName === 'UL' || node.tagName === 'OL') {
-        const ordered = node.tagName === 'OL';
-        return `${[...node.children].filter(child => child.tagName === 'LI').map((item, index) => `${ordered ? `${index + 1}.` : '-'} ${inlineMarkdown(item)}`).join('\n')}\n\n`;
-      }
-      if (node.tagName === 'BLOCKQUOTE') return `${inlineMarkdown(node).split('\n').map(line => `> ${line}`).join('\n')}\n\n`;
-      if (node.tagName === 'PRE') return `\`\`\`${node.dataset.language ?? ''}\n${node.textContent ?? ''}\n\`\`\`\n\n`;
-      if (node.tagName === 'HR') return '---\n\n';
-      const blockChildren = [...node.childNodes].map(blockMarkdown).join('');
-      return blockChildren || `${inlineMarkdown(node)}\n\n`;
-    };
-    const markdownFromPreview = () => [...output.childNodes].map(blockMarkdown).join('').trimEnd();
-    const rebuildMap = () => {
-      const rootRect = output.getBoundingClientRect();
-      sourceEntries = [...output.querySelectorAll<HTMLElement>('[data-source-start]')].map(element => {
-        const rect = element.getBoundingClientRect();
-        return { start: Number(element.dataset.sourceStart), end: Number(element.dataset.sourceEnd), top: rect.top - rootRect.top + output.scrollTop, bottom: rect.bottom - rootRect.top + output.scrollTop };
-      }).filter(entry => Number.isFinite(entry.start) && Number.isFinite(entry.end));
-    };
-    const sourceToPreview = (position: number) => {
-      const direct = sourceEntries.find(entry => position >= entry.start && position <= entry.end);
-      if (direct) return direct.top + (position - direct.start) / Math.max(1, direct.end - direct.start) * Math.max(1, direct.bottom - direct.top);
-      return sourceEntries.find(entry => entry.start >= position)?.top ?? output.scrollHeight;
-    };
-    const previewToSource = (y: number) => {
-      const direct = sourceEntries.find(entry => y >= entry.top && y <= entry.bottom);
-      if (direct) return direct.start + (y - direct.top) / Math.max(1, direct.bottom - direct.top) * Math.max(1, direct.end - direct.start);
-      let prior = sourceEntries[0];
-      for (const entry of sourceEntries) { if (entry.top > y) break; prior = entry; }
-      return prior?.end ?? 0;
-    };
-    const editorSourcePosition = () => {
-      const line = editor.getVisibleRanges()[0]?.startLineNumber ?? 1;
-      const top = editor.getTopForLineNumber(line);
-      const next = line < model.getLineCount() ? editor.getTopForLineNumber(line + 1) : top + editor.getOption(monaco.editor.EditorOption.lineHeight);
-      return line - 1 + Math.max(0, Math.min(1, (editor.getScrollTop() - top) / Math.max(1, next - top)));
-    };
-    const syncPreview = () => {
-      if (!linked || syncing || editingPreview || !sourceEntries.length || viewMode !== 'split') return;
-      syncing = true;
-      output.scrollTop = Math.max(0, sourceToPreview(editorSourcePosition()) - 24);
-      requestAnimationFrame(() => { syncing = false; });
-    };
-    const syncEditor = () => {
-      if (!linked || syncing || editingPreview || !sourceEntries.length || viewMode !== 'split') return;
-      syncing = true;
-      const position = previewToSource(output.scrollTop + 24);
-      const line = Math.max(1, Math.min(model.getLineCount(), Math.floor(position) + 1));
-      const top = editor.getTopForLineNumber(line);
-      const next = line < model.getLineCount() ? editor.getTopForLineNumber(line + 1) : top + editor.getOption(monaco.editor.EditorOption.lineHeight);
-      editor.setScrollTop(top + (position - Math.floor(position)) * Math.max(1, next - top), monaco.editor.ScrollType.Immediate);
-      requestAnimationFrame(() => { syncing = false; });
-    };
-    const renderPreview = () => { output.innerHTML = renderMarkdown(model.getValue()); rebuildMap(); };
-    const updateModelFromPreview = () => {
-      const text = markdownFromPreview();
-      if (text === model.getValue()) return;
-      editingPreview = true;
-      model.pushEditOperations([], [{ range: model.getFullModelRange(), text }], () => null);
-      editingPreview = false;
-      set('text', text);
-      sourceEntries = [];
-    };
-    const contextMarkup = () => `<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="merged" aria-pressed="${viewMode === 'merged'}">Merged</button><button type="button" data-md-view="split" aria-pressed="${viewMode === 'split'}">Split</button></span>${viewMode === 'split' ? `<button type="button" data-md-link aria-pressed="${linked}" aria-label="Toggle linked scrolling" title="Toggle linked scrolling">${icon('link')}</button>` : ''}`;
-    const applySplit = (value: number) => {
-      split = Math.max(20, Math.min(80, value));
-      toolRoot.style.setProperty('--md-split', `${split}%`);
-      localSet('markdown', 'split', split.toFixed(2));
-      editor.layout();
-      rebuildMap();
-    };
+
+    let richReady = false;
+    let syncingFromRich = false;
+    let richSyncFrame = 0;
+    let pendingRichText = value;
+    const darkTheme = () => document.documentElement.classList.contains('dark') || document.documentElement.dataset.kbTheme === 'dark';
+    const markdownCdn = `${location.origin}/vditor`;
+    const contextMarkup = () => `<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="merged" aria-pressed="${viewMode === 'merged'}">Merged</button><button type="button" data-md-view="split" aria-pressed="${viewMode === 'split'}">Split</button></span>`;
     const bindContext = () => {
       setContext(contextMarkup());
       contextRoot.querySelectorAll<HTMLButtonElement>('[data-md-view]').forEach(button => button.onclick = () => {
@@ -774,24 +698,93 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
         localSet('markdown', 'view', viewMode);
         toolRoot.dataset.view = viewMode;
         bindContext();
-        requestAnimationFrame(() => { editor.layout(); rebuildMap(); if (linked) syncPreview(); });
+        requestAnimationFrame(() => editor.layout());
       });
-      contextRoot.querySelector<HTMLButtonElement>('[data-md-link]')?.addEventListener('click', () => { linked = !linked; localSet('markdown', 'linked', linked ? '1' : '0'); bindContext(); if (linked) syncPreview(); });
     };
-    const paint = () => {
-      const text = model.getValue();
+    const syncRichTheme = () => {
+      if (!richReady) return;
+      const dark = darkTheme();
+      rich.setTheme(dark ? 'dark' : 'classic', dark ? 'dark' : 'light', dark ? 'github-dark' : 'github');
+    };
+    const syncRichFromModel = () => {
+      pendingRichText = model.getValue();
+      set('text', pendingRichText);
+      if (syncingFromRich || !richReady || richSyncFrame) return;
+      richSyncFrame = requestAnimationFrame(() => {
+        richSyncFrame = 0;
+        if (rich.getValue() !== pendingRichText) rich.setValue(pendingRichText, false);
+      });
+    };
+    const syncModelFromRich = (text: string) => {
       set('text', text);
-      if (!editingPreview) renderPreview();
-      bindContext();
-      if (linked) syncPreview();
+      if (text === model.getValue()) return;
+      syncingFromRich = true;
+      model.pushEditOperations([], [{ range: model.getFullModelRange(), text }], () => null);
+      syncingFromRich = false;
     };
-    const change = model.onDidChangeContent(paint);
-    const scroll = editor.onDidScrollChange(event => { if (event.scrollTopChanged) syncPreview(); });
-    const previewInput = () => updateModelFromPreview();
-    const previewBlur = () => { editingPreview = false; renderPreview(); if (linked) syncPreview(); };
-    output.addEventListener('input', previewInput);
-    output.addEventListener('blur', previewBlur);
-    output.addEventListener('scroll', syncEditor, { passive: true });
+
+
+    bindContext();
+    const rich = new Vditor(richHost, {
+      value,
+      mode: 'ir',
+      lang: 'en_US',
+      height: '100%',
+      width: '100%',
+      cache: { enable: false },
+      cdn: markdownCdn,
+      undoDelay: 50,
+      theme: darkTheme() ? 'dark' : 'classic',
+      toolbar: [
+        'emoji', 'headings', 'bold', 'italic', 'strike', 'link', '|',
+        'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
+        'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|',
+        'table', '|', 'undo', 'redo', '|', 'fullscreen',
+        { name: 'more', toolbar: ['code-theme', 'content-theme', 'export', 'outline', 'preview', 'devtools', 'info', 'help'] },
+      ],
+      preview: {
+        delay: 0,
+        maxWidth: 1200,
+        markdown: {
+          autoSpace: false,
+          callout: true,
+          codeBlockPreview: true,
+          fixTermTypo: false,
+          footnotes: true,
+          gfmAutoLink: true,
+          imageCaption: true,
+          listStyle: true,
+          mark: true,
+          mathBlockPreview: true,
+          paragraphBeginningSpace: false,
+          sanitize: true,
+          sub: true,
+          sup: true,
+          toc: true,
+        },
+        math: { engine: 'KaTeX', inlineDigit: true },
+        render: { media: { enable: true } },
+      },
+      input: syncModelFromRich,
+      after: () => {
+        richReady = true;
+        richHost.dataset.ready = 'true';
+        richHost.removeAttribute('aria-busy');
+        syncRichTheme();
+        const current = model.getValue();
+        if (rich.getValue() !== current) rich.setValue(current, false);
+      },
+    });
+
+    const change = model.onDidChangeContent(syncRichFromModel);
+    const themeChange = () => syncRichTheme();
+    addEventListener('samey-themechange', themeChange);
+    const applySplit = (value: number) => {
+      split = Math.max(20, Math.min(80, value));
+      toolRoot.style.setProperty('--md-split', `${split}%`);
+      localSet('markdown', 'split', split.toFixed(2));
+      editor.layout();
+    };
     divider.addEventListener('pointerdown', event => {
       if (viewMode !== 'split') return;
       divider.setPointerCapture(event.pointerId);
@@ -801,7 +794,11 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
         const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
         applySplit(ratio * 100);
       };
-      const up = () => { divider.removeEventListener('pointermove', move); divider.removeEventListener('pointerup', up); divider.removeEventListener('pointercancel', up); };
+      const up = () => {
+        divider.removeEventListener('pointermove', move);
+        divider.removeEventListener('pointerup', up);
+        divider.removeEventListener('pointercancel', up);
+      };
       divider.addEventListener('pointermove', move);
       divider.addEventListener('pointerup', up);
       divider.addEventListener('pointercancel', up);
@@ -813,8 +810,15 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       event.preventDefault();
       applySplit(split + delta);
     });
-    paint();
-    disposeTool = () => { change.dispose(); scroll.dispose(); output.removeEventListener('input', previewInput); output.removeEventListener('blur', previewBlur); output.removeEventListener('scroll', syncEditor); editor.dispose(); model.dispose(); };
+
+    disposeTool = () => {
+      if (richSyncFrame) cancelAnimationFrame(richSyncFrame);
+      removeEventListener('samey-themechange', themeChange);
+      change.dispose();
+      rich.destroy();
+      editor.dispose();
+      model.dispose();
+    };
   }
 
   function render() {

@@ -603,10 +603,13 @@ ${keybrViewSwitch}`;
   must(toolsStyle.includes('/* One Monaco DiffEditor owns alignment, padding view-zones, and split resizing. */') &&
     toolsStyle.includes('.diff-monaco .monaco-diff-editor') && !toolsStyle.includes('.diff-panes') && !toolsStyle.includes('.diff-combined-table') &&
     toolsSource.includes("wordWrap:'off'") && !toolsSource.includes('const renderCombined = () =>') &&
-    toolsSource.includes("type MarkdownView = 'merged' | 'split'") && toolsSource.includes('contenteditable="true"') &&
-    toolsSource.includes("model.pushEditOperations") && toolsSource.includes("divider.addEventListener('pointerdown'") &&
+    rootDependencies["vditor"] === "^4.0.0" && !existsSync(join(ROOT, "src/tools/markdown.ts")) &&
+    toolsSource.includes("resilientImport(() => import('vditor'))") && toolsSource.includes("mode: 'ir'") &&
+    toolsSource.includes("const markdownCdn = `${location.origin}/vditor`") && toolsSource.includes("cdn: markdownCdn") && toolsSource.includes("undoDelay: 50") &&
+    toolsSource.includes("footnotes: true") && toolsSource.includes("toc: true") && toolsSource.includes("table', '|', 'undo'") &&
+    toolsSource.includes("type MarkdownView = 'merged' | 'split'") && toolsSource.includes("divider.addEventListener('pointerdown'") &&
     toolsStyle.includes('.markdown-tool[data-view="merged"]{grid-template-columns:1fr}') && toolsStyle.includes('.markdown-tool[data-view="split"]{grid-template-columns:1fr;grid-template-rows:minmax(0,var(--md-split,50%)) 7px minmax(0,1fr)}'),
-    "ux: Diff must remain native Monaco; Markdown must keep bidirectional Merged/Split editing with a resizable narrow split");
+    "ux: Diff must remain native Monaco; Markdown must use Vditor for comprehensive bidirectional Merged/Split editing with a resizable narrow split");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&
@@ -832,13 +835,22 @@ async function copyStatic() {
   const owned = [
     "index.html", "work.html", "tools.html", "chain.html", "work", "tools", "chain",
     "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm", "cnn-worker.js",
-    "site.css", "shared-runtime.js",
+    "site.css", "shared-runtime.js", "vditor",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
   await cp(STATIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SHARED_RUNTIME, DOCS, { recursive: true, force: true });
+  const vditorDist = join(ROOT, "node_modules/vditor/dist");
+  const deployedVditor = join(DOCS, "vditor/dist");
+  await mkdir(deployedVditor, { recursive: true });
+  for (const directory of ["js", "css", "images"]) {
+    await cp(join(vditorDist, directory), join(deployedVditor, directory), { recursive: true, force: true });
+  }
+  for (const file of ["index.css", "method.min.js"]) {
+    await cp(join(vditorDist, file), join(deployedVditor, file), { force: true });
+  }
   await mkdir(join(DOCS, "blog", "posts"), { recursive: true });
   await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
 }
@@ -926,7 +938,10 @@ async function buildKeybr() {
 
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
-    .map((path) => relative(DOCS, path).replaceAll("\\", "/"));
+    .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
+    // Vditor's optional math/diagram/highlighting runtimes are self-hosted but
+    // loaded and cached on demand instead of adding ~20 MiB to every SW install.
+    .filter(path => !path.startsWith("vditor/"));
 }
 
 async function versionMutableShellReferences() {

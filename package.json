@@ -17,6 +17,7 @@
     "lucide-solid": "^1.37.0",
     "monaco-editor": "0.56.0",
     "solid-js": "^1.9.15",
+    "vditor": "^4.0.0",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "devDependencies": {

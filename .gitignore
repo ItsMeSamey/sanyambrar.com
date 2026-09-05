@@ -21,3 +21,8 @@ keybr/packages/keybr-themes/lib/themes/site-presets.generated.less
 tmp/
 temp/
 Archive.tar.gz
+
+# Vditor runtime is generated into docs/ for GitHub Pages.
+!docs/vditor/
+!docs/vditor/dist/
+!docs/vditor/dist/**
