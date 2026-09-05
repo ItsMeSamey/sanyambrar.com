@@ -62,7 +62,11 @@ export function mountChain(refs: ChainRefs) {
   const PAGE_MENU: Page = 'menu';
   const PAGE_GAME: Page = 'game';
   const PAGE_STATS: Page = 'stats';
-  let pageHistoryIndex = typeof history.state?.chainPageIndex === 'number' ? history.state.chainPageIndex : 0;
+  const readPageHistoryIndex = () => {
+    const value: unknown = history.state?.chainPageIndex;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  };
+  let pageHistoryIndex = readPageHistoryIndex() ?? 0;
   let config = loadConfig();
   let rows = config.rows;
   let cols = config.cols;
@@ -1404,14 +1408,14 @@ export function mountChain(refs: ChainRefs) {
   updateResumeCard();
   const onPopState = () => {
     const page = pageFromLocation();
-    const nextIndex = typeof history.state?.chainPageIndex === 'number' ? history.state.chainPageIndex : null;
+    const nextIndex = readPageHistoryIndex();
     const direction = nextIndex != null && nextIndex < pageHistoryIndex ? 'back' : 'forward';
     if (nextIndex != null) pageHistoryIndex = nextIndex;
     if (page === PAGE_STATS) showStats(false, direction);
     else if (page === PAGE_GAME) showGame(false, direction);
     else showMenu(false, direction);
   };
-  if (typeof history.state?.chainPageIndex !== 'number')
+  if (readPageHistoryIndex() == null)
     history.replaceState({...(history.state || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
   addEventListener('popstate', onPopState);
   const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); drawReplay(); };
