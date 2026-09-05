@@ -608,8 +608,11 @@ ${keybrViewSwitch}`;
     toolsSource.includes("const markdownCdn = `${location.origin}/vditor`") && toolsSource.includes("cdn: markdownCdn") && toolsSource.includes("undoDelay: 50") &&
     toolsSource.includes("footnotes: true") && toolsSource.includes("toc: true") && toolsSource.includes("table', '|', 'undo'") &&
     toolsSource.includes("type MarkdownView = 'merged' | 'split'") && toolsSource.includes("divider.addEventListener('pointerdown'") &&
+    toolsSource.includes("const richResize = new ResizeObserver(scheduleLayout)") && toolsSource.includes("model.getPositionAt(start)") &&
+    !toolsSource.includes("range: model.getFullModelRange(), text") && toolsStyle.includes('.markdown-rich.vditor{height:100%!important') && toolsStyle.includes('.markdown-tool[data-view="split"] .vditor-toolbar{display:none}') &&
+    toolsStyle.includes('.markdown-rich .vditor-reset table{display:table;width:100%;min-width:0;max-width:100%') &&
     toolsStyle.includes('.markdown-tool[data-view="merged"]{grid-template-columns:1fr}') && toolsStyle.includes('.markdown-tool[data-view="split"]{grid-template-columns:1fr;grid-template-rows:minmax(0,var(--md-split,50%)) 7px minmax(0,1fr)}'),
-    "ux: Diff must remain native Monaco; Markdown must use Vditor for comprehensive bidirectional Merged/Split editing with a resizable narrow split");
+    "ux: Diff must remain native Monaco; Markdown must use themed Vditor with minimal model edits, merged-only toolbar, and resize-safe rich content");
   must(!toolsStyle.includes('.text-stat strong{display:none}') &&
     toolsStyle.includes('.text-stat strong{font-size:12px;line-height:1;font-weight:800') &&
     toolsStyle.includes('.text-stat:nth-child(1) b,.text-stat:nth-child(1) strong{color:var(--site-effort-color,var(--site-accent))}') &&

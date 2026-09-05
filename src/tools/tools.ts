@@ -687,6 +687,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     let richReady = false;
     let syncingFromRich = false;
     let richSyncFrame = 0;
+    let richLayoutFrame = 0;
     let pendingRichText = value;
     const darkTheme = () => document.documentElement.classList.contains('dark') || document.documentElement.dataset.kbTheme === 'dark';
     const markdownCdn = `${location.origin}/vditor`;
@@ -698,13 +699,20 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
         localSet('markdown', 'view', viewMode);
         toolRoot.dataset.view = viewMode;
         bindContext();
-        requestAnimationFrame(() => editor.layout());
+        scheduleLayout();
       });
     };
     const syncRichTheme = () => {
       if (!richReady) return;
       const dark = darkTheme();
       rich.setTheme(dark ? 'dark' : 'classic', dark ? 'dark' : 'light', dark ? 'github-dark' : 'github');
+    };
+    const scheduleLayout = () => {
+      if (richLayoutFrame) return;
+      richLayoutFrame = requestAnimationFrame(() => {
+        richLayoutFrame = 0;
+        editor.layout();
+      });
     };
     const syncRichFromModel = () => {
       pendingRichText = model.getValue();
@@ -717,9 +725,22 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     };
     const syncModelFromRich = (text: string) => {
       set('text', text);
-      if (text === model.getValue()) return;
+      const current = model.getValue();
+      if (text === current) return;
+      let start = 0;
+      const startLimit = Math.min(current.length, text.length);
+      while (start < startLimit && current.charCodeAt(start) === text.charCodeAt(start)) start++;
+      if (start > 0 && start < current.length && start < text.length &&
+          current.charCodeAt(start - 1) >= 0xd800 && current.charCodeAt(start - 1) <= 0xdbff) start--;
+      let currentEnd = current.length;
+      let textEnd = text.length;
+      while (currentEnd > start && textEnd > start && current.charCodeAt(currentEnd - 1) === text.charCodeAt(textEnd - 1)) {
+        currentEnd--;
+        textEnd--;
+      }
+      const range = monaco.Range.fromPositions(model.getPositionAt(start), model.getPositionAt(currentEnd));
       syncingFromRich = true;
-      model.pushEditOperations([], [{ range: model.getFullModelRange(), text }], () => null);
+      model.pushEditOperations([], [{ range, text: text.slice(start, textEnd), forceMoveMarkers: true }], () => null);
       syncingFromRich = false;
     };
 
@@ -777,13 +798,15 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     });
 
     const change = model.onDidChangeContent(syncRichFromModel);
+    const richResize = new ResizeObserver(scheduleLayout);
+    richResize.observe(richHost);
     const themeChange = () => syncRichTheme();
     addEventListener('samey-themechange', themeChange);
     const applySplit = (value: number) => {
       split = Math.max(20, Math.min(80, value));
       toolRoot.style.setProperty('--md-split', `${split}%`);
       localSet('markdown', 'split', split.toFixed(2));
-      editor.layout();
+      scheduleLayout();
     };
     divider.addEventListener('pointerdown', event => {
       if (viewMode !== 'split') return;
@@ -813,6 +836,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
 
     disposeTool = () => {
       if (richSyncFrame) cancelAnimationFrame(richSyncFrame);
+      if (richLayoutFrame) cancelAnimationFrame(richLayoutFrame);
+      richResize.disconnect();
       removeEventListener('samey-themechange', themeChange);
       change.dispose();
       rich.destroy();
