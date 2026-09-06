@@ -1,4 +1,5 @@
-import { ErrorBoundary, Show, createSignal, onCleanup, onMount, type Component, type JSX } from "solid-js";
+import { Errored, Show, createEffect, createSignal, onSettled, type Accessor, type Component } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { ErrorScreen } from "./ErrorScreen.tsx";
 import { catchError, silentCatchError } from "./logger.ts";
 
@@ -9,17 +10,20 @@ type Props = {
 
 export function ErrorHandler(props: Props): JSX.Element {
   const [report, setReport] = createSignal<string | null>(null);
-  onMount(() => catchError.addHandler(setReport));
-  onCleanup(() => catchError.deleteHandler(setReport));
+  onSettled(() => {
+    catchError.addHandler(setReport);
+    return () => catchError.deleteHandler(setReport);
+  });
   const Display = props.display ?? ErrorScreen;
+  const BoundaryReport = (props: { error: Accessor<unknown> }) => {
+    createEffect(props.error, error => { silentCatchError(error); });
+    return <Display report={String(props.error())} />;
+  };
   return (
     <Show when={report()} fallback={
-      <ErrorBoundary fallback={(error) => {
-        silentCatchError(error instanceof Error ? error : new Error(String(error)));
-        return <Display report={String(error)} />;
-      }}>
+      <Errored fallback={error => <BoundaryReport error={error} />}>
         {props.children}
-      </ErrorBoundary>
+      </Errored>
     }>
       {(value) => <Display report={value()} />}
     </Show>

@@ -40,7 +40,7 @@ export const KeySelector = (solidProps: {
             solidProps.onSelect(letters()[selectedIndex]);
         }
     };
-    return (<span class={styles.root} tabIndex={solidProps.disabled ? undefined : (solidProps.tabIndex ?? 0)} title={solidProps.title} onFocus={solidProps.onFocus} onBlur={solidProps.onBlur} onKeyDown={useHotkeysHandler({
+    return (<span class={styles.root} tabindex={solidProps.disabled ? undefined : (solidProps.tabIndex ?? 0)} title={solidProps.title} onFocus={solidProps.onFocus} onBlur={solidProps.onBlur} onKeyDown={useHotkeysHandler({
             ["ArrowLeft"]: handlePrev,
             ["ArrowUp"]: handlePrev,
             ["ArrowRight"]: handleNext,

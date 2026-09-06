@@ -25,36 +25,18 @@ export interface HistoryEntry {
 }
 
 export interface Value {
-  i: number // Idx
+  i?: number // Auto-incremented primary key
   w: string // Word
   h: HistoryEntry[] // The history for this word
 }
 
-type schemaValue = {
-  key: 'i'
+type WordStore = `w${WordLength}`
+type Schema = Record<WordStore, {
+  key: number
   value: Value
-  indexes: {'wordIndex': 'w'}
-}
-interface Schema {
-  'w3' : schemaValue
-  'w4' : schemaValue
-  'w5' : schemaValue
-  'w6' : schemaValue
-  'w7' : schemaValue
-  'w8' : schemaValue
-  'w9' : schemaValue
-  'w10': schemaValue
-  'w11': schemaValue
-  'w12': schemaValue
-  'w13': schemaValue
-  'w14': schemaValue
-  'w15': schemaValue
-  'w16': schemaValue
-  'w17': schemaValue
-  'w18': schemaValue
-  'w19': schemaValue
-  'w20': schemaValue
-}
+  indexes: {wordIndex: string}
+}>
+export const WORD_STORES = ([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] as const).map(length => `w${length}` as const)
 
 let db: IDBPDatabase<Schema>
 const dbReady = openDB<Schema>('game.wordle', 1, {
@@ -62,8 +44,8 @@ const dbReady = openDB<Schema>('game.wordle', 1, {
     // Delete old data
     for (const store of db.objectStoreNames) db.deleteObjectStore(store);
 
-    for (let i = 3; i <= 20; i++) {
-      const store = db.createObjectStore('w' + i, {autoIncrement: true, keyPath: 'i'})
+    for (const name of WORD_STORES) {
+      const store = db.createObjectStore(name, {autoIncrement: true, keyPath: 'i'})
       store.createIndex('wordIndex', 'w', {unique: true})
     }
   }
@@ -114,9 +96,10 @@ export function getRandomWord(wlen: WordLength): string {
 
 // Sets the word as done, adding the history to the record
 export async function setDone(entry: {word: string, history: [string, string][]}, hard: SettingsHardProps, kind: KindEnum): Promise<void> {
-  if (entry.word.length < 3 || entry.word.length > 20) throw new Error('Invalid word length')
+  const length = entry.word.length
+  if (!isWordLength(length)) throw new Error('Invalid word length')
   const readyDb = db ?? await dbReady
-  const store = readyDb.transaction('w' + entry.word.length, 'readwrite').objectStore('w' + entry.word.length)
+  const store = readyDb.transaction(`w${length}`, 'readwrite').objectStore(`w${length}`)
 
   const record: Value = await store.index('wordIndex').get(entry.word) ?? {w: entry.word, h: []}
   record.h.push({
@@ -132,7 +115,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
   })
 
   await store.put(record)
-  store.transaction.commit()
+  await store.transaction.done
   window.dispatchEvent(new Event('wordle:stats-change'))
 }
 
@@ -142,8 +125,7 @@ export async function setDone(entry: {word: string, history: [string, string][]}
 export async function getCompletedDailyDates(): Promise<Set<string>> {
   const readyDb = db ?? await dbReady
   const dates = new Set<string>()
-  const stores = Array.from({length: 18}, (_, index) => `w${index + 3}`) as (keyof Schema)[]
-  for (const storeName of stores) {
+  for (const storeName of WORD_STORES) {
     const values = await readyDb.transaction(storeName, 'readonly').objectStore(storeName).getAll()
     for (const value of values) for (const entry of value.h) if (entry.q) dates.add(entry.q)
   }

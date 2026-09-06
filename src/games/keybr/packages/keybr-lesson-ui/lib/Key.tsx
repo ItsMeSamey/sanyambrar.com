@@ -3,7 +3,7 @@ import { type MouseProps } from "@keybr/widget";
 import { clsx } from "@keybr/solid-compat/clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
-import { mergeProps, splitProps } from "solid-js";
+import { merge, omit } from 'solid-js';
 
 export const Key = (allProps: {
   lessonKey: LessonKey;
@@ -12,17 +12,8 @@ export const Key = (allProps: {
   size?: "normal" | "large" | "announcement";
   title?: string;
 } & MouseProps) => {
-  const merged = mergeProps(
-    { isSelectable: false, isCurrent: false, size: "normal" as const },
-    allProps,
-  );
-  const [local, props] = splitProps(merged, [
-    "lessonKey",
-    "isSelectable",
-    "isCurrent",
-    "size",
-    "title",
-  ]);
+  const merged = merge(allProps, { get isSelectable() { return allProps.isSelectable ?? false; }, get isCurrent() { return allProps.isCurrent ?? false; }, get size() { return allProps.size ?? "normal" as const; } });
+  const local = merged, props = omit(merged, "lessonKey", "isSelectable", "isCurrent", "size", "title");
   const { keyStyles } = useKeyStyles();
   const key = () => local.lessonKey;
 

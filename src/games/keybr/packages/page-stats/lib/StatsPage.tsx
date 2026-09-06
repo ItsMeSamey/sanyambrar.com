@@ -5,7 +5,7 @@ import {
   makeSummaryStats,
 } from "@keybr/result";
 import { ExplainerBoundary } from "@keybr/widget";
-import { createMemo } from "solid-js";
+import { createMemo } from 'solid-js';
 import { AccuracyStreaksSection } from "./stats/AccuracyStreaksSection.tsx";
 import { CalendarSection } from "./stats/CalendarSection.tsx";
 import { ExplainStats } from "./stats/ExplainStats.tsx";

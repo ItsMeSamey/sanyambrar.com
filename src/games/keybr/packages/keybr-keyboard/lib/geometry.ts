@@ -23,7 +23,8 @@ export class ZoneMod implements EnumItem {
   );
 
   static first(items: Iterable<ZoneMod>): ZoneMod {
-    return items[Symbol.iterator]().next().value ?? ZoneMod.STANDARD;
+    const first = items[Symbol.iterator]().next();
+    return first.done ? ZoneMod.STANDARD : first.value;
   }
 
   private constructor(
@@ -124,7 +125,8 @@ export class Geometry implements EnumItem {
   );
 
   static first(items: Iterable<Geometry>): Geometry {
-    return items[Symbol.iterator]().next().value ?? Geometry.ANSI_101;
+    const first = items[Symbol.iterator]().next();
+    return first.done ? Geometry.ANSI_101 : first.value;
   }
 
   private constructor(

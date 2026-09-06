@@ -5,7 +5,7 @@ import { type LineList } from "@keybr/textinput";
 import { addKey, deleteKey, emulateLayout } from "@keybr/textinput-events";
 import { makeSoundPlayer } from "@keybr/textinput-sounds";
 import { useDocumentEvent, useHotkeys, useTimeout, useWindowEvent } from "@keybr/widget";
-import { createEffect, createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal } from 'solid-js';
 import { Presenter } from "./Presenter.tsx";
 import { type LastLesson, LessonState, makeLastLesson, type Progress } from "./state/index.ts";
 
@@ -45,8 +45,6 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
   const keyboard = useKeyboard();
   const timeout = useTimeout();
   const [lessonRevision, setLessonRevision] = createSignal(0);
-  const [lines, setLines] = createSignal<LineList>({ text: "", lines: [] }, { equals: false });
-  const [depressedKeys, setDepressedKeys] = createSignal<readonly KeyId[]>([], { equals: false });
   const [lastLesson, setLastLesson] = createSignal<LastLesson | null>(null, { equals: false });
 
   const state = createMemo(() => {
@@ -55,16 +53,15 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     return new LessonState(progress());
   });
 
+  const [lines, setLines] = createSignal<LineList>(() => state().lines, { equals: false });
+  const [depressedKeys, setDepressedKeys] = createSignal<readonly KeyId[]>(() => state().depressedKeys, { equals: false });
+
   const suffix = createMemo(() => {
     lines(); // Suffix mutates with TextInput; the line signal is its reactive clock.
     return state().suffix;
   });
 
-  createEffect(() => {
-    const value = state();
-    setLines(value.lines);
-    setDepressedKeys(value.depressedKeys);
-  });
+
 
   const handleResetLesson = () => {
     const value = state();
@@ -109,8 +106,6 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
           setLastLesson(makeLastLesson(result, value.textInput.steps));
           onResult()(result);
           setLessonRevision((revision) => revision + 1);
-          const next = state();
-          setLines(next.lines);
           setDepressedKeys([]);
           timeout.cancel();
         } else {

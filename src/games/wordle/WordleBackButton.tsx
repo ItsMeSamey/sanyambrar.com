@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { WordleMark, WORDLE_BACK_COLORS } from '../../shared/components/Brand.tsx';
 
 export function WordleBackButton(props:{onClick:JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>}) {

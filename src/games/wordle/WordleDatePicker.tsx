@@ -1,6 +1,6 @@
 'use strict'
 
-import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createMemo, createSignal, For, Show, untrack } from 'solid-js';
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 
 // Adapted to this project from Solid UI's Date Picker surface:
@@ -66,7 +66,8 @@ export function WordleDatePicker(props: WordleDatePickerProps) {
   const maximum = () => parseKey(props.max) ?? atNoon(new Date())
   const [open, setOpen] = createSignal(false)
   const [view, setView] = createSignal<View>('day')
-  const [visible, setVisible] = createSignal(new Date(selected().getFullYear(), selected().getMonth(), 1, 12))
+  const initialDate = untrack(selected)
+  const [visible, setVisible] = createSignal(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1, 12))
 
   const formatted = createMemo(() => new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'short', day: 'numeric'}).format(selected()))
   const monthTitle = createMemo(() => new Intl.DateTimeFormat(undefined, {year: 'numeric', month: 'long'}).format(visible()))
@@ -132,7 +133,7 @@ export function WordleDatePicker(props: WordleDatePickerProps) {
       <CalendarIcon />
       <span>{formatted()}</span>
     </PopoverTrigger>
-    <PopoverContent class='wordle-date-picker-popover'>
+    <PopoverContent aria-label='Choose date' class='wordle-date-picker-popover'>
       <div class='wordle-date-picker-nav'>
         <button type='button' class='wordle-date-picker-nav-button' onClick={() => changePeriod(-1)} aria-label='Previous period'><Chevron direction='left'/></button>
         <button type='button' class='wordle-date-picker-view-trigger' onClick={() => setView(view() === 'day' ? 'month' : view() === 'month' ? 'year' : 'day')}>{title()}</button>

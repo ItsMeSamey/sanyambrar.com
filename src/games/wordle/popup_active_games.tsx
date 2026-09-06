@@ -1,6 +1,7 @@
 'use strict'
 
-import { batch, createSignal, For, JSX, onCleanup, onMount, Show } from 'solid-js'
+import { createSignal, For, onSettled, Show } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { Block } from './page'
 import { SettingsHardProps } from './popup_settings'
@@ -116,7 +117,7 @@ export function getActiveGames(): ActiveGame[] {
   return sortGames(games)
 }
 
-export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect?: (config: SettingsHardProps) => void}): JSX.Element {
+export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect: (config: SettingsHardProps) => void}): JSX.Element {
   const [open, setOpen] = createSignal(false)
   const [games, setGames] = createSignal(getActiveGames())
   const refresh = () => setGames(getActiveGames())
@@ -134,13 +135,16 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
   }
   const onStorage = (event: StorageEvent) => event.key ? refreshKey(event.key) : refresh()
   const onWordleStorage = (event: Event) => {
-    const detail = event instanceof CustomEvent ? event.detail : undefined
+    const detail: unknown = event instanceof CustomEvent ? event.detail : undefined
     const key = isRecord(detail) && typeof detail.key === 'string' ? detail.key : undefined
     if (key) refreshKey(key); else refresh()
   }
 
-  onMount(() => { window.addEventListener('storage', onStorage); window.addEventListener('wordle:storage-change', onWordleStorage) })
-  onCleanup(() => { window.removeEventListener('storage', onStorage); window.removeEventListener('wordle:storage-change', onWordleStorage) })
+  onSettled(() => {
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('wordle:storage-change', onWordleStorage)
+    return () => { window.removeEventListener('storage', onStorage); window.removeEventListener('wordle:storage-change', onWordleStorage) }
+  })
 
   const current = (game: ActiveGame) => {
     const c = game.config
@@ -151,28 +155,16 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
   return <Show when={games().length > 0}>
     <Dialog open={open()} onOpenChange={value => { if (value) refresh(); setOpen(value) }}>
       <DialogTrigger as='button' type='button' class='game-settings-action'>Active Games</DialogTrigger>
-      <DialogContent class='active-games-dialog'>
+      <DialogContent class='active-games-dialog' aria-label='Active Wordle games'>
         <Show when={open()}>
           <div class='active-games-header'><strong>Active games</strong><span>{games().length}</span></div>
           <div class='active-games-list'>
             <For each={games()}>{game => <button
               type='button' class='active-game-card' data-current={current(game) ? '' : undefined}
-              onClick={() => batch(() => {
-                if (current(game)) return setOpen(false)
-                if (onSelect) onSelect({...game.config})
-                else {
-                  hard.mode = game.config.mode
-                  hard.wordLength = game.config.wordLength
-                  hard.maxTries = game.config.maxTries
-                  hard.allowAny = game.config.allowAny
-                  hard.disabledLetters = game.config.disabledLetters
-                  hard.dailyDate = game.config.dailyDate
-                  hard.dailyVersion = game.config.dailyVersion
-                  hard.randomId = game.config.randomId
-                  hard.wordIndex = game.config.wordIndex
-                }
+              onClick={() => {
+                if (!current(game)) onSelect({...game.config})
                 setOpen(false)
-              })}
+              }}
             >
               <div class='active-game-meta'>
                 <span>{game.config.mode}</span>
@@ -181,7 +173,7 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
                 <span>{game.config.maxTries === 1 ? '∞' : game.config.maxTries} guesses</span>
                 <Show when={game.config.disabledLetters}><span>{game.config.disabledLetters} disabled</span></Show>
               </div>
-              <div class='active-game-board'><For each={game.history}>{([word, mask]) => new Block(game.config.wordLength, word, mask).render()}</For></div>
+              <div class='active-game-board'><For each={game.history}>{row => <Block wordLength={game.config.wordLength} word={row[0]} mask={row[1]} />}</For></div>
             </button>}</For>
           </div>
         </Show>

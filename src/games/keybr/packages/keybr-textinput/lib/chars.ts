@@ -28,9 +28,13 @@ export type LineList<T extends Line = Line> = {
   readonly lines: readonly T[];
 };
 
+function isStyledTextList(text: StyledText): text is readonly StyledText[] {
+  return Array.isArray(text);
+}
+
 export function flattenStyledText(text: StyledText): string {
   const list: Array<string> = [];
-  if (Array.isArray(text)) {
+  if (isStyledTextList(text)) {
     for (const item of text) {
       list.push(flattenStyledText(item));
     }
@@ -49,7 +53,7 @@ export function splitStyledText(
   attrs: Attr = Attr.Normal,
 ): Char[] {
   const list: Array<Char> = [];
-  if (Array.isArray(text)) {
+  if (isStyledTextList(text)) {
     for (const item of text) {
       list.push(...splitStyledText(item));
     }

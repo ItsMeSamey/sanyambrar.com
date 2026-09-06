@@ -1,6 +1,6 @@
 /* @refresh reload */
-import { render } from 'solid-js/web'
-import { ErrorBoundary, Match, Switch } from 'solid-js'
+import { render } from '@solidjs/web'
+import { Errored, Match, Switch } from 'solid-js';
 import StatsPage from './page_stats'
 
 import './style.css'
@@ -19,7 +19,7 @@ const disposeWordle = render(function() {
     <Toaster class='wordle-toaster' />
 
     <div ref={setPageRoot} data-wordle-root>
-      <ErrorBoundary fallback={ErrorPage}>
+      <Errored fallback={ErrorPage}>
         <Switch>
           <Match when={selectP(Page.Wordle)}>
             <Wordle />
@@ -28,7 +28,7 @@ const disposeWordle = render(function() {
             <StatsPage />
           </Match>
         </Switch>
-      </ErrorBoundary>
+      </Errored>
     </div>
 
   </>
