@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web';
+import { render } from '@solidjs/web';
 import { BackLink, TopBar } from '../shared/components/TopBar.tsx';
 import './btop-lock.ts';
 

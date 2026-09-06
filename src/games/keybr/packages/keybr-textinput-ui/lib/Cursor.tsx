@@ -3,7 +3,8 @@ import {
   CaretShapeStyle,
   type TextDisplaySettings,
 } from "@keybr/textinput";
-import { createEffect, onCleanup, type JSX } from "solid-js";
+import { createEffect, onCleanup } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { findCursor } from "./chars.tsx";
 
 export function Cursor(props: {
@@ -140,14 +141,15 @@ export function Cursor(props: {
     else hide();
   };
 
-  createEffect(() => {
-    // Explicit field reads make appearance changes reposition/repaint the caret
-    // even when the settings wrapper object itself stays stable.
-    props.settings.caretShapeStyle;
-    props.settings.caretMovementStyle;
-    props.settings.language.direction;
-    props.children;
-    queueMicrotask(position);
+  createEffect(() => [
+    props.settings.caretShapeStyle,
+    props.settings.caretMovementStyle,
+    props.settings.language.direction,
+    props.children,
+  ], () => {
+    let cancelled = false;
+    queueMicrotask(() => { if (!cancelled) position(); });
+    return () => { cancelled = true; };
   });
 
   onCleanup(() => animation?.cancel());

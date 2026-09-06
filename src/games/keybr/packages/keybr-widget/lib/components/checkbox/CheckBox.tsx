@@ -22,7 +22,7 @@ export function CheckBox(props: CheckBoxProps): ReactNode {
     >
       <CheckboxPrimitive.Input
         ref={(el) => (input.current = el)}
-        tabIndex={props.tabIndex}
+        tabindex={props.tabIndex}
         onFocus={(event) => props.onFocus?.(event)}
         onBlur={(event) => props.onBlur?.(event)}
       />

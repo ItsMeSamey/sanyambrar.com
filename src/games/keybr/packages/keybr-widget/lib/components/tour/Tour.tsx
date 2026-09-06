@@ -11,13 +11,13 @@ import { Portal } from "../portal/Portal.tsx";
 import { Meter } from "./Meter.tsx";
 import { type SlideProps } from "./Slide.tsx";
 import * as styles from "./Tour.module.css";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 export type TourProps = {
     readonly children?: readonly ReactElement<SlideProps>[];
     readonly onClose?: () => void;
 };
 export function Tour(solidAllProps: TourProps): ReactNode {
-    const [solidLocal, props] = splitProps(solidAllProps, ["children", "onClose"]);
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "onClose");
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = useState(0);
     const slides = Children.toArray(solidLocal.children).filter((child): child is HTMLElement => child instanceof HTMLElement);

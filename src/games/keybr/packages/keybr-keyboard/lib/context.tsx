@@ -1,6 +1,7 @@
 import { useSettings } from "@keybr/settings";
 import { liveObject } from "@keybr/solid-compat/live";
-import { createContext, createMemo, type JSX, useContext } from "solid-js";
+import { createContext, createMemo, useContext } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { type Keyboard } from "./keyboard.ts";
 import { loadKeyboard } from "./load.ts";
 import { KeyboardOptions } from "./settings.ts";
@@ -16,5 +17,5 @@ export function KeyboardProvider(props: { readonly children: JSX.Element }) {
   const { settings } = useSettings();
   const keyboard = createMemo(() => loadKeyboard(KeyboardOptions.from(settings)));
   const value = liveObject(keyboard);
-  return <KeyboardContext.Provider value={value}>{props.children}</KeyboardContext.Provider>;
+  return <KeyboardContext value={value}>{props.children}</KeyboardContext>;
 }

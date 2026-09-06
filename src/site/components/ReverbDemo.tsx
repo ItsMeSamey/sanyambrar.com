@@ -1,4 +1,5 @@
-import { onCleanup, onMount } from 'solid-js';
+import { readHistoryState } from '../../shared/history.ts';
+import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
@@ -29,7 +30,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
   let previousBodyOverflow = '';
   let previousHtmlOverflow = '';
 
-  const stateIsOurs = () => Boolean(history.state && history.state[FULLSCREEN_STATE_KEY] === token);
+  const stateIsOurs = () => Boolean(readHistoryState() && readHistoryState()[FULLSCREEN_STATE_KEY] === token);
 
   const setFullscreen = (next: boolean) => {
     if (next === active) return;
@@ -57,7 +58,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const enterFullscreen = () => {
     if (active) return;
-    const state = history.state && typeof history.state === 'object' ? history.state : {};
+    const state = readHistoryState() && typeof readHistoryState() === 'object' ? readHistoryState() : {};
     history.pushState({ ...state, [FULLSCREEN_STATE_KEY]: token }, '', location.href);
     setFullscreen(true);
   };
@@ -158,7 +159,7 @@ export function ReverbDemo() {
   let host!: HTMLDivElement;
   let fullscreenButton!: HTMLButtonElement;
   let dispose = () => {};
-  onMount(() => {
+  onSettled(() => {
     const disposeDemo = mountReverbDemo(host);
     const disposeFullscreen = installFullscreen(frame, host, fullscreenButton);
     dispose = () => { disposeFullscreen(); disposeDemo(); };

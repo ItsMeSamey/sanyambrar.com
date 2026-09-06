@@ -4,7 +4,7 @@ import { useScreenSize } from "../../hooks/index.ts";
 import { getBoundingBox, querySelector } from "../../utils/index.ts";
 import { type MouseProps } from "../types.ts";
 import * as styles from "./Popup.module.css";
-import { splitProps, mergeProps } from "solid-js";
+import { omit, merge } from 'solid-js';
 export type PopupProps = {
     readonly anchor?: Element | string;
     readonly arrow?: boolean;
@@ -13,8 +13,8 @@ export type PopupProps = {
     readonly offset?: number;
 } & MouseProps;
 export function Popup(solidAllProps: PopupProps): ReactNode {
-    const solidMergedProps = mergeProps({ arrow: true, offset: 20 }, solidAllProps);
-    const [solidLocal, props] = splitProps(solidMergedProps, ["anchor", "arrow", "children", "position", "offset"]);
+    const solidMergedProps = merge(solidAllProps, { get arrow() { return solidAllProps.arrow ?? true; }, get offset() { return solidAllProps.offset ?? 20; } });
+    const solidLocal = solidMergedProps, props = omit(solidMergedProps, "anchor", "arrow", "children", "position", "offset");
     const rootRef = useRef<HTMLDivElement>(null);
     const arrowRef = useRef<HTMLDivElement>(null);
     const options = useMemo(() => ({ position: solidLocal.position, offset: solidLocal.offset }), () => [solidLocal.position, solidLocal.offset]);

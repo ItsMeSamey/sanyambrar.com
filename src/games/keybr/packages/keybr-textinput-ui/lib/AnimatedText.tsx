@@ -1,7 +1,7 @@
 import { Tasks } from "@keybr/lang";
 import { type Char, type TextDisplaySettings, TextInput } from "@keybr/textinput";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { createEffect, createMemo, createSignal } from 'solid-js';
 import { StaticText } from "./StaticText.tsx";
 import { type TextLineSize } from "./TextLines.tsx";
 
@@ -38,8 +38,7 @@ function useAnimatedTextState(text: () => string): () => readonly Char[] {
   );
   const [chars, setChars] = createSignal<readonly Char[]>([]);
 
-  createEffect(() => {
-    const input = textInput();
+  createEffect(textInput, input => {
     setChars(input.chars);
     const tasks = new Tasks();
     tasks.repeated(500, () => {
@@ -47,7 +46,7 @@ function useAnimatedTextState(text: () => string): () => readonly Char[] {
       else input.appendChar(0, input.at(input.pos).codePoint, 0);
       setChars(input.chars);
     });
-    onCleanup(() => tasks.cancelAll());
+    return () => tasks.cancelAll();
   });
 
   return chars;

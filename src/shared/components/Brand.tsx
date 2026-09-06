@@ -17,8 +17,8 @@ export function WordleMark(props:{text:string;colors:readonly SemanticRole[];cla
   const role = (index:number) => props.colors[index % props.colors.length] ?? 'accent';
   return <span class={`wordle-text-mark${props.class ? ` ${props.class}` : ''}`} aria-label={props.ariaLabel ?? text()}>
     <For each={text().split('')}>{(letter, index) => {
-      const name = role(index());
-      return <i style={{background: `var(--site-${name}-fg)`, color: `var(--site-${name}-on-fg)`}}>{letter}</i>;
+      const name = () => role(index());
+      return <i style={{background: `var(--site-${name()}-fg)`, color: `var(--site-${name()}-on-fg)`}}>{letter}</i>;
     }}</For>
   </span>;
 }

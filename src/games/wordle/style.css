@@ -154,11 +154,9 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
   width: min(560px, calc(100vw - 24px)) !important;
   padding: 18px 20px !important;
   border-radius: 6px;
-  animation: result-pop .04s ease-out;
 }
 .result-dialog h2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; margin: 0; font-size: clamp(1.55rem, 6vw, 2.2rem); line-height: 1.1; letter-spacing: .08em; overflow-wrap: anywhere; }
 .result-dialog p { margin: 9px 0 0; font-size: clamp(1rem, 4vw, 1.3rem); line-height: 1.35; }
-@keyframes result-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.985); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 .stats-guess-board { border: 0; padding: 0; }
 @media (max-width:520px) { .result-dialog { width: calc(100vw - 16px) !important; padding: 14px !important; } }
 
@@ -171,7 +169,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 .result-dialog { width: min(620px, calc(100vw - 24px)) !important; max-height: min(90dvh, 760px); overflow: auto; padding: 22px !important; }
 .result-kicker { display: block; color: var(--color-muted-foreground); font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.result-dialog .result-word { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: clamp(1.8rem, 8vw, 3.4rem); letter-spacing: .1em; }
+.result-dialog .result-word { margin-top: 7px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: clamp(1.45rem, 8vw, 3.4rem); letter-spacing: .1em; }
 .result-copy { margin-top: 8px !important; color: var(--color-muted-foreground); font-size: .96rem !important; }
 .result-copy strong { color: var(--color-foreground); }
 .result-actions { display: flex; gap: 8px; margin-top: 6px; }
@@ -287,8 +285,8 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 .result-dialog { overflow-x: hidden; }
 .result-dialog .result-word { min-width: 0; max-width: 100%; }
-.result-answer { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
 .result-dialog .result-word { overflow-wrap: anywhere; word-break: break-word; }
+.result-answer { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .result-dialog .wordle-share-trigger { flex: 0 0 36px; }
 .result-actions { min-width: 0; flex-wrap: wrap; }
 .result-actions button { min-width: min(100%, 9rem); overflow-wrap: anywhere; }
@@ -330,6 +328,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
   min-width: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 .wordle-share-dialog > *,
 .wordle-share-header,
@@ -343,7 +342,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 /* Semantic Kobalte primitives. These replace retired Tailwind utilities. */
 .samey-dialog-overlay { position: fixed; inset: 0; z-index: 50; background: var(--site-shadow-9); }
-.samey-dialog { position: fixed; left: 50%; top: 50%; z-index: 51; width: min(100%, 32rem); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); transform: translate(-50%, -50%); overflow: auto; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); }
+.samey-dialog { position: fixed; inset: 0; z-index: 51; width: min(100%, 32rem); height: fit-content; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); margin: auto; box-sizing: border-box; transform: none; transform-origin: center !important; overflow: auto; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); }
 .samey-popover { z-index: 50; padding: 1rem; border: 1px solid var(--color-border); border-radius: .375rem; background: var(--color-popover); color: var(--color-popover-foreground); box-shadow: 0 8px 22px var(--site-shadow-3); }
 .samey-tooltip { z-index: 60; padding: .375rem .625rem; border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent); border-radius: .375rem; background: var(--color-foreground); color: var(--site-on-fg, #fff); box-shadow: 0 8px 22px var(--site-shadow-4); font-size: .75rem; }
 .samey-slider-track { position: relative; width: 100%; height: 1rem; flex-grow: 1; overflow: visible; border-radius: 999px; background: var(--color-secondary); }
@@ -427,3 +426,9 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 /* Rectilinear game controls make construction transitions read as edges, not hover pills. */
 [data-wordle-root] button{border-radius:0!important}
+
+@media (max-width: 320px) {
+  .result-dialog { padding: 9px !important; }
+  .result-dialog .result-word { gap: 8px; font-size: clamp(1.35rem, 8vw, 1.8rem); }
+  .wordle-share-dialog { padding: 10px !important; }
+}

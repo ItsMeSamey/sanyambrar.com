@@ -1,4 +1,4 @@
-import { createSignal, type Accessor, untrack } from "solid-js";
+import { createSignal, type Accessor, untrack } from 'solid-js';
 import { type AnyProp } from "./props.ts";
 import { Settings } from "./settings.ts";
 
@@ -48,8 +48,8 @@ export function createReactiveSettings(initial: Settings): {
           isNewRevision();
           return untrack(current).isNew;
         default: {
-          const value = Reflect.get(untrack(current), key, untrack(current));
-          return typeof value === "function" ? value.bind(untrack(current)) : value;
+          const value: unknown = Reflect.get(untrack(current), key, untrack(current));
+          return typeof value === "function" ? (...args: unknown[]): unknown => Reflect.apply(value, untrack(current), args) : value;
         }
       }
     },

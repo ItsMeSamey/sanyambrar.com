@@ -1,5 +1,5 @@
-import { type JSX } from "solid-js";
-import { Portal as SolidPortal } from "solid-js/web";
+import { type JSX } from '@solidjs/web';
+import { Portal as SolidPortal } from '@solidjs/web';
 import { querySelector } from "../../utils/query.ts";
 
 export function Portal(props: { readonly children: JSX.Element; readonly key?: null | string }): JSX.Element {

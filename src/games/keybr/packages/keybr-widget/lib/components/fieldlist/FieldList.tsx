@@ -1,5 +1,5 @@
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from '@solidjs/web';
 import { sizeClassName, styleSizeFill } from "../../styles/size.ts";
 import * as styles from "./FieldList.module.css";
 import { type FieldListProps, type FieldProps } from "./FieldList.types.ts";

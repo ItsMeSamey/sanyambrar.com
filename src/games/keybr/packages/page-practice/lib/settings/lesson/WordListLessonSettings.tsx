@@ -4,7 +4,7 @@ import { lessonProps, type WordListLesson } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { createMemo } from "solid-js";
+import { createMemo } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";

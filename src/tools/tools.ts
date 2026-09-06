@@ -270,7 +270,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     for (; n; n >>= 8n) out.unshift(Number(n & 255n));
     let zeroes = 0;
     while (zeroes < text.length && text[zeroes] === alphabet[0]) zeroes++;
-    return Uint8Array.from([...Array(zeroes).fill(0), ...out]);
+    return Uint8Array.from([...Array<number>(zeroes).fill(0), ...out]);
   };
   const hE = (bytes: Uint8Array) => [...bytes].map(value => value.toString(16).padStart(2, '0')).join('');
   const hD = (text: string) => {
@@ -334,7 +334,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     if (format === 'url') return decode ? decodeURIComponent(text) : encodeURIComponent(text);
     if (format === 'html') return decode ? htmlD(text) : htmlE(text);
     if (format === 'json') {
-      if (decode) { const value = JSON.parse(text); if (typeof value !== 'string') throw Error('JSON value is not a string'); return value; }
+      if (decode) { const value: unknown = JSON.parse(text); if (typeof value !== 'string') throw Error('JSON value is not a string'); return value; }
       return JSON.stringify(text);
     }
     if (format === 'unicode') return decode ? uniD(text) : uniE(text);

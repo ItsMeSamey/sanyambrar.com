@@ -188,6 +188,12 @@
 		writable: false
 	});
 	//#endregion
+	//#region src/shared/history.ts
+	function readHistoryState() {
+		const value = history.state;
+		return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
+	}
+	//#endregion
 	//#region src/shared/transitions.ts
 	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 	var nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -1575,7 +1581,7 @@
 		const replaceState = history.replaceState.bind(history);
 		const NAV_INDEX_KEY = "__sameyNavIndex";
 		const readNavigationIndex = () => {
-			const value = history.state?.[NAV_INDEX_KEY];
+			const value = readHistoryState()?.[NAV_INDEX_KEY];
 			return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
 		};
 		let pageHistoryIndex = readNavigationIndex() ?? 0;
@@ -1584,7 +1590,7 @@
 			if (current != null) pageHistoryIndex = current;
 			if (!replace) pageHistoryIndex += 1;
 			const state = {
-				...history.state || {},
+				...readHistoryState() || {},
 				[NAV_INDEX_KEY]: pageHistoryIndex
 			};
 			(replace ? replaceState : pushState)(state, "", url.href);
@@ -3271,7 +3277,7 @@
 		};
 		const mountRuntime = () => {
 			if (readNavigationIndex() == null) replaceState({
-				...history.state || {},
+				...readHistoryState() || {},
 				[NAV_INDEX_KEY]: pageHistoryIndex
 			}, "", location.href);
 			normalizeExternalLinks();

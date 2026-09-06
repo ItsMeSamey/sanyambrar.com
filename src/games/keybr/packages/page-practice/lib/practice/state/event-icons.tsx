@@ -2,8 +2,8 @@ import { type ClassName } from "@keybr/widget";
 import { mdiAlarmCheck, mdiTrophy } from "@keybr/solid-compat/mdi";
 import { clsx } from "@keybr/solid-compat/clsx";
 import * as styles from "./event-icons.module.css";
-import { Dynamic } from "solid-js/web";
-import { type LucideIcon } from "lucide-solid";
+import { Dynamic } from '@solidjs/web';
+import { type LucideIcon } from '../../../../../../../ui-kit/components/lucide.tsx';
 export function TrophyIcon() {
     return <Icon shape={mdiTrophy} className={styles.trophy}/>;
 }

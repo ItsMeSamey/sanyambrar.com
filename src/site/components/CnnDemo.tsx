@@ -1,4 +1,4 @@
-import { batch, createSignal, For, onCleanup, onMount } from 'solid-js';
+import { createSignal, For, onCleanup, onSettled } from 'solid-js';
 
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
@@ -74,9 +74,9 @@ export function CnnDemo() {
     inkColor = style.getPropertyValue('--site-accent').trim() || style.getPropertyValue('--site-fg').trim() || '#777';
   };
 
-  const configureBrush = () => {
+  const configureBrush = (level = inkLevel()) => {
     drawContext.globalCompositeOperation = 'source-over';
-    drawContext.globalAlpha = inkLevel();
+    drawContext.globalAlpha = level;
     drawContext.fillStyle = inkColor;
     drawContext.strokeStyle = inkColor;
     drawContext.lineWidth = 19;
@@ -114,10 +114,10 @@ export function CnnDemo() {
     return input;
   };
 
-  const clearResult = () => batch(() => {
+  const clearResult = () => {
     setScores(emptyScores());
     setPredictedClass(null);
-  });
+  };
 
   const inferLatest = () => {
     inferenceFrame = 0;
@@ -225,8 +225,9 @@ export function CnnDemo() {
   };
 
   const onInkInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-    setInkLevel(Number(event.currentTarget.value) / 100);
-    configureBrush();
+    const level = Number(event.currentTarget.value) / 100;
+    setInkLevel(level);
+    configureBrush(level);
   };
 
   const inkFill = () => {
@@ -234,7 +235,7 @@ export function CnnDemo() {
     return `calc(${ratio * 100}% + ${8 - ratio * 16}px)`;
   };
 
-  onMount(() => {
+  onSettled(() => {
     canvas.width = DRAW_SIZE;
     canvas.height = DRAW_SIZE;
     // The visible canvas is draw-only. Keeping willReadFrequently off lets
@@ -282,10 +283,8 @@ export function CnnDemo() {
           // Show every completed prediction even if a newer canvas state is
           // already dirty. The next inference immediately catches up instead
           // of hiding useful in-flight results until drawing stops.
-          batch(() => {
-            setScores(next);
-            setPredictedClass(message.classId);
-          });
+          setScores(next);
+          setPredictedClass(message.classId);
         }
         if (inferenceDirty && inkPresent) queueInference();
         return;

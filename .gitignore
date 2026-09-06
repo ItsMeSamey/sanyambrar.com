@@ -1,6 +1,9 @@
 bun.lock
-node_modules/
-keybr/node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+node_modules
+keybr/node_modules
 dist/
 .build/
 *.tsbuildinfo
@@ -26,3 +29,8 @@ Archive.tar.gz
 !docs/vditor/
 !docs/vditor/dist/
 !docs/vditor/dist/**
+
+.tmp/
+.worktree/
+playwright-report/
+test-results/

@@ -1,9 +1,10 @@
-import { splitProps, type ComponentProps } from 'solid-js';
+import { omit } from 'solid-js';
+import { type ComponentProps } from '@solidjs/web';
 
 type SmartLinkProps = ComponentProps<'a'> & { preload?: boolean };
 
-function prefetch(href: string | undefined) {
-  if (!href) return;
+function prefetch(href: unknown) {
+  if (typeof href !== 'string' || !href) return;
   try {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) return;
@@ -13,7 +14,7 @@ function prefetch(href: string | undefined) {
 }
 
 export function SmartLink(props: SmartLinkProps) {
-  const [local, rest] = splitProps(props, ['href', 'preload', 'onPointerEnter', 'onPointerDown', 'onFocus']);
+  const local = props, rest = omit(props, 'href', 'preload', 'onPointerEnter', 'onPointerDown', 'onFocus');
   const shouldPreload = () => local.preload !== false;
   return <a
     {...rest}

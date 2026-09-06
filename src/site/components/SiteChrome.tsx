@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 
 const PERSONAL_GITHUB = 'https://github.com/ItsMeSamey';

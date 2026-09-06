@@ -1,4 +1,4 @@
-import { type Accessor, untrack } from "solid-js";
+import { type Accessor, untrack } from 'solid-js';
 
 export const LIVE_ACCESSOR = Symbol("keybr.liveAccessor");
 
@@ -44,6 +44,6 @@ export function liveArray<T>(read: Accessor<readonly T[]>): readonly T[] {
 }
 
 export function touchLive(value: object): void {
-  const read = Reflect.get(value, LIVE_ACCESSOR);
-  if (typeof read === "function") read();
+  const read: unknown = Reflect.get(value, LIVE_ACCESSOR);
+  if (typeof read === "function") Reflect.apply(read, value, []);
 }

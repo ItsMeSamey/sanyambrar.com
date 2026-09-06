@@ -64,7 +64,7 @@ async function directDependenciesPresent(dir: string) {
     if (typeof value !== "string") return false;
     const installed = join(dir, "node_modules", ...name.split("/"), "package.json");
     if (!existsSync(installed)) return false;
-    if (satisfies && /^[~^<>=*\dv. -]+$/.test(value)) {
+    if (satisfies && /^[~^<>=*\da-zA-Z.+| -]+$/.test(value)) {
       const version = (await readJsonRecord(installed)).version;
       if (typeof version !== "string" || !satisfies(version, value)) return false;
     }
@@ -88,7 +88,7 @@ async function ensureDepsUnlocked(dir: string) {
     return;
   }
 
-  const installArgs = existsSync(lock) ? ["install", "--frozen-lockfile"] : ["install"];
+  const installArgs = existsSync(lock) ? ["install", "--ignore-scripts", "--frozen-lockfile"] : ["install", "--ignore-scripts"];
   try {
     await run(dir, process.execPath, installArgs);
   } catch (error: unknown) {
@@ -204,7 +204,7 @@ async function verifySourceArchitecture() {
   const keybrSolidRuntime = `${keybrEntry}
 ${keybrApp}
 ${keybrViewSwitch}`;
-  must(keybrSolidRuntime.includes('from "solid-js"') && keybrSolidRuntime.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
+  must(/from ['"]solid-js['"]/.test(keybrSolidRuntime) && /from ['"]@solidjs\/web['"]/.test(keybrSolidRuntime), "architecture: Keybr must use SolidJS");
   must(!sources.some(([, text]) => /@mdi\/|material-symbol|material-icons/.test(text)),
     "architecture: UI icons must use Lucide rather than mixed Material/MDI sets");
   const wordleVite = viteConfigs[0][1];
@@ -265,7 +265,7 @@ ${keybrViewSwitch}`;
     !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
     "ux: Wordle subpages must render boxed <WORDLE cells and completion must not render a recap board");
   must(wordleBrand.includes("colors:readonly SemanticRole[]") && wordleBrand.includes("props.colors[index % props.colors.length]") &&
-    wordleBrand.includes("--site-${name}-on-fg"),
+    wordleBrand.includes("--site-${name()}-on-fg"),
     "architecture: Wordle text rendering must be centralized and use contrast-aware semantic colors");
   must(wordleStyle.includes("--wordle-key-neutral: color-mix(in srgb,var(--site-fg") &&
     wordleStyle.includes("var(--wordle-state-r-bg)") && wordleStyle.includes("var(--wordle-state-r-fg)") &&
@@ -281,7 +281,7 @@ ${keybrViewSwitch}`;
     wordleDatePicker.includes("solid-ui.com/docs/components/date-picker") && wordleDatePicker.includes("data-completed") &&
     wordleHistory.includes("getCompletedDailyDates"),
     "ux: Wordle Daily selection must use the Solid UI-style calendar and mark completed dates");
-  must(wordleWordList.includes("playableNextLetters") && wordlePage.includes("playableNextLetters(this.hard.wordLength, prefix, this.disabled)"),
+  must(wordleWordList.includes("playableNextLetters") && wordlePage.includes("playableNextLetters(this.state.hard.wordLength, this.state.currentEntry[0].toLowerCase(), this.state.disabled)"),
     "correctness: Wordle fast invalidate suggestions must have an excluded-letter-free full continuation");
   must(wordleStyle.includes("radial-gradient(ellipse at 50% 45%") &&
     wordleStyle.includes(".wordle-key-suggested{position:relative;z-index:2;outline:2px solid"),
@@ -518,7 +518,7 @@ ${keybrViewSwitch}`;
     cnnWorkerSource.includes("MessageEvent<unknown>") && cnnWorkerSource.includes("Record<string, unknown>") &&
     cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
     existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
-    cnnDemoSource.includes("drawContext.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
+    cnnDemoSource.includes("drawContext.globalAlpha = level") && cnnDemoSource.includes("configureBrush(level)") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
     cnnDemoSource.includes('class="game-range-shell"') && cnnDemoSource.includes('class="game-settings-action cnn-clear"') &&
     cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
     !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
@@ -735,7 +735,7 @@ ${keybrViewSwitch}`;
     !keybrCaret.includes('{ left: `${fromLeft}px`, top: `${fromTop}px` }') &&
     !settingsMotionCss.includes('transition: left 100ms') && !settingsMotionCss.includes('transition: width 100ms'),
     "performance: typing caret and sliders must not add positional interpolation latency on the main thread");
-  must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
+  must(keybrPracticeScreen.includes("createEffect(() => ({ value: progress(), lesson: props.lesson }), ({ value, lesson }) => {") && keybrPracticeScreen.includes("const seedResults = lesson.filter(results)") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   must(keybrLessonSettings.includes('SameyAnimateLocalSwap') &&
@@ -797,14 +797,14 @@ ${keybrViewSwitch}`;
     "ux: loading must use the shared top strip and Keybr keyboard pointers must follow the foreground theme");
   const popoverSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/popover.tsx"), "utf8");
   const dialogSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/dialog.tsx"), "utf8");
-  const tooltipSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx"), "utf8");
+  const shareSource = await readFile(join(ROOT, "src/games/wordle/page_share.tsx"), "utf8");
   must(sharedCss.includes("--samey-z-link-fill:2147483000") && sharedCss.includes("--samey-z-overlay:2147483644") &&
     sharedCss.includes("[data-samey-overlay]{z-index:var(--samey-z-overlay)!important}") &&
     sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('refreshFillOcclusionRects') &&
     sharedTheme.includes('zIndexOf(overlay) > fillZ') && sharedTheme.includes('const subtractRect = (rect: FillRect, hole: FillRect): FillRect[] =>') &&
     sharedTheme.includes('samey-cursor-link-fill-slice') &&
     !sharedTheme.includes('linkBlockedByOverlay') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
-    popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && tooltipSource.includes("data-samey-overlay=''") &&
+    popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && shareSource.includes("title='Share'") && !shareSource.includes("Tooltip") &&
     !sharedTheme.includes('querySelector(".samey-cursor-link-fill")?.setAttribute("hidden"') &&
     blogSource.includes("<main data-text-cursor-zone>") && homeSource.includes('home-writing-detail" data-text-cursor-zone'),
     "ux: prose cursor zones must work with overlay-aware link inversion and a discontinuous cursor blend source");

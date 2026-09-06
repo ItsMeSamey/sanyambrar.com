@@ -1,4 +1,4 @@
-import { createContext, useContext } from "solid-js";
+import { createContext, useContext } from 'solid-js';
 import { type Result } from "./result.ts";
 
 export type ResultContextProps = {
