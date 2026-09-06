@@ -119,11 +119,12 @@ export function enumProp(
   all: EnumLike,
   defaultValue: number,
 ): EnumProp {
-  const map = new Map();
+  const names = new Map<number, string>();
+  const values = new Map<string, number>();
   for (const [from, to] of Object.entries(all)) {
     if (typeof from === "string" && typeof to === "number") {
-      map.set(from.toLowerCase(), to);
-      map.set(to, from.toLowerCase());
+      values.set(from.toLowerCase(), to);
+      names.set(to, from.toLowerCase());
     }
   }
   return {
@@ -132,11 +133,11 @@ export function enumProp(
     defaultValue,
     all,
     toJson(value: number): unknown {
-      return map.get(value);
+      return names.get(value);
     },
     fromJson(value: unknown, defaultValue0 = defaultValue): number {
       return typeof value === "string"
-        ? (map.get(value) ?? defaultValue0)
+        ? (values.get(value) ?? defaultValue0)
         : defaultValue0;
     },
   };

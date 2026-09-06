@@ -1,12 +1,11 @@
 'use strict'
 
-import ShareIcon from 'lucide-solid/icons/share'
-import { Accessor, createSignal, JSX, onCleanup } from 'solid-js'
-import { Tooltip, TooltipContent, TooltipTrigger } from '~/registry/ui/tooltip'
+import { Share as ShareIcon } from '../../ui-kit/components/lucide.tsx'
+import { type Accessor, createSignal, createStore, onCleanup, snapshot, untrack } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog'
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '~/registry/ui/button'
-import { createMutable, unwrap } from 'solid-js/store'
 import { showError } from '../../utils/toast'
 import { binarySearch } from './word-list'
 import { challengeUrl, isWordLength } from './challenge'
@@ -14,26 +13,26 @@ import { challengeUrl, isWordLength } from './challenge'
 export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftProps, hard: SettingsHardProps}): JSX.Element {
   const [open, setOpen] = createSignal(false)
   const [copyButtonText, setCopyButtonText] = createSignal<string>('Copy')
-  const soft: SettingsSoftProps = createMutable(unwrap(props.soft))
-  const hard: SettingsHardProps = createMutable(unwrap(props.hard))
+  const [soft, setSoft] = createStore(snapshot(untrack(() => props.soft)))
+  const [hard, setHard] = createStore(snapshot(untrack(() => props.hard)))
 
   let idx: number = -1
   let copyResetTimer: ReturnType<typeof setTimeout> | undefined
   onCleanup(() => clearTimeout(copyResetTimer))
 
   return <Dialog open={open()} onOpenChange={setOpen}>
-    <Tooltip>
-      <DialogTrigger as={TooltipTrigger} type='button' class='wordle-share-trigger' aria-label='Share' onClick={e => e.stopPropagation()}>
-        <ShareIcon class='size-5 stroke-foreground' />
-      </DialogTrigger>
-      <TooltipContent>Share</TooltipContent>
-    </Tooltip>
-    <DialogContent class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
+    <DialogTrigger type='button' class='wordle-share-trigger' aria-label='Share' title='Share' onClick={event => event.stopPropagation()}>
+      <ShareIcon class='size-5 stroke-foreground' />
+    </DialogTrigger>
+    <DialogContent aria-label='Share Wordle challenge' class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
       <DialogHeader class='wordle-share-header flex flex-row gap-2 items-center'>
         <span>Share</span> <span class='wordle-share-word wordle-revealed-text font-bold uppercase'>{props.word()}</span>
       </DialogHeader>
 
-      <SettingsKnobs soft={soft} hard={hard} showWordLength={false} />
+      <SettingsKnobs soft={soft} hard={hard} showWordLength={false}
+        onSoftChange={patch => setSoft(draft => { Object.assign(draft, patch) })}
+        onHardChange={patch => setHard(draft => { Object.assign(draft, patch) })}
+      />
 
       <DialogFooter class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button

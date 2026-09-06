@@ -3,9 +3,9 @@ import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat
 import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./IconButton.module.css";
 import { type IconButtonProps } from "./IconButton.types.ts";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 export function IconButton(solidAllProps: IconButtonProps): ReactNode {
-    const [solidLocal, props] = splitProps(solidAllProps, ["anchor", "children", "disabled", "icon", "label", "ref", "tabIndex", "title"]);
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "disabled", "icon", "label", "ref", "tabIndex", "title");
     const element = useRef<HTMLButtonElement>(null);
     useImperativeHandle(solidLocal.ref, () => ({
         focus() {
@@ -23,7 +23,7 @@ export function IconButton(solidAllProps: IconButtonProps): ReactNode {
     if (solidLocal.children != null || solidLocal.label != null) {
         throw new TypeError();
     }
-    return (<button {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.disabled && styles.disabled)} disabled={solidLocal.disabled} tabIndex={solidLocal.tabIndex} title={solidLocal.title}>
+    return (<button {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.disabled && styles.disabled)} disabled={solidLocal.disabled} tabindex={solidLocal.tabIndex} title={solidLocal.title}>
       {solidLocal.icon}
     </button>);
 }

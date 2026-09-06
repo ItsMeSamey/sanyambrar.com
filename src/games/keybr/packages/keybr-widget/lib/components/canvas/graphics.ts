@@ -220,12 +220,16 @@ export class Shapes {
   }
 }
 
+function isShapeArray(value: ShapeList): value is readonly ShapeList[] {
+  return Array.isArray(value);
+}
+
 function paintShapes(g: Graphics, ...shapes: readonly ShapeList[]): void {
   for (const item of shapes) {
     if (item == null || item === false) {
       continue;
     }
-    if (typeof item === "object" && Array.isArray(item)) {
+    if (isShapeArray(item)) {
       paintShapes(g, ...item);
       continue;
     }

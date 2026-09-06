@@ -1,16 +1,5 @@
-import {
-  children as resolveChildren,
-  createContext,
-  createEffect,
-  createMemo,
-  createRenderEffect,
-  createSignal,
-  onCleanup,
-  untrack,
-  useContext,
-  type JSX,
-  type ValidComponent,
-} from "solid-js";
+import { children as resolveChildren, createContext, createEffect, createTrackedEffect, onSettled, createMemo, createSignal, untrack, useContext } from 'solid-js';
+import { type JSX, type ValidComponent } from '@solidjs/web';
 import { liveObject, touchLive } from "./live.ts";
 
 export { createContext, useContext };
@@ -34,7 +23,8 @@ export type WheelEventHandler<T extends Element = Element> = (event: WheelEvent 
 type PropsOf<T> = T extends (props: infer P) => unknown ? P : never;
 export function memo<T>(component: T, _compare?: (prev: PropsOf<T>, next: PropsOf<T>) => boolean): T { return component; }
 export function useState<T>(initial: T | (() => T)) {
-  return createSignal(typeof initial === "function" ? (initial as () => T)() : initial);
+  const value = untrack(() => typeof initial === "function" ? (initial as () => T)() : initial);
+  return createSignal(() => value);
 }
 export function useMemo<T>(factory: () => T, deps?: (() => readonly unknown[]) | readonly unknown[]): T {
   const value = createMemo(() => {
@@ -54,41 +44,30 @@ export function useRef<T>(initial: T | null = null): RefObject<T> { return { cur
 export function createRef<T>(): RefObject<T> { return { current: null }; }
 export function useImperativeHandle<T>(ref: RefObject<T> | undefined, factory: () => T): void {
   if (ref == null) return;
-  createRenderEffect(() => { ref.current = factory(); });
-  onCleanup(() => { ref.current = null; });
+  onSettled(() => {
+    ref.current = factory();
+    return () => { ref.current = null; };
+  });
 }
 export function useEffect(effect: () => void | (() => void), deps?: (() => readonly unknown[]) | readonly unknown[]): void {
-  if (typeof deps === "function") {
-    createEffect(() => {
-      const values = deps();
-      touchDeps(values);
-      const cleanup = untrack(effect);
-      if (typeof cleanup === "function") onCleanup(cleanup);
-    });
-  } else if (deps != null) {
-    createEffect(() => {
-      const cleanup = effect();
-      if (typeof cleanup === "function") onCleanup(cleanup);
-    });
-  } else {
-    createEffect(() => {
-      const cleanup = effect();
-      if (typeof cleanup === "function") onCleanup(cleanup);
-    });
+  if (deps == null) {
+    // Some ported canvas painters discover dependencies inside the paint call.
+    createTrackedEffect(effect);
+    return;
   }
+  createEffect(() => {
+    const values = typeof deps === "function" ? deps() : deps;
+    touchDeps(values);
+    return [...values];
+  }, effect);
 }
 export function useLayoutEffect(effect: () => void | (() => void), deps?: (() => readonly unknown[]) | readonly unknown[]): void {
-  // React runs layout effects after refs have been attached to the committed DOM.
-  // A Solid render effect can run while the component is still constructing its
-  // JSX, before refs in the returned tree exist. A normal Solid effect is queued
-  // until the render phase has completed, which preserves the ordering that the
-  // ported React components rely on while still tracking reactive dependencies.
+  // Apply after refs are attached, never while constructing the JSX tree.
   createEffect(() => {
-    if (typeof deps === "function") touchDeps(deps());
-    else if (deps != null) touchDeps(deps);
-    const cleanup = untrack(effect);
-    if (typeof cleanup === "function") onCleanup(cleanup);
-  });
+    const values = typeof deps === "function" ? deps() : deps ?? [];
+    touchDeps(values);
+    return [...values];
+  }, effect);
 }
 
 export const Children = {

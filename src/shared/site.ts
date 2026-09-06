@@ -1,9 +1,9 @@
 import { searchIndex, type Entry } from '../site/data.ts'
 
 const userAgentPlatform = (() => {
-  const data = Reflect.get(navigator, 'userAgentData')
+  const data: unknown = Reflect.get(navigator, 'userAgentData')
   if (!data || typeof data !== 'object') return ''
-  const platform = Reflect.get(data, 'platform')
+  const platform: unknown = Reflect.get(data, 'platform')
   return typeof platform === 'string' ? platform : ''
 })()
 const currentScript = document.currentScript

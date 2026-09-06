@@ -3,7 +3,7 @@ import { Popup, Portal, useHoverPopup } from "@keybr/widget";
 import { useRef } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Calendar.module.css";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, Show } from 'solid-js';
 import { DailyStats as DailyStatsWidget } from "./DailyStats.tsx";
 import { type Effort } from "./effort.ts";
 export function Calendar(solidProps: {

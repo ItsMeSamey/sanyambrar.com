@@ -1,4 +1,5 @@
-import { createContext, useContext, type JSX } from "solid-js";
+import { createContext, useContext } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 
 export type MessageDescriptor = { id?: string; defaultMessage?: string; description?: string };
 export type FormatNumberOptions = Intl.NumberFormatOptions;
@@ -238,7 +239,7 @@ export function FormattedMessage(props: MessageDescriptor & { values?: MessageVa
   return useIntl().formatMessage(props, props.values);
 }
 export function RawIntlProvider(props: { value: IntlShape; children?: JSX.Element }): JSX.Element {
-  return <IntlContext.Provider value={props.value}>{props.children}</IntlContext.Provider>;
+  return <IntlContext value={props.value}>{props.children}</IntlContext>;
 }
 export const IntlProvider = RawIntlProvider;
 

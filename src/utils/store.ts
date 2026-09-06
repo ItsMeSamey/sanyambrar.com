@@ -1,3 +1,4 @@
+import { readHistoryState } from '../shared/history.ts';
 'use strict'
 
 const storageChange = (key: string) => window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key}}))
@@ -96,7 +97,7 @@ export class UrlSearchStore<T> {
     if (value === undefined || value === this.defaultValue) url.searchParams.delete(this.key)
     else url.searchParams.set(this.key, this.toString(value))
 
-    const state = { ...(history.state ?? {}), [this.key]: value }
+    const state = { ...(readHistoryState() ?? {}), [this.key]: value }
     history[replace ? 'replaceState' : 'pushState'](state, '', url)
   }
 }

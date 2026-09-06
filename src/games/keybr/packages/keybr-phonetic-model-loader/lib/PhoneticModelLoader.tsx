@@ -2,7 +2,8 @@ import { catchError } from "@keybr/debug";
 import { type Language } from "@keybr/keyboard";
 import { LoadingProgress } from "@keybr/pages-shared";
 import { type PhoneticModel, PhoneticModelContext } from "@keybr/phonetic-model";
-import { createEffect, createSignal, onCleanup, Show, type JSX } from "solid-js";
+import { createMemo, Loading, Show } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { loaderImpl } from "./loader.ts";
 
 export function PhoneticModelLoader(props: {
@@ -10,16 +11,12 @@ export function PhoneticModelLoader(props: {
   readonly children: (result: PhoneticModel) => JSX.Element;
   readonly fallback?: JSX.Element;
 }) {
-  const [result, setResult] = createSignal<PhoneticModel | null>(null);
-  createEffect(() => {
-    const language = props.language;
-    setResult(null);
-    let cancelled = false;
-    PhoneticModelLoader.loader(language).then(value => { if (!cancelled) setResult(value); }).catch(catchError);
-    onCleanup(() => { cancelled = true; });
-  });
-  return <Show when={result()} fallback={props.fallback ?? <LoadingProgress/>}>
-    {(value) => <PhoneticModelContext.Provider value={value()}>{props.children(value())}</PhoneticModelContext.Provider>}
-  </Show>;
+  const result = createMemo(() => PhoneticModelLoader.loader(props.language).catch(error => {
+    catchError(error);
+    throw error;
+  }));
+  return <Loading fallback={props.fallback ?? <LoadingProgress/>}><Show when={result()}>
+    {(value) => <PhoneticModelContext value={value()}>{props.children(value())}</PhoneticModelContext>}
+  </Show></Loading>;
 }
 PhoneticModelLoader.loader = loaderImpl as PhoneticModel.Loader;

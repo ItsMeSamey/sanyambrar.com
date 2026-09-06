@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from 'solid-js';
+import { onCleanup, onSettled } from 'solid-js';
 
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]] as const;
 
@@ -402,7 +402,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
 export function ChainLiveMark(props: { class?: string }) {
   let canvas!: HTMLCanvasElement;
   let dispose = () => {};
-  onMount(() => { dispose = createLogoController(canvas); });
+  onSettled(() => { dispose = createLogoController(canvas); });
   onCleanup(() => dispose());
   return <span class={`chain-live-mark${props.class ? ` ${props.class}` : ''}`} role="img" aria-label="Chain Reaction">
     <canvas ref={canvas} aria-hidden="true" />

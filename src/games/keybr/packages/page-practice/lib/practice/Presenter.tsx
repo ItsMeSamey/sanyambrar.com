@@ -7,7 +7,8 @@ import { type LineList } from "@keybr/textinput";
 import { type IInputEvent, type IKeyboardEvent, ModifierState } from "@keybr/textinput-events";
 import { TextArea } from "@keybr/textinput-ui";
 import { type Focusable, Zoomer } from "@keybr/widget";
-import { Match, Switch, createSignal, onMount, type JSX } from "solid-js";
+import { Match, Switch, createSignal, onSettled } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { Controls } from "./Controls.tsx";
 import { Indicators } from "./Indicators.tsx";
 import { DeferredKeyboardPresenter } from "./KeyboardPresenter.tsx";
@@ -41,7 +42,7 @@ export function Presenter(props: Props): JSX.Element {
   const [tour, setTour] = createSignal(false);
   const [focus, setFocus] = createSignal(false);
 
-  onMount(() => {
+  onSettled(() => {
     if (props.state.settings.isNew && !Preferences.get(propTourSeen)) {
       Preferences.set(propTourSeen, true);
       setView(View.Normal);

@@ -1,5 +1,7 @@
-import { createContext, createMemo, createSignal, onCleanup, onMount, useContext, type Accessor, type Component, type JSX } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import { readHistoryState } from '../../../../../../../shared/history.ts';
+import { createContext, createMemo, createSignal, onCleanup, onSettled, useContext, type Accessor, type Component } from 'solid-js';
+import { type JSX } from '@solidjs/web';
+import { Dynamic } from '@solidjs/web';
 
 export type ViewName = string;
 export type ViewMap = { readonly [name: ViewName]: Component };
@@ -34,7 +36,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
   };
   const [currentView, setCurrentView] = createSignal<ViewName>(readView());
   const readViewHistoryIndex = () => {
-    const value: unknown = history.state?.keybrViewIndex;
+    const value: unknown = readHistoryState()?.keybrViewIndex;
     return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
   };
   let viewHistoryIndex = readViewHistoryIndex() ?? 0;
@@ -67,7 +69,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
       else url.searchParams.set("p", nextName);
       if (url.href !== location.href) {
         viewHistoryIndex += 1;
-        history.pushState({...(history.state ?? {}), keybrView: nextName, keybrViewIndex: viewHistoryIndex}, "", url);
+        history.pushState({...(readHistoryState() ?? {}), keybrView: nextName, keybrViewIndex: viewHistoryIndex}, "", url);
       }
     }
     setCurrentView(nextName);
@@ -88,14 +90,14 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     if (nextIndex != null) viewHistoryIndex = nextIndex;
     swapView(readView(), false, direction);
   };
-  onMount(() => {
+  onSettled(() => {
     if (readViewHistoryIndex() == null)
-      history.replaceState({...(history.state ?? {}), keybrView: currentView(), keybrViewIndex: viewHistoryIndex}, "", location.href);
+      history.replaceState({...(readHistoryState() ?? {}), keybrView: currentView(), keybrViewIndex: viewHistoryIndex}, "", location.href);
     addEventListener("popstate", onPopState);
   });
   onCleanup(() => removeEventListener("popstate", onPopState));
-  return <ViewContext.Provider value={{ setView, currentView, setBeforeLeave }}>
+  return <ViewContext value={{ setView, currentView, setBeforeLeave }}>
     {props.header?.()}
     <Dynamic component={current()}/>
-  </ViewContext.Provider>;
+  </ViewContext>;
 }

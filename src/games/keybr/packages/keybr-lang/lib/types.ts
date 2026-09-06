@@ -16,9 +16,9 @@ export const isObjectLike = (v: unknown): v is Record<PropertyKey, unknown> => {
   return v != null && typeof v === "object";
 };
 
-export const isPlainObject = (v: unknown): boolean => {
+export const isPlainObject = (v: unknown): v is Record<string, unknown> => {
   if (v != null && typeof v === "object") {
-    const p = Object.getPrototypeOf(v);
+    const p: unknown = Object.getPrototypeOf(v);
     if (p == null || p === Object.prototype) {
       return true;
     }

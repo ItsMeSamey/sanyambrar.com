@@ -1,3 +1,4 @@
+import { readHistoryState } from '../../shared/history.ts';
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
 import type { ChainRefs } from './dom.ts';
 
@@ -63,7 +64,7 @@ export function mountChain(refs: ChainRefs) {
   const PAGE_GAME: Page = 'game';
   const PAGE_STATS: Page = 'stats';
   const readPageHistoryIndex = () => {
-    const value: unknown = history.state?.chainPageIndex;
+    const value: unknown = readHistoryState()?.chainPageIndex;
     return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
   };
   let pageHistoryIndex = readPageHistoryIndex() ?? 0;
@@ -110,7 +111,7 @@ export function mountChain(refs: ChainRefs) {
     else url.searchParams.set(PAGE_QUERY, page);
     if (url.href === location.href) return;
     if (!replace) pageHistoryIndex++;
-    history[replace ? 'replaceState' : 'pushState']({...(history.state || {}), chainPage: page, chainPageIndex: pageHistoryIndex}, '', url);
+    history[replace ? 'replaceState' : 'pushState']({...(readHistoryState() || {}), chainPage: page, chainPageIndex: pageHistoryIndex}, '', url);
   }
 
   function clampInt(value: unknown, min: number, max: number, fallback: number) {
@@ -179,7 +180,7 @@ export function mountChain(refs: ChainRefs) {
     if (!Array.isArray(raw) || raw.length !== count) return createPlayers(enemies);
     const out = [];
     for (let i = 0; i < count; i++) {
-      const item = raw[i] || {};
+      const item = record(raw[i]);
       const id = i + 1;
       const kind = id === HUMAN ? 'human' : 'bot';
       const colorValue = typeof item.color === 'string' && item.color.trim() ? item.color.trim() : semanticPlayerColor(id);
@@ -1416,7 +1417,7 @@ export function mountChain(refs: ChainRefs) {
     else showMenu(false, direction);
   };
   if (readPageHistoryIndex() == null)
-    history.replaceState({...(history.state || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
+    history.replaceState({...(readHistoryState() || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
   addEventListener('popstate', onPopState);
   const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); drawReplay(); };
   const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); drawReplay(); };

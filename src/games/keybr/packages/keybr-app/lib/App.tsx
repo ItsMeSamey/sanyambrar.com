@@ -6,8 +6,9 @@ import { ResultLoader } from "@keybr/result-loader";
 import { SettingsLoader } from "@keybr/settings-loader";
 import { ThemeProvider } from "@keybr/themes";
 import { PortalContainer, Toaster } from "@keybr/widget";
-import { createEffect, createSignal, Show, type JSX } from "solid-js";
-import { render } from "solid-js/web";
+import { createEffect, createSignal, Show } from 'solid-js';
+import { type JSX } from '@solidjs/web';
+import { render } from '@solidjs/web';
 import { type IntlShape, RawIntlProvider } from "@keybr/solid-compat/intl";
 
 export function main(): void {
@@ -22,8 +23,7 @@ export function main(): void {
 
 function Bootstrap(): JSX.Element {
   const intl = useLocalIntl;
-  createEffect(() => {
-    const value = intl();
+  createEffect(intl, value => {
     if (value == null) return;
     document.documentElement.lang = value.locale;
     document.documentElement.dir = ["ar", "fa", "he"].includes(value.locale) ? "rtl" : "ltr";

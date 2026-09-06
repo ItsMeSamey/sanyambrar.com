@@ -5,7 +5,7 @@ import { Name, NameValue, Value } from "@keybr/widget";
 import { clsx } from "@keybr/solid-compat/clsx";
 import { useIntl } from "@keybr/solid-compat/intl";
 import { useFormatter } from "./format.ts";
-import { createMemo, Show } from "solid-js";
+import { createMemo, Show } from 'solid-js';
 import { Happiness } from "./Happiness.tsx";
 import * as styles from "./styles.module.css";
 export const KeyDetails = (solidProps: {

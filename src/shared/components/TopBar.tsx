@@ -1,6 +1,6 @@
-import type { JSX } from 'solid-js';
-import MoonStar from 'lucide-solid/icons/moon-star';
-import Search from 'lucide-solid/icons/search';
+import { type JSX } from '@solidjs/web';
+import { MoonStar } from '../../ui-kit/components/lucide.tsx';
+import { Search } from '../../ui-kit/components/lucide.tsx';
 import { HomeBrand } from './Brand.tsx';
 import { SmartLink } from './NavLink.tsx';
 
@@ -27,7 +27,7 @@ export function TopBarIconButton(props: TopBarButtonProps) {
     role={props.role}
     aria-label={props.label}
     aria-controls={props.ariaControls}
-    aria-expanded={props.ariaExpanded}
+    aria-expanded={props.ariaExpanded == null ? undefined : props.ariaExpanded === true || props.ariaExpanded === 'true' ? 'true' : 'false'}
     disabled={props.disabled}
     title={props.title ?? props.label}
     onClick={props.onClick}

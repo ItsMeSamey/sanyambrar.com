@@ -1,22 +1,23 @@
+import type { ComponentProps } from '@solidjs/web';
 import * as SwitchPrimitive from '@kobalte/core/switch'
-import { splitProps, type ComponentProps } from 'solid-js'
-import { cx } from '~/lib/classes'
+import { omit } from 'solid-js';
 
 export const Switch = SwitchPrimitive.Root
+export const SwitchInput = SwitchPrimitive.Input
 export const SwitchLabel = SwitchPrimitive.Label
 
-export function SwitchControl(props: ComponentProps<typeof SwitchPrimitive.Control>) {
-  const [local, rest] = splitProps(props, ['class'])
+export function SwitchControl(props: SwitchPrimitive.SwitchControlProps & ComponentProps<'div'>) {
+  const local = props, rest = omit(props, 'class')
   return <SwitchPrimitive.Control
-    class={cx('samey-switch-control', local.class)}
+    class={['samey-switch-control', local.class]}
     {...rest}
   />
 }
 
-export function SwitchThumb(props: ComponentProps<typeof SwitchPrimitive.Thumb>) {
-  const [local, rest] = splitProps(props, ['class'])
+export function SwitchThumb(props: SwitchPrimitive.SwitchThumbProps & ComponentProps<'div'>) {
+  const local = props, rest = omit(props, 'class')
   return <SwitchPrimitive.Thumb
-    class={cx('samey-switch-thumb', local.class)}
+    class={['samey-switch-thumb', local.class]}
     {...rest}
   />
 }

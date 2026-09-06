@@ -1,7 +1,8 @@
 import { Tasks } from "@keybr/lang";
 import { mdiCursorMove } from "@keybr/solid-compat/mdi";
 import { clsx } from "@keybr/solid-compat/clsx";
-import { createEffect, createSignal, onCleanup, type JSX } from "solid-js";
+import { createEffect, createSignal, onCleanup } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { useDocumentEvent, useWindowEvent } from "../../hooks/index.ts";
 import { Icon } from "../icon/index.ts";
 import { place } from "./place.ts";
@@ -15,7 +16,7 @@ export function Zoomer(props: ZoomerProps): JSX.Element {
   let root!: HTMLDivElement;
   const [hover, setHover] = createSignal(false);
   const [moving, setMoving] = createSignal(false);
-  const [position, setPosition] = createSignal<ZoomablePosition>((props.id && savedPositions.get(props.id)) || { x: 0, y: 0, zoom: 1 });
+  const [position, setPosition] = createSignal<ZoomablePosition>(() => (props.id && savedPositions.get(props.id)) || { x: 0, y: 0, zoom: 1 });
 
   useDocumentEvent("mousedown", (ev) => {
     if (!moving() && contains(root, ev.target)) {
@@ -32,20 +33,20 @@ export function Zoomer(props: ZoomerProps): JSX.Element {
   });
   useWindowEvent("resize", () => setPosition((p) => place(root).fitToScreen(p)));
 
-  createEffect(() => {
-    const p = position();
-    queueMicrotask(() => {
-      const next = place(root).fitToScreen(p);
-      if (next.x !== p.x || next.y !== p.y || next.zoom !== p.zoom) setPosition(next);
-    });
+  createEffect(position, p => {
+    const next = place(root).fitToScreen(p);
+    if (next.x !== p.x || next.y !== p.y || next.zoom !== p.zoom) setPosition(next);
   });
-  createEffect(() => { if (props.id) savedPositions.set(props.id, position()); });
-  createEffect(() => {
-    if (!hover()) return;
+  createEffect(() => ({ id: props.id, position: position() }), value => {
+    if (value.id) savedPositions.set(value.id, value.position);
+  });
+  createEffect(hover, active => {
+    if (!active) return;
     const tasks = new Tasks();
     tasks.delayed(1000, () => setHover(false));
-    onCleanup(() => tasks.cancelAll());
+    return () => tasks.cancelAll();
   });
+  onCleanup(() => { if (globalMoving.current === root) globalMoving.current = null; });
 
   const child = () => typeof props.children === "function" ? props.children(moving) : props.children;
   return (

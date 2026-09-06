@@ -1,5 +1,5 @@
 import { type ElementType, type HTMLAttributes, type ReactNode } from "@keybr/solid-compat/react";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from '@solidjs/web';
 import { type HeaderProps } from "./Header.types.ts";
 export function Header(props: HeaderProps): ReactNode {
     const component = () => {

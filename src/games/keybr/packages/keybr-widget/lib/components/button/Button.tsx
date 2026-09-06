@@ -5,9 +5,9 @@ import { getBoundingBox } from "../../utils/index.ts";
 import * as iconStyles from "../icon/Icon.module.css";
 import * as styles from "./Button.module.css";
 import { type ButtonProps } from "./Button.types.ts";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 export function Button(solidAllProps: ButtonProps): ReactNode {
-    const [solidLocal, props] = splitProps(solidAllProps, ["anchor", "children", "disabled", "icon", "label", "ref", "size", "tabIndex", "title"]);
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "disabled", "icon", "label", "ref", "size", "tabIndex", "title");
     const element = useRef<HTMLButtonElement>(null);
     useImperativeHandle(solidLocal.ref, () => ({
         focus() {
@@ -22,7 +22,7 @@ export function Button(solidAllProps: ButtonProps): ReactNode {
             return getBoundingBox(element.current!);
         },
     }));
-    return (<button {...props} ref={el => element.current = el} class={clsx(styles.root, iconStyles.altIcon, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} tabIndex={solidLocal.tabIndex} title={solidLocal.title}>
+    return (<button {...props} ref={el => element.current = el} class={clsx(styles.root, iconStyles.altIcon, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} tabindex={solidLocal.tabIndex} title={solidLocal.title}>
       {solidLocal.icon} {solidLocal.label || solidLocal.children}
     </button>);
 }
