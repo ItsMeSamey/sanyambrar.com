@@ -1,4 +1,5 @@
-import { type Accessor, type JSX } from "solid-js";
+import { type Accessor } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 export type ZoomerProps = {
   readonly children: JSX.Element | ((moving: Accessor<boolean>) => JSX.Element);
   readonly id?: string | null;

@@ -1,4 +1,5 @@
-import { Show, createSignal, onCleanup, onMount, type JSX } from 'solid-js';
+import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 
 type Disposer = () => void;
 
@@ -35,7 +36,7 @@ export function EngineBoundary<T>(props: {
     }
   };
 
-  onMount(() => { void start(); });
+  onSettled(() => { void start(); });
   onCleanup(() => {
     disposed = true;
     generation++;

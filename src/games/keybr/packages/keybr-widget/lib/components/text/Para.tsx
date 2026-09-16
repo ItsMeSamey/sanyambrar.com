@@ -1,6 +1,6 @@
 import { clsx } from "@keybr/solid-compat/clsx";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { Dynamic } from "solid-js/web";
+import { Dynamic } from '@solidjs/web';
 import { alignClassName } from "../../styles/index.ts";
 import { type ParaProps } from "./Para.types.ts";
 export function Para(props: ParaProps): ReactNode {

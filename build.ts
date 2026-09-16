@@ -64,7 +64,7 @@ async function directDependenciesPresent(dir: string) {
     if (typeof value !== "string") return false;
     const installed = join(dir, "node_modules", ...name.split("/"), "package.json");
     if (!existsSync(installed)) return false;
-    if (satisfies && /^[~^<>=*\dv. -]+$/.test(value)) {
+    if (satisfies && /^[~^<>=*\da-zA-Z.+| -]+$/.test(value)) {
       const version = (await readJsonRecord(installed)).version;
       if (typeof version !== "string" || !satisfies(version, value)) return false;
     }
@@ -88,7 +88,7 @@ async function ensureDepsUnlocked(dir: string) {
     return;
   }
 
-  const installArgs = existsSync(lock) ? ["install", "--frozen-lockfile"] : ["install"];
+  const installArgs = existsSync(lock) ? ["install", "--ignore-scripts", "--frozen-lockfile"] : ["install", "--ignore-scripts"];
   try {
     await run(dir, process.execPath, installArgs);
   } catch (error: unknown) {
@@ -204,7 +204,7 @@ async function verifySourceArchitecture() {
   const keybrSolidRuntime = `${keybrEntry}
 ${keybrApp}
 ${keybrViewSwitch}`;
-  must(keybrSolidRuntime.includes('from "solid-js"') && keybrSolidRuntime.includes('from "solid-js/web"'), "architecture: Keybr must use SolidJS");
+  must(/from ['"]solid-js['"]/.test(keybrSolidRuntime) && /from ['"]@solidjs\/web['"]/.test(keybrSolidRuntime), "architecture: Keybr must use SolidJS");
   must(!sources.some(([, text]) => /@mdi\/|material-symbol|material-icons/.test(text)),
     "architecture: UI icons must use Lucide rather than mixed Material/MDI sets");
   const wordleVite = viteConfigs[0][1];
@@ -265,7 +265,7 @@ ${keybrViewSwitch}`;
     !wordlePage.includes("result-board") && !wordleStyle.includes(".result-board"),
     "ux: Wordle subpages must render boxed <WORDLE cells and completion must not render a recap board");
   must(wordleBrand.includes("colors:readonly SemanticRole[]") && wordleBrand.includes("props.colors[index % props.colors.length]") &&
-    wordleBrand.includes("--site-${name}-on-fg"),
+    wordleBrand.includes("--site-${name()}-on-fg"),
     "architecture: Wordle text rendering must be centralized and use contrast-aware semantic colors");
   must(wordleStyle.includes("--wordle-key-neutral: color-mix(in srgb,var(--site-fg") &&
     wordleStyle.includes("var(--wordle-state-r-bg)") && wordleStyle.includes("var(--wordle-state-r-fg)") &&
@@ -281,7 +281,7 @@ ${keybrViewSwitch}`;
     wordleDatePicker.includes("solid-ui.com/docs/components/date-picker") && wordleDatePicker.includes("data-completed") &&
     wordleHistory.includes("getCompletedDailyDates"),
     "ux: Wordle Daily selection must use the Solid UI-style calendar and mark completed dates");
-  must(wordleWordList.includes("playableNextLetters") && wordlePage.includes("playableNextLetters(this.hard.wordLength, prefix, this.disabled)"),
+  must(wordleWordList.includes("playableNextLetters") && wordlePage.includes("playableNextLetters(this.state.hard.wordLength, this.state.currentEntry[0].toLowerCase(), this.state.disabled)"),
     "correctness: Wordle fast invalidate suggestions must have an excluded-letter-free full continuation");
   must(wordleStyle.includes("radial-gradient(ellipse at 50% 45%") &&
     wordleStyle.includes(".wordle-key-suggested{position:relative;z-index:2;outline:2px solid"),
@@ -478,29 +478,37 @@ ${keybrViewSwitch}`;
   const sharedSiteStyle = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
   const keybrIndicators = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.tsx"), "utf8");
   const keybrIndicatorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/indicators.module.css"), "utf8");
-  must(homeStyle.includes(".reverb-demo-frame-shell{height:820px;min-height:820px") && reverbDemoHtml.includes(".phone{width:min(412px,100%);height:min(820px,100%);min-height:0") &&
-    reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") && reverbDemoHtml.includes(".stage{padding:0 12px;background:transparent}") && !reverbDemoHtml.includes("@media(max-height:"),
-    "ux: Reverb mobile demo must size against its host, keep side margins, and avoid viewport-height compression");
+  must(homeStyle.includes(".reverb-demo-frame-shell{height:820px;min-height:820px") &&
+    reverbDemoHtml.includes("--status-h:38px") && reverbDemoHtml.includes("--topbar-h:66px") &&
+    reverbDemoHtml.includes("--screen-w:411px") && reverbDemoHtml.includes("--screen-h:912px") &&
+    reverbDemoHtml.includes(".capture-control-cluster{width:256px;height:112px") &&
+    reverbRuntimeSource.includes('const NOISE_URL = new URL("./reverb-noise.png", import.meta.url).href') &&
+    reverbRuntimeSource.includes('"--reverb-noise-size"') && !reverbDemoHtml.includes("@media(max-height:"),
+    "ux: Reverb mock must preserve the measured Android viewport, chrome, control-cluster, and native noise geometry");
   must(reverbDemoHtml.includes("touch-action:pan-y") && reverbDemoHtml.includes("user-select:none") &&
-    reverbRuntimeSource.includes("if(clientY<blobRect.top)return 'settings'") && reverbRuntimeSource.includes("if(clientY>blobRect.bottom)return 'library'") &&
-    reverbRuntimeSource.includes("if(dragMode)phone.addEventListener('pointermove',trackPointerGesture,{passive:true})") &&
-    reverbRuntimeSource.includes("phone.removeEventListener('pointermove',trackPointerGesture)") &&
-    reverbRuntimeSource.includes("Only the reduced gesture regions suppress page scrolling"),
-    "ux: Reverb page scrolling must remain available through the blob while source gestures are limited to regions above/below it");
+    reverbRuntimeSource.includes("function gestureMode(") && reverbRuntimeSource.includes("clientY < rect.top") &&
+    reverbRuntimeSource.includes("clientY > rect.bottom") && reverbRuntimeSource.includes("function completeGesture(") &&
+    reverbRuntimeSource.includes("libraryDragY") && reverbRuntimeSource.includes("Capture screen gestures match the app"),
+    "ux: Reverb capture and library gestures must mirror the Android interaction regions without stealing blob scrolling");
   must(reverbDemoSource.includes('class="reverb-demo-fullscreen-button"') && !reverbDemoHtml.includes('demoFullscreen') && reverbDemoSource.includes("FULLSCREEN_STATE_KEY") &&
     reverbDemoSource.includes("history.pushState") && reverbDemoSource.includes("history.back()") && reverbDemoSource.includes("window.addEventListener('popstate'") &&
     reverbDemoSource.includes("frame.animate([") && reverbDemoSource.includes("installFullscreen(frame, host, fullscreenButton)") && reverbDemoSource.includes("host.setAttribute('data-fullscreen', '')") &&
-    homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") && reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none"),
-    "ux: Reverb fullscreen must fill the viewport with the actual UI, animate, and participate in browser back/forward history");
-  must(reverbDemoHtml.includes("animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) 3") && reverbDemoHtml.includes("@keyframes gesture-hint-life") &&
-    reverbDemoHtml.includes('M27 21a4 4 0 0 1 4 4v18.5') && reverbDemoHtml.includes('M27 41a4 4 0 0 1 4 4v18.5') &&
-    !reverbDemoHtml.includes('M23 30v20.5c0 7.5') && !reverbDemoHtml.includes('M23 50v20.5c0 7.5') &&
-    reverbDemoHtml.includes("--primary:var(--site-accent-fg") && reverbDemoHtml.includes("--surface:color-mix(in srgb,var(--site-bg") &&
-    homeStyle.includes("color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg"),
-    "ux: Reverb gesture teaching must stop after a few loops and its app/page palette must follow the site theme");
-  must(reverbRuntimeSource.includes("function captureSettingsSnapshot()") && reverbRuntimeSource.includes("captureSettingsSnapshot(); setDirty(false)") &&
-    reverbRuntimeSource.includes("oneLimitSeconds=settingsInitial.oneLimitSeconds") && reverbRuntimeSource.includes("setRetentionMode(settingsInitial.retentionMode,false)"),
-    "ux: Reverb Settings undo must restore the last applied snapshot, not page-load defaults");
+    homeStyle.includes(".reverb-demo-frame.is-fullscreen{position:fixed") &&
+    reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;box-shadow:none") &&
+    homeStyle.includes(".reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button") && homeStyle.includes("opacity:0"),
+    "ux: Reverb fullscreen must fill the viewport with unobstructed app chrome and participate in browser back/forward history");
+  must(reverbDemoHtml.includes("--surface:#0a0f10") && reverbDemoHtml.includes("--primary:#9eced6") &&
+    reverbDemoHtml.includes('id="openIncidents"') && reverbDemoHtml.includes('id="libraryScreen"') &&
+    reverbDemoHtml.includes('id="incidentsScreen"') && reverbDemoHtml.includes('id="rangeScreen"') &&
+    reverbDemoHtml.includes("background:#000") && reverbRuntimeSource.includes("0.105+activity*0.030") &&
+    reverbRuntimeSource.includes("targetActivity > currentActivity ? 0.72 : 0.16") &&
+    reverbRuntimeSource.includes("targetBands[i] > currentBands[i] ? 0.68 : 0.13"),
+    "ux: Reverb mock must retain the current Android dark palette, screens, branding, and AudioBlobView renderer constants");
+  must(reverbRuntimeSource.includes("function captureSettingsSnapshot(): SettingsSnapshot") &&
+    reverbRuntimeSource.includes("settingsInitial = captureSettingsSnapshot();") && reverbRuntimeSource.includes("function restoreSettings(): void") &&
+    reverbRuntimeSource.includes("setRetentionMode(retentionMode, false);") && reverbRuntimeSource.includes("setDirty(false);") &&
+    reverbRuntimeSource.includes("settingsReturnScreen"),
+    "ux: Reverb Settings undo must restore the last applied mock snapshot and return to the originating screen");
   must(cnnDemoSource.includes("const INPUT_SIZE = 28") && cnnDemoSource.includes("const DRAW_SIZE = 280") &&
     cnnDemoSource.includes("const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?']") &&
     cnnDemoSource.includes("new Uint8Array(INPUT_SIZE * INPUT_SIZE)") && cnnDemoSource.includes("rgba[i * 4 + 3]") &&
@@ -518,7 +526,7 @@ ${keybrViewSwitch}`;
     cnnWorkerSource.includes("MessageEvent<unknown>") && cnnWorkerSource.includes("Record<string, unknown>") &&
     cnnWorkerSource.includes("exports.class_count()") && cnnWorkerSource.includes("exports.unknown_class()") &&
     existsSync(join(STATIC, "cnn.wasm")) && existsSync(join(STATIC, "cnn-worker.js")) &&
-    cnnDemoSource.includes("drawContext.globalAlpha = inkLevel()") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
+    cnnDemoSource.includes("drawContext.globalAlpha = level") && cnnDemoSource.includes("configureBrush(level)") && cnnDemoSource.includes('class="game-settings-slider cnn-ink-control"') &&
     cnnDemoSource.includes('class="game-range-shell"') && cnnDemoSource.includes('class="game-settings-action cnn-clear"') &&
     cnnDemoSource.includes("samey-themechange") && cnnDemoSource.includes('class="cnn-pad"') && cnnDemoSource.includes('class="cnn-probabilities"') &&
     !cnnDemoSource.includes("0–9, symbols, greys, noise") && !cnnDemoSource.includes("Sketch a digit, symbol, or noise") &&
@@ -535,13 +543,13 @@ ${keybrViewSwitch}`;
     projectPageSource.includes('class="project-description"') && !projectPageSource.includes('class="dek"') && !projectPageSource.includes("What it is") && !projectPageSource.includes("Related") &&
     !reverbDemoSource.includes("Interactive mock of Reverb's current Android interface") && !reverbDemoSource.includes('class="detail-copy reverb-demo-section"') &&
     !cnnDemoSource.includes('class="detail-copy cnn-demo-section"') && homeStyle.includes(".reverb-demo-host{display:block;width:100%;height:100%;min-height:0;overflow:hidden;border:0;border-radius:0") &&
-    reverbDemoHtml.includes("html,body{margin:0;min-height:100%;background:transparent") && reverbDemoHtml.includes("padding:18px;background:transparent") &&
-    reverbDemoHtml.includes("border:6px solid var(--phone-frame);border-radius:38px") && reverbDemoHtml.includes(".phone::before") &&
-    reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none}") &&
-    reverbDemoHtml.includes("--blob-primary:color-mix") && reverbRuntimeSource.includes("--blob-primary") && reverbRuntimeSource.includes("--blob-tertiary") &&
+    reverbDemoHtml.includes("html,body{margin:0;min-height:100%;background:transparent") && reverbDemoHtml.includes(".stage{width:100%;height:100%;min-height:0") &&
+    reverbDemoHtml.includes(".phone{width:min(var(--screen-w),100%);height:min(var(--screen-h),100%)") &&
+    reverbDemoHtml.includes(":host([data-fullscreen]) .phone{width:100%;height:100%;box-shadow:none}") &&
+    reverbDemoHtml.includes("--blob-primary:#9eced6") && reverbRuntimeSource.includes("--blob-primary") && reverbRuntimeSource.includes("--blob-tertiary") &&
     homeStyle.includes(".cnn-demo-shell{position:relative") && homeStyle.includes("border:1px solid color-mix(in srgb,var(--site-line)") &&
     homeStyle.includes(".cnn-pad-wrap{position:relative") && homeStyle.includes("overflow:hidden;border:0;border-radius:0;padding:0"),
-    "ux: project pages must keep source near the title, retain a phone frame only in embedded Reverb, keep fullscreen seamless, theme the blob, frame the CNN demo shell, and leave its canvas unframed");
+    "ux: project pages must keep source near the title, keep Reverb fullscreen seamless and current, frame the CNN demo shell, and leave its canvas unframed");
   const keybrMobileRules = keybrIndicatorStyle.indexOf("@media (max-width: 700px)");
   must(keybrIndicators.includes("styles.keySetRow") && keybrIndicators.includes("styles.keySetValue") && keybrIndicatorStyle.includes(".keySetValue") &&
     keybrMobileRules >= 0 && !keybrIndicatorStyle.slice(0, keybrMobileRules).includes("flex-wrap: nowrap") &&
@@ -724,7 +732,7 @@ ${keybrViewSwitch}`;
     sharedSiteStyle.includes('html:not(.samey-custom-cursor) .samey-cursor{display:none!important}') &&
     !sharedTheme.includes('HARDWARE_EDGE_BROWSER_GUARD') && !sharedTheme.includes('data-hardware-edge') &&
     !sharedTheme.includes('samey-hardware-edgechange') && !sharedSiteStyle.includes('.samey-cursor-hardware-edge') &&
-    sharedSiteStyle.includes('.samey-appearance-tools{display:flex;align-items:center') &&
+    sharedSiteStyle.includes('.samey-appearance-tools{display:flex;flex-wrap:wrap;align-items:center') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor[data-samey-cursor-shape=text]') &&
     sharedSiteStyle.includes('html.samey-hardware-cursor *::before') &&
     sharedSiteStyle.includes('var(--samey-hw-loading),var(--samey-hw-dot),wait!important'),
@@ -735,7 +743,8 @@ ${keybrViewSwitch}`;
     !keybrCaret.includes('{ left: `${fromLeft}px`, top: `${fromTop}px` }') &&
     !settingsMotionCss.includes('transition: left 100ms') && !settingsMotionCss.includes('transition: width 100ms'),
     "performance: typing caret and sliders must not add positional interpolation latency on the main thread");
-  must(keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
+  must(keybrPracticeScreen.includes("createEffect(() => ({ value: progress(), lesson: props.lesson }), ({ value, lesson }) => {") &&
+    keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   must(keybrLessonSettings.includes('SameyAnimateLocalSwap') &&
@@ -767,12 +776,12 @@ ${keybrViewSwitch}`;
     reverbDemo.includes("querySelector: selectors => shadow.querySelector(selectors)") &&
     reverbDemoHtml.includes('<title>Reverb</title>') && reverbDemoHtml.includes(':host([data-cursor-mode="invert"]) *{cursor:none!important}') && reverbDemoHtml.includes(':host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}') &&
     !reverbDemoHtml.includes('data-hardware-edge') && !reverbDemo.includes('samey-hardware-edgechange') &&
-    reverbRuntimeSource.includes('function appendCapture(') && reverbRuntimeSource.includes('const overflow=seconds-toOne') &&
-    reverbRuntimeSource.includes('loopSeconds=Math.min(loopLimitSeconds,loopSeconds+overflow)') &&
-    reverbDemoHtml.includes('class="gesture-hint left"') && reverbDemoHtml.includes('class="gesture-hint right"') &&
+    reverbRuntimeSource.includes('function appendCapture(') && reverbRuntimeSource.includes('oneSeconds = Math.min(oneLimitSeconds, oneSeconds + seconds)') &&
+    reverbRuntimeSource.includes('loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds)') &&
+    reverbRuntimeSource.includes('function syncRangeUi(): void') && reverbRuntimeSource.includes('const syncIncidentState =') &&
     reverbDemoHtml.includes('class="about-sheet"') && reverbDemoHtml.includes('https://github.com/SmallThingz/reverb') &&
     !reverbDemo.includes("<iframe") && !reverbDemo.includes("srcdoc=") && !reverbDemo.includes("sandbox=") && !reverbDemo.includes('src="/'),
-    "ux: Reverb demo must remain inline, follow the selected cursor mode, model bounded buffers, show gesture hints, and keep its faithful About sheet");
+    "ux: Reverb demo must remain inline, follow the selected cursor mode, model the current bounded buffers, and keep range/incidents/About behavior wired");
   const portfolioPages = await Promise.all([
     "src/site/pages/Home.tsx",
     "src/site/pages/Work.tsx",
@@ -788,7 +797,7 @@ ${keybrViewSwitch}`;
   must(phoneticModel.includes("this.map.get(indexedCodePoint)!.push(prefix)") && !phoneticModel.includes("this.map.get(codePoint)!.push(prefix)"),
     "bugfix: Keybr phonetic prefixes must be indexed under every letter they contain");
   const sharedCss = await readFile(join(ROOT, "src/shared/styles/site.css"), "utf8");
-  must(sharedCss.includes(".samey-theme-panel{position:fixed;left:8px;top:calc(var(--site-topbar-height) + 4px);z-index:var(--samey-z-theme);width:max-content;max-width:calc(100vw - 16px);min-width:0") &&
+  must(sharedCss.includes(".samey-theme-panel{box-sizing:border-box;position:fixed;left:8px;top:calc(var(--site-topbar-height) + 4px);z-index:var(--samey-z-theme);width:max-content;max-width:calc(100vw - 16px);min-width:0") &&
     !sharedCss.includes(".samey-theme-panel{position:fixed;left:8px;top:calc(var(--site-topbar-height) + 4px);z-index:var(--samey-z-theme);min-width:230px"),
     "ux: compact appearance menu width must follow its entries instead of a fixed minimum");
   must(sharedTheme.includes('globalThis.SameyLoadingBegin = () =>') && sharedTheme.includes('mountLoadingBar()') &&
@@ -797,14 +806,14 @@ ${keybrViewSwitch}`;
     "ux: loading must use the shared top strip and Keybr keyboard pointers must follow the foreground theme");
   const popoverSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/popover.tsx"), "utf8");
   const dialogSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/dialog.tsx"), "utf8");
-  const tooltipSource = await readFile(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx"), "utf8");
   must(sharedCss.includes("--samey-z-link-fill:2147483000") && sharedCss.includes("--samey-z-overlay:2147483644") &&
     sharedCss.includes("[data-samey-overlay]{z-index:var(--samey-z-overlay)!important}") &&
     sharedTheme.includes('[data-samey-overlay-backdrop]') && sharedTheme.includes('refreshFillOcclusionRects') &&
     sharedTheme.includes('zIndexOf(overlay) > fillZ') && sharedTheme.includes('const subtractRect = (rect: FillRect, hole: FillRect): FillRect[] =>') &&
     sharedTheme.includes('samey-cursor-link-fill-slice') &&
     !sharedTheme.includes('linkBlockedByOverlay') && sharedTheme.includes('const source = lightBackdrop ? "#ccc" : "#fff"') &&
-    popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") && tooltipSource.includes("data-samey-overlay=''") &&
+    popoverSource.includes("data-samey-overlay=''") && dialogSource.includes("data-samey-overlay=''") &&
+    !existsSync(join(ROOT, "src/ui-kit/registry/ui/tooltip.tsx")) &&
     !sharedTheme.includes('querySelector(".samey-cursor-link-fill")?.setAttribute("hidden"') &&
     blogSource.includes("<main data-text-cursor-zone>") && homeSource.includes('home-writing-detail" data-text-cursor-zone'),
     "ux: prose cursor zones must work with overlay-aware link inversion and a discontinuous cursor blend source");

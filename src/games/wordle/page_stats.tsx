@@ -1,11 +1,12 @@
 'use strict'
 
-import BarChart3 from 'lucide-solid/icons/chart-no-axes-column'
-import { Accessor, createEffect, createMemo, createResource, createSignal, For, JSX, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { ChartNoAxesColumn as BarChart3 } from '../../ui-kit/components/lucide.tsx';
+import { Accessor, createMemo, createSignal, Errored, For, Loading, onSettled, refresh, Show } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
-import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value } from './words'
+import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value, WORD_STORES } from './words'
 import { Page, setP } from '../../utils/navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
@@ -35,7 +36,7 @@ export async function fetchStats(): Promise<GameStats> {
   const words: Value[] = []
   const latestByWord = new Map<Value, number>()
 
-  const recordsByLength = await Promise.all(Array.from({length: 18}, (_, index) => db.getAll(`w${index + 3}` as const)))
+  const recordsByLength = await Promise.all(WORD_STORES.map(name => db.getAll(name)))
 
   for (const records of recordsByLength) {
     for (const record of records) {
@@ -79,10 +80,10 @@ function renderHistoryEntry(word: string, entry: HistoryEntry) {
   </div></div>
 }
 
-function SummaryStat({label, value}: {label: string, value: JSX.Element}) {
+function SummaryStat(props: {label: string, value: JSX.Element}) {
   return <div class='stats-summary-item'>
-    <span class='stats-summary-label'>{label}</span>
-    <strong class='stats-summary-value'>{value}</strong>
+    <span class='stats-summary-label'>{props.label}</span>
+    <strong class='stats-summary-value'>{props.value}</strong>
   </div>
 }
 
@@ -173,12 +174,11 @@ function DetailedStats({value}: {value: Value}) {
 }
 
 function StatsContent(props: {stats: GameStats}) {
-  const [selected, setSelected] = createSignal<Value | undefined>()
-  createEffect(() => {
-    const words = props.stats.words
-    const current = selected()
-    if (!current || !words.includes(current)) setSelected(words[0])
-  })
+  const [choice, setSelected] = createSignal<Value | undefined>()
+  const selected = () => {
+    const current = choice()
+    return current && props.stats.words.includes(current) ? current : props.stats.words[0]
+  }
   return <div class='stats-content'>
     <section class='stats-section'>
       <div class='stats-section-heading'><div><span class='stats-eyebrow'>All time</span><h2>Summary</h2></div></div>
@@ -213,23 +213,26 @@ function StatsContent(props: {stats: GameStats}) {
 }
 
 export default function StatsPage() {
-  const [stats, {refetch}] = createResource(fetchStats)
-  const refresh = () => void refetch()
-  onMount(() => window.addEventListener('wordle:stats-change', refresh))
-  onCleanup(() => window.removeEventListener('wordle:stats-change', refresh))
+  const stats = createMemo(fetchStats)
+  const refreshStats = () => refresh(stats)
+  onSettled(() => {
+    window.addEventListener('wordle:stats-change', refreshStats)
+    return () => window.removeEventListener('wordle:stats-change', refreshStats)
+  })
 
   return <main class='stats-page'>
     <TopBar start={<WordleBackButton onClick={() => setP(Page.Wordle)}/>} nav={<GameTopBarActions ariaLabel='Wordle'><StatsPageTrigger /></GameTopBarActions>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
-    <Switch>
-      <Match when={stats.loading}><p class='stats-state'>Loading statistics…</p></Match>
-      <Match when={stats.error}><p class='stats-state text-error-foreground'>Could not load statistics.</p></Match>
-      <Match when={!stats.loading && !stats.error}>{(() => {
-        const value = stats()
-        if (!value) return null
-        return value.totalGames > 0 ? <StatsContent stats={value} /> : <p class='stats-state'>No statistics yet.</p>
-      })()}</Match>
-    </Switch>
+    <Errored fallback={(_error, reset) => <div class='stats-state text-error-foreground' role='alert'>
+      <p>Could not load statistics.</p>
+      <button type='button' onClick={() => { refreshStats(); reset() }}>Try again</button>
+    </div>}>
+      <Loading fallback={<p class='stats-state' role='status'>Loading statistics…</p>}>
+        <Show when={stats().totalGames > 0} fallback={<p class='stats-state'>No statistics yet.</p>}>
+          <StatsContent stats={stats()} />
+        </Show>
+      </Loading>
+    </Errored>
   </main>
 }
 

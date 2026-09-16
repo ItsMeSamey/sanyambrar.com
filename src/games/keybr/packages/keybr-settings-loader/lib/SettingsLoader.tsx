@@ -1,6 +1,7 @@
 import { catchError } from "@keybr/debug";
 import { Settings, type SettingsStorage } from "@keybr/settings";
-import { createMemo, createResource, type JSX, Show } from "solid-js";
+import { createMemo, Loading, Show } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { SettingsProvider } from "./internal/SettingsProvider.tsx";
 
 export function SettingsLoader(props: { readonly children: JSX.Element; readonly fallback?: JSX.Element }) {
@@ -23,17 +24,19 @@ export function SettingsLoader(props: { readonly children: JSX.Element; readonly
       },
     };
   });
-  const [settings] = createResource(storage, (value) => value.load().catch((error) => {
+  const settings = createMemo(() => storage().load().catch((error) => {
     catchError(error);
     throw error;
   }));
   return (
-    <Show when={settings()} fallback={props.fallback ?? null}>
+    <Loading fallback={props.fallback ?? null}>
+    <Show keyed when={settings()}>
       {(value) => (
-        <SettingsProvider storage={storage()} initialSettings={value()}>
+        <SettingsProvider storage={storage()} initialSettings={value}>
           {props.children}
         </SettingsProvider>
       )}
     </Show>
+    </Loading>
   );
 }

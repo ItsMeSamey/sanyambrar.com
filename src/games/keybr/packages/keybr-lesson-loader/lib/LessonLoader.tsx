@@ -16,7 +16,8 @@ import { LoadingProgress } from "@keybr/pages-shared";
 import { type PhoneticModel } from "@keybr/phonetic-model";
 import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
 import { useSettings } from "@keybr/settings";
-import { createResource, Show, type JSX } from "solid-js";
+import { createMemo, Loading, Show } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 
 export function LessonLoader(props: {
   readonly children: (result: Lesson) => JSX.Element;
@@ -37,14 +38,11 @@ function Loader(props: {
 }) {
   const { settings } = useSettings();
   const keyboard = useKeyboard();
-  const [lesson] = createResource(
-    () => ({
-      type: settings.get(lessonProps.type),
-      language: KeyboardOptions.from(settings).language,
-      book: settings.get(lessonProps.books.book),
-      model: props.model,
-    }),
-    async ({ type, language, book, model }) => {
+  const lesson = createMemo(async () => {
+      const type = settings.get(lessonProps.type);
+      const language = KeyboardOptions.from(settings).language;
+      const book = settings.get(lessonProps.books.book);
+      const model = props.model;
       switch (type) {
         case LessonType.GUIDED:
           return { type, value: new GuidedLesson(settings, keyboard, model, await loadWordList(language)) };
@@ -61,15 +59,16 @@ function Loader(props: {
         default:
           throw new Error(`Unknown lesson type: ${String(type)}`);
       }
-    },
-  );
+  });
   const currentLesson = () => {
     const loaded = lesson();
     return loaded?.type === settings.get(lessonProps.type) ? loaded.value : undefined;
   };
   return (
-    <Show keyed when={currentLesson()} fallback={props.fallback ?? <LoadingProgress />}>
+    <Loading fallback={props.fallback ?? <LoadingProgress />}>
+    <Show keyed when={currentLesson()}>
       {(value) => props.children(value)}
     </Show>
+    </Loading>
   );
 }

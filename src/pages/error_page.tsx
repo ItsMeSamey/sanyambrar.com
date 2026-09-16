@@ -1,6 +1,7 @@
+import type { Accessor } from 'solid-js';
 'use strict'
 
-import { JSX, resetErrorBoundaries } from 'solid-js'
+import { type JSX } from '@solidjs/web';
 
 import './error_page.css'
 import { Button } from '~/registry/ui/button'
@@ -8,7 +9,7 @@ import { stripStack } from '../utils/toast'
 
 function SwingingLight(value: unknown, reset: () => void): JSX.Element {
   const err = value instanceof Error ? value : new Error(String(value))
-  const retry = () => { reset(); resetErrorBoundaries() }
+  const retry = () => { reset() }
   return <div class='__error_page_swinging_light_parent'>
     <h1 class='__error_page_swinging_light_text'>Oops</h1>
     <div class='__error_page_swinging_light_cloak_wrapper'>
@@ -27,6 +28,6 @@ function SwingingLight(value: unknown, reset: () => void): JSX.Element {
   </div>
 }
 
-export default function ErrorPage(err: unknown, reset: () => void): JSX.Element {
-  return SwingingLight(err, reset)
+export default function ErrorPage(err: Accessor<unknown>, reset: () => void): JSX.Element {
+  return SwingingLight(err(), reset)
 }

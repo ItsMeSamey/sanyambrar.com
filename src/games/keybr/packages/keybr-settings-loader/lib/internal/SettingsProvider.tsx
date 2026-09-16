@@ -1,6 +1,6 @@
 import { catchError } from "@keybr/debug";
 import { createReactiveSettings, Settings, SettingsContext, type SettingsStorage } from "@keybr/settings";
-import { type JSX } from "solid-js";
+import { type JSX } from '@solidjs/web';
 
 export function SettingsProvider(props: {
   readonly storage: SettingsStorage;
@@ -17,5 +17,5 @@ export function SettingsProvider(props: {
       props.storage.store(next).catch(catchError);
     },
   };
-  return <SettingsContext.Provider value={value}>{props.children}</SettingsContext.Provider>;
+  return <SettingsContext value={value}>{props.children}</SettingsContext>;
 }

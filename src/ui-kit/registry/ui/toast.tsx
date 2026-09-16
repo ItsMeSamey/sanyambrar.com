@@ -1,4 +1,4 @@
-import { createSignal, For } from 'solid-js'
+import { createSignal, For } from 'solid-js';
 import { cx } from '~/lib/classes'
 
 type ToastOptions = { title?: string; description?: string; variant?: string; duration?: number }

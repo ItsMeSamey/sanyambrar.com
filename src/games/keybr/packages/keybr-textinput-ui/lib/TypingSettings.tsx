@@ -6,7 +6,7 @@ import { makeSoundPlayer, PlaySounds, soundProps, SoundTheme, } from "@keybr/tex
 import { Description, Explainer, Field, FieldList, FieldSet, Icon, IconButton, OptionList, Range, SegmentedControl, Toggle, } from "@keybr/widget";
 import { mdiPlayCircleOutline, mdiStopCircleOutline } from "@keybr/solid-compat/mdi";
 import { useEffect, useState } from "@keybr/solid-compat/react";
-import { createMemo } from "solid-js";
+import { createMemo } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 import { AnimatedText } from "./AnimatedText.tsx";
 import * as styles from "./TypingSettings.module.css";

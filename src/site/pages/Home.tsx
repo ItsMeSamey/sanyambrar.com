@@ -1,4 +1,4 @@
-import ArrowUpRight from 'lucide-solid/icons/arrow-up-right';
+import { ArrowUpRight } from '../../ui-kit/components/lucide.tsx';
 import { games, posts, projects } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';
 import { GameCards, ProjectCards } from '../components/Entries.tsx';

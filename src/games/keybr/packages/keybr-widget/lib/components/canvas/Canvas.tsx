@@ -2,16 +2,16 @@ import { memo, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compa
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import { type CanvasProps } from "./Canvas.types.ts";
 import { Graphics } from "./graphics.ts";
-import { createSignal, onCleanup, onMount, splitProps } from "solid-js";
+import { createSignal, onSettled, omit } from 'solid-js';
 export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
-    const [solidLocal, props] = splitProps(solidAllProps, ["className", "id", "paint", "ref", "style", "title", "onResize"]);
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "className", "id", "paint", "ref", "style", "title", "onResize");
     const element = useRef<HTMLCanvasElement>(null);
     const size = useElementSize(element);
     const [themeRevision, setThemeRevision] = createSignal(0);
-    onMount(() => {
+    onSettled(() => {
         const repaint = () => setThemeRevision(value => value + 1);
         addEventListener("samey-themechange", repaint);
-        onCleanup(() => removeEventListener("samey-themechange", repaint));
+        return () => removeEventListener("samey-themechange", repaint);
     });
     useImperativeHandle(solidLocal.ref, () => ({
         getSize: () => size(),

@@ -3,9 +3,9 @@ import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat
 import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./LinkButton.module.css";
 import { type LinkButtonProps } from "./LinkButton.types.ts";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 export function LinkButton(solidAllProps: LinkButtonProps): ReactNode {
-    const [solidLocal, props] = splitProps(solidAllProps, ["anchor", "children", "className", "disabled", "label", "ref", "tabIndex", "title", "onClick"]);
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "className", "disabled", "label", "ref", "tabIndex", "title", "onClick");
     const element = useRef<HTMLAnchorElement>(null);
     useImperativeHandle(solidLocal.ref, () => ({
         focus() {
@@ -20,7 +20,7 @@ export function LinkButton(solidAllProps: LinkButtonProps): ReactNode {
             return getBoundingBox(element.current!);
         },
     }));
-    return (<a {...props} ref={el => element.current = el} href="#" class={clsx(styles.root, solidLocal.disabled && styles.disabled, solidLocal.className)} tabIndex={solidLocal.tabIndex} title={solidLocal.title} onClick={(event) => {
+    return (<a {...props} ref={el => element.current = el} href="#" class={clsx(styles.root, solidLocal.disabled && styles.disabled, solidLocal.className)} tabindex={solidLocal.tabIndex} title={solidLocal.title} onClick={(event) => {
             event.preventDefault();
             solidLocal.onClick?.(event);
         }}>

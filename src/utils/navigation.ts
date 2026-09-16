@@ -1,6 +1,6 @@
 'use strict'
 
-import { createSelector, createSignal } from 'solid-js'
+import { createSignal } from 'solid-js';
 import { UrlSearchStore } from './store'
 import { animateRootSwap } from '../shared/transitions.ts'
 
@@ -18,7 +18,7 @@ export const setPageRoot = (element?: HTMLElement) => { pageRootElement = elemen
 export const pageRoot = () => pageRootElement?.isConnected ? pageRootElement : null
 
 export const p = page
-export const selectP = createSelector(page)
+export const selectP = (value: Page) => page() === value
 
 function commitPage(value: Page) {
   pageState.set(value)

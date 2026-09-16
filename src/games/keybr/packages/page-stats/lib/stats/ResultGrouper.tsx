@@ -1,3 +1,4 @@
+import { liveObject } from "@keybr/solid-compat/live";
 import { useCollator } from "@keybr/intl";
 import { KeyboardContext, keyboardProps, Layout, loadKeyboard, useFormattedNames, } from "@keybr/keyboard";
 import { Letter } from "@keybr/phonetic-model";
@@ -6,7 +7,7 @@ import { type KeyStatsMap, makeKeyStatsMap, ResultGroups, useResults, } from "@k
 import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";
 import { type ReactNode, useState } from "@keybr/solid-compat/react";
-import { createEffect, createMemo } from "solid-js";
+import { createMemo } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
 export function ResultGrouper(solidProps: {
     children: (keyStatsMap: KeyStatsMap) => ReactNode;
@@ -25,13 +26,12 @@ export function ResultGrouper(solidProps: {
     const defaultLayout = () => resultsLayouts().has(configuredLayout())
         ? configuredLayout()
         : [...resultsLayouts()][0];
-    const [selectedLayout, setSelectedLayout] = useState(defaultLayout);
+    const [choice, setSelectedLayout] = useState(defaultLayout);
+    const selectedLayout = () => resultsLayouts().has(choice()) ? choice() : defaultLayout();
     const [characterClass, setCharacterClass] = useState("letters");
-    createEffect(() => {
-        if (!resultsLayouts().has(selectedLayout())) setSelectedLayout(defaultLayout());
-    });
     const layoutOptions = useLayoutOptions(resultsLayouts);
     const keyboard = createMemo(() => loadKeyboard(selectedLayout()));
+    const keyboardContext = liveObject(keyboard);
     const group = () => groups().get(selectedLayout());
     return (<>
       <FieldList>
@@ -81,7 +81,7 @@ export function ResultGrouper(solidProps: {
         {solidProps.actions != null && <Field>{solidProps.actions}</Field>}
       </FieldList>
 
-      <KeyboardContext.Provider value={keyboard()}>
+      <KeyboardContext value={keyboardContext}>
         <PhoneticModelLoader language={selectedLayout().language}>
           {({ letters }) => {
             switch (characterClass()) {
@@ -98,7 +98,7 @@ export function ResultGrouper(solidProps: {
             }
         }}
         </PhoneticModelLoader>
-      </KeyboardContext.Provider>
+      </KeyboardContext>
     </>);
 }
 function useLayoutOptions(layouts: () => Iterable<Layout>) {

@@ -1,3 +1,4 @@
+import { createMemo } from "solid-js";
 import { LessonKey, Target } from "@keybr/lesson";
 import { type Letter } from "@keybr/phonetic-model";
 import { type KeyStatsMap } from "@keybr/result";
@@ -12,7 +13,7 @@ export const KeySelector = (solidProps: {
     onSelect?: (letter: Letter) => void;
 } & FocusProps) => {
     const { settings } = useSettings();
-    const target = new Target(settings);
+    const target = createMemo(() => new Target(settings));
     const letters = () => solidProps.keyStatsMap.letters;
     const handlePrev = () => {
         if (solidProps.onSelect != null) {
@@ -40,13 +41,13 @@ export const KeySelector = (solidProps: {
             solidProps.onSelect(letters()[selectedIndex]);
         }
     };
-    return (<span class={styles.root} tabIndex={solidProps.disabled ? undefined : (solidProps.tabIndex ?? 0)} title={solidProps.title} onFocus={solidProps.onFocus} onBlur={solidProps.onBlur} onKeyDown={useHotkeysHandler({
+    return (<span class={styles.root} tabindex={solidProps.disabled ? undefined : (solidProps.tabIndex ?? 0)} title={solidProps.title} onFocus={solidProps.onFocus} onBlur={solidProps.onBlur} onKeyDown={useHotkeysHandler({
             ["ArrowLeft"]: handlePrev,
             ["ArrowUp"]: handlePrev,
             ["ArrowRight"]: handleNext,
             ["ArrowDown"]: handleNext,
         })}>
-      {letters().map((letter) => (<Key lessonKey={LessonKey.from(solidProps.keyStatsMap.get(letter), target).asIncluded()} isSelectable={true} isCurrent={solidProps.current.codePoint === letter.codePoint} onClick={() => {
+      {letters().map((letter) => (<Key lessonKey={LessonKey.from(solidProps.keyStatsMap.get(letter), target()).asIncluded()} isSelectable={true} isCurrent={solidProps.current.codePoint === letter.codePoint} onClick={() => {
                 if (solidProps.onSelect != null) {
                     solidProps.onSelect(letter);
                 }

@@ -1,3 +1,4 @@
+import { readHistoryState } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
 import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry } from './loadingSvg.ts';
@@ -844,13 +845,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const pushState = history.pushState.bind(history);
   const replaceState = history.replaceState.bind(history);
   const NAV_INDEX_KEY = "__sameyNavIndex";
-  const readNavigationIndex = () => { const value: unknown = history.state?.[NAV_INDEX_KEY]; return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null; };
+  const readNavigationIndex = () => { const value: unknown = readHistoryState()?.[NAV_INDEX_KEY]; return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null; };
   let pageHistoryIndex = readNavigationIndex() ?? 0;
   const writePageHistory = (url: URL, replace: boolean) => {
     const current = readNavigationIndex();
     if (current != null) pageHistoryIndex = current;
     if (!replace) pageHistoryIndex += 1;
-    const state = {...(history.state || {}), [NAV_INDEX_KEY]: pageHistoryIndex};
+    const state = {...(readHistoryState() || {}), [NAV_INDEX_KEY]: pageHistoryIndex};
     (replace ? replaceState : pushState)(state, "", url.href);
   };
 
@@ -2204,7 +2205,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
 
   const mountRuntime = () => {
-    if (readNavigationIndex() == null) replaceState({...(history.state || {}), [NAV_INDEX_KEY]: pageHistoryIndex}, "", location.href);
+    if (readNavigationIndex() == null) replaceState({...(readHistoryState() || {}), [NAV_INDEX_KEY]: pageHistoryIndex}, "", location.href);
     normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSmoothSliderMotion();
     // Only styles present on a directly loaded non-Solid document are initial page styles.
     // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;

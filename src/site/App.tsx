@@ -1,4 +1,5 @@
-import { ErrorBoundary, Match, Show, Suspense, Switch, createSignal, lazy, onCleanup, onMount } from 'solid-js';
+import { readHistoryState } from '../shared/history.ts';
+import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
@@ -40,11 +41,11 @@ type NavigationError = { url: string; message: string; detail: string };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 const NAV_INDEX_KEY = '__sameyNavIndex';
 const readNavigationIndex = () => {
-  const value = history.state?.[NAV_INDEX_KEY];
+  const value = readHistoryState()?.[NAV_INDEX_KEY];
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 const navigationState = (index: number) => ({
-  ...(history.state && typeof history.state === 'object' ? history.state : {}),
+  ...(readHistoryState() && typeof readHistoryState() === 'object' ? readHistoryState() : {}),
   [NAV_INDEX_KEY]: index,
 });
 
@@ -95,7 +96,7 @@ async function animateRouteSwap(commit: () => void, direction: NavigationDirecti
 
 function RouteLoading() {
   let releaseLoading = () => {};
-  onMount(() => {
+  onSettled(() => {
     releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
   });
   onCleanup(() => releaseLoading());
@@ -124,9 +125,9 @@ function formatThrownError(value: unknown): string {
 
 function FatalRouteError(props: { error: unknown; reset: () => void }) {
   return <div class="site-fatal-shell">
-    <ErrorBoundary fallback={<header class="site-fatal-topbar-fallback"><a href="/">Go back to home</a></header>}>
+    <Errored fallback={<header class="site-fatal-topbar-fallback"><a href="/">Go back to home</a></header>}>
       <TopBar />
-    </ErrorBoundary>
+    </Errored>
     <main class="site-fatal-error" role="alert">
       <strong>This view failed to render.</strong>
       <pre class="site-fatal-error-stack">{formatThrownError(props.error)}</pre>
@@ -283,7 +284,7 @@ export function App() {
     void navigate(url.href);
   };
 
-  onMount(() => {
+  onSettled(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
     globalThis.SameySolidNavigate = navigate;
@@ -318,7 +319,7 @@ export function App() {
         const pageSwap = pageSwapNavigate();
         if (!pageSwap) { location.reload(); return; }
         setLoading(true);
-        void pageSwap(url.href, {replace: true, force: true}).catch(error => {
+        void pageSwap(url.href, {replace: true, force: true}).catch((error: unknown) => {
           if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be restored.',detail:formatThrownError(error)});
         }).finally(() => { if (id === navigationId) setLoading(false); });
         return;
@@ -345,7 +346,7 @@ export function App() {
           delete document.documentElement.dataset.navDirection;
           if (id === navigationId) setLoading(false);
         }
-      }).catch(error => {
+      }).catch((error: unknown) => {
         if (id === navigationId) {
           setLoading(false);
           setNavigationError({ url: url.href, message: error instanceof Error ? error.message : 'The page could not be restored.', detail: formatThrownError(error) });
@@ -356,21 +357,21 @@ export function App() {
 
     document.addEventListener('click', click);
     addEventListener('popstate', pop);
-    onCleanup(() => {
+    return () => {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
       globalThis.SameySolidNavigate = undefined;
       globalThis.SameyNavigate = undefined;
       globalThis.SameySolidPreload = undefined;
-    });
+    };
   });
 
   return <div id="solid-site-app">
-    <ErrorBoundary fallback={(error, reset) => {
+    <Errored fallback={(error, reset) => {
       resetRouteError = reset;
-      return <FatalRouteError error={error} reset={() => { resetRouteError = undefined; reset(); }} />;
+      return <FatalRouteError error={error()} reset={() => { resetRouteError = undefined; reset(); }} />;
     }}>
-      <Suspense fallback={<RouteLoading/>}>
+      <Loading fallback={<RouteLoading/>}>
         <Switch>
           <Match when={route().kind === 'home'}><div class="site-route site-standard"><Home /></div></Match>
           <Match when={route().kind === 'work'}><div class="site-route site-standard"><Work /></div></Match>
@@ -383,8 +384,8 @@ export function App() {
             }</Show>
           </Match>
         </Switch>
-      </Suspense>
-    </ErrorBoundary>
+      </Loading>
+    </Errored>
     <Show when={navigationError()}>{error => <RouteError error={error()} onRetry={retryError} onDismiss={() => setNavigationError(null)}/>}</Show>
   </div>;
 }

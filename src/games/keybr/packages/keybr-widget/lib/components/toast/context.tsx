@@ -10,7 +10,7 @@ export function ToastProvider(solidProps: {
     readonly toast: Toast;
     readonly render: () => ReactNode;
 }): ReactNode {
-    return (<ToastContext.Provider value={{
+    return (<ToastContext value={{
             close: () => {
                 state.close(solidProps.toast);
             },
@@ -26,7 +26,7 @@ export function ToastProvider(solidProps: {
             },
         }}>
       {solidProps.render()}
-    </ToastContext.Provider>);
+    </ToastContext>);
 }
 export function useToast(): ToastContextValue {
     const value = useContext(ToastContext);

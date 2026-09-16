@@ -5,7 +5,7 @@ import { renderChars } from "./chars.tsx";
 import { Cursor } from "./Cursor.tsx";
 import { textItemStyle } from "./styles.ts";
 import * as styles from "./TextLines.module.css";
-import { createMemo, For } from "solid-js";
+import { createMemo, For } from 'solid-js';
 export type TextLineSize = "X0" | "X1" | "X2" | "X3";
 export const TextLines = memo(function TextLines(props: {
     readonly lines: LineList;

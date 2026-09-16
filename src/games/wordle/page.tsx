@@ -1,7 +1,6 @@
 'use strict'
 
-import { batch, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { createMutable, unwrap } from 'solid-js/store'
+import { createEffect, createMemo, createSignal, createStore, For, onCleanup, onSettled, Show, snapshot, untrack, type StoreSetter } from 'solid-js';
 import { showToast } from '~/registry/ui/toast'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
 
@@ -66,18 +65,18 @@ class Keyboard {
               type='button'
               disabled={isDisabled}
               aria-label={isDisabled ? `${key} disabled for this game` : key}
-              onpointerdown={e => {
+              onPointerDown={e => {
                 if (isDisabled) return
                 e.preventDefault()
                 e.currentTarget.setPointerCapture?.(e.pointerId)
                 dispatch('keydown')
               }}
-              onpointerup={e => {
+              onPointerUp={e => {
                 if (isDisabled) return
                 dispatch('keyup')
                 if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
               }}
-              onpointercancel={() => !isDisabled && dispatch('keyup')}
+              onPointerCancel={() => !isDisabled && dispatch('keyup')}
               onClick={e => {
                 // Native keyboard activation emits click with detail=0. Pointer input
                 // is already handled on down/up so it must not insert twice.
@@ -121,7 +120,7 @@ export class Block {
   }
 }
 
-interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; suggested: string; disabled: string }
+interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; disabled: string; history: [string, string][]; done?: KindEnum }
 export interface WordLocalStorageState {
   word: string
   wordIndex?: number
@@ -141,7 +140,7 @@ const isWordleHistory = (value: unknown): value is [string, string][] =>
 
 class GameState {
   state: CurrentState
-  history: [string, string][]
+  readonly setState: StoreSetter<CurrentState>
   readonly stored: WordLocalStorageState
 
   constructor(public soft: SettingsSoftProps, public hard: SettingsHardProps, public stateStore: LocalstorageStore<WordLocalStorageState>) {
@@ -158,7 +157,7 @@ class GameState {
         if (typeof hard.wordIndex === 'number' && Number.isInteger(hard.wordIndex)) stored.word = wordAt(hard.wordLength, hard.wordIndex) ?? ''
         if (!stored.word) {
           stored.word = getRandomWord(hard.wordLength)
-          hard.wordIndex = binarySearch(hard.wordLength, stored.word)
+          stored.wordIndex = binarySearch(hard.wordLength, stored.word)
         }
         stored.disabledSeed = legacyGameStorageKey(hard)
         stored.disabled = disabledLettersForWord(stored.word, hard.disabledLetters, stored.disabledSeed)
@@ -187,67 +186,83 @@ class GameState {
       else if (lastColors.every(s => s === 'b')) stored.done = KindEnum.Revealed
       else if (hard.maxTries !== 1 && stored.history.length >= hard.maxTries) stored.done = KindEnum.Failed
     }
-    // One write per mount migrates legacy plaintext state and persists inferred completion.
-    this.stateStore.set(stored)
-    this.history = createMutable<[string, string][]>(stored.history)
-    this.state = createMutable<CurrentState>({
+    [this.state, this.setState] = createStore<CurrentState>({
       keyboard: Keyboard.stateFromHistory(stored.history),
       showPopOver: stored.done !== undefined,
-      suggested: '',
       disabled: stored.disabled ?? '',
+      history: structuredClone(stored.history),
+      done: stored.done,
     })
-    this.state.keyboard = createMutable(this.state.keyboard)
+    // Persist legacy save migration after mount, not while constructing a scope.
+    onSettled(() => this.persist(snapshot(this.state)))
   }
 
   get disabled() { return this.state.disabled }
+  get history() { return this.state.history }
   get currentEntry(): [string, string] { return this.history[this.history.length - 1] }
+  isFinished() { return this.state.done !== undefined }
 
-  isFinished() { return this.stored.done !== undefined }
-
-  persist() {
-    this.stored.history = unwrap(this.history)
-    this.stored.config = {...this.hard}
+  private persist(draft: CurrentState) {
+    this.stored.history = snapshot(draft.history)
+    this.stored.done = draft.done
+    this.stored.config = snapshot(this.hard)
     this.stateStore.set(this.stored)
   }
 
   submit() {
-    if (this.isFinished()) return
-    const last = this.currentEntry
-    const guess = unwrap(last)[0]
-    if (guess.length !== this.hard.wordLength) return
-    if (!this.hard.allowAny && !getGuessWord(guess)) {
-      showToast({title: 'Invalid guess', description: `${guess.toUpperCase()} is not in the dictionary.`, variant: 'error', duration: 1000})
-      return
-    }
+    this.setState(draft => {
+      if (draft.done !== undefined) return
+      const last = draft.history[draft.history.length - 1]
+      const guess = last[0]
+      if (guess.length !== this.hard.wordLength) return
+      if (!this.hard.allowAny && !getGuessWord(guess)) {
+        showToast({title: 'Invalid guess', description: `${guess.toUpperCase()} is not in the dictionary.`, variant: 'error', duration: 1000})
+        return
+      }
 
-    const response = calcDiff(this.stored.word, guess)
-    for (let i = 0; i < this.hard.wordLength; i++) {
-      const old = this.state.keyboard[guess[i].toUpperCase() as Keys]
-      if (old.state === 'g' || (old.state === 'y' && response[i] === 'r')) continue
-      old.state = response[i] as WordleStringState
-    }
-    last[1] = response
+      const response = calcDiff(this.stored.word, guess)
+      for (let i = 0; i < this.hard.wordLength; i++) {
+        const key = draft.keyboard[guess[i].toUpperCase() as Keys]
+        if (key.state === 'g' || (key.state === 'y' && response[i] === 'r')) continue
+        key.state = response[i] as WordleStringState
+      }
+      last[1] = response
+      if ([...response].every(color => color === 'g')) draft.done = KindEnum.Correct
+      else if (this.hard.maxTries !== 1 && draft.history.length >= this.hard.maxTries) draft.done = KindEnum.Failed
+      else draft.history.push(['', ''])
 
-    if (response.split('').every(s => s === 'g')) {
-      this.stored.done = KindEnum.Correct
-      this.persist()
-      recordDone(this.stored, this.hard, KindEnum.Correct)
-      this.state.showPopOver = true
-    } else if (this.hard.maxTries !== 1 && this.history.length >= this.hard.maxTries) {
-      this.stored.done = KindEnum.Failed
-      this.persist()
-      recordDone(this.stored, this.hard, KindEnum.Failed)
-      this.state.showPopOver = true
-    } else {
-      this.history.push(['', ''])
-      this.persist()
-    }
+      this.persist(draft)
+      if (draft.done !== undefined) {
+        recordDone(this.stored, this.hard, draft.done)
+        draft.showPopOver = true
+      }
+    })
   }
 
-  fastInvalidate() {
-    if (!this.soft.fastInvalidate || this.hard.allowAny || this.isFinished()) { this.state.suggested = ''; return }
-    const prefix = (this.history.at(-1)?.[0] ?? '').toLowerCase()
-    this.state.suggested = playableNextLetters(this.hard.wordLength, prefix, this.disabled)
+  reveal() {
+    this.setState(draft => {
+      if (draft.done !== undefined) return
+      const last = draft.history[draft.history.length - 1]
+      last[0] = this.stored.word
+      last[1] = 'b'.repeat(this.hard.wordLength)
+      draft.done = KindEnum.Revealed
+      draft.showPopOver = true
+      this.persist(draft)
+      recordDone(this.stored, this.hard, KindEnum.Revealed)
+    })
+  }
+
+  updateAdvanced(config: SettingsHardProps) {
+    if (config.mode !== 'advanced') return
+    this.stored.disabledSeed ??= legacyGameStorageKey(this.stored.config ?? config)
+    const disabled = disabledLettersForWord(this.stored.word, config.disabledLetters, this.stored.disabledSeed)
+    this.stored.disabled = disabled
+    this.setState(draft => {
+      draft.disabled = disabled
+      const current = draft.history.at(-1)
+      if (current && !current[1]) current[0] = [...current[0]].filter(letter => !disabled.includes(letter.toLowerCase())).join('')
+      this.persist(draft)
+    })
   }
 
 }
@@ -257,47 +272,43 @@ export class WordleModel {
   currentBlock?: HTMLSpanElement
 
   constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>, private onNextChallenge: () => void, private onChooseMode: () => void) {
-    this.state = new GameState(soft, hard, stateStore)
+    this.state = untrack(() => new GameState(soft, hard, stateStore))
   }
 
   setKeyState(key: string, pressed: boolean) {
     key = key.toUpperCase()
     if (key === 'ENTER') key = '⏎'
     if (key === 'BACKSPACE') key = '⌫'
-    if (key.length === 1 && ABCD.includes(key)) this.state.state.keyboard[key as Keys].pressed = pressed
+    if (key.length === 1 && ABCD.includes(key)) this.state.setState(draft => { draft.keyboard[key as Keys].pressed = pressed })
   }
 
   handleKeyDown(e: KeyboardEvent) {
     const target = e.target instanceof Element ? e.target : null
     const interactive = target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"], [role="slider"], [role="switch"]')
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || interactive) return
-    batch(() => {
-      if (this.state.isFinished()) return
-      const last = this.state.currentEntry
-      if (e.key === 'Escape') { last[0] = ''; last[1] = ''; this.state.fastInvalidate(); return }
-
-      this.setKeyState(e.key, true)
-      if (e.key === 'Enter') {
-        if (!e.repeat) {
-          if ((last[0] ?? '').length !== this.state.hard.wordLength) this.shakeCurrentBlock()
-          else this.state.submit()
-        }
-        return
+    if (this.state.isFinished()) return
+    this.setKeyState(e.key, true)
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (!e.repeat) {
+        if (this.state.currentEntry[0].length !== this.state.hard.wordLength) this.shakeCurrentBlock()
+        else this.state.submit()
       }
-      if (e.key === 'Backspace') { last[0] = (last[0] ?? '').slice(0, -1); last[1] = ''; this.state.fastInvalidate(); return }
-
-      const key = e.key.toLowerCase()
-      if (key.length !== 1 || !ABCD.toLowerCase().includes(key)) return
-      if (this.state.disabled.includes(key)) {
-        this.shakeCurrentBlock()
-        return
-      }
-      if (last[0].length === this.state.hard.wordLength) {
+      return
+    }
+    const key = e.key.toLowerCase()
+    if (key !== 'backspace' && key !== 'escape' && (key.length !== 1 || !ABCD.toLowerCase().includes(key))) return
+    e.preventDefault()
+    this.state.setState(draft => {
+      if (draft.done !== undefined) return
+      const last = draft.history[draft.history.length - 1]
+      if (key === 'escape') { last[0] = ''; last[1] = ''; return }
+      if (key === 'backspace') { last[0] = last[0].slice(0, -1); last[1] = ''; return }
+      if (draft.disabled.includes(key) || last[0].length === this.state.hard.wordLength) {
         this.shakeCurrentBlock()
         return
       }
       last[0] += key
-      this.state.fastInvalidate()
     })
   }
 
@@ -309,46 +320,19 @@ export class WordleModel {
   handleKeyUp(e: KeyboardEvent) { this.setKeyState(e.key, false) }
 
   render() {
-    createEffect(() => {
-      if (this.state.soft.reveal && !this.state.isFinished()) batch(() => {
-        this.state.stored.done = KindEnum.Revealed
-        recordDone(this.state.stored, this.state.hard, KindEnum.Revealed)
-        const last = this.state.currentEntry
-        last[0] = this.state.stored.word
-        last[1] = 'b'.repeat(this.state.hard.wordLength)
-        this.state.persist()
-        this.state.state.showPopOver = true
-      })
-    })
-
-    createEffect(() => batch(() => {
-      if (this.state.soft.fastInvalidate) this.state.fastInvalidate()
-      else this.state.state.suggested = ''
-    }))
-
-    createEffect(() => {
-      if (this.state.hard.mode !== 'advanced') return
-      const stored = this.state.stored
-      const config = {...this.state.hard}
-      stored.disabledSeed ??= legacyGameStorageKey(stored.config ?? config)
-      const disabled = disabledLettersForWord(stored.word, config.disabledLetters, stored.disabledSeed)
-      stored.disabled = disabled
-      stored.config = config
-      this.state.state.disabled = disabled
-      const current = this.state.history.at(-1)
-      if (current && !current[1] && [...current[0]].some(letter => disabled.includes(letter.toLowerCase()))) {
-        current[0] = [...current[0]].filter(letter => !disabled.includes(letter.toLowerCase())).join('')
-      }
-      this.state.persist()
-      this.state.fastInvalidate()
+    createEffect(() => this.state.soft.reveal, reveal => { if (reveal) this.state.reveal() })
+    createEffect(() => ({...this.state.hard}), config => this.state.updateAdvanced(config))
+    const suggested = createMemo(() => {
+      if (!this.state.soft.fastInvalidate || this.state.hard.allowAny || this.state.isFinished()) return ''
+      return playableNextLetters(this.state.hard.wordLength, this.state.currentEntry[0].toLowerCase(), this.state.disabled)
     })
 
     const handleKeyUp = (e: KeyboardEvent) => this.handleKeyUp(e)
     const handleKeyDown = (e: KeyboardEvent) => this.handleKeyDown(e)
     const clearPressed = () => {
-      for (const key of Object.keys(this.state.state.keyboard) as Keys[]) this.state.state.keyboard[key].pressed = false
+      this.state.setState(draft => { for (const key of Object.keys(draft.keyboard) as Keys[]) draft.keyboard[key].pressed = false })
     }
-    onMount(() => {
+    onSettled(() => {
       document.addEventListener('keydown', handleKeyDown)
       document.addEventListener('keyup', handleKeyUp)
       window.addEventListener('blur', clearPressed)
@@ -364,9 +348,10 @@ export class WordleModel {
     const modeTitle = () => this.state.hard.mode === 'daily' ? 'Word of the day' : this.state.hard.mode === 'random' ? 'Random' : 'Advanced'
 
     return <div class='wordle-game-shell'>
-      <Drawer open={this.state.state.showPopOver} onOpenChange={value => this.state.state.showPopOver = value}>
+      <Drawer open={this.state.state.showPopOver} onOpenChange={value => this.state.setState(draft => { draft.showPopOver = value })}>
         <DrawerContent class='result-dialog'>
           <DrawerHeader>
+            <button type='button' class='result-close top-icon' aria-label='Close result' onClick={() => this.state.setState(draft => { draft.showPopOver = false })}>×</button>
             {(() => {
               const last = this.state.currentEntry
               const answer = this.state.stored.word
@@ -397,14 +382,14 @@ export class WordleModel {
         {(() => {
           const last = this.state.currentEntry
           const currentBlock = new Block(this.state.hard.wordLength, last[0], last[1]).render(element => { this.currentBlock = element })
-          onMount(() => this.currentBlock?.scrollIntoView({behavior: 'smooth', block: 'nearest'}))
+          onSettled(() => { this.currentBlock?.scrollIntoView({behavior: 'smooth', block: 'nearest'}) })
           return currentBlock
         })()}
         <Show when={this.state.hard.maxTries !== 1}>
           <For each={Array.from({length: Math.max(0, this.state.hard.maxTries - this.state.history.length)}).fill(undefined)}>{() => new Block(this.state.hard.wordLength, '', '').render()}</For>
         </Show>
       </div>
-      <div class='wordle-keyboard justify-center justify-items-center overflow-visible'>{new Keyboard(this.state.state.keyboard, this.state.disabled, this.state.state.suggested).render()}</div>
+      <div class='wordle-keyboard justify-center justify-items-center overflow-visible'>{new Keyboard(this.state.state.keyboard, this.state.disabled, suggested()).render()}</div>
     </div>
   }
 }
@@ -544,7 +529,7 @@ function OpeningScreen({date, setDate, startDaily, startRandom, startAdvanced}: 
     return challenge ? `${challenge.wordLength} letters · ${challenge.maxTries} guesses · ${challenge.disabledLetters} disabled` : 'Choose a valid date.'
   }
   const refreshCompletedDates = () => void getCompletedDailyDates().then(setCompletedDates).catch(() => setCompletedDates(new Set<string>()))
-  onMount(() => {
+  onSettled(() => {
     refreshCompletedDates()
     window.addEventListener('wordle:stats-change', refreshCompletedDates)
   })
@@ -603,38 +588,33 @@ export default function Wordle() {
   const savedHard = hardStore.get()!
   const savedSoft = softStore.get()!
   const urlChallenge = parseChallenge(new URL(location.href).searchParams.get(GAME_QUERY))
-  const initialHard = urlChallenge?.hard ?? savedHard
-  const hard = createMutable({...initialHard})
-  const soft = createMutable({...savedSoft, fastInvalidate: urlChallenge?.fastInvalidate ?? savedSoft.fastInvalidate})
+  const initialHard = materializeChallenge(urlChallenge?.hard ?? savedHard)
+  const [hard, setHard] = createStore({...initialHard})
+  const [soft, setSoft] = createStore({...savedSoft, fastInvalidate: urlChallenge?.fastInvalidate ?? savedSoft.fastInvalidate})
   const [showOpening, setShowOpening] = createSignal(!urlChallenge)
-  const [dailyDate, setDailyDate] = createSignal(hard.dailyDate ?? localDateKey())
+  const [dailyDate, setDailyDate] = createSignal(initialHard.dailyDate ?? localDateKey())
 
-  createEffect(() => hardStore.set({...hard}))
-  createEffect(() => softStore.set({...soft}))
-  createEffect(() => {
-    if (hard.mode === 'advanced') try {
-      localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...hard, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
+  createEffect(() => ({...hard}), config => {
+    hardStore.set(config)
+    if (config.mode === 'advanced') try {
+      localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...config, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
     } catch {}
   })
-  createEffect(() => {
-    if (!showOpening()) setChallengeQuery(hard, soft.fastInvalidate, true)
+  createEffect(() => ({...soft}), config => softStore.set(config))
+  createEffect(() => ({opening: showOpening(), config: {...hard}, fastInvalidate: soft.fastInvalidate}), value => {
+    if (!value.opening) setChallengeQuery(value.config, value.fastInvalidate, true)
   })
 
-  const commitConfig = (raw: ChallengeConfig) => batch(() => {
+  const updateSoft = (patch: Partial<SettingsSoftProps>) => setSoft(draft => { Object.assign(draft, patch) })
+  const commitConfig = (raw: ChallengeConfig) => {
     const config = materializeChallenge(raw)
-    hard.mode = config.mode
-    hard.wordLength = config.wordLength
-    hard.maxTries = config.maxTries
-    hard.disabledLetters = config.disabledLetters
-    hard.allowAny = config.allowAny
-    hard.dailyDate = config.dailyDate
-    hard.dailyVersion = config.dailyVersion
-    hard.randomId = config.randomId
-    hard.wordIndex = config.wordIndex
-    soft.reveal = false
-    setChallengeQuery(hard, soft.fastInvalidate, true)
+    setHard(draft => {
+      Object.assign(draft, {dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}, config)
+    })
+    updateSoft({reveal: false})
+    setChallengeQuery(config, soft.fastInvalidate, true)
     setShowOpening(false)
-  })
+  }
   const swapWordleView = (commit: () => void, direction: 'forward' | 'back') => animateRootSwap(pageRoot(), commit, pageRoot, direction)
   const applyConfig = (config: ChallengeConfig) => swapWordleView(() => commitConfig(config), 'forward')
 
@@ -682,7 +662,7 @@ export default function Wordle() {
 
   const gameActions = () => <GameTopBarActions ariaLabel='Wordle'>
     <StatsPageTrigger />
-    {!showOpening() && Settings({soft, hard, showActive: true, showWordLength: true, onHardChange: updateAdvancedSetting, onSelectActiveGame: selectActiveGame})}
+    {!showOpening() && <Settings soft={soft} hard={hard} showActive={true} showWordLength={true} onHardChange={updateAdvancedSetting} onSoftChange={updateSoft} onSelectActiveGame={selectActiveGame} />}
   </GameTopBarActions>
 
   return <>
@@ -693,7 +673,8 @@ export default function Wordle() {
       nav={gameActions()}
     />
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
-      <For each={[gameKey()]}>{() => RenderWordleModel(hard, soft, nextChallenge, chooseMode)}</For>
+      {/* The key owns game lifetime; construction reads a settings snapshot. */}
+      <For each={[gameKey()]}>{() => untrack(() => RenderWordleModel(hard, soft, nextChallenge, chooseMode))}</For>
     </Show>
   </>
 }

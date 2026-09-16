@@ -1,6 +1,8 @@
 import { type Keyboard, type KeyId } from "@keybr/keyboard";
 import { type Settings } from "@keybr/settings";
 import { useWindowEvent } from "@keybr/widget";
+import { liveArray } from "@keybr/solid-compat/live";
+import { createMemo } from "solid-js";
 import { useState } from "@keybr/solid-compat/react";
 import { emulateLayout } from "./emulation.ts";
 import { mapEvent } from "./events.ts";
@@ -16,16 +18,16 @@ export function deleteKey(keys: readonly KeyId[], key: KeyId): KeyId[] {
 }
 export function useDepressedKeys(settings: Settings, keyboard: Keyboard): readonly KeyId[] {
     const [depressedKeys, setDepressedKeys] = useState<KeyId[]>([]);
-    const listener = emulateLayout(settings, keyboard, {
+    const listener = createMemo(() => emulateLayout(settings, keyboard, {
         onKeyDown: ({ code }) => setDepressedKeys(addKey(depressedKeys(), code)),
         onKeyUp: ({ code }) => setDepressedKeys(deleteKey(depressedKeys(), code)),
         onInput: () => { },
-    });
+    }));
     useWindowEvent("keydown", (event) => {
-        listener.onKeyDown(mapEvent(event));
+        listener().onKeyDown(mapEvent(event));
     });
     useWindowEvent("keyup", (event) => {
-        listener.onKeyUp(mapEvent(event));
+        listener().onKeyUp(mapEvent(event));
     });
-    return depressedKeys();
+    return liveArray(depressedKeys);
 }
