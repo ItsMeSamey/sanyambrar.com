@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { SpeedUnit, uiProps } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { useMemo } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 export type FormatterOptions = {
     readonly unit?: boolean;
 };

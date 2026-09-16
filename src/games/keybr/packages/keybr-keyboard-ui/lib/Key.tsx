@@ -1,7 +1,7 @@
 import { type DeadCharacter, KeyCharacters, type KeyShape, type LabelShape, type Language, type LigatureCharacter, } from "@keybr/keyboard";
 import { type CodePoint, isDiacritic } from "@keybr/unicode";
 import { type ClassName, type MouseProps } from "@keybr/widget";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type FunctionComponent, memo, type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";

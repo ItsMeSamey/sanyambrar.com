@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { textStatsOf } from "@keybr/unicode";
 import { NameValue } from "@keybr/widget";
 import { memo, type ReactNode, useMemo } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import * as styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";

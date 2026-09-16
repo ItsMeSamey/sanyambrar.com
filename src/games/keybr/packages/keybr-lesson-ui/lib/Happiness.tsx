@@ -1,5 +1,5 @@
 import { Icon } from "@keybr/widget";
-import { mdiEmoticonHappy, mdiEmoticonSad } from "@keybr/solid-compat/mdi";
+import { Smile, Frown } from "@keybr/widget";
 import * as styles from "./Happiness.module.css";
 export function Happiness(solidProps: {
     learningRate: number;
@@ -16,8 +16,8 @@ export function Happiness(solidProps: {
     return <>{content()}</>;
 }
 function Happy() {
-    return <Icon className={styles.icon} shape={mdiEmoticonHappy}/>;
+    return <Icon className={styles.icon} shape={Smile}/>;
 }
 function Sad() {
-    return <Icon className={styles.icon} shape={mdiEmoticonSad}/>;
+    return <Icon className={styles.icon} shape={Frown}/>;
 }

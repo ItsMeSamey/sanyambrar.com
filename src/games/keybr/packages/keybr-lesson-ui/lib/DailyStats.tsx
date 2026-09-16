@@ -1,7 +1,7 @@
 import { useIntlNumbers } from "@keybr/intl";
 import { type DailyStats as DailyStatsType } from "@keybr/result";
 import { formatDuration, NameValue, Para } from "@keybr/widget";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import * as styles from "./DailyStats.module.css";
 import { type Effort } from "./effort.ts";
 import { useFormatter } from "./format.ts";

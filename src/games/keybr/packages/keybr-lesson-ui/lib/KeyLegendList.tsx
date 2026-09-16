@@ -1,4 +1,4 @@
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { KeyLegend } from "./KeyLegend.tsx";
 export const KeyLegendList = () => {
     return (<ul>

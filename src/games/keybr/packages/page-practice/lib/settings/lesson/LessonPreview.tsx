@@ -7,7 +7,7 @@ import { TextInput, toTextDisplaySettings, toTextInputSettings, } from "@keybr/t
 import { StaticText } from "@keybr/textinput-ui";
 import { FieldSet } from "@keybr/widget";
 import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import * as styles from "./LessonPreview.module.css";
 export function LessonPreview(solidProps: {
     readonly lesson: Lesson;

@@ -1,6 +1,6 @@
 import { Tasks } from "@keybr/lang";
-import { mdiCursorMove } from "@keybr/solid-compat/mdi";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { Move } from "../../icons.ts";
+import { clsx } from "clsx";
 import { createEffect, createSignal, onCleanup } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { useDocumentEvent, useWindowEvent } from "../../hooks/index.ts";
@@ -63,7 +63,7 @@ export function Zoomer(props: ZoomerProps): JSX.Element {
       onClick={(ev) => { if (ev.altKey) { setHover(false); setMoving(false); setPosition({ x: 0, y: 0, zoom: 1 }); } }}
     >
       {child()}
-      {(hover() || moving()) && <Icon className={styles.icon} shape={mdiCursorMove} />}
+      {(hover() || moving()) && <Icon className={styles.icon} shape={Move} />}
     </div>
   );
 }

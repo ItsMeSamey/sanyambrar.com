@@ -19,15 +19,16 @@
     "check": "bun run typecheck && bun run lint && bun run build && bun run test"
   },
   "dependencies": {
-    "idb": "^8.0.3",
-    "monaco-editor": "0.56.0",
-    "vditor": "^4.0.0",
-    "vite-plugin-singlefile": "^2.3.3",
-    "solid-js": "2.0.0-rc.6",
-    "@solidjs/web": "2.0.0-rc.6",
+    "@floating-ui/dom": "1.8.0",
     "@kobalte/core": "2.0.0-alpha.1",
+    "@solidjs/web": "2.0.0-rc.6",
+    "clsx": "2.1.1",
+    "idb": "^8.0.3",
     "lucide": "1.41.0",
-    "@floating-ui/dom": "1.8.0"
+    "monaco-editor": "0.56.0",
+    "solid-js": "2.0.0-rc.6",
+    "vditor": "^4.0.0",
+    "vite-plugin-singlefile": "^2.3.3"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

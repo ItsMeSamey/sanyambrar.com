@@ -1,5 +1,5 @@
 import { type Char, charArraysAreEqual, type Line, type LineList, type TextDisplaySettings, textDisplaySettings, } from "@keybr/textinput";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ComponentType, type CSSProperties, memo, type ReactNode, } from "@keybr/solid-compat/react";
 import { renderChars } from "./chars.tsx";
 import { Cursor } from "./Cursor.tsx";

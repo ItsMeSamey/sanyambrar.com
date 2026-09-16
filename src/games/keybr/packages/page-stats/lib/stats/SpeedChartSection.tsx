@@ -3,7 +3,7 @@ import { hasData } from "@keybr/math";
 import { type Result } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
 import { useState } from "@keybr/solid-compat/react";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
 export function SpeedChartSection(solidProps: {

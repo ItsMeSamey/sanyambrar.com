@@ -1,5 +1,5 @@
 import { Field, FieldList, Range } from "@keybr/widget";
-import { defineMessage, useIntl } from "@keybr/solid-compat/intl";
+import { defineMessage, useIntl } from "@keybr/intl";
 export function SmoothnessRange(solidProps: {
     value: number;
     disabled: boolean;

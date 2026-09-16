@@ -1,4 +1,4 @@
-import { mdiAlertCircleOutline, mdiCheckCircleOutline, mdiInformationOutline, } from "@keybr/solid-compat/mdi";
+import { CircleAlert, CircleCheck, Info, } from "../../icons.ts";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { Icon } from "../icon/index.ts";
 export function SeverityIcon(solidProps: {
@@ -16,11 +16,11 @@ export function SeverityIcon(solidProps: {
     }
 }
 export function InfoIcon(): ReactNode {
-    return <Icon shape={mdiInformationOutline}/>;
+    return <Icon shape={Info}/>;
 }
 export function SuccessIcon(): ReactNode {
-    return <Icon shape={mdiCheckCircleOutline}/>;
+    return <Icon shape={CircleCheck}/>;
 }
 export function ErrorIcon(): ReactNode {
-    return <Icon shape={mdiAlertCircleOutline}/>;
+    return <Icon shape={CircleAlert}/>;
 }

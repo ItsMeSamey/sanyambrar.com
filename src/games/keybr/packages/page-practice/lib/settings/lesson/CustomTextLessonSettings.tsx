@@ -5,7 +5,7 @@ import { useSettings } from "@keybr/settings";
 import { textStatsOf } from "@keybr/unicode";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, LinkButton, NameValue, Para, TextField, } from "@keybr/widget";
 import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { exampleTexts } from "./example-texts.ts";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";

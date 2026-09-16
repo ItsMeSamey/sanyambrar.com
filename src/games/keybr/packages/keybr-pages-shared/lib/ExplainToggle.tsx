@@ -1,7 +1,7 @@
 import { booleanProp, Preferences } from "@keybr/settings";
 import { Button, useExplainerState } from "@keybr/widget";
 import { useLayoutEffect } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 
 export function ExplainToggle(solidProps: {
     readonly preference: string;

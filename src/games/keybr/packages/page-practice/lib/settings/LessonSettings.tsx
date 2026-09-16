@@ -3,7 +3,7 @@ import { LessonLoader } from "@keybr/lesson-loader";
 import { type Settings, useSettings } from "@keybr/settings";
 import { SegmentedControl } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
 import { CodeLessonSettings } from "./lesson/CodeLessonSettings.tsx";
 import { CustomTextLessonSettings } from "./lesson/CustomTextLessonSettings.tsx";

@@ -5,7 +5,7 @@ import { Maximize2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { Redo2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { Undo2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import * as styles from "./Controls.module.css";
 
 function ControlButton(props: {

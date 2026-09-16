@@ -2,7 +2,7 @@ import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 export function RecoverKeysProp(): ReactNode {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();

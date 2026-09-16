@@ -7,7 +7,7 @@ import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
 import { memo, type ReactNode, useEffect, useState } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 export function KeyboardSettings(): ReactNode {
     const { formatMessage } = useIntl();
     return (<>

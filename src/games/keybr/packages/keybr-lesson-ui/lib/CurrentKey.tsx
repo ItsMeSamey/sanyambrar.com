@@ -1,6 +1,6 @@
 import { type LessonKeys } from "@keybr/lesson";
 import { type ClassName, styleTextTruncate } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { Show } from 'solid-js';
 import { Key } from "./Key.tsx";
 import { KeyDetails } from "./KeyDetails.tsx";

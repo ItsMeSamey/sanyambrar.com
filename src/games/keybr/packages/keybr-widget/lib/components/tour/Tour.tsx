@@ -1,6 +1,6 @@
-import { mdiClose } from "@keybr/solid-compat/mdi";
+import { X } from "../../icons.ts";
 import { Children, type ReactElement, type ReactNode, useState } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { useHotkeys } from "../../hooks/use-hotkeys.ts";
 import { LinkButton } from "../button/LinkButton.tsx";
 import { Icon } from "../icon/Icon.tsx";
@@ -57,7 +57,7 @@ export function Tour(solidAllProps: TourProps): ReactNode {
             {currentSlide()}
 
             <LinkButton className={styles.close} onClick={close}>
-              <Icon shape={mdiClose}/>
+              <Icon shape={X}/>
             </LinkButton>
 
             <div class={styles.footer}>

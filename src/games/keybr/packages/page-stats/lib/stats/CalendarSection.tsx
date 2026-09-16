@@ -1,7 +1,7 @@
 import { Calendar, EffortLegend, useEffort } from "@keybr/lesson-ui";
 import { type DailyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 export function CalendarSection(solidProps: {
     dailyStatsMap: DailyStatsMap;
 }) {

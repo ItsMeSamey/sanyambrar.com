@@ -1,6 +1,6 @@
 import { type KeyShape, useKeyboard } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 import * as styles from "./TransitionsLayer.module.css";

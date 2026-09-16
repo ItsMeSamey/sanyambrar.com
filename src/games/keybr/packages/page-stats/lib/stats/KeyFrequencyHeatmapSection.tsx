@@ -2,7 +2,7 @@ import { KeyFrequencyHeatmap, Marker } from "@keybr/chart";
 import { useKeyboard } from "@keybr/keyboard";
 import { type KeyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 export function KeyFrequencyHeatmapSection(solidProps: {
     keyStatsMap: KeyStatsMap;
 }) {

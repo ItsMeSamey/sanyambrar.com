@@ -1,14 +1,14 @@
 import { type ClassName } from "@keybr/widget";
-import { mdiAlarmCheck, mdiTrophy } from "@keybr/solid-compat/mdi";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { AlarmClockCheck, Trophy } from "@keybr/widget";
+import { clsx } from "clsx";
 import * as styles from "./event-icons.module.css";
 import { Dynamic } from '@solidjs/web';
 import { type LucideIcon } from '../../../../../../../ui-kit/components/lucide.tsx';
 export function TrophyIcon() {
-    return <Icon shape={mdiTrophy} className={styles.trophy}/>;
+    return <Icon shape={Trophy} className={styles.trophy}/>;
 }
 export function DailyGoalIcon() {
-    return <Icon shape={mdiAlarmCheck}/>;
+    return <Icon shape={AlarmClockCheck}/>;
 }
 function Icon(solidProps: {
     readonly shape: string | LucideIcon;

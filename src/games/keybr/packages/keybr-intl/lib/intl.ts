@@ -1,4 +1,4 @@
-import { createIntl, createIntlCache, type IntlShape } from "@keybr/solid-compat/intl";
+import { createIntl, createIntlCache, type IntlShape } from "./runtime.tsx";
 import messages from "./messages/en.json";
 import { defaultRichTextElements } from "./markup.tsx";
 let cached: IntlShape | null = null;

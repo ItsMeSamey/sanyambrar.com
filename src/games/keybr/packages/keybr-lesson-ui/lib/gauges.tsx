@@ -1,9 +1,9 @@
 import { useIntlNumbers } from "@keybr/intl";
 import { type SummaryStats } from "@keybr/result";
 import { type ClassName, Name, Value } from "@keybr/widget";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { useFormatter } from "./format.ts";
 import * as styles from "./gauges.module.css";
 import { type Names } from "./names.ts";

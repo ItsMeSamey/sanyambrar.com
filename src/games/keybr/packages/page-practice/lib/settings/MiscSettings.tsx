@@ -2,7 +2,7 @@ import { SpeedUnit, uiProps } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 export function MiscSettings(): ReactNode {
     const { formatMessage } = useIntl();
     return (<>

@@ -4,7 +4,7 @@ import { hasData, linearRegression, Range, smooth, Vector } from "@keybr/math";
 import { type Result } from "@keybr/result";
 import { type Rect, type ShapeList } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";

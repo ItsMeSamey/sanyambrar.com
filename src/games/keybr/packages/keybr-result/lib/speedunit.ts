@@ -1,5 +1,5 @@
 import { Enum, type EnumItem } from "@keybr/lang";
-import { defineMessage, type MessageDescriptor } from "@keybr/solid-compat/intl";
+import { defineMessage, type MessageDescriptor } from "@keybr/intl";
 export class SpeedUnit implements EnumItem {
     static readonly WPM = new SpeedUnit("wpm", 1 / 5, defineMessage({
         id: "t_Words_per_minute",

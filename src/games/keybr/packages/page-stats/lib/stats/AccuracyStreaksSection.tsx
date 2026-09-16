@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { useFormatter } from "@keybr/lesson-ui";
 import { makeSummaryStats, MutableStreakList, type Result, type Streak, } from "@keybr/result";
 import { Explainer, Figure, NameValue, Para } from "@keybr/widget";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { createMemo, For, Show } from 'solid-js';
 export function AccuracyStreaksSection(solidProps: {
     results: readonly Result[];
