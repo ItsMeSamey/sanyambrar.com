@@ -1,4 +1,4 @@
-import { createContext, useContext } from "@keybr/solid-compat/react";
+import { createContext, useContext } from 'solid-js';
 export type ExplainerStateType = {
     readonly explainersVisible: boolean;
     readonly toggleExplainers: (visible?: boolean) => void;

@@ -1,15 +1,16 @@
+import { createSignal } from 'solid-js';
 import { Marker, SpeedChart } from "@keybr/chart";
 import { hasData } from "@keybr/math";
 import { type Result } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
-import { useState } from "@keybr/solid-compat/react";
+
 import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
 export function SpeedChartSection(solidProps: {
     results: readonly Result[];
 }) {
-    const [smoothness, setSmoothness] = useState(0.5);
+    const [smoothness, setSmoothness] = createSignal(0.5);
     return (<Figure>
       <Figure.Caption>
         <FormattedMessage id="stats.chart.speed.caption" defaultMessage="Typing Speed"/>

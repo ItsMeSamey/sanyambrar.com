@@ -5,8 +5,8 @@ import { CaretMovementStyle, CaretShapeStyle, Feedback, Font, textDisplayProps, 
 import { makeSoundPlayer, PlaySounds, soundProps, SoundTheme, } from "@keybr/textinput-sounds";
 import { Description, Explainer, Field, FieldList, FieldSet, Icon, IconButton, OptionList, Range, SegmentedControl, Toggle, } from "@keybr/widget";
 import { CirclePlay, CircleStop } from "@keybr/widget";
-import { useEffect, useState } from "@keybr/solid-compat/react";
-import { createMemo } from 'solid-js';
+import { useEffect } from "@keybr/solid-compat/react";
+import { createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { AnimatedText } from "./AnimatedText.tsx";
 import * as styles from "./TypingSettings.module.css";
@@ -243,7 +243,7 @@ function SoundThemePreview() {
             .set(soundProps.soundVolume, settings.get(soundProps.soundVolume))
             .set(soundProps.soundTheme, settings.get(soundProps.soundTheme)));
     });
-    const [playing, setPlaying] = useState(false);
+    const [playing, setPlaying] = createSignal(false);
     useEffect(() => {
         const tasks = new Tasks();
         if (playing()) {

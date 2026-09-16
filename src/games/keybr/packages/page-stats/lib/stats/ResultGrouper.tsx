@@ -7,8 +7,8 @@ import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
 import { type KeyStatsMap, makeKeyStatsMap, ResultGroups, useResults, } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";
-import { useState } from "@keybr/solid-compat/react";
-import { createMemo } from 'solid-js';
+
+import { createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
 export function ResultGrouper(solidProps: {
     children: (keyStatsMap: KeyStatsMap) => JSX.Element;
@@ -27,9 +27,9 @@ export function ResultGrouper(solidProps: {
     const defaultLayout = () => resultsLayouts().has(configuredLayout())
         ? configuredLayout()
         : [...resultsLayouts()][0];
-    const [choice, setSelectedLayout] = useState(defaultLayout);
+    const [choice, setSelectedLayout] = createSignal(defaultLayout);
     const selectedLayout = () => resultsLayouts().has(choice()) ? choice() : defaultLayout();
-    const [characterClass, setCharacterClass] = useState("letters");
+    const [characterClass, setCharacterClass] = createSignal("letters");
     const layoutOptions = useLayoutOptions(resultsLayouts);
     const keyboard = createMemo(() => loadKeyboard(selectedLayout()));
     const keyboardContext = liveObject(keyboard);

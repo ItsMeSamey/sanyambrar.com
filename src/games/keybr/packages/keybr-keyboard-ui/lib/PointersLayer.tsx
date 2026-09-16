@@ -1,8 +1,9 @@
+import { createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 import { type Keyboard, type KeyCombo, type KeyShape, useKeyboard, } from "@keybr/keyboard";
 import { Tasks } from "@keybr/lang";
 import { type CodePoint } from "@keybr/unicode";
-import { useEffect, useRef, useState } from "@keybr/solid-compat/react";
+import { useEffect, useRef } from "@keybr/solid-compat/react";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const PointersLayer = function PointersLayer(props: {
@@ -11,7 +12,7 @@ export const PointersLayer = function PointersLayer(props: {
 }): JSX.Element {
     const keyboard = useKeyboard();
     const svgRef = useRef<SVGSVGElement>(null);
-    const [combo, setCombo] = useState<KeyCombo | null>(null);
+    const [combo, setCombo] = createSignal<KeyCombo | null>(null);
     useEffect(() => {
         const tasks = new Tasks();
         setCombo(null);

@@ -1,11 +1,12 @@
-import { useEffect, useState } from "@keybr/solid-compat/react";
+import { createSignal } from 'solid-js';
+import { useEffect } from "@keybr/solid-compat/react";
 import { useTasks } from "./use-tasks.ts";
 
 type Visible<T> = T & { type: "visible-in" | "visible" | "visible-out" };
 export type HoverPopupState<T> = { type: "hidden" } | Visible<T>;
 
 export function useHoverPopup<T extends Record<string, unknown>>(delay = 300) {
-  const [state, setState] = useState<HoverPopupState<T>>({ type: "hidden" });
+  const [state, setState] = createSignal<HoverPopupState<T>>({ type: "hidden" });
   const tasks = useTasks();
   const replace = (next: HoverPopupState<T>) => setState(() => next);
   useEffect(() => {

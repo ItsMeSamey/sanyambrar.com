@@ -1,5 +1,6 @@
+import { createContext, useContext } from 'solid-js';
 import type { JSX } from "@solidjs/web";
-import { createContext, useContext } from "@keybr/solid-compat/react";
+
 import { state, type Toast } from "./state.ts";
 export type ToastContextValue = {
     readonly close: () => void;
