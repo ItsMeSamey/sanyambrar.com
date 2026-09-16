@@ -22,6 +22,11 @@ async function visit(page, route, info) {
   await expect(page.locator('body')).not.toContainText(/Something's Gone Horridly Wrong|Oh no, something bad|This view failed to render|Editor failed to load/);
 }
 
+async function visitKeybr(page, info) {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await visit(page, '/keybr.html', info);
+}
+
 const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/posts/btop-mutex.html', '/wordle.html', '/keybr.html', '/chain/'];
 for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
@@ -91,8 +96,7 @@ test('Wordle date picker and daily start', async ({ page }, info) => {
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
-  await visit(page, '/keybr.html', info);
-  await page.keyboard.press('Escape');
+  await visitKeybr(page, info);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const stop = page.getByRole('switch', { name: 'Stop cursor on error' });
   await expect(stop).toBeChecked();
@@ -107,6 +111,73 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await expect(page.locator('body')).not.toContainText(/Oh no, something bad/);
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Statistics', exact: true })).toBeDisabled();
+});
+
+test('Keybr storybook progress survives reload, preview and book switches', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  const lessonText = async () => (await page.locator('[data-grab-cursor-on-drag]:has(textarea)').first().locator('div[dir]').allTextContents()).join('').replace(/[·␣]/g, ' ').trim();
+  const chooseBook = async (query, name) => {
+    await page.getByRole('button', { name: 'Choose book', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Choose a book' });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('searchbox').fill(query);
+    await dialog.getByRole('button', { name }).click();
+    await expect(dialog).not.toBeVisible();
+  };
+  const openSettings = async () => {
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(page.getByRole('radiogroup', { name: 'Lesson type' })).toBeVisible();
+  };
+  const closeSettings = async () => {
+    await page.locator('.keybr-view-back').click();
+    await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  };
+
+  await openSettings();
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await expect(page.locator('[data-keybr-lesson-type="books"]')).toBeVisible();
+  await chooseBook('Alice’s Adventures', /Alice’s Adventures in Wonderland.*Lewis Carroll/);
+  await closeSettings();
+
+  const aliceFirst = await lessonText();
+  await page.getByRole('button', { name: 'Skip the current lesson (Ctrl + Right Arrow).', exact: true }).click();
+  await expect.poll(lessonText).not.toBe(aliceFirst);
+  const aliceSecond = await lessonText();
+  const aliceKey = 'game.keybr.storybook.progress.v1.en-alice-wonderland';
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), aliceKey)).not.toBeNull();
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect.poll(lessonText).toBe(aliceSecond);
+  const beforePreview = await page.evaluate(key => localStorage.getItem(key), aliceKey);
+  await openSettings();
+  await expect(page.locator('[data-keybr-lesson-type="books"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), aliceKey)).toBe(beforePreview);
+  await closeSettings();
+  await expect.poll(lessonText).toBe(aliceSecond);
+
+  await page.getByRole('button', { name: 'Previous lesson (Ctrl + Left Arrow).', exact: true }).click();
+  await expect.poll(lessonText).toBe(aliceFirst);
+  await page.reload({ waitUntil: 'networkidle' });
+  await expect.poll(lessonText).toBe(aliceFirst);
+
+  await openSettings();
+  await chooseBook('Jekyll', /The Strange Case Of Dr\. Jekyll And Mr\. Hyde.*Robert Louis Stevenson/);
+  await closeSettings();
+  const jekyllFirst = await lessonText();
+  await page.getByRole('button', { name: 'Skip the current lesson (Ctrl + Right Arrow).', exact: true }).click();
+  await expect.poll(lessonText).not.toBe(jekyllFirst);
+  const jekyllSecond = await lessonText();
+  const jekyllKey = 'game.keybr.storybook.progress.v1.en-jekyll-hyde';
+  await expect.poll(() => page.evaluate(key => localStorage.getItem(key), jekyllKey)).not.toBeNull();
+
+  await openSettings();
+  await chooseBook('Alice’s Adventures', /Alice’s Adventures in Wonderland.*Lewis Carroll/);
+  await closeSettings();
+  await expect.poll(lessonText).toBe(aliceFirst);
+  await openSettings();
+  await chooseBook('Jekyll', /The Strange Case Of Dr\. Jekyll And Mr\. Hyde.*Robert Louis Stevenson/);
+  await closeSettings();
+  await expect.poll(lessonText).toBe(jekyllSecond);
 });
 
 for (const route of ['/', '/wordle.html', '/tools/?tool=number']) test(`accessible ${route}`, async ({ page }, info) => {
@@ -143,8 +214,7 @@ test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
 });
 
 test('Keybr completed lesson updates metrics and survives reload', async ({ page }, info) => {
-  await visit(page, '/keybr.html', info);
-  await page.keyboard.press('Escape');
+  await visitKeybr(page, info);
   await page.keyboard.press('Enter');
   const area = page.locator('[data-grab-cursor-on-drag]:has(textarea)').first();
   const lesson = (await area.textContent()).replace(/[·␣]/g, ' ').trim();

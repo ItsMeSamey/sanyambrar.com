@@ -13,7 +13,7 @@ function ControlButton(props: {
     readonly onClick: () => void;
     readonly children: JSX.Element;
 }) {
-    return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onClick={props.onClick}>{props.children}</button>;
+    return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onPointerDown={(event) => event.preventDefault()} onClick={props.onClick}>{props.children}</button>;
 }
 export const Controls = function Controls(props: {
     readonly onChangeView: () => void;
