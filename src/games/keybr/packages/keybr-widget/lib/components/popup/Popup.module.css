@@ -1,5 +1,9 @@
 /* Generated from the original Keybr Less module. */
 .root {
+  box-sizing: border-box;
+  max-inline-size: calc(100vw - 16px);
+  max-block-size: calc(100dvh - 16px);
+  overflow: auto;
   color: var(--Popup__color);
   background-color: var(--Popup__background-color);
   box-shadow: var(--Popup__box-shadow);
