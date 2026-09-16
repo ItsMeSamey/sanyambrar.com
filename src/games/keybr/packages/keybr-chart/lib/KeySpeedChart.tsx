@@ -11,7 +11,7 @@ import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeySpeedChart(props: {
     readonly samples: readonly KeySample[];
@@ -26,7 +26,7 @@ function usePaint(styles: import("solid-js").Accessor<ChartStyles>, samples: () 
     const { formatInteger } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
     const { settings } = useSettings();
-    return reactivePaint(() => {
+    return memoizePaint(() => {
         const currentSamples = samples();
         const currentSmoothness = smoothness();
         const target = new Target(settings);

@@ -9,7 +9,7 @@ import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function SpeedChart(props: {
     readonly results: readonly Result[];
@@ -23,7 +23,7 @@ function usePaint(styles: import("solid-js").Accessor<ChartStyles>, results: () 
     const { formatMessage } = useIntl();
     const { formatInteger, formatPercents } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
-    return reactivePaint(() => {
+    return memoizePaint(() => {
         const currentResults = results();
         const currentSmoothness = smoothness();
         const g = withStyles(styles());

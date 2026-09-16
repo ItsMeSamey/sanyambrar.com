@@ -10,7 +10,7 @@ import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeyDetailsChart(props: {
     readonly lessonKey: LessonKey;
@@ -25,7 +25,7 @@ function usePaint(styles: import("solid-js").Accessor<ChartStyles>, lessonKey: (
     const { formatInteger } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
     const { settings } = useSettings();
-    return reactivePaint(() => {
+    return memoizePaint(() => {
         const currentLessonKey = lessonKey();
         const currentLearningRate = learningRate();
         const target = new Target(settings);

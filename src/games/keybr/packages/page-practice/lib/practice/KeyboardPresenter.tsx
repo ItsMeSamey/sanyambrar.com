@@ -27,8 +27,3 @@ export const KeyboardPresenter = function KeyboardPresenter(props: {
       {!hasLastLesson() && !props.focus && <ZonesLayer />}
     </VirtualKeyboard>);
 };
-// This used to go through the React-port `withDeferred` helper. Solid keeps a
-// stable props proxy, so deferring that object captured the first values and
-// left suffix/focus/lastLesson stale until unrelated lifecycle activity caused
-// a remount. Keyboard feedback is cheap enough to publish directly.
-export const DeferredKeyboardPresenter = KeyboardPresenter;

@@ -11,7 +11,7 @@ import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { hBoxes } from "./geometry.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function ProgressOverviewChart(props: {
     readonly keyStatsMap: KeyStatsMap;
@@ -25,7 +25,7 @@ function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap:
     const { formatInteger } = useIntlNumbers();
     const { settings } = useSettings();
     const keyStyles = useKeyStyles();
-    return reactivePaint(() => {
+    return memoizePaint(() => {
         const currentKeyStatsMap = keyStatsMap();
         const target = new Target(settings);
         const g = withStyles(styles());

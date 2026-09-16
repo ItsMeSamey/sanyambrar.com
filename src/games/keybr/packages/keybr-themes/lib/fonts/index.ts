@@ -52,10 +52,6 @@ export const CURSIVE = face("cursive", "400", "normal", "cursive");
 export const CURSIVE_I = face("cursive", "400", "italic", "cursive");
 export const CURSIVE_B = face("cursive", "700", "normal", "cursive");
 export const CURSIVE_BI = face("cursive", "700", "italic", "cursive");
-// Kept as a compatibility alias because the text-input package historically
-// selected Ubuntu Mono as its default face. The local build intentionally uses
-// the platform monospace stack and ships no web-font files.
-export const UBUNTU_MONO = MONOSPACE;
 export const FONTS_FACES: readonly FontFace[] = [
     MONOSPACE,
     MONOSPACE_I,
