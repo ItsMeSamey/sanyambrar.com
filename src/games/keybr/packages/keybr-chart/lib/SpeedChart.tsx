@@ -17,16 +17,16 @@ export function SpeedChart(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.results, () => solidProps.smoothness);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, results: () => readonly Result[], smoothness: () => number) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, results: () => readonly Result[], smoothness: () => number) {
     const { formatMessage } = useIntl();
     const { formatInteger, formatPercents } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
     return reactivePaint(() => {
         const currentResults = results();
         const currentSmoothness = smoothness();
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         if (!hasData(currentResults)) {
             return (box: Rect): ShapeList => {
                 return [
@@ -68,17 +68,17 @@ function usePaint(styles: ChartStyles, results: () => readonly Result[], smoothn
                 g.paintAxis(box, "bottom"),
                 g.paintAxis(box, "left"),
                 paintScatterPlot(projComplexity, vIndex, vComplexity, {
-                    style: styles.complexity,
+                    style: styles().complexity,
                 }),
                 paintScatterPlot(projAccuracy, vIndex, vAccuracy, {
-                    style: styles.accuracy,
+                    style: styles().accuracy,
                 }),
                 paintScatterPlot(projSpeed, vIndex, vSpeed, {
-                    style: styles.speed,
+                    style: styles().speed,
                 }),
                 paintCurve(projSpeed, mSpeed, {
                     style: {
-                        ...styles.speed,
+                        ...styles().speed,
                         lineWidth: 2,
                     },
                 }),

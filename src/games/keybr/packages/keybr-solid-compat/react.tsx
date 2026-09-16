@@ -1,6 +1,5 @@
-import { children as resolveChildren, createContext, createEffect, createTrackedEffect, onSettled, createMemo, createSignal, untrack, useContext } from 'solid-js';
+import { children as resolveChildren, createContext, createEffect, createTrackedEffect, onSettled, createSignal, untrack, useContext } from 'solid-js';
 import { type JSX, type ValidComponent } from '@solidjs/web';
-import { liveObject, touchLive } from "./live.ts";
 
 export { createContext, useContext };
 export type ReactNode = JSX.Element;
@@ -26,19 +25,6 @@ export function useState<T>(initial: T | (() => T)) {
   const value = untrack(() => typeof initial === "function" ? (initial as () => T)() : initial);
   return createSignal(() => value);
 }
-export function useMemo<T>(factory: () => T, deps?: (() => readonly unknown[]) | readonly unknown[]): T {
-  const value = createMemo(() => {
-    if (typeof deps === "function") touchDeps(deps());
-    else if (deps != null) touchDeps(deps);
-    return factory();
-  });
-  const initial = untrack(value);
-  return initial != null && typeof initial === "object" ? liveObject(value as import("solid-js").Accessor<T & object>) : initial;
-}
-
-function touchDeps(values: readonly unknown[]): void {
-  for (const value of values) if (value != null && typeof value === "object") touchLive(value);
-}
 export function useCallback<T extends (...args: never[]) => unknown>(callback: T, _deps?: unknown): T { return callback; }
 export function useRef<T>(initial: T | null = null): RefObject<T> { return { current: initial }; }
 export function createRef<T>(): RefObject<T> { return { current: null }; }
@@ -57,7 +43,6 @@ export function useEffect(effect: () => void | (() => void), deps?: (() => reado
   }
   createEffect(() => {
     const values = typeof deps === "function" ? deps() : deps;
-    touchDeps(values);
     return [...values];
   }, () => untrack(effect)); // Declared dependencies own tracking; apply reads are snapshots.
 }
@@ -65,7 +50,6 @@ export function useLayoutEffect(effect: () => void | (() => void), deps?: (() =>
   // Apply after refs are attached, never while constructing the JSX tree.
   createEffect(() => {
     const values = typeof deps === "function" ? deps() : deps ?? [];
-    touchDeps(values);
     return [...values];
   }, () => untrack(effect)); // Declared dependencies own tracking; apply reads are snapshots.
 }

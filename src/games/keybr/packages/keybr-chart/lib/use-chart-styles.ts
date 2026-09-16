@@ -1,10 +1,10 @@
 import { useComputedStyles } from "@keybr/themes";
-import { useMemo } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 import * as styles from "./styles.module.css";
-export type ChartStyles = ReturnType<typeof useChartStyles>;
+export type ChartStyles = ReturnType<ReturnType<typeof useChartStyles>>;
 export function useChartStyles() {
     const computed = useComputedStyles();
-    return useMemo(() => {
+    return createMemo(() => {
         const { computeStyle, computeLineHeight } = computed;
         return {
             frame: computeStyle(styles.frame),
@@ -24,5 +24,5 @@ export function useChartStyles() {
             histRatio: computeStyle(styles.histR),
             lineHeight: computeLineHeight(null),
         };
-    }, [computed]);
+    });
 }

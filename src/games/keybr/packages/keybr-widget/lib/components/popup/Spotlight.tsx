@@ -39,7 +39,7 @@ export function Spotlight(solidProps: SpotlightProps): JSX.Element {
             placeElement(c4, { left: 0, top: y, width: x, bottom: 0 });
             placeElement(marker, { left: x, top: y, width: w, height: h });
         }
-    }, () => [solidProps.anchor, (solidProps.margin === undefined ? 10 : solidProps.margin), screenSize]);
+    }, () => [solidProps.anchor, (solidProps.margin === undefined ? 10 : solidProps.margin), screenSize()]);
     return (<div class={styles.root}>
       {solidProps.anchor && (<>
           <div ref={el => c1Ref.current = el} class={styles.c1}/>

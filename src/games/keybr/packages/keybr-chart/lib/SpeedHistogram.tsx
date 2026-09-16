@@ -19,7 +19,7 @@ export function SpeedHistogram(props: {
   const paint = usePaint(styles, () => props.distribution, () => props.thresholds);
   return (
     <ChartCanvas
-      styles={styles}
+      styles={styles()}
       paint={paint}
       width={props.width}
       height={props.height}
@@ -28,7 +28,7 @@ export function SpeedHistogram(props: {
 }
 
 function usePaint(
-  styles: ChartStyles,
+  styles: import("solid-js").Accessor<ChartStyles>,
   distribution: () => Distribution,
   thresholds: () => readonly SpeedThreshold[],
 ) {
@@ -37,7 +37,7 @@ function usePaint(
   return reactivePaint(() => {
     const currentDistribution = distribution();
     const currentThresholds = thresholds();
-    const g = withStyles(styles);
+    const g = withStyles(styles());
 
     const indices = new Vector();
     const pmf = new Vector();
@@ -63,18 +63,18 @@ function usePaint(
       g.paintTicks(box, indexRange, "bottom", {
         lines: 5,
         fmt: formatSpeed,
-        style: styles.valueLabel,
+        style: styles().valueLabel,
       }),
       g.paintTicks(box, cdfRange, "right", {
         lines: 5,
         fmt: formatPercents,
-        style: styles.thresholdLabel,
+        style: styles().thresholdLabel,
       }),
     ];
 
     function paintPmf(box: Rect): ShapeList {
       return Shapes.fill(
-        styles.speed,
+        styles().speed,
         [...indexRange.steps()].map((index) => {
           const width = Math.ceil(box.width / indexRange.span);
           const x = Math.round(indexRange.normalize(index, 1) * box.width);
@@ -96,8 +96,8 @@ function usePaint(
       }));
       const line = Shapes.polyline(points);
       return [
-        Shapes.stroke({ ...styles.background, lineWidth: 4, lineCap: "round", lineJoin: "round" }, line),
-        Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round", lineJoin: "round" }, line),
+        Shapes.stroke({ ...styles().background, lineWidth: 4, lineCap: "round", lineJoin: "round" }, line),
+        Shapes.stroke({ ...styles().threshold, lineWidth: 2, lineCap: "round", lineJoin: "round" }, line),
       ];
     }
 
@@ -105,10 +105,10 @@ function usePaint(
       if (!(value >= indexRange.min && value <= indexRange.max)) return [];
       const x = Math.round(indexRange.normalize(value) * box.width);
       return [
-        Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({
+        Shapes.stroke({ ...styles().background, lineWidth: 5, lineCap: "round" }, Shapes.line({
           x1: box.x + x, y1: box.y - 10, x2: box.x + x, y2: box.y + box.height + 10,
         })),
-        Shapes.stroke({ ...styles.value, lineWidth: 2, lineCap: "round" }, Shapes.line({
+        Shapes.stroke({ ...styles().value, lineWidth: 2, lineCap: "round" }, Shapes.line({
           x1: box.x + x, y1: box.y - 10, x2: box.x + x, y2: box.y + box.height + 10,
         })),
         Shapes.fillText({
@@ -116,7 +116,7 @@ function usePaint(
           y: box.y + box.height - 5,
           value: `${label}: ${formatSpeed(value)}`,
           style: {
-            ...styles.valueLabel,
+            ...styles().valueLabel,
             textAlign: "left",
             textBaseline: "bottom",
           },
@@ -132,10 +132,10 @@ function usePaint(
       const percentile = currentDistribution.cdf(value);
       const y = Math.round(cdfRange.normalize(percentile) * box.height);
       return [
-        Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({
+        Shapes.stroke({ ...styles().background, lineWidth: 5, lineCap: "round" }, Shapes.line({
           x1: box.x - 10, y1: box.y + box.height - y, x2: box.x + box.width + 10, y2: box.y + box.height - y,
         })),
-        Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({
+        Shapes.stroke({ ...styles().threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({
           x1: box.x - 10, y1: box.y + box.height - y, x2: box.x + box.width + 10, y2: box.y + box.height - y,
         })),
         Shapes.fillText({
@@ -143,7 +143,7 @@ function usePaint(
           y: box.y + box.height - y - 5,
           value: formatPercents(percentile),
           style: {
-            ...styles.thresholdLabel,
+            ...styles().thresholdLabel,
             textAlign: "right",
             textBaseline: "bottom",
           },

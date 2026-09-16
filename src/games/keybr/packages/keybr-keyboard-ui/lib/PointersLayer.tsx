@@ -17,7 +17,7 @@ export const PointersLayer = function PointersLayer(props: {
         const tasks = new Tasks();
         setCombo(null);
         if (props.suffix.length > 0) {
-            const combo = keyboard.getCombo(props.suffix[0]);
+            const combo = keyboard().getCombo(props.suffix[0]);
             if (combo != null) {
                 tasks.delayed(props.delay ?? 1000, () => {
                     setCombo(combo);
@@ -27,7 +27,7 @@ export const PointersLayer = function PointersLayer(props: {
         return () => {
             tasks.cancelAll();
         };
-    }, () => [keyboard, props.suffix, props.delay]);
+    }, () => [keyboard(), props.suffix, props.delay]);
     useEffect(() => {
         const svg = svgRef.current;
         if (svg != null) {
@@ -36,7 +36,7 @@ export const PointersLayer = function PointersLayer(props: {
             }
         }
     }, () => [combo()]);
-    return <Surface ref={svgRef}>{pointers(keyboard, combo())}</Surface>;
+    return <Surface ref={svgRef}>{pointers(keyboard(), combo())}</Surface>;
 };
 function pointers(keyboard: Keyboard, combo: KeyCombo | null): JSX.Element[] {
     const children = [];

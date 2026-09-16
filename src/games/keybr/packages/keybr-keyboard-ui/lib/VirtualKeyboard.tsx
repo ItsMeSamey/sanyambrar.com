@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { liveObject } from "@keybr/solid-compat/live";
 import { type Keyboard, KeyboardContext } from "@keybr/keyboard";
 import { type ZoomableProps } from "@keybr/widget";
 
@@ -14,8 +13,8 @@ export const VirtualKeyboard = function VirtualKeyboard(solidAllProps: {
     readonly moving?: boolean;
 } & ZoomableProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "keyboard", "width", "height", "moving");
-    const keyboard = liveObject(() => solidLocal.keyboard);
-    const size = createMemo(() => getFrameSize(keyboard));
+    const keyboard = createMemo(() => solidLocal.keyboard);
+    const size = createMemo(() => getFrameSize(keyboard()));
     return (<svg {...props} class={styles.keyboard} data-grab-cursor-on-drag="" viewBox={`0 0 ${size().width} ${size().height}`} style={{ "aspect-ratio": `${size().width}/${size().height}` }} width={solidLocal.width} height={solidLocal.height}>
       <rect class={styles.frame} x={0} y={0} width={size().width} height={size().height} rx={10} ry={10}/>
       <KeyboardContext value={keyboard}>

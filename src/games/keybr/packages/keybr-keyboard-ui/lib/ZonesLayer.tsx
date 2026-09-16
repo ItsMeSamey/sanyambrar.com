@@ -7,7 +7,7 @@ import { getKeyCenter, Surface } from "./shapes.tsx";
 export const ZonesLayer = function ZonesLayer(): JSX.Element {
     const keyboard = useKeyboard();
     const findHomingKey = (zone: ZoneId): KeyShape | null => {
-        for (const shape of keyboard.shapes.values()) {
+        for (const shape of keyboard().shapes.values()) {
             if (shape.homing && shape.inZone(zone)) {
                 return shape;
             }
@@ -15,8 +15,8 @@ export const ZonesLayer = function ZonesLayer(): JSX.Element {
         return null;
     };
     const hands = createMemo(() => {
-        const left = findHomingKey("left") ?? keyboard.getShape("KeyF");
-        const right = findHomingKey("right") ?? keyboard.getShape("KeyJ");
+        const left = findHomingKey("left") ?? keyboard().getShape("KeyF");
+        const right = findHomingKey("right") ?? keyboard().getShape("KeyJ");
         return left && right ? <Surface><LeftHand center={getKeyCenter(left)}/><RightHand center={getKeyCenter(right)}/></Surface> : null;
     });
     return <>{hands()}</>;

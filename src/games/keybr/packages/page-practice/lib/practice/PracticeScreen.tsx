@@ -31,7 +31,7 @@ function ProgressUpdater(props: { readonly lesson: Lesson }) {
     // down the controller, flash LoadingProgress, and rebuild the whole
     // practice screen. Only seed from history when the Progress instance
     // itself changes (lesson/settings/page load).
-    const seedResults = untrack(() => lesson.filter(results));
+    const seedResults = untrack(() => lesson.filter(results()));
     setReady(null);
     const controller = new AbortController();
     schedule(value.seedAsync(seedResults, setLoading), { signal: controller.signal })

@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { liveObject } from "@keybr/solid-compat/live";
 import { useCollator } from "@keybr/intl";
 import { KeyboardContext, keyboardProps, Layout, loadKeyboard, useFormattedNames, } from "@keybr/keyboard";
 import { Letter } from "@keybr/phonetic-model";
@@ -17,7 +16,7 @@ export function ResultGrouper(solidProps: {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();
-    const groups = createMemo(() => ResultGroups.byLayout(results));
+    const groups = createMemo(() => ResultGroups.byLayout(results()));
     const configuredLayout = () => settings.get(keyboardProps.layout);
     const resultsLayouts = createMemo(() => {
         const layouts = new Set(groups().keys());
@@ -32,7 +31,6 @@ export function ResultGrouper(solidProps: {
     const [characterClass, setCharacterClass] = createSignal("letters");
     const layoutOptions = useLayoutOptions(resultsLayouts);
     const keyboard = createMemo(() => loadKeyboard(selectedLayout()));
-    const keyboardContext = liveObject(keyboard);
     const group = () => groups().get(selectedLayout());
     return (<>
       <FieldList>
@@ -82,7 +80,7 @@ export function ResultGrouper(solidProps: {
         {solidProps.actions != null && <Field>{solidProps.actions}</Field>}
       </FieldList>
 
-      <KeyboardContext value={keyboardContext}>
+      <KeyboardContext value={keyboard}>
         <PhoneticModelLoader language={selectedLayout().language}>
           {({ letters }) => {
             switch (characterClass()) {

@@ -160,9 +160,9 @@ function GeometryProp(): JSX.Element {
 const KeyboardPreview = function KeyboardPreview(): JSX.Element {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
-    const depressedKeys = useDepressedKeys(settings, keyboard);
-    return (<VirtualKeyboard keyboard={keyboard} height="16rem">
-      <KeyLayer depressedKeys={depressedKeys} toggledKeys={ModifierState.modifiers} showColors={settings.get(keyboardProps.colors)}/>
+    const depressedKeys = useDepressedKeys(settings, keyboard());
+    return (<VirtualKeyboard keyboard={keyboard()} height="16rem">
+      <KeyLayer depressedKeys={depressedKeys()} toggledKeys={ModifierState.modifiers} showColors={settings.get(keyboardProps.colors)}/>
       {settings.get(keyboardProps.pointers) && <PointersPreview />}
     </VirtualKeyboard>);
 };
@@ -172,8 +172,8 @@ const PointersPreview = function PointersPreview(): JSX.Element {
     const [suffix, setSuffix] = createSignal<CodePoint[]>([]);
     useEffect(() => {
         setIndex(0);
-        setSuffix(keyboard.getExampleLetters());
-    }, () => [keyboard]);
+        setSuffix(keyboard().getExampleLetters());
+    }, () => [keyboard()]);
     useEffect(() => {
         const tasks = new Tasks();
         tasks.delayed(1000, () => {

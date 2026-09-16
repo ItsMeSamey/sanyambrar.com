@@ -19,9 +19,9 @@ export function KeySpeedChart(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.samples, () => solidProps.smoothness);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, samples: () => readonly KeySample[], smoothness: () => number) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, samples: () => readonly KeySample[], smoothness: () => number) {
     const { formatMessage } = useIntl();
     const { formatInteger } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
@@ -30,7 +30,7 @@ function usePaint(styles: ChartStyles, samples: () => readonly KeySample[], smoo
         const currentSamples = samples();
         const currentSmoothness = smoothness();
         const target = new Target(settings);
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         if (!hasData(currentSamples)) {
             return (box: Rect): ShapeList => {
                 return [
@@ -64,11 +64,11 @@ function usePaint(styles: ChartStyles, samples: () => readonly KeySample[], smoo
                 g.paintAxis(box, "bottom"),
                 g.paintAxis(box, "left"),
                 paintScatterPlot(proj, vIndex, vSpeed, {
-                    style: styles.speed,
+                    style: styles().speed,
                 }),
                 paintCurve(proj, mSpeed, {
                     style: {
-                        ...styles.speed,
+                        ...styles().speed,
                         lineWidth: 2,
                     },
                 }),
@@ -79,14 +79,14 @@ function usePaint(styles: ChartStyles, samples: () => readonly KeySample[], smoo
             function paintTargetSpeedLine(): ShapeList {
                 const y = Math.round(proj.y(target.targetSpeed));
                 return [
-                    Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
-                    Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                    Shapes.stroke({ ...styles().background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                    Shapes.stroke({ ...styles().threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
                     Shapes.fillText({
                         x: box.x + box.width + 15,
                         y: y,
                         value: formatSpeed(target.targetSpeed),
                         style: {
-                            ...styles.thresholdLabel,
+                            ...styles().thresholdLabel,
                             textAlign: "left",
                             textBaseline: "middle",
                         },

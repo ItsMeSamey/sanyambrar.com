@@ -18,7 +18,7 @@ export function KeyFrequencyHeatmapSection(solidProps: {
         </Figure.Description>
       </Explainer>
 
-      <KeyFrequencyHeatmap keyStatsMap={solidProps.keyStatsMap} keyboard={keyboard}/>
+      <KeyFrequencyHeatmap keyStatsMap={solidProps.keyStatsMap} keyboard={keyboard()}/>
 
       <Figure.Legend>
         <FormattedMessage id="stats.chart.keyFrequencyHeatmap.legend" defaultMessage="Circle color: {label1} – hit count, {label2} – miss count." values={{

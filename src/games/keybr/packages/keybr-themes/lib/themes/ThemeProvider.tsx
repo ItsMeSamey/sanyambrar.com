@@ -1,6 +1,5 @@
 import { createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import { liveObject } from "@keybr/solid-compat/live";
 import { ThemeContext, type ThemeValue } from "./context.ts";
 
 function readTheme(): Omit<ThemeValue, "hash"> {
@@ -17,6 +16,5 @@ export function ThemeProvider(props: { readonly children: JSX.Element }) {
     addEventListener("samey-themechange", sync);
     return () => removeEventListener("samey-themechange", sync);
   });
-  const value = liveObject(state);
-  return <ThemeContext value={value}>{props.children}</ThemeContext>;
+  return <ThemeContext value={state}>{props.children}</ThemeContext>;
 }

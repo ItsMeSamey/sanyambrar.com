@@ -45,17 +45,17 @@ function Loader(props: {
       const model = props.model;
       switch (type) {
         case LessonType.GUIDED:
-          return { type, value: new GuidedLesson(settings, keyboard, model, await loadWordList(language)) };
+          return { type, value: new GuidedLesson(settings, keyboard(), model, await loadWordList(language)) };
         case LessonType.WORDLIST:
-          return { type, value: new WordListLesson(settings, keyboard, model, await loadWordList(language)) };
+          return { type, value: new WordListLesson(settings, keyboard(), model, await loadWordList(language)) };
         case LessonType.BOOKS:
-          return { type, value: new BooksLesson(settings, keyboard, model, { book, content: await loadContent(book) }) };
+          return { type, value: new BooksLesson(settings, keyboard(), model, { book, content: await loadContent(book) }) };
         case LessonType.CUSTOM:
-          return { type, value: new CustomTextLesson(settings, keyboard, model) };
+          return { type, value: new CustomTextLesson(settings, keyboard(), model) };
         case LessonType.CODE:
-          return { type, value: new CodeLesson(settings, keyboard, model) };
+          return { type, value: new CodeLesson(settings, keyboard(), model) };
         case LessonType.NUMBERS:
-          return { type, value: new NumbersLesson(settings, keyboard, model) };
+          return { type, value: new NumbersLesson(settings, keyboard(), model) };
         default:
           throw new Error(`Unknown lesson type: ${String(type)}`);
       }

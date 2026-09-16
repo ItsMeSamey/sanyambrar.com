@@ -18,17 +18,17 @@ export function ProgressOverviewChart(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.keyStatsMap);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
     const { formatInteger } = useIntlNumbers();
     const { settings } = useSettings();
-    const { confidenceForegroundColor } = useKeyStyles();
+    const keyStyles = useKeyStyles();
     return reactivePaint(() => {
         const currentKeyStatsMap = keyStatsMap();
         const target = new Target(settings);
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         const { letters, results } = currentKeyStatsMap;
         const vIndex = new Vector();
         for (let index = 0; index < results.length; index++) {
@@ -53,7 +53,7 @@ function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
                 g.paintKeyTicks(box, letters, "left", { margin: 4 }),
             ];
             function paintGrid1(): ShapeList {
-                return Shapes.stroke({ ...styles.frame, lineWidth: 1, lineCap: "round" },
+                return Shapes.stroke({ ...styles().frame, lineWidth: 1, lineCap: "round" },
                     boxes.map(({ rect }) => Shapes.line({ x1: rect.x, y1: rect.cy, x2: rect.x + rect.width, y2: rect.cy })),
                 );
             }
@@ -63,7 +63,7 @@ function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
                     for (let i = 0; i < keyData.length; i++) {
                         const value = keyData[i];
                         if (value === value) {
-                            g.fillStyle = confidenceForegroundColor(value);
+                            g.fillStyle = keyStyles().confidenceForegroundColor(value);
                             g.fillRect(x + i, y, 1, height);
                         }
                     }

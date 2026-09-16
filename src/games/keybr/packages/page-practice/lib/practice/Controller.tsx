@@ -1,6 +1,5 @@
 import { type KeyId, useKeyboard } from "@keybr/keyboard";
 import { type Result } from "@keybr/result";
-import { touchLive } from "@keybr/solid-compat/live";
 import { type LineList } from "@keybr/textinput";
 import { addKey, deleteKey, emulateLayout } from "@keybr/textinput-events";
 import { makeSoundPlayer } from "@keybr/textinput-sounds";
@@ -50,7 +49,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
 
   const state = createMemo(() => {
     lessonRevision();
-    touchLive(keyboard);
+    keyboard();
     return new LessonState(progress());
   });
 
@@ -95,7 +94,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
   const handlers = createMemo(() => {
     const value = state();
     const playSounds = makeSoundPlayer(value.settings);
-    return emulateLayout(value.settings, keyboard, {
+    return emulateLayout(value.settings, keyboard(), {
       onKeyDown(event) {
         setDepressedKeys((value.depressedKeys = addKey(value.depressedKeys, event.code)));
       },

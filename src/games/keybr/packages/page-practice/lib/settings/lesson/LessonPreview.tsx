@@ -7,7 +7,7 @@ import { useSettings } from "@keybr/settings";
 import { TextInput, toTextDisplaySettings, toTextInputSettings, } from "@keybr/textinput";
 import { StaticText } from "@keybr/textinput-ui";
 import { FieldSet } from "@keybr/widget";
-import { useMemo } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./LessonPreview.module.css";
 export function LessonPreview(solidProps: {
@@ -16,23 +16,23 @@ export function LessonPreview(solidProps: {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();
-    const preview = useMemo(() => {
-        const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results)));
+    const preview = createMemo(() => {
+        const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results())));
         const text = solidProps.lesson instanceof BooksLesson
             ? solidProps.lesson.generatePreview()
             : solidProps.lesson.generate(lessonKeys, LCG(123));
         const textInput = new TextInput(text, toTextInputSettings(settings));
         return { lessonKeys, textInput };
-    }, () => [settings, solidProps.lesson, results]);
+    });
     return (<FieldSet legend={formatMessage({
             id: "t_Lesson_preview:",
             defaultMessage: "Lesson preview",
         })}>
       <div class={styles.root}>
-        <KeySetRow lessonKeys={preview.lessonKeys}/>
-        <CurrentKeyRow lessonKeys={preview.lessonKeys}/>
+        <KeySetRow lessonKeys={preview().lessonKeys}/>
+        <CurrentKeyRow lessonKeys={preview().lessonKeys}/>
         <div class={styles.text}>
-          <StaticText settings={toTextDisplaySettings(settings)} lines={preview.textInput.lines}/>
+          <StaticText settings={toTextDisplaySettings(settings)} lines={preview().textInput.lines}/>
         </div>
       </div>
     </FieldSet>);
