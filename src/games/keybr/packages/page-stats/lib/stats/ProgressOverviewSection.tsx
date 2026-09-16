@@ -3,7 +3,7 @@ import { type KeyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
-export function ProgressOverviewSection(solidProps: {
+export function ProgressOverviewSection(props: {
     keyStatsMap: KeyStatsMap;
 }) {
     return (<Figure>
@@ -18,7 +18,7 @@ export function ProgressOverviewSection(solidProps: {
       </Explainer>
 
       <ChartWrapper>
-        <ProgressOverviewChart keyStatsMap={solidProps.keyStatsMap} width="100%" height="35rem"/>
+        <ProgressOverviewChart keyStatsMap={props.keyStatsMap} width="100%" height="35rem"/>
       </ChartWrapper>
 
       <Figure.Legend>

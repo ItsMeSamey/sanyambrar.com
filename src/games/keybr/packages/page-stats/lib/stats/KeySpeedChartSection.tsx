@@ -10,16 +10,16 @@ import { createMemo, createSignal } from 'solid-js';
 import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
-export function KeySpeedChartSection(solidProps: {
+export function KeySpeedChartSection(props: {
     keyStatsMap: KeyStatsMap;
 }) {
     const { settings } = useSettings();
-    const letters = () => solidProps.keyStatsMap.letters;
+    const letters = () => props.keyStatsMap.letters;
     const [choice, setCurrent] = createSignal(() => letters()[0]);
     const current = () => letters().includes(choice()) ? choice() : letters()[0];
     const [smoothness, setSmoothness] = createSignal(0.5);
     const target = createMemo(() => new Target(settings));
-    const keyStats = createMemo(() => solidProps.keyStatsMap.get(current()));
+    const keyStats = createMemo(() => props.keyStatsMap.get(current()));
     const samples = () => keyStats().samples;
     return (<Figure>
       <Figure.Caption>
@@ -33,7 +33,7 @@ export function KeySpeedChartSection(solidProps: {
       </Explainer>
 
       <Para align="center">
-        <KeySelector keyStatsMap={solidProps.keyStatsMap} current={current()} onSelect={(current) => {
+        <KeySelector keyStatsMap={props.keyStatsMap} current={current()} onSelect={(current) => {
             setCurrent(current);
         }}/>
       </Para>

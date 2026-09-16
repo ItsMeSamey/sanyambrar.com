@@ -3,9 +3,9 @@ import { clsx } from "clsx";
 import * as styles from "./IconButton.module.css";
 import { type IconButtonProps } from "./IconButton.types.ts";
 import { omit } from 'solid-js';
-export function IconButton(solidAllProps: IconButtonProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "disabled", "icon", "label", "tabIndex", "title");
-    return (<button {...props} class={clsx(styles.root, solidLocal.disabled && styles.disabled)} disabled={solidLocal.disabled} tabindex={solidLocal.tabIndex} title={solidLocal.title}>
-      {solidLocal.icon}
+export function IconButton(allProps: IconButtonProps): JSX.Element {
+    const local = allProps, props = omit(allProps, "children", "disabled", "icon", "label", "tabIndex", "title");
+    return (<button {...props} class={clsx(styles.root, local.disabled && styles.disabled)} disabled={local.disabled} tabindex={local.tabIndex} title={local.title}>
+      {local.icon}
     </button>);
 }

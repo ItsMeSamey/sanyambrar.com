@@ -3,13 +3,13 @@ import { Alert, toast } from "@keybr/widget";
 
 import { ErrorReport } from "./ErrorReport.tsx";
 import { formatReport, inspectError } from "./inspect.ts";
-export function ErrorAlert(solidProps: {
+export function ErrorAlert(props: {
     readonly title: JSX.Element;
     readonly error: unknown;
 }) {
     return (<Alert severity="error" closeButton={true}>
-      {solidProps.title}
-      <ErrorReport report={formatReport(inspectError(solidProps.error))}/>
+      {props.title}
+      <ErrorReport report={formatReport(inspectError(props.error))}/>
     </Alert>);
 }
 ErrorAlert.toast = (title: JSX.Element, error: unknown) => {

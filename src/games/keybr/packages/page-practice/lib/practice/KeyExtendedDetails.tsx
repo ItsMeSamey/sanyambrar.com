@@ -8,18 +8,18 @@ import { Box } from "@keybr/widget";
 
 import * as styles from "./KeyExtendedDetails.module.css";
 import { LearningRateDescription } from "./LearningRateDescription.tsx";
-export function KeyExtendedDetails(solidProps: {
+export function KeyExtendedDetails(props: {
     readonly lessonKey: LessonKey;
     readonly keyStats: KeyStats;
 }): JSX.Element {
     const { settings } = useSettings();
-    const learningRate = () => LearningRate.from(solidProps.keyStats.samples, new Target(settings));
+    const learningRate = () => LearningRate.from(props.keyStats.samples, new Target(settings));
     return (<div class={styles.root}>
       <Box alignItems="center" justifyContent="center">
-        <Key lessonKey={solidProps.lessonKey} size="large"/>
-        <KeyDetails lessonKey={solidProps.lessonKey}/>
+        <Key lessonKey={props.lessonKey} size="large"/>
+        <KeyDetails lessonKey={props.lessonKey}/>
       </Box>
-      <LearningRateDescription lessonKey={solidProps.lessonKey} learningRate={learningRate()}/>
-      <KeyDetailsChart lessonKey={solidProps.lessonKey} learningRate={learningRate()} width="50rem" height="15rem"/>
+      <LearningRateDescription lessonKey={props.lessonKey} learningRate={learningRate()}/>
+      <KeyDetailsChart lessonKey={props.lessonKey} learningRate={learningRate()} width="50rem" height="15rem"/>
     </div>);
 }

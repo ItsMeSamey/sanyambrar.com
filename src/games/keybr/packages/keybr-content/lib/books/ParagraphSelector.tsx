@@ -5,7 +5,7 @@ import { SkipForward, SkipBack } from "@keybr/widget";
 
 import { useIntl } from "@keybr/intl";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
-export function ParagraphSelector(solidProps: {
+export function ParagraphSelector(props: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
     readonly onChange: (paragraphIndex: number) => void;
@@ -15,21 +15,21 @@ export function ParagraphSelector(solidProps: {
     return (<FieldList>
       <Field>Paragraph:</Field>
       <Field>
-        <ParagraphIndex paragraphIndex={solidProps.paragraphIndex}/>
+        <ParagraphIndex paragraphIndex={props.paragraphIndex}/>
       </Field>
       <Field>
-        <Range size={32} min={0} max={solidProps.paragraphs.length - 1} step={1} value={solidProps.paragraphIndex} onChange={solidProps.onChange}/>
+        <Range size={32} min={0} max={props.paragraphs.length - 1} step={1} value={props.paragraphIndex} onChange={props.onChange}/>
       </Field>
       <Field>
         <span style={{ display: "contents" }}>
-          <IconButton icon={<Icon shape={rtl ? SkipForward : SkipBack}/>} disabled={solidProps.paragraphIndex === 0} onClick={() => {
-            if (solidProps.paragraphIndex > 0) {
-                solidProps.onChange(solidProps.paragraphIndex - 1);
+          <IconButton icon={<Icon shape={rtl ? SkipForward : SkipBack}/>} disabled={props.paragraphIndex === 0} onClick={() => {
+            if (props.paragraphIndex > 0) {
+                props.onChange(props.paragraphIndex - 1);
             }
         }}/>
-          <IconButton icon={<Icon shape={rtl ? SkipBack : SkipForward}/>} disabled={solidProps.paragraphIndex === solidProps.paragraphs.length - 1} onClick={() => {
-            if (solidProps.paragraphIndex < solidProps.paragraphs.length - 1) {
-                solidProps.onChange(solidProps.paragraphIndex + 1);
+          <IconButton icon={<Icon shape={rtl ? SkipBack : SkipForward}/>} disabled={props.paragraphIndex === props.paragraphs.length - 1} onClick={() => {
+            if (props.paragraphIndex < props.paragraphs.length - 1) {
+                props.onChange(props.paragraphIndex + 1);
             }
         }}/>
         </span>

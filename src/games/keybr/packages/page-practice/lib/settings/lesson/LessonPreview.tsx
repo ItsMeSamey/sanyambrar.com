@@ -10,17 +10,17 @@ import { FieldSet } from "@keybr/widget";
 import { createMemo } from "solid-js";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./LessonPreview.module.css";
-export function LessonPreview(solidProps: {
+export function LessonPreview(props: {
     readonly lesson: Lesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();
     const preview = createMemo(() => {
-        const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results())));
-        const text = solidProps.lesson instanceof BooksLesson
-            ? solidProps.lesson.generatePreview()
-            : solidProps.lesson.generate(lessonKeys, LCG(123));
+        const lessonKeys = props.lesson.update(makeKeyStatsMap(props.lesson.letters, props.lesson.filter(results())));
+        const text = props.lesson instanceof BooksLesson
+            ? props.lesson.generatePreview()
+            : props.lesson.generate(lessonKeys, LCG(123));
         const textInput = new TextInput(text, toTextInputSettings(settings));
         return { lessonKeys, textInput };
     });

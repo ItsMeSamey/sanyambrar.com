@@ -11,13 +11,13 @@ import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { reactivePaint } from "./reactive-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function SpeedChart(solidProps: {
+export function SpeedChart(props: {
     readonly results: readonly Result[];
     readonly smoothness: number;
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
-    const paint = usePaint(styles, () => solidProps.results, () => solidProps.smoothness);
-    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    const paint = usePaint(styles, () => props.results, () => props.smoothness);
+    return <ChartCanvas styles={styles()} paint={paint} width={props.width} height={props.height}/>;
 }
 function usePaint(styles: import("solid-js").Accessor<ChartStyles>, results: () => readonly Result[], smoothness: () => number) {
     const { formatMessage } = useIntl();

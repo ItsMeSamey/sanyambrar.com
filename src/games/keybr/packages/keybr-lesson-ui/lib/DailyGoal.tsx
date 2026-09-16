@@ -3,23 +3,23 @@ import { type DailyGoal as DailyGoalType } from "@keybr/lesson";
 import { type ClassName, Value } from "@keybr/widget";
 import { clsx } from "clsx";
 import * as styles from "./DailyGoal.module.css";
-export const DailyGoal = (solidProps: {
+export const DailyGoal = (props: {
     id?: string;
     className?: ClassName;
     dailyGoal: DailyGoalType;
 }) => {
-    return (<span id={solidProps.id} class={clsx(styles.root, solidProps.className)}>
-      <DailyGoalLabel value={solidProps.dailyGoal.value} goal={solidProps.dailyGoal.goal}/>
-      <DailyGoalGauge value={solidProps.dailyGoal.value}/>
+    return (<span id={props.id} class={clsx(styles.root, props.className)}>
+      <DailyGoalLabel value={props.dailyGoal.value} goal={props.dailyGoal.goal}/>
+      <DailyGoalGauge value={props.dailyGoal.value}/>
     </span>);
 };
-const DailyGoalLabel = (solidProps: {
+const DailyGoalLabel = (props: {
     value: number;
     goal: number;
 }) => {
     const { formatPercents } = useIntlNumbers();
     const { formatDuration } = useIntlDurations();
-    return (<Value value={`${formatPercents(solidProps.value, 0)}/${formatDuration({ minutes: solidProps.goal })}`}/>);
+    return (<Value value={`${formatPercents(props.value, 0)}/${formatDuration({ minutes: props.goal })}`}/>);
 };
 const lapColors = [
     "var(--site-fg, var(--text-color))",
@@ -27,10 +27,10 @@ const lapColors = [
     "var(--site-fast-fg, #16a34a)",
     "var(--site-warning-fg, #d4a72c)",
 ] as const;
-const DailyGoalGauge = (solidProps: {
+const DailyGoalGauge = (props: {
     value: number;
 }) => {
-    const value = () => Math.max(0, Number.isFinite(solidProps.value) ? solidProps.value : 0);
+    const value = () => Math.max(0, Number.isFinite(props.value) ? props.value : 0);
     const whole = () => Math.floor(value());
     const fraction = () => value() - whole();
     const exactLap = () => value() > 0 && fraction() < Number.EPSILON;

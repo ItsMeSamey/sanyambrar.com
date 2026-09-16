@@ -3,10 +3,10 @@ import { clsx } from "clsx";
 
 import * as styles from "./NameValue.module.css";
 import { type NameProps, type NameValueProps, type ValueProps, } from "./NameValue.types.ts";
-export function NameValue(solidProps: NameValueProps): JSX.Element {
-    return (<span class={clsx(styles.nameValue, solidProps.className)} title={solidProps.title}>
-      {asName(solidProps.name)}
-      {asValue(solidProps.value)}
+export function NameValue(props: NameValueProps): JSX.Element {
+    return (<span class={clsx(styles.nameValue, props.className)} title={props.title}>
+      {asName(props.name)}
+      {asValue(props.value)}
     </span>);
 }
 export function asName(v: JSX.Element): JSX.Element {
@@ -17,9 +17,9 @@ export function asName(v: JSX.Element): JSX.Element {
         ? <Name name={String(v)}/>
         : v;
 }
-export function Name(solidProps: NameProps): JSX.Element {
-    return (<span class={clsx(styles.name, solidProps.className)} title={solidProps.title}>
-      {solidProps.children ?? (solidProps.name != null ? solidProps.name + ":" : null)}
+export function Name(props: NameProps): JSX.Element {
+    return (<span class={clsx(styles.name, props.className)} title={props.title}>
+      {props.children ?? (props.name != null ? props.name + ":" : null)}
     </span>);
 }
 export function asValue(v: JSX.Element): JSX.Element {
@@ -27,8 +27,8 @@ export function asValue(v: JSX.Element): JSX.Element {
         ? <Value value={v}/>
         : v;
 }
-export function Value(solidProps: ValueProps): JSX.Element {
-    return (<span class={clsx(styles.value, solidProps.delta != null && solidProps.delta > 0 && styles.valueMore, solidProps.delta != null && solidProps.delta < 0 && styles.valueLess, solidProps.className)} title={solidProps.title}>
-      {solidProps.children ?? solidProps.value}
+export function Value(props: ValueProps): JSX.Element {
+    return (<span class={clsx(styles.value, props.delta != null && props.delta > 0 && styles.valueMore, props.delta != null && props.delta < 0 && styles.valueLess, props.className)} title={props.title}>
+      {props.children ?? props.value}
     </span>);
 }

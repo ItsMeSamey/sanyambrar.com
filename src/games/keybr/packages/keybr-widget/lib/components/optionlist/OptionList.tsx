@@ -5,23 +5,23 @@ import { type OptionListProps } from "./OptionList.types.ts";
 import { OptionListButton } from "./OptionListButton.tsx";
 import { OptionListMenu } from "./OptionListMenu.tsx";
 import { omit, createSignal } from 'solid-js';
-export function OptionList(solidAllProps: OptionListProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
+export function OptionList(allProps: OptionListProps): JSX.Element {
+    const local = allProps, props = omit(allProps, "disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
     const [focused, setFocused] = createSignal(false);
-    const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(solidLocal);
-    return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} size={solidLocal.size} tabIndex={solidLocal.tabIndex} title={solidLocal.title} onBlur={(event) => {
-            if (!solidLocal.disabled) {
+    const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(local);
+    return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} size={local.size} tabIndex={local.tabIndex} title={local.title} onBlur={(event) => {
+            if (!local.disabled) {
                 setFocused(false);
                 setOpen(false);
-                if (solidLocal.onBlur != null) {
-                    solidLocal.onBlur(event);
+                if (local.onBlur != null) {
+                    local.onBlur(event);
                 }
             }
         }} onFocus={(event) => {
-            if (!solidLocal.disabled) {
+            if (!local.disabled) {
                 setFocused(true);
-                if (solidLocal.onFocus != null) {
-                    solidLocal.onFocus(event);
+                if (local.onFocus != null) {
+                    local.onFocus(event);
                 }
             }
         }} onKeyDown={useHotkeysHandler({
@@ -35,10 +35,10 @@ export function OptionList(solidAllProps: OptionListProps): JSX.Element {
             event.preventDefault();
             handleOpen();
         }}>
-      {open() && (<OptionListMenu options={solidLocal.options} selectedOption={selectedOption()} onSelect={(option) => {
+      {open() && (<OptionListMenu options={local.options} selectedOption={selectedOption()} onSelect={(option) => {
                 setOpen(false);
-                if (solidLocal.onSelect != null) {
-                    solidLocal.onSelect(option.value);
+                if (local.onSelect != null) {
+                    local.onSelect(option.value);
                 }
             }}/>)}
     </OptionListButton>);

@@ -1,17 +1,17 @@
 import { Icon } from "@keybr/widget";
 import { Smile, Frown } from "@keybr/widget";
 import * as styles from "./Happiness.module.css";
-export function Happiness(solidProps: {
+export function Happiness(props: {
     learningRate: number;
 }) {
-    const content = () => solidProps.learningRate > 0 ? (<span class={styles.happy}>
+    const content = () => props.learningRate > 0 ? (<span class={styles.happy}>
       <Happy />
-      {solidProps.learningRate >= 5 && <Happy />}
-      {solidProps.learningRate >= 10 && <Happy />}
-    </span>) : solidProps.learningRate < 0 ? (<span class={styles.sad}>
+      {props.learningRate >= 5 && <Happy />}
+      {props.learningRate >= 10 && <Happy />}
+    </span>) : props.learningRate < 0 ? (<span class={styles.sad}>
       <Sad />
-      {solidProps.learningRate <= -5 && <Sad />}
-      {solidProps.learningRate <= -10 && <Sad />}
+      {props.learningRate <= -5 && <Sad />}
+      {props.learningRate <= -10 && <Sad />}
     </span>) : null;
     return <>{content()}</>;
 }

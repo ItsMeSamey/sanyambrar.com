@@ -17,12 +17,12 @@ export const getFrameSize = (keyboard: Keyboard): Size => {
     }
     return new Size(margin * 2 + cols * keySize - keyGap, margin * 2 + rows * keySize - keyGap);
 };
-export const Surface = (solidAllProps: {
+export const Surface = (allProps: {
     children: JSX.Element;
     ref?: (element: SVGSVGElement) => void;
 } & MouseProps) => {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "ref");
-    return (<svg {...props} ref={solidLocal.ref} x={margin} y={margin} overflow="visible">
-      {solidLocal.children}
+    const local = allProps, props = omit(allProps, "children", "ref");
+    return (<svg {...props} ref={local.ref} x={margin} y={margin} overflow="visible">
+      {local.children}
     </svg>);
 };

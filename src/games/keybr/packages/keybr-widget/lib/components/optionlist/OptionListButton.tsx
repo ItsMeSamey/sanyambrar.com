@@ -5,7 +5,7 @@ import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.
 import { type OptionListOption } from "./OptionList.types.ts";
 import * as styles from "./OptionListButton.module.css";
 import { omit } from 'solid-js';
-export function OptionListButton(solidAllProps: {
+export function OptionListButton(allProps: {
     readonly children: JSX.Element;
     readonly size?: SizeName;
     readonly focused: boolean;
@@ -13,14 +13,14 @@ export function OptionListButton(solidAllProps: {
     readonly option: OptionListOption;
     readonly title?: string;
 } & FocusProps & MouseProps & KeyboardProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "size", "disabled", "focused", "open", "option", "tabIndex", "title", "onClick");
-    return (<span {...props} class={clsx(styles.root, solidLocal.focused && styles.focused, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} data-cursor-round="" tabindex={solidLocal.disabled ? undefined : (solidLocal.tabIndex ?? 0)} title={solidLocal.title}>
-      <span class={styles.placeholder} onClick={solidLocal.onClick}>
-        <span class={styles.placeholderName}>{solidLocal.option.name}</span>
+    const local = allProps, props = omit(allProps, "children", "size", "disabled", "focused", "open", "option", "tabIndex", "title", "onClick");
+    return (<span {...props} class={clsx(styles.root, local.focused && styles.focused, local.disabled && styles.disabled, sizeClassName(local.size))} data-cursor-round="" tabindex={local.disabled ? undefined : (local.tabIndex ?? 0)} title={local.title}>
+      <span class={styles.placeholder} onClick={local.onClick}>
+        <span class={styles.placeholderName}>{local.option.name}</span>
         <span class={styles.placeholderArrow}>
-          {solidLocal.open ? "\u25BC" : "\u25BA"}
+          {local.open ? "\u25BC" : "\u25BA"}
         </span>
       </span>
-      {solidLocal.children}
+      {local.children}
     </span>);
 }

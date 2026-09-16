@@ -11,9 +11,9 @@ export type SlideProps = {
     readonly position?: FloatingPosition;
     readonly size?: "small" | "large";
 };
-export function Slide(solidAllProps: SlideProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "className", "position", "size");
-    return (<div {...props} data-tour-anchor={solidLocal.anchor ?? ""} data-tour-position={solidLocal.position ?? ""} class={clsx(styles.root, solidLocal.size === "small" && styles.small, solidLocal.size === "large" && styles.large, solidLocal.className)}>
-      {solidLocal.children}
+export function Slide(allProps: SlideProps): JSX.Element {
+    const local = allProps, props = omit(allProps, "anchor", "children", "className", "position", "size");
+    return (<div {...props} data-tour-anchor={local.anchor ?? ""} data-tour-position={local.position ?? ""} class={clsx(styles.root, local.size === "small" && styles.small, local.size === "large" && styles.large, local.className)}>
+      {local.children}
     </div>);
 }

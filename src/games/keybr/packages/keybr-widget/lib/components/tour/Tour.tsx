@@ -16,11 +16,11 @@ export type TourProps = {
     readonly children?: readonly JSX.Element[];
     readonly onClose?: () => void;
 };
-export function Tour(solidAllProps: TourProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "onClose");
+export function Tour(allProps: TourProps): JSX.Element {
+    const local = allProps, props = omit(allProps, "children", "onClose");
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = createSignal(0);
-    const resolvedSlides = children(() => solidLocal.children);
+    const resolvedSlides = children(() => local.children);
     const slides = createMemo(() => resolvedSlides.toArray().filter((child): child is HTMLElement => child instanceof HTMLElement));
     const currentSlide = () => slides()[Math.max(0, Math.min(slideIndex(), slides().length - 1))] ?? null;
     const selectPrev = () => {
@@ -34,7 +34,7 @@ export function Tour(solidAllProps: TourProps): JSX.Element {
         }
     };
     const close = () => {
-        solidLocal.onClose?.();
+        local.onClose?.();
     };
     useHotkeys({
         ["ArrowLeft"]: selectPrev,

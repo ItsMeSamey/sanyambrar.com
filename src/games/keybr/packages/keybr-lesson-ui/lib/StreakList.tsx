@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { type StreakList as StreakListType } from "@keybr/result";
 import { type ClassName, styleTextTruncate, Value } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/intl";
-export const StreakList = (solidProps: {
+export const StreakList = (props: {
     id?: string;
     className?: ClassName;
     streakList: StreakListType;
@@ -10,7 +10,7 @@ export const StreakList = (solidProps: {
     const { formatPercents } = useIntlNumbers();
     const children = () => {
         const items = [];
-        for (const { level, results } of solidProps.streakList) {
+        for (const { level, results } of props.streakList) {
             if (results.length > 0) {
                 if (items.length > 0) items.push(" ");
                 items.push(<FormattedMessage id="streakList.streakLength" defaultMessage="{length, plural, =1 {One lesson} other {# lessons}} with {accuracy} accuracy." values={{
@@ -22,7 +22,7 @@ export const StreakList = (solidProps: {
         if (items.length === 0) items.push(<FormattedMessage id="streakList.noStreaks" defaultMessage="No accuracy streaks."/>);
         return items;
     };
-    return (<span id={solidProps.id} class={solidProps.className}>
+    return (<span id={props.id} class={props.className}>
       <span class={styleTextTruncate}>{children()}</span>
     </span>);
 };

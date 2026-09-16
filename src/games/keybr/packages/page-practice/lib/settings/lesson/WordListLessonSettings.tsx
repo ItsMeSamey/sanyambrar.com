@@ -11,7 +11,7 @@ import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
-export function WordListLessonSettings(solidProps: {
+export function WordListLessonSettings(props: {
     readonly lesson: WordListLesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
@@ -25,8 +25,8 @@ export function WordListLessonSettings(solidProps: {
             id: "t_Lesson_options",
             defaultMessage: "Lesson options",
         })}>
-        <WordListPreview lesson={solidProps.lesson}/>
-        <WordListStats lesson={solidProps.lesson}/>
+        <WordListPreview lesson={props.lesson}/>
+        <WordListStats lesson={props.lesson}/>
         <TargetSpeedProp />
         <RepeatWordsProp />
         <TextManglingProp />
@@ -34,7 +34,7 @@ export function WordListLessonSettings(solidProps: {
       </FieldSet>
     </>);
 }
-function WordListPreview(solidProps: {
+function WordListPreview(props: {
     readonly lesson: WordListLesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
@@ -59,16 +59,16 @@ function WordListPreview(solidProps: {
         </Field>
       </FieldList>
       <Para>
-        <TextField type="textarea" value={[...solidProps.lesson.wordList].join(", ")} readOnly={true}/>
+        <TextField type="textarea" value={[...props.lesson.wordList].join(", ")} readOnly={true}/>
       </Para>
     </>);
 }
-function WordListStats(solidProps: {
+function WordListStats(props: {
     readonly lesson: WordListLesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const stats = createMemo(() => wordListStats(solidProps.lesson.wordList));
+    const stats = createMemo(() => wordListStats(props.lesson.wordList));
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({

@@ -5,17 +5,17 @@ import { CloseButton } from "./CloseButton.tsx";
 import { toastProps, useToast } from "./context.tsx";
 import { SeverityIcon } from "./SeverityIcon.tsx";
 import { omit, merge } from 'solid-js';
-export function Alert(solidAllProps: {
+export function Alert(allProps: {
     readonly children: JSX.Element;
     readonly severity?: "info" | "success" | "error" | null;
     readonly closeButton?: boolean;
 } & MouseProps): JSX.Element {
-    const solidMergedProps = merge(solidAllProps, { get severity() { return solidAllProps.severity ?? null; }, get closeButton() { return solidAllProps.closeButton ?? false; } });
-    const solidLocal = solidMergedProps, props = omit(solidMergedProps, "children", "severity", "closeButton");
+    const mergedProps = merge(allProps, { get severity() { return allProps.severity ?? null; }, get closeButton() { return allProps.closeButton ?? false; } });
+    const local = mergedProps, props = omit(mergedProps, "children", "severity", "closeButton");
     const toast = useToast();
     return (<div {...props} class={styles.alert} {...toastProps(toast)}>
-      {solidLocal.severity && <SeverityIcon severity={solidLocal.severity}/>}
-      <div class={styles.message}>{solidLocal.children}</div>
-      {solidLocal.closeButton && <CloseButton />}
+      {local.severity && <SeverityIcon severity={local.severity}/>}
+      <div class={styles.message}>{local.children}</div>
+      {local.closeButton && <CloseButton />}
     </div>);
 }

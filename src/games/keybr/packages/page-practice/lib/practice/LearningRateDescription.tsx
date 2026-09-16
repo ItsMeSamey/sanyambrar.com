@@ -4,16 +4,16 @@ import { type LearningRate, type LessonKey } from "@keybr/lesson";
 import { Name, Para, Value } from "@keybr/widget";
 
 import { FormattedMessage } from "@keybr/intl";
-export function LearningRateDescription(solidProps: {
+export function LearningRateDescription(props: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
 }): JSX.Element {
     const { formatNumber, formatPercents } = useIntlNumbers();
     const content = () => {
-        if ((solidProps.lessonKey.bestConfidence ?? 0) >= 1) {
+        if ((props.lessonKey.bestConfidence ?? 0) >= 1) {
             return (<Para align="center"><Name><FormattedMessage id="learningRate.alreadyUnlocked" defaultMessage="This letter is already unlocked."/></Name></Para>);
         }
-        const rate = solidProps.learningRate;
+        const rate = props.learningRate;
         if (rate != null && rate.remainingLessons > 0 && rate.certainty > 0) {
             return (<Para align="center"><Name><FormattedMessage id="learningRate.remainingLessons" defaultMessage={"Approximately {remainingLessons} lessons remaining to " + "unlock the next letter ({certainty} certainty)."} values={{
                 remainingLessons: <Value value={formatNumber(rate.remainingLessons)}/>,

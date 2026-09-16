@@ -12,13 +12,13 @@ import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
 import { reactivePaint } from "./reactive-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function KeyDetailsChart(solidProps: {
+export function KeyDetailsChart(props: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
-    const paint = usePaint(styles, () => solidProps.lessonKey, () => solidProps.learningRate);
-    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    const paint = usePaint(styles, () => props.lessonKey, () => props.learningRate);
+    return <ChartCanvas styles={styles()} paint={paint} width={props.width} height={props.height}/>;
 }
 function usePaint(styles: import("solid-js").Accessor<ChartStyles>, lessonKey: () => LessonKey, learningRate: () => LearningRate | null) {
     const { formatMessage } = useIntl();

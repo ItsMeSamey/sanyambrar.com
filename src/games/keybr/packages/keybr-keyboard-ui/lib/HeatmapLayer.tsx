@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 
 import * as styles from "./HeatmapLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const HeatmapLayer = function HeatmapLayer(solidProps: {
+export const HeatmapLayer = function HeatmapLayer(props: {
     readonly histogram: Iterable<readonly [
         codePoint: CodePoint,
         f: number
@@ -20,7 +20,7 @@ export const HeatmapLayer = function HeatmapLayer(solidProps: {
     return <Surface>{items().map(draw)}</Surface>;
     function items() {
         const map = new Map<KeyShape, number>();
-        for (const [codePoint, f] of solidProps.histogram) {
+        for (const [codePoint, f] of props.histogram) {
             if (f > 0) {
                 const shape = getShape(codePoint);
                 if (shape != null) {
@@ -54,7 +54,7 @@ export const HeatmapLayer = function HeatmapLayer(solidProps: {
     }
     function draw([shape, f]: Item): JSX.Element {
         const { x, y } = getKeyCenter(shape);
-        switch (solidProps.modifier) {
+        switch (props.modifier) {
             case "h": {
                 // Top left semicircle.
                 const r = f * 15 + 5;

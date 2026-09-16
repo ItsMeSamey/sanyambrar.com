@@ -3,7 +3,7 @@ import { type KeyStatsMap } from "@keybr/result";
 import { Explainer, Figure } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
-export function KeySpeedHistogramSection(solidProps: {
+export function KeySpeedHistogramSection(props: {
     keyStatsMap: KeyStatsMap;
 }) {
     return (<Figure>
@@ -18,7 +18,7 @@ export function KeySpeedHistogramSection(solidProps: {
       </Explainer>
 
       <ChartWrapper>
-        <KeySpeedHistogram keyStatsMap={solidProps.keyStatsMap} width="100%" height="18rem"/>
+        <KeySpeedHistogram keyStatsMap={props.keyStatsMap} width="100%" height="18rem"/>
       </ChartWrapper>
     </Figure>);
 }

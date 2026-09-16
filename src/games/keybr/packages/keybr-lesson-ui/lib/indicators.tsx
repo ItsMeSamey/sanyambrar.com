@@ -10,7 +10,7 @@ import * as styles from "./indicators.module.css";
 import { KeySet } from "./KeySet.tsx";
 import { type Names } from "./names.ts";
 import { StreakList } from "./StreakList.tsx";
-export const GaugeRow = function GaugeRow(solidProps: {
+export const GaugeRow = function GaugeRow(props: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -20,10 +20,10 @@ export const GaugeRow = function GaugeRow(solidProps: {
             id: "t_Metrics",
             defaultMessage: "Metrics",
         })}/>
-      <GaugeList summaryStats={solidProps.summaryStats} names={solidProps.names}/>
+      <GaugeList summaryStats={props.summaryStats} names={props.names}/>
     </div>);
 };
-export const KeySetRow = function KeySetRow(solidProps: {
+export const KeySetRow = function KeySetRow(props: {
     lessonKeys: LessonKeys;
     names?: Names;
     onKeyHoverIn?: (key: LessonKey, elem: Element) => void;
@@ -36,10 +36,10 @@ export const KeySetRow = function KeySetRow(solidProps: {
             id: "t_All_keys",
             defaultMessage: "All keys",
         })}/>
-      <KeySet id={solidProps.names?.keySet} className={`${styles.value} ${styles.keySetValue}`} lessonKeys={solidProps.lessonKeys} onKeyHoverIn={solidProps.onKeyHoverIn} onKeyHoverOut={solidProps.onKeyHoverOut} onKeyClick={solidProps.onKeyClick}/>
+      <KeySet id={props.names?.keySet} className={`${styles.value} ${styles.keySetValue}`} lessonKeys={props.lessonKeys} onKeyHoverIn={props.onKeyHoverIn} onKeyHoverOut={props.onKeyHoverOut} onKeyClick={props.onKeyClick}/>
     </div>);
 };
-export const CurrentKeyRow = function CurrentKeyRow(solidProps: {
+export const CurrentKeyRow = function CurrentKeyRow(props: {
     lessonKeys: LessonKeys;
     names?: Names;
 }) {
@@ -49,10 +49,10 @@ export const CurrentKeyRow = function CurrentKeyRow(solidProps: {
             id: "t_Current_key",
             defaultMessage: "Current key",
         })}/>
-      <CurrentKey id={solidProps.names?.currentKey} className={styles.value} lessonKeys={solidProps.lessonKeys}/>
+      <CurrentKey id={props.names?.currentKey} className={styles.value} lessonKeys={props.lessonKeys}/>
     </div>);
 };
-export const StreakListRow = function StreakListRow(solidProps: {
+export const StreakListRow = function StreakListRow(props: {
     streakList: StreakListType;
     names?: Names;
 }) {
@@ -62,10 +62,10 @@ export const StreakListRow = function StreakListRow(solidProps: {
             id: "t_Accuracy",
             defaultMessage: "Accuracy",
         })}/>
-      <StreakList id={solidProps.names?.streakList} className={styles.value} streakList={solidProps.streakList}/>
+      <StreakList id={props.names?.streakList} className={styles.value} streakList={props.streakList}/>
     </div>);
 };
-export const DailyGoalRow = function DailyGoalRow(solidProps: {
+export const DailyGoalRow = function DailyGoalRow(props: {
     dailyGoal: DailyGoalType;
     names?: Names;
 }) {
@@ -75,6 +75,6 @@ export const DailyGoalRow = function DailyGoalRow(solidProps: {
             id: "t_Daily_goal",
             defaultMessage: "Daily goal",
         })}/>
-      <DailyGoal id={solidProps.names?.dailyGoal} className={styles.value} dailyGoal={solidProps.dailyGoal}/>
+      <DailyGoal id={props.names?.dailyGoal} className={styles.value} dailyGoal={props.dailyGoal}/>
     </div>);
 };

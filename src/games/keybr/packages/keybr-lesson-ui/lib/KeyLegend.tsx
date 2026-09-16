@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
 import { omit, merge } from 'solid-js';
-export const KeyLegend = (solidAllProps: {
+export const KeyLegend = (allProps: {
     confidence: number | null;
     isIncluded: boolean;
     isFocused: boolean;
@@ -11,12 +11,12 @@ export const KeyLegend = (solidAllProps: {
     size?: "normal" | "large";
     title?: string;
 } & MouseProps) => {
-    const solidMergedProps = merge(solidAllProps, { get size() { return solidAllProps.size ?? "normal"; } });
-    const solidLocal = solidMergedProps, props = omit(solidMergedProps, "confidence", "isIncluded", "isFocused", "isForced", "size", "title");
+    const mergedProps = merge(allProps, { get size() { return allProps.size ?? "normal"; } });
+    const local = mergedProps, props = omit(mergedProps, "confidence", "isIncluded", "isFocused", "isForced", "size", "title");
     const keyStyles = useKeyStyles();
-    return (<span {...props} class={clsx(styles.lessonKey, solidLocal.size === "normal" && styles.lessonKeyNormal, solidLocal.size === "large" && styles.lessonKeyLarge, solidLocal.isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded, solidLocal.isIncluded && solidLocal.confidence == null && styles.lessonKeyUncalibrated, solidLocal.isIncluded && solidLocal.isFocused && styles.lessonKeyFocused, solidLocal.isIncluded && solidLocal.isForced && styles.lessonKeyForced)} style={keyStyles().keyStyles(solidLocal.isIncluded ?? false, solidLocal.confidence ?? null)} title={solidLocal.title}>
+    return (<span {...props} class={clsx(styles.lessonKey, local.size === "normal" && styles.lessonKeyNormal, local.size === "large" && styles.lessonKeyLarge, local.isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded, local.isIncluded && local.confidence == null && styles.lessonKeyUncalibrated, local.isIncluded && local.isFocused && styles.lessonKeyFocused, local.isIncluded && local.isForced && styles.lessonKeyForced)} style={keyStyles().keyStyles(local.isIncluded ?? false, local.confidence ?? null)} title={local.title}>
       ?
-      {solidLocal.isIncluded || (<svg viewBox="0 0 100 100" class={styles.cross}>
+      {local.isIncluded || (<svg viewBox="0 0 100 100" class={styles.cross}>
           <path d="M 0 100 L 100 0"/>
         </svg>)}
     </span>);

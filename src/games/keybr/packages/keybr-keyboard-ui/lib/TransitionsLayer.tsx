@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 
 import { getKeyCenter, Surface } from "./shapes.tsx";
 import * as styles from "./TransitionsLayer.module.css";
-export const TransitionsLayer = function TransitionsLayer(solidProps: {
+export const TransitionsLayer = function TransitionsLayer(props: {
     readonly histogram: Iterable<readonly [
         CodePoint,
         CodePoint,
@@ -29,7 +29,7 @@ export const TransitionsLayer = function TransitionsLayer(solidProps: {
     </Surface>);
     function items() {
         const list: Item[] = [];
-        for (const [codePoint0, codePoint1, f] of [...solidProps.histogram]
+        for (const [codePoint0, codePoint1, f] of [...props.histogram]
             .sort((a, b) => b[2] - a[2])
             .slice(0, 100)) {
             if (f > 0) {
@@ -83,7 +83,7 @@ export const TransitionsLayer = function TransitionsLayer(solidProps: {
         const Y1 = y0 + Math.sin(theta) * t;
         const X2 = x1 - Math.cos(theta) * t;
         const Y2 = y1 - Math.sin(theta) * t;
-        return (<path class={clsx(styles.arc, modifierStyle(solidProps.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
+        return (<path class={clsx(styles.arc, modifierStyle(props.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
     }
 };
 function modifierStyle(m: "h" | "m" | "f") {

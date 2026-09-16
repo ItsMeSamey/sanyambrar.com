@@ -10,12 +10,12 @@ import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
 import { reactivePaint } from "./reactive-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
-export function KeySpeedHistogram(solidProps: {
+export function KeySpeedHistogram(props: {
     readonly keyStatsMap: KeyStatsMap;
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
-    const paint = usePaint(styles, () => solidProps.keyStatsMap);
-    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    const paint = usePaint(styles, () => props.keyStatsMap);
+    return <ChartCanvas styles={styles()} paint={paint} width={props.width} height={props.height}/>;
 }
 function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
