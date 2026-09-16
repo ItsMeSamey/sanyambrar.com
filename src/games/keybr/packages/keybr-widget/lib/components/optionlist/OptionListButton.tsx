@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { useRef } from "@keybr/solid-compat/react";
 import { sizeClassName, type SizeName } from "../../styles/index.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 import { type OptionListOption } from "./OptionList.types.ts";
@@ -15,8 +14,7 @@ export function OptionListButton(solidAllProps: {
     readonly title?: string;
 } & FocusProps & MouseProps & KeyboardProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "size", "disabled", "focused", "open", "option", "tabIndex", "title", "onClick");
-    const element = useRef<HTMLSpanElement>(null);
-    return (<span {...props} ref={el => element.current = el} class={clsx(styles.root, solidLocal.focused && styles.focused, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} data-cursor-round="" tabindex={solidLocal.disabled ? undefined : (solidLocal.tabIndex ?? 0)} title={solidLocal.title}>
+    return (<span {...props} class={clsx(styles.root, solidLocal.focused && styles.focused, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} data-cursor-round="" tabindex={solidLocal.disabled ? undefined : (solidLocal.tabIndex ?? 0)} title={solidLocal.title}>
       <span class={styles.placeholder} onClick={solidLocal.onClick}>
         <span class={styles.placeholderName}>{solidLocal.option.name}</span>
         <span class={styles.placeholderArrow}>

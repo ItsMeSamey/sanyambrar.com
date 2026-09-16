@@ -1,6 +1,5 @@
 import { type DailyStats, type DailyStatsMap, LocalDate } from "@keybr/result";
 import { Popup, Portal, useHoverPopup } from "@keybr/widget";
-import { useRef } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./Calendar.module.css";
 import { createMemo, For, Show } from 'solid-js';
@@ -31,14 +30,14 @@ function BlockList(solidProps: {
     onCellHoverOut?: (stats: DailyStats, elem: Element) => void;
     onCellClick?: (stats: DailyStats, elem: Element) => void;
 }) {
-    const ref = useRef<HTMLDivElement>(null);
+    let root!: HTMLDivElement;
     const blocks = createMemo(() => blockList(solidProps.dailyStatsMap));
-    return (<div ref={el => ref.current = el} class={styles.root} onMouseOver={(event) => {
-            relayEvent(ref.current!, event, solidProps.onCellHoverIn);
+    return (<div ref={el => root = el} class={styles.root} onMouseOver={(event) => {
+            relayEvent(root, event, solidProps.onCellHoverIn);
         }} onMouseOut={(event) => {
-            relayEvent(ref.current!, event, solidProps.onCellHoverOut);
+            relayEvent(root, event, solidProps.onCellHoverOut);
         }} onClick={(event) => {
-            relayEvent(ref.current!, event, solidProps.onCellClick);
+            relayEvent(root, event, solidProps.onCellClick);
         }}>
       <For each={blocks()}>{(block) => <Block block={block} effort={solidProps.effort}/>}</For>
     </div>);

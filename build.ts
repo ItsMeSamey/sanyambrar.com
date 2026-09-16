@@ -327,12 +327,6 @@ ${keybrViewSwitch}`;
     keybrBooksLesson.includes("get paragraphIndex(): number") &&
     keybrCustomTextLesson.includes("get wordList(): readonly string[]"),
     "ux: Keybr settings must persist immediately and lesson-derived previews must stay reactive");
-  const keybrSolidReactCompat = await readFile(join(ROOT, "src/games/keybr/packages/keybr-solid-compat/react.tsx"), "utf8");
-  const keybrLayoutEffectStart = keybrSolidReactCompat.indexOf("export function useLayoutEffect");
-  const keybrLayoutEffectEnd = keybrSolidReactCompat.indexOf("\n}", keybrLayoutEffectStart) + 2;
-  const keybrLayoutEffect = keybrSolidReactCompat.slice(keybrLayoutEffectStart, keybrLayoutEffectEnd);
-  must(keybrLayoutEffectStart >= 0 && keybrLayoutEffect.includes("createEffect(() =>") && !keybrLayoutEffect.includes("createRenderEffect(() =>"),
-    "ux: Keybr React layout effects must run after DOM refs are attached");
   const keybrStyle = await readFile(join(ROOT, "src/games/keybr/src/style.css"), "utf8");
   const keybrHtml = await readFile(join(ROOT, "src/games/keybr/index.html"), "utf8");
   must(keybrStyle.includes("--keybr-preferred-root-font-size") &&
@@ -351,7 +345,7 @@ ${keybrViewSwitch}`;
   const keybrChartDecoration = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/decoration.ts"), "utf8");
   must(keybrKeyStyles.includes('resolveColor("--slow-key-color"') && keybrKeyStyles.includes('resolveColor("--fast-key-color"') &&
     keybrProgressOverview.includes("confidenceForegroundColor") &&
-    keybrSpeedHistogram.includes("Shapes.polyline(points)") && keybrSpeedHistogram.includes("styles.background, lineWidth: 4") &&
+    keybrSpeedHistogram.includes("Shapes.polyline(points)") && keybrSpeedHistogram.includes("styles().background, lineWidth: 4") &&
     keybrChartDecoration.includes("Shapes.stroke") && keybrChartDecoration.includes('lineCap: "round"'),
     "ux: Keybr progress charts must use foreground semantics and antialiased contrast-safe lines");
   const keybrExplainToggle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-pages-shared/lib/ExplainToggle.tsx"), "utf8");
@@ -378,12 +372,13 @@ ${keybrViewSwitch}`;
   const keybrFrequencyHeatmap = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/KeyFrequencyHeatmap.tsx"), "utf8");
   const keybrResultGrouper = await readFile(join(ROOT, "src/games/keybr/packages/page-stats/lib/stats/ResultGrouper.tsx"), "utf8");
   const keybrMessages = await readFile(join(ROOT, "src/games/keybr/packages/keybr-intl/lib/messages/en.json"), "utf8");
-  must(keybrCanvas.includes("new Graphics(context).paint(solidLocal.paint(currentSize));") &&
-    !keybrCanvas.includes("[size(), solidLocal.paint, themeRevision()]") &&
+  must(keybrCanvas.includes("new Graphics(context).paint(local.paint(currentSize));") &&
     keybrReactivePaint.includes("const current = createMemo(factory)") && keybrReactivePaint.includes("current()(box)") &&
-    keybrSpeedChart.includes("() => solidProps.smoothness") && keybrKeySpeedChart.includes("() => solidProps.samples") &&
-    keybrKeySpeedChart.includes("() => solidProps.smoothness") && keybrSpeedHistogram.includes("() => props.thresholds") &&
-    keybrProgressOverview.includes("() => solidProps.keyStatsMap") && keybrFrequencyHeatmap.includes("createMemo(() => keyUsage(solidProps.keyStatsMap))") &&
+    keybrSpeedChart.includes("const currentSmoothness = smoothness()") &&
+    keybrKeySpeedChart.includes("const currentSamples = samples()") && keybrKeySpeedChart.includes("const currentSmoothness = smoothness()") &&
+    keybrSpeedHistogram.includes("const currentThresholds = thresholds()") &&
+    keybrProgressOverview.includes("const currentKeyStatsMap = keyStatsMap()") &&
+    keybrFrequencyHeatmap.includes("createMemo(() => keyUsage(") &&
     keybrResultGrouper.includes("<Field size={16}>") && keybrResultGrouper.includes('defaultMessage: "Punctuation"') &&
     keybrResultGrouper.includes('defaultMessage: "Special"') && keybrMessages.includes('"t_cc_Punctuation_characters": "Punctuation"') &&
     keybrMessages.includes('"t_cc_Special_characters": "Special"'),
@@ -752,7 +747,7 @@ ${keybrViewSwitch}`;
     !settingsMotionCss.includes('transition: left 100ms') && !settingsMotionCss.includes('transition: width 100ms'),
     "performance: typing caret and sliders must not add positional interpolation latency on the main thread");
   must(keybrPracticeScreen.includes("createEffect(() => ({ value: progress(), lesson: props.lesson }), ({ value, lesson }) => {") &&
-    keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results))") &&
+    keybrPracticeScreen.includes("const seedResults = untrack(() => lesson.filter(results()))") &&
     !keybrPracticeScreen.includes("void results.length"),
     "ux: completing a Keybr lesson must append progress without rebuilding the whole practice screen");
   must(keybrLessonSettings.includes('SameyAnimateLocalSwap') &&

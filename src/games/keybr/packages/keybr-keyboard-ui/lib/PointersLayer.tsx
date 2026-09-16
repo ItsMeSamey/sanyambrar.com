@@ -1,9 +1,8 @@
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 import { type Keyboard, type KeyCombo, type KeyShape, useKeyboard, } from "@keybr/keyboard";
 import { Tasks } from "@keybr/lang";
 import { type CodePoint } from "@keybr/unicode";
-import { useEffect, useRef } from "@keybr/solid-compat/react";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const PointersLayer = function PointersLayer(props: {
@@ -11,32 +10,21 @@ export const PointersLayer = function PointersLayer(props: {
     readonly delay?: number;
 }): JSX.Element {
     const keyboard = useKeyboard();
-    const svgRef = useRef<SVGSVGElement>(null);
+    let svg: SVGSVGElement;
     const [combo, setCombo] = createSignal<KeyCombo | null>(null);
-    useEffect(() => {
+    createEffect(() => ({ keyboard: keyboard(), suffix: props.suffix, delay: props.delay ?? 1000 }), ({ keyboard, suffix, delay }) => {
         const tasks = new Tasks();
         setCombo(null);
-        if (props.suffix.length > 0) {
-            const combo = keyboard().getCombo(props.suffix[0]);
-            if (combo != null) {
-                tasks.delayed(props.delay ?? 1000, () => {
-                    setCombo(combo);
-                });
-            }
+        if (suffix.length > 0) {
+            const next = keyboard.getCombo(suffix[0]);
+            if (next != null) tasks.delayed(delay, () => setCombo(next));
         }
-        return () => {
-            tasks.cancelAll();
-        };
-    }, () => [keyboard(), props.suffix, props.delay]);
-    useEffect(() => {
-        const svg = svgRef.current;
-        if (svg != null) {
-            for (const animate of svg.querySelectorAll("animate")) {
-                animate.beginElement();
-            }
-        }
-    }, () => [combo()]);
-    return <Surface ref={svgRef}>{pointers(keyboard(), combo())}</Surface>;
+        return () => tasks.cancelAll();
+    });
+    createEffect(combo, () => {
+        for (const animate of svg.querySelectorAll("animate")) animate.beginElement();
+    });
+    return <Surface ref={(element) => svg = element}>{pointers(keyboard(), combo())}</Surface>;
 };
 function pointers(keyboard: Keyboard, combo: KeyCombo | null): JSX.Element[] {
     const children = [];

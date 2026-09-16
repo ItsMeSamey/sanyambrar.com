@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import type { ValidComponent } from "@solidjs/web";
-import { type FocusEventHandler, type KeyboardEventHandler, type MouseEventHandler, type RefObject, type WheelEventHandler } from "@keybr/solid-compat/react";
-import { type Anchor } from "../floating/index.ts";
+export type FocusEventHandler<T extends Element = Element> = (event: FocusEvent & { currentTarget: T }) => void;
+export type KeyboardEventHandler<T extends Element = Element> = (event: KeyboardEvent & { currentTarget: T }) => void;
+export type MouseEventHandler<T extends Element = Element> = (event: MouseEvent & { currentTarget: T }) => void;
+export type WheelEventHandler<T extends Element = Element> = (event: WheelEvent & { currentTarget: T }) => void;
 export type ClassName = string | undefined;
 export type ElementProps = {
     readonly as?: ValidComponent;
@@ -38,8 +40,4 @@ export type WheelProps = {
 export type KeyboardProps = {
     readonly onKeyDown?: KeyboardEventHandler;
     readonly onKeyUp?: KeyboardEventHandler;
-};
-export type AnchorProps = {
-    readonly anchor?: RefObject<Anchor | null>;
-    readonly disabled?: boolean;
 };

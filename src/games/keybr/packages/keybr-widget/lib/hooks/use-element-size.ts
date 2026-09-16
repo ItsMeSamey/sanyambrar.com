@@ -1,46 +1,43 @@
-import { createSignal } from 'solid-js';
-import { type RefObject, useEffect } from "@keybr/solid-compat/react";
+import { type Accessor, createEffect, createSignal } from "solid-js";
 import { getElementSize } from "../utils/geometry.ts";
 import { type Size } from "../utils/size.ts";
 
 export type ElementResizeCallback = (entry: ResizeObserverEntry) => void;
 const observed = new WeakMap<Element, ElementResizeCallback>();
 let resizeObserver: ResizeObserver | null = null;
+
 const getResizeObserver = (): ResizeObserver => {
-    if (resizeObserver == null) {
-        resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const callback = observed.get(entry.target);
-                if (callback != null) callback(entry);
-            }
-        });
-    }
-    return resizeObserver;
-};
-export const onElementResize = (element: Element, callback: ElementResizeCallback): (() => void) => {
-    const resizeObserver = getResizeObserver();
-    observed.set(element, callback);
-    resizeObserver.observe(element);
-    return () => {
-        observed.delete(element);
-        resizeObserver.unobserve(element);
-    };
+  if (resizeObserver == null) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) observed.get(entry.target)?.(entry);
+    });
+  }
+  return resizeObserver;
 };
 
-// React rerenders consumers when this state changes. Solid does not, so returning
-// size() here would permanently hand callers the initial null snapshot. Keep the
-// signal as an accessor and let callers read it inside their reactive effects.
-export const useElementSize = (ref: RefObject<Element | null>): (() => Size | null) => {
-    const [size, setSize] = createSignal<Size | null>(null);
-    useEffect(() => {
-        const element = ref.current;
-        if (element == null) return;
-        const update = () => {
-            const newSize = getElementSize(element);
-            setSize(oldSize => oldSize != null && oldSize.eq(newSize) ? oldSize : newSize);
-        };
-        update();
-        return onElementResize(element, update);
-    }, []);
-    return size;
+export const onElementResize = (element: Element, callback: ElementResizeCallback): (() => void) => {
+  const observer = getResizeObserver();
+  observed.set(element, callback);
+  observer.observe(element);
+  return () => {
+    observed.delete(element);
+    observer.unobserve(element);
+  };
+};
+
+export const useElementSize = (element: Accessor<Element | undefined>): Accessor<Size | null> => {
+  const [size, setSize] = createSignal<Size | null>(null);
+  createEffect(element, (current) => {
+    if (current == null) {
+      setSize(null);
+      return;
+    }
+    const update = () => {
+      const next = getElementSize(current);
+      setSize((previous) => previous != null && previous.eq(next) ? previous : next);
+    };
+    update();
+    return onElementResize(current, update);
+  });
+  return size;
 };

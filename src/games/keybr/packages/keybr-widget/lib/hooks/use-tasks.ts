@@ -1,12 +1,8 @@
 import { Tasks } from "@keybr/lang";
-import { useEffect, useRef } from "@keybr/solid-compat/react";
+import { onCleanup } from "solid-js";
+
 export const useTasks = () => {
-    const ref = useRef<Tasks>(null!);
-    const tasks = ref.current ?? (ref.current = new Tasks());
-    useEffect(() => {
-        return () => {
-            tasks.cancelAll();
-        };
-    }, () => []);
-    return tasks;
+  const tasks = new Tasks();
+  onCleanup(() => tasks.cancelAll());
+  return tasks;
 };

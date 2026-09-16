@@ -1,15 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import * as CheckboxPrimitive from "@kobalte/core/checkbox";
-import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { type CheckBoxProps } from "./CheckBox.types.ts";
 
 /** Solid/Kobalte checkbox using the same interaction model as Solid UI. */
 export function CheckBox(props: CheckBoxProps): JSX.Element {
-  const input = useRef<HTMLInputElement>(null);
-  useImperativeHandle(props.ref, () => ({
-    focus: () => input.current?.focus(),
-    blur: () => input.current?.blur(),
-  }));
   return (
     <CheckboxPrimitive.Root
       class="keybr-checkbox"
@@ -22,7 +16,6 @@ export function CheckBox(props: CheckBoxProps): JSX.Element {
       title={props.title}
     >
       <CheckboxPrimitive.Input
-        ref={(el) => (input.current = el)}
         tabindex={props.tabIndex}
         onFocus={(event) => props.onFocus?.(event)}
         onBlur={(event) => props.onBlur?.(event)}

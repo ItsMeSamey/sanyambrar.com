@@ -5,8 +5,7 @@ import { CaretMovementStyle, CaretShapeStyle, Feedback, Font, textDisplayProps, 
 import { makeSoundPlayer, PlaySounds, soundProps, SoundTheme, } from "@keybr/textinput-sounds";
 import { Description, Explainer, Field, FieldList, FieldSet, Icon, IconButton, OptionList, Range, SegmentedControl, Toggle, } from "@keybr/widget";
 import { CirclePlay, CircleStop } from "@keybr/widget";
-import { useEffect } from "@keybr/solid-compat/react";
-import { createMemo, createSignal } from 'solid-js';
+import { createEffect, createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { AnimatedText } from "./AnimatedText.tsx";
 import * as styles from "./TypingSettings.module.css";
@@ -244,17 +243,17 @@ function SoundThemePreview() {
             .set(soundProps.soundTheme, settings.get(soundProps.soundTheme)));
     });
     const [playing, setPlaying] = createSignal(false);
-    useEffect(() => {
+    createEffect(() => ({ player: player(), playing: playing() }), ({ player, playing }) => {
         const tasks = new Tasks();
-        if (playing()) {
+        if (playing) {
             tasks.repeated(300, () => {
-                player()(Feedback.Succeeded);
+                player(Feedback.Succeeded);
             });
         }
         return () => {
             tasks.cancelAll();
         };
-    }, () => [player, playing()]);
+    });
     return (<IconButton icon={<Icon shape={playing() ? CircleStop : CirclePlay}/>} onClick={() => {
             setPlaying(!playing());
         }}/>);

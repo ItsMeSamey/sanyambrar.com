@@ -39,7 +39,7 @@ const propView = enumProp("prefs.practice.view", View, View.Normal);
 const propTourSeen = booleanProp("prefs.practice.tourSeen", false);
 
 export function Presenter(props: Props): JSX.Element {
-  const focusRef: { current: Focusable | null } = { current: null };
+  let focusTarget: Focusable | null = null;
   const [view, setView] = createSignal(Preferences.get(propView));
   const [tour, setTour] = createSignal(false);
   const [focus, setFocus] = createSignal(false);
@@ -52,8 +52,8 @@ export function Presenter(props: Props): JSX.Element {
     }
   });
 
-  const previous = () => { props.onPreviousLesson(); focusRef.current?.focus(); };
-  const skip = () => { props.onSkipLesson(); focusRef.current?.focus(); };
+  const previous = () => { props.onPreviousLesson(); focusTarget?.focus(); };
+  const skip = () => { props.onSkipLesson(); focusTarget?.focus(); };
   const keyDown = (ev: IKeyboardEvent) => { if (focus()) props.onKeyDown(ev); };
   const keyUp = (ev: IKeyboardEvent) => { if (focus()) props.onKeyUp(ev); };
   const input = (ev: IInputEvent) => { if (focus()) props.onInput(ev); };
@@ -64,20 +64,20 @@ export function Presenter(props: Props): JSX.Element {
     Preferences.set(propView, next);
     setView(next);
     props.onResetLesson();
-    queueMicrotask(() => focusRef.current?.focus());
+    queueMicrotask(() => focusTarget?.focus());
   };
   const help = () => {
-    setView(View.Normal); setTour(true); props.onResetLesson(); queueMicrotask(() => focusRef.current?.blur());
+    setView(View.Normal); setTour(true); props.onResetLesson(); queueMicrotask(() => focusTarget?.blur());
   };
   const closeTour = () => {
-    setView(View.Normal); setTour(false); props.onResetLesson(); queueMicrotask(() => focusRef.current?.focus());
+    setView(View.Normal); setTour(false); props.onResetLesson(); queueMicrotask(() => focusTarget?.focus());
   };
   const controls = () => <Controls onChangeView={changeView} onPreviousLesson={previous} previousLesson={props.state.lesson instanceof BooksLesson} onSkipLesson={skip} onHelp={help} />;
   const textInput = (size: "X0" | "X1" | "X2", id: string) => (
     <Zoomer id={id}>
       {(moving) => <TextArea
         moving={moving()}
-        focusRef={focusRef}
+        focusRef={(value) => { focusTarget = value; }}
         settings={props.state.textDisplaySettings}
         lines={props.lines}
         size={size}

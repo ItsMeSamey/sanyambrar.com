@@ -1,27 +1,11 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
-import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./LinkButton.module.css";
 import { type LinkButtonProps } from "./LinkButton.types.ts";
 import { omit } from 'solid-js';
 export function LinkButton(solidAllProps: LinkButtonProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "className", "disabled", "label", "ref", "tabIndex", "title", "onClick");
-    const element = useRef<HTMLAnchorElement>(null);
-    useImperativeHandle(solidLocal.ref, () => ({
-        focus() {
-            element.current?.focus();
-        },
-        blur() {
-            element.current?.blur();
-        },
-    }));
-    useImperativeHandle(solidLocal.anchor, () => ({
-        getBoundingBox() {
-            return getBoundingBox(element.current!);
-        },
-    }));
-    return (<a {...props} ref={el => element.current = el} href="#" class={clsx(styles.root, solidLocal.disabled && styles.disabled, solidLocal.className)} tabindex={solidLocal.tabIndex} title={solidLocal.title} onClick={(event) => {
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "className", "disabled", "label", "tabIndex", "title", "onClick");
+    return (<a {...props} href="#" class={clsx(styles.root, solidLocal.disabled && styles.disabled, solidLocal.className)} tabindex={solidLocal.tabIndex} title={solidLocal.title} onClick={(event) => {
             event.preventDefault();
             solidLocal.onClick?.(event);
         }}>

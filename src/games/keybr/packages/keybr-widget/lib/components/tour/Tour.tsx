@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
 import { X } from "../../icons.ts";
-import { Children } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import { useHotkeys } from "../../hooks/use-hotkeys.ts";
 import { LinkButton } from "../button/LinkButton.tsx";
@@ -12,7 +11,7 @@ import { Portal } from "../portal/Portal.tsx";
 import { Meter } from "./Meter.tsx";
 import { type SlideProps } from "./Slide.tsx";
 import * as styles from "./Tour.module.css";
-import { createMemo, omit, createSignal } from 'solid-js';
+import { children, createMemo, omit, createSignal } from 'solid-js';
 export type TourProps = {
     readonly children?: readonly JSX.Element[];
     readonly onClose?: () => void;
@@ -21,7 +20,8 @@ export function Tour(solidAllProps: TourProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "onClose");
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = createSignal(0);
-    const slides = createMemo(() => Children.toArray(solidLocal.children).filter((child): child is HTMLElement => child instanceof HTMLElement));
+    const resolvedSlides = children(() => solidLocal.children);
+    const slides = createMemo(() => resolvedSlides.toArray().filter((child): child is HTMLElement => child instanceof HTMLElement));
     const currentSlide = () => slides()[Math.max(0, Math.min(slideIndex(), slides().length - 1))] ?? null;
     const selectPrev = () => {
         if (slideIndex() > 0) {

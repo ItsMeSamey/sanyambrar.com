@@ -110,12 +110,6 @@
       "@keybr/math/*": [
         "packages/keybr-math/*"
       ],
-      "@keybr/solid-compat": [
-        "packages/keybr-solid-compat/lib/index.ts"
-      ],
-      "@keybr/solid-compat/*": [
-        "packages/keybr-solid-compat/*"
-      ],
       "@keybr/debug": [
         "packages/keybr-debug/lib/index.ts"
       ],

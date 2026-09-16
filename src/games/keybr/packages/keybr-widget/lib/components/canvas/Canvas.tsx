@@ -1,66 +1,44 @@
-import { useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { createEffect, createSignal, createTrackedEffect, onSettled, omit } from "solid-js";
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import { type CanvasProps } from "./Canvas.types.ts";
 import { Graphics } from "./graphics.ts";
-import { createSignal, onSettled, omit } from 'solid-js';
-export const Canvas = function Canvas(solidAllProps: CanvasProps) {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "className", "id", "paint", "ref", "style", "title", "onResize");
-    const element = useRef<HTMLCanvasElement>(null);
-    const size = useElementSize(element);
-    const [themeRevision, setThemeRevision] = createSignal(0);
-    onSettled(() => {
-        const repaint = () => setThemeRevision(value => value + 1);
-        addEventListener("samey-themechange", repaint);
-        return () => removeEventListener("samey-themechange", repaint);
-    });
-    useImperativeHandle(solidLocal.ref, () => ({
-        getSize: () => size(),
-        getContext: element.current!.getContext.bind(element.current!),
-        toBlob: (...args) => {
-            const canvas = element.current!;
-            canvas.toBlob.call(canvas, ...args);
-        },
-        toDataURL: (...args) => {
-            const canvas = element.current!;
-            return canvas.toDataURL.call(canvas, ...args);
-        },
-        paint: (paint) => {
-            const currentSize = size();
-            if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
-                const canvas = element.current!;
-                const context = canvas.getContext("2d")!;
-                new Graphics(context).paint(paint(currentSize));
-            }
-        },
-    }));
-    useEffect(() => {
-        const currentSize = size();
-        if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
-            const canvas = element.current!;
-            const context = canvas.getContext("2d")!;
-            const ratio = devicePixelRatio;
-            canvas.width = Math.max(1, currentSize.width * ratio);
-            canvas.height = Math.max(1, currentSize.height * ratio);
-            context.setTransform(ratio, 0, 0, ratio, 0, 0);
-            solidLocal.onResize?.(currentSize);
-        }
-    }, () => [size()]);
-    useEffect(() => {
-        const currentSize = size();
-        themeRevision();
-        if (currentSize != null && currentSize.width > 0 && currentSize.height > 0) {
-            const canvas = element.current!;
-            const context = canvas.getContext("2d")!;
-            // Keep this effect tracked. Chart paint functions can depend on Solid
-            // memos even when their callback identity is stable. Explicit React-style
-            // deps would untrack the paint call and turn those controls into no-ops.
-            new Graphics(context).paint(solidLocal.paint(currentSize));
-        }
-    });
-    return (<canvas {...props} ref={el => element.current = el} id={solidLocal.id} class={solidLocal.className} style={{
-            display: "block",
-            "inline-size": "100%",
-            "block-size": "100%",
-            ...solidLocal.style,
-        }} title={solidLocal.title}/>);
+
+export const Canvas = function Canvas(allProps: CanvasProps) {
+  const local = allProps;
+  const props = omit(allProps, "className", "id", "paint", "style", "title", "onResize");
+  const [element, setElement] = createSignal<HTMLCanvasElement>();
+  const size = useElementSize(element);
+  const [themeRevision, setThemeRevision] = createSignal(0);
+
+  onSettled(() => {
+    const repaint = () => setThemeRevision((value) => value + 1);
+    addEventListener("samey-themechange", repaint);
+    return () => removeEventListener("samey-themechange", repaint);
+  });
+
+  createEffect(size, (currentSize) => {
+    if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return;
+    const canvas = element()!;
+    const context = canvas.getContext("2d")!;
+    const ratio = devicePixelRatio;
+    canvas.width = Math.max(1, currentSize.width * ratio);
+    canvas.height = Math.max(1, currentSize.height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    local.onResize?.(currentSize);
+  });
+
+  createTrackedEffect(() => {
+    const currentSize = size();
+    themeRevision();
+    if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return;
+    const context = element()!.getContext("2d")!;
+    new Graphics(context).paint(local.paint(currentSize));
+  });
+
+  return <canvas {...props} ref={setElement} id={local.id} class={local.className} style={{
+    display: "block",
+    "inline-size": "100%",
+    "block-size": "100%",
+    ...local.style,
+  }} title={local.title}/>;
 };

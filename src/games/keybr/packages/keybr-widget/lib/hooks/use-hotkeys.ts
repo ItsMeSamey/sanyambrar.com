@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useRef } from "@keybr/solid-compat/react";
 import { useWindowEvent } from "./use-window-event.ts";
 type HotkeyMap = Record<string, Handler>;
 type Handler = (event: KeyEvent) => void;
@@ -23,26 +22,18 @@ export const useHotkeys = (map: HotkeyMap): void => {
     useWindowEvent("keydown", useHotkeysHandler(map));
 };
 export const useHotkeysHandler = (map: HotkeyMap) => {
-    const ref = useRef<[
-        Hotkey,
-        Handler
-    ][]>([]);
-    useEffect(() => {
-        ref.current = parseHotkeyMap(map);
-    }, () => [map]);
-    return useCallback((event: KeyEvent): void => {
-        for (const [hotkey, handler] of ref.current ?? []) {
+    const hotkeys = parseHotkeyMap(map);
+    return (event: KeyEvent): void => {
+        for (const [hotkey, handler] of hotkeys) {
             if ((event.key === hotkey.key || event.code === hotkey.key) &&
-                event.altKey === hotkey.alt &&
-                event.ctrlKey === hotkey.ctrl &&
-                event.metaKey === hotkey.meta &&
-                event.shiftKey === hotkey.shift) {
+                event.altKey === hotkey.alt && event.ctrlKey === hotkey.ctrl &&
+                event.metaKey === hotkey.meta && event.shiftKey === hotkey.shift) {
                 event.preventDefault();
                 event.stopPropagation();
                 handler(event);
             }
         }
-    }, []);
+    };
 };
 const parseHotkeyMap = (map: HotkeyMap): [
     Hotkey,

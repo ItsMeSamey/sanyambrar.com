@@ -1,32 +1,31 @@
 import type { JSX } from "@solidjs/web";
 import { type Focusable } from "@keybr/widget";
-import { type RefObject, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { createEffect, onSettled } from "solid-js";
 import { type Callbacks, InputHandler } from "./inputhandler.ts";
-export const TextEvents = function TextEvents(solidProps: Callbacks & {
-    readonly focusRef?: RefObject<Focusable | null>;
+export const TextEvents = function TextEvents(props: Callbacks & {
+    readonly focusRef?: (focusable: Focusable | null) => void;
 }): JSX.Element {
-    const inputRef = useRef<HTMLTextAreaElement>(null);
-    const handler = useInputHandler();
-    useImperativeHandle(solidProps.focusRef, () => handler);
-    useEffect(() => {
-        handler.setInput(inputRef.current);
+    const handler = new InputHandler();
+    let input: HTMLTextAreaElement | undefined;
+    createEffect(() => ({
+        onFocus: props.onFocus,
+        onBlur: props.onBlur,
+        onKeyDown: props.onKeyDown,
+        onKeyUp: props.onKeyUp,
+        onInput: props.onInput,
+    }), (callbacks) => handler.setCallbacks(callbacks));
+    onSettled(() => {
+        handler.setInput(input ?? null);
+        props.focusRef?.(handler);
         return () => {
+            props.focusRef?.(null);
             handler.setInput(null);
         };
-    }, () => [handler]);
-    handler.setCallbacks({ onFocus: solidProps.onFocus, onBlur: solidProps.onBlur, onKeyDown: solidProps.onKeyDown, onKeyUp: solidProps.onKeyUp, onInput: solidProps.onInput });
+    });
     return (<div style={divStyle}>
-      <textarea ref={el => inputRef.current = el} autocapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
+      <textarea ref={el => input = el} autocapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
     </div>);
 };
-function useInputHandler() {
-    const handlerRef = useRef<InputHandler | null>(null);
-    let handler = handlerRef.current;
-    if (handler == null) {
-        handlerRef.current = handler = new InputHandler();
-    }
-    return handler;
-}
 const divStyle = {
     position: "absolute",
     "inset-inline-start": "0px",
