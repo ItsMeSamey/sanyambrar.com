@@ -138,8 +138,8 @@ function makeResult(
   }
   try {
     return new Result(
-      Layout.ALL.get(fixLegacyLayoutId(layoutId)),
-      TextType.ALL.get(fixTextTypeId(textTypeId)),
+      Layout.ALL.get(normalizeLayoutId(layoutId)),
+      TextType.ALL.get(normalizeTextTypeId(textTypeId)),
       timeStamp,
       length,
       time,
@@ -243,8 +243,8 @@ export function histogramFromJson(json: HistogramtJson): Histogram | null {
   return new Histogram(samples);
 }
 
-function fixLegacyLayoutId(id: string): string {
-  // Fix layout identifiers that were changed in cfafe818d5edd3d72a738183730dae049b967ebc
+function normalizeLayoutId(id: string): string {
+  // Normalize layout identifiers accepted by older exported result files.
   switch (id) {
     case "be":
       return Layout.BE_BY.id;
@@ -285,7 +285,7 @@ function fixLegacyLayoutId(id: string): string {
   }
 }
 
-function fixTextTypeId(id: string): string {
+function normalizeTextTypeId(id: string): string {
   switch (id) {
     case "guided":
       return TextType.GENERATED.id;

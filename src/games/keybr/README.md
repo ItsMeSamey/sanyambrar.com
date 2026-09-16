@@ -1,8 +1,8 @@
-# keybr local
+# Keybr
 
 A local-only, frontend-only typing trainer derived from [keybr.com](https://www.keybr.com/).
 
-The portfolio build keeps the useful adaptive engine, layouts, lesson generators, local statistics, and persistence, but replaces the original application shell with a small SolidJS frontend built by Vite. React, React DOM, React Intl, Webpack, Less, server rendering, accounts, multiplayer, payments, remote sync, and backend persistence are not part of this app.
+The app uses SolidJS and Vite, with adaptive lessons, keyboard layouts, local statistics, story books, and local persistence. It has no server-side account, multiplayer, payment, sync, or persistence layer.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ Browser
       └─ typing history
 ```
 
-The retained `packages/` directories are framework-free core modules. The Solid app lives in `src/`.
+The `packages/` directories contain the core modules and UI packages. The application entry point lives in `src/`.
 
 ## Build
 
@@ -40,7 +40,7 @@ docs/keybr.html
 docs/keybr-assets/
 ```
 
-Application code is chunked. Each book, language word list, and phonetic model is emitted as its own compressed asset and fetched only when the selected lesson needs it.
+Application code is chunked. Each book, language word list, and phonetic model is emitted as its own asset and fetched only when the selected lesson needs it.
 
 For local Keybr development from the repository root:
 
