@@ -8,9 +8,9 @@ export function BookSelector(solidProps: {
     return (<FieldList>
       <Field>Book:</Field>
       <Field>
-        <OptionList size={24} options={Book.ALL.map(({ id, title }) => ({
+        <OptionList size={24} options={Book.ALL.map(({ id, title, author }) => ({
             value: id,
-            name: title,
+            name: `${title} — ${author}`,
         }))} value={solidProps.book.id} onSelect={(value) => {
             solidProps.onChange(Book.ALL.get(value));
         }}/>

@@ -936,15 +936,19 @@ async function buildKeybr() {
   source = source.replace("</head>", `${shared}</head>`);
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);
-  log("solid keybr -> docs/keybr.html");
+  const assets = join(GENERATED_KEYBR, "keybr-assets");
+  must(existsSync(assets), "Keybr build did not emit split assets");
+  await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
+  await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
+  log("solid keybr -> docs/keybr.html + docs/keybr-assets");
 }
 
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
-    // Vditor's optional math/diagram/highlighting runtimes are self-hosted but
-    // loaded and cached on demand instead of adding ~20 MiB to every SW install.
-    .filter(path => !path.startsWith("vditor/"));
+    // Optional runtimes and Keybr chunks are cached on demand rather than
+    // downloaded by every service-worker install. Their filenames are immutable.
+    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/"));
 }
 
 async function versionMutableShellReferences() {
@@ -1001,7 +1005,7 @@ const relativePath = request => {
 };
 const immutableAsset = request => {
   const path = relativePath(request);
-  return path.startsWith('site-chunks/') || path.startsWith('assets/');
+  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/');
 };
 const cacheKey = request => {
   const url = new URL(request.url);
@@ -1117,6 +1121,8 @@ async function main() {
   await removeCompressionSidecars();
   if (targets.has("static")) {
     await versionMutableShellReferences();
+    await generateServiceWorker();
+  } else if (targets.has("keybr")) {
     await generateServiceWorker();
   }
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");

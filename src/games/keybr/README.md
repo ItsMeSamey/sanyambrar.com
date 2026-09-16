@@ -33,11 +33,14 @@ The portfolio root owns dependencies and publication:
 bun build.ts keybr
 ```
 
-Vite builds `src/games/keybr/index.html` through `src/games/keybr/vite.config.ts`, inlines JavaScript, CSS, compressed phonetic models, and word/book data into one staged HTML file, and `build.ts` publishes it as:
+Vite builds `src/games/keybr/index.html` through `src/games/keybr/vite.config.ts`. `build.ts` publishes the small HTML shell and the split runtime/data assets as:
 
 ```text
 docs/keybr.html
+docs/keybr-assets/
 ```
+
+Application code is chunked. Each book, language word list, and phonetic model is emitted as its own compressed asset and fetched only when the selected lesson needs it.
 
 For local Keybr development from the repository root:
 
@@ -46,6 +49,15 @@ bun --cwd src/games/keybr run dev
 ```
 
 No separate Keybr dependency installation is required.
+
+## Book corpus
+
+The catalog contains 100 English books plus the existing French, German, and Spanish editions. The 97 added English works are pinned to Project Gutenberg ebook IDs in `packages/keybr-content/lib/books/catalog.ts`; the importer strips Gutenberg wrappers and rejects suspiciously truncated results.
+
+```sh
+bun run import:keybr-books
+bun run check:keybr-corpus
+```
 
 ## Local data
 

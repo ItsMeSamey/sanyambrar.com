@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 600" role="img" aria-label="Book cover">
+  <rect width="420" height="600" fill="#18181b"/>
+  <rect x="34" y="34" width="352" height="532" fill="none" stroke="#f4f4f5" stroke-width="8"/>
+  <path d="M126 164h168v272H126c-34 0-60 20-60 48V216c0-29 25-52 60-52Z" fill="none" stroke="#f4f4f5" stroke-width="12"/>
+  <path d="M126 164v272c-34 0-60 20-60 48" fill="none" stroke="#f4f4f5" stroke-width="12"/>
+</svg>
