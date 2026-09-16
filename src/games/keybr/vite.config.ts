@@ -1,9 +1,8 @@
 import { gzipSync } from "node:zlib";
 import { readFileSync, readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import solid from "vite-plugin-solid";
-import { viteSingleFile } from "vite-plugin-singlefile";
 
 const root = import.meta.dirname;
 const packagesDir = join(root, "packages");
@@ -22,9 +21,6 @@ const workspaceAliases = Object.fromEntries(
     }),
 );
 
-const gzipDataUrl = (data: Buffer) =>
-  `data:application/gzip;base64,${gzipSync(data, { level: 9 }).toString("base64")}`;
-
 function compressedAssets(): Plugin {
   return {
     name: "keybr-compressed-assets",
@@ -33,13 +29,13 @@ function compressedAssets(): Plugin {
       const query = id.indexOf("?");
       const path = query < 0 ? id : id.slice(0, query);
       const suffix = query < 0 ? "" : id.slice(query + 1);
-      if (suffix === "gzip") {
-        return `export default ${JSON.stringify(gzipDataUrl(readFileSync(path)))};`;
-      }
-      if (path.endsWith(".data")) {
-        return `export default ${JSON.stringify(gzipDataUrl(readFileSync(path)))};`;
-      }
-      return null;
+      if (suffix !== "gzip" && !path.endsWith(".data")) return null;
+      const ref = this.emitFile({
+        type: "asset",
+        name: `${basename(path)}.gz`,
+        source: gzipSync(readFileSync(path), { level: 9 }),
+      });
+      return `export default import.meta.ROLLUP_FILE_URL_${ref};`;
     },
   };
 }
@@ -48,7 +44,7 @@ export default defineConfig(({ mode }) => ({
   root,
   base: "./",
   resolve: { alias: workspaceAliases },
-  plugins: [compressedAssets(), solid(), viteSingleFile()],
+  plugins: [compressedAssets(), solid()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
   css: { modules: { localsConvention: "camelCase" } },
   build: {
@@ -57,6 +53,32 @@ export default defineConfig(({ mode }) => ({
     target: "es2022",
     cssMinify: "lightningcss",
     minify: "oxc",
-    assetsInlineLimit: Number.MAX_SAFE_INTEGER,
+    assetsDir: "keybr-assets",
+    assetsInlineLimit: 0,
+    rolldownOptions: {
+      preserveEntrySignatures: "allow-extension",
+      output: {
+        strictExecutionOrder: true,
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor",
+              test: /node_modules/,
+              minSize: 20_000,
+              maxSize: 180_000,
+              priority: 10,
+            },
+            {
+              name: "keybr",
+              test: /packages[\\/]/,
+              minSize: 40_000,
+              maxSize: 180_000,
+              includeDependenciesRecursively: false,
+              priority: 5,
+            },
+          ],
+        },
+      },
+    },
   },
 }));
