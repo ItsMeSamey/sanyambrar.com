@@ -5,12 +5,12 @@ export function ExplainerBoundary(solidProps: {
     readonly children: ReactNode;
 }): ReactNode {
     const [explainersVisible, setExplainersVisible] = useState((solidProps.defaultVisible === undefined ? true : solidProps.defaultVisible));
-    return (<ExplainerStateContext.Provider value={{
+    return (<ExplainerStateContext value={{
             get explainersVisible() { return explainersVisible(); },
             toggleExplainers: (v) => {
                 setExplainersVisible(v ?? !explainersVisible());
             },
         }}>
       {solidProps.children}
-    </ExplainerStateContext.Provider>);
+    </ExplainerStateContext>);
 }

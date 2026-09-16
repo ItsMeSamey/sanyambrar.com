@@ -1,9 +1,9 @@
 import { HomeBrand, KeybrMark } from "../../../../../shared/components/Brand.tsx";
 import { BackLink, GameTopBarActions, TopBar, TopBarIconButton } from "../../../../../shared/components/TopBar.tsx";
-import BarChart3 from "lucide-solid/icons/chart-no-axes-column";
-import SettingsIcon from "lucide-solid/icons/settings";
+import { ChartNoAxesColumn as BarChart3 } from '../../../../../ui-kit/components/lucide.tsx';
+import { Settings as SettingsIcon } from '../../../../../ui-kit/components/lucide.tsx';
 import { useView } from "@keybr/widget";
-import { Show } from "solid-js";
+import { Show } from 'solid-js';
 import { views } from "./views.tsx";
 
 export function KeybrTopBar() {

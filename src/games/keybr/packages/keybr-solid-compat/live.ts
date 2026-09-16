@@ -1,4 +1,4 @@
-import { type Accessor, untrack } from "solid-js";
+import { type Accessor, untrack } from 'solid-js';
 
 export const LIVE_ACCESSOR = Symbol("keybr.liveAccessor");
 
@@ -13,9 +13,10 @@ export function liveObject<T extends object>(read: Accessor<T>): T {
   return new Proxy(target, {
     get(_target, key) {
       if (key === LIVE_ACCESSOR) return read;
-      const current = read();
-      const value = Reflect.get(current, key, current);
-      if (typeof value !== "function") return value;
+      // Capturing a stable forwarding method is not a reactive value read.
+      // Its invocation below still tracks the current backing instance.
+      const value: unknown = untrack(() => { const current = read(); return Reflect.get(current, key, current); });
+      if (typeof value !== "function") { const current = read(); return Reflect.get(current, key, current); }
       let forward = methodCache.get(key);
       if (forward == null) {
         forward = (...args: unknown[]) => {
@@ -44,6 +45,6 @@ export function liveArray<T>(read: Accessor<readonly T[]>): readonly T[] {
 }
 
 export function touchLive(value: object): void {
-  const read = Reflect.get(value, LIVE_ACCESSOR);
-  if (typeof read === "function") read();
+  const read: unknown = Reflect.get(value, LIVE_ACCESSOR);
+  if (typeof read === "function") Reflect.apply(read, value, []);
 }

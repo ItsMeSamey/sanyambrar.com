@@ -18,10 +18,11 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js"
+    "jsxImportSource": "@solidjs/web"
   },
   "include": [
-    "vite.config.ts",
+    "vite*.config.ts",
+    "src/games/keybr/vite.config.ts",
     "build.ts",
     "site.ts"
   ]

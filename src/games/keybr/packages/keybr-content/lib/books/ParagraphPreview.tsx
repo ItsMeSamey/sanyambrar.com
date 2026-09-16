@@ -1,6 +1,6 @@
 import { clsx } from "@keybr/solid-compat/clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
-import { createMemo, For } from "solid-js";
+import { createMemo, For } from 'solid-js';
 import * as styles from "./ParagraphPreview.module.css";
 export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
     readonly paragraphs: readonly string[];

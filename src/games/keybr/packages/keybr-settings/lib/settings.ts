@@ -18,7 +18,7 @@ export class Settings {
   readonly #json: Json;
   readonly #isNew: boolean;
 
-  constructor(json: Json = createJson(), isNew: boolean = false) {
+  constructor(json: unknown = createJson(), isNew: boolean = false) {
     if (!isPlainObject(json)) {
       throw new TypeError();
     }
@@ -45,8 +45,8 @@ export class Settings {
     return new Settings();
   }
 
-  toJSON() {
-    const entries = [];
+  toJSON(): Json {
+    const entries: [string, unknown][] = [];
     for (const key of Object.keys(this.#json).sort()) {
       entries.push([key, this.#json[key]]);
     }
@@ -55,7 +55,7 @@ export class Settings {
 }
 
 function createJson(): Json {
-  return Object.create(null);
+  return Object.create(null) as Json;
 }
 
 function cloneJson(o: Json): Json {

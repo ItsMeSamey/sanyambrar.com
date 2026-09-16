@@ -1,5 +1,5 @@
 import { type Rect, type ShapeList } from "@keybr/widget";
-import { createMemo } from "solid-js";
+import { createMemo } from 'solid-js';
 
 export type Paint = (box: Rect) => ShapeList;
 

@@ -1,9 +1,9 @@
 import { getDir } from "@keybr/intl";
 import { names } from "@keybr/lesson-ui";
-import CircleHelp from "lucide-solid/icons/circle-help";
-import Maximize2 from "lucide-solid/icons/maximize-2";
-import Redo2 from "lucide-solid/icons/redo-2";
-import Undo2 from "lucide-solid/icons/undo-2";
+import { CircleHelp } from '../../../../../../ui-kit/components/lucide.tsx';
+import { Maximize2 } from '../../../../../../ui-kit/components/lucide.tsx';
+import { Redo2 } from '../../../../../../ui-kit/components/lucide.tsx';
+import { Undo2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/solid-compat/intl";
 import * as styles from "./Controls.module.css";

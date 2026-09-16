@@ -1,3 +1,4 @@
+import { createMemo } from "solid-js";
 import { type KeyShape, useKeyboard, type ZoneId } from "@keybr/keyboard";
 import { type Point } from "@keybr/widget";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
@@ -12,17 +13,12 @@ export const ZonesLayer = memo(function ZonesLayer(): ReactNode {
         }
         return null;
     };
-    const l = findHomingKey("left") ?? keyboard.getShape("KeyF");
-    const r = findHomingKey("right") ?? keyboard.getShape("KeyJ");
-    if (l != null && r != null) {
-        return (<Surface>
-        <LeftHand center={getKeyCenter(l)}/>
-        <RightHand center={getKeyCenter(r)}/>
-      </Surface>);
-    }
-    else {
-        return null;
-    }
+    const hands = createMemo(() => {
+      const left = findHomingKey("left") ?? keyboard.getShape("KeyF");
+      const right = findHomingKey("right") ?? keyboard.getShape("KeyJ");
+      return left && right ? <Surface><LeftHand center={getKeyCenter(left)} /><RightHand center={getKeyCenter(right)} /></Surface> : null;
+    });
+    return <>{hands()}</>;
 });
 const LeftHand = memo(function LeftHand(props: {
     center: Point;

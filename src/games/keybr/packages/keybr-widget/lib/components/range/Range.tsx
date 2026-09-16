@@ -4,7 +4,7 @@ import {
   useImperativeHandle,
   useRef,
 } from "@keybr/solid-compat/react";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./Range.module.css";
 import { type RangeProps } from "./Range.types.ts";
@@ -12,19 +12,7 @@ import { type RangeProps } from "./Range.types.ts";
 const THUMB_SIZE = 16;
 
 export function Range(allProps: RangeProps): ReactNode {
-  const [local, props] = splitProps(allProps, [
-    "disabled",
-    "max",
-    "min",
-    "name",
-    "ref",
-    "size",
-    "step",
-    "tabIndex",
-    "title",
-    "value",
-    "onChange",
-  ]);
+  const local = allProps, props = omit(allProps, "disabled", "max", "min", "name", "ref", "size", "step", "tabIndex", "title", "value", "onChange");
   const element = useRef<HTMLInputElement>(null);
   useImperativeHandle(local.ref, () => ({
     focus: () => element.current?.focus(),
@@ -63,7 +51,7 @@ export function Range(allProps: RangeProps): ReactNode {
           min={local.min}
           name={local.name}
           step={local.step}
-          tabIndex={local.tabIndex}
+          tabindex={local.tabIndex}
           title={local.title}
           type="range"
           value={local.value}

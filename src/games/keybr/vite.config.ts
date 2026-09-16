@@ -2,7 +2,7 @@ import { gzipSync } from "node:zlib";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
-import solid from "vite-plugin-solid";
+import solid from "@solidjs/vite-plugin";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
 const root = import.meta.dirname;

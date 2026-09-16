@@ -5,7 +5,7 @@ import { clsx } from "@keybr/solid-compat/clsx";
 import { type FunctionComponent, memo, type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
-import { splitProps } from "solid-js";
+import { omit } from 'solid-js';
 export type KeyProps = {
     readonly depressed?: boolean;
     readonly toggled?: boolean;
@@ -76,7 +76,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
     }
     const zoneClassName = zoneClassNameOf(shape);
     function KeyComponent(props: KeyProps): ReactNode {
-        const [local, mouse] = splitProps(props, ["depressed", "toggled", "showColors"]);
+        const local = props, mouse = omit(props, "depressed", "toggled", "showColors");
         return (<svg {...mouse} class={clsx(styles.key, local.depressed && styles.depressedKey, local.toggled && styles.toggledKey, local.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
         {children}
       </svg>);

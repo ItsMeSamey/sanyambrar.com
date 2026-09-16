@@ -1,4 +1,4 @@
-import { createContext, useContext } from "solid-js";
+import { createContext, useContext } from 'solid-js';
 
 export type ThemeValue = {
   readonly color: string;

@@ -1,5 +1,5 @@
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { For } from "solid-js";
+import { For } from 'solid-js';
 
 export type SegmentedOption<T> = {
   readonly value: T;
@@ -51,10 +51,10 @@ export function SegmentedControl<T>(props: {
             type="button"
             role="radio"
             class="keybr-segmented-item"
-            aria-checked={selected()}
+            aria-checked={selected() ? "true" : "false"}
             data-selected={selected() ? "" : undefined}
             disabled={props.disabled}
-            tabIndex={selected() || (currentIndex() === index() && props.options.every((entry) => !Object.is(entry.value, props.value))) ? 0 : -1}
+            tabindex={selected() || (currentIndex() === index() && props.options.every((entry) => !Object.is(entry.value, props.value))) ? 0 : -1}
             title={item.title}
             onClick={() => props.onChange?.(item.value)}
           >

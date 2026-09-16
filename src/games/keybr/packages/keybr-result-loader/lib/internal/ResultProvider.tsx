@@ -1,7 +1,8 @@
 import { ErrorAlert } from "@keybr/debug";
 import { type Result, ResultContext } from "@keybr/result";
 import { liveArray } from "@keybr/solid-compat/live";
-import { createSignal, type JSX } from "solid-js";
+import { createSignal } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import { type ResultStorage } from "./storage.ts";
 
 export function ResultProvider(props: {
@@ -22,7 +23,7 @@ export function ResultProvider(props: {
       props.storage.clear().catch(catchError);
     },
   };
-  return <ResultContext.Provider value={value}>{props.children}</ResultContext.Provider>;
+  return <ResultContext value={value}>{props.children}</ResultContext>;
 }
 
 function catchError(error: unknown) {

@@ -1,4 +1,4 @@
-import { createContext, onCleanup, onMount, useContext, type Accessor } from 'solid-js';
+import { createContext, onCleanup, onSettled, useContext, type Accessor } from 'solid-js';
 import type { ToolId } from '../shared/catalog.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
 
@@ -27,7 +27,7 @@ export function ToolSurface(props:{tool:ToolId}) {
   let root!: HTMLDivElement;
   let dispose = () => {};
   let cancelled = false;
-  onMount(() => {
+  onSettled(() => {
     void loadToolsModule().then(module => {
       if (cancelled) return;
       dispose = module.mountTool(props.tool, root, context());

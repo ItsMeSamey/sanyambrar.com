@@ -3,420 +3,195 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
 <title>Reverb</title>
 <style>
-
 :root{
-  --primary:var(--site-accent-fg,var(--site-accent,#2DD4BF));
-  --on-primary:var(--site-accent-on-fg,var(--site-on-fg,#003730));
-  --primary-container:var(--site-accent-bg,color-mix(in srgb,var(--primary) 18%,var(--site-bg,#0D1324)));
-  --on-primary-container:var(--site-accent-on-bg,var(--site-fg,#E2E9E7));
-  --secondary:color-mix(in srgb,var(--site-fg,#E2E9E7) 68%,var(--site-bg,#0D1324));
-  --on-secondary:var(--site-bg,#0D1324);
-  --secondary-container:color-mix(in srgb,var(--site-fg,#E2E9E7) 14%,var(--site-bg,#0D1324));
-  --on-secondary-container:color-mix(in srgb,var(--site-fg,#E2E9E7) 88%,var(--site-bg,#0D1324));
-  --tertiary:var(--site-effort-fg,var(--primary));
-  --blob-neutral:color-mix(in srgb,var(--site-fg,#E2E9E7) 44%,var(--site-bg,#0D1324));
-  --blob-primary:color-mix(in srgb,var(--site-accent-fg,var(--site-accent,#2DD4BF)) 78%,var(--blob-neutral) 22%);
-  --blob-tertiary:color-mix(in srgb,var(--blob-primary) 78%,var(--site-fg,#E2E9E7) 22%);
-  --surface:color-mix(in srgb,var(--site-bg,#0D1324) 94%,var(--primary) 6%);
-  --on-surface:var(--site-fg,#E2E9E7);
-  --surface-variant:color-mix(in srgb,var(--on-surface) 18%,var(--surface));
-  --on-surface-variant:var(--site-muted,color-mix(in srgb,var(--on-surface) 64%,var(--surface)));
-  --outline:var(--site-line,color-mix(in srgb,var(--on-surface) 36%,var(--surface)));
-  --outline-variant:color-mix(in srgb,var(--on-surface) 16%,var(--surface));
-  --surface-container-low:color-mix(in srgb,var(--on-surface) 5%,var(--surface));
-  --surface-container:color-mix(in srgb,var(--on-surface) 7%,var(--surface));
-  --surface-container-high:color-mix(in srgb,var(--on-surface) 10%,var(--surface));
-  --surface-container-highest:color-mix(in srgb,var(--on-surface) 14%,var(--surface));
-  --error:var(--site-error-fg,var(--site-error,#FFB4AB));
-  --scrim:color-mix(in srgb,var(--site-shadow-tint,#000) 32%,transparent);
-  --reverb-stage:color-mix(in srgb,var(--site-bg,#080B12) 94%,var(--primary) 6%);
-  --phone-frame:color-mix(in srgb,var(--on-surface) 30%,var(--surface));
-  --phone-cutout:color-mix(in srgb,var(--on-surface) 42%,var(--surface));
-  --status-h:24px; --nav-h:24px;
+  --surface:#0a0f10;
+  --surface-container-low:#0e1415;
+  --surface-container-high:#171717;
+  --surface-container-highest:#1e2729;
+  --on-surface:#dee6ea;
+  --on-surface-variant:#a2aeae;
+  --outline-variant:#2a3232;
+  --primary:#9eced6;
+  --on-primary:#0e464e;
+  --primary-container:#21494f;
+  --on-primary-container:#bcebf1;
+  --tertiary:#b9dbf1;
+  --secondary:#b8c8cc;
+  --error:#ffb4ab;
+  --error-container:#6f2427;
+  --on-error-container:#ffdada;
+  --blob-primary:#9eced6;
+  --blob-tertiary:#b9dbf1;
+  --reverb-noise:none;
+  --status-h:38px;
+  --topbar-h:66px;
+  --screen-w:411px;
+  --screen-h:912px;
+  --border:rgba(222,230,234,.14);
+  --disabled:rgba(162,174,174,.28);
 }
 *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
 html,body{margin:0;min-height:100%;background:transparent;color:var(--on-surface);font-family:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-button,input{font:inherit}
-button{border:0;padding:0;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit}button{border:0;padding:0;color:inherit;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 @media(pointer:fine){
 :host([data-cursor-mode="invert"]) *{cursor:none!important}
 :host([data-cursor-mode="hardware"]) *,:host([data-cursor-mode="hardware"]) *::before,:host([data-cursor-mode="hardware"]) *::after{cursor:var(--samey-hw-dot),default!important}
-:host([data-cursor-mode="hardware"]) input,:host([data-cursor-mode="hardware"]) textarea{cursor:var(--samey-hw-text),var(--samey-hw-dot),text!important}
-:host([data-cursor-mode="hardware"]) input[type=range],:host([data-cursor-mode="hardware"]) [role=slider]{cursor:var(--samey-hw-grab),var(--samey-hw-dot),grab!important}
+:host([data-cursor-mode="hardware"]) input{cursor:var(--samey-hw-text),var(--samey-hw-dot),text!important}
+:host([data-cursor-mode="hardware"]) [role=slider]{cursor:var(--samey-hw-grab),var(--samey-hw-dot),grab!important}
 }
-.stage{width:100%;height:100%;min-height:0;display:grid;place-items:center;padding:18px;background:transparent;position:relative;overflow:hidden}
-.phone{width:min(412px,100%);height:min(820px,100%);min-height:0;max-height:820px;position:relative;overflow:hidden;border:6px solid var(--phone-frame);border-radius:38px;background:var(--surface);color:var(--on-surface);box-shadow:0 22px 56px color-mix(in srgb,var(--site-shadow-tint,#000) 22%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--on-surface) 9%,transparent);isolation:isolate;z-index:2}
-.phone::before{content:"";position:absolute;z-index:80;top:7px;left:50%;width:58px;height:5px;transform:translateX(-50%);border-radius:999px;background:var(--phone-cutout);opacity:.86;pointer-events:none}
-.gesture-hint{--gesture-hint-opacity:.48;position:absolute;z-index:3;width:54px;height:96px;pointer-events:none;color:var(--on-surface-variant);opacity:var(--gesture-hint-opacity);filter:drop-shadow(0 2px 7px color-mix(in srgb,var(--site-shadow-tint,#000) 35%,transparent));animation:gesture-hint-life 6.75s linear 1 forwards}
-.gesture-hint.left{left:max(10px,calc(50% - 270px));top:22%}
-.gesture-hint.right{right:max(10px,calc(50% - 270px));bottom:18%}
-.gesture-hint svg{width:100%;height:100%;overflow:visible}
-.gesture-hint .gesture-finger{transform-origin:50% 50%;animation:gesture-down 2.25s cubic-bezier(.2,0,0,1) 3}
-.gesture-hint.right .gesture-finger{animation-name:gesture-up}
-.gesture-hint .gesture-path{opacity:.38;stroke-dasharray:4 5}
-@keyframes gesture-down{0%,16%{transform:translateY(-10px);opacity:.18}38%,68%{opacity:.78}78%,100%{transform:translateY(14px);opacity:.12}}
-@keyframes gesture-up{0%,16%{transform:translateY(12px);opacity:.18}38%,68%{opacity:.78}78%,100%{transform:translateY(-14px);opacity:.12}}
-@keyframes gesture-hint-life{0%,88%{opacity:var(--gesture-hint-opacity)}100%{opacity:0}}
-.screen{position:absolute;inset:0;background:var(--surface)}
-.home{display:flex;flex-direction:column;transform:translateY(0);opacity:1;transition:transform 180ms cubic-bezier(.2,0,0,1),opacity 160ms linear}
-.statusbar{height:var(--status-h);flex:none;background:var(--surface)}
-.navbar{height:var(--nav-h);flex:none;background:var(--surface)}
+.stage{width:100%;height:100%;min-height:0;display:grid;place-items:center;padding:18px;position:relative;overflow:hidden;background:transparent}
+.phone{width:min(var(--screen-w),100%);height:min(var(--screen-h),100%);position:relative;overflow:hidden;background:var(--surface);color:var(--on-surface);isolation:isolate;box-shadow:0 20px 55px rgba(0,0,0,.28)}
+.noise{background-color:var(--surface);background-image:var(--reverb-noise);background-repeat:repeat;background-size:var(--reverb-noise-size,389.5px) var(--reverb-noise-size,389.5px)}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}.screen.active{display:flex}
 .icon{display:block;width:24px;height:24px;fill:currentColor;overflow:visible}
-.topbar{height:66px;position:relative;flex:none;padding:0 14px;background:var(--surface)}
-.brand{position:absolute;left:50%;top:10px;transform:translateX(-50%);width:46px;height:46px;border-radius:15px;background:var(--surface);display:grid;place-items:center}
-.brand svg{width:42px;height:42px}
-.settings-button{position:absolute;right:14px;top:9px;width:48px;height:48px;background:transparent;color:var(--on-surface-variant);display:grid;place-items:center;border-radius:50%}
-.settings-button svg{width:23px;height:23px}
-.settings-button:active,.icon-button:active,.action-button:active{background:color-mix(in srgb,var(--on-surface) 8%,transparent)}
+.statusbar{height:var(--status-h);flex:none;position:relative;color:#fff;font-weight:700;font-size:14px;line-height:20px;letter-spacing:.05px}
+.status-time{position:absolute;left:23px;top:9px}.status-icons{position:absolute;right:29px;top:8px;height:21px;display:flex;align-items:center;gap:7px;color:#fff}.status-icons svg{display:block;fill:currentColor}.status-vibrate{width:13px;height:16px}.status-wifi{width:18px;height:15px}.status-plane{width:17px;height:17px}.status-battery{width:31px;height:15px;overflow:visible}.status-battery .fill{fill:#17c964}.status-battery .cap{fill:#fff}.status-battery .bolt{fill:#fff}
+.topbar{height:var(--topbar-h);flex:none;position:relative;padding:0 14px}
+.brand{position:absolute;left:50%;top:10px;transform:translateX(-50%);width:46px;height:46px;border-radius:50%;background:#000;display:grid;place-items:center;overflow:hidden}
+.brand svg{width:46px;height:46px}.brand .trail1{stroke:#2dd4bf;stroke-opacity:.16}.brand .trail2{stroke:#2dd4bf;stroke-opacity:.34}.brand .main{stroke:#fff}
+.top-action{position:absolute;top:10px;width:46px;height:46px;border-radius:15px;background:var(--surface-container-low);border:1px solid var(--border);display:grid;place-items:center;color:var(--on-surface-variant)}
+.top-action svg{width:23px;height:23px}.top-action.incidents{right:70px}.top-action.settings{right:14px}.top-action.alert{border-color:rgba(255,180,171,.55);color:var(--error)}
 .capture{flex:1;min-height:0;padding:0 18px;display:flex;flex-direction:column;align-items:center}
-.blob-area{width:100%;min-height:0;flex:1;display:grid;place-items:center}
-.blob-control{background:transparent;border:0;padding:0;color:inherit;position:relative;display:grid;place-items:center;width:min(90%,372px);aspect-ratio:1;user-select:none;touch-action:pan-y;transition:transform 100ms linear}
-.blob-control.pressed{transform:scale(.96)}
+.blob-area{width:100%;min-height:0;flex:1;display:grid;place-items:center;position:relative}
+.blob-control{position:relative;width:min(90%,372px);aspect-ratio:1;display:grid;place-items:center;background:transparent;touch-action:pan-y;transition:transform 100ms linear}.blob-control.pressed{transform:scale(.96)}.blob-control.dimmed{opacity:.56}
 #blobCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-.blob-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;pointer-events:none;color:var(--on-surface-variant)}
-.blob-control.live .blob-content{color:var(--on-primary)}
-.blob-content .capture-icon{width:38px;height:38px}
-.blob-time{margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:18px;font-weight:500;line-height:22px;white-space:nowrap}
-.blob-summary{margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:18px;color:currentColor;opacity:.76;white-space:nowrap;max-height:18px;transition:opacity 120ms linear,max-height 120ms linear}
-.blob-summary.hidden{opacity:0;max-height:0;margin-top:0}
-.buffer-selector{flex:none;padding:6px;border-radius:22px;background:var(--surface-container-high);display:flex;gap:6px}
-.buffer-segment{width:112px;min-height:52px;border-radius:16px;background:var(--surface-container-highest);color:var(--on-surface-variant);padding:8px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.buffer-segment.selected{background:var(--primary);color:var(--on-primary)}
-.buffer-segment .label{font-size:14px;font-weight:600;line-height:20px;letter-spacing:.1px;white-space:nowrap}
-.buffer-segment .stat{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:400;line-height:16px;opacity:.78;white-space:nowrap}
-.control-gap{height:10px;flex:none}
-.actions-surface{flex:none;background:var(--surface-container-high);border-radius:28px;padding:8px;display:flex;gap:8px}
-.action-button{width:54px;height:54px;border-radius:50%;background:transparent;display:grid;place-items:center;color:var(--on-surface)}
-.action-button.destructive{color:var(--error)}
-.action-button svg{width:25px;height:25px}
-.capture-bottom{height:18px;flex:none}
+.blob-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;color:var(--on-surface-variant);pointer-events:none}.blob-control.live .blob-content{color:var(--on-primary)}
+.blob-content .capture-icon{width:38px;height:38px}.blob-time{margin-top:10px;font:500 18px/22px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap}.blob-summary{margin-top:2px;font:400 14px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;opacity:.76;white-space:nowrap}.blob-summary.hidden{display:none}
+.capture-control-cluster{width:256px;height:112px;flex:none;position:relative}
+.cluster-shape{position:absolute;inset:0;width:256px;height:112px;pointer-events:none}.cluster-shape path{fill:var(--surface-container-low);stroke:var(--border);stroke-width:1}
+.buffer-selector{position:absolute;left:7px;top:0;width:242px;height:54px;padding:6px;display:flex;gap:6px;z-index:1}
+.buffer-segment{width:112px;height:42px;border-radius:16px;background:transparent;color:rgba(162,174,174,.52);display:flex;align-items:center;justify-content:center;padding:0 12px;white-space:nowrap}.buffer-segment svg{width:18px;height:18px;flex:none}.buffer-segment .label{margin-left:7px;font-size:14px;line-height:20px;font-weight:600;letter-spacing:-.8px}.buffer-segment.selected{background:var(--primary);color:var(--on-primary)}.buffer-segment.selected.idle{background:#20484d;color:#b9ecf4}
+.actions-row{position:absolute;left:0;bottom:0;width:256px;height:70px;padding:8px;display:flex;gap:8px;align-items:center;z-index:1}.action-button{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;color:var(--on-surface)}.action-button svg{width:25px;height:25px}.action-button.destructive{color:var(--error)}.action-button:disabled{color:var(--disabled);cursor:default}.capture-bottom{height:18px;flex:none}
 
-/* Settings screen */
-.settings-screen{z-index:5;display:flex;flex-direction:column;transform:translateY(-100%);transition:transform 220ms cubic-bezier(.2,0,0,1);background:var(--surface)}
-.phone.settings-open .settings-screen{transform:translateY(0)}
-.phone.settings-open .home{transform:translateY(10%);opacity:0}
-.settings-appbar{height:64px;flex:none;display:grid;grid-template-columns:64px 1fr 64px;align-items:center;background:var(--surface)}
-.settings-appbar h1{margin:0;text-align:center;font-size:22px;line-height:28px;font-weight:700}
-.icon-button{width:48px;height:48px;margin:auto;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--on-surface)}
-.icon-button.disabled{color:color-mix(in srgb,var(--on-surface) 38%,transparent);pointer-events:none}
-.settings-body{flex:1;min-height:0;overflow:auto;background:var(--surface);padding-bottom:24px;scrollbar-width:none}
-.settings-body::-webkit-scrollbar,.library-list::-webkit-scrollbar{display:none}
-.section-title{font-size:16px;line-height:24px;font-weight:600;color:var(--on-surface);padding:12px 16px}
-.reliability-card{margin:4px 16px;border-radius:20px;background:var(--surface-container-low);padding:12px 14px;display:flex;align-items:center;gap:8px}
-.reliability-copy{min-width:0;flex:1;padding-right:8px}
-.reliability-copy .title{font-size:16px;line-height:24px;color:var(--on-surface)}
-.reliability-copy .summary{font-size:12px;line-height:16px;color:var(--on-surface-variant);margin-top:2px}
-.text-button{background:transparent;color:var(--primary);font-size:14px;line-height:20px;font-weight:600;letter-spacing:.1px;padding:10px 12px;border-radius:20px;white-space:nowrap}
-.text-button:active{background:color-mix(in srgb,var(--primary) 8%,transparent)}
-.spacer12{height:12px}
-.spacer8{height:8px}
-.spacer16{height:16px}
-.field-wrap{padding:12px 16px}
-.field-wrap.compact{padding:0}
-.field-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:0 16px}
-.field-row + .field-row{padding-top:12px}
-.m3-fieldset{position:relative;margin:0;border:1px solid var(--outline);border-radius:18px;min-height:56px;padding:0 44px 0 16px;color:var(--on-surface);background:transparent;display:flex;align-items:center;min-width:0;transition:opacity 120ms,border-color 120ms}
-.m3-fieldset legend{padding:0 4px;color:var(--on-surface-variant);font-size:12px;line-height:16px;margin-left:-8px}
-.m3-fieldset.dropdown{cursor:pointer}
-.m3-value{font-size:16px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.m3-prefix{color:var(--on-surface);margin-right:3px}
-.dropdown-arrow{position:absolute;right:15px;top:50%;margin-top:-12px;width:24px;height:24px;color:var(--on-surface-variant);display:grid;place-items:center}
-.dropdown-arrow:after{content:"";width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid currentColor}
-.field-shell{min-width:0}
-.field-shell.inactive{opacity:.6}
-.supporting{font-size:12px;line-height:16px;color:var(--on-surface-variant);padding:4px 16px 0;min-height:20px}
-.buffer-label{font-size:14px;line-height:20px;font-weight:600;letter-spacing:.1px;color:var(--on-surface-variant);padding:0 4px 8px}
-.retention-block{padding:0 16px}
-.retention-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
-.retention-fields input{width:100%;border:0;outline:0;background:transparent;color:inherit;font-size:16px;line-height:24px;padding:0;min-width:0}
-.export-limit{font-size:12px;line-height:16px;color:var(--on-surface-variant);padding:8px 20px}
-.storage-card{margin:4px 16px;border-radius:20px;background:var(--surface-container-low);padding:10px 16px}
-.storage-row{display:flex;align-items:center;min-height:48px}
-.storage-path{flex:1;font-size:16px;line-height:24px;color:var(--on-surface-variant);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.storage-row .icon-button{margin:0}
-.storage-card .text-button{margin-left:-12px}
-.switch-row{margin:4px 16px;border-radius:20px;background:var(--surface-container-low);padding:12px 14px;display:flex;align-items:center}
-.switch-copy{min-width:0;flex:1;padding-right:8px}
-.switch-copy .title{font-size:16px;line-height:24px}
-.switch-copy .summary{font-size:12px;line-height:16px;color:var(--on-surface-variant);margin-top:2px}
-.m3-switch{width:52px;height:32px;padding:4px;border-radius:18px;background:var(--outline-variant);position:relative;flex:none;transition:background 150ms}
-.m3-switch:before{content:"";position:absolute;width:24px;height:24px;left:4px;top:4px;border-radius:50%;background:var(--on-surface-variant);transition:transform 150ms,background 150ms}
-.m3-switch.on{background:var(--primary)}
-.m3-switch.on:before{transform:translateX(20px);background:var(--on-primary)}
-.dropdown-menu{position:fixed;z-index:30;min-width:170px;max-width:300px;background:var(--surface-container);border-radius:4px;padding:8px 0;box-shadow:0 6px 18px color-mix(in srgb,var(--site-shadow-tint,#000) 48%,transparent);display:none;overflow:hidden}
-.dropdown-menu.show{display:block}
-.dropdown-item{display:block;width:100%;min-height:48px;padding:12px 16px;text-align:left;background:transparent;color:var(--on-surface);font-size:14px;line-height:20px}
-.dropdown-item:hover{background:color-mix(in srgb,var(--on-surface) 8%,transparent)}
+/* Current Settings screen. */
+.settings-screen{z-index:10}.settings-appbar{height:64px;flex:none;display:grid;grid-template-columns:64px 1fr 64px;align-items:center}.settings-appbar h1{margin:0;text-align:center;font-size:22px;line-height:28px;font-weight:700;letter-spacing:-1.2px}.icon-button{width:48px;height:48px;margin:auto;border-radius:50%;display:grid;place-items:center;color:var(--on-surface)}.icon-button svg{width:24px;height:24px}.icon-button.disabled{color:rgba(222,230,234,.38);pointer-events:none}
+.settings-body{flex:1;min-height:0;overflow:auto;padding-bottom:24px;scrollbar-width:none}.settings-body::-webkit-scrollbar,.library-list::-webkit-scrollbar,.incidents-list::-webkit-scrollbar{display:none}
+.settings-theme-row{display:flex;align-items:center;gap:16px;padding:12px 16px 24px}.setting-heading{font-size:19px;line-height:26px;font-weight:500;color:var(--on-surface);letter-spacing:-1px}.settings-theme-row .setting-heading{flex:0 0 57.7px;min-width:0}.segmented{height:42px;display:flex;align-items:center;padding:4px;border-radius:30px;background:var(--surface-container-low);border:1px solid var(--border)}.settings-theme-row .segmented{flex:1}.segment{height:34px;flex:1;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--on-surface-variant);font-size:14px;line-height:20px;letter-spacing:-.45px;white-space:nowrap}.segment svg{width:16px;height:16px;fill:currentColor}.segment.selected{background:var(--surface-container-high);color:var(--on-surface)}
+.retention-section{padding:0 16px 12px}.retention-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px}.retention-head .segmented{width:126px}.retention-card{border-radius:23px;background:var(--surface-container-low);border:1px solid var(--border);padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:24px}.retention-label{display:flex;align-items:center;gap:8px;color:var(--on-surface-variant);font-size:14px;line-height:20px;letter-spacing:-.65px;margin-bottom:10px}.retention-label svg{width:17px;height:17px}.retention-value{width:100%;border:0;outline:0;padding:0;background:transparent;color:var(--on-surface);font-size:34px;line-height:40px;font-weight:400;letter-spacing:-1.8px}.retention-estimate{margin-top:3px;color:var(--on-surface-variant);font-size:13px;line-height:20px}
+.section-title{font-size:19px;line-height:26px;font-weight:500;color:var(--on-surface);letter-spacing:-1px;padding:12px 16px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}.settings-grid + .settings-grid{padding-top:12px}.settings-single{padding:0 16px}.settings-card{width:100%;height:72px;border-radius:20px;background:var(--surface-container-low);border:1px solid var(--border);padding:13px 14px;position:relative;text-align:left}.settings-card.large{height:72px}.settings-card .caption{display:block;color:var(--on-surface-variant);font-size:12px;line-height:16px;letter-spacing:-.5px}.settings-card .value{display:block;color:var(--on-surface);font-size:16px;line-height:24px;letter-spacing:-.4px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:24px}.settings-card .chev{position:absolute;right:18px;top:50%;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--on-surface-variant)}
+.storage-card{margin:4px 16px;border-radius:20px;background:var(--surface-container-low);border:1px solid var(--border);padding:9px 16px}.storage-row{min-height:48px;display:flex;align-items:center}.storage-path{flex:1;color:var(--on-surface-variant);font-size:16px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.folder-button{width:48px;height:48px;border-radius:14px;background:var(--surface-container-high);display:grid;place-items:center;color:var(--on-surface-variant)}.folder-button svg{width:24px;height:24px}.move-button{margin-top:0;margin-left:-1px;min-height:48px;padding:0 13px;border-radius:12px;background:var(--surface-container-high);font-size:14px;font-weight:600;color:rgba(162,174,174,.32)}
+.reliability-row{margin:24px 16px 4px;border-radius:20px;background:var(--surface-container-low);border:1px solid var(--border);padding:12px 14px;display:flex;align-items:center}.reliability-copy{min-width:0;flex:1;padding-right:8px}.reliability-copy .title{font-size:16px;line-height:24px}.reliability-copy .summary{font-size:12px;line-height:16px;color:var(--on-surface-variant);margin-top:2px}.switch{width:44px;height:26px;padding:4px;border-radius:13px;background:var(--surface-container-high);position:relative;flex:none}.switch:before{content:"";position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:rgba(162,174,174,.84);transition:transform 150ms}.switch.on{background:var(--primary)}.switch.on:before{transform:translateX(18px);background:var(--on-primary)}
+.dropdown-menu{position:absolute;z-index:80;display:none;min-width:160px;max-height:300px;overflow:auto;background:var(--surface-container-high);border-radius:18px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.48)}.dropdown-menu.show{display:block}.dropdown-item{width:100%;min-height:44px;border-radius:12px;padding:10px 12px;text-align:left;color:var(--on-surface);font-size:14px}.dropdown-item:hover{background:var(--surface-container-highest)}
 
-/* Library modal bottom sheet */
-.scrim{position:absolute;inset:0;z-index:10;background:rgba(0,0,0,0);pointer-events:none;transition:background 180ms linear}
-.library-sheet{position:absolute;z-index:11;left:0;right:0;bottom:0;height:88%;background:var(--surface-container-low);border-radius:28px 28px 0 0;transform:translateY(102%);transition:transform 240ms cubic-bezier(.2,0,0,1);display:flex;flex-direction:column;overflow:hidden}
-.phone.library-open .scrim{background:var(--scrim);pointer-events:auto}
-.phone.library-open .library-sheet{transform:translateY(0)}
-.drag-handle-wrap{height:32px;flex:none;display:grid;place-items:center}
-.drag-handle{width:32px;height:4px;border-radius:2px;background:var(--on-surface-variant);opacity:.4}
-.library-screen{flex:1;min-height:0;display:flex;flex-direction:column}
-.library-list{flex:1;min-height:0;overflow:auto;padding:0 16px 84px;scrollbar-width:none}
-.date-header{font-size:14px;line-height:20px;font-weight:600;letter-spacing:.04px;color:var(--on-surface-variant);padding:28px 0 8px}
-.recording-card{width:100%;border-radius:16px;background:var(--surface-container-high);margin-bottom:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;text-align:left;box-shadow:0 1px 2px color-mix(in srgb,var(--site-shadow-tint,#000) 16%,transparent)}
-.recording-card:active{background:var(--surface-container-highest)}
-.audio-round{width:44px;height:44px;border-radius:50%;background:var(--surface-variant);display:grid;place-items:center;flex:none}
-.audio-round svg{width:24px;height:24px}
-.recording-main{min-width:0;flex:1}
-.recording-title{display:block;font-size:16px;line-height:24px;font-weight:500;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.recording-subtitle{display:block;margin-top:4px;font-size:14px;line-height:20px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.recording-trail{text-align:right;flex:none}
-.recording-trail .top{display:block;font-size:14px;line-height:20px;font-weight:600;color:var(--on-surface)}
-.recording-trail .bottom{display:block;margin-top:4px;font-size:12px;line-height:16px;color:var(--on-surface-variant)}
+/* Current full-screen library. */
+.library-screen{z-index:11}.library-screen::before{content:"";position:absolute;z-index:0;left:0;right:0;top:calc(var(--status-h) + var(--topbar-h));bottom:0;background:rgba(0,0,0,.32);pointer-events:none}.library-screen::after{content:"";position:absolute;z-index:1;left:0;right:0;top:calc(var(--status-h) + var(--topbar-h));bottom:0;border-radius:28px 28px 0 0;background-color:var(--surface);background-image:var(--reverb-noise);background-repeat:repeat;background-size:var(--reverb-noise-size,389.5px) var(--reverb-noise-size,389.5px);background-position:0 .275px;pointer-events:none}.library-screen>.statusbar,.library-screen>.topbar,.library-screen>.library-list{position:relative;z-index:2}.library-list{flex:1;overflow:auto;padding:0 16px 84px}.date-header{font-size:14px;line-height:20px;font-weight:600;letter-spacing:-.55px;color:var(--on-surface-variant);height:52px;padding:28px 0 4px;transform:translateY(-1px)}.date-header.first{height:32px;padding:8px 0 4px}.recording-card{width:100%;height:68px;min-height:68px;border-radius:16px;background:var(--surface-container-low);border:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;text-align:left;overflow:hidden}.recording-icon-slot{width:71px;min-height:68px;display:grid;place-items:center;flex:none}.audio-round{width:44px;height:44px;border-radius:22px;background:var(--surface-container-high);display:grid;place-items:center;color:var(--on-surface)}.audio-round svg{width:24px;height:24px}.recording-main{min-width:0;flex:1;padding:8px 0}.recording-title{display:block;font-size:16px;line-height:24px;font-weight:500;letter-spacing:-.12px;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:translateY(2px)}.recording-subtitle{display:block;margin-top:4px;font-size:14px;line-height:20px;letter-spacing:-.35px;color:var(--on-surface-variant);white-space:nowrap;transform:translateY(-1px)}.recording-time{padding:0 14px 0 12px;flex:none;font-size:14px;line-height:20px;font-weight:600;letter-spacing:-.2px;color:var(--on-surface);transform:translateY(1.5px)}
 
-/* lightweight dialogs used only for stub interactions */
-.dialog-layer{position:absolute;inset:0;z-index:40;background:var(--scrim);display:none;place-items:center;padding:28px}
-.dialog-layer.show{display:grid}
-.dialog{width:100%;max-width:330px;border-radius:18px;background:var(--surface-container-high);padding:22px 24px;color:var(--on-surface);box-shadow:0 16px 40px color-mix(in srgb,var(--site-shadow-tint,#000) 48%,transparent)}
-.dialog-title-row{display:flex;align-items:center;margin-bottom:12px}
-.dialog-title{font-size:22px;line-height:28px;font-weight:700;flex:1}
-.dialog-body{font-size:14px;line-height:20px;color:var(--on-surface-variant)}
-.about-scrim{position:absolute;inset:0;z-index:41;background:rgba(0,0,0,0);pointer-events:none;transition:background 160ms linear}
-.about-sheet{position:absolute;z-index:42;left:0;right:0;top:0;border-radius:0 0 32px 32px;background:var(--surface-container-high);box-shadow:0 16px 42px color-mix(in srgb,var(--site-shadow-tint,#000) 50%,transparent);padding:calc(var(--status-h) + 12px) 24px 26px;transform:translateY(-105%);opacity:.96;transition:transform 220ms cubic-bezier(.2,0,0,1),opacity 160ms linear}
-.phone.about-open .about-scrim{background:var(--scrim);pointer-events:auto}
-.phone.about-open .about-sheet{transform:translateY(0);opacity:1}
-.about-close{position:absolute;right:12px;top:calc(var(--status-h) + 4px);margin:0}
-.about-logo{width:104px;height:104px;margin:0 auto;border-radius:30px;background:var(--surface);display:grid;place-items:center}
-.about-logo svg{width:90px;height:90px}
-.about-name{margin-top:14px;text-align:center;font-size:24px;line-height:30px;font-weight:600}
-.about-version{text-align:center;margin-top:2px;color:var(--on-surface-variant);font-size:14px;line-height:20px}
-.about-repo{width:100%;margin-top:18px;text-decoration:none;color:inherit;border-radius:20px;background:var(--surface-container-highest);padding:15px 18px;display:flex;align-items:center;gap:14px;text-align:left}
-.about-repo:active{background:color-mix(in srgb,var(--surface-container-highest) 88%,var(--on-surface) 12%)}
-.about-repo svg{width:24px;height:24px;flex:none}
-.about-repo-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
-.about-repo-copy strong{font-size:14px;line-height:20px;font-weight:600}
-.about-repo-copy span{color:var(--on-surface-variant);font-size:12px;line-height:16px}
-.toast{position:absolute;left:50%;bottom:92px;z-index:50;transform:translate(-50%,10px);background:var(--surface-container-highest);color:var(--on-surface);padding:10px 14px;border-radius:12px;font-size:13px;line-height:18px;opacity:0;pointer-events:none;transition:opacity 160ms,transform 160ms;white-space:nowrap}
-.toast.show{opacity:1;transform:translate(-50%,0)}
+/* Incidents. */
+.incidents-screen{z-index:12}.incidents-appbar{height:66px;display:flex;align-items:center;padding:0 14px;flex:none}.incidents-appbar .icon-button{width:46px;height:46px;margin:0;color:var(--on-surface-variant)}.incidents-title{font-size:22px;line-height:28px;font-weight:700;letter-spacing:-1.35px;margin-left:8px}.incidents-list{flex:1;overflow:auto;padding:12px 18px 28px;display:flex;flex-direction:column;gap:10px}.incident-card{border-radius:18px;background:var(--surface-container-high);border:1px solid var(--outline-variant);padding:13px 16px;display:flex;flex-direction:column;gap:5px}.incident-card.unread{background:rgba(111,36,39,.62);border-color:rgba(255,180,171,.45)}.incident-head{display:flex;align-items:flex-start;gap:10px}.incident-head-copy{min-width:0;flex:1}.incident-date{font-size:16px;line-height:24px;font-weight:600;letter-spacing:-.5px}.incident-window{font-size:14px;line-height:20px;letter-spacing:-.45px;color:var(--on-surface-variant)}.incident-ack{width:46px;height:46px;display:grid;place-items:center;color:var(--on-surface-variant);flex:none}.incident-ack svg{width:22px;height:22px}.incident-card.unread .incident-ack{color:var(--error)}.incident-card hr{width:100%;height:1px;border:0;margin:0;background:rgba(255,180,171,.25)}.incident-card:not(.unread) hr{background:rgba(42,50,50,.55)}.incident-detail{font-size:14px;line-height:20px;letter-spacing:-.45px}.incident-subdetail{font-size:12px;line-height:16px;letter-spacing:-.3px;color:var(--on-surface-variant)}
 
+/* Range export editor. */
+.range-screen{z-index:13}.range-content{flex:1;min-height:0;padding:0 18px;display:flex;flex-direction:column}.range-main{flex:1;min-height:0;display:grid;place-items:center}.range-core{width:100%;height:554px;display:flex;flex-direction:column;align-items:center}.duration-wheel{width:calc(100% - 48px);height:160px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--on-surface-variant);position:relative}.wheel-column{width:62px;height:108px;display:grid;border-left:1px solid rgba(42,50,50,.38);border-right:1px solid rgba(42,50,50,.38);mask-image:linear-gradient(to bottom,transparent 0,#000 20%,#000 80%,transparent 100%);grid-template-rows:36px 36px 36px;align-items:center;text-align:center;font:400 18px/36px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;position:relative}.wheel-column::before,.wheel-column::after{content:"";position:absolute;left:0;right:0;height:1px;background:rgba(42,50,50,.7)}.wheel-column::before{top:36px}.wheel-column::after{top:72px}.wheel-column .current{color:var(--on-surface);font-size:24px}.wheel-colon{font:500 22px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--on-surface-variant)}.speed-column{margin-left:14px;width:42px;height:108px;display:grid;border-right:1px solid rgba(42,50,50,.38);mask-image:linear-gradient(to bottom,transparent 0,#000 20%,#000 80%,transparent 100%);grid-template-rows:36px 36px 36px;align-items:center;text-align:center;font-size:12px;font-weight:600;color:rgba(162,174,174,.55);border-left:1px solid rgba(42,50,50,.55)}.speed-column .current{font-size:14px;color:var(--on-surface)}
+.range-timeline{width:100%;height:250px;position:relative;margin-top:4px}.time-pill{position:absolute;top:3px;width:100px;height:34px;border-radius:13px;display:grid;place-items:center;background:var(--surface-container-highest);color:var(--on-surface-variant);font:700 12px/14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.time-pill.start{left:9px;background:var(--primary-container);color:var(--on-primary-container)}.time-pill.end{right:0}.wavebox{position:absolute;left:12px;right:12px;top:42px;height:146px}.wavebox svg{position:absolute;left:0;top:31px;width:100%;height:82px;overflow:visible}.wave-selection{fill:var(--primary);opacity:.92}.wave-outside{fill:rgba(158,206,214,.28)}.boundary{position:absolute;top:0;height:146px;width:10px;transform:translateX(-5px);display:flex;justify-content:center}.boundary.start{left:13.34%}.boundary.end{left:100%}.boundary-line{width:1.4px;height:88%;background:var(--tertiary);border-radius:99px}.boundary.end .boundary-line{background:var(--on-surface)}.boundary-dot{position:absolute;bottom:10%;width:6px;height:6px;border-radius:50%;background:var(--tertiary)}.boundary.end .boundary-dot{display:none}.boundary-grip{position:absolute;top:58px;width:8px;height:28px;border-radius:99px;background:var(--on-surface)}.timeline-label{position:absolute;bottom:0;font:400 12px/16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:rgba(162,174,174,.68)}.timeline-label.left{left:12px}.timeline-label.right{right:12px}
+.fine-control{width:100%;height:132px;position:relative;margin-top:8px;display:grid;place-items:center}.fine-field{position:absolute;left:10px;right:10px;top:50%;height:38px;transform:translateY(-50%);clip-path:polygon(0 50%,42% 20%,50% 0,58% 20%,100% 50%,58% 80%,50% 100%,42% 80%);background:linear-gradient(90deg,rgba(158,206,214,.018),rgba(158,206,214,.14),rgba(158,206,214,.018))}.play-puck{width:48px;height:48px;border-radius:50%;background:var(--on-surface);display:grid;place-items:center;color:var(--surface);box-shadow:0 2px 4px rgba(0,0,0,.35);z-index:2}.play-puck svg{width:23px;height:23px}
+.range-controls{height:70px;width:100%;flex:none;border-radius:28px;background:var(--surface-container-low);border:0;box-shadow:inset 0 0 0 1px var(--border);padding:8px;display:flex;align-items:center;gap:4px}.range-close{width:50px;height:50px;display:grid;place-items:center;flex:none}.range-close svg{width:24px;height:24px}.range-buffer{flex:1;display:flex;justify-content:center}.range-buffer-pill{border-radius:16px;background:rgba(33,73,79,.32);padding:5px 8px;display:flex;align-items:center;gap:5px;color:rgba(188,235,241,.58);font-size:11px;font-weight:600;line-height:16px}.range-buffer-pill svg{width:16px;height:16px}.range-export{width:97px;height:50px;border-radius:20px;background:var(--primary);color:var(--on-primary);padding:0;display:flex;justify-content:center;align-items:center;gap:7px;font-size:14px;font-weight:600}.range-export svg{width:20px;height:20px}.range-bottom{height:18px;flex:none}
 
-:host([data-fullscreen]) .stage{padding:0;background:transparent}
-:host([data-fullscreen]) .phone{width:100%;height:100%;max-height:none;border:0;border-radius:0;box-shadow:none}
-:host([data-fullscreen]) .phone::before{display:none}
-:host([data-fullscreen]) .gesture-hint{display:none}
-@media(max-width:500px){
-  .stage{padding:0 12px;background:transparent}
-  .phone{width:100%;height:100%;max-height:none}
-  .gesture-hint.left{left:14px}.gesture-hint.right{right:14px}
-  .gesture-hint{--gesture-hint-opacity:.38;z-index:4}
-}
-@media(prefers-reduced-motion:reduce){.gesture-hint{animation:none;opacity:0}.gesture-hint .gesture-finger{animation:none}}
+/* About top sheet. */
+.about-scrim{position:absolute;inset:0;z-index:40;background:rgba(0,0,0,0);pointer-events:none;transition:background 160ms}.about-sheet{position:absolute;z-index:41;left:0;right:0;top:0;border-radius:0 0 32px 32px;background-color:var(--surface-container-high);padding:calc(var(--status-h) + 12px) 24px 26px;transform:translateY(-105%);transition:transform 220ms cubic-bezier(.2,0,0,1);box-shadow:0 16px 42px rgba(0,0,0,.5)}.about-sheet::before{content:"";position:absolute;z-index:0;left:0;right:0;top:var(--status-h);bottom:0;border-radius:0 0 32px 32px;background-image:var(--reverb-noise);background-size:var(--reverb-noise-size,389.5px) var(--reverb-noise-size,389.5px);pointer-events:none}.about-sheet>*{position:relative;z-index:1}.about-sheet>.about-statusbar{position:absolute;z-index:2;left:0;right:0;top:0}.about-logo .trail1{stroke:#2dd4bf;stroke-opacity:.16}.about-logo .trail2{stroke:#2dd4bf;stroke-opacity:.34}.about-logo .main{stroke:#fff}.phone.about-open .about-scrim{background:rgba(0,0,0,.68);pointer-events:auto}.phone.about-open .about-sheet{transform:translateY(0)}.about-close{position:absolute;right:24px;top:calc(var(--status-h) + 12px)}.about-logo{width:104px;height:104px;margin:0 auto;border-radius:50%;background:#000;display:grid;place-items:center;overflow:hidden}.about-logo svg{width:104px;height:104px}.about-name{margin-top:14px;text-align:center;font-size:24px;line-height:32px;letter-spacing:-1px}.about-version{text-align:center;margin-top:2px;color:var(--on-surface-variant);font-size:14px;line-height:20px}.about-repo{width:100%;margin-top:15px;text-decoration:none;color:inherit;border-radius:20px;background:var(--surface-container-highest);padding:13px 18px;display:flex;align-items:center;gap:14px}.about-repo svg{width:24px;height:24px;flex:none}.about-repo-copy{display:flex;flex-direction:column;gap:2px}.about-repo-copy strong{font-size:14px;line-height:20px}.about-repo-copy span{font-size:12px;line-height:16px;color:var(--on-surface-variant)}
+.toast{position:absolute;z-index:90;left:50%;bottom:92px;transform:translate(-50%,10px);opacity:0;background:var(--surface-container-highest);padding:10px 14px;border-radius:12px;font-size:13px;line-height:18px;white-space:nowrap;pointer-events:none;transition:opacity 160ms,transform 160ms}.toast.show{opacity:1;transform:translate(-50%,0)}
+
+:host([data-fullscreen]) .stage{padding:0}.stage:has(.phone){background:transparent}:host([data-fullscreen]) .phone{width:100%;height:100%;box-shadow:none}
+@media(max-width:500px){.stage{padding:0}.phone{width:100%;height:100%;box-shadow:none}}
 </style>
 </head>
 <body>
 <div class="stage">
-  <div class="gesture-hint left" aria-hidden="true">
-    <svg viewBox="0 0 54 96" fill="none">
-      <path class="gesture-path" d="M27 12v56" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path d="M20 61l7 8 7-8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <g class="gesture-finger">
-        <path d="M27 21a4 4 0 0 1 4 4v18.5l2.4-2.4a3.9 3.9 0 0 1 5.5 0 3.8 3.8 0 0 1 .8 1.2l1.3-1.1a3.9 3.9 0 0 1 5.4.5c.6.8.9 1.7.9 2.7v8.1C47.3 62.2 40 69 30.6 69h-1.2c-5.4 0-10.5-2.6-13.6-7l-5.1-7.2a3.9 3.9 0 0 1 6.1-4.8l6.2 6.7V25a4 4 0 0 1 4-4Z" fill="var(--surface-container-highest)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="27" cy="17" r="3" fill="var(--surface)" stroke="var(--primary)" stroke-width="1.8"/>
-      </g>
-    </svg>
-  </div>
-  <div class="gesture-hint right" aria-hidden="true">
-    <svg viewBox="0 0 54 96" fill="none">
-      <path class="gesture-path" d="M27 84V28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <path d="M20 35l7-8 7 8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <g class="gesture-finger">
-        <path d="M27 41a4 4 0 0 1 4 4v18.5l2.4-2.4a3.9 3.9 0 0 1 5.5 0 3.8 3.8 0 0 1 .8 1.2l1.3-1.1a3.9 3.9 0 0 1 5.4.5c.6.8.9 1.7.9 2.7v8.1C47.3 82.2 40 89 30.6 89h-1.2c-5.4 0-10.5-2.6-13.6-7l-5.1-7.2a3.9 3.9 0 0 1 6.1-4.8l6.2 6.7V45a4 4 0 0 1 4-4Z" fill="var(--surface-container-highest)" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="27" cy="37" r="3" fill="var(--surface)" stroke="var(--primary)" stroke-width="1.8"/>
-      </g>
-    </svg>
-  </div>
 <div class="phone" id="phone">
-  <section class="screen home" id="homeScreen">
-    <div class="statusbar"></div>
-    <header class="topbar">
-      <button class="brand" id="brandButton" aria-label="Reverb">
-        <svg viewBox="0 0 512 512" aria-hidden="true">
-          <g transform="translate(44.5 0)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26">
-            <path d="M183.686,358 L212.357,154 L278.357,154 C328.357,154 357.859,186 351.676,230 C345.492,274 306.995,306 256.995,306 L190.995,306" stroke="var(--primary)" stroke-opacity=".16"/>
-            <path d="M252.995,306 L337.686,358" stroke="var(--primary)" stroke-opacity=".16"/>
-            <path d="M155.686,358 L184.357,154 L250.357,154 C300.357,154 329.859,186 323.676,230 C317.492,274 278.995,306 228.995,306 L162.995,306" stroke="var(--primary)" stroke-opacity=".34"/>
-            <path d="M224.995,306 L309.686,358" stroke="var(--primary)" stroke-opacity=".34"/>
-            <path d="M127.686,358 L156.357,154 L222.357,154 C272.357,154 301.859,186 295.676,230 C289.492,274 250.995,306 200.995,306 L134.995,306" stroke="var(--on-surface)"/>
-            <path d="M196.995,306 L281.686,358" stroke="var(--on-surface)"/>
-          </g>
-        </svg>
-      </button>
-      <button class="settings-button" id="openSettings" aria-label="Open settings">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M19.1,12.9c0,-0.3 0.1,-0.6 0.1,-0.9s0,-0.6 -0.1,-0.9l2,-1.6c0.2,-0.1 0.2,-0.4 0.1,-0.6l-1.9,-3.3c-0.1,-0.2 -0.4,-0.3 -0.6,-0.2l-2.4,1c-0.5,-0.4 -1.1,-0.7 -1.7,-0.9l-0.4,-2.5c0,-0.2 -0.2,-0.4 -0.5,-0.4h-3.8c-0.2,0 -0.4,0.2 -0.5,0.4l-0.4,2.5c-0.6,0.2 -1.2,0.5 -1.7,0.9l-2.4,-1c-0.2,-0.1 -0.5,0 -0.6,0.2l-1.9,3.3c-0.1,0.2 -0.1,0.5 0.1,0.6l2,1.6c0,0.3 -0.1,0.6 -0.1,0.9s0,0.6 0.1,0.9l-2,1.6c-0.2,0.1 -0.2,0.4 -0.1,0.6l1.9,3.3c0.1,0.2 0.4,0.3 0.6,0.2l2.4,-1c0.5,0.4 1.1,0.7 1.7,0.9l0.4,2.5c0,0.2 0.2,0.4 0.5,0.4h3.8c0.2,0 0.4,-0.2 0.5,-0.4l0.4,-2.5c0.6,-0.2 1.2,-0.5 1.7,-0.9l2.4,1c0.2,0.1 0.5,0 0.6,-0.2l1.9,-3.3c0.1,-0.2 0.1,-0.5 -0.1,-0.6zM12,15.6c-2,0 -3.6,-1.6 -3.6,-3.6S10,8.4 12,8.4s3.6,1.6 3.6,3.6 -1.6,3.6 -3.6,3.6z"/></svg>
-      </button>
-    </header>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M19.1 12.9c.04-.3.06-.6.06-.9s-.02-.6-.07-.9l2.03-1.58a.49.49 0 0 0 .12-.62l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.1 7.1 0 0 0-1.55-.9L14.43 2.9a.48.48 0 0 0-.48-.4h-3.84a.48.48 0 0 0-.47.4L9.27 5.4c-.56.23-1.08.53-1.56.9l-2.38-.95a.48.48 0 0 0-.59.22L2.82 8.9a.49.49 0 0 0 .12.62l2.02 1.58c-.04.3-.07.61-.07.91s.03.61.07.91l-2.02 1.58a.49.49 0 0 0-.12.62l1.92 3.32c.12.22.38.3.59.22l2.38-.96c.48.37 1 .68 1.56.91l.37 2.5c.04.24.24.4.47.4h3.84c.24 0 .44-.16.48-.4l.36-2.5c.57-.23 1.09-.54 1.56-.91l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.62L19.1 12.9ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/></symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24"><path d="M1.7 20h20.6a1.6 1.6 0 0 0 1.38-2.4L13.38 2.9a1.6 1.6 0 0 0-2.76 0L.32 17.6A1.6 1.6 0 0 0 1.7 20Zm9.3-6.5V8.8h2v4.7h-2Zm0 3.7v-2h2v2h-2Z"/></symbol>
+    <symbol id="i-one" viewBox="0 0 24 24"><path d="M5 5v14M8.5 12H19M15 8l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24"><path d="M17.7 6.3A8 8 0 0 0 4 12h-2l3 3 3-3H6a6 6 0 0 1 10.2-4.2L18 9.6V5h-4.6l1.9 1.3ZM19 9l-3 3h2a6 6 0 0 1-10.2 4.2L6 14.4V19h4.6l-1.9-1.3A8 8 0 0 0 20 12h2l-3-3Z"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 14c0-.55.45-1 1-1s1 .45 1 1v2c0 .55-.45 1-1 1s-1-.45-1-1V14Zm3.5-3c0-.55.45-1 1-1s1 .45 1 1v8c0 .55-.45 1-1 1s-1-.45-1-1v-8ZM10 8c0-.55.45-1 1-1s1 .45 1 1v14c0 .55-.45 1-1 1s-1-.45-1-1V8Zm3.5-3c0-.55.45-1 1-1s1 .45 1 1v14c0 .55-.45 1-1 1s-1-.45-1-1V5ZM17 8c0-.55.45-1 1-1s1 .45 1 1v8c0 .55-.45 1-1 1s-1-.45-1-1V8Zm3.5 3c0-.55.45-1 1-1s1 .45 1 1v2c0 .55-.45 1-1 1s-1-.45-1-1v-2Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm3-10H5V5h10v4Z"/></symbol>
+    <symbol id="i-range" viewBox="0 0 24 24"><path d="M5 5v14M19 5v14M8.5 8h7M12 11v6M9.25 14.5 12 17.25l2.75-2.75" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-delete" viewBox="0 0 24 24"><path d="M9 3h6l1 1h4v2H4V4h4l1-1Zm-2 5h10v11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V8Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.4"/><circle cx="4" cy="12" r="1.4"/><circle cx="4" cy="18" r="1.4"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2Z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-checked" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-2 15-5-5 1.42-1.42L10 14.17l7.58-7.59L19 8l-9 9Z"/></symbol>
+    <symbol id="i-unchecked" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M7.5 8H12c4.3 0 7.5 2.9 7.5 7v1h-2v-1c0-3-2.3-5-5.5-5H7.5l3 3L9 14.5 3.5 9 9 3.5 10.5 5l-3 3Z"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h4.2c.5 0 1 .2 1.4.6L12 6h7a2 2 0 0 1 2 2v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V6Z"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm1 14.5a2.5 2.5 0 1 1-1-2v-5h4v2h-2v5Z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"/></symbol>
+    <symbol id="i-device" viewBox="0 0 24 24"><path d="M4 5h12v10H4V5Zm2 2v6h8V7H6Zm12 3h4v9h-4v-9Zm1 2v5h2v-5h-2ZM8 17h4v2H8v-2Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><path d="M11 2h2v3h-2V2Zm0 17h2v3h-2v-3ZM2 11h3v2H2v-2Zm17 0h3v2h-3v-2ZM4.2 5.6l1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1Zm12.1 12.1 1.4-1.4 2.1 2.1-1.4 1.4-2.1-2.1Zm0-11.4 2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4ZM4.2 18.4l2.1-2.1 1.4 1.4-2.1 2.1-1.4-1.4ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 15.3A8.5 8.5 0 0 1 8.7 3.5 9 9 0 1 0 20.5 15.3Z"/></symbol>
+  </defs></svg>
 
+  <template id="statusTemplate">
+    <div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true">
+      <svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg>
+      <svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg>
+      <svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg>
+      <svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg>
+    </span></div>
+  </template>
+  <template id="brandTemplate"><button class="brand" aria-label="Reverb"><svg viewBox="0 0 512 512"><g transform="translate(44.5)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"><path class="trail1" d="M183.686 358 212.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail1" d="m252.995 306 84.691 52"/><path class="trail2" d="M155.686 358 184.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail2" d="m224.995 306 84.691 52"/><path class="main" d="M127.686 358 156.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="main" d="m196.995 306 84.691 52"/></g></svg></button></template>
+
+  <section class="screen home noise active" id="homeScreen">
+    <div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div>
+    <header class="topbar">
+      <button class="brand" id="brandButton" aria-label="Reverb"><svg viewBox="0 0 512 512"><g transform="translate(44.5)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"><path class="trail1" d="M183.686 358 212.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail1" d="m252.995 306 84.691 52"/><path class="trail2" d="M155.686 358 184.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail2" d="m224.995 306 84.691 52"/><path class="main" d="M127.686 358 156.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="main" d="m196.995 306 84.691 52"/></g></svg></button>
+      <button class="top-action incidents" id="openIncidents" aria-label="Open incidents"><svg class="icon"><use href="#i-warning"/></svg></button>
+      <button class="top-action settings" id="openSettings" aria-label="Open settings"><svg class="icon"><use href="#i-settings"/></svg></button>
+    </header>
     <main class="capture">
       <div class="blob-area">
-        <button class="blob-control" id="blobControl" aria-label="Tap to start capture">
-          <canvas id="blobCanvas"></canvas>
-          <div class="blob-content">
-            <svg class="icon capture-icon" id="blobIcon" viewBox="0 0 24 24" aria-hidden="true"><path id="blobIconPath" d="M3,14c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v2c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1zM6.5,11c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v8c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1zM10,8c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v14c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1zM13.5,5c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v14c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1zM17,8c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v8c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1zM20.5,11c0,-0.55 0.45,-1 1,-1s1,0.45 1,1v2c0,0.55 -0.45,1 -1,1s-1,-0.45 -1,-1z"/></svg>
-            <div class="blob-time" id="blobTime">12:48</div>
-            <div class="blob-summary hidden" id="blobSummary">22.5 MiB</div>
-          </div>
-        </button>
+        <button class="blob-control live" id="blobControl" aria-label="Tap to pause buffer"><canvas id="blobCanvas"></canvas><div class="blob-content"><svg class="icon capture-icon"><use id="blobIconUse" href="#i-pause"/></svg><div class="blob-time" id="blobTime">2:36:24</div><div class="blob-summary" id="blobSummary">789.2 MiB</div></div></button>
       </div>
-
-      <div class="buffer-selector" role="radiogroup" aria-label="Buffer">
-        <button class="buffer-segment selected" data-buffer="one"><span class="label">One-shot</span><span class="stat" id="oneStat">12:48</span></button>
-        <button class="buffer-segment" data-buffer="loop"><span class="label">Looping</span><span class="stat" id="loopStat">47:19</span></button>
-      </div>
-      <div class="control-gap"></div>
-      <div class="actions-surface">
-        <button class="action-button" data-toast="Export full" aria-label="Export full"><svg class="icon" viewBox="0 0 24 24"><path d="M17,3H5c-1.11,0 -2,0.9 -2,2v14c0,1.1 0.89,2 2,2h14c1.1,0 2,-0.9 2,-2V7l-4,-4zM12,19c-1.66,0 -3,-1.34 -3,-3s1.34,-3 3,-3 3,1.34 3,3 -1.34,3 -3,3zM15,9H5V5h10v4z"/></svg></button>
-        <button class="action-button" data-toast="Export range" aria-label="Export range"><svg class="icon" viewBox="0 0 24 24"><path d="M4,4h2v16H4zM18,4h2v16h-2zM8,7h8v2H8zM11,11h2v4.17l1.59,-1.58L16,15l-4,4 -4,-4 1.41,-1.41L11,15.17z"/></svg></button>
-        <button class="action-button destructive" data-toast="Clear" aria-label="Clear"><svg class="icon" viewBox="0 0 24 24"><path d="M9,3h6l1,1h4v2H4V4h4zM7,8h10v11c0,1.1 -0.9,2 -2,2H9c-1.1,0 -2,-0.9 -2,-2z"/></svg></button>
-        <button class="action-button" id="openLibrary" aria-label="Files"><svg class="icon" viewBox="0 0 24 24"><path d="M14,2H6c-1.1,0 -2,0.9 -2,2v16c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V8zM14,4.5 17.5,8H14zM12,18v-3.55c0.37,-0.21 0.62,-0.61 0.62,-1.06 0,-0.67 -0.54,-1.21 -1.21,-1.21S10.2,12.72 10.2,13.39c0,0.45 0.25,0.85 0.62,1.06V18c-0.37,0.21 -0.62,0.61 -0.62,1.06 0,0.67 0.54,1.21 1.21,1.21s1.21,-0.54 1.21,-1.21c0,-0.45 -0.25,-0.85 -0.62,-1.06z"/></svg></button>
+      <div class="capture-control-cluster">
+        <svg class="cluster-shape" viewBox="0 0 256 112" preserveAspectRatio="none"><path d="M28.6.5H227.4C239.5.5 248.5 9.5 248.5 21.6v6.5c0 14.4 7 16.9 7 31.3V84c0 15.7-12.3 27.5-28 27.5h-199C12.8 111.5.5 99.7.5 84V59.4c0-14.4 7-16.9 7-31.3v-6.5C7.5 9.5 16.5.5 28.6.5Z"/></svg>
+        <div class="buffer-selector" role="tablist" aria-label="Buffer"><button class="buffer-segment selected" data-buffer="one" role="tab" aria-selected="true"><svg class="icon"><use href="#i-one"/></svg><span class="label">One-shot</span></button><button class="buffer-segment" data-buffer="loop" role="tab" aria-selected="false"><svg class="icon"><use href="#i-loop"/></svg><span class="label">Looping</span></button></div>
+        <div class="actions-row"><button class="action-button" data-toast="Save buffer" aria-label="Record all memory"><svg class="icon"><use href="#i-save"/></svg></button><button class="action-button" id="openRange" aria-label="Export range"><svg class="icon"><use href="#i-range"/></svg></button><button class="action-button destructive" id="clearBuffer" aria-label="Clear buffer" disabled><svg class="icon"><use href="#i-delete"/></svg></button><button class="action-button" id="openLibrary" aria-label="Files"><svg class="icon"><use href="#i-list"/></svg></button></div>
       </div>
       <div class="capture-bottom"></div>
     </main>
-    <div class="navbar"></div>
   </section>
 
-  <section class="screen settings-screen" id="settingsScreen">
-    <div class="statusbar"></div>
-    <header class="settings-appbar">
-      <button class="icon-button" id="settingsNav" aria-label="Close">
-        <svg class="icon" id="settingsNavClose" viewBox="0 0 24 24"><path d="M6.5,6.5L17.5,17.5M17.5,6.5L6.5,17.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
-        <svg class="icon" id="settingsNavUndo" viewBox="0 0 24 24" style="display:none"><path d="M12.5,8C9.99,8 7.7,9.01 6,10.65V6H4v8h8v-2H7.26c1.31,-1.24 3.14,-2 5.24,-2 3.86,0 7.19,2.95 7.5,6.8h2.02C21.71,11.85 17.68,8 12.5,8z"/></svg>
-      </button>
-      <h1>Settings</h1>
-      <button class="icon-button disabled" id="settingsDone" aria-label="Done"><svg class="icon" viewBox="0 0 24 24"><path d="M5.8,12.6L9.8,16.6M9.8,16.6L18.2,8.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    </header>
-    <div class="settings-body" id="settingsBody">
-      <div class="section-title">Background</div>
-      <div class="reliability-card">
-        <div class="reliability-copy"><div class="title">Battery optimization</div><div class="summary">Battery optimization: restricted</div></div>
-        <button class="text-button" data-toast="Battery settings">Battery settings</button>
-      </div>
-      <div class="spacer12"></div>
-
-      <div class="field-wrap">
-        <fieldset class="m3-fieldset dropdown" data-options="System|Light|Dark"><legend>Theme</legend><span class="m3-value">System</span><span class="dropdown-arrow"></span></fieldset>
-      </div>
-      <div class="spacer12"></div>
-
-      <div class="section-title">Retention</div>
-      <div class="retention-block" data-buffer-retention="one">
-        <div class="buffer-label">One-shot</div>
-        <div class="retention-fields">
-          <div class="field-shell" data-retention="time">
-            <fieldset class="m3-fieldset"><legend>Time</legend><span class="m3-prefix"></span><input value="30:00" inputmode="text" aria-label="One-shot time"></fieldset>
-          </div>
-          <div class="field-shell inactive" data-retention="size">
-            <fieldset class="m3-fieldset"><legend>Size (MiB)</legend><span class="m3-prefix">=</span><input value="151.4" inputmode="decimal" aria-label="One-shot size"></fieldset>
-            <div class="supporting">Estimated file size: 151.4 MiB</div>
-          </div>
-        </div>
-      </div>
-      <div class="spacer8"></div>
-      <div class="retention-block" data-buffer-retention="loop">
-        <div class="buffer-label">Looping</div>
-        <div class="retention-fields">
-          <div class="field-shell" data-retention="time">
-            <fieldset class="m3-fieldset"><legend>Time</legend><span class="m3-prefix"></span><input value="2:00:00" inputmode="text" aria-label="Looping time"></fieldset>
-          </div>
-          <div class="field-shell inactive" data-retention="size">
-            <fieldset class="m3-fieldset"><legend>Size (MiB)</legend><span class="m3-prefix">=</span><input value="605.6" inputmode="decimal" aria-label="Looping size"></fieldset>
-            <div class="supporting">Estimated file size: 605.6 MiB</div>
-          </div>
-        </div>
-      </div>
-      <div class="export-limit">Export limit: 13:31:35</div>
-      <div class="spacer12"></div>
-
+  <section class="screen settings-screen noise" id="settingsScreen">
+    <div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div>
+    <header class="settings-appbar"><button class="icon-button" id="settingsNav" aria-label="Back"><svg class="icon" id="settingsNavBack"><use href="#i-back"/></svg><svg class="icon" id="settingsNavUndo" style="display:none"><use href="#i-undo"/></svg></button><h1>Settings</h1><button class="icon-button disabled" id="settingsDone" aria-label="Done"><svg class="icon"><use href="#i-check"/></svg></button></header>
+    <div class="settings-body">
+      <div class="settings-theme-row"><div class="setting-heading">Theme</div><div class="segmented" id="themeSegments"><button class="segment selected" data-theme="Auto"><svg><use href="#i-device"/></svg>Auto</button><button class="segment" data-theme="Light"><svg><use href="#i-sun"/></svg>Light</button><button class="segment" data-theme="Dark"><svg><use href="#i-moon"/></svg>Dark</button></div></div>
+      <div class="retention-section"><div class="retention-head"><div class="setting-heading">Retention</div><div class="segmented" id="retentionSegments"><button class="segment selected" data-retention-mode="time">Time</button><button class="segment" data-retention-mode="size">Size</button></div></div><div class="retention-card">
+        <div><div class="retention-label"><svg class="icon"><use href="#i-one"/></svg>One-shot</div><input class="retention-value" id="oneRetention" aria-label="One-shot" value="24:00:00"><div class="retention-estimate" id="oneEstimate">≈ 7267 MiB</div></div>
+        <div><div class="retention-label"><svg class="icon"><use href="#i-loop"/></svg>Loop</div><input class="retention-value" id="loopRetention" aria-label="Loop" value="48:00:00"><div class="retention-estimate" id="loopEstimate">≈ 14535 MiB</div></div>
+      </div></div>
       <div class="section-title">Audio</div>
-      <div class="field-wrap" style="padding-top:0;padding-bottom:0">
-        <fieldset class="m3-fieldset dropdown" data-options="Mono|Stereo"><legend>Channels</legend><span class="m3-value">Mono</span><span class="dropdown-arrow"></span></fieldset>
-      </div>
-      <div class="field-row">
-        <fieldset class="m3-fieldset dropdown" data-options="8-bit integer|16-bit integer|32-bit float"><legend>Bit depth</legend><span class="m3-value">16-bit integer</span><span class="dropdown-arrow"></span></fieldset>
-        <fieldset class="m3-fieldset dropdown" data-options="96 kHz|88.2 kHz|64 kHz|48 kHz|44.1 kHz|32 kHz|24 kHz|22.05 kHz|16 kHz|12 kHz|11.025 kHz|8 kHz|7.35 kHz"><legend>Rate</legend><span class="m3-value">44.1 kHz</span><span class="dropdown-arrow"></span></fieldset>
-      </div>
-      <div class="field-row">
-        <fieldset class="m3-fieldset dropdown" data-options="Voice|Voice comm|Voice perf|Camcorder|Default|Mic|Unprocessed"><legend>Source</legend><span class="m3-value">Voice</span><span class="dropdown-arrow"></span></fieldset>
-        <fieldset class="m3-fieldset dropdown" data-options="System|Prefer mic"><legend>Route</legend><span class="m3-value">System</span><span class="dropdown-arrow"></span></fieldset>
-      </div>
-
-      <div class="section-title">Storage</div>
-      <div class="storage-card">
-        <div class="storage-row"><div class="storage-path">App storage/Reverb</div><button class="icon-button" data-toast="Choose folder" aria-label="Choose"><svg class="icon" viewBox="0 0 24 24"><path d="M3,6c0,-1.1 0.9,-2 2,-2h4.2c0.5,0 1,0.2 1.4,0.6L12,6h7c1.1,0 2,0.9 2,2v8c0,2.2 -1.8,4 -4,4H7c-2.2,0 -4,-1.8 -4,-4z"/></svg></button></div>
-        <button class="text-button" data-toast="No recordings to move">Move existing</button>
-      </div>
-
-      <div class="spacer16"></div>
-      <div class="switch-row">
-        <div class="switch-copy"><div class="title">Keep CPU awake</div><div class="summary">Generally not recommended. Keeps the CPU awake while live buffering, improving survival at a higher battery cost.</div></div>
-        <button class="m3-switch" id="wakeSwitch" role="switch" aria-checked="false" aria-label="Keep CPU awake"></button>
-      </div>
-    </div>
-    <div class="navbar"></div>
-  </section>
-
-  <div class="scrim" id="libraryScrim"></div>
-  <section class="library-sheet" id="librarySheet" aria-label="Files">
-    <div class="drag-handle-wrap"><div class="drag-handle"></div></div>
-    <div class="library-screen">
-      <div class="library-list">
-        <div class="date-header">30 August 2026</div>
-        <button class="recording-card" data-recording="Interview notes.wav">
-          <span class="audio-round"><svg class="icon" viewBox="0 0 24 24"><path d="M5,9h2v6H5zM9,6h2v12H9zM13,8h2v8H13zM17,10h2v4H17z"/></svg></span>
-          <span class="recording-main"><span class="recording-title">Interview notes.wav</span><span class="recording-subtitle">18m 42s • WAV · PCM 16</span></span>
-          <span class="recording-trail"><span class="top">8:41 AM</span><span class="bottom">94.4 MiB</span></span>
-        </button>
-        <button class="recording-card" data-recording="Guitar idea.wav">
-          <span class="audio-round"><svg class="icon" viewBox="0 0 24 24"><path d="M5,9h2v6H5zM9,6h2v12H9zM13,8h2v8H13zM17,10h2v4H17z"/></svg></span>
-          <span class="recording-main"><span class="recording-title">Guitar idea.wav</span><span class="recording-subtitle">3m 17s • WAV · PCM 16</span></span>
-          <span class="recording-trail"><span class="top">7:14 AM</span><span class="bottom">16.6 MiB</span></span>
-        </button>
-        <div class="date-header">29 August 2026</div>
-        <button class="recording-card" data-recording="Meeting.wav">
-          <span class="audio-round"><svg class="icon" viewBox="0 0 24 24"><path d="M5,9h2v6H5zM9,6h2v12H9zM13,8h2v8H13zM17,10h2v4H17z"/></svg></span>
-          <span class="recording-main"><span class="recording-title">Meeting.wav</span><span class="recording-subtitle">42m 8s • WAV · PCM 16</span></span>
-          <span class="recording-trail"><span class="top">4:26 PM</span><span class="bottom">212.6 MiB</span></span>
-        </button>
-        <button class="recording-card" data-recording="Recording 2026-08-29 10-12-03.wav">
-          <span class="audio-round"><svg class="icon" viewBox="0 0 24 24"><path d="M5,9h2v6H5zM9,6h2v12H9zM13,8h2v8H13zM17,10h2v4H17z"/></svg></span>
-          <span class="recording-main"><span class="recording-title">Recording 2026-08-29 10-12-03.wav</span><span class="recording-subtitle">7m 54s • WAV · PCM 16</span></span>
-          <span class="recording-trail"><span class="top">10:12 AM</span><span class="bottom">40.0 MiB</span></span>
-        </button>
-      </div>
+      <div class="settings-single"><button class="settings-card large dropdown" data-options="Mono|Stereo"><span class="caption">Channels</span><span class="value">Mono</span><span class="chev"></span></button></div>
+      <div class="settings-grid" style="padding-top:12px"><button class="settings-card dropdown" data-options="8-bit integer|16-bit integer|32-bit float"><span class="caption">Bit depth</span><span class="value">16-bit integer</span><span class="chev"></span></button><button class="settings-card dropdown" data-options="96 kHz|88.2 kHz|64 kHz|48 kHz|44.1 kHz|32 kHz|24 kHz|22.05 kHz|16 kHz|12 kHz|11.025 kHz|8 kHz|7.35 kHz"><span class="caption">Rate</span><span class="value">44.1 kHz</span><span class="chev"></span></button></div>
+      <div class="settings-grid"><button class="settings-card dropdown" data-options="Voice|Voice comm|Voice perf|Camcorder|Default|Mic|Unprocessed"><span class="caption">Source</span><span class="value">Voice</span><span class="chev"></span></button><button class="settings-card dropdown" data-options="System|Prefer mic"><span class="caption">Route</span><span class="value">System</span><span class="chev"></span></button></div>
+      <div class="section-title">Storage</div><div class="storage-card"><div class="storage-row"><div class="storage-path">Music/Reverb</div><button class="folder-button" data-toast="Choose folder" aria-label="Choose folder"><svg class="icon"><use href="#i-folder"/></svg></button></div><button class="move-button" disabled>Move existing</button></div>
+      <div class="reliability-row"><div class="reliability-copy"><div class="title">Keep CPU awake</div><div class="summary">Generally not recommended. Keeps the CPU awake while live buffering, improving survival at a higher battery cost.</div></div><button class="switch" id="wakeSwitch" role="switch" aria-checked="false" aria-label="Keep CPU awake"></button></div>
     </div>
   </section>
 
-  <div class="dropdown-menu" id="dropdownMenu"></div>
-  <div class="about-scrim" id="aboutScrim"></div>
-  <section class="about-sheet" id="aboutSheet" role="dialog" aria-modal="true" aria-label="About Reverb">
-    <button class="icon-button about-close" id="aboutClose" aria-label="Close"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5,6.5L17.5,17.5M17.5,6.5L6.5,17.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>
-    <div class="about-logo" aria-hidden="true">
-      <svg viewBox="0 0 512 512">
-        <g transform="translate(44.5 0)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26">
-          <path d="M183.686,358 L212.357,154 L278.357,154 C328.357,154 357.859,186 351.676,230 C345.492,274 306.995,306 256.995,306 L190.995,306" stroke="var(--primary)" stroke-opacity=".16"/><path d="M252.995,306 L337.686,358" stroke="var(--primary)" stroke-opacity=".16"/>
-          <path d="M155.686,358 L184.357,154 L250.357,154 C300.357,154 329.859,186 323.676,230 C317.492,274 278.995,306 228.995,306 L162.995,306" stroke="var(--primary)" stroke-opacity=".34"/><path d="M224.995,306 L309.686,358" stroke="var(--primary)" stroke-opacity=".34"/>
-          <path d="M127.686,358 L156.357,154 L222.357,154 C272.357,154 301.859,186 295.676,230 C289.492,274 250.995,306 200.995,306 L134.995,306" stroke="var(--on-surface)"/><path d="M196.995,306 L281.686,358" stroke="var(--on-surface)"/>
-        </g>
-      </svg>
+  <section class="screen library-screen noise" id="libraryScreen" aria-label="Files">
+    <div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div>
+    <header class="topbar"><button class="brand" id="libraryBrand" aria-label="Reverb"><svg viewBox="0 0 512 512"><g transform="translate(44.5)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"><path class="trail1" d="M183.686 358 212.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail1" d="m252.995 306 84.691 52"/><path class="trail2" d="M155.686 358 184.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail2" d="m224.995 306 84.691 52"/><path class="main" d="M127.686 358 156.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="main" d="m196.995 306 84.691 52"/></g></svg></button><button class="top-action incidents" id="libraryIncidents" aria-label="Open incidents"><svg class="icon"><use href="#i-warning"/></svg></button><button class="top-action settings" id="librarySettings" aria-label="Open settings"><svg class="icon"><use href="#i-settings"/></svg></button></header>
+    <div class="library-list">
+      <div class="date-header first">16 September 2026</div><button class="recording-card" data-recording="1789539200534.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789539200534.wav</span><span class="recording-subtitle">10m 0s • 50.5 MiB</span></span><span class="recording-time">4:03 pm</span></button>
+      <div class="date-header">15 September 2026</div><button class="recording-card" data-recording="1789472907625.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789472907625.wav</span><span class="recording-subtitle">10m 0s • 50.5 MiB</span></span><span class="recording-time">9:38 pm</span></button><button class="recording-card" data-recording="1789471304142.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789471304142.wav</span><span class="recording-subtitle">5h 4m • 1535.7 MiB</span></span><span class="recording-time">4:07 pm</span></button>
+      <div class="date-header">13 September 2026</div><button class="recording-card" data-recording="1789555014153.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789555014153.wav</span><span class="recording-subtitle">2h 23m • 726.2 MiB</span></span><span class="recording-time">1:08 pm</span></button><button class="recording-card" data-recording="1789388145887.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789388145887.wav</span><span class="recording-subtitle">1h 23m • 422.5 MiB</span></span><span class="recording-time">1:08 pm</span></button><button class="recording-card" data-recording="1789260236902.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789260236902.wav</span><span class="recording-subtitle">35m 34s • 179.6 MiB</span></span><span class="recording-time">10:43 am</span></button><button class="recording-card" data-recording="1789232461914.wav"><span class="recording-icon-slot"><span class="audio-round"><svg class="icon"><use href="#i-audio"/></svg></span></span><span class="recording-main"><span class="recording-title">1789232461914.wav</span><span class="recording-subtitle">1h 41m • 511.7 MiB</span></span><span class="recording-time">3:01 am</span></button>
     </div>
-    <div class="about-name">Reverb</div>
-    <div class="about-version">Version 0.1.0</div>
-    <a class="about-repo" id="aboutRepo" href="https://github.com/SmallThingz/reverb" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository SmallThingz/reverb">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12,2C6.48,2 2,6.58 2,12.22c0,4.5 2.87,8.31 6.84,9.65c0.5,0.1 0.68,-0.22 0.68,-0.49c0,-0.24 -0.01,-1.04 -0.01,-1.89c-2.78,0.62 -3.37,-1.21 -3.37,-1.21c-0.45,-1.18 -1.11,-1.49 -1.11,-1.49c-0.91,-0.64 0.07,-0.63 0.07,-0.63c1,0.07 1.53,1.05 1.53,1.05c0.9,1.57 2.36,1.12 2.94,0.85c0.09,-0.67 0.35,-1.12 0.63,-1.37c-2.22,-0.26 -4.55,-1.14 -4.55,-5.06c0,-1.12 0.39,-2.03 1.03,-2.75c-0.1,-0.26 -0.45,-1.31 0.1,-2.73c0,0 0.84,-0.28 2.75,1.05c0.8,-0.23 1.65,-0.35 2.5,-0.35c0.85,0 1.7,0.12 2.5,0.35c1.91,-1.33 2.75,-1.05 2.75,-1.05c0.55,1.42 0.2,2.47 0.1,2.73c0.64,0.72 1.03,1.63 1.03,2.75c0,3.93 -2.33,4.8 -4.56,5.05c0.36,0.32 0.68,0.93 0.68,1.88c0,1.36 -0.01,2.45 -0.01,2.78c0,0.27 0.18,0.6 0.69,0.49C19.13,20.52 22,16.72 22,12.22C22,6.58 17.52,2 12,2z"/></svg>
-      <span class="about-repo-copy"><strong>GitHub repository</strong><span>SmallThingz/reverb</span></span>
-    </a>
   </section>
-  <div class="dialog-layer" id="dialogLayer"><div class="dialog"><div class="dialog-title-row"><div class="dialog-title" id="dialogTitle">Reverb</div><button class="icon-button" id="dialogClose"><svg class="icon" viewBox="0 0 24 24"><path d="M6.5,6.5L17.5,17.5M17.5,6.5L6.5,17.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="dialog-body" id="dialogBody"></div></div></div>
-  <div class="toast" id="toast"></div>
+
+  <section class="screen incidents-screen noise" id="incidentsScreen"><div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div><header class="incidents-appbar"><button class="icon-button" id="incidentsBack" aria-label="Back"><svg class="icon"><use href="#i-back"/></svg></button><div class="incidents-title">Incidents</div></header><div class="incidents-list">
+    <article class="incident-card" id="incidentCard"><div class="incident-head"><div class="incident-head-copy"><div class="incident-date">Wed, 16 Sept 2026</div><div class="incident-window">Stopped at 8:30:14 pm for 0:08</div></div><span class="incident-ack" id="ackIncident" role="img" aria-label="Mark incident unchecked"><svg><use id="incidentCheckUse" href="#i-checked"/></svg></span></div><hr><div class="incident-detail">User requested stop · status 0 · PID 17373</div><div class="incident-subdetail">Foreground service · RSS 342 MiB</div><div class="incident-subdetail">process 20:47 · capture 20:40</div><div class="incident-subdetail">[FORCE STOP] stop app.smallthingz.reverb due to from pid 2768 (com.android.settings)</div></article>
+  </div></section>
+
+  <section class="screen range-screen noise" id="rangeScreen"><div class="statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div><header class="topbar"><button class="brand" id="rangeBrand" aria-label="Reverb"><svg viewBox="0 0 512 512"><g transform="translate(44.5)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"><path class="trail1" d="M183.686 358 212.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail1" d="m252.995 306 84.691 52"/><path class="trail2" d="M155.686 358 184.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail2" d="m224.995 306 84.691 52"/><path class="main" d="M127.686 358 156.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="main" d="m196.995 306 84.691 52"/></g></svg></button><button class="top-action incidents" id="rangeIncidents" aria-label="Open incidents"><svg class="icon"><use href="#i-warning"/></svg></button><button class="top-action settings" id="rangeSettings" aria-label="Open settings"><svg class="icon"><use href="#i-settings"/></svg></button></header>
+    <div class="range-content"><div class="range-main"><div class="range-core"><div class="duration-wheel"><div class="wheel-column"><span>01</span><span class="current">02</span><span>03</span></div><span class="wheel-colon">:</span><div class="wheel-column"><span>22</span><span class="current">23</span><span>24</span></div><span class="wheel-colon">:</span><div class="wheel-column"><span>52</span><span class="current">53</span><span>54</span></div><div class="speed-column"><span>15x</span><span class="current">1x</span><span>5x</span></div></div><div class="range-timeline"><div class="time-pill start" id="rangeStart">22:09.5</div><div class="time-pill end" id="rangeEnd">2:46:03.2</div><div class="wavebox"><svg viewBox="0 0 360 82" preserveAspectRatio="none"><path class="wave-outside" d="M0 35L4 31 8 34 12 29 16 37 20 28 24 35 28 32 32 36 36 29 40 35 44 31 48 34 52 30 56 35 60 32 64 34 68 33 72 36 76 30 80 35 84 29 88 33 92 31 96 34 100 28 104 35 108 32 112 34 116 29 120 36 124 31 128 35 132 30 136 34 140 32 144 35 148 29 152 34 156 30 160 35 164 32 168 34 172 29 176 37 180 31 184 35 188 30 192 34 196 31 200 35 204 29 208 34 212 31 216 35 220 30 224 34 228 27 232 36 236 31 240 35 244 29 248 34 252 30 256 37 260 28 264 35 268 30 272 34 276 27 280 38 284 29 288 35 292 31 296 34 300 29 304 36 308 26 312 35 316 28 320 36 324 31 328 34 332 27 336 37 340 30 344 35 348 29 352 34 356 31 360 35V47L356 51 352 48 348 53 344 47 340 52 336 45 332 55 328 48 324 51 320 46 316 54 312 47 308 56 304 48 300 53 296 48 292 51 288 47 284 53 280 44 276 55 272 48 268 52 264 47 260 54 256 45 252 52 248 48 244 53 240 47 236 51 232 46 228 55 224 48 220 52 216 47 212 51 208 48 204 53 200 47 196 51 192 48 188 52 184 47 180 51 176 45 172 53 168 48 164 51 160 47 156 52 152 48 148 53 144 47 140 50 136 48 132 52 128 47 124 51 120 46 116 53 112 48 108 51 104 47 100 54 96 48 92 52 88 49 84 53 80 47 76 52 72 48 68 51 64 48 60 52 56 47 52 52 48 48 44 51 40 47 36 53 32 48 28 51 24 47 20 54 16 45 12 53 8 48 4 51 0 47Z"/><clipPath id="selectedWave"><rect id="selectedWaveRect" x="48" y="0" width="312" height="82"/></clipPath><path class="wave-selection" clip-path="url(#selectedWave)" d="M0 35L4 31 8 34 12 29 16 37 20 28 24 35 28 32 32 36 36 29 40 35 44 31 48 34 52 30 56 35 60 32 64 34 68 33 72 36 76 30 80 35 84 29 88 33 92 31 96 34 100 28 104 35 108 32 112 34 116 29 120 36 124 31 128 35 132 30 136 34 140 32 144 35 148 29 152 34 156 30 160 35 164 32 168 34 172 29 176 37 180 31 184 35 188 30 192 34 196 31 200 35 204 29 208 34 212 31 216 35 220 30 224 34 228 27 232 36 236 31 240 35 244 29 248 34 252 30 256 37 260 28 264 35 268 30 272 34 276 27 280 38 284 29 288 35 292 31 296 34 300 29 304 36 308 26 312 35 316 28 320 36 324 31 328 34 332 27 336 37 340 30 344 35 348 29 352 34 356 31 360 35V47L356 51 352 48 348 53 344 47 340 52 336 45 332 55 328 48 324 51 320 46 316 54 312 47 308 56 304 48 300 53 296 48 292 51 288 47 284 53 280 44 276 55 272 48 268 52 264 47 260 54 256 45 252 52 248 48 244 53 240 47 236 51 232 46 228 55 224 48 220 52 216 47 212 51 208 48 204 53 200 47 196 51 192 48 188 52 184 47 180 51 176 45 172 53 168 48 164 51 160 47 156 52 152 48 148 53 144 47 140 50 136 48 132 52 128 47 124 51 120 46 116 53 112 48 108 51 104 47 100 54 96 48 92 52 88 49 84 53 80 47 76 52 72 48 68 51 64 48 60 52 56 47 52 52 48 48 44 51 40 47 36 53 32 48 28 51 24 47 20 54 16 45 12 53 8 48 4 51 0 47Z"/></svg><div class="boundary start" id="rangeStartBoundary"><div class="boundary-line"></div><div class="boundary-dot"></div></div><div class="boundary end"><div class="boundary-line"></div><div class="boundary-grip"></div></div></div><div class="timeline-label left">0:00.0</div><div class="timeline-label right" id="rangeDurationLabel">2:46:03.2</div></div><div class="fine-control"><div class="fine-field"></div><button class="play-puck" id="rangePlay" aria-label="Play"><svg class="icon"><use href="#i-play"/></svg></button></div></div></div><div class="range-controls"><button class="range-close" id="rangeClose" aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button><div class="range-buffer"><div class="range-buffer-pill"><svg class="icon"><use id="rangeBufferIcon" href="#i-one"/></svg><span id="rangeBufferLabel">One-shot</span></div></div><button class="range-export" data-toast="Exporting range"><svg class="icon"><use href="#i-save"/></svg>Export</button></div><div class="range-bottom"></div></div>
+  </section>
+
+  <div class="about-scrim" id="aboutScrim"></div><section class="about-sheet" id="aboutSheet" role="dialog" aria-modal="true" aria-label="About Reverb"><div class="about-statusbar statusbar"><span class="status-time">9:02</span><span class="status-icons" aria-hidden="true"><svg class="status-vibrate" viewBox="0 0 14 18"><rect x="4" y="3" width="6" height="12" rx="1"/><path d="M1 5h2v8H1V5Zm10 0h2v8h-2V5Z"/></svg><svg class="status-wifi" viewBox="0 0 20 16"><path d="M1 5.2C5.9.9 14.1.9 19 5.2l-2 2.1C13.2 4 6.8 4 3 7.3L1 5.2Zm4 4.1c2.8-2.4 7.2-2.4 10 0l-2 2.1c-1.7-1.4-4.3-1.4-6 0L5 9.3Zm3.1 4 1.9-1.8 1.9 1.8L10 15l-1.9-1.7Z"/></svg><svg class="status-plane" viewBox="0 0 20 20"><path d="M18.6 9.1 11.8 6V1.8a1.8 1.8 0 0 0-3.6 0V6L1.4 9.1a1.3 1.3 0 0 0-.8 1.2v1l7.6-1.4v4.4l-2.5 1.9v1l4.3-.9 4.3.9v-1l-2.5-1.9V9.9l7.6 1.4v-1a1.3 1.3 0 0 0-.8-1.2Z"/></svg><svg class="status-battery" viewBox="0 0 34 18"><rect x="1" y="2" width="27" height="14" rx="4" fill="#fff" opacity=".35"/><rect class="fill" x="1" y="2" width="18" height="14" rx="4"/><path class="cap" d="M29 6h3v6h-3z"/><path class="bolt" d="m22 1-4 7h3l-2 9 6-9h-3z"/></svg></span></div><button class="icon-button about-close" id="aboutClose" aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button><div class="about-logo"><svg viewBox="0 0 512 512"><g transform="translate(44.5)" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"><path class="trail1" d="M183.686 358 212.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail1" d="m252.995 306 84.691 52"/><path class="trail2" d="M155.686 358 184.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="trail2" d="m224.995 306 84.691 52"/><path class="main" d="M127.686 358 156.357 154h66c50 0 79.502 32 73.319 76s-44.681 76-94.681 76h-66"/><path class="main" d="m196.995 306 84.691 52"/></g></svg></div><div class="about-name">Reverb</div><div class="about-version">Version 0.1.0</div><a class="about-repo" href="https://github.com/SmallThingz/reverb" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.22c0 4.5 2.87 8.31 6.84 9.65.5.1.68-.22.68-.49 0-.24-.01-1.04-.01-1.89-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.85.09-.67.35-1.12.63-1.37-2.22-.26-4.55-1.14-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.73 0 0 .84-.28 2.75 1.05.8-.23 1.65-.35 2.5-.35.85 0 1.7.12 2.5.35 1.91-1.33 2.75-1.05 2.75-1.05.55 1.42.2 2.47.1 2.73.64.72 1.03 1.63 1.03 2.75 0 3.93-2.33 4.8-4.56 5.05.36.32.68.93.68 1.88 0 1.36-.01 2.45-.01 2.78 0 .27.18.6.69.49C19.13 20.52 22 16.72 22 12.22 22 6.58 17.52 2 12 2Z"/></svg><span class="about-repo-copy"><strong>GitHub repository</strong><span>SmallThingz/reverb</span></span></a></section>
+  <div class="dropdown-menu" id="dropdownMenu"></div><div class="toast" id="toast"></div>
 </div>
 </div>
-
 </body>
 </html>

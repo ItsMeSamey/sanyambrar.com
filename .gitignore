@@ -1,4 +1,3 @@
-bun.lock
 node_modules/
 keybr/node_modules/
 dist/
@@ -26,3 +25,8 @@ Archive.tar.gz
 !docs/vditor/
 !docs/vditor/dist/
 !docs/vditor/dist/**
+
+.tmp/
+.worktree/
+playwright-report/
+test-results/

@@ -1,3 +1,4 @@
+import { liveObject } from "@keybr/solid-compat/live";
 import { useState } from "@keybr/solid-compat/react";
 import { getScreenSize } from "../utils/geometry.ts";
 import { type Size } from "../utils/size.ts";
@@ -7,5 +8,5 @@ export const useScreenSize = (): Size => {
     useWindowEvent("resize", () => {
         setSize(getScreenSize());
     });
-    return size();
+    return liveObject(size);
 };

@@ -36,8 +36,7 @@ export const useElementSize = (ref: RefObject<Element | null>): (() => Size | nu
         if (element == null) return;
         const update = () => {
             const newSize = getElementSize(element);
-            const oldSize = size();
-            if (oldSize == null || !oldSize.eq(newSize)) setSize(newSize);
+            setSize(oldSize => oldSize != null && oldSize.eq(newSize) ? oldSize : newSize);
         };
         update();
         return onElementResize(element, update);

@@ -1,8 +1,8 @@
-import { Show, createSignal, onCleanup, onMount } from 'solid-js';
+import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import * as Select from '@kobalte/core/select';
 import * as Tabs from '@kobalte/core/tabs';
-import Check from 'lucide-solid/icons/check';
-import ChevronsUpDown from 'lucide-solid/icons/chevrons-up-down';
+import { Check } from '../ui-kit/components/lucide.tsx';
+import { ChevronsUpDown } from '../ui-kit/components/lucide.tsx';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { ToolContext, ToolSurface } from './ToolSurface.tsx';
@@ -59,7 +59,7 @@ export function ToolsPage() {
   let context: HTMLDivElement | undefined;
   const [active, setActive] = createSignal<ToolId>(selectedTool());
   const sync = () => setActive(selectedTool());
-  onMount(() => {
+  onSettled(() => {
     addEventListener('popstate', sync);
     addEventListener('samey-solid-routechange', sync);
   });
@@ -67,10 +67,10 @@ export function ToolsPage() {
     removeEventListener('popstate', sync);
     removeEventListener('samey-solid-routechange', sync);
   });
-  return <ToolContext.Provider value={() => context}>
+  return <ToolContext value={() => context}>
     <TopBar contextClass="tools-topbar-context" context={<><ToolTabs active={active()}/><div ref={el => context = el} class="tool-context" aria-live="polite"/></>}/>
     <main class="tools-app">
       <Show keyed when={active()}>{tool => <ToolSurface tool={tool}/>}</Show>
     </main>
-  </ToolContext.Provider>;
+  </ToolContext>;
 }

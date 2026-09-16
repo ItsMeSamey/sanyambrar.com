@@ -3,7 +3,8 @@ import { type IInputEvent, type IKeyboardEvent, ModifierState, TextEvents } from
 import { type Focusable, useHotkeys, useWindowEvent, type ZoomableProps } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/solid-compat/intl";
 import { type ComponentType, type RefObject } from "@keybr/solid-compat/react";
-import { createEffect, createSignal, onCleanup, onMount, type JSX } from "solid-js";
+import { createEffect, createSignal, onSettled } from 'solid-js';
+import { type JSX } from '@solidjs/web';
 import * as styles from "./TextArea.module.css";
 import { TextLines, type TextLineSize } from "./TextLines.tsx";
 
@@ -25,14 +26,14 @@ export function TextArea(props: {
   const innerRef: RefObject<Focusable> = { current: null };
   const [focus, setFocus] = createSignal(false);
 
-  onMount(() => {
+  onSettled(() => {
     if (props.focusRef) props.focusRef.current = {
       focus: () => innerRef.current?.focus(),
       blur: () => innerRef.current?.blur(),
     };
-    onCleanup(() => { if (props.focusRef) props.focusRef.current = null; });
+    return () => { if (props.focusRef) props.focusRef.current = null; };
   });
-  createEffect(() => setElementCursor(root, !props.moving && focus() ? "none" : "default"));
+  createEffect(() => !props.moving && focus() ? "none" : "default", cursor => setElementCursor(root, cursor));
   useWindowEvent("mousemove", () => setElementCursor(root, "default"));
   useHotkeys({ Enter: () => innerRef.current?.focus() });
 

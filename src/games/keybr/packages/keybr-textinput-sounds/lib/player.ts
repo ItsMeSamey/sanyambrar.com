@@ -44,7 +44,7 @@ export function makeSoundPlayer(settings: Settings) {
         }
     };
 }
-const cache = new Map();
+const cache = new Map<SoundTheme, Theme>();
 function loadTheme(id: SoundTheme) {
     let theme = cache.get(id);
     if (theme == null) {
