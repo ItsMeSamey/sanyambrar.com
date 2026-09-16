@@ -1,12 +1,13 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { type LearningRate, type LessonKey } from "@keybr/lesson";
 import { Name, Para, Value } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage } from "@keybr/intl";
 export function LearningRateDescription(solidProps: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
-}): ReactNode {
+}): JSX.Element {
     const { formatNumber, formatPercents } = useIntlNumbers();
     const content = () => {
         if ((solidProps.lessonKey.bestConfidence ?? 0) >= 1) {

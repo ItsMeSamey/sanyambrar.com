@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { Description, Explainer, FieldSet } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { BenfordProp } from "./BenfordProp.tsx";
-export function NumbersLessonSettings(): ReactNode {
+export function NumbersLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>
       <Explainer>

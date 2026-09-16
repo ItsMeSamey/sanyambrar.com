@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { useFormatter } from "@keybr/lesson-ui";
 import { hasData, linearRegression, Range, smooth, Vector } from "@keybr/math";
 import { type Result } from "@keybr/result";
 import { type Rect, type ShapeList } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
@@ -13,7 +14,7 @@ import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function SpeedChart(solidProps: {
     readonly results: readonly Result[];
     readonly smoothness: number;
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.results, () => solidProps.smoothness);
     return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;

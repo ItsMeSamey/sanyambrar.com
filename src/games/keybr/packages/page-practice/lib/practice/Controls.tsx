@@ -1,17 +1,18 @@
+import type { JSX } from "@solidjs/web";
 import { getDir } from "@keybr/intl";
 import { names } from "@keybr/lesson-ui";
 import { CircleHelp } from '../../../../../../ui-kit/components/lucide.tsx';
 import { Maximize2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { Redo2 } from '../../../../../../ui-kit/components/lucide.tsx';
 import { Undo2 } from '../../../../../../ui-kit/components/lucide.tsx';
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./Controls.module.css";
 
 function ControlButton(props: {
   readonly title: string;
   readonly onClick: () => void;
-  readonly children: ReactNode;
+  readonly children: JSX.Element;
 }) {
   return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onClick={props.onClick}>{props.children}</button>;
 }
@@ -22,7 +23,7 @@ export const Controls = memo(function Controls(props: {
   readonly previousLesson: boolean;
   readonly onSkipLesson: () => void;
   readonly onHelp: () => void;
-}): ReactNode {
+}): JSX.Element {
   const { formatMessage, locale } = useIntl();
   const rtl = getDir(locale) === "rtl";
   return (

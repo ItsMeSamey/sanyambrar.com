@@ -1,4 +1,5 @@
-import { type ElementType, type HTMLAttributes, type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import type { ValidComponent } from "@solidjs/web";
 import { type ClassName } from "../types.ts";
 export type BoxDirection = "row" | "column";
 export type BoxWrap = "wrap" | "wrap-reverse" | "nowrap";
@@ -11,11 +12,11 @@ export type BoxProps = {
     readonly justifyContent?: BoxJustifyContent;
     readonly alignItems?: BoxAlignItems;
     readonly alignContent?: BoxAlignContent;
-    readonly as?: ElementType<HTMLAttributes<HTMLElement>>;
+    readonly as?: ValidComponent;
     readonly className?: ClassName;
     readonly id?: string;
     readonly title?: string;
-    readonly children?: ReactNode;
+    readonly children?: JSX.Element;
 };
 export type HBoxProps = Omit<BoxProps, "direction">;
 export type VBoxProps = Omit<BoxProps, "direction">;

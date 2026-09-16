@@ -1,4 +1,5 @@
-import { type ReactNode, useLayoutEffect, useRef } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import { useLayoutEffect, useRef } from "@keybr/solid-compat/react";
 import { placeElement } from "../../floating/index.ts";
 import { useScreenSize } from "../../hooks/index.ts";
 import { getBoundingBox } from "../../utils/geometry.ts";
@@ -8,7 +9,7 @@ export type SpotlightProps = {
     readonly anchor?: Element | string;
     readonly margin?: number;
 };
-export function Spotlight(solidProps: SpotlightProps): ReactNode {
+export function Spotlight(solidProps: SpotlightProps): JSX.Element {
     const c1Ref = useRef<HTMLDivElement>(null);
     const c2Ref = useRef<HTMLDivElement>(null);
     const c3Ref = useRef<HTMLDivElement>(null);

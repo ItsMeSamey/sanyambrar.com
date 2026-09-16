@@ -1,17 +1,18 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { type Language } from "@keybr/keyboard";
 import { type CustomTextLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { textStatsOf } from "@keybr/unicode";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, LinkButton, NameValue, Para, TextField, } from "@keybr/widget";
-import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
+import { useMemo } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { exampleTexts } from "./example-texts.ts";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 export function CustomTextLessonSettings(solidProps: {
     readonly lesson: CustomTextLesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     return (<>
@@ -33,7 +34,7 @@ export function CustomTextLessonSettings(solidProps: {
       </FieldSet>
     </>);
 }
-function CustomTextInput(): ReactNode {
+function CustomTextInput(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>
@@ -61,7 +62,7 @@ function CustomTextInput(): ReactNode {
 function CustomTextStats(solidProps: {
     readonly language: Language;
     readonly customText: string;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const stats = useMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText), () => [solidProps.language, solidProps.customText]);
@@ -86,7 +87,7 @@ function CustomTextStats(solidProps: {
       </Field>
     </FieldList>);
 }
-function CustomTextProcessing(): ReactNode {
+function CustomTextProcessing(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<FieldList>

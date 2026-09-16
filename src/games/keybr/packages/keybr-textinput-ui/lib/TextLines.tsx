@@ -1,6 +1,8 @@
+import type { JSX } from "@solidjs/web";
+import type { Component } from "solid-js";
 import { type Char, charArraysAreEqual, type Line, type LineList, type TextDisplaySettings, textDisplaySettings, } from "@keybr/textinput";
 import { clsx } from "clsx";
-import { type ComponentType, type CSSProperties, memo, type ReactNode, } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { renderChars } from "./chars.tsx";
 import { Cursor } from "./Cursor.tsx";
 import { textItemStyle } from "./styles.ts";
@@ -12,10 +14,10 @@ export const TextLines = memo(function TextLines(props: {
     readonly settings?: TextDisplaySettings;
     readonly wrap?: boolean;
     readonly size?: TextLineSize;
-    readonly lineTemplate?: ComponentType;
+    readonly lineTemplate?: Component<{ readonly children?: JSX.Element }>;
     readonly cursor: boolean;
     readonly focus: boolean;
-}): ReactNode {
+}): JSX.Element {
     const settings = () => props.settings ?? textDisplaySettings;
     const className = () => clsx(styles.root, (props.wrap ?? true) ? styles.wrap : styles.nowrap, props.focus ? styles.focus : styles.blur, (props.size ?? "X0") === "X0" && styles.sizeX0, (props.size ?? "X0") === "X1" && styles.sizeX1, (props.size ?? "X0") === "X2" && styles.sizeX2, (props.size ?? "X0") === "X3" && styles.sizeX3);
     const children = () => props.lines.lines.map(({ text, chars, ...lineProps }: Line) => props.lineTemplate != null ? (<props.lineTemplate {...lineProps}>
@@ -27,8 +29,8 @@ const TextLine = memo(function TextLine(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
     readonly className: string;
-    readonly style: CSSProperties;
-}): ReactNode {
+    readonly style: JSX.CSSProperties;
+}): JSX.Element {
     const items = createMemo(() => {
         const groups: Char[][] = [];
         let itemChars: Char[] = [];
@@ -63,7 +65,7 @@ const TextLine = memo(function TextLine(solidProps: {
 const TextItem = memo(function TextItem(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
-}): ReactNode {
+}): JSX.Element {
     return <span style={textItemStyle}>{renderChars(solidProps.settings, solidProps.chars)}</span>;
 }, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
     charArraysAreEqual(prevProps.chars, nextProps.chars));

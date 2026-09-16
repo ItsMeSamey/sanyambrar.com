@@ -1,6 +1,7 @@
+import type { JSX } from "@solidjs/web";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { clsx } from "clsx";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import * as styles from "./BookSelector.module.css";
 import { Book } from "./book.ts";
 
@@ -13,7 +14,7 @@ const normalize = (value: string) =>
 export function BookSelector(solidProps: {
   readonly book: Book;
   readonly onChange: (book: Book) => void;
-}): ReactNode {
+}): JSX.Element {
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
   let dialog!: HTMLDialogElement;

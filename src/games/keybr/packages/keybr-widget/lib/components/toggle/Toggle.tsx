@@ -1,17 +1,18 @@
+import type { JSX } from "@solidjs/web";
 import * as SwitchPrimitive from "@kobalte/core/switch";
-import { type ReactNode, type RefObject, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { type RefObject, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { type Focusable } from "../types.ts";
 
 export type ToggleProps = {
   readonly checked?: boolean;
   readonly disabled?: boolean;
-  readonly label?: ReactNode;
+  readonly label?: JSX.Element;
   readonly title?: string;
   readonly ref?: RefObject<Focusable | null>;
   readonly onChange?: (checked: boolean) => void;
 };
 
-export function Toggle(props: ToggleProps): ReactNode {
+export function Toggle(props: ToggleProps): JSX.Element {
   const input = useRef<HTMLInputElement>(null);
   useImperativeHandle(props.ref, () => ({
     focus: () => input.current?.focus(),

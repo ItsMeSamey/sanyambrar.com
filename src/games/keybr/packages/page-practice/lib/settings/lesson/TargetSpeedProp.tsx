@@ -1,13 +1,14 @@
+import type { JSX } from "@solidjs/web";
 import { getDir } from "@keybr/intl";
 import { lessonProps } from "@keybr/lesson";
 import { useFormatter } from "@keybr/lesson-ui";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, Icon, IconButton, Range, Value, } from "@keybr/widget";
 import { SkipForward, SkipBack } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { FormattedMessage } from "@keybr/intl";
-export function TargetSpeedProp(): ReactNode {
+export function TargetSpeedProp(): JSX.Element {
     const { formatSpeed } = useFormatter();
     const { locale } = useIntl();
     const rtl = getDir(locale) === "rtl";

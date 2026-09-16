@@ -1,13 +1,14 @@
+import type { JSX } from "@solidjs/web";
 import { Canvas, Rect, type ShapeList, Shapes, type Size } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { type ChartStyles } from "./use-chart-styles.ts";
 export type SizeProps = {
     readonly width: string;
     readonly height: string;
 };
 export function Chart(solidProps: {
-    readonly children: ReactNode;
-} & SizeProps): ReactNode {
+    readonly children: JSX.Element;
+} & SizeProps): JSX.Element {
     return (<div style={{
             display: "block",
             position: "relative",
@@ -25,7 +26,7 @@ export function Chart(solidProps: {
 export function ChartCanvas(solidProps: {
     readonly styles: ChartStyles;
     readonly paint: (rect: Rect) => ShapeList;
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
     return (<Chart width={solidProps.width} height={solidProps.height}>
       <Canvas paint={chartArea(solidProps.styles, solidProps.paint)}/>
     </Chart>);

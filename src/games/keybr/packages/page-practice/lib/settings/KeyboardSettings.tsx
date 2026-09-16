@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { useCollator } from "@keybr/intl";
 import { Emulation, Geometry, KeyboardOptions, keyboardProps, Language, Layout, useFormattedNames, useKeyboard, ZoneMod, } from "@keybr/keyboard";
 import { KeyLayer, PointersLayer, VirtualKeyboard } from "@keybr/keyboard-ui";
@@ -6,9 +7,9 @@ import { useSettings } from "@keybr/settings";
 import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
-import { memo, type ReactNode, useEffect, useState } from "@keybr/solid-compat/react";
+import { memo, useEffect, useState } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function KeyboardSettings(): ReactNode {
+export function KeyboardSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>
       <FieldSet legend={formatMessage({
@@ -26,7 +27,7 @@ export function KeyboardSettings(): ReactNode {
       </FieldSet>
     </>);
 }
-function LayoutProp(): ReactNode {
+function LayoutProp(): JSX.Element {
     const { formatLanguageName, //
     formatLayoutName, formatFullLayoutName, } = useFormattedNames();
     const { compare } = useCollator();
@@ -97,7 +98,7 @@ function LayoutProp(): ReactNode {
       </Explainer>
     </>);
 }
-function GeometryProp(): ReactNode {
+function GeometryProp(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     const options = () => KeyboardOptions.from(settings);
@@ -161,7 +162,7 @@ function GeometryProp(): ReactNode {
       </Explainer>
     </>);
 }
-const KeyboardPreview = memo(function KeyboardPreview(): ReactNode {
+const KeyboardPreview = memo(function KeyboardPreview(): JSX.Element {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
     const depressedKeys = useDepressedKeys(settings, keyboard);
@@ -170,7 +171,7 @@ const KeyboardPreview = memo(function KeyboardPreview(): ReactNode {
       {settings.get(keyboardProps.pointers) && <PointersPreview />}
     </VirtualKeyboard>);
 });
-const PointersPreview = memo(function PointersPreview(): ReactNode {
+const PointersPreview = memo(function PointersPreview(): JSX.Element {
     const keyboard = useKeyboard();
     const [index, setIndex] = useState(0);
     const [suffix, setSuffix] = useState<CodePoint[]>([]);

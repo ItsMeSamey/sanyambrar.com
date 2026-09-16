@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import * as styles from "./Spacer.module.css";
 import { type SpacerProps } from "./Spacer.types.ts";
-export function Spacer(solidProps: SpacerProps): ReactNode {
+export function Spacer(solidProps: SpacerProps): JSX.Element {
     return (<div class={clsx(styles.root, {
             [styles.size1]: solidProps.size === 1,
             [styles.size2]: solidProps.size === 2,

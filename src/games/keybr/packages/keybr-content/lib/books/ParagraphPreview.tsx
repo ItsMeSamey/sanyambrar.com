@@ -1,12 +1,13 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { createMemo, For } from 'solid-js';
 import * as styles from "./ParagraphPreview.module.css";
 export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
     readonly around?: number;
-}): ReactNode {
+}): JSX.Element {
     const items = createMemo(() => {
         const { paragraphs, paragraphIndex } = solidProps;
         const around = solidProps.around ?? 2;

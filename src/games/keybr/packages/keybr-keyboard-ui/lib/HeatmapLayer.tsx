@@ -1,7 +1,8 @@
+import type { JSX } from "@solidjs/web";
 import { type KeyShape, useKeyboard } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
 import { clsx } from "clsx";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import * as styles from "./HeatmapLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
@@ -10,7 +11,7 @@ export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
         f: number
     ]>;
     readonly modifier: "h" | "m" | "f";
-}): ReactNode {
+}): JSX.Element {
     type Item = [
         shape: KeyShape,
         f: number
@@ -51,7 +52,7 @@ export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
         }
         return null;
     }
-    function draw([shape, f]: Item): ReactNode {
+    function draw([shape, f]: Item): JSX.Element {
         const { x, y } = getKeyCenter(shape);
         switch (solidProps.modifier) {
             case "h": {

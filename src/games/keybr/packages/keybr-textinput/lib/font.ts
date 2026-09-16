@@ -1,7 +1,8 @@
+import type { JSX } from "@solidjs/web";
 import { type Language } from "@keybr/keyboard";
 import { Enum, type EnumItem } from "@keybr/lang";
 import { type FontFace, FONTS_FACES, type Script, UBUNTU_MONO, } from "@keybr/themes";
-import { type CSSProperties } from "@keybr/solid-compat/react";
+
 export class Font implements EnumItem {
     static readonly ALL = new Enum<Font>(...FONTS_FACES.map((fontFace) => new Font(fontFace)));
     static get default() {
@@ -16,7 +17,7 @@ export class Font implements EnumItem {
     readonly id: string;
     readonly name: string;
     readonly scripts: readonly Script[];
-    readonly cssProperties: CSSProperties;
+    readonly cssProperties: JSX.CSSProperties;
     private constructor(fontFace: FontFace) {
         this.id = `${fontFace.family}-${fontFace.weight}-${fontFace.style}`;
         this.name = fontFace.name;

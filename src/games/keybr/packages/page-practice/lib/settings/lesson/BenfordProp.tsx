@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, Link, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function BenfordProp(): ReactNode {
+export function BenfordProp(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>
@@ -20,7 +21,7 @@ export function BenfordProp(): ReactNode {
       <Explainer>
         <Description>
           <FormattedMessage id="settings.benfordsLaw.description" defaultMessage="<a>Benford’s law</a> is an observation that in many real-life numerical data sets, the leading digit is likely to be small." values={{
-            a: (chunks: ReactNode) => (<Link href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank">
+            a: (chunks: JSX.Element) => (<Link href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank">
                   {chunks}
                 </Link>),
         }}/>

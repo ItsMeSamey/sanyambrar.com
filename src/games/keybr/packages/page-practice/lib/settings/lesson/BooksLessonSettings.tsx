@@ -1,14 +1,15 @@
+import type { JSX } from "@solidjs/web";
 import { BookPreview, BookSelector, ParagraphPreview, ParagraphSelector, } from "@keybr/content";
 import { BooksLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, Spacer, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 export function BooksLessonSettings(solidProps: {
     readonly lesson: BooksLesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     const book = () => solidProps.lesson.book;
@@ -42,7 +43,7 @@ export function BooksLessonSettings(solidProps: {
       </FieldSet>
     </>);
 }
-function BookTextProcessing(): ReactNode {
+function BookTextProcessing(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<FieldList>

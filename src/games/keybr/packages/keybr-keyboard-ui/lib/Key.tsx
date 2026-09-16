@@ -1,8 +1,10 @@
+import type { JSX } from "@solidjs/web";
+import type { Component } from "solid-js";
 import { type DeadCharacter, KeyCharacters, type KeyShape, type LabelShape, type Language, type LigatureCharacter, } from "@keybr/keyboard";
 import { type CodePoint, isDiacritic } from "@keybr/unicode";
 import { type ClassName, type MouseProps } from "@keybr/widget";
 import { clsx } from "clsx";
-import { type FunctionComponent, memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import * as styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
 import { omit } from 'solid-js';
@@ -11,14 +13,14 @@ export type KeyProps = {
     readonly toggled?: boolean;
     readonly showColors?: boolean;
 } & MouseProps;
-export function makeKeyComponent({ letterName }: Language, shape: KeyShape): FunctionComponent<KeyProps> {
+export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Component<KeyProps> {
     const { isCodePoint, isDead, isLigature } = KeyCharacters;
     const { id, a, b, c, d } = shape;
     const x = shape.x * keySize;
     const y = shape.y * keySize;
     const w = shape.w * keySize - keyGap;
     const h = shape.h * keySize - keyGap;
-    const children: ReactNode[] = [];
+    const children: JSX.Element[] = [];
     children.push(shape.shape ? (<path class={styles.button} d={shape.shape}/>) : (<rect class={styles.button} x={0} y={0} width={w} height={h}/>));
     if (shape.homing) {
         children.push(<circle class={styles.bump} cx={w / 2} cy={h - 5} r={3}/>);
@@ -75,7 +77,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
         children.push(makeLigatureLabel(d, 25, 12, styles.secondarySymbol));
     }
     const zoneClassName = zoneClassNameOf(shape);
-    function KeyComponent(props: KeyProps): ReactNode {
+    function KeyComponent(props: KeyProps): JSX.Element {
         const local = props, mouse = omit(props, "depressed", "toggled", "showColors");
         return (<svg {...mouse} class={clsx(styles.key, local.depressed && styles.depressedKey, local.toggled && styles.toggledKey, local.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
         {children}
@@ -83,7 +85,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
     }
     KeyComponent.displayName = `Key[${id}]`;
     return memo(KeyComponent);
-    function makeCodePointLabel(codePoint: CodePoint, x: number, y: number, className: ClassName): ReactNode {
+    function makeCodePointLabel(codePoint: CodePoint, x: number, y: number, className: ClassName): JSX.Element {
         switch (codePoint) {
             case /* SPACE */ 0x0020:
             case /* NO-BREAK SPACE */ 0x00a0:
@@ -96,7 +98,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
             align: ["m", "m"],
         }, className);
     }
-    function makeDeadLabel({ dead }: DeadCharacter, x: number, y: number, className: ClassName): ReactNode {
+    function makeDeadLabel({ dead }: DeadCharacter, x: number, y: number, className: ClassName): JSX.Element {
         return makeLabel({
             text: isDiacritic(dead)
                 ? String.fromCodePoint(/* DOTTED CIRCLE */ 0x25cc, dead)
@@ -105,7 +107,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
             align: ["m", "m"],
         }, clsx(className, styles.deadSymbol));
     }
-    function makeLigatureLabel({ ligature }: LigatureCharacter, x: number, y: number, className: ClassName): ReactNode {
+    function makeLigatureLabel({ ligature }: LigatureCharacter, x: number, y: number, className: ClassName): JSX.Element {
         return makeLabel({
             text: ligature,
             pos: [x, y],
@@ -113,7 +115,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Fun
         }, clsx(className, styles.ligatureSymbol));
     }
 }
-function makeLabel(label: LabelShape, className: ClassName = undefined): ReactNode {
+function makeLabel(label: LabelShape, className: ClassName = undefined): JSX.Element {
     const { text, pos = [10, 20], align = ["s", "m"] } = label;
     const [x, y] = pos;
     const [ha, va] = align;

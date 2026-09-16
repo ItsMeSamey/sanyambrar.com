@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { keyboardProps, useKeyboard } from "@keybr/keyboard";
 import { flatten, HeatmapLayer, KeyLayer, PointersLayer, TransitionsLayer, VirtualKeyboard, ZonesLayer, } from "@keybr/keyboard-ui";
 import { useSettings } from "@keybr/settings";
 import { type CodePoint } from "@keybr/unicode";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { type LastLesson } from "./state/index.ts";
 export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
     readonly focus: boolean;
@@ -10,7 +11,7 @@ export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
     readonly toggledKeys: readonly string[];
     readonly suffix: readonly CodePoint[];
     readonly lastLesson: LastLesson | null;
-}): ReactNode {
+}): JSX.Element {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
     const colors = () => settings.get(keyboardProps.colors);

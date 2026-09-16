@@ -1,8 +1,9 @@
+import type { Component } from "solid-js";
 import { type LineList, type TextDisplaySettings } from "@keybr/textinput";
 import { type IInputEvent, type IKeyboardEvent, ModifierState, TextEvents } from "@keybr/textinput-events";
 import { type Focusable, useHotkeys, useWindowEvent, type ZoomableProps } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/intl";
-import { type ComponentType, type RefObject } from "@keybr/solid-compat/react";
+import { type RefObject } from "@keybr/solid-compat/react";
 import { createEffect, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import * as styles from "./TextArea.module.css";
@@ -13,7 +14,7 @@ export function TextArea(props: {
   readonly lines: LineList;
   readonly wrap?: boolean;
   readonly size?: TextLineSize;
-  readonly lineTemplate?: ComponentType;
+  readonly lineTemplate?: Component;
   readonly demo?: boolean;
   readonly focusRef?: RefObject<Focusable | null>;
   readonly onFocus?: () => void;

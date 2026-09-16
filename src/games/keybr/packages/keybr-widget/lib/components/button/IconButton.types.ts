@@ -1,11 +1,11 @@
-import { type ReactElement, type ReactNode, type RefObject } from "@keybr/solid-compat/react";
-import { type IconProps } from "../icon/Icon.types.ts";
+import type { JSX } from "@solidjs/web";
+import { type RefObject } from "@keybr/solid-compat/react";
 import { type AnchorProps, type Focusable, type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 export type IconButtonProps = {
     readonly autoFocus?: boolean;
-    readonly children?: ReactNode;
-    readonly icon: ReactElement<IconProps>;
-    readonly label?: ReactNode;
+    readonly children?: JSX.Element;
+    readonly icon: JSX.Element;
+    readonly label?: JSX.Element;
     readonly ref?: RefObject<IconButtonRef | null>;
     readonly title?: string;
     readonly "data-samey-appearance"?: string;

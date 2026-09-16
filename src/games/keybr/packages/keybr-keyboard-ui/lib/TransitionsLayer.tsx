@@ -1,7 +1,8 @@
+import type { JSX } from "@solidjs/web";
 import { type KeyShape, useKeyboard } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
 import { clsx } from "clsx";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 import * as styles from "./TransitionsLayer.module.css";
 export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
@@ -11,7 +12,7 @@ export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
         number
     ]>;
     readonly modifier: "h" | "m" | "f";
-}): ReactNode {
+}): JSX.Element {
     type Item = [
         shape0: KeyShape,
         shape1: KeyShape,
@@ -63,7 +64,7 @@ export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
         }
         return null;
     }
-    function draw([shape0, shape1, f]: Item): ReactNode {
+    function draw([shape0, shape1, f]: Item): JSX.Element {
         if (shape0 === shape1) {
             return null;
         }

@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { SpeedUnit, uiProps } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function MiscSettings(): ReactNode {
+export function MiscSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>
       <FieldSet legend={formatMessage({
@@ -14,7 +15,7 @@ export function MiscSettings(): ReactNode {
       </FieldSet>
     </>);
 }
-function SpeedUnitProp(): ReactNode {
+function SpeedUnitProp(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>

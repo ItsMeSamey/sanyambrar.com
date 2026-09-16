@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { Syntax } from "@keybr/code";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function CodeLessonSettings(): ReactNode {
+export function CodeLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     const syntax = () => settings.get(lessonProps.code.syntax);

@@ -1,4 +1,5 @@
-import { type ReactNode, useLayoutEffect, useMemo, useRef } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import { useLayoutEffect, useMemo, useRef } from "@keybr/solid-compat/react";
 import { type FloatingPosition, place } from "../../floating/index.ts";
 import { useScreenSize } from "../../hooks/index.ts";
 import { getBoundingBox, querySelector } from "../../utils/index.ts";
@@ -8,11 +9,11 @@ import { omit, merge } from 'solid-js';
 export type PopupProps = {
     readonly anchor?: Element | string;
     readonly arrow?: boolean;
-    readonly children?: ReactNode;
+    readonly children?: JSX.Element;
     readonly position?: FloatingPosition;
     readonly offset?: number;
 } & MouseProps;
-export function Popup(solidAllProps: PopupProps): ReactNode {
+export function Popup(solidAllProps: PopupProps): JSX.Element {
     const solidMergedProps = merge(solidAllProps, { get arrow() { return solidAllProps.arrow ?? true; }, get offset() { return solidAllProps.offset ?? 20; } });
     const solidLocal = solidMergedProps, props = omit(solidMergedProps, "anchor", "arrow", "children", "position", "offset");
     const rootRef = useRef<HTMLDivElement>(null);

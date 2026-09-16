@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { wordListStats } from "@keybr/content";
 import { useIntlNumbers } from "@keybr/intl";
 import { lessonProps, type WordListLesson } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { createMemo } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
@@ -12,7 +13,7 @@ import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
 export function WordListLessonSettings(solidProps: {
     readonly lesson: WordListLesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>
       <Explainer>
@@ -35,7 +36,7 @@ export function WordListLessonSettings(solidProps: {
 }
 function WordListPreview(solidProps: {
     readonly lesson: WordListLesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>
@@ -64,7 +65,7 @@ function WordListPreview(solidProps: {
 }
 function WordListStats(solidProps: {
     readonly lesson: WordListLesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const stats = createMemo(() => wordListStats(solidProps.lesson.wordList));

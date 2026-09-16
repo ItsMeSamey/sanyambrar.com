@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { type LearningRate, type LessonKey, Target } from "@keybr/lesson";
 import { useFormatter } from "@keybr/lesson-ui";
 import { Range } from "@keybr/math";
 import { useSettings } from "@keybr/settings";
 import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
@@ -14,7 +15,7 @@ import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeyDetailsChart(solidProps: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.lessonKey, () => solidProps.learningRate);
     return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;

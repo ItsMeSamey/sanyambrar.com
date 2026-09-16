@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { CircleAlert, CircleCheck, Info, } from "../../icons.ts";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { Icon } from "../icon/index.ts";
 export function SeverityIcon(solidProps: {
     readonly severity: "info" | "success" | "error" | null;
-}): ReactNode {
+}): JSX.Element {
     switch (solidProps.severity) {
         case "info":
             return <InfoIcon />;
@@ -15,12 +16,12 @@ export function SeverityIcon(solidProps: {
             return null;
     }
 }
-export function InfoIcon(): ReactNode {
+export function InfoIcon(): JSX.Element {
     return <Icon shape={Info}/>;
 }
-export function SuccessIcon(): ReactNode {
+export function SuccessIcon(): JSX.Element {
     return <Icon shape={CircleCheck}/>;
 }
-export function ErrorIcon(): ReactNode {
+export function ErrorIcon(): JSX.Element {
     return <Icon shape={CircleAlert}/>;
 }

@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function KeyboardOrderProp(): ReactNode {
+export function KeyboardOrderProp(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<>

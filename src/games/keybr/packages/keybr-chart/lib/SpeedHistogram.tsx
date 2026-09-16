@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { useFormatter } from "@keybr/lesson-ui";
 import { type Distribution, Range, Vector } from "@keybr/math";
 import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { reactivePaint } from "./reactive-paint.ts";
@@ -13,7 +14,7 @@ export type SpeedThreshold = Readonly<{ label: string; value: number }>;
 export function SpeedHistogram(props: {
   readonly distribution: Distribution;
   readonly thresholds: readonly SpeedThreshold[];
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
   const styles = useChartStyles();
   const paint = usePaint(styles, () => props.distribution, () => props.thresholds);
   return (

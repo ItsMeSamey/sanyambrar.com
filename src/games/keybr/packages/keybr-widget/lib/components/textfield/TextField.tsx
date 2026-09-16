@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode, useEffect, useImperativeHandle, useRef, } from "@keybr/solid-compat/react";
+import { useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./TextField.module.css";
 import { type TextFieldProps } from "./TextField.types.ts";
 import { omit, merge } from 'solid-js';
-export function TextField(solidAllProps: TextFieldProps): ReactNode {
+export function TextField(solidAllProps: TextFieldProps): JSX.Element {
     const solidMergedProps = merge(solidAllProps, { get type() { return solidAllProps.type ?? "text"; } });
     const solidLocal = solidMergedProps, props = omit(solidMergedProps, "disabled", "error", "maxLength", "name", "placeholder", "readOnly", "ref", "rows", "size", "tabIndex", "title", "type", "value", "onChange", "onInput");
     const element = useRef<HTMLTextAreaElement | HTMLInputElement>(null);

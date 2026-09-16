@@ -1,4 +1,5 @@
-import { createContext, type ReactElement, type ReactNode, useContext, } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import { createContext, useContext } from "@keybr/solid-compat/react";
 import { state, type Toast } from "./state.ts";
 export type ToastContextValue = {
     readonly close: () => void;
@@ -8,8 +9,8 @@ export type ToastContextValue = {
 export const ToastContext = createContext<ToastContextValue>(null!);
 export function ToastProvider(solidProps: {
     readonly toast: Toast;
-    readonly render: () => ReactNode;
-}): ReactNode {
+    readonly render: () => JSX.Element;
+}): JSX.Element {
     return (<ToastContext value={{
             close: () => {
                 state.close(solidProps.toast);
@@ -51,8 +52,8 @@ export function toastProps(toast: ToastContextValue) {
     };
 }
 export function ToastWrapper(solidProps: {
-    readonly children: ReactElement;
-}): ReactNode {
+    readonly children: JSX.Element;
+}): JSX.Element {
     // Alert and Award bind toast interactions themselves through useToast().
     // React-style element cloning is not available in Solid and attempting to
     // inspect children.props here breaks because children are already DOM nodes.

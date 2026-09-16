@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { BooksLesson, type Lesson } from "@keybr/lesson";
 import { CurrentKeyRow, KeySetRow } from "@keybr/lesson-ui";
 import { LCG } from "@keybr/rand";
@@ -6,12 +7,12 @@ import { useSettings } from "@keybr/settings";
 import { TextInput, toTextDisplaySettings, toTextInputSettings, } from "@keybr/textinput";
 import { StaticText } from "@keybr/textinput-ui";
 import { FieldSet } from "@keybr/widget";
-import { type ReactNode, useMemo } from "@keybr/solid-compat/react";
+import { useMemo } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./LessonPreview.module.css";
 export function LessonPreview(solidProps: {
     readonly lesson: Lesson;
-}): ReactNode {
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();
     const { results } = useResults();

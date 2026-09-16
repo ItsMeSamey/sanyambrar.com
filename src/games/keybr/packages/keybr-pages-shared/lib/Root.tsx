@@ -1,7 +1,7 @@
-import { type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
 export function Root(solidProps: {
-    readonly children?: ReactNode;
-}): ReactNode {
+    readonly children?: JSX.Element;
+}): JSX.Element {
     return <div id="keybr-root">{solidProps.children}</div>;
 }
 Root.selector = "#keybr-root";

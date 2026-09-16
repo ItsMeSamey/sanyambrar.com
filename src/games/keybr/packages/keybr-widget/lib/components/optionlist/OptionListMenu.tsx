@@ -1,5 +1,6 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode, useEffect, useRef } from "@keybr/solid-compat/react";
+import { useEffect, useRef } from "@keybr/solid-compat/react";
 import { ensureVisible } from "../../utils/index.ts";
 import * as iconStyles from "../icon/Icon.module.css";
 import { type OptionListOption } from "./OptionList.types.ts";
@@ -8,7 +9,7 @@ export function OptionListMenu(solidProps: {
     readonly options: readonly OptionListOption[];
     readonly selectedOption: OptionListOption;
     readonly onSelect: (value: OptionListOption) => void;
-}): ReactNode {
+}): JSX.Element {
     const list = useRef<HTMLUListElement>();
     const item = useRef<HTMLLIElement>();
     useEffect(() => {
