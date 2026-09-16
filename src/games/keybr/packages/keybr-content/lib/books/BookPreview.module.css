@@ -1,5 +1,8 @@
 .root {
   display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
   margin-inline: 0;
   margin-block: 1rem;
   padding-inline: 1rem;
@@ -12,6 +15,28 @@
 }
 
 .details {
+  min-inline-size: 0;
   flex: 1;
   margin-inline-start: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.details span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .root {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .coverImage {
+    max-inline-size: 100%;
+  }
+  .details {
+    inline-size: 100%;
+    margin-inline-start: 0;
+    margin-block-start: 1rem;
+  }
 }
