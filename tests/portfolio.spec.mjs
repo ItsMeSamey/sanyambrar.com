@@ -17,7 +17,8 @@ const test = base.extend({
 });
 
 async function visit(page, route, info) {
-  const port = info.project.metadata.development ? route.startsWith('/wordle') ? 4321 : route.startsWith('/keybr') ? 4322 : 4320 : 4319;
+  const metadata = info.project.metadata;
+  const port = metadata.development ? route.startsWith('/wordle') ? metadata.wordlePort : route.startsWith('/keybr') ? metadata.keybrPort : metadata.sitePort : metadata.port;
   await page.goto(`http://127.0.0.1:${port}${route}`, { waitUntil: 'networkidle' });
   await expect(page.locator('body')).not.toContainText(/Something's Gone Horridly Wrong|Oh no, something bad|This view failed to render|Editor failed to load/);
 }
@@ -234,4 +235,71 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   await expect(page.locator('body')).toContainText(/Speed:\s*[1-9]\d*\.\d+wpm/);
   await page.reload({ waitUntil: 'networkidle' });
   await expect.poll(savedResults).toBe(1);
+});
+
+test('Keybr settings and book library stay contained at extreme narrow widths', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 720, height: 1000 });
+  await visit(page, '/keybr.html?p=settings', info);
+
+  const expectContained = async (width, height) => {
+    await page.setViewportSize({ width, height });
+    await expect.poll(() => page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      viewportWidth: innerWidth,
+      segmentOverflow: [...document.querySelectorAll('.keybr-segmented')]
+        .filter(element => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        })
+        .some(element => element.scrollWidth > element.clientWidth + 1),
+    })), { message: `Keybr layout must stay contained at ${width}x${height}` }).toEqual({
+      documentWidth: width,
+      bodyWidth: width,
+      viewportWidth: width,
+      segmentOverflow: false,
+    });
+  };
+
+  for (const label of ['Guided lessons', 'Common words', 'Books', 'Custom text', 'Source code', 'Numbers']) {
+    await page.setViewportSize({ width: 720, height: 1000 });
+    await page.getByRole('radio', { name: label, exact: true }).click();
+    await expectContained(180, 1000);
+    await expectContained(240, 900);
+  }
+
+  await page.setViewportSize({ width: 720, height: 1000 });
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose book', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expectContained(180, 1000);
+  await expectContained(240, 900);
+  await page.getByPlaceholder('Title or author').fill('gatsby');
+  await expect(page.getByText('The Great Gatsby', { exact: true })).toBeVisible();
+});
+
+test('Keybr tutorial advances through its content and closes cleanly', async ({ page }, info) => {
+  await page.setViewportSize({ width: 180, height: 1000 });
+  await visit(page, '/keybr.html', info);
+  const portal = page.locator('#keybr-portal');
+  let slides = 0;
+  while (slides < 12 && await page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))) {
+    slides += 1;
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Tutorial must not widen the page').toBe(true);
+    const next = portal.getByText('Next', { exact: true });
+    if (await next.count()) {
+      await next.click();
+      continue;
+    }
+    const close = portal.getByText('Close', { exact: true });
+    if (await close.count()) {
+      await close.click();
+      continue;
+    }
+    throw new Error(`Tutorial slide ${slides} has no Next or Close action`);
+  }
+  expect(slides, 'Tutorial should not terminate before its known introductory content').toBeGreaterThanOrEqual(4);
+  await expect.poll(() => page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))).toBe(false);
 });
