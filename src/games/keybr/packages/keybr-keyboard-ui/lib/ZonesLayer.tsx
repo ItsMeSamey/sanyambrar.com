@@ -2,9 +2,9 @@ import type { JSX } from "@solidjs/web";
 import { createMemo } from "solid-js";
 import { type KeyShape, useKeyboard, type ZoneId } from "@keybr/keyboard";
 import { type Point } from "@keybr/widget";
-import { memo } from "@keybr/solid-compat/react";
+
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const ZonesLayer = memo(function ZonesLayer(): JSX.Element {
+export const ZonesLayer = function ZonesLayer(): JSX.Element {
     const keyboard = useKeyboard();
     const findHomingKey = (zone: ZoneId): KeyShape | null => {
         for (const shape of keyboard.shapes.values()) {
@@ -15,13 +15,13 @@ export const ZonesLayer = memo(function ZonesLayer(): JSX.Element {
         return null;
     };
     const hands = createMemo(() => {
-      const left = findHomingKey("left") ?? keyboard.getShape("KeyF");
-      const right = findHomingKey("right") ?? keyboard.getShape("KeyJ");
-      return left && right ? <Surface><LeftHand center={getKeyCenter(left)} /><RightHand center={getKeyCenter(right)} /></Surface> : null;
+        const left = findHomingKey("left") ?? keyboard.getShape("KeyF");
+        const right = findHomingKey("right") ?? keyboard.getShape("KeyJ");
+        return left && right ? <Surface><LeftHand center={getKeyCenter(left)}/><RightHand center={getKeyCenter(right)}/></Surface> : null;
     });
     return <>{hands()}</>;
-});
-const LeftHand = memo(function LeftHand(props: {
+};
+const LeftHand = function LeftHand(props: {
     center: Point;
 }): JSX.Element {
     return (<svg x={props.center.x} y={props.center.y} overflow="visible">
@@ -63,8 +63,8 @@ const LeftHand = memo(function LeftHand(props: {
       <path d="m26.468 104.85c3.81-14.66 2.19-25.5 1.71-31.63l-.02-.17-.07-1.16a16.8 16.8 0 00-2.5.2h-.02c1.41 17.63-.02 21.84-.37 26.72-.19 2.73-.45 4.3-.63 5.65.67.23 1.3.39 1.87.5z" fill="#eebc84"/>
       <path d="m22.938 89.3c.5-1.64.13-9.93-.06-16.36a15.12 15.12 0 00-3.6 2.6c.02 8.83.48 24.23 3.66 13.76z" fill="#ffe5cf"/>
     </svg>);
-});
-const RightHand = memo(function RightHand(props: {
+};
+const RightHand = function RightHand(props: {
     center: Point;
 }): JSX.Element {
     return (<svg x={props.center.x} y={props.center.y} overflow="visible">
@@ -107,4 +107,4 @@ const RightHand = memo(function RightHand(props: {
       <path d="m121.55-6.8494c-2.63-1.33-6.54 2.52-5.8 4.69 1.04 3.13 10.06 8.95 11.68 9.82 1.63.87 5.23 1.28 5.72-1.4.48-2.66-6-10.27-11.6-13.1z" fill="#eadbc5"/>
       <path d="m116.82-5.2394c-.87.99-1.38 2.18-1.08 3.08 1.05 3.13 10.07 8.95 11.69 9.82 1 .52 2.72.88 4.03.48-7.11-2.08-12.66-9.52-14.65-13.38z" fill="#dbb793"/>
     </svg>);
-});
+};

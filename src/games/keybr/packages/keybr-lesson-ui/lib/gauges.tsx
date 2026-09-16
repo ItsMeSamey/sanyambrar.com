@@ -3,12 +3,12 @@ import { useIntlNumbers } from "@keybr/intl";
 import { type SummaryStats } from "@keybr/result";
 import { type ClassName, Name, Value } from "@keybr/widget";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { useFormatter } from "./format.ts";
 import * as styles from "./gauges.module.css";
 import { type Names } from "./names.ts";
-export const GaugeList = memo(function GaugeRow(solidProps: {
+export const GaugeList = function GaugeRow(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -17,8 +17,8 @@ export const GaugeList = memo(function GaugeRow(solidProps: {
       <AccuracyGauge summaryStats={solidProps.summaryStats} names={solidProps.names}/>
       <ScoreGauge summaryStats={solidProps.summaryStats} names={solidProps.names}/>
     </div>);
-});
-export const SpeedGauge = memo(function SpeedGauge(solidProps: {
+};
+export const SpeedGauge = function SpeedGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -36,8 +36,8 @@ export const SpeedGauge = memo(function SpeedGauge(solidProps: {
             id: "metric.speed.description",
             defaultMessage: "Typing speed in the last lesson.",
         })}/>);
-});
-export const AccuracyGauge = memo(function AccuracyGauge(solidProps: {
+};
+export const AccuracyGauge = function AccuracyGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -55,8 +55,8 @@ export const AccuracyGauge = memo(function AccuracyGauge(solidProps: {
             id: "metric.accuracy.description",
             defaultMessage: "The percentage of characters typed without errors in the last lesson.",
         })}/>);
-});
-export const ScoreGauge = memo(function ScoreGauge(solidProps: {
+};
+export const ScoreGauge = function ScoreGauge(solidProps: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -75,8 +75,8 @@ export const ScoreGauge = memo(function ScoreGauge(solidProps: {
             defaultMessage: "Score of the last lesson in abstract points. " +
                 "Scores are greater when you type faster and with fewer errors.",
         })}/>);
-});
-export const Gauge = memo(function Gauge(solidProps: {
+};
+export const Gauge = function Gauge(solidProps: {
     id?: string;
     className?: ClassName;
     name: JSX.Element;
@@ -87,7 +87,7 @@ export const Gauge = memo(function Gauge(solidProps: {
     return (<span id={solidProps.id} class={clsx(styles.gauge, solidProps.className)} title={solidProps.title}>
       {solidProps.name} {solidProps.value} ({solidProps.delta})
     </span>);
-});
+};
 function signed(value: string, delta: number): string {
     const s = String(value);
     if (delta > 0) {

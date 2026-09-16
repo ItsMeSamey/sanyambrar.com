@@ -2,10 +2,10 @@ import type { JSX } from "@solidjs/web";
 import { type KeyShape, useKeyboard } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import * as styles from "./HeatmapLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
+export const HeatmapLayer = function HeatmapLayer(solidProps: {
     readonly histogram: Iterable<readonly [
         codePoint: CodePoint,
         f: number
@@ -72,7 +72,7 @@ export const HeatmapLayer = memo(function HeatmapLayer(solidProps: {
             }
         }
     }
-});
+};
 export function* flatten(histogram: Iterable<readonly [
     {
         readonly codePoint: CodePoint;

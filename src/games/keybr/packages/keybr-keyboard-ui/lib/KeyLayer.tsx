@@ -1,9 +1,8 @@
 import { type Keyboard, type KeyId, useKeyboard } from "@keybr/keyboard";
-import { memo, useMemo, useRef } from "@keybr/solid-compat/react";
+import { useMemo, useRef } from "@keybr/solid-compat/react";
 import { makeKeyComponent } from "./Key.tsx";
 import { Surface } from "./shapes.tsx";
-
-export const KeyLayer = memo(function KeyLayer(props: {
+export const KeyLayer = function KeyLayer(props: {
     readonly depressedKeys?: readonly KeyId[];
     readonly toggledKeys?: readonly KeyId[];
     readonly showColors?: boolean;
@@ -21,16 +20,9 @@ export const KeyLayer = memo(function KeyLayer(props: {
         }} onClick={(event) => {
             relayEvent(svgRef.current!, event, props.onKeyClick);
         }}>
-      {keys.map(({ shape, Component }) => (
-        <Component
-          depressed={(props.depressedKeys ?? []).includes(shape.id)}
-          toggled={(props.toggledKeys ?? []).includes(shape.id)}
-          showColors={props.showColors ?? false}
-        />
-      ))}
+      {keys.map(({ shape, Component }) => (<Component depressed={(props.depressedKeys ?? []).includes(shape.id)} toggled={(props.toggledKeys ?? []).includes(shape.id)} showColors={props.showColors ?? false}/>))}
     </Surface>);
-});
-
+};
 function relayEvent(root: Element, { target }: {
     readonly target: EventTarget | null;
 }, handler?: (key: KeyId, elem: Element) => void) {
@@ -43,7 +35,6 @@ function relayEvent(root: Element, { target }: {
         target = target.parentElement;
     }
 }
-
 function getKeyElements(keyboard: Keyboard) {
     return [...keyboard.shapes.values()].map((shape) => ({
         shape,

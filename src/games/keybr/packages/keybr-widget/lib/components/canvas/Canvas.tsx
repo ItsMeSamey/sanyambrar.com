@@ -1,9 +1,9 @@
-import { memo, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import { type CanvasProps } from "./Canvas.types.ts";
 import { Graphics } from "./graphics.ts";
 import { createSignal, onSettled, omit } from 'solid-js';
-export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
+export const Canvas = function Canvas(solidAllProps: CanvasProps) {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "className", "id", "paint", "ref", "style", "title", "onResize");
     const element = useRef<HTMLCanvasElement>(null);
     const size = useElementSize(element);
@@ -63,4 +63,4 @@ export const Canvas = memo(function Canvas(solidAllProps: CanvasProps) {
             "block-size": "100%",
             ...solidLocal.style,
         }} title={solidLocal.title}/>);
-});
+};

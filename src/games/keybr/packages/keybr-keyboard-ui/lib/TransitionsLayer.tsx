@@ -2,10 +2,10 @@ import type { JSX } from "@solidjs/web";
 import { type KeyShape, useKeyboard } from "@keybr/keyboard";
 import { type CodePoint } from "@keybr/unicode";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import { getKeyCenter, Surface } from "./shapes.tsx";
 import * as styles from "./TransitionsLayer.module.css";
-export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
+export const TransitionsLayer = function TransitionsLayer(solidProps: {
     readonly histogram: Iterable<readonly [
         CodePoint,
         CodePoint,
@@ -85,7 +85,7 @@ export const TransitionsLayer = memo(function TransitionsLayer(solidProps: {
         const Y2 = y1 - Math.sin(theta) * t;
         return (<path class={clsx(styles.arc, modifierStyle(solidProps.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
     }
-});
+};
 function modifierStyle(m: "h" | "m" | "f") {
     switch (m) {
         case "h":

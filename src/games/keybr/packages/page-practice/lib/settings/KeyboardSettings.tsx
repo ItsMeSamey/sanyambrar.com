@@ -7,7 +7,7 @@ import { useSettings } from "@keybr/settings";
 import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
-import { memo, useEffect, useState } from "@keybr/solid-compat/react";
+import { useEffect, useState } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 export function KeyboardSettings(): JSX.Element {
     const { formatMessage } = useIntl();
@@ -73,17 +73,11 @@ function LayoutProp(): JSX.Element {
       </FieldList>
       <FieldList>
         <Field>
-          <SegmentedControl
-            label="Keyboard emulation"
-            disabled={!options().layout.emulate}
-            value={settings.get(keyboardProps.emulation)}
-            options={[
-              { value: Emulation.None, label: "System" },
-              { value: Emulation.Forward, label: "Emulate layout" },
-              { value: Emulation.Reverse, label: "Hardware layout" },
-            ]}
-            onChange={(value) => updateSettings(settings.set(keyboardProps.emulation, value))}
-          />
+          <SegmentedControl label="Keyboard emulation" disabled={!options().layout.emulate} value={settings.get(keyboardProps.emulation)} options={[
+            { value: Emulation.None, label: "System" },
+            { value: Emulation.Forward, label: "Emulate layout" },
+            { value: Emulation.Reverse, label: "Hardware layout" },
+        ]} onChange={(value) => updateSettings(settings.set(keyboardProps.emulation, value))}/>
         </Field>
       </FieldList>
       <Explainer>
@@ -162,7 +156,7 @@ function GeometryProp(): JSX.Element {
       </Explainer>
     </>);
 }
-const KeyboardPreview = memo(function KeyboardPreview(): JSX.Element {
+const KeyboardPreview = function KeyboardPreview(): JSX.Element {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
     const depressedKeys = useDepressedKeys(settings, keyboard);
@@ -170,8 +164,8 @@ const KeyboardPreview = memo(function KeyboardPreview(): JSX.Element {
       <KeyLayer depressedKeys={depressedKeys} toggledKeys={ModifierState.modifiers} showColors={settings.get(keyboardProps.colors)}/>
       {settings.get(keyboardProps.pointers) && <PointersPreview />}
     </VirtualKeyboard>);
-});
-const PointersPreview = memo(function PointersPreview(): JSX.Element {
+};
+const PointersPreview = function PointersPreview(): JSX.Element {
     const keyboard = useKeyboard();
     const [index, setIndex] = useState(0);
     const [suffix, setSuffix] = useState<CodePoint[]>([]);
@@ -193,4 +187,4 @@ const PointersPreview = memo(function PointersPreview(): JSX.Element {
         };
     }, () => [index(), suffix()]);
     return <PointersLayer suffix={suffix().slice(index())} delay={10}/>;
-});
+};

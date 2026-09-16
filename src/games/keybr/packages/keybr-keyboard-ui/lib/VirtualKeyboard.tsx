@@ -2,11 +2,11 @@ import type { JSX } from "@solidjs/web";
 import { liveObject } from "@keybr/solid-compat/live";
 import { type Keyboard, KeyboardContext } from "@keybr/keyboard";
 import { type ZoomableProps } from "@keybr/widget";
-import { memo } from "@keybr/solid-compat/react";
+
 import { getFrameSize } from "./shapes.tsx";
 import * as styles from "./VirtualKeyboard.module.css";
 import { createMemo, omit } from 'solid-js';
-export const VirtualKeyboard = memo(function VirtualKeyboard(solidAllProps: {
+export const VirtualKeyboard = function VirtualKeyboard(solidAllProps: {
     readonly children?: JSX.Element;
     readonly keyboard: Keyboard;
     readonly width?: string;
@@ -22,4 +22,4 @@ export const VirtualKeyboard = memo(function VirtualKeyboard(solidAllProps: {
         {solidLocal.children}
       </KeyboardContext>
     </svg>);
-});
+};
