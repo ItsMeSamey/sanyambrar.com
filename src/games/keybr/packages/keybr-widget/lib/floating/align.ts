@@ -129,23 +129,22 @@ export function alignToAnchor(
   }
 
   if (shift) {
-    // Shift the floating element to keep it in view.
-    switch (side) {
-      case "block-start":
-      case "block-end":
-        // Adjust the right margin.
-        left = Math.min(left, screenSize.width - width - screenMargin);
-        // Adjust the left margin.
-        left = Math.max(left, screenMargin);
-        break;
-      case "inline-start":
-      case "inline-end":
-        // Adjust the bottom margin.
-        top = Math.min(top, screenSize.height - height - screenMargin);
-        // Adjust the top margin.
-        top = Math.max(top, screenMargin);
-        break;
-    }
+    const inlineMargin = Math.min(
+      screenMargin,
+      Math.max(0, (screenSize.width - width) / 2),
+    );
+    const blockMargin = Math.min(
+      screenMargin,
+      Math.max(0, (screenSize.height - height) / 2),
+    );
+    left = Math.max(
+      inlineMargin,
+      Math.min(left, screenSize.width - width - inlineMargin),
+    );
+    top = Math.max(
+      blockMargin,
+      Math.min(top, screenSize.height - height - blockMargin),
+    );
   }
 
   return [
