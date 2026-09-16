@@ -1,3 +1,4 @@
+import { createSignal } from 'solid-js';
 import { makeSpeedDistribution, SpeedHistogram } from "@keybr/chart";
 import { useIntlNumbers } from "@keybr/intl";
 import { type SummaryStats } from "@keybr/result";
@@ -8,7 +9,7 @@ import {
   SegmentedControl,
   Value,
 } from "@keybr/widget";
-import { useState } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 
@@ -18,7 +19,7 @@ export function SpeedHistogramSection(props: { readonly stats: SummaryStats }) {
   const distribution = makeSpeedDistribution();
   const { formatMessage } = useIntl();
   const { formatPercents } = useIntlNumbers();
-  const [period, setPeriod] = useState<Period>("average");
+  const [period, setPeriod] = createSignal<Period>("average");
   const value = () => (period() === "top" ? props.stats.speed.max : props.stats.speed.avg);
   const percentile = () => distribution.cdf(value());
   const threshold = () =>

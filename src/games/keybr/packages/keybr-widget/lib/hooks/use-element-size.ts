@@ -1,4 +1,5 @@
-import { type RefObject, useEffect, useState } from "@keybr/solid-compat/react";
+import { createSignal } from 'solid-js';
+import { type RefObject, useEffect } from "@keybr/solid-compat/react";
 import { getElementSize } from "../utils/geometry.ts";
 import { type Size } from "../utils/size.ts";
 
@@ -30,7 +31,7 @@ export const onElementResize = (element: Element, callback: ElementResizeCallbac
 // size() here would permanently hand callers the initial null snapshot. Keep the
 // signal as an accessor and let callers read it inside their reactive effects.
 export const useElementSize = (ref: RefObject<Element | null>): (() => Size | null) => {
-    const [size, setSize] = useState<Size | null>(null);
+    const [size, setSize] = createSignal<Size | null>(null);
     useEffect(() => {
         const element = ref.current;
         if (element == null) return;

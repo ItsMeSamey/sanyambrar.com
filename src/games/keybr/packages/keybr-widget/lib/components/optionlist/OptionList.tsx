@@ -1,13 +1,13 @@
 import type { JSX } from "@solidjs/web";
-import { useState } from "@keybr/solid-compat/react";
+
 import { useHotkeysHandler } from "../../hooks/use-hotkeys.ts";
 import { type OptionListProps } from "./OptionList.types.ts";
 import { OptionListButton } from "./OptionListButton.tsx";
 import { OptionListMenu } from "./OptionListMenu.tsx";
-import { omit } from 'solid-js';
+import { omit, createSignal } from 'solid-js';
 export function OptionList(solidAllProps: OptionListProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
-    const [focused, setFocused] = useState(false);
+    const [focused, setFocused] = createSignal(false);
     const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(solidLocal);
     return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} size={solidLocal.size} tabIndex={solidLocal.tabIndex} title={solidLocal.title} onBlur={(event) => {
             if (!solidLocal.disabled) {
@@ -48,8 +48,8 @@ function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "va
         value: "",
         name: "-",
     };
-    const [open, setOpen] = useState(false);
-    const [selectedOption, setSelectedOption] = useState(option);
+    const [open, setOpen] = createSignal(false);
+    const [selectedOption, setSelectedOption] = createSignal(option);
     const handleOpen = () => {
         if (props.disabled) {
             return;

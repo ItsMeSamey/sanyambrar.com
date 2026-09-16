@@ -5,8 +5,8 @@ import { hasData } from "@keybr/math";
 import { type KeyStatsMap } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Explainer, Figure, Para } from "@keybr/widget";
-import { useState } from "@keybr/solid-compat/react";
-import { createMemo } from 'solid-js';
+
+import { createMemo, createSignal } from 'solid-js';
 import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
@@ -15,9 +15,9 @@ export function KeySpeedChartSection(solidProps: {
 }) {
     const { settings } = useSettings();
     const letters = () => solidProps.keyStatsMap.letters;
-    const [choice, setCurrent] = useState(() => letters()[0]);
+    const [choice, setCurrent] = createSignal(() => letters()[0]);
     const current = () => letters().includes(choice()) ? choice() : letters()[0];
-    const [smoothness, setSmoothness] = useState(0.5);
+    const [smoothness, setSmoothness] = createSignal(0.5);
     const target = createMemo(() => new Target(settings));
     const keyStats = createMemo(() => solidProps.keyStatsMap.get(current()));
     const samples = () => keyStats().samples;

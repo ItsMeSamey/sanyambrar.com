@@ -1,3 +1,4 @@
+import { createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 import { useCollator } from "@keybr/intl";
 import { Emulation, Geometry, KeyboardOptions, keyboardProps, Language, Layout, useFormattedNames, useKeyboard, ZoneMod, } from "@keybr/keyboard";
@@ -7,7 +8,7 @@ import { useSettings } from "@keybr/settings";
 import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
-import { useEffect, useState } from "@keybr/solid-compat/react";
+import { useEffect } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 export function KeyboardSettings(): JSX.Element {
     const { formatMessage } = useIntl();
@@ -167,8 +168,8 @@ const KeyboardPreview = function KeyboardPreview(): JSX.Element {
 };
 const PointersPreview = function PointersPreview(): JSX.Element {
     const keyboard = useKeyboard();
-    const [index, setIndex] = useState(0);
-    const [suffix, setSuffix] = useState<CodePoint[]>([]);
+    const [index, setIndex] = createSignal(0);
+    const [suffix, setSuffix] = createSignal<CodePoint[]>([]);
     useEffect(() => {
         setIndex(0);
         setSuffix(keyboard.getExampleLetters());

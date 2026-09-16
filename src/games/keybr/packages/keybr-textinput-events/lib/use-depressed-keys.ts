@@ -2,8 +2,8 @@ import { type Keyboard, type KeyId } from "@keybr/keyboard";
 import { type Settings } from "@keybr/settings";
 import { useWindowEvent } from "@keybr/widget";
 import { liveArray } from "@keybr/solid-compat/live";
-import { createMemo } from "solid-js";
-import { useState } from "@keybr/solid-compat/react";
+import { createMemo, createSignal } from 'solid-js';
+
 import { emulateLayout } from "./emulation.ts";
 import { mapEvent } from "./events.ts";
 export function addKey(keys: readonly KeyId[], key: KeyId): KeyId[] {
@@ -17,7 +17,7 @@ export function deleteKey(keys: readonly KeyId[], key: KeyId): KeyId[] {
     return [...set];
 }
 export function useDepressedKeys(settings: Settings, keyboard: Keyboard): readonly KeyId[] {
-    const [depressedKeys, setDepressedKeys] = useState<KeyId[]>([]);
+    const [depressedKeys, setDepressedKeys] = createSignal<KeyId[]>([]);
     const listener = createMemo(() => emulateLayout(settings, keyboard, {
         onKeyDown: ({ code }) => setDepressedKeys(addKey(depressedKeys(), code)),
         onKeyUp: ({ code }) => setDepressedKeys(deleteKey(depressedKeys(), code)),
