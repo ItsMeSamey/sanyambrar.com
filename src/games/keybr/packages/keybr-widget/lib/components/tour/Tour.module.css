@@ -21,3 +21,17 @@
 .prev + .next {
   margin-inline-start: 1rem;
 }
+
+@media (max-width: 480px) {
+  .root {
+    box-sizing: border-box;
+    max-inline-size: 100%;
+    padding-inline: 1rem;
+    padding-block: 2.4rem 1.25rem;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
