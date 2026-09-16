@@ -15,7 +15,7 @@ export function Controller(props: {
 }) {
   const lesson = useLessonState(() => props.progress, () => props.onResult);
   useHotkeys({
-    "Ctrl+ArrowLeft": lesson.handleResetLesson,
+    "Ctrl+ArrowLeft": lesson.handlePreviousLesson,
     "Ctrl+ArrowRight": lesson.handleSkipLesson,
     Escape: lesson.handleResetLesson,
   });
@@ -33,6 +33,7 @@ export function Controller(props: {
       suffix={lesson.suffix()}
       lastLesson={lesson.lastLesson()}
       onResetLesson={lesson.handleResetLesson}
+      onPreviousLesson={lesson.handlePreviousLesson}
       onSkipLesson={lesson.handleSkipLesson}
       onKeyDown={lesson.handleKeyDown}
       onKeyUp={lesson.handleKeyUp}
@@ -69,6 +70,14 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
   const handleResetLesson = () => {
     const value = state();
     value.resetLesson();
+    setLines(value.lines);
+    setDepressedKeys((value.depressedKeys = []));
+    setLastLesson(null);
+    timeout.cancel();
+  };
+  const handlePreviousLesson = () => {
+    const value = state();
+    value.previousLesson();
     setLines(value.lines);
     setDepressedKeys((value.depressedKeys = []));
     setLastLesson(null);
@@ -129,6 +138,7 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     suffix,
     lastLesson,
     handleResetLesson,
+    handlePreviousLesson,
     handleSkipLesson,
     handleReleaseKeys,
     handleKeyDown: (event: Parameters<ReturnType<typeof handlers>["onKeyDown"]>[0]) => handlers().onKeyDown(event),

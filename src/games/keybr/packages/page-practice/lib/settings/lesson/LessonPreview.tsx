@@ -1,4 +1,4 @@
-import { type Lesson } from "@keybr/lesson";
+import { BooksLesson, type Lesson } from "@keybr/lesson";
 import { CurrentKeyRow, KeySetRow } from "@keybr/lesson-ui";
 import { LCG } from "@keybr/rand";
 import { makeKeyStatsMap, useResults } from "@keybr/result";
@@ -17,7 +17,10 @@ export function LessonPreview(solidProps: {
     const { results } = useResults();
     const preview = useMemo(() => {
         const lessonKeys = solidProps.lesson.update(makeKeyStatsMap(solidProps.lesson.letters, solidProps.lesson.filter(results)));
-        const textInput = new TextInput(solidProps.lesson.generate(lessonKeys, LCG(123)), toTextInputSettings(settings));
+        const text = solidProps.lesson instanceof BooksLesson
+            ? solidProps.lesson.generatePreview()
+            : solidProps.lesson.generate(lessonKeys, LCG(123));
+        const textInput = new TextInput(text, toTextInputSettings(settings));
         return { lessonKeys, textInput };
     }, () => [settings, solidProps.lesson, results]);
     return (<FieldSet legend={formatMessage({
