@@ -16,7 +16,6 @@ export const loaderImpl: PhoneticModel.Loader = async (
   if (response.body == null) {
     throw new Error("Cannot load phonetic model: empty response body");
   }
-  const stream = response.body.pipeThrough(new DecompressionStream("gzip"));
-  const body = await new Response(stream).arrayBuffer();
+  const body = await response.arrayBuffer();
   return censor(makePhoneticModel(language, new Uint8Array(body)));
 };

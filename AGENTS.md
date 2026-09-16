@@ -16,3 +16,4 @@
 - Reverb UI mock changes must be checked against a fresh installed-app capture; preserve the Compose dimensions, dynamic-device colors, 1024px noise tile phase, and buffer state styling.
 - Responsive QA must include extreme widths, heights, and aspect ratios, and assert internal segmented-control and overlay geometry; page-level horizontal-overflow checks alone miss malformed wrapping and clipped fixed surfaces.
 - Native popovers need a single owner of native open/close state; do not combine a `popovertarget` auto-open with an effect that calls `showPopover`/`togglePopover` for the same click.
+- Keybr assets are emitted as normal JSON/data files; do not reintroduce custom gzip Vite middleware or browser-side decompression. Hosting owns transport compression.
