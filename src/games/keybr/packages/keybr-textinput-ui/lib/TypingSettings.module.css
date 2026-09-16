@@ -1,7 +1,17 @@
 .exampleText {
   display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   justify-content: center;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   margin-block-end: 1rem;
   padding-block-end: 1rem;
   border-block-end: var(--separator-border);
+}
+
+@media (max-width: 600px) {
+  .exampleText {
+    justify-content: flex-start;
+  }
 }
