@@ -1,6 +1,5 @@
-/* Generated from the original Keybr Less module. */
 .alert {
-  composes: fadeIn from "animations.module.less";
+  composes: fadeIn from "animations.module.css";
   display: flex;
   flex-direction: row;
   gap: 1rem;
