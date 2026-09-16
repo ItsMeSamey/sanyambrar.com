@@ -1,4 +1,4 @@
-import { type IntlShape, useIntl } from "@keybr/solid-compat/intl";
+import { type IntlShape, useIntl } from "./runtime.tsx";
 import { intlMemo } from "./memo.ts";
 export type IntlDisplayNames = {
     formatRegionName(id: string): string;

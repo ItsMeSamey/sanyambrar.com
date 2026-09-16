@@ -2,7 +2,7 @@ import { type DailyGoal as DailyGoalType, type LessonKey, type LessonKeys, } fro
 import { type StreakList as StreakListType, type SummaryStats, } from "@keybr/result";
 import { Name } from "@keybr/widget";
 import { memo } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { CurrentKey } from "./CurrentKey.tsx";
 import { DailyGoal } from "./DailyGoal.tsx";
 import { GaugeList } from "./gauges.tsx";

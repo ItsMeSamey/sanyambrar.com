@@ -1,5 +1,5 @@
-import { type ReactNode } from "@keybr/solid-compat/react";
-export const defaultRichTextElements: Record<string, () => ReactNode> = {
+import { type JSX } from "@solidjs/web";
+export const defaultRichTextElements: Record<string, (...chunks: JSX.Element[]) => JSX.Element> = {
     h1: (...chunks) => <h1>{chunks}</h1>,
     h2: (...chunks) => <h2>{chunks}</h2>,
     h3: (...chunks) => <h3>{chunks}</h3>,

@@ -2,7 +2,7 @@ import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, Range } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 export function LessonLengthProp(): ReactNode {
     const { settings, updateSettings } = useSettings();
     return (<>

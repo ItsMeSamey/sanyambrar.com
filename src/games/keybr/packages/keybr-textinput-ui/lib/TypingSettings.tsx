@@ -4,10 +4,10 @@ import { Settings, useSettings } from "@keybr/settings";
 import { CaretMovementStyle, CaretShapeStyle, Feedback, Font, textDisplayProps, textInputProps, toTextDisplaySettings, WhitespaceStyle, } from "@keybr/textinput";
 import { makeSoundPlayer, PlaySounds, soundProps, SoundTheme, } from "@keybr/textinput-sounds";
 import { Description, Explainer, Field, FieldList, FieldSet, Icon, IconButton, OptionList, Range, SegmentedControl, Toggle, } from "@keybr/widget";
-import { mdiPlayCircleOutline, mdiStopCircleOutline } from "@keybr/solid-compat/mdi";
+import { CirclePlay, CircleStop } from "@keybr/widget";
 import { useEffect, useState } from "@keybr/solid-compat/react";
 import { createMemo } from 'solid-js';
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { AnimatedText } from "./AnimatedText.tsx";
 import * as styles from "./TypingSettings.module.css";
 export function TypingSettings() {
@@ -255,7 +255,7 @@ function SoundThemePreview() {
             tasks.cancelAll();
         };
     }, () => [player, playing()]);
-    return (<IconButton icon={<Icon shape={playing() ? mdiStopCircleOutline : mdiPlayCircleOutline}/>} onClick={() => {
+    return (<IconButton icon={<Icon shape={playing() ? CircleStop : CirclePlay}/>} onClick={() => {
             setPlaying(!playing());
         }}/>);
 }

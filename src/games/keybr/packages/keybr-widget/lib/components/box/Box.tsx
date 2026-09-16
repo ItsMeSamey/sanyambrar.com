@@ -1,5 +1,5 @@
 import "./Box.module.css";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { Dynamic } from '@solidjs/web';
 import { type BoxProps } from "./Box.types.ts";

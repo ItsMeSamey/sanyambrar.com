@@ -1,5 +1,5 @@
 import { type MouseProps } from "@keybr/widget";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
 import { omit, merge } from 'solid-js';

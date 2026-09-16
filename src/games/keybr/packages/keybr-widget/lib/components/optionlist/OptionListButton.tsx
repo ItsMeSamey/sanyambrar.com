@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode, useRef } from "@keybr/solid-compat/react";
 import { sizeClassName, type SizeName } from "../../styles/index.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";

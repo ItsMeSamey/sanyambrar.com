@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode, useEffect, useRef } from "@keybr/solid-compat/react";
 import { ensureVisible } from "../../utils/index.ts";
 import * as iconStyles from "../icon/Icon.module.css";

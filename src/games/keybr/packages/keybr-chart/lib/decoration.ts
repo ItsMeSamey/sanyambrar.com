@@ -1,6 +1,6 @@
 import { type Range } from "@keybr/math";
 import { type GraphicsStyle, type Rect, type ShapeList, Shapes, } from "@keybr/widget";
-import { type MessageDescriptor } from "@keybr/solid-compat/intl";
+import { type MessageDescriptor } from "@keybr/intl";
 import { hBoxes, hTicks, vBoxes, vTicks } from "./geometry.ts";
 import { type ChartStyles } from "./use-chart-styles.ts";
 export type Edge = "left" | "right" | "top" | "bottom";

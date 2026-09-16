@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactElement, type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./NameValue.module.css";
 import { type NameProps, type NameValueProps, type ValueProps, } from "./NameValue.types.ts";

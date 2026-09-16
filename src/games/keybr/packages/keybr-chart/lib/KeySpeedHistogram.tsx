@@ -3,7 +3,7 @@ import { hasData, Histogram, KeySet, Range } from "@keybr/math";
 import { type KeyStatsMap, timeToSpeed } from "@keybr/result";
 import { type Rect, type ShapeList } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";

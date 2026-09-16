@@ -1,4 +1,4 @@
-import { type IntlShape } from "@keybr/solid-compat/intl";
+import { type IntlShape } from "./runtime.tsx";
 export const intlMemo = <T>(factory: (intl: IntlShape) => T) => {
     const cache = new WeakMap<IntlShape, T>();
     return (intl: IntlShape): T => {

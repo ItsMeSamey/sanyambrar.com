@@ -3,10 +3,10 @@ import { lessonProps } from "@keybr/lesson";
 import { useFormatter } from "@keybr/lesson-ui";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, Icon, IconButton, Range, Value, } from "@keybr/widget";
-import { mdiSkipNext, mdiSkipPrevious } from "@keybr/solid-compat/mdi";
+import { SkipForward, SkipBack } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
+import { FormattedMessage } from "@keybr/intl";
 export function TargetSpeedProp(): ReactNode {
     const { formatSpeed } = useFormatter();
     const { locale } = useIntl();
@@ -25,10 +25,10 @@ export function TargetSpeedProp(): ReactNode {
         </Field>
         <Field>
           <span style={{ display: "contents" }}>
-            <IconButton icon={<Icon shape={rtl ? mdiSkipNext : mdiSkipPrevious}/>} disabled={targetSpeed() === lessonProps.targetSpeed.min} onClick={() => {
+            <IconButton icon={<Icon shape={rtl ? SkipForward : SkipBack}/>} disabled={targetSpeed() === lessonProps.targetSpeed.min} onClick={() => {
             updateSettings(settings.set(lessonProps.targetSpeed, Math.ceil(targetSpeed() / 5) * 5 - 5));
         }}/>
-            <IconButton icon={<Icon shape={rtl ? mdiSkipPrevious : mdiSkipNext}/>} disabled={targetSpeed() === lessonProps.targetSpeed.max} onClick={() => {
+            <IconButton icon={<Icon shape={rtl ? SkipBack : SkipForward}/>} disabled={targetSpeed() === lessonProps.targetSpeed.max} onClick={() => {
             updateSettings(settings.set(lessonProps.targetSpeed, Math.floor(targetSpeed() / 5) * 5 + 5));
         }}/>
           </span>

@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import {
   type ReactNode,
   useImperativeHandle,

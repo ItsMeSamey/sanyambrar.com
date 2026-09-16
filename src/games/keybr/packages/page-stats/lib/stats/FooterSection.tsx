@@ -1,9 +1,9 @@
 import { Result, useResults } from "@keybr/result";
 import { resultFromJson, resultToJson } from "@keybr/result-io";
 import { Button, ErrorAlert, Field, FieldList, Icon } from "@keybr/widget";
-import { mdiDeleteForever, mdiDownload, mdiUpload } from "@keybr/solid-compat/mdi";
+import { Trash2, Download, Upload } from "@keybr/widget";
 import { useRef } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import * as styles from "./FooterSection.module.css";
 
 export function FooterSection() {
@@ -23,7 +23,7 @@ export function FooterSection() {
       <div class={styles.footer}>
         <FieldList>
           <Field>
-            <Button size={16} icon={<Icon shape={mdiDownload}/>} label={formatMessage({
+            <Button size={16} icon={<Icon shape={Download}/>} label={formatMessage({
                 id: "t_Download_data",
                 defaultMessage: "Download data",
             })} title={formatMessage({
@@ -32,11 +32,11 @@ export function FooterSection() {
             })} onClick={handleDownloadData}/>
           </Field>
           <Field>
-            <Button size={16} icon={<Icon shape={mdiUpload}/>} label="Upload data" title="Merge typing data from a JSON export. Exact duplicate results are skipped." onClick={() => uploadRef.current?.click()}/>
+            <Button size={16} icon={<Icon shape={Upload}/>} label="Upload data" title="Merge typing data from a JSON export. Exact duplicate results are skipped." onClick={() => uploadRef.current?.click()}/>
           </Field>
           <Field.Filler />
           <Field>
-            <Button size={16} icon={<Icon shape={mdiDeleteForever}/>} label={formatMessage({
+            <Button size={16} icon={<Icon shape={Trash2}/>} label={formatMessage({
                 id: "t_Reset_statistics",
                 defaultMessage: "Reset statistics",
             })} title={formatMessage({

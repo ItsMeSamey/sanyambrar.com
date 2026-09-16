@@ -1,6 +1,6 @@
 import { Key } from "@keybr/lesson-ui";
 import { Award, toast } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
 import { type LessonEvent } from "./event-types.ts";
 export function EventAlert(solidProps: {

@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./LinkButton.module.css";

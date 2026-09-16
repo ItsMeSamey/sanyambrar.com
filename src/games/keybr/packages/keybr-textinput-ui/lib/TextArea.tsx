@@ -1,7 +1,7 @@
 import { type LineList, type TextDisplaySettings } from "@keybr/textinput";
 import { type IInputEvent, type IKeyboardEvent, ModifierState, TextEvents } from "@keybr/textinput-events";
 import { type Focusable, useHotkeys, useWindowEvent, type ZoomableProps } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { type ComponentType, type RefObject } from "@keybr/solid-compat/react";
 import { createEffect, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';

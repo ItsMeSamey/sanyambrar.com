@@ -8,7 +8,7 @@ import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";
 import { type ReactNode, useState } from "@keybr/solid-compat/react";
 import { createMemo } from 'solid-js';
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 export function ResultGrouper(solidProps: {
     children: (keyStatsMap: KeyStatsMap) => ReactNode;
     actions?: ReactNode;

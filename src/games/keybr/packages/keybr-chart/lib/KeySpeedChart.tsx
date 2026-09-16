@@ -6,7 +6,7 @@ import { type KeySample, timeToSpeed } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";

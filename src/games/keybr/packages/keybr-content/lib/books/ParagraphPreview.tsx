@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { memo, type ReactNode } from "@keybr/solid-compat/react";
 import { createMemo, For } from 'solid-js';
 import * as styles from "./ParagraphPreview.module.css";

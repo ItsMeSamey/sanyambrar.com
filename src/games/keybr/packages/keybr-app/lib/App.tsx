@@ -9,7 +9,7 @@ import { PortalContainer, Toaster } from "@keybr/widget";
 import { createEffect, createSignal, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { render } from '@solidjs/web';
-import { type IntlShape, RawIntlProvider } from "@keybr/solid-compat/intl";
+import { type IntlShape, RawIntlProvider } from "@keybr/intl";
 
 export function main(): void {
   const element = document.getElementById("app");

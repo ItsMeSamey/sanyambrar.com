@@ -1,7 +1,7 @@
 import { useIntlNumbers } from "@keybr/intl";
 import { type StreakList as StreakListType } from "@keybr/result";
 import { type ClassName, styleTextTruncate, Value } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 export const StreakList = (solidProps: {
     id?: string;
     className?: ClassName;

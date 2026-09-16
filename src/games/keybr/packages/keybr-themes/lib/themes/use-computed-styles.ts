@@ -1,6 +1,6 @@
 import { parseColor } from "@keybr/color";
 import { type GraphicsStyle } from "@keybr/widget";
-import { type ClassValue, clsx } from "@keybr/solid-compat/clsx";
+import { type ClassValue, clsx } from "clsx";
 import { useMemo } from "@keybr/solid-compat/react";
 import { useTheme } from "./context.ts";
 import { useDynamicStyles } from "./dynamic-styles-context.tsx";

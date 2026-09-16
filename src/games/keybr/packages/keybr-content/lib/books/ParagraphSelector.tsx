@@ -1,8 +1,8 @@
 import { getDir } from "@keybr/intl";
 import { Field, FieldList, Icon, IconButton, Range } from "@keybr/widget";
-import { mdiSkipNext, mdiSkipPrevious } from "@keybr/solid-compat/mdi";
+import { SkipForward, SkipBack } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { useIntl } from "@keybr/solid-compat/intl";
+import { useIntl } from "@keybr/intl";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
 export function ParagraphSelector(solidProps: {
     readonly paragraphs: readonly string[];
@@ -21,12 +21,12 @@ export function ParagraphSelector(solidProps: {
       </Field>
       <Field>
         <span style={{ display: "contents" }}>
-          <IconButton icon={<Icon shape={rtl ? mdiSkipNext : mdiSkipPrevious}/>} disabled={solidProps.paragraphIndex === 0} onClick={() => {
+          <IconButton icon={<Icon shape={rtl ? SkipForward : SkipBack}/>} disabled={solidProps.paragraphIndex === 0} onClick={() => {
             if (solidProps.paragraphIndex > 0) {
                 solidProps.onChange(solidProps.paragraphIndex - 1);
             }
         }}/>
-          <IconButton icon={<Icon shape={rtl ? mdiSkipPrevious : mdiSkipNext}/>} disabled={solidProps.paragraphIndex === solidProps.paragraphs.length - 1} onClick={() => {
+          <IconButton icon={<Icon shape={rtl ? SkipBack : SkipForward}/>} disabled={solidProps.paragraphIndex === solidProps.paragraphs.length - 1} onClick={() => {
             if (solidProps.paragraphIndex < solidProps.paragraphs.length - 1) {
                 solidProps.onChange(solidProps.paragraphIndex + 1);
             }

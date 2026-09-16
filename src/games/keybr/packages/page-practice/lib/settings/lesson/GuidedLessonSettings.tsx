@@ -1,6 +1,6 @@
 import { Description, Explainer, FieldSet } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { AlphabetSizeProp } from "./AlphabetSizeProp.tsx";
 import { KeyboardOrderProp } from "./KeyboardOrderProp.tsx";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";

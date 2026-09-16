@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { useFormatter } from "@keybr/lesson-ui";
 import { type SummaryStats } from "@keybr/result";
 import { formatDuration, Header, Para } from "@keybr/widget";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import * as styles from "./Summary.module.css";
 export function AllTimeSummary(props: {
     stats: SummaryStats;

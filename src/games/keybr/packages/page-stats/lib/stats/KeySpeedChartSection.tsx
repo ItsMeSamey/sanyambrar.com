@@ -7,7 +7,7 @@ import { useSettings } from "@keybr/settings";
 import { Explainer, Figure, Para } from "@keybr/widget";
 import { useState } from "@keybr/solid-compat/react";
 import { createMemo } from 'solid-js';
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
 export function KeySpeedChartSection(solidProps: {

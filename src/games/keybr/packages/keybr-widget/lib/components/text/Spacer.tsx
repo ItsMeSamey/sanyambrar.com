@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./Spacer.module.css";
 import { type SpacerProps } from "./Spacer.types.ts";

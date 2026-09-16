@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import * as styles from "./Meter.module.css";
 export function Meter(solidProps: {
     readonly length: number;

@@ -1,5 +1,5 @@
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./BookSelector.module.css";
 import { Book } from "./book.ts";

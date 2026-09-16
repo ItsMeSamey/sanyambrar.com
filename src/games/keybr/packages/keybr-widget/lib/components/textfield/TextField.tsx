@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode, useEffect, useImperativeHandle, useRef, } from "@keybr/solid-compat/react";
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./TextField.module.css";

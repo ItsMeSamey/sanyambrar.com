@@ -3,8 +3,8 @@ import { Screen } from "@keybr/pages-shared";
 import { useSettings } from "@keybr/settings";
 import { TypingSettings } from "@keybr/textinput-ui";
 import { Button, ExplainerBoundary, Header, Icon, Spacer } from "@keybr/widget";
-import { mdiDeleteForever } from "@keybr/solid-compat/mdi";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { Trash2 } from "@keybr/widget";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { ExplainSettings } from "./ExplainSettings.tsx";
 import { KeyboardSettings } from "./KeyboardSettings.tsx";
 import { LessonSettings } from "./LessonSettings.tsx";
@@ -27,7 +27,7 @@ function Content() {
             <FormattedMessage id="t_Lessons" defaultMessage="Lessons"/>
           </Header>
           <div class={styles.lessonActions}>
-            <Button size={16} icon={<Icon shape={mdiDeleteForever}/>} label={formatMessage({
+            <Button size={16} icon={<Icon shape={Trash2}/>} label={formatMessage({
                 id: "settings.reset.label",
                 defaultMessage: "Reset settings",
             })} onClick={() => {

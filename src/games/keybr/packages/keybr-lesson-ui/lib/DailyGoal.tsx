@@ -1,7 +1,7 @@
 import { useIntlDurations, useIntlNumbers } from "@keybr/intl";
 import { type DailyGoal as DailyGoalType } from "@keybr/lesson";
 import { type ClassName, Value } from "@keybr/widget";
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import * as styles from "./DailyGoal.module.css";
 export const DailyGoal = (solidProps: {
     id?: string;

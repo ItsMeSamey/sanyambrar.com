@@ -1,4 +1,4 @@
-import { type FormatNumberOptions, type IntlShape, useIntl } from "@keybr/solid-compat/intl";
+import { type FormatNumberOptions, type IntlShape, useIntl } from "./runtime.tsx";
 import { intlMemo } from "./memo.ts";
 export type IntlNumbers = {
     formatInteger(value: number): string;

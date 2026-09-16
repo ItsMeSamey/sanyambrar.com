@@ -9,7 +9,7 @@ import {
   Value,
 } from "@keybr/widget";
 import { useState } from "@keybr/solid-compat/react";
-import { FormattedMessage, useIntl } from "@keybr/solid-compat/intl";
+import { FormattedMessage, useIntl } from "@keybr/intl";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 
 type Period = "average" | "top";

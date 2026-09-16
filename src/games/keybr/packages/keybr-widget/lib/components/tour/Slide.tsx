@@ -1,4 +1,4 @@
-import { clsx } from "@keybr/solid-compat/clsx";
+import { clsx } from "clsx";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import { type FloatingPosition } from "../../floating/index.ts";
 import * as styles from "./Slide.module.css";

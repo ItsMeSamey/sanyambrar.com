@@ -1,5 +1,5 @@
 import { useIntlNumbers } from "@keybr/intl";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 import { type Effort } from "./effort.ts";
 import * as styles from "./EffortLegent.module.css";
 export function EffortLegend(solidProps: {

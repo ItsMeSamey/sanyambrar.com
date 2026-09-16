@@ -2,7 +2,7 @@ import { useIntlNumbers } from "@keybr/intl";
 import { type LearningRate, type LessonKey } from "@keybr/lesson";
 import { Name, Para, Value } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
-import { FormattedMessage } from "@keybr/solid-compat/intl";
+import { FormattedMessage } from "@keybr/intl";
 export function LearningRateDescription(solidProps: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;
