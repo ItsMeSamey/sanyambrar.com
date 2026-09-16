@@ -12,6 +12,8 @@
     "build:tools": "bun build.ts static",
     "dev:wordle": "node scripts/dev.mjs wordle",
     "dev:keybr": "node scripts/dev.mjs keybr",
+    "import:keybr-books": "bun scripts/import-keybr-books.mjs",
+    "check:keybr-corpus": "bun scripts/check-keybr-corpus.mjs",
     "lint": "eslint src --max-warnings 0",
     "test": "playwright test",
     "check": "bun run typecheck && bun run lint && bun run build && bun run test"
