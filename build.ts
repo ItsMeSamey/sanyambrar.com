@@ -401,12 +401,20 @@ ${keybrViewSwitch}`;
   const keybrNameValue = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/text/NameValue.tsx"), "utf8");
   const keybrEventIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/state/event-icons.module.css"), "utf8");
   const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
+  const keybrBookSelector = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookSelector.tsx"), "utf8");
+  const keybrBookSelectorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookSelector.module.css"), "utf8");
   const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
   const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
   const keybrEffortLegend = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/EffortLegend.tsx"), "utf8");
   const keybrEffort = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/effort.ts"), "utf8");
   must(keybrEffortLegend.includes("effort.textShade(value)") && keybrEffort.includes("contrastTextRgb("),
     "ux: Keybr effort legend text must adapt to its shaded background");
+  must(keybrBookSelector.includes("<dialog") && keybrBookSelector.includes("showModal()") &&
+    keybrBookSelector.includes('placeholder="Title or author"') && keybrBookSelector.includes("createMemo") &&
+    keybrBookSelector.includes('aria-pressed={selected() ? "true" : "false"}') && !keybrBookSelector.includes("OptionList") &&
+    keybrBookSelectorStyle.includes(".dialog::backdrop") && keybrBookSelectorStyle.includes("overflow: auto") &&
+    keybrBookSelectorStyle.includes("@media (max-width: 700px)"),
+    "ux: Keybr book selection must use a searchable responsive modal list for large catalogs");
   const sharedTopBar = await readFile(join(ROOT, "src/shared/components/TopBar.tsx"), "utf8");
   const sharedGameActions = sharedTopBar.slice(sharedTopBar.indexOf("export function GameTopBarActions"), sharedTopBar.indexOf("export function PrimaryNav"));
   must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") && keybrTopBar.includes("<GameTopBarActions") &&
@@ -945,15 +953,19 @@ async function buildKeybr() {
   source = source.replace("</head>", `${shared}</head>`);
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);
-  log("solid keybr -> docs/keybr.html");
+  const assets = join(GENERATED_KEYBR, "keybr-assets");
+  must(existsSync(assets), "Keybr build did not emit split assets");
+  await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
+  await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
+  log("solid keybr -> docs/keybr.html + docs/keybr-assets");
 }
 
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
-    // Vditor's optional math/diagram/highlighting runtimes are self-hosted but
-    // loaded and cached on demand instead of adding ~20 MiB to every SW install.
-    .filter(path => !path.startsWith("vditor/"));
+    // Optional runtimes and Keybr chunks are cached on demand rather than
+    // downloaded by every service-worker install. Their filenames are immutable.
+    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/"));
 }
 
 async function versionMutableShellReferences() {
@@ -1010,7 +1022,7 @@ const relativePath = request => {
 };
 const immutableAsset = request => {
   const path = relativePath(request);
-  return path.startsWith('site-chunks/') || path.startsWith('assets/');
+  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/');
 };
 const cacheKey = request => {
   const url = new URL(request.url);
@@ -1126,6 +1138,8 @@ async function main() {
   await removeCompressionSidecars();
   if (targets.has("static")) {
     await versionMutableShellReferences();
+    await generateServiceWorker();
+  } else if (targets.has("keybr")) {
     await generateServiceWorker();
   }
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");

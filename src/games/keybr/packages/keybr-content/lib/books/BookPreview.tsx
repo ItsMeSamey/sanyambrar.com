@@ -11,11 +11,11 @@ export const BookPreview = memo(function BookPreview(solidProps: BookContent): R
     const { formatNumber } = useIntlNumbers();
     const stats = useMemo(() => {
         const paragraphs = flattenContent(solidProps.content);
-        const numChapters = solidProps.content.length;
+        const numSections = solidProps.content.length;
         const numParagraphs = paragraphs.length;
         const textStats = textStatsOf(solidProps.book.language.locale, paragraphs);
         return {
-            numChapters,
+            numSections,
             numParagraphs,
             ...textStats,
         };
@@ -28,9 +28,9 @@ export const BookPreview = memo(function BookPreview(solidProps: BookContent): R
         </p>
         <p>
           <NameValue name={formatMessage({
-            id: "t_num_Chapters",
-            defaultMessage: "Chapters",
-        })} value={formatNumber(stats.numChapters)}/>
+            id: "t_num_Sections",
+            defaultMessage: "Sections",
+        })} value={formatNumber(stats.numSections)}/>
           <NameValue name={formatMessage({
             id: "t_num_Paragraphs",
             defaultMessage: "Paragraphs",

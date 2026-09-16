@@ -1,0 +1,265 @@
+.root {
+  margin-block: 1rem;
+}
+
+.selection {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-inline-size: 0;
+  padding: 1rem;
+  border: var(--separator-border);
+  background: var(--primary-l1);
+}
+
+.selection > img {
+  inline-size: 4.2rem;
+  block-size: 5.8rem;
+  object-fit: cover;
+  border: var(--separator-border);
+  background: var(--primary-d1);
+}
+
+.selectionCopy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 0.25rem;
+}
+
+.selectionCopy strong,
+.bookCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selectionCopy > span:last-child,
+.bookCopy span,
+.resultMeta {
+  color: var(--secondary-l2);
+}
+
+.label,
+.eyebrow {
+  color: var(--secondary-l2);
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.chooseButton,
+.closeButton,
+.book {
+  border: 1px solid var(--Button__background-color);
+  color: var(--Button__color);
+  background: var(--Button__background-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chooseButton {
+  padding: 0.72rem 1rem;
+  font-weight: 700;
+}
+
+.chooseButton:is(:hover, :focus-visible),
+.closeButton:is(:hover, :focus-visible),
+.book:is(:hover, :focus-visible) {
+  outline: 2px solid var(--site-accent-fg, var(--accent));
+  outline-offset: 2px;
+}
+
+.dialog {
+  box-sizing: border-box;
+  inline-size: min(54rem, calc(100vw - 2rem));
+  max-inline-size: none;
+  max-block-size: min(48rem, calc(100dvh - 2rem));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: var(--separator-border);
+  color: var(--secondary);
+  background: var(--background-color);
+  box-shadow: var(--Popup__box-shadow);
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--site-bg, #000) 28%, #000 58%);
+  backdrop-filter: blur(3px);
+}
+
+.dialogShell {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  max-block-size: min(48rem, calc(100dvh - 2rem));
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-block-end: var(--separator-border);
+}
+
+.dialogHeader h2 {
+  margin: 0.15rem 0 0;
+  font-size: 1.5rem;
+}
+
+.closeButton {
+  display: grid;
+  place-items: center;
+  inline-size: 2.6rem;
+  block-size: 2.6rem;
+  padding: 0;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem 0.75rem;
+  font-weight: 700;
+}
+
+.search input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid var(--TextField__border-color);
+  color: var(--TextField__color);
+  background: var(--TextField__background-color);
+  font: inherit;
+}
+
+.search input:focus {
+  outline: 0;
+  border-color: var(--TextField--focused__border-color);
+  background: var(--TextField--focused__background-color);
+}
+
+.resultMeta {
+  padding: 0 1.25rem 0.8rem;
+  font-size: 0.82em;
+}
+
+.list {
+  min-block-size: 0;
+  margin: 0;
+  padding: 0 1.25rem 1.25rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.list li + li {
+  margin-block-start: 0.45rem;
+}
+
+.book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.35rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 5rem;
+  padding: 0.55rem 0.7rem;
+  text-align: start;
+}
+
+.book img {
+  inline-size: 3.35rem;
+  block-size: 4.35rem;
+  object-fit: cover;
+  border: var(--separator-border);
+  background: var(--primary-d1);
+}
+
+.bookCopy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 0.28rem;
+}
+
+.bookCopy strong,
+.bookCopy span {
+  white-space: nowrap;
+}
+
+.bookCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.88em;
+}
+
+.book.selected {
+  border-color: var(--site-accent-fg, var(--accent));
+  box-shadow: inset 3px 0 0 var(--site-accent-fg, var(--accent));
+}
+
+.selectedLabel {
+  color: var(--site-accent-fg, var(--accent));
+  font-size: 0.72em;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.empty {
+  margin: 0;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--secondary-l2);
+}
+
+@media (max-width: 700px) {
+  .selection {
+    grid-template-columns: 3.6rem minmax(0, 1fr);
+  }
+
+  .selection > img {
+    inline-size: 3.6rem;
+    block-size: 5rem;
+  }
+
+  .chooseButton {
+    grid-column: 1 / -1;
+    inline-size: 100%;
+  }
+
+  .dialog {
+    inline-size: calc(100vw - 1rem);
+    max-block-size: calc(100dvh - 1rem);
+  }
+
+  .dialogShell {
+    max-block-size: calc(100dvh - 1rem);
+  }
+
+  .search {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .book {
+    grid-template-columns: 3rem minmax(0, 1fr);
+  }
+
+  .book img {
+    inline-size: 3rem;
+    block-size: 4rem;
+  }
+
+  .selectedLabel {
+    grid-column: 2;
+  }
+}
