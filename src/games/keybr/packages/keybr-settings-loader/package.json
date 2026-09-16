@@ -3,9 +3,5 @@
   "name": "@keybr/settings-loader",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/debug": "workspace:*",
-    "@keybr/settings": "workspace:*"
-  }
+  "main": "lib/index.ts"
 }

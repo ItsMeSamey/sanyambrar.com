@@ -3,8 +3,5 @@
   "name": "@keybr/debug",
   "version": "0.0.0",
   "type": "module",
-  "main": "lib/index.ts",
-  "dependencies": {
-    "@keybr/widget": "workspace:*"
-  }
+  "main": "lib/index.ts"
 }
