@@ -1,10 +1,10 @@
 import { Alert } from "./Alert.tsx";
 import { toast } from "./Toaster.tsx";
-export function ErrorAlert(solidProps: {
+export function ErrorAlert(props: {
     readonly error: unknown;
 }) {
     return (<Alert severity="error">
-      {solidProps.error instanceof AggregateError ? (solidProps.error.errors.map((child) => <p>{String(child)}</p>)) : (<p>{String(solidProps.error)}</p>)}
+      {props.error instanceof AggregateError ? (props.error.errors.map((child) => <p>{String(child)}</p>)) : (<p>{String(props.error)}</p>)}
     </Alert>);
 }
 ErrorAlert.report = (error: unknown) => {

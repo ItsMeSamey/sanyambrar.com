@@ -7,15 +7,15 @@ import { Toggle, Description, Explainer, Field, FieldList, FieldSet, Spacer, } f
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
-export function BooksLessonSettings(solidProps: {
+export function BooksLessonSettings(props: {
     readonly lesson: BooksLesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
-    const book = () => solidProps.lesson.book;
-    const content = () => solidProps.lesson.content;
-    const paragraphs = () => solidProps.lesson.paragraphs;
-    const paragraphIndex = () => solidProps.lesson.paragraphIndex;
+    const book = () => props.lesson.book;
+    const content = () => props.lesson.content;
+    const paragraphs = () => props.lesson.paragraphs;
+    const paragraphIndex = () => props.lesson.paragraphIndex;
     return (<>
       <Explainer>
         <Description>

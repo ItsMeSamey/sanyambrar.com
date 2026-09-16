@@ -4,10 +4,10 @@ import { makeSummaryStats, MutableStreakList, type Result, type Streak, } from "
 import { Explainer, Figure, NameValue, Para } from "@keybr/widget";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { createMemo, For, Show } from 'solid-js';
-export function AccuracyStreaksSection(solidProps: {
+export function AccuracyStreaksSection(props: {
     results: readonly Result[];
 }) {
-    const streaks = createMemo(() => MutableStreakList.findLongest(solidProps.results));
+    const streaks = createMemo(() => MutableStreakList.findLongest(props.results));
     return (<Figure>
       <Figure.Caption>
         <FormattedMessage id="stats.accuracy.header" defaultMessage="Accuracy Streaks"/>
@@ -28,13 +28,13 @@ export function AccuracyStreaksSection(solidProps: {
       </Explainer>
     </Figure>);
 }
-function StreakDetails(solidProps: {
+function StreakDetails(props: {
     streak: Streak;
 }) {
     const { formatMessage, formatDate } = useIntl();
     const { formatNumber, formatPercents } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
-    const results = () => solidProps.streak.results;
+    const results = () => props.streak.results;
     const characterCount = createMemo(() => results().reduce((x, { length }) => length + x, 0));
     const stats = createMemo(() => makeSummaryStats(results()));
     return (<>
@@ -42,7 +42,7 @@ function StreakDetails(solidProps: {
         <NameValue name={formatMessage({
             id: "t_Accuracy_threshold",
             defaultMessage: "Accuracy threshold",
-        })} value={formatPercents(solidProps.streak.level)}/>
+        })} value={formatPercents(props.streak.level)}/>
       </dt>
       <dd>
         <NameValue name={formatMessage({

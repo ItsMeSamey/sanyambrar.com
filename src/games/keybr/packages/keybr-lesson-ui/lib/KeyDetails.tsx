@@ -8,16 +8,16 @@ import { useFormatter } from "./format.ts";
 import { createMemo, Show } from 'solid-js';
 import { Happiness } from "./Happiness.tsx";
 import * as styles from "./styles.module.css";
-export const KeyDetails = (solidProps: {
+export const KeyDetails = (props: {
     lessonKey: LessonKey;
 }) => {
     const { formatMessage } = useIntl();
     const { formatSpeed, formatConfidence, formatLearningRate } = useFormatter();
     const { settings } = useSettings();
     const details = createMemo(() => {
-        const { timeToType, bestTimeToType, confidence, bestConfidence } = solidProps.lessonKey;
+        const { timeToType, bestTimeToType, confidence, bestConfidence } = props.lessonKey;
         if (timeToType == null || bestTimeToType == null || confidence == null || bestConfidence == null) return null;
-        const learningRate = LearningRate.from(solidProps.lessonKey.samples, new Target(settings))?.learningRate ?? null;
+        const learningRate = LearningRate.from(props.lessonKey.samples, new Target(settings))?.learningRate ?? null;
         return { timeToType, bestTimeToType, confidence, bestConfidence, learningRate };
     });
     return (<Show when={details()} keyed fallback={<span class={clsx(styles.keyDetails, styles.keyDetailsUncalibrated)}>

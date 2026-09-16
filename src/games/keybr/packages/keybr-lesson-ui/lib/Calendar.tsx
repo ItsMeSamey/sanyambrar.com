@@ -5,25 +5,25 @@ import * as styles from "./Calendar.module.css";
 import { createMemo, For, Show } from 'solid-js';
 import { DailyStats as DailyStatsWidget } from "./DailyStats.tsx";
 import { type Effort } from "./effort.ts";
-export function Calendar(solidProps: {
+export function Calendar(props: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
 }) {
     const popup = useHoverPopup<{ stats: DailyStats; elem: Element }>();
     return (<>
-      <BlockList dailyStatsMap={solidProps.dailyStatsMap} effort={solidProps.effort} onCellHoverIn={(stats, elem) => {
+      <BlockList dailyStatsMap={props.dailyStatsMap} effort={props.effort} onCellHoverIn={(stats, elem) => {
             popup.show({ stats, elem });
         }} onCellHoverOut={popup.leave}/>
       <Show when={popup.state().type === "visible" || popup.state().type === "visible-out" ? popup.state() : null} keyed>
         {(current) => current.type === "hidden" ? null : <Portal>
           <Popup anchor={current.elem} onMouseEnter={popup.hold} onMouseLeave={popup.dismiss}>
-            <DailyStatsWidget stats={current.stats} effort={solidProps.effort}/>
+            <DailyStatsWidget stats={current.stats} effort={props.effort}/>
           </Popup>
         </Portal>}
       </Show>
     </>);
 }
-function BlockList(solidProps: {
+function BlockList(props: {
     dailyStatsMap: DailyStatsMap;
     effort: Effort;
     onCellHoverIn?: (stats: DailyStats, elem: Element) => void;
@@ -31,15 +31,15 @@ function BlockList(solidProps: {
     onCellClick?: (stats: DailyStats, elem: Element) => void;
 }) {
     let root!: HTMLDivElement;
-    const blocks = createMemo(() => blockList(solidProps.dailyStatsMap));
+    const blocks = createMemo(() => blockList(props.dailyStatsMap));
     return (<div ref={el => root = el} class={styles.root} onMouseOver={(event) => {
-            relayEvent(root, event, solidProps.onCellHoverIn);
+            relayEvent(root, event, props.onCellHoverIn);
         }} onMouseOut={(event) => {
-            relayEvent(root, event, solidProps.onCellHoverOut);
+            relayEvent(root, event, props.onCellHoverOut);
         }} onClick={(event) => {
-            relayEvent(root, event, solidProps.onCellClick);
+            relayEvent(root, event, props.onCellClick);
         }}>
-      <For each={blocks()}>{(block) => <Block block={block} effort={solidProps.effort}/>}</For>
+      <For each={blocks()}>{(block) => <Block block={block} effort={props.effort}/>}</For>
     </div>);
 }
 function relayEvent(root: Element, { target }: {
@@ -62,7 +62,7 @@ type BlockCells = {
     month: number;
     cells: (DailyStats | null)[][];
 };
-function Block(solidProps: {
+function Block(props: {
     block: BlockCells;
     effort: Effort;
 }) {
@@ -74,7 +74,7 @@ function Block(solidProps: {
     return (<div class={styles.calendar}>
       <table class={styles.table}>
         <caption class={styles.caption}>
-          {solidProps.block.year}/{solidProps.block.month}
+          {props.block.year}/{props.block.month}
         </caption>
         <thead>
           <tr>
@@ -88,23 +88,23 @@ function Block(solidProps: {
           </tr>
         </thead>
         <tbody>
-          <For each={solidProps.block.cells}>{(row) => <tr>
-              <For each={row}>{(cell) => <Cell cell={cell} effort={solidProps.effort}/>}</For>
+          <For each={props.block.cells}>{(row) => <tr>
+              <For each={row}>{(cell) => <Cell cell={cell} effort={props.effort}/>}</For>
             </tr>}</For>
         </tbody>
       </table>
     </div>);
 }
-function Cell(solidProps: {
+function Cell(props: {
     cell: DailyStats | null;
     effort: Effort;
 }) {
-    return (<Show when={solidProps.cell} keyed fallback={<td />}>
+    return (<Show when={props.cell} keyed fallback={<td />}>
       {(cell) => cell.results.length === 0 ? (<td class={styles.cell}>
         <span class={styles.item}>{cell.date.dayOfMonth}</span>
       </td>) : (<td class={styles.cell}>
         <span ref={Cell.attach(cell)} class={styles.item} style={{
-            "background-color": String(solidProps.effort.shade(solidProps.effort.effort(cell.stats.time))),
+            "background-color": String(props.effort.shade(props.effort.effort(cell.stats.time))),
         }} data-date={String(cell.date)}>
           {cell.date.dayOfMonth}
         </span>

@@ -3,7 +3,7 @@ import { ProgressBar } from "@keybr/widget";
 
 import { onCleanup, onSettled } from 'solid-js';
 import * as styles from "./LoadingProgress.module.css";
-export function LoadingProgress(solidProps: {
+export function LoadingProgress(props: {
     readonly total?: number;
     readonly current?: number;
 }): JSX.Element {
@@ -13,6 +13,6 @@ export function LoadingProgress(solidProps: {
     });
     onCleanup(() => releaseLoading());
     return (<div class={styles.root}>
-      <ProgressBar total={(solidProps.total === undefined ? 0 : solidProps.total)} current={(solidProps.current === undefined ? 0 : solidProps.current)}/>
+      <ProgressBar total={(props.total === undefined ? 0 : props.total)} current={(props.current === undefined ? 0 : props.current)}/>
     </div>);
 }

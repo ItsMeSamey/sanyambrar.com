@@ -11,7 +11,7 @@ const BOOKS = Book.ALL.map((book) => book).sort((a, b) =>
 const normalize = (value: string) =>
   value.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase();
 
-export function BookSelector(solidProps: {
+export function BookSelector(props: {
   readonly book: Book;
   readonly onChange: (book: Book) => void;
 }): JSX.Element {
@@ -41,16 +41,16 @@ export function BookSelector(solidProps: {
   };
   const select = (book: Book) => {
     close();
-    solidProps.onChange(book);
+    props.onChange(book);
   };
 
   return <div class={styles.root}>
     <div class={styles.selection}>
-      <img src={solidProps.book.coverImage} alt="" aria-hidden="true" />
+      <img src={props.book.coverImage} alt="" aria-hidden="true" />
       <div class={styles.selectionCopy}>
         <span class={styles.label}>Book</span>
-        <strong>{solidProps.book.title}</strong>
-        <span>{solidProps.book.author}</span>
+        <strong>{props.book.title}</strong>
+        <span>{props.book.author}</span>
       </div>
       <button type="button" class={styles.chooseButton} onClick={() => setOpen(true)}>
         Choose book
@@ -97,7 +97,7 @@ export function BookSelector(solidProps: {
         <Show when={filtered().length > 0} fallback={<p class={styles.empty}>No books match “{query()}”.</p>}>
           <ul class={styles.list}>
             <For each={filtered()}>{(book) => {
-              const selected = () => book.id === solidProps.book.id;
+              const selected = () => book.id === props.book.id;
               return <li>
                 <button
                   type="button"

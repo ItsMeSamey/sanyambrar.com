@@ -10,7 +10,7 @@ import { FormattedMessage, useIntl } from "@keybr/intl";
 import { exampleTexts } from "./example-texts.ts";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
-export function CustomTextLessonSettings(solidProps: {
+export function CustomTextLessonSettings(props: {
     readonly lesson: CustomTextLesson;
 }): JSX.Element {
     const { formatMessage } = useIntl();
@@ -27,7 +27,7 @@ export function CustomTextLessonSettings(solidProps: {
             defaultMessage: "Lesson options",
         })}>
         <CustomTextInput />
-        <CustomTextStats language={solidProps.lesson.model.language} customText={settings.get(lessonProps.customText.content)}/>
+        <CustomTextStats language={props.lesson.model.language} customText={settings.get(lessonProps.customText.content)}/>
         <CustomTextProcessing />
         <TargetSpeedProp />
         <LessonLengthProp />
@@ -59,13 +59,13 @@ function CustomTextInput(): JSX.Element {
       </Para>
     </>);
 }
-function CustomTextStats(solidProps: {
+function CustomTextStats(props: {
     readonly language: Language;
     readonly customText: string;
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const stats = createMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText));
+    const stats = createMemo(() => textStatsOf(props.language.locale, props.customText));
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({

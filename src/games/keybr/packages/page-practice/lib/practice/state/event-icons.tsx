@@ -10,10 +10,10 @@ export function TrophyIcon() {
 export function DailyGoalIcon() {
     return <Icon shape={AlarmClockCheck}/>;
 }
-function Icon(solidProps: {
+function Icon(props: {
     readonly shape: string | LucideIcon;
     readonly className?: ClassName;
 }) {
-    if (typeof solidProps.shape === "function") return <Dynamic component={solidProps.shape} class={clsx(styles.icon, solidProps.className)} />;
-    return (<svg class={clsx(styles.icon, solidProps.className)} viewBox="0 0 24 24"><path d={solidProps.shape}/></svg>);
+    if (typeof props.shape === "function") return <Dynamic component={props.shape} class={clsx(styles.icon, props.className)} />;
+    return (<svg class={clsx(styles.icon, props.className)} viewBox="0 0 24 24"><path d={props.shape}/></svg>);
 }

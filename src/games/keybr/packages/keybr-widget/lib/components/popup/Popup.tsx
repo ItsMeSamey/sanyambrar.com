@@ -12,14 +12,14 @@ export type PopupProps = {
     readonly position?: FloatingPosition;
     readonly offset?: number;
 } & MouseProps;
-export function Popup(solidAllProps: PopupProps): JSX.Element {
-    const solidMergedProps = merge(solidAllProps, { get arrow() { return solidAllProps.arrow ?? true; }, get offset() { return solidAllProps.offset ?? 20; } });
-    const solidLocal = solidMergedProps, props = omit(solidMergedProps, "anchor", "arrow", "children", "position", "offset");
+export function Popup(allProps: PopupProps): JSX.Element {
+    const mergedProps = merge(allProps, { get arrow() { return allProps.arrow ?? true; }, get offset() { return allProps.offset ?? 20; } });
+    const local = mergedProps, props = omit(mergedProps, "anchor", "arrow", "children", "position", "offset");
     let root!: HTMLDivElement;
     let arrow: HTMLDivElement | undefined;
-    const options = createMemo(() => ({ position: solidLocal.position, offset: solidLocal.offset }));
+    const options = createMemo(() => ({ position: local.position, offset: local.offset }));
     const screenSize = useScreenSize();
-    createEffect(() => ({ anchor: solidLocal.anchor, options: options(), screenSize: screenSize() }), ({ anchor, options, screenSize }) => {
+    createEffect(() => ({ anchor: local.anchor, options: options(), screenSize: screenSize() }), ({ anchor, options, screenSize }) => {
         if (anchor == null) {
             place(root).centerToScreen(screenSize);
         } else {
@@ -28,7 +28,7 @@ export function Popup(solidAllProps: PopupProps): JSX.Element {
         }
     });
     return (<div {...props} ref={el => root = el} data-samey-overlay="" class={styles.root} style={{ position: "fixed", "z-index": 1 }}>
-      {solidLocal.anchor && solidLocal.arrow && (<div ref={el => arrow = el} class={styles.arrow} style={{ position: "absolute" }}/>)}
-      {solidLocal.children}
+      {local.anchor && local.arrow && (<div ref={el => arrow = el} class={styles.arrow} style={{ position: "absolute" }}/>)}
+      {local.children}
     </div>);
 }

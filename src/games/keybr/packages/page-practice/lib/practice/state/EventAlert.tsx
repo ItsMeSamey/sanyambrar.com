@@ -3,12 +3,12 @@ import { Award, toast } from "@keybr/widget";
 import { FormattedMessage } from "@keybr/intl";
 import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
 import { type LessonEvent } from "./event-types.ts";
-export function EventAlert(solidProps: {
+export function EventAlert(props: {
     readonly event: LessonEvent;
 }) {
-    switch (solidProps.event.type) {
+    switch (props.event.type) {
         case "new-letter":
-            return (<Award icon={<Key lessonKey={solidProps.event.lessonKey} size="announcement"/>}>
+            return (<Award icon={<Key lessonKey={props.event.lessonKey} size="announcement"/>}>
           <FormattedMessage id="t_ev_New_letter_unlocked" defaultMessage="New letter unlocked!"/>
         </Award>);
         case "top-speed":

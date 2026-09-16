@@ -27,7 +27,7 @@ export const TextLines = function TextLines(props: {
       </props.lineTemplate>) : (<TextLine settings={settings()} chars={chars} className={className()} style={settings().font.cssProperties}/>));
     return <>{props.cursor ? <Cursor settings={settings()}>{children()}</Cursor> : children()}</>;
 };
-const TextLine = function TextLine(solidProps: {
+const TextLine = function TextLine(props: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
     readonly className: string;
@@ -37,8 +37,8 @@ const TextLine = function TextLine(solidProps: {
         const groups: Char[][] = [];
         let itemChars: Char[] = [];
         let ws = false;
-        for (let i = 0; i < solidProps.chars.length; i++) {
-            const char = solidProps.chars[i];
+        for (let i = 0; i < props.chars.length; i++) {
+            const char = props.chars[i];
             switch (char.codePoint) {
                 case 0x0009:
                 case 0x000a:
@@ -60,13 +60,13 @@ const TextLine = function TextLine(solidProps: {
             groups.push(itemChars);
         return groups;
     });
-    return (<div class={solidProps.className} style={solidProps.style} dir={solidProps.settings.language.direction}>
-        <For each={items()}>{(chars) => <TextItem settings={solidProps.settings} chars={chars}/>}</For>
+    return (<div class={props.className} style={props.style} dir={props.settings.language.direction}>
+        <For each={items()}>{(chars) => <TextItem settings={props.settings} chars={chars}/>}</For>
       </div>);
 };
-const TextItem = function TextItem(solidProps: {
+const TextItem = function TextItem(props: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
 }): JSX.Element {
-    return <span style={textItemStyle}>{renderChars(solidProps.settings, solidProps.chars)}</span>;
+    return <span style={textItemStyle}>{renderChars(props.settings, props.chars)}</span>;
 };

@@ -7,14 +7,14 @@ import { useIntl } from "@keybr/intl";
 import * as styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";
-export const BookPreview = function BookPreview(solidProps: BookContent): JSX.Element {
+export const BookPreview = function BookPreview(props: BookContent): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const stats = createMemo(() => {
-        const paragraphs = flattenContent(solidProps.content);
-        const numSections = solidProps.content.length;
+        const paragraphs = flattenContent(props.content);
+        const numSections = props.content.length;
         const numParagraphs = paragraphs.length;
-        const textStats = textStatsOf(solidProps.book.language.locale, paragraphs);
+        const textStats = textStatsOf(props.book.language.locale, paragraphs);
         return {
             numSections,
             numParagraphs,
@@ -22,10 +22,10 @@ export const BookPreview = function BookPreview(solidProps: BookContent): JSX.El
         };
     });
     return (<div class={styles.root}>
-      <img class={styles.coverImage} src={solidProps.book.coverImage} alt="Book cover image" title={`${solidProps.book.title} by ${solidProps.book.author}`}/>
+      <img class={styles.coverImage} src={props.book.coverImage} alt="Book cover image" title={`${props.book.title} by ${props.book.author}`}/>
       <div class={styles.details}>
         <p>
-          <strong>{solidProps.book.title}</strong> by <strong>{solidProps.book.author}</strong>
+          <strong>{props.book.title}</strong> by <strong>{props.book.author}</strong>
         </p>
         <p>
           <NameValue name={formatMessage({

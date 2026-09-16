@@ -9,7 +9,7 @@ import { Field, FieldList, OptionList } from "@keybr/widget";
 
 import { createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function ResultGrouper(solidProps: {
+export function ResultGrouper(props: {
     children: (keyStatsMap: KeyStatsMap) => JSX.Element;
     actions?: JSX.Element;
 }) {
@@ -77,7 +77,7 @@ export function ResultGrouper(solidProps: {
         }}/>
         </Field>
         <Field.Filler />
-        {solidProps.actions != null && <Field>{solidProps.actions}</Field>}
+        {props.actions != null && <Field>{props.actions}</Field>}
       </FieldList>
 
       <KeyboardContext value={keyboard}>
@@ -85,13 +85,13 @@ export function ResultGrouper(solidProps: {
           {({ letters }) => {
             switch (characterClass()) {
                 case "letters":
-                    return solidProps.children(makeKeyStatsMap(Letter.restrict(letters, keyboard().getCodePoints()), group()));
+                    return props.children(makeKeyStatsMap(Letter.restrict(letters, keyboard().getCodePoints()), group()));
                 case "digits":
-                    return solidProps.children(makeKeyStatsMap(Letter.digits, group()));
+                    return props.children(makeKeyStatsMap(Letter.digits, group()));
                 case "punctuators":
-                    return solidProps.children(makeKeyStatsMap(Letter.punctuators, group()));
+                    return props.children(makeKeyStatsMap(Letter.punctuators, group()));
                 case "specials":
-                    return solidProps.children(makeKeyStatsMap(Letter.specials, group()));
+                    return props.children(makeKeyStatsMap(Letter.specials, group()));
                 default:
                     throw new Error();
             }

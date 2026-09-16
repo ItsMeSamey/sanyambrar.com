@@ -1,6 +1,6 @@
 import { Field, FieldList, Range } from "@keybr/widget";
 import { defineMessage, useIntl } from "@keybr/intl";
-export function SmoothnessRange(solidProps: {
+export function SmoothnessRange(props: {
     value: number;
     disabled: boolean;
     onChange: (value: number) => void;
@@ -17,11 +17,11 @@ export function SmoothnessRange(solidProps: {
         </label>
       </Field>
       <Field>
-        <Range size={16} disabled={solidProps.disabled} min={0} max={100} step={10} value={Math.round(solidProps.value * 100)} title={formatMessage(defineMessage({
+        <Range size={16} disabled={props.disabled} min={0} max={100} step={10} value={Math.round(props.value * 100)} title={formatMessage(defineMessage({
             id: "stats.smoothness.description",
             defaultMessage: "Eliminate noise to see the long-term trend.",
         }))} onChange={(value) => {
-            solidProps.onChange(value / 100);
+            props.onChange(value / 100);
         }}/>
       </Field>
       <Field.Filler />

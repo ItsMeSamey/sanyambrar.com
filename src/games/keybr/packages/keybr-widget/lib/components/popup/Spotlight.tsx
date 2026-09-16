@@ -9,14 +9,14 @@ export type SpotlightProps = {
     readonly anchor?: Element | string;
     readonly margin?: number;
 };
-export function Spotlight(solidProps: SpotlightProps): JSX.Element {
+export function Spotlight(props: SpotlightProps): JSX.Element {
     let c1!: HTMLDivElement;
     let c2!: HTMLDivElement;
     let c3!: HTMLDivElement;
     let c4!: HTMLDivElement;
     let marker!: HTMLDivElement;
     const screenSize = useScreenSize();
-    createEffect(() => ({ anchor: solidProps.anchor, margin: solidProps.margin ?? 10, screenSize: screenSize() }), ({ anchor, margin }) => {
+    createEffect(() => ({ anchor: props.anchor, margin: props.margin ?? 10, screenSize: screenSize() }), ({ anchor, margin }) => {
         if (anchor == null) return;
         const anchorBox = getBoundingBox(querySelector(anchor));
         const x = anchorBox.x - margin;
@@ -30,7 +30,7 @@ export function Spotlight(solidProps: SpotlightProps): JSX.Element {
         placeElement(marker, { left: x, top: y, width: w, height: h });
     });
     return (<div class={styles.root}>
-      {solidProps.anchor && (<>
+      {props.anchor && (<>
           <div ref={el => c1 = el} class={styles.c1}/>
           <div ref={el => c2 = el} class={styles.c2}/>
           <div ref={el => c3 = el} class={styles.c3}/>

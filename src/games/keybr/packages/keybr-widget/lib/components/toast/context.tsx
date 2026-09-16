@@ -8,26 +8,26 @@ export type ToastContextValue = {
     readonly click: () => void;
 };
 export const ToastContext = createContext<ToastContextValue>(null!);
-export function ToastProvider(solidProps: {
+export function ToastProvider(props: {
     readonly toast: Toast;
     readonly render: () => JSX.Element;
 }): JSX.Element {
     return (<ToastContext value={{
             close: () => {
-                state.close(solidProps.toast);
+                state.close(props.toast);
             },
             hover: (over) => {
-                if (solidProps.toast.options.autoClose && solidProps.toast.options.pauseOnHover) {
-                    state.retain(solidProps.toast, over);
+                if (props.toast.options.autoClose && props.toast.options.pauseOnHover) {
+                    state.retain(props.toast, over);
                 }
             },
             click: () => {
-                if (solidProps.toast.options.closeOnClick) {
-                    state.close(solidProps.toast);
+                if (props.toast.options.closeOnClick) {
+                    state.close(props.toast);
                 }
             },
         }}>
-      {solidProps.render()}
+      {props.render()}
     </ToastContext>);
 }
 export function useToast(): ToastContextValue {
@@ -52,11 +52,11 @@ export function toastProps(toast: ToastContextValue) {
         },
     };
 }
-export function ToastWrapper(solidProps: {
+export function ToastWrapper(props: {
     readonly children: JSX.Element;
 }): JSX.Element {
     // Alert and Award bind toast interactions themselves through useToast().
     // React-style element cloning is not available in Solid and attempting to
     // inspect children.props here breaks because children are already DOM nodes.
-    return solidProps.children;
+    return props.children;
 }

@@ -2,10 +2,10 @@ import type { JSX } from "@solidjs/web";
 import { CircleAlert, CircleCheck, Info, } from "../../icons.ts";
 
 import { Icon } from "../icon/index.ts";
-export function SeverityIcon(solidProps: {
+export function SeverityIcon(props: {
     readonly severity: "info" | "success" | "error" | null;
 }): JSX.Element {
-    switch (solidProps.severity) {
+    switch (props.severity) {
         case "info":
             return <InfoIcon />;
         case "success":

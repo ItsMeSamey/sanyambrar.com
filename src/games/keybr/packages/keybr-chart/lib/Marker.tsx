@@ -3,9 +3,9 @@ import * as styles from "./Marker.module.css";
 type Props = {
     readonly type: "slow" | "fast" | "speed" | "accuracy" | "complexity" | "threshold" | "histogram-h" | "histogram-m" | "histogram-r";
 };
-export function Marker(solidProps: Props): JSX.Element {
+export function Marker(props: Props): JSX.Element {
     let cn;
-    switch (solidProps.type) {
+    switch (props.type) {
         case "slow":
             cn = styles.slow;
             break;
