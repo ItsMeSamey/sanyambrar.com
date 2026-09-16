@@ -11,13 +11,15 @@ const targets = {
 };
 if (!Object.hasOwn(targets, target)) throw new Error('Expected site, wordle, or keybr');
 const settings = targets[target];
+const requestedPort = Number(process.env.SAMEY_DEV_PORT ?? settings.port);
+if (!Number.isSafeInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535) throw new Error('SAMEY_DEV_PORT must be a valid port');
 const docs = resolve(root, 'docs');
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
 const server = await createServer({
   configFile: resolve(root, settings.config),
-  cacheDir: resolve(root, `.tmp/vite-${target}`),
-  server: { host: '127.0.0.1', port: settings.port, strictPort: true },
+  cacheDir: resolve(root, `.tmp/vite-${target}-${requestedPort}`),
+  server: { host: '127.0.0.1', port: requestedPort, strictPort: true },
   plugins: [{
     name: 'samey-development-pages',
     configureServer(server) {
