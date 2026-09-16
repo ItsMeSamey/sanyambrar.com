@@ -6,7 +6,7 @@ export default [{
   languageOptions: {
     parser: tseslint.parser,
     parserOptions: {
-      project: ['tsconfig.app.json', 'tsconfig.node.json', 'src/games/keybr/tsconfig.ported.json', 'tsconfig.worker.json'],
+      project: ['tsconfig.app.json', 'tsconfig.node.json', 'src/games/keybr/tsconfig.json', 'tsconfig.worker.json'],
       tsconfigRootDir: import.meta.dirname,
     },
   },

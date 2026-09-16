@@ -7,3 +7,6 @@ export * from "./recover.ts";
 export * from "./result.ts";
 export * from "./summarystats.ts";
 export * from "./texttype.ts";
+export * from "./context.ts";
+export * from "./settings.ts";
+export * from "./speedunit.ts";
