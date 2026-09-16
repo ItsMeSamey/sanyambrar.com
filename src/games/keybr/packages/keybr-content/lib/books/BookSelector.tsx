@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { type ReactNode } from "@keybr/solid-compat/react";
 import * as styles from "./BookSelector.module.css";
 import { Book } from "./book.ts";
@@ -15,82 +15,107 @@ export function BookSelector(solidProps: {
 }): ReactNode {
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal("");
-  let searchInput: HTMLInputElement | undefined;
+  let dialog!: HTMLDialogElement;
+  let searchInput!: HTMLInputElement;
   const filtered = createMemo(() => {
     const needle = normalize(query().trim());
-    if (!needle) return BOOKS;
-    return BOOKS.filter(({ title, author }) =>
-      normalize(`${title} ${author}`).includes(needle),
-    );
+    return needle
+      ? BOOKS.filter(({ title, author }) => normalize(`${title} ${author}`).includes(needle))
+      : BOOKS;
   });
-  const toggle = () => {
-    const next = !open();
-    setOpen(next);
-    if (next) queueMicrotask(() => searchInput?.focus());
-  };
-  const select = (book: Book) => {
-    solidProps.onChange(book);
+
+  createEffect(() => {
+    if (open()) {
+      if (!dialog.open) dialog.showModal();
+      queueMicrotask(() => searchInput?.focus());
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  });
+
+  const close = () => {
     setOpen(false);
     setQuery("");
   };
+  const select = (book: Book) => {
+    close();
+    solidProps.onChange(book);
+  };
 
-  return <div class={styles.root} onKeyDown={(event) => {
-    if (event.key === "Escape" && open()) {
-      event.preventDefault();
-      setOpen(false);
-    }
-  }}>
+  return <div class={styles.root}>
     <div class={styles.selection}>
+      <img src={solidProps.book.coverImage} alt="" aria-hidden="true" />
       <div class={styles.selectionCopy}>
         <span class={styles.label}>Book</span>
         <strong>{solidProps.book.title}</strong>
-        <span class={styles.author}>{solidProps.book.author}</span>
+        <span>{solidProps.book.author}</span>
       </div>
-      <button type="button" class={styles.browseButton} aria-expanded={open()} onClick={toggle}>
-        {open() ? "Close library" : "Browse library"}
+      <button type="button" class={styles.chooseButton} onClick={() => setOpen(true)}>
+        Choose book
       </button>
     </div>
 
-    <Show when={open()}>
-      <section class={styles.library} aria-label="Book library">
-        <div class={styles.searchRow}>
-          <label for="keybr-book-search">Find a book</label>
+    <dialog
+      ref={dialog}
+      class={styles.dialog}
+      aria-labelledby="keybr-book-library-title"
+      onClose={close}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close();
+        }
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div class={styles.dialogShell}>
+        <header class={styles.dialogHeader}>
+          <div>
+            <span class={styles.eyebrow}>Library</span>
+            <h2 id="keybr-book-library-title">Choose a book</h2>
+          </div>
+          <button type="button" class={styles.closeButton} aria-label="Close book library" onClick={close}>×</button>
+        </header>
+        <label class={styles.search}>
+          <span>Search</span>
           <input
             ref={searchInput}
             id="keybr-book-search"
             type="search"
             value={query()}
-            placeholder="Search by title or author"
+            placeholder="Title or author"
             onInput={(event) => setQuery(event.currentTarget.value)}
           />
-        </div>
-        <div class={styles.libraryMeta} aria-live="polite">
-          <span>{filtered().length} of {BOOKS.length} books</span>
-          <span>Title or author</span>
+        </label>
+        <div class={styles.resultMeta} aria-live="polite">
+          {filtered().length} of {BOOKS.length} books
         </div>
         <Show when={filtered().length > 0} fallback={<p class={styles.empty}>No books match “{query()}”.</p>}>
-          <div class={styles.grid}>
+          <ul class={styles.list}>
             <For each={filtered()}>{(book) => {
               const selected = () => book.id === solidProps.book.id;
-              return <button
-                type="button"
-                class={styles.book}
-                classList={{ [styles.selected]: selected() }}
-                aria-pressed={selected()}
-                aria-label={`Select ${book.title} by ${book.author}`}
-                onClick={() => select(book)}
-              >
-                <img src={book.coverImage} loading="lazy" alt="" aria-hidden="true" />
-                <span class={styles.bookCopy}>
-                  <strong>{book.title}</strong>
-                  <span>{book.author}</span>
-                </span>
-                <Show when={selected()}><span class={styles.selectedLabel}>Selected</span></Show>
-              </button>;
+              return <li>
+                <button
+                  type="button"
+                  class={styles.book}
+                  classList={{ [styles.selected]: selected() }}
+                  aria-pressed={selected()}
+                  onClick={() => select(book)}
+                >
+                  <img src={book.coverImage} loading="lazy" alt="" aria-hidden="true" />
+                  <span class={styles.bookCopy}>
+                    <strong>{book.title}</strong>
+                    <span>{book.author}</span>
+                  </span>
+                  <Show when={selected()}><span class={styles.selectedLabel}>Selected</span></Show>
+                </button>
+              </li>;
             }}</For>
-          </div>
+          </ul>
         </Show>
-      </section>
-    </Show>
+      </div>
+    </dialog>
   </div>;
 }
