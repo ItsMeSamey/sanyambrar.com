@@ -1,0 +1,197 @@
+.root {
+  margin-block: 1rem;
+  border: var(--separator-border);
+  background: var(--primary-l1);
+}
+
+.selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-inline-size: 0;
+  padding: 1.2rem 1.4rem;
+}
+
+.selectionCopy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 0.2rem;
+}
+
+.label,
+.libraryMeta,
+.author,
+.bookCopy span {
+  color: var(--secondary-l2);
+}
+
+.label {
+  font-size: 0.85em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.selectionCopy strong,
+.bookCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.browseButton,
+.book {
+  border: 1px solid var(--Button__background-color);
+  color: var(--Button__color);
+  background: var(--Button__background-color);
+}
+
+.browseButton {
+  flex: none;
+  padding: 0.7rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.browseButton:is(:hover, :focus-visible),
+.book:is(:hover, :focus-visible) {
+  outline: 2px solid var(--site-accent-fg, var(--accent));
+  outline-offset: 2px;
+}
+
+.library {
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem 1.4rem 1.4rem;
+  border-block-start: var(--separator-border);
+  background: var(--background-color);
+}
+
+.searchRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+}
+
+.searchRow label {
+  font-weight: 700;
+}
+
+.searchRow input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--TextField__border-color);
+  color: var(--TextField__color);
+  background: var(--TextField__background-color);
+  font: inherit;
+}
+
+.searchRow input:focus {
+  outline: 0;
+  border-color: var(--TextField--focused__border-color);
+  background: var(--TextField--focused__background-color);
+}
+
+.libraryMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  max-block-size: min(34rem, 58vh);
+  padding: 0.2rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.book {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  min-inline-size: 0;
+  min-block-size: 5rem;
+  padding: 0.65rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.book img {
+  inline-size: 3.2rem;
+  block-size: 4.2rem;
+  object-fit: cover;
+  border: var(--separator-border);
+  background: var(--primary-d1);
+}
+
+.bookCopy {
+  display: grid;
+  min-inline-size: 0;
+  gap: 0.35rem;
+}
+
+.bookCopy strong {
+  white-space: nowrap;
+}
+
+.bookCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88em;
+}
+
+.book.selected {
+  border-color: var(--site-accent-fg, var(--accent));
+  box-shadow: inset 3px 0 0 var(--site-accent-fg, var(--accent));
+}
+
+.selectedLabel {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-end: 0.45rem;
+  color: var(--site-accent-fg, var(--accent));
+  font-size: 0.72em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.empty {
+  margin: 0;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--secondary-l2);
+}
+
+@media (max-width: 700px) {
+  .selection {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .browseButton {
+    inline-size: 100%;
+  }
+
+  .searchRow {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    max-block-size: 52vh;
+  }
+}

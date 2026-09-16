@@ -401,12 +401,19 @@ ${keybrViewSwitch}`;
   const keybrNameValue = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/text/NameValue.tsx"), "utf8");
   const keybrEventIconStyle = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/practice/state/event-icons.module.css"), "utf8");
   const keybrBookPreview = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookPreview.tsx"), "utf8");
+  const keybrBookSelector = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookSelector.tsx"), "utf8");
+  const keybrBookSelectorStyle = await readFile(join(ROOT, "src/games/keybr/packages/keybr-content/lib/books/BookSelector.module.css"), "utf8");
   const keybrLessonPreview = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/LessonPreview.tsx"), "utf8");
   const keybrCustomTextSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/lesson/CustomTextLessonSettings.tsx"), "utf8");
   const keybrEffortLegend = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/EffortLegend.tsx"), "utf8");
   const keybrEffort = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/effort.ts"), "utf8");
   must(keybrEffortLegend.includes("effort.textShade(value)") && keybrEffort.includes("contrastTextRgb("),
     "ux: Keybr effort legend text must adapt to its shaded background");
+  must(keybrBookSelector.includes("Search by title or author") && keybrBookSelector.includes("createMemo") &&
+    keybrBookSelector.includes("aria-pressed={selected()}") && !keybrBookSelector.includes("OptionList") &&
+    keybrBookSelectorStyle.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") &&
+    keybrBookSelectorStyle.includes("@media (max-width: 700px)") && keybrBookSelectorStyle.includes("grid-template-columns: 1fr"),
+    "ux: Keybr book selection must remain searchable, visual, keyboard-usable, and responsive for large catalogs");
   const sharedTopBar = await readFile(join(ROOT, "src/shared/components/TopBar.tsx"), "utf8");
   const sharedGameActions = sharedTopBar.slice(sharedTopBar.indexOf("export function GameTopBarActions"), sharedTopBar.indexOf("export function PrimaryNav"));
   must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") && keybrTopBar.includes("<GameTopBarActions") &&
