@@ -22,7 +22,7 @@ export class Settings {
     if (!isPlainObject(json)) {
       throw new TypeError();
     }
-    this.#json = migrate(cloneJson(json));
+    this.#json = cloneJson(json);
     this.#isNew = isNew;
   }
 
@@ -64,8 +64,4 @@ function cloneJson(o: Json): Json {
 
 function mergeJson(a: Json, b: Json): Json {
   return Object.assign(createJson(), a, b);
-}
-
-function migrate(json: Json): Json {
-  return json;
 }

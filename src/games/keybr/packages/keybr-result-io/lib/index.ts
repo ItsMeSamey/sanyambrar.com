@@ -1,1 +1,1 @@
-export * from "./legacyjson.ts";
+export * from "./json.ts";

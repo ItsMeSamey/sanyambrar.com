@@ -10,9 +10,7 @@ export function NameValue(props: NameValueProps): JSX.Element {
     </span>);
 }
 export function asName(v: JSX.Element): JSX.Element {
-    // Solid JSX is eagerly rendered. A component passed here is already a DOM
-    // node, not a React vnode that can be inspected through `.type`. Preserve
-    // rendered nodes and only wrap primitive labels.
+    // Preserve rendered nodes and only wrap primitive labels.
     return typeof v === "string" || typeof v === "number"
         ? <Name name={String(v)}/>
         : v;
