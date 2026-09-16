@@ -4,7 +4,7 @@ import { type DeadCharacter, KeyCharacters, type KeyShape, type LabelShape, type
 import { type CodePoint, isDiacritic } from "@keybr/unicode";
 import { type ClassName, type MouseProps } from "@keybr/widget";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import * as styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
 import { omit } from 'solid-js';
@@ -84,7 +84,7 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Com
       </svg>);
     }
     KeyComponent.displayName = `Key[${id}]`;
-    return memo(KeyComponent);
+    return KeyComponent;
     function makeCodePointLabel(codePoint: CodePoint, x: number, y: number, className: ClassName): JSX.Element {
         switch (codePoint) {
             case /* SPACE */ 0x0020:

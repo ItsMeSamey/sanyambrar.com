@@ -1,8 +1,8 @@
 import type { JSX } from "@solidjs/web";
 import { type Focusable } from "@keybr/widget";
-import { memo, type RefObject, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { type RefObject, useEffect, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { type Callbacks, InputHandler } from "./inputhandler.ts";
-export const TextEvents = memo(function TextEvents(solidProps: Callbacks & {
+export const TextEvents = function TextEvents(solidProps: Callbacks & {
     readonly focusRef?: RefObject<Focusable | null>;
 }): JSX.Element {
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -18,7 +18,7 @@ export const TextEvents = memo(function TextEvents(solidProps: Callbacks & {
     return (<div style={divStyle}>
       <textarea ref={el => inputRef.current = el} autocapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
     </div>);
-});
+};
 function useInputHandler() {
     const handlerRef = useRef<InputHandler | null>(null);
     let handler = handlerRef.current;

@@ -2,10 +2,10 @@ import type { JSX } from "@solidjs/web";
 import { type Keyboard, type KeyCombo, type KeyShape, useKeyboard, } from "@keybr/keyboard";
 import { Tasks } from "@keybr/lang";
 import { type CodePoint } from "@keybr/unicode";
-import { memo, useEffect, useRef, useState } from "@keybr/solid-compat/react";
+import { useEffect, useRef, useState } from "@keybr/solid-compat/react";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
-export const PointersLayer = memo(function PointersLayer(props: {
+export const PointersLayer = function PointersLayer(props: {
     readonly suffix: readonly CodePoint[];
     readonly delay?: number;
 }): JSX.Element {
@@ -36,7 +36,7 @@ export const PointersLayer = memo(function PointersLayer(props: {
         }
     }, () => [combo()]);
     return <Surface ref={svgRef}>{pointers(keyboard, combo())}</Surface>;
-});
+};
 function pointers(keyboard: Keyboard, combo: KeyCombo | null): JSX.Element[] {
     const children = [];
     while (combo != null) {

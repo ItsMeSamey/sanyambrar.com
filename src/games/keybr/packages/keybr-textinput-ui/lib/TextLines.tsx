@@ -1,20 +1,22 @@
 import type { JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { type Char, charArraysAreEqual, type Line, type LineList, type TextDisplaySettings, textDisplaySettings, } from "@keybr/textinput";
+import { type Char, type Line, type LineList, type TextDisplaySettings, textDisplaySettings, } from "@keybr/textinput";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import { renderChars } from "./chars.tsx";
 import { Cursor } from "./Cursor.tsx";
 import { textItemStyle } from "./styles.ts";
 import * as styles from "./TextLines.module.css";
 import { createMemo, For } from 'solid-js';
 export type TextLineSize = "X0" | "X1" | "X2" | "X3";
-export const TextLines = memo(function TextLines(props: {
+export const TextLines = function TextLines(props: {
     readonly lines: LineList;
     readonly settings?: TextDisplaySettings;
     readonly wrap?: boolean;
     readonly size?: TextLineSize;
-    readonly lineTemplate?: Component<{ readonly children?: JSX.Element }>;
+    readonly lineTemplate?: Component<{
+        readonly children?: JSX.Element;
+    }>;
     readonly cursor: boolean;
     readonly focus: boolean;
 }): JSX.Element {
@@ -24,8 +26,8 @@ export const TextLines = memo(function TextLines(props: {
         <TextLine settings={settings()} chars={chars} className={className()} style={settings().font.cssProperties}/>
       </props.lineTemplate>) : (<TextLine settings={settings()} chars={chars} className={className()} style={settings().font.cssProperties}/>));
     return <>{props.cursor ? <Cursor settings={settings()}>{children()}</Cursor> : children()}</>;
-});
-const TextLine = memo(function TextLine(solidProps: {
+};
+const TextLine = function TextLine(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
     readonly className: string;
@@ -45,7 +47,8 @@ const TextLine = memo(function TextLine(solidProps: {
                     break;
                 default:
                     if (ws) {
-                        if (itemChars.length > 0) groups.push(itemChars);
+                        if (itemChars.length > 0)
+                            groups.push(itemChars);
                         itemChars = [];
                         ws = false;
                     }
@@ -53,19 +56,17 @@ const TextLine = memo(function TextLine(solidProps: {
             }
             itemChars.push(char);
         }
-        if (itemChars.length > 0) groups.push(itemChars);
+        if (itemChars.length > 0)
+            groups.push(itemChars);
         return groups;
     });
     return (<div class={solidProps.className} style={solidProps.style} dir={solidProps.settings.language.direction}>
         <For each={items()}>{(chars) => <TextItem settings={solidProps.settings} chars={chars}/>}</For>
       </div>);
-}, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
-    charArraysAreEqual(prevProps.chars, nextProps.chars) && // deep equality
-    prevProps.className === nextProps.className);
-const TextItem = memo(function TextItem(solidProps: {
+};
+const TextItem = function TextItem(solidProps: {
     readonly settings: TextDisplaySettings;
     readonly chars: readonly Char[];
 }): JSX.Element {
     return <span style={textItemStyle}>{renderChars(solidProps.settings, solidProps.chars)}</span>;
-}, (prevProps, nextProps) => prevProps.settings === nextProps.settings &&
-    charArraysAreEqual(prevProps.chars, nextProps.chars));
+};

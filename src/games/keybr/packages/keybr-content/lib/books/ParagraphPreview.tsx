@@ -1,9 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { memo } from "@keybr/solid-compat/react";
+
 import { createMemo, For } from 'solid-js';
 import * as styles from "./ParagraphPreview.module.css";
-export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
+export const ParagraphPreview = function ParagraphPreview(solidProps: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
     readonly around?: number;
@@ -28,7 +28,7 @@ export const ParagraphPreview = memo(function ParagraphPreview(solidProps: {
           <ParagraphContent paragraph={paragraph}/>
         </div>)}</For>
     </div>);
-});
+};
 export function ParagraphIndex(solidProps: {
     readonly paragraphIndex: number;
 }) {

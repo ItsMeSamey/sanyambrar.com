@@ -1,9 +1,9 @@
 import { KeyLegendList, names } from "@keybr/lesson-ui";
 import { Slide, Tour } from "@keybr/widget";
-import { memo } from "@keybr/solid-compat/react";
+
 import { FormattedMessage } from "@keybr/intl";
 import { KeyDetailsChartDemo } from "./KeyDetailsChartDemo.tsx";
-export const PracticeTour = memo(function PracticeTour(solidProps: {
+export const PracticeTour = function PracticeTour(solidProps: {
     readonly onClose?: () => void;
 }) {
     return (<Tour onClose={solidProps.onClose}>
@@ -67,4 +67,4 @@ export const PracticeTour = memo(function PracticeTour(solidProps: {
             "</dl>"}/>
       </Slide>
     </Tour>);
-});
+};

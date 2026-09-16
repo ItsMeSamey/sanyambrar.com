@@ -3,9 +3,9 @@ import { keyboardProps, useKeyboard } from "@keybr/keyboard";
 import { flatten, HeatmapLayer, KeyLayer, PointersLayer, TransitionsLayer, VirtualKeyboard, ZonesLayer, } from "@keybr/keyboard-ui";
 import { useSettings } from "@keybr/settings";
 import { type CodePoint } from "@keybr/unicode";
-import { memo } from "@keybr/solid-compat/react";
+
 import { type LastLesson } from "./state/index.ts";
-export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
+export const KeyboardPresenter = function KeyboardPresenter(props: {
     readonly focus: boolean;
     readonly depressedKeys: readonly string[];
     readonly toggledKeys: readonly string[];
@@ -26,7 +26,7 @@ export const KeyboardPresenter = memo(function KeyboardPresenter(props: {
       {props.lastLesson && (<TransitionsLayer histogram={props.lastLesson.hits2} modifier="h"/>)}
       {!hasLastLesson() && !props.focus && <ZonesLayer />}
     </VirtualKeyboard>);
-});
+};
 // This used to go through the React-port `withDeferred` helper. Solid keeps a
 // stable props proxy, so deferring that object captured the first values and
 // left suffix/focus/lastLesson stale until unrelated lifecycle activity caused

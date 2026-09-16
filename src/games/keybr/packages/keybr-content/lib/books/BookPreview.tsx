@@ -2,12 +2,12 @@ import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { textStatsOf } from "@keybr/unicode";
 import { NameValue } from "@keybr/widget";
-import { memo, useMemo } from "@keybr/solid-compat/react";
+import { useMemo } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";
-export const BookPreview = memo(function BookPreview(solidProps: BookContent): JSX.Element {
+export const BookPreview = function BookPreview(solidProps: BookContent): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const stats = useMemo(() => {
@@ -57,4 +57,4 @@ export const BookPreview = memo(function BookPreview(solidProps: BookContent): J
         </p>
       </div>
     </div>);
-});
+};
