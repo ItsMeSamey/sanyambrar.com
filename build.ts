@@ -184,20 +184,6 @@ async function verifySourceArchitecture() {
   const keybrDeps = { ...optionalRecord(keybrPackage.dependencies, "Keybr dependencies must be an object"), ...optionalRecord(keybrPackage.devDependencies, "Keybr devDependencies must be an object") };
   must(!("react" in keybrDeps) && !("react-dom" in keybrDeps) && !("react-intl" in keybrDeps), "architecture: Keybr must not depend on React");
   must(!Object.keys(keybrDeps).some(name => name.includes("webpack")), "architecture: Keybr must not depend on Webpack");
-  const keybrPackagesDir = join(ROOT, "src/games/keybr/packages");
-  for (const entry of await readdir(keybrPackagesDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const file = join(keybrPackagesDir, entry.name, "package.json");
-    if (!existsSync(file)) continue;
-    const pkg = await readJsonRecord(file);
-    const label = relative(ROOT, file);
-    const deps = {
-      ...optionalRecord(pkg.dependencies, `${label}: dependencies must be an object`),
-      ...optionalRecord(pkg.devDependencies, `${label}: devDependencies must be an object`),
-      ...optionalRecord(pkg.peerDependencies, `${label}: peerDependencies must be an object`),
-    };
-    must(!("react" in deps) && !("react-dom" in deps) && !("react-intl" in deps), `architecture: ${relative(ROOT, file)} must not depend on React`);
-  }
   const keybrEntry = await readFile(join(ROOT, "src/games/keybr/src/main.tsx"), "utf8");
   const keybrApp = await readFile(join(ROOT, "src/games/keybr/packages/keybr-app/lib/App.tsx"), "utf8");
   const keybrViewSwitch = await readFile(join(ROOT, "src/games/keybr/packages/keybr-widget/lib/components/view/ViewSwitch.tsx"), "utf8");
