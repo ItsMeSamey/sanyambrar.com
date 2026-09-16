@@ -1,12 +1,12 @@
 import type { JSX } from "@solidjs/web";
 import { type Language } from "@keybr/keyboard";
 import { Enum, type EnumItem } from "@keybr/lang";
-import { type FontFace, FONTS_FACES, type Script, UBUNTU_MONO, } from "@keybr/themes";
+import { type FontFace, FONTS_FACES, type Script, MONOSPACE, } from "@keybr/themes";
 
 export class Font implements EnumItem {
     static readonly ALL = new Enum<Font>(...FONTS_FACES.map((fontFace) => new Font(fontFace)));
     static get default() {
-        return (Font.ALL.find(({ name }) => name === UBUNTU_MONO.name) ?? Font.ALL.at(0));
+        return (Font.ALL.find(({ name }) => name === MONOSPACE.name) ?? Font.ALL.at(0));
     }
     static select(language: Language) {
         return new Enum(...Font.ALL.filter((font) => font.scripts.includes(language.script)));

@@ -12,7 +12,7 @@ import { Match, Switch, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { Controls } from "./Controls.tsx";
 import { Indicators } from "./Indicators.tsx";
-import { DeferredKeyboardPresenter } from "./KeyboardPresenter.tsx";
+import { KeyboardPresenter } from "./KeyboardPresenter.tsx";
 import { PracticeTour } from "./PracticeTour.tsx";
 import * as styles from "./Presenter.module.css";
 import { type LastLesson, type LessonState } from "./state/index.ts";
@@ -111,7 +111,7 @@ function NormalLayout(props: { readonly state: LessonState; readonly focus: bool
     <Indicators state={props.state} />
     <div id={names.textInput} class={styles.textInputNormal}>{props.textInput}</div>
     <div id={names.keyboard} class={styles.keyboard}>
-      <Zoomer id="Keyboard/Normal"><DeferredKeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} suffix={props.suffix} lastLesson={props.lastLesson} /></Zoomer>
+      <Zoomer id="Keyboard/Normal"><KeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} suffix={props.suffix} lastLesson={props.lastLesson} /></Zoomer>
     </div>
     {props.controls}{props.tour}
   </Screen>;

@@ -3,14 +3,10 @@ import { type AnyProp } from "./props.ts";
 import { Settings } from "./settings.ts";
 
 /**
- * Stable Settings identity with property-level Solid dependencies.
- *
- * The previous React compatibility proxy subscribed every `settings.get(...)`
- * call to one global Settings signal. Any setting change therefore invalidated
- * every reactive consumer on the page. This facade tracks each setting key
- * independently while still returning immutable Settings snapshots from `set`.
+ * Creates a stable Settings view with property-level Solid dependencies.
+ * Only consumers of changed keys are invalidated when a snapshot is replaced.
  */
-export function createReactiveSettings(initial: Settings): {
+export function createSettingsState(initial: Settings): {
   readonly settings: Settings;
   readonly current: Accessor<Settings>;
   readonly replace: (next: Settings) => void;

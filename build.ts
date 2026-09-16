@@ -305,20 +305,20 @@ ${keybrViewSwitch}`;
     "ux: Keybr subpages must round-trip through query-string history");
   const keybrSettingsScreen = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/SettingsScreen.tsx"), "utf8");
   const keybrLessonLoader = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-loader/lib/LessonLoader.tsx"), "utf8");
-  const keybrReactiveSettings = await readFile(join(ROOT, "src/games/keybr/packages/keybr-settings/lib/reactive.ts"), "utf8");
+  const keybrSettingsState = await readFile(join(ROOT, "src/games/keybr/packages/keybr-settings/lib/state.ts"), "utf8");
   const keybrLessonSettings = await readFile(join(ROOT, "src/games/keybr/packages/page-practice/lib/settings/LessonSettings.tsx"), "utf8");
   const keybrWordListLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/wordlist.ts"), "utf8");
   const keybrBooksLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/books.ts"), "utf8");
   const keybrCustomTextLesson = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson/lib/customtext.ts"), "utf8");
-  must(!keybrSettingsScreen.includes("createReactiveSettings(snapshotSettings(settings))") &&
+  must(!keybrSettingsScreen.includes("createSettingsState(snapshotSettings(settings))") &&
     keybrSettingsScreen.includes("<KeyboardProvider>") &&
     keybrLessonLoader.includes("loaded?.type === settings.get(lessonProps.type)") &&
     keybrLessonLoader.includes("<Show keyed when={currentLesson()}") &&
-    keybrReactiveSettings.includes("const revisions = new Map") &&
-    keybrReactiveSettings.includes("revision(prop.key)[0]()") &&
-    keybrReactiveSettings.includes("Object.is(before[key], after[key])") &&
-    keybrReactiveSettings.includes("const toJSON = () => untrack(current).toJSON()") &&
-    !keybrReactiveSettings.includes("allRevision") &&
+    keybrSettingsState.includes("const revisions = new Map") &&
+    keybrSettingsState.includes("revision(prop.key)[0]()") &&
+    keybrSettingsState.includes("Object.is(before[key], after[key])") &&
+    keybrSettingsState.includes("const toJSON = () => untrack(current).toJSON()") &&
+    !keybrSettingsState.includes("allRevision") &&
     keybrLessonSettings.includes("<SegmentedControl") &&
     keybrLessonSettings.includes("comfortable") &&
     keybrLessonSettings.includes("value={settings.get(lessonProps.type)}") &&
@@ -366,14 +366,14 @@ ${keybrViewSwitch}`;
     keybrCanvas.includes('addEventListener("samey-themechange", repaint)') && keybrCanvas.includes("themeRevision()") &&
     keybrElementSize.includes("return size;") && !keybrElementSize.includes("return size();"),
     "ux: Keybr canvas sizing and theme repainting must stay reactive so statistics charts update immediately");
-  const keybrReactivePaint = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/reactive-paint.ts"), "utf8");
+  const keybrMemoizedPaint = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/memoized-paint.ts"), "utf8");
   const keybrSpeedChart = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/SpeedChart.tsx"), "utf8");
   const keybrKeySpeedChart = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/KeySpeedChart.tsx"), "utf8");
   const keybrFrequencyHeatmap = await readFile(join(ROOT, "src/games/keybr/packages/keybr-chart/lib/KeyFrequencyHeatmap.tsx"), "utf8");
   const keybrResultGrouper = await readFile(join(ROOT, "src/games/keybr/packages/page-stats/lib/stats/ResultGrouper.tsx"), "utf8");
   const keybrMessages = await readFile(join(ROOT, "src/games/keybr/packages/keybr-intl/lib/messages/en.json"), "utf8");
   must(keybrCanvas.includes("new Graphics(context).paint(local.paint(currentSize));") &&
-    keybrReactivePaint.includes("const current = createMemo(factory)") && keybrReactivePaint.includes("current()(box)") &&
+    keybrMemoizedPaint.includes("const current = createMemo(factory)") && keybrMemoizedPaint.includes("current()(box)") &&
     keybrSpeedChart.includes("const currentSmoothness = smoothness()") &&
     keybrKeySpeedChart.includes("const currentSamples = samples()") && keybrKeySpeedChart.includes("const currentSmoothness = smoothness()") &&
     keybrSpeedHistogram.includes("const currentThresholds = thresholds()") &&

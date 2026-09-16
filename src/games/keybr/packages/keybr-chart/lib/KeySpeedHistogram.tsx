@@ -8,7 +8,7 @@ import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeySpeedHistogram(props: {
     readonly keyStatsMap: KeyStatsMap;
@@ -20,7 +20,7 @@ export function KeySpeedHistogram(props: {
 function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
     const { formatSpeed } = useFormatter();
-    return reactivePaint(() => {
+    return memoizePaint(() => {
         const currentKeyStatsMap = keyStatsMap();
         const g = withStyles(styles());
         const { letters, results } = currentKeyStatsMap;

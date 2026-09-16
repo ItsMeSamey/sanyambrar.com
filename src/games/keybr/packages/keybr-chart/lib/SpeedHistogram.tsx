@@ -6,7 +6,7 @@ import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
 
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
-import { reactivePaint } from "./reactive-paint.ts";
+import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 
 export type SpeedThreshold = Readonly<{ label: string; value: number }>;
@@ -34,7 +34,7 @@ function usePaint(
 ) {
   const { formatPercents } = useIntlNumbers();
   const { formatSpeed } = useFormatter();
-  return reactivePaint(() => {
+  return memoizePaint(() => {
     const currentDistribution = distribution();
     const currentThresholds = thresholds();
     const g = withStyles(styles());

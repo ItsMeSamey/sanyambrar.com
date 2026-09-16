@@ -52,11 +52,3 @@ export function toastProps(toast: ToastContextValue) {
         },
     };
 }
-export function ToastWrapper(props: {
-    readonly children: JSX.Element;
-}): JSX.Element {
-    // Alert and Award bind toast interactions themselves through useToast().
-    // React-style element cloning is not available in Solid and attempting to
-    // inspect children.props here breaks because children are already DOM nodes.
-    return props.children;
-}
