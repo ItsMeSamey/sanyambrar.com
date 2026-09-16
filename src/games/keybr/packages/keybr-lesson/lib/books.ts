@@ -17,7 +17,58 @@ import { Target } from "./target.ts";
 import { generateFragment } from "./text/fragment.ts";
 import { wordSequence } from "./text/words.ts";
 
+type StoredBookProgress = {
+  readonly paragraphIndex: number;
+  readonly signature: string;
+  readonly history: readonly number[];
+  readonly pageIndex: number;
+};
+
+const progressKey = (book: Book) =>
+  `game.keybr.storybook.progress.v1.${book.id}`;
+
+function loadProgress(book: Book): StoredBookProgress | null {
+  try {
+    if (typeof localStorage === "undefined") return null;
+    const json = localStorage.getItem(progressKey(book));
+    if (json == null) return null;
+    const value = JSON.parse(json) as Partial<StoredBookProgress>;
+    if (
+      !Number.isInteger(value.paragraphIndex) ||
+      Number(value.paragraphIndex) < 0
+    )
+      return null;
+    if (typeof value.signature !== "string") return null;
+    if (!Array.isArray(value.history) || value.history.length === 0)
+      return null;
+    if (!value.history.every((item) => Number.isInteger(item) && item >= 0))
+      return null;
+    if (
+      !Number.isInteger(value.pageIndex) ||
+      Number(value.pageIndex) < 0 ||
+      Number(value.pageIndex) >= value.history.length
+    )
+      return null;
+    return value as StoredBookProgress;
+  } catch {
+    return null;
+  }
+}
+
+function storeProgress(book: Book, progress: StoredBookProgress): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(progressKey(book), JSON.stringify(progress));
+  } catch {
+    // Progress persistence must never make a typing lesson unusable.
+  }
+}
+
 export class BooksLesson extends Lesson {
+  static savedParagraphIndex(book: Book): number {
+    return loadProgress(book)?.paragraphIndex ?? 0;
+  }
+
   readonly book: Book;
   readonly content: Content;
   wordIndex = 0;
@@ -25,6 +76,11 @@ export class BooksLesson extends Lesson {
   #paragraphCache: readonly string[] = [];
   #wordListCacheKey = "";
   #wordListCache: readonly string[] = [];
+  #history: number[] = [0];
+  #pageIndex = 0;
+  #progressParagraphIndex = 0;
+  #progressSignature = "";
+  #generatedCurrentPage = false;
 
   constructor(
     settings: Settings,
@@ -35,6 +91,23 @@ export class BooksLesson extends Lesson {
     super(settings, keyboard, model);
     this.book = book;
     this.content = content;
+
+    const paragraphIndex = this.paragraphIndex;
+    const signature = this.#makeProgressSignature();
+    const saved = loadProgress(book);
+    if (saved != null && saved.paragraphIndex === paragraphIndex) {
+      const current = saved.history[saved.pageIndex] ?? 0;
+      if (saved.signature === signature) {
+        this.#history = [...saved.history];
+        this.#pageIndex = saved.pageIndex;
+      } else {
+        this.#history = [current];
+        this.#pageIndex = 0;
+      }
+    }
+    this.#progressParagraphIndex = paragraphIndex;
+    this.#progressSignature = signature;
+    this.wordIndex = this.#history[this.#pageIndex] ?? 0;
   }
 
   get paragraphs(): readonly string[] {
@@ -64,7 +137,6 @@ export class BooksLesson extends Lesson {
     const key = `${this.#paragraphCacheKey}:${paragraphIndex}`;
     if (key !== this.#wordListCacheKey) {
       this.#wordListCacheKey = key;
-      this.wordIndex = 0;
       this.#wordListCache = [
         ...paragraphs.slice(paragraphIndex),
         ...paragraphs.slice(0, paragraphIndex),
@@ -84,7 +156,90 @@ export class BooksLesson extends Lesson {
   }
 
   override generate() {
+    this.#syncProgress();
+    if (this.#generatedCurrentPage) {
+      this.#moveNext();
+    } else {
+      this.#generatedCurrentPage = true;
+    }
+    return this.#generateCurrent();
+  }
+
+  generatePrevious(): string | null {
+    this.#syncProgress();
+    if (this.#pageIndex === 0) return null;
+    this.#pageIndex--;
+    this.#generatedCurrentPage = true;
+    this.#saveProgress();
+    return this.#generateCurrent();
+  }
+
+  generatePreview(): string {
+    const start = this.paragraphIndex === this.#progressParagraphIndex
+      ? this.#history[this.#pageIndex] ?? 0
+      : 0;
+    const cursor = { wordIndex: this.#normalizeWordIndex(start) };
+    return generateFragment(this.settings, wordSequence(this.wordList, cursor));
+  }
+
+  #moveNext(): void {
+    if (this.#pageIndex < this.#history.length - 1) {
+      this.#pageIndex++;
+    } else {
+      this.#history.push(this.#normalizeWordIndex(this.wordIndex));
+      this.#pageIndex++;
+    }
+    this.#saveProgress();
+  }
+
+  #generateCurrent(): string {
+    const start = this.#normalizeWordIndex(this.#history[this.#pageIndex] ?? 0);
+    this.#history[this.#pageIndex] = start;
+    this.wordIndex = start;
+    this.#saveProgress();
     return generateFragment(this.settings, wordSequence(this.wordList, this));
+  }
+
+  #normalizeWordIndex(value: number): number {
+    const length = this.wordList.length;
+    return length > 0 ? ((value % length) + length) % length : 0;
+  }
+
+  #syncProgress(): void {
+    const paragraphIndex = this.paragraphIndex;
+    const signature = this.#makeProgressSignature();
+    if (paragraphIndex !== this.#progressParagraphIndex) {
+      this.#history = [0];
+      this.#pageIndex = 0;
+      this.wordIndex = 0;
+      this.#generatedCurrentPage = false;
+    } else if (signature !== this.#progressSignature) {
+      const current = this.#history[this.#pageIndex] ?? 0;
+      this.#history = [current];
+      this.#pageIndex = 0;
+      this.wordIndex = current;
+      this.#generatedCurrentPage = false;
+    }
+    this.#progressParagraphIndex = paragraphIndex;
+    this.#progressSignature = signature;
+    this.#saveProgress();
+  }
+
+  #makeProgressSignature(): string {
+    return [
+      this.settings.get(lessonProps.length),
+      Number(this.settings.get(lessonProps.books.lettersOnly)),
+      Number(this.settings.get(lessonProps.books.lowercase)),
+    ].join(":");
+  }
+
+  #saveProgress(): void {
+    storeProgress(this.book, {
+      paragraphIndex: this.#progressParagraphIndex,
+      signature: this.#progressSignature,
+      history: this.#history,
+      pageIndex: this.#pageIndex,
+    });
   }
 
   #flattenContent(content: Content, lettersOnly: boolean, lowercase: boolean) {

@@ -1,5 +1,5 @@
 import { BookPreview, BookSelector, ParagraphPreview, ParagraphSelector, } from "@keybr/content";
-import { type BooksLesson, lessonProps } from "@keybr/lesson";
+import { BooksLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, Spacer, } from "@keybr/widget";
 import { type ReactNode } from "@keybr/solid-compat/react";
@@ -28,7 +28,7 @@ export function BooksLessonSettings(solidProps: {
         <BookSelector book={book()} onChange={(book) => {
             updateSettings(settings
                 .set(lessonProps.books.book, book)
-                .set(lessonProps.books.paragraphIndex, 0));
+                .set(lessonProps.books.paragraphIndex, BooksLesson.savedParagraphIndex(book)));
         }}/>
         <BookPreview book={book()} content={content()}/>
         <ParagraphSelector paragraphs={paragraphs()} paragraphIndex={paragraphIndex()} onChange={(paragraphIndex) => {

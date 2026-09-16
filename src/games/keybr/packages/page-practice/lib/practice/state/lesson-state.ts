@@ -1,5 +1,6 @@
 import { keyboardProps, type KeyId } from "@keybr/keyboard";
 import {
+  BooksLesson,
   type DailyGoal,
   Lesson,
   type LessonKeys,
@@ -58,6 +59,17 @@ export class LessonState {
 
   resetLesson() {
     this.#reset(this.textInput.text);
+  }
+
+  previousLesson() {
+    if (this.lesson instanceof BooksLesson) {
+      const previous = this.lesson.generatePrevious();
+      if (previous != null) {
+        this.#reset(previous);
+        return;
+      }
+    }
+    this.resetLesson();
   }
 
   skipLesson() {

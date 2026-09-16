@@ -18,7 +18,8 @@ function ControlButton(props: {
 
 export const Controls = memo(function Controls(props: {
   readonly onChangeView: () => void;
-  readonly onResetLesson: () => void;
+  readonly onPreviousLesson: () => void;
+  readonly previousLesson: boolean;
   readonly onSkipLesson: () => void;
   readonly onHelp: () => void;
 }): ReactNode {
@@ -41,11 +42,16 @@ export const Controls = memo(function Controls(props: {
         onClick={props.onChangeView}
       ><Maximize2 aria-hidden="true" /></ControlButton>
       <ControlButton
-        title={formatMessage({
-          id: "practice.widget.resetLesson.description",
-          defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
-        })}
-        onClick={props.onResetLesson}
+        title={props.previousLesson
+          ? formatMessage({
+              id: "practice.widget.previousLesson.description",
+              defaultMessage: "Previous lesson (Ctrl + Left Arrow).",
+            })
+          : formatMessage({
+              id: "practice.widget.resetLesson.description",
+              defaultMessage: "Reset the current lesson (Ctrl + Left Arrow).",
+            })}
+        onClick={props.onPreviousLesson}
       >{rtl ? <Redo2 aria-hidden="true" /> : <Undo2 aria-hidden="true" />}</ControlButton>
       <ControlButton
         title={formatMessage({

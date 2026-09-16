@@ -1,4 +1,5 @@
 import { type KeyId } from "@keybr/keyboard";
+import { BooksLesson } from "@keybr/lesson";
 import { type CodePoint } from "@keybr/unicode";
 import { names } from "@keybr/lesson-ui";
 import { Screen } from "@keybr/pages-shared";
@@ -22,6 +23,7 @@ type Props = {
   readonly suffix: readonly CodePoint[];
   readonly lastLesson: LastLesson | null;
   readonly onResetLesson: () => void;
+  readonly onPreviousLesson: () => void;
   readonly onSkipLesson: () => void;
   readonly onKeyDown: (ev: IKeyboardEvent) => void;
   readonly onKeyUp: (ev: IKeyboardEvent) => void;
@@ -49,7 +51,7 @@ export function Presenter(props: Props): JSX.Element {
     }
   });
 
-  const reset = () => { props.onResetLesson(); focusRef.current?.focus(); };
+  const previous = () => { props.onPreviousLesson(); focusRef.current?.focus(); };
   const skip = () => { props.onSkipLesson(); focusRef.current?.focus(); };
   const keyDown = (ev: IKeyboardEvent) => { if (focus()) props.onKeyDown(ev); };
   const keyUp = (ev: IKeyboardEvent) => { if (focus()) props.onKeyUp(ev); };
@@ -69,7 +71,7 @@ export function Presenter(props: Props): JSX.Element {
   const closeTour = () => {
     setView(View.Normal); setTour(false); props.onResetLesson(); queueMicrotask(() => focusRef.current?.focus());
   };
-  const controls = () => <Controls onChangeView={changeView} onResetLesson={reset} onSkipLesson={skip} onHelp={help} />;
+  const controls = () => <Controls onChangeView={changeView} onPreviousLesson={previous} previousLesson={props.state.lesson instanceof BooksLesson} onSkipLesson={skip} onHelp={help} />;
   const textInput = (size: "X0" | "X1" | "X2", id: string) => (
     <Zoomer id={id}>
       {(moving) => <TextArea
