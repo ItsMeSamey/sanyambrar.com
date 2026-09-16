@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { Alert, toast } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { ErrorReport } from "./ErrorReport.tsx";
 import { formatReport, inspectError } from "./inspect.ts";
 export function ErrorAlert(solidProps: {
-    readonly title: ReactNode;
+    readonly title: JSX.Element;
     readonly error: unknown;
 }) {
     return (<Alert severity="error" closeButton={true}>
@@ -11,7 +12,7 @@ export function ErrorAlert(solidProps: {
       <ErrorReport report={formatReport(inspectError(solidProps.error))}/>
     </Alert>);
 }
-ErrorAlert.toast = (title: ReactNode, error: unknown) => {
+ErrorAlert.toast = (title: JSX.Element, error: unknown) => {
     toast(() => <ErrorAlert title={title} error={error}/>, {
         autoClose: false,
         pauseOnHover: false,

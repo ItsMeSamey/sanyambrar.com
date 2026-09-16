@@ -1,12 +1,13 @@
-import { type ElementType, type HTMLAttributes, type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import type { ValidComponent } from "@solidjs/web";
 import { type ClassName, type MouseProps } from "../types.ts";
 export type LinkProps = {
-    readonly as?: ElementType<HTMLAttributes<HTMLAnchorElement>>;
+    readonly as?: ValidComponent;
     readonly className?: ClassName;
     readonly id?: string;
     readonly href?: string;
     readonly target?: string;
     readonly download?: string;
     readonly title?: string;
-    readonly children?: ReactNode;
+    readonly children?: JSX.Element;
 } & MouseProps;

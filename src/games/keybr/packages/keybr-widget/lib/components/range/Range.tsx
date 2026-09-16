@@ -1,9 +1,6 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import {
-  type ReactNode,
-  useImperativeHandle,
-  useRef,
-} from "@keybr/solid-compat/react";
+import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { omit } from 'solid-js';
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./Range.module.css";
@@ -11,7 +8,7 @@ import { type RangeProps } from "./Range.types.ts";
 
 const THUMB_SIZE = 16;
 
-export function Range(allProps: RangeProps): ReactNode {
+export function Range(allProps: RangeProps): JSX.Element {
   const local = allProps, props = omit(allProps, "disabled", "max", "min", "name", "ref", "size", "step", "tabIndex", "title", "value", "onChange");
   const element = useRef<HTMLInputElement>(null);
   useImperativeHandle(local.ref, () => ({

@@ -1,4 +1,5 @@
-import { type CSSProperties, type RefObject } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import { type RefObject } from "@keybr/solid-compat/react";
 import { type Size } from "../../utils/size.ts";
 import { type ClassName, type MouseProps, type WheelProps } from "../types.ts";
 import { type ShapeList } from "./graphics.ts";
@@ -8,7 +9,7 @@ export type CanvasProps = {
     readonly id?: string;
     readonly paint: PaintCallback;
     readonly ref?: RefObject<CanvasRef | null>;
-    readonly style?: CSSProperties;
+    readonly style?: JSX.CSSProperties;
     readonly title?: string;
     readonly onResize?: (size: Size) => void;
 } & MouseProps & WheelProps;

@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { Attr, type Char, type TextDisplaySettings, WhitespaceStyle, } from "@keybr/textinput";
 import { type CodePoint } from "@keybr/unicode";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import * as styles from "./chars.module.css";
 import { getTextStyle } from "./styles.ts";
-export function renderChars(settings: TextDisplaySettings, chars: readonly Char[]): ReactNode[] {
-    const nodes: ReactNode[] = [];
+export function renderChars(settings: TextDisplaySettings, chars: readonly Char[]): JSX.Element[] {
+    const nodes: JSX.Element[] = [];
     type Span = {
         chars: CodePoint[];
         attrs: number;

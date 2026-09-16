@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { liveObject } from "@keybr/solid-compat/live";
 import { useCollator } from "@keybr/intl";
 import { KeyboardContext, keyboardProps, Layout, loadKeyboard, useFormattedNames, } from "@keybr/keyboard";
@@ -6,12 +7,12 @@ import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
 import { type KeyStatsMap, makeKeyStatsMap, ResultGroups, useResults, } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";
-import { type ReactNode, useState } from "@keybr/solid-compat/react";
+import { useState } from "@keybr/solid-compat/react";
 import { createMemo } from 'solid-js';
 import { FormattedMessage, useIntl } from "@keybr/intl";
 export function ResultGrouper(solidProps: {
-    children: (keyStatsMap: KeyStatsMap) => ReactNode;
-    actions?: ReactNode;
+    children: (keyStatsMap: KeyStatsMap) => JSX.Element;
+    actions?: JSX.Element;
 }) {
     const { formatMessage } = useIntl();
     const { settings } = useSettings();

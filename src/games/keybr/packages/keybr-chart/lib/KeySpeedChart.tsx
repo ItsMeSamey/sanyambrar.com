@@ -1,3 +1,4 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { Target } from "@keybr/lesson";
 import { useFormatter } from "@keybr/lesson-ui";
@@ -5,7 +6,7 @@ import { hasData, linearRegression, Range, smooth, Vector } from "@keybr/math";
 import { type KeySample, timeToSpeed } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
@@ -15,7 +16,7 @@ import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeySpeedChart(solidProps: {
     readonly samples: readonly KeySample[];
     readonly smoothness: number;
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.samples, () => solidProps.smoothness);
     return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;

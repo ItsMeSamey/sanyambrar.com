@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./IconButton.module.css";
 import { type IconButtonProps } from "./IconButton.types.ts";
 import { omit } from 'solid-js';
-export function IconButton(solidAllProps: IconButtonProps): ReactNode {
+export function IconButton(solidAllProps: IconButtonProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "disabled", "icon", "label", "ref", "tabIndex", "title");
     const element = useRef<HTMLButtonElement>(null);
     useImperativeHandle(solidLocal.ref, () => ({

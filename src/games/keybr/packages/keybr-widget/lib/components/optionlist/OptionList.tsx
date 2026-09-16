@@ -1,10 +1,11 @@
-import { type ReactNode, useState } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import { useState } from "@keybr/solid-compat/react";
 import { useHotkeysHandler } from "../../hooks/use-hotkeys.ts";
 import { type OptionListProps } from "./OptionList.types.ts";
 import { OptionListButton } from "./OptionListButton.tsx";
 import { OptionListMenu } from "./OptionListMenu.tsx";
 import { omit } from 'solid-js';
-export function OptionList(solidAllProps: OptionListProps): ReactNode {
+export function OptionList(solidAllProps: OptionListProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
     const [focused, setFocused] = useState(false);
     const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(solidLocal);

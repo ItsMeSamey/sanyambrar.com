@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlDurations } from "@keybr/intl";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, FieldSet, Range, Value, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
-export function DailyGoalSettings(): ReactNode {
+export function DailyGoalSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatDuration } = useIntlDurations();
     const { settings, updateSettings } = useSettings();

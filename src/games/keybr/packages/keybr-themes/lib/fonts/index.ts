@@ -1,4 +1,4 @@
-import { type CSSProperties } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
 export type FontWeight = "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900";
 export type FontStyle = "normal" | "italic";
 export type Fallback = "cursive" | "fantasy" | "monospace" | "sans-serif" | "serif" | string;
@@ -10,7 +10,7 @@ export class FontFace {
     readonly fallbacks: readonly Fallback[];
     readonly scripts: readonly Script[];
     readonly name: string;
-    readonly cssProperties: CSSProperties;
+    readonly cssProperties: JSX.CSSProperties;
     constructor(family: string, weight: FontWeight, style: FontStyle, fallbacks: readonly Fallback[], scripts: readonly Script[]) {
         this.family = family;
         this.weight = weight;

@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { type BooksLesson, type CustomTextLesson, type Lesson, lessonProps, LessonType, type WordListLesson, } from "@keybr/lesson";
 import { LessonLoader } from "@keybr/lesson-loader";
 import { type Settings, useSettings } from "@keybr/settings";
 import { SegmentedControl } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
 import { CodeLessonSettings } from "./lesson/CodeLessonSettings.tsx";
@@ -22,7 +23,7 @@ const lessonTypes = [
   LessonType.NUMBERS,
 ] as const;
 
-export function LessonSettings(): ReactNode {
+export function LessonSettings(): JSX.Element {
   const { formatMessage } = useIntl();
   const { settings, updateSettings } = useSettings();
   let lessonBody!: HTMLDivElement;
@@ -89,7 +90,7 @@ export function LessonSettings(): ReactNode {
   </>;
 }
 
-function tabBody(settings: Settings, lesson: Lesson): ReactNode {
+function tabBody(settings: Settings, lesson: Lesson): JSX.Element {
   switch (settings.get(lessonProps.type)) {
     case LessonType.GUIDED:
       return <GuidedLessonSettings/>;

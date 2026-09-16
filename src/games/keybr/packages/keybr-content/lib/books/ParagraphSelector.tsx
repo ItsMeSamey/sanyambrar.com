@@ -1,14 +1,15 @@
+import type { JSX } from "@solidjs/web";
 import { getDir } from "@keybr/intl";
 import { Field, FieldList, Icon, IconButton, Range } from "@keybr/widget";
 import { SkipForward, SkipBack } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
 export function ParagraphSelector(solidProps: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
     readonly onChange: (paragraphIndex: number) => void;
-}): ReactNode {
+}): JSX.Element {
     const { locale } = useIntl();
     const rtl = getDir(locale) === "rtl";
     return (<FieldList>

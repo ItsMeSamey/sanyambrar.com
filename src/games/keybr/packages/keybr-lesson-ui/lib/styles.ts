@@ -1,6 +1,7 @@
+import type { JSX } from "@solidjs/web";
 import { mixColors, parseColor } from "@keybr/color";
 import { useComputedStyles } from "@keybr/themes";
-import { type CSSProperties, useMemo } from "@keybr/solid-compat/react";
+import { useMemo } from "@keybr/solid-compat/react";
 export function useKeyStyles() {
     const computed = useComputedStyles();
     return useMemo(() => {
@@ -14,7 +15,7 @@ export function useKeyStyles() {
         function confidenceForegroundColor(confidence: number) {
             return mixColors(foregroundMin, foregroundMax, confidence);
         }
-        function keyStyles(isIncluded: boolean, confidence: number | null): CSSProperties {
+        function keyStyles(isIncluded: boolean, confidence: number | null): JSX.CSSProperties {
             if (isIncluded && confidence != null) {
                 return {
                     "background-color": String(confidenceColor(confidence)),

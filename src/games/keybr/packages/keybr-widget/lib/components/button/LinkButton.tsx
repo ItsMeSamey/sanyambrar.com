@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode, useImperativeHandle, useRef } from "@keybr/solid-compat/react";
+import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { getBoundingBox } from "../../utils/index.ts";
 import * as styles from "./LinkButton.module.css";
 import { type LinkButtonProps } from "./LinkButton.types.ts";
 import { omit } from 'solid-js';
-export function LinkButton(solidAllProps: LinkButtonProps): ReactNode {
+export function LinkButton(solidAllProps: LinkButtonProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "className", "disabled", "label", "ref", "tabIndex", "title", "onClick");
     const element = useRef<HTMLAnchorElement>(null);
     useImperativeHandle(solidLocal.ref, () => ({

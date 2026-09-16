@@ -1,13 +1,14 @@
+import type { JSX } from "@solidjs/web";
 import { type Keyboard, type KeyCombo, type KeyShape, useKeyboard, } from "@keybr/keyboard";
 import { Tasks } from "@keybr/lang";
 import { type CodePoint } from "@keybr/unicode";
-import { memo, type ReactNode, useEffect, useRef, useState } from "@keybr/solid-compat/react";
+import { memo, useEffect, useRef, useState } from "@keybr/solid-compat/react";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const PointersLayer = memo(function PointersLayer(props: {
     readonly suffix: readonly CodePoint[];
     readonly delay?: number;
-}): ReactNode {
+}): JSX.Element {
     const keyboard = useKeyboard();
     const svgRef = useRef<SVGSVGElement>(null);
     const [combo, setCombo] = useState<KeyCombo | null>(null);
@@ -36,7 +37,7 @@ export const PointersLayer = memo(function PointersLayer(props: {
     }, () => [combo()]);
     return <Surface ref={svgRef}>{pointers(keyboard, combo())}</Surface>;
 });
-function pointers(keyboard: Keyboard, combo: KeyCombo | null): ReactNode[] {
+function pointers(keyboard: Keyboard, combo: KeyCombo | null): JSX.Element[] {
     const children = [];
     while (combo != null) {
         const shape = keyboard.getShape(combo.id);
@@ -77,7 +78,7 @@ function pointers(keyboard: Keyboard, combo: KeyCombo | null): ReactNode[] {
     }
     return children;
 }
-function pointer(shape: KeyShape | null, className: string): ReactNode {
+function pointer(shape: KeyShape | null, className: string): JSX.Element {
     if (shape == null) {
         return null;
     }

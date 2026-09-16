@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { Dynamic } from '@solidjs/web';
 import * as styles from "./Figure.module.css";
 import { type FigureCaptionProps, type FigureDescriptionProps, type FigureLegendProps, type FigureProps, } from "./Figure.types.ts";
 
-export function Figure(props: FigureProps): ReactNode {
+export function Figure(props: FigureProps): JSX.Element {
     return (<Dynamic component={(props.as ?? "figure")} id={props.id} title={props.title} class={clsx(styles.root, props.className)}>
       {props.caption && <Figure.Caption>{props.caption}</Figure.Caption>}
       {props.description && <Figure.Description>{props.description}</Figure.Description>}
@@ -12,17 +13,17 @@ export function Figure(props: FigureProps): ReactNode {
       {props.legend && <Figure.Legend>{props.legend}</Figure.Legend>}
     </Dynamic>);
 }
-function FigureCaption(props: FigureCaptionProps): ReactNode {
+function FigureCaption(props: FigureCaptionProps): JSX.Element {
     return (<Dynamic component={(props.as ?? "figcaption")} id={props.id} title={props.title} class={clsx(styles.caption, props.className)}>
       {props.children}
     </Dynamic>);
 }
-function FigureDescription(props: FigureDescriptionProps): ReactNode {
+function FigureDescription(props: FigureDescriptionProps): JSX.Element {
     return (<Dynamic component={(props.as ?? "p")} id={props.id} title={props.title} class={clsx(styles.description, props.className)}>
       {props.children}
     </Dynamic>);
 }
-function FigureLegend(props: FigureLegendProps): ReactNode {
+function FigureLegend(props: FigureLegendProps): JSX.Element {
     return (<Dynamic component={(props.as ?? "p")} id={props.id} title={props.title} class={clsx(styles.legend, props.className)}>
       {props.children}
     </Dynamic>);

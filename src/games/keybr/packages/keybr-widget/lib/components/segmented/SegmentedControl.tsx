@@ -1,9 +1,9 @@
-import { type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
 import { For } from 'solid-js';
 
 export type SegmentedOption<T> = {
   readonly value: T;
-  readonly label: ReactNode;
+  readonly label: JSX.Element;
   readonly title?: string;
 };
 
@@ -14,7 +14,7 @@ export function SegmentedControl<T>(props: {
   readonly label?: string;
   readonly comfortable?: boolean;
   readonly onChange?: (value: T) => void;
-}): ReactNode {
+}): JSX.Element {
   const select = (index: number) => {
     if (props.disabled || props.options.length === 0) return;
     const normalized = (index + props.options.length) % props.options.length;

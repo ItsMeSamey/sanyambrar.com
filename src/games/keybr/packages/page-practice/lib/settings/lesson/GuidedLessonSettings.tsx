@@ -1,5 +1,6 @@
+import type { JSX } from "@solidjs/web";
 import { Description, Explainer, FieldSet } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { AlphabetSizeProp } from "./AlphabetSizeProp.tsx";
 import { KeyboardOrderProp } from "./KeyboardOrderProp.tsx";
@@ -9,7 +10,7 @@ import { RecoverKeysProp } from "./RecoverKeysProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
-export function GuidedLessonSettings(): ReactNode {
+export function GuidedLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>
       <Explainer>

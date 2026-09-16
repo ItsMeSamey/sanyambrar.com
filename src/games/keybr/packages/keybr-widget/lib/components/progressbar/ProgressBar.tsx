@@ -1,9 +1,10 @@
+import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import * as styles from "./ProgressBar.module.css";
 import { type ProgressBarProps } from "./ProgressBar.types.ts";
 import { Show } from 'solid-js';
-export function ProgressBar(solidProps: ProgressBarProps): ReactNode {
+export function ProgressBar(solidProps: ProgressBarProps): JSX.Element {
     const value = () => Number.isFinite(solidProps.total) && Number.isFinite(solidProps.current) && solidProps.total > 0
         ? Math.round(Math.max(0, Math.min(1, solidProps.current / solidProps.total)) * 100)
         : null;

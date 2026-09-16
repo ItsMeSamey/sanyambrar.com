@@ -1,7 +1,8 @@
+import type { JSX } from "@solidjs/web";
 import { hasData, Range } from "@keybr/math";
 import { type KeyStatsMap } from "@keybr/result";
 import { Rect, type ShapeList } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { useIntl } from "@keybr/intl";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
@@ -11,7 +12,7 @@ import { reactivePaint } from "./reactive-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 export function KeyFrequencyHistogram(solidProps: {
     readonly keyStatsMap: KeyStatsMap;
-} & SizeProps): ReactNode {
+} & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.keyStatsMap);
     return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;

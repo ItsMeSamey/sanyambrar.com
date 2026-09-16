@@ -1,6 +1,7 @@
+import type { JSX } from "@solidjs/web";
 import { Tasks } from "@keybr/lang";
 import { type Char, type TextDisplaySettings, TextInput } from "@keybr/textinput";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { createEffect, createMemo, createSignal } from 'solid-js';
 import { StaticText } from "./StaticText.tsx";
 import { type TextLineSize } from "./TextLines.tsx";
@@ -10,7 +11,7 @@ export function AnimatedText(props: {
   readonly text: string;
   readonly wrap?: boolean;
   readonly size?: TextLineSize;
-}): ReactNode {
+}): JSX.Element {
   const chars = useAnimatedTextState(() => props.text);
   const lines = createMemo(() => ({
     text: props.text,

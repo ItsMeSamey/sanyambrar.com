@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { KeyDetailsChart } from "@keybr/chart";
 import { LearningRate, LessonKey, lessonProps, Target } from "@keybr/lesson";
 import { Letter } from "@keybr/phonetic-model";
 import { Settings } from "@keybr/settings";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import * as styles from "./KeyDetailsChartDemo.module.css";
-export function KeyDetailsChartDemo(): ReactNode {
+export function KeyDetailsChartDemo(): JSX.Element {
     const settings = new Settings().set(lessonProps.targetSpeed, /* 35WPM */ 175);
     const target = new Target(settings);
     const lessonKey = new LessonKey({

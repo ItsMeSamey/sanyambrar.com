@@ -1,17 +1,18 @@
+import type { JSX } from "@solidjs/web";
 import { liveObject } from "@keybr/solid-compat/live";
 import { type Keyboard, KeyboardContext } from "@keybr/keyboard";
 import { type ZoomableProps } from "@keybr/widget";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { getFrameSize } from "./shapes.tsx";
 import * as styles from "./VirtualKeyboard.module.css";
 import { createMemo, omit } from 'solid-js';
 export const VirtualKeyboard = memo(function VirtualKeyboard(solidAllProps: {
-    readonly children?: ReactNode;
+    readonly children?: JSX.Element;
     readonly keyboard: Keyboard;
     readonly width?: string;
     readonly height?: string;
     readonly moving?: boolean;
-} & ZoomableProps): ReactNode {
+} & ZoomableProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "keyboard", "width", "height", "moving");
     const keyboard = liveObject(() => solidLocal.keyboard);
     const size = createMemo(() => getFrameSize(keyboard));

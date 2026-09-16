@@ -1,13 +1,14 @@
+import type { JSX } from "@solidjs/web";
 import { type LessonKey } from "@keybr/lesson";
 import { CurrentKeyRow, DailyGoalRow, GaugeRow, KeySetRow, names, StreakListRow, } from "@keybr/lesson-ui";
 import { Popup, Portal, useHoverPopup } from "@keybr/widget";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import * as styles from "./Indicators.module.css";
 import { KeyExtendedDetails } from "./KeyExtendedDetails.tsx";
 import { type LessonState } from "./state/index.ts";
 export const Indicators = memo(function Indicators(props: {
     readonly state: LessonState;
-}): ReactNode {
+}): JSX.Element {
     const popup = useHoverPopup<{ key: LessonKey; elem: Element }>();
     return (<div id={names.indicators} class={styles.indicators}>
       <GaugeRow summaryStats={props.state.summaryStats} names={names}/>

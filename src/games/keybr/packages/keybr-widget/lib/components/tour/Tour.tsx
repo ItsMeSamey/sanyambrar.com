@@ -1,5 +1,6 @@
+import type { JSX } from "@solidjs/web";
 import { X } from "../../icons.ts";
-import { Children, type ReactElement, type ReactNode, useState } from "@keybr/solid-compat/react";
+import { Children, useState } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import { useHotkeys } from "../../hooks/use-hotkeys.ts";
 import { LinkButton } from "../button/LinkButton.tsx";
@@ -13,10 +14,10 @@ import { type SlideProps } from "./Slide.tsx";
 import * as styles from "./Tour.module.css";
 import { createMemo, omit } from 'solid-js';
 export type TourProps = {
-    readonly children?: readonly ReactElement<SlideProps>[];
+    readonly children?: readonly JSX.Element[];
     readonly onClose?: () => void;
 };
-export function Tour(solidAllProps: TourProps): ReactNode {
+export function Tour(solidAllProps: TourProps): JSX.Element {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "onClose");
     const { formatMessage } = useIntl();
     const [slideIndex, setSlideIndex] = useState(0);

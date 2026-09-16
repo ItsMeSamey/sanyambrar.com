@@ -1,12 +1,14 @@
-import { type ElementType, type FocusEventHandler, type KeyboardEventHandler, type MouseEventHandler, type HTMLAttributes, type ReactNode, type RefObject, type WheelEventHandler, } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import type { ValidComponent } from "@solidjs/web";
+import { type FocusEventHandler, type KeyboardEventHandler, type MouseEventHandler, type RefObject, type WheelEventHandler } from "@keybr/solid-compat/react";
 import { type Anchor } from "../floating/index.ts";
 export type ClassName = string | undefined;
 export type ElementProps = {
-    readonly as?: ElementType<HTMLAttributes<HTMLElement>>;
+    readonly as?: ValidComponent;
     readonly className?: ClassName;
     readonly id?: string;
     readonly title?: string;
-    readonly children?: ReactNode;
+    readonly children?: JSX.Element;
 };
 export type Focusable = {
     blur(): void;

@@ -1,8 +1,9 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { type SummaryStats } from "@keybr/result";
 import { type ClassName, Name, Value } from "@keybr/widget";
 import { clsx } from "clsx";
-import { memo, type ReactNode } from "@keybr/solid-compat/react";
+import { memo } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import { useFormatter } from "./format.ts";
 import * as styles from "./gauges.module.css";
@@ -78,9 +79,9 @@ export const ScoreGauge = memo(function ScoreGauge(solidProps: {
 export const Gauge = memo(function Gauge(solidProps: {
     id?: string;
     className?: ClassName;
-    name: ReactNode;
-    value: ReactNode;
-    delta: ReactNode;
+    name: JSX.Element;
+    value: JSX.Element;
+    delta: JSX.Element;
     title: string;
 }) {
     return (<span id={solidProps.id} class={clsx(styles.gauge, solidProps.className)} title={solidProps.title}>

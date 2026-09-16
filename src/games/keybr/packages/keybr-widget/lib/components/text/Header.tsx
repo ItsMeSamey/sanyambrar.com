@@ -1,9 +1,10 @@
-import { type ElementType, type HTMLAttributes, type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
+import type { ValidComponent } from "@solidjs/web";
 import { Dynamic } from '@solidjs/web';
 import { type HeaderProps } from "./Header.types.ts";
-export function Header(props: HeaderProps): ReactNode {
+export function Header(props: HeaderProps): JSX.Element {
     const component = () => {
-        let component: ElementType<HTMLAttributes<HTMLElement>>;
+        let component: ValidComponent;
         switch (props.level) {
             case 1: component = "h1"; break;
             case 2: component = "h2"; break;

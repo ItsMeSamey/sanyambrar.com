@@ -1,22 +1,22 @@
-import { type ReactNode } from "@keybr/solid-compat/react";
+import type { JSX } from "@solidjs/web";
 import { type ClassName } from "../types.ts";
 export type FormProps = {
     readonly className?: ClassName;
     readonly id?: string;
     readonly title?: string;
-    readonly children: ReactNode;
+    readonly children: JSX.Element;
 };
 export type FieldSetProps = {
     readonly className?: ClassName;
     readonly id?: string;
     readonly disabled?: boolean;
-    readonly legend?: ReactNode;
+    readonly legend?: JSX.Element;
     readonly title?: string;
-    readonly children: ReactNode;
+    readonly children: JSX.Element;
 };
 export type LegendProps = {
     readonly className?: ClassName;
     readonly id?: string;
     readonly title?: string;
-    readonly children: ReactNode;
+    readonly children: JSX.Element;
 };

@@ -1,6 +1,7 @@
+import type { JSX } from "@solidjs/web";
 import { type Keyboard, type KeyShape } from "@keybr/keyboard";
 import { type MouseProps, Point, Size } from "@keybr/widget";
-import { type ReactNode, type RefObject } from "@keybr/solid-compat/react";
+import { type RefObject } from "@keybr/solid-compat/react";
 import { omit } from 'solid-js';
 export const margin = 15;
 export const keySize = 40;
@@ -18,7 +19,7 @@ export const getFrameSize = (keyboard: Keyboard): Size => {
     return new Size(margin * 2 + cols * keySize - keyGap, margin * 2 + rows * keySize - keyGap);
 };
 export const Surface = (solidAllProps: {
-    children: ReactNode;
+    children: JSX.Element;
     ref?: RefObject<SVGSVGElement | null>;
 } & MouseProps) => {
     const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "ref");

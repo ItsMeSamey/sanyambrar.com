@@ -1,10 +1,11 @@
+import type { JSX } from "@solidjs/web";
 import { useIntlNumbers } from "@keybr/intl";
 import { lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { Description, Explainer, Field, FieldList, Range, Value, } from "@keybr/widget";
-import { type ReactNode } from "@keybr/solid-compat/react";
+
 import { FormattedMessage } from "@keybr/intl";
-export function TextManglingProp(): ReactNode {
+export function TextManglingProp(): JSX.Element {
     const { formatPercents } = useIntlNumbers();
     const { settings, updateSettings } = useSettings();
     return (<>
