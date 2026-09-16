@@ -409,11 +409,12 @@ ${keybrViewSwitch}`;
   const keybrEffort = await readFile(join(ROOT, "src/games/keybr/packages/keybr-lesson-ui/lib/effort.ts"), "utf8");
   must(keybrEffortLegend.includes("effort.textShade(value)") && keybrEffort.includes("contrastTextRgb("),
     "ux: Keybr effort legend text must adapt to its shaded background");
-  must(keybrBookSelector.includes("Search by title or author") && keybrBookSelector.includes("createMemo") &&
+  must(keybrBookSelector.includes("<dialog") && keybrBookSelector.includes("showModal()") &&
+    keybrBookSelector.includes('placeholder="Title or author"') && keybrBookSelector.includes("createMemo") &&
     keybrBookSelector.includes("aria-pressed={selected()}") && !keybrBookSelector.includes("OptionList") &&
-    keybrBookSelectorStyle.includes("grid-template-columns: repeat(2, minmax(0, 1fr))") &&
-    keybrBookSelectorStyle.includes("@media (max-width: 700px)") && keybrBookSelectorStyle.includes("grid-template-columns: 1fr"),
-    "ux: Keybr book selection must remain searchable, visual, keyboard-usable, and responsive for large catalogs");
+    keybrBookSelectorStyle.includes(".dialog::backdrop") && keybrBookSelectorStyle.includes("overflow: auto") &&
+    keybrBookSelectorStyle.includes("@media (max-width: 700px)"),
+    "ux: Keybr book selection must use a searchable responsive modal list for large catalogs");
   const sharedTopBar = await readFile(join(ROOT, "src/shared/components/TopBar.tsx"), "utf8");
   const sharedGameActions = sharedTopBar.slice(sharedTopBar.indexOf("export function GameTopBarActions"), sharedTopBar.indexOf("export function PrimaryNav"));
   must(!keybrTopBar.includes('label="Home"') && keybrTopBar.includes("<TopBar") && keybrTopBar.includes("<GameTopBarActions") &&

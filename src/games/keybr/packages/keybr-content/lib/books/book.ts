@@ -1,32 +1,23 @@
 import { Language } from "@keybr/keyboard";
 import { Enum, type EnumItem } from "@keybr/lang";
-import coverImageEnAliceWonderland from "../../assets/cover-image-en-alice-wonderland.jpg";
-import coverImageEnCallWild from "../../assets/cover-image-en-call-wild.jpg";
-import coverImageEnJekyllHyde from "../../assets/cover-image-en-jekyll-hyde.jpg";
-import coverImageEsMarianela from "../../assets/cover-image-es-marianela.jpg";
-import coverImageFrAliceWonderland from "../../assets/cover-image-fr-alice-wonderland.jpg";
-import coverImageGeneric from "../../assets/cover-image-generic.svg";
 import { BOOK_DEFINITIONS } from "./catalog.ts";
 
-const COVER_BY_ID: Readonly<Record<string, string>> = {
-  "en-alice-wonderland": coverImageEnAliceWonderland,
-  "en-jekyll-hyde": coverImageEnJekyllHyde,
-  "en-call-wild": coverImageEnCallWild,
-  "es-marianela": coverImageEsMarianela,
-  "de-alice-wonderland": coverImageEnAliceWonderland,
-  "fr-alice-wonderland": coverImageFrAliceWonderland,
-};
+const COVER_BY_PATH = import.meta.glob<string>("../../assets/book-covers/*.jpg", {
+  eager: true,
+  import: "default",
+});
+
+function coverFor(id: string): string {
+  const cover = COVER_BY_PATH[`../../assets/book-covers/${id}.jpg`];
+  if (cover == null) throw new Error(`Missing cover for book: ${id}`);
+  return cover;
+}
 
 export class Book implements EnumItem {
   static readonly ALL = new Enum<Book>(
     ...BOOK_DEFINITIONS.map(({ id, language, title, author }) =>
-      new Book(
-        id,
-        Language.ALL.get(language),
-        title,
-        author,
-        COVER_BY_ID[id] ?? coverImageGeneric,
-      )),
+      new Book(id, Language.ALL.get(language), title, author, coverFor(id)),
+    ),
   );
 
   static readonly EN_ALICE_WONDERLAND = Book.ALL.get("en-alice-wonderland");
