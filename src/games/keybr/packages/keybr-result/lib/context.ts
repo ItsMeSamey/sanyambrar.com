@@ -1,8 +1,8 @@
-import { createContext, useContext } from 'solid-js';
+import { type Accessor, createContext, useContext } from 'solid-js';
 import { type Result } from "./result.ts";
 
 export type ResultContextProps = {
-  readonly results: readonly Result[];
+  readonly results: Accessor<readonly Result[]>;
   readonly appendResults: (newResults: readonly Result[]) => void;
   readonly clearResults: () => void;
 };

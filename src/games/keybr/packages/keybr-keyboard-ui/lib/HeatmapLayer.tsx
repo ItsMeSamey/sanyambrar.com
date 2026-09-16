@@ -42,9 +42,9 @@ export const HeatmapLayer = function HeatmapLayer(solidProps: {
     }
     function getShape(codePoint: CodePoint): KeyShape | null {
         if (codePoint !== 0x0020) {
-            const combo = keyboard.getCombo(codePoint);
+            const combo = keyboard().getCombo(codePoint);
             if (combo != null) {
-                const shape = keyboard.getShape(combo.id);
+                const shape = keyboard().getShape(combo.id);
                 if (shape != null) {
                     return shape;
                 }

@@ -17,7 +17,7 @@ export const KeyboardPresenter = function KeyboardPresenter(props: {
     const colors = () => settings.get(keyboardProps.colors);
     const pointers = () => settings.get(keyboardProps.pointers);
     const hasLastLesson = () => props.lastLesson != null;
-    return (<VirtualKeyboard keyboard={keyboard} height="16rem">
+    return (<VirtualKeyboard keyboard={keyboard()} height="16rem">
       <KeyLayer depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} showColors={colors()}/>
       {!hasLastLesson() && props.focus && props.depressedKeys.length === 0 && pointers() && <PointersLayer suffix={props.suffix}/>}
       {props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.misses)} modifier="m"/>)}

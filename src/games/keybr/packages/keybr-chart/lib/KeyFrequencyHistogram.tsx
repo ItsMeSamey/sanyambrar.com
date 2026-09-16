@@ -15,13 +15,13 @@ export function KeyFrequencyHistogram(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.keyStatsMap);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
     return reactivePaint(() => {
         const currentKeyStatsMap = keyStatsMap();
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         const { letters, results } = currentKeyStatsMap;
         if (!hasData(results)) {
             return (box: Rect): ShapeList => {
@@ -46,13 +46,13 @@ function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
             const [boxHit, boxMiss, boxRatio] = boxes(box);
             return [
                 paintHistogram(boxHit, vHit, rHit, {
-                    style: styles.histHit,
+                    style: styles().histHit,
                 }),
                 paintHistogram(boxMiss, vMiss, rMiss, {
-                    style: styles.histMiss,
+                    style: styles().histMiss,
                 }),
                 paintHistogram(boxRatio, vRatio, rRatio, {
-                    style: styles.histRatio,
+                    style: styles().histRatio,
                 }),
                 g.paintFrame(boxHit),
                 g.paintFrame(boxMiss),

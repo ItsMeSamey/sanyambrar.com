@@ -13,8 +13,8 @@ export const KeyLegend = (solidAllProps: {
 } & MouseProps) => {
     const solidMergedProps = merge(solidAllProps, { get size() { return solidAllProps.size ?? "normal"; } });
     const solidLocal = solidMergedProps, props = omit(solidMergedProps, "confidence", "isIncluded", "isFocused", "isForced", "size", "title");
-    const { keyStyles } = useKeyStyles();
-    return (<span {...props} class={clsx(styles.lessonKey, solidLocal.size === "normal" && styles.lessonKeyNormal, solidLocal.size === "large" && styles.lessonKeyLarge, solidLocal.isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded, solidLocal.isIncluded && solidLocal.confidence == null && styles.lessonKeyUncalibrated, solidLocal.isIncluded && solidLocal.isFocused && styles.lessonKeyFocused, solidLocal.isIncluded && solidLocal.isForced && styles.lessonKeyForced)} style={keyStyles(solidLocal.isIncluded ?? false, solidLocal.confidence ?? null)} title={solidLocal.title}>
+    const keyStyles = useKeyStyles();
+    return (<span {...props} class={clsx(styles.lessonKey, solidLocal.size === "normal" && styles.lessonKeyNormal, solidLocal.size === "large" && styles.lessonKeyLarge, solidLocal.isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded, solidLocal.isIncluded && solidLocal.confidence == null && styles.lessonKeyUncalibrated, solidLocal.isIncluded && solidLocal.isFocused && styles.lessonKeyFocused, solidLocal.isIncluded && solidLocal.isForced && styles.lessonKeyForced)} style={keyStyles().keyStyles(solidLocal.isIncluded ?? false, solidLocal.confidence ?? null)} title={solidLocal.title}>
       ?
       {solidLocal.isIncluded || (<svg viewBox="0 0 100 100" class={styles.cross}>
           <path d="M 0 100 L 100 0"/>

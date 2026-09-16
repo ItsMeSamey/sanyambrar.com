@@ -5,7 +5,7 @@ import { type CustomTextLesson, lessonProps } from "@keybr/lesson";
 import { useSettings } from "@keybr/settings";
 import { textStatsOf } from "@keybr/unicode";
 import { Toggle, Description, Explainer, Field, FieldList, FieldSet, LinkButton, NameValue, Para, TextField, } from "@keybr/widget";
-import { useMemo } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 import { exampleTexts } from "./example-texts.ts";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
@@ -65,25 +65,25 @@ function CustomTextStats(solidProps: {
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
-    const stats = useMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText), () => [solidProps.language, solidProps.customText]);
+    const stats = createMemo(() => textStatsOf(solidProps.language.locale, solidProps.customText));
     return (<FieldList>
       <Field>
         <NameValue name={formatMessage({
             id: "t_num_All_words",
             defaultMessage: "All words",
-        })} value={formatNumber(stats.numWords)}/>
+        })} value={formatNumber(stats().numWords)}/>
       </Field>
       <Field>
         <NameValue name={formatMessage({
             id: "t_num_Unique_words",
             defaultMessage: "Unique words",
-        })} value={formatNumber(stats.numUniqueWords)}/>
+        })} value={formatNumber(stats().numUniqueWords)}/>
       </Field>
       <Field>
         <NameValue name={formatMessage({
             id: "t_Average_word_length",
             defaultMessage: "Average word length",
-        })} value={formatNumber(stats.avgWordLength, 2)}/>
+        })} value={formatNumber(stats().avgWordLength, 2)}/>
       </Field>
     </FieldList>);
 }

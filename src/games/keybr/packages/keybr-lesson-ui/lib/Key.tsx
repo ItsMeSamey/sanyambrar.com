@@ -14,7 +14,7 @@ export const Key = (allProps: {
 } & MouseProps) => {
   const merged = merge(allProps, { get isSelectable() { return allProps.isSelectable ?? false; }, get isCurrent() { return allProps.isCurrent ?? false; }, get size() { return allProps.size ?? "normal" as const; } });
   const local = merged, props = omit(merged, "lessonKey", "isSelectable", "isCurrent", "size", "title");
-  const { keyStyles } = useKeyStyles();
+  const keyStyles = useKeyStyles();
   const key = () => local.lessonKey;
 
   return (
@@ -33,7 +33,7 @@ export const Key = (allProps: {
         local.isSelectable && styles.lessonKeySelectable,
         local.isCurrent && styles.lessonKeyCurrent,
       )}
-      style={keyStyles(key().isIncluded, key().confidence)}
+      style={keyStyles().keyStyles(key().isIncluded, key().confidence)}
       title={local.title}
       data-code-point={key().letter.codePoint}
     >

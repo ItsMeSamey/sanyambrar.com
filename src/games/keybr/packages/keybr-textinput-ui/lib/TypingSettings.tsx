@@ -44,7 +44,7 @@ function ExampleText() {
     const { settings } = useSettings();
     const keyboard = useKeyboard();
     return (<div class={styles.exampleText}>
-      <AnimatedText settings={toTextDisplaySettings(settings)} text={keyboard.getExampleText()}/>
+      <AnimatedText settings={toTextDisplaySettings(settings)} text={keyboard().getExampleText()}/>
     </div>);
 }
 function StopOnErrorProp() {

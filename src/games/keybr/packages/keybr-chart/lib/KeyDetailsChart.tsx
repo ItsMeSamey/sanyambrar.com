@@ -18,9 +18,9 @@ export function KeyDetailsChart(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.lessonKey, () => solidProps.learningRate);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, lessonKey: () => LessonKey, learningRate: () => LearningRate | null) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, lessonKey: () => LessonKey, learningRate: () => LearningRate | null) {
     const { formatMessage } = useIntl();
     const { formatInteger } = useIntlNumbers();
     const { formatSpeed } = useFormatter();
@@ -29,7 +29,7 @@ function usePaint(styles: ChartStyles, lessonKey: () => LessonKey, learningRate:
         const currentLessonKey = lessonKey();
         const currentLearningRate = learningRate();
         const target = new Target(settings);
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         if (currentLearningRate == null) {
             return (box: Rect): ShapeList => {
                 return [
@@ -61,11 +61,11 @@ function usePaint(styles: ChartStyles, lessonKey: () => LessonKey, learningRate:
                 g.paintAxis(box, "left"),
                 now > 0 && paintThresholdLine({ label: "Now", value: now }),
                 paintScatterPlot(proj, vIndex, vSpeed, {
-                    style: styles.speed,
+                    style: styles().speed,
                 }),
                 paintCurve(proj, mSpeed, {
                     style: {
-                        ...styles.speed,
+                        ...styles().speed,
                         lineWidth: 2,
                     },
                 }),
@@ -76,14 +76,14 @@ function usePaint(styles: ChartStyles, lessonKey: () => LessonKey, learningRate:
             function paintTargetSpeedLine(): ShapeList {
                 const y = Math.round(proj.y(target.targetSpeed));
                 return [
-                    Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
-                    Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                    Shapes.stroke({ ...styles().background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
+                    Shapes.stroke({ ...styles().threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: box.x - 10, y1: y, x2: box.x + box.width + 10, y2: y })),
                     Shapes.fillText({
                         x: box.x + box.width + 15,
                         y: y,
                         value: formatSpeed(target.targetSpeed),
                         style: {
-                            ...styles.thresholdLabel,
+                            ...styles().thresholdLabel,
                             textAlign: "left",
                             textBaseline: "middle",
                         },
@@ -96,14 +96,14 @@ function usePaint(styles: ChartStyles, lessonKey: () => LessonKey, learningRate:
             }): ShapeList {
                 const x = proj.x(value);
                 return [
-                    Shapes.stroke({ ...styles.background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
-                    Shapes.stroke({ ...styles.threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
+                    Shapes.stroke({ ...styles().background, lineWidth: 5, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
+                    Shapes.stroke({ ...styles().threshold, lineWidth: 2, lineCap: "round" }, Shapes.line({ x1: x, y1: box.y - 10, x2: x, y2: box.y + box.height + 10 })),
                     Shapes.fillText({
                         x: Math.round(x) + 2,
                         y: box.y - 1,
                         value: label,
                         style: {
-                            ...styles.thresholdLabel,
+                            ...styles().thresholdLabel,
                             textAlign: "left",
                             textBaseline: "bottom",
                         },

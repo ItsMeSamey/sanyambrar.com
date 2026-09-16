@@ -17,10 +17,10 @@ export function CalendarSection(solidProps: {
         </Figure.Description>
       </Explainer>
 
-      <Calendar dailyStatsMap={solidProps.dailyStatsMap} effort={effort}/>
+      <Calendar dailyStatsMap={solidProps.dailyStatsMap} effort={effort()}/>
 
       <Figure.Legend>
-        <EffortLegend effort={effort}/>
+        <EffortLegend effort={effort()}/>
       </Figure.Legend>
     </Figure>);
 }

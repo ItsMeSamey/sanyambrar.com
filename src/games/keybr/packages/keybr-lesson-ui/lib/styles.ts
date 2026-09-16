@@ -1,10 +1,10 @@
 import type { JSX } from "@solidjs/web";
 import { mixColors, parseColor } from "@keybr/color";
 import { useComputedStyles } from "@keybr/themes";
-import { useMemo } from "@keybr/solid-compat/react";
+import { createMemo } from "solid-js";
 export function useKeyStyles() {
     const computed = useComputedStyles();
-    return useMemo(() => {
+    return createMemo(() => {
         const min = parseColor(computed.resolveColor("--slow-key-background-color", "#f0caca"));
         const max = parseColor(computed.resolveColor("--fast-key-background-color", "#cce8d5"));
         const foregroundMin = parseColor(computed.resolveColor("--slow-key-color", "#dc2626"));
@@ -26,5 +26,5 @@ export function useKeyStyles() {
             }
         }
         return { confidenceColor, confidenceForegroundColor, keyStyles };
-    }, [computed]);
+    });
 }

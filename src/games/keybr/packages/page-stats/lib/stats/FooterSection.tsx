@@ -54,14 +54,14 @@ function useCommands() {
     const { results, appendResults, clearResults } = useResults();
     return {
         handleDownloadData: () => {
-            const json = JSON.stringify(results);
+            const json = JSON.stringify(results());
             const blob = new Blob([json], { type: "application/json" });
             download(blob, "typing-data.json");
         },
         handleUploadData: async (file: File) => {
             const json: unknown = JSON.parse(await file.text());
             if (!Array.isArray(json)) throw new Error("Invalid typing data: expected a JSON array.");
-            const known = new Set(results.map(resultIdentity));
+            const known = new Set(results().map(resultIdentity));
             const added: Result[] = [];
             let duplicateCount = 0;
             let invalidCount = 0;

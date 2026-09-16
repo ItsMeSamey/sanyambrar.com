@@ -15,14 +15,14 @@ export function KeySpeedHistogram(solidProps: {
 } & SizeProps): JSX.Element {
     const styles = useChartStyles();
     const paint = usePaint(styles, () => solidProps.keyStatsMap);
-    return <ChartCanvas styles={styles} paint={paint} width={solidProps.width} height={solidProps.height}/>;
+    return <ChartCanvas styles={styles()} paint={paint} width={solidProps.width} height={solidProps.height}/>;
 }
-function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
+function usePaint(styles: import("solid-js").Accessor<ChartStyles>, keyStatsMap: () => KeyStatsMap) {
     const { formatMessage } = useIntl();
     const { formatSpeed } = useFormatter();
     return reactivePaint(() => {
         const currentKeyStatsMap = keyStatsMap();
-        const g = withStyles(styles);
+        const g = withStyles(styles());
         const { letters, results } = currentKeyStatsMap;
         if (!hasData(results)) {
             return (box: Rect): ShapeList => {
@@ -48,7 +48,7 @@ function usePaint(styles: ChartStyles, keyStatsMap: () => KeyStatsMap) {
         return (box: Rect): ShapeList => {
             return [
                 g.paintGrid(box, "horizontal"),
-                paintHistogram(box, vSpeed, rSpeed, { style: styles.speed }),
+                paintHistogram(box, vSpeed, rSpeed, { style: styles().speed }),
                 g.paintFrame(box),
                 g.paintTicks(box, rSpeed, "left", { fmt: formatSpeed }),
                 g.paintKeyTicks(box, letters, "bottom"),
