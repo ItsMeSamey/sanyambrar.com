@@ -1,4 +1,4 @@
-import { createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 import { useCollator } from "@keybr/intl";
 import { Emulation, Geometry, KeyboardOptions, keyboardProps, Language, Layout, useFormattedNames, useKeyboard, ZoneMod, } from "@keybr/keyboard";
@@ -8,7 +8,6 @@ import { useSettings } from "@keybr/settings";
 import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
 import { type CodePoint } from "@keybr/unicode";
 import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
-import { useEffect } from "@keybr/solid-compat/react";
 import { FormattedMessage, useIntl } from "@keybr/intl";
 export function KeyboardSettings(): JSX.Element {
     const { formatMessage } = useIntl();
@@ -170,15 +169,15 @@ const PointersPreview = function PointersPreview(): JSX.Element {
     const keyboard = useKeyboard();
     const [index, setIndex] = createSignal(0);
     const [suffix, setSuffix] = createSignal<CodePoint[]>([]);
-    useEffect(() => {
+    createEffect(keyboard, (current) => {
         setIndex(0);
-        setSuffix(keyboard().getExampleLetters());
-    }, () => [keyboard()]);
-    useEffect(() => {
+        setSuffix(current.getExampleLetters());
+    });
+    createEffect(() => ({ index: index(), suffix: suffix() }), ({ index, suffix }) => {
         const tasks = new Tasks();
         tasks.delayed(1000, () => {
-            let newIndex = index() + 1;
-            if (newIndex >= suffix().length) {
+            let newIndex = index + 1;
+            if (newIndex >= suffix.length) {
                 newIndex = 0;
             }
             setIndex(newIndex);
@@ -186,6 +185,6 @@ const PointersPreview = function PointersPreview(): JSX.Element {
         return () => {
             tasks.cancelAll();
         };
-    }, () => [index(), suffix()]);
+    });
     return <PointersLayer suffix={suffix().slice(index())} delay={10}/>;
 };

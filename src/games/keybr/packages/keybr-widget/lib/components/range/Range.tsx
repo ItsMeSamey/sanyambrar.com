@@ -1,6 +1,5 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { omit } from 'solid-js';
 import { sizeClassName } from "../../styles/index.ts";
 import * as styles from "./Range.module.css";
@@ -9,13 +8,7 @@ import { type RangeProps } from "./Range.types.ts";
 const THUMB_SIZE = 16;
 
 export function Range(allProps: RangeProps): JSX.Element {
-  const local = allProps, props = omit(allProps, "disabled", "max", "min", "name", "ref", "size", "step", "tabIndex", "title", "value", "onChange");
-  const element = useRef<HTMLInputElement>(null);
-  useImperativeHandle(local.ref, () => ({
-    focus: () => element.current?.focus(),
-    blur: () => element.current?.blur(),
-  }));
-
+  const local = allProps, props = omit(allProps, "disabled", "max", "min", "name", "size", "step", "tabIndex", "title", "value", "onChange");
   const progress = () => {
     const span = local.max - local.min;
     if (!(span > 0)) return 0;
@@ -42,7 +35,6 @@ export function Range(allProps: RangeProps): JSX.Element {
         </span>
         <input
           {...props}
-          ref={(el) => (element.current = el)}
           disabled={local.disabled}
           max={local.max}
           min={local.min}

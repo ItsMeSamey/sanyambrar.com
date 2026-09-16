@@ -1,6 +1,5 @@
-import { type RefObject } from "@keybr/solid-compat/react";
 import { type SizeName } from "../../styles/index.ts";
-import { type Focusable, type FocusProps, type KeyboardProps, type MouseProps, type Selectable, } from "../types.ts";
+import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 export type TextFieldType = "text" | "textarea" | "email" | "url" | "password";
 export type TextFieldProps = {
     readonly error?: string | null;
@@ -8,7 +7,6 @@ export type TextFieldProps = {
     readonly name?: string;
     readonly placeholder?: string;
     readonly readOnly?: boolean;
-    readonly ref?: RefObject<TextFieldRef | null>;
     readonly rows?: number;
     readonly size?: SizeName;
     readonly title?: string;
@@ -17,4 +15,3 @@ export type TextFieldProps = {
     readonly onChange?: (value: string) => void;
     readonly onInput?: (event: InputEvent) => void;
 } & FocusProps & MouseProps & KeyboardProps;
-export type TextFieldRef = Focusable & Selectable;

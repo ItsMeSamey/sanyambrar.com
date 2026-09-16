@@ -1,6 +1,6 @@
 import { booleanProp, Preferences } from "@keybr/settings";
 import { Button, useExplainerState } from "@keybr/widget";
-import { useLayoutEffect } from "@keybr/solid-compat/react";
+import { onSettled } from "solid-js";
 import { useIntl } from "@keybr/intl";
 
 export function ExplainToggle(solidProps: {
@@ -11,7 +11,7 @@ export function ExplainToggle(solidProps: {
     const { formatMessage } = useIntl();
     const explainerState = useExplainerState();
     const prop = booleanProp(solidProps.preference, true);
-    useLayoutEffect(() => explainerState.toggleExplainers(Preferences.get(prop)));
+    onSettled(() => explainerState.toggleExplainers(Preferences.get(prop)));
     return <Button onClick={() => {
         const visible = !explainerState.explainersVisible;
         explainerState.toggleExplainers(visible);

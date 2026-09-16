@@ -2,16 +2,15 @@ import { Result, useResults } from "@keybr/result";
 import { resultFromJson, resultToJson } from "@keybr/result-io";
 import { Button, ErrorAlert, Field, FieldList, Icon } from "@keybr/widget";
 import { Trash2, Download, Upload } from "@keybr/widget";
-import { useRef } from "@keybr/solid-compat/react";
 import { useIntl } from "@keybr/intl";
 import * as styles from "./FooterSection.module.css";
 
 export function FooterSection() {
     const { formatMessage } = useIntl();
-    const uploadRef = useRef<HTMLInputElement>(null);
+    let uploadInput: HTMLInputElement | undefined;
     const { handleDownloadData, handleUploadData, handleResetData } = useCommands();
     return (<>
-      <input ref={el => uploadRef.current = el} type="file" accept="application/json,.json" hidden={true} onChange={(event) => {
+      <input ref={el => uploadInput = el} type="file" accept="application/json,.json" hidden={true} onChange={(event) => {
             const file = event.currentTarget.files?.[0];
             event.currentTarget.value = "";
             if (file != null) {
@@ -32,7 +31,7 @@ export function FooterSection() {
             })} onClick={handleDownloadData}/>
           </Field>
           <Field>
-            <Button size={16} icon={<Icon shape={Upload}/>} label="Upload data" title="Merge typing data from a JSON export. Exact duplicate results are skipped." onClick={() => uploadRef.current?.click()}/>
+            <Button size={16} icon={<Icon shape={Upload}/>} label="Upload data" title="Merge typing data from a JSON export. Exact duplicate results are skipped." onClick={() => uploadInput?.click()}/>
           </Field>
           <Field.Filler />
           <Field>

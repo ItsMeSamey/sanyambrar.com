@@ -1,5 +1,4 @@
-import { createSignal } from 'solid-js';
-import { useEffect } from "@keybr/solid-compat/react";
+import { createEffect, createSignal } from 'solid-js';
 import { useTasks } from "./use-tasks.ts";
 
 type Visible<T> = T & { type: "visible-in" | "visible" | "visible-out" };
@@ -9,14 +8,13 @@ export function useHoverPopup<T extends Record<string, unknown>>(delay = 300) {
   const [state, setState] = createSignal<HoverPopupState<T>>({ type: "hidden" });
   const tasks = useTasks();
   const replace = (next: HoverPopupState<T>) => setState(() => next);
-  useEffect(() => {
+  createEffect(state, (current) => {
     tasks.cancelAll();
-    const current = state();
     if (current.type === "visible-in")
       tasks.delayed(delay, () => replace({ ...current, type: "visible" }));
     else if (current.type === "visible-out")
       tasks.delayed(delay, () => replace({ type: "hidden" }));
-  }, () => [state()]);
+  });
 
   const leave = () => {
     const current = state();

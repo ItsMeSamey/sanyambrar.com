@@ -1,29 +1,13 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { useImperativeHandle, useRef } from "@keybr/solid-compat/react";
 import { sizeClassName } from "../../styles/index.ts";
-import { getBoundingBox } from "../../utils/index.ts";
 import * as iconStyles from "../icon/Icon.module.css";
 import * as styles from "./Button.module.css";
 import { type ButtonProps } from "./Button.types.ts";
 import { omit } from 'solid-js';
 export function Button(solidAllProps: ButtonProps): JSX.Element {
-    const solidLocal = solidAllProps, props = omit(solidAllProps, "anchor", "children", "disabled", "icon", "label", "ref", "size", "tabIndex", "title");
-    const element = useRef<HTMLButtonElement>(null);
-    useImperativeHandle(solidLocal.ref, () => ({
-        focus() {
-            element.current?.focus();
-        },
-        blur() {
-            element.current?.blur();
-        },
-    }));
-    useImperativeHandle(solidLocal.anchor, () => ({
-        getBoundingBox() {
-            return getBoundingBox(element.current!);
-        },
-    }));
-    return (<button {...props} ref={el => element.current = el} class={clsx(styles.root, iconStyles.altIcon, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} tabindex={solidLocal.tabIndex} title={solidLocal.title}>
+    const solidLocal = solidAllProps, props = omit(solidAllProps, "children", "disabled", "icon", "label", "size", "tabIndex", "title");
+    return (<button {...props} class={clsx(styles.root, iconStyles.altIcon, solidLocal.disabled && styles.disabled, sizeClassName(solidLocal.size))} disabled={solidLocal.disabled} tabindex={solidLocal.tabIndex} title={solidLocal.title}>
       {solidLocal.icon} {solidLocal.label || solidLocal.children}
     </button>);
 }

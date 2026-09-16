@@ -1,5 +1,4 @@
 import { type Keyboard, type KeyId, useKeyboard } from "@keybr/keyboard";
-import { useRef } from "@keybr/solid-compat/react";
 import { createMemo } from "solid-js";
 import { makeKeyComponent } from "./Key.tsx";
 import { Surface } from "./shapes.tsx";
@@ -12,14 +11,14 @@ export const KeyLayer = function KeyLayer(props: {
     readonly onKeyClick?: (key: KeyId, elem: Element) => void;
 }) {
     const keyboard = useKeyboard();
-    const svgRef = useRef<SVGSVGElement>(null);
+    let svg: SVGSVGElement;
     const keys = createMemo(() => getKeyElements(keyboard()));
-    return (<Surface ref={svgRef} onMouseOver={(event) => {
-            relayEvent(svgRef.current!, event, props.onKeyHoverIn);
+    return (<Surface ref={(element) => svg = element} onMouseOver={(event) => {
+            relayEvent(svg, event, props.onKeyHoverIn);
         }} onMouseOut={(event) => {
-            relayEvent(svgRef.current!, event, props.onKeyHoverOut);
+            relayEvent(svg, event, props.onKeyHoverOut);
         }} onClick={(event) => {
-            relayEvent(svgRef.current!, event, props.onKeyClick);
+            relayEvent(svg, event, props.onKeyClick);
         }}>
       {keys().map(({ shape, Component }) => (<Component depressed={(props.depressedKeys ?? []).includes(shape.id)} toggled={(props.toggledKeys ?? []).includes(shape.id)} showColors={props.showColors ?? false}/>))}
     </Surface>);
