@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 import { createEffect } from "solid-js";
-import { ensureVisible } from "../../utils/index.ts";
+import { ensureVisible } from "../../utils/scroll.ts";
 import * as iconStyles from "../icon/Icon.module.css";
 import { type OptionListOption } from "./OptionList.types.ts";
 import * as styles from "./OptionListMenu.module.css";

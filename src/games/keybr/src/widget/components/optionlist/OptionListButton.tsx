@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { sizeClassName, type SizeName } from "../../styles/index.ts";
+import { sizeClassName, type SizeName } from "../../styles/size.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 import { type OptionListOption } from "./OptionList.types.ts";
 import * as styles from "./OptionListButton.module.css";

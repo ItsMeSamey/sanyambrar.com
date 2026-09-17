@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { type SizeName } from "../../styles/index.ts";
+import { type SizeName } from "../../styles/size.ts";
 import { type FocusProps } from "../types.ts";
 export type OptionListOption = {
     readonly value: string;

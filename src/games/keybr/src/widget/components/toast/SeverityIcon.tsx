@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { CircleAlert, CircleCheck, Info, } from "../../icons.ts";
 
-import { Icon } from "../icon/index.ts";
+import { Icon } from "../icon/Icon.tsx";
 export function SeverityIcon(props: {
     readonly severity: "info" | "success" | "error" | null;
 }): JSX.Element {

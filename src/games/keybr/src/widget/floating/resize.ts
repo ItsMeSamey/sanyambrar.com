@@ -1,5 +1,6 @@
-import { px, type Size } from "../utils/index.ts";
-import { type FloatingHeight, type FloatingWidth } from "./index.ts";
+import { px } from "../utils/geometry.ts";
+import { type Size } from "../utils/size.ts";
+import { type FloatingHeight, type FloatingWidth } from "./types.ts";
 
 export function resizeElement(
   element: HTMLElement,

@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { createEffect } from "solid-js";
-import { placeElement } from "../../floating/index.ts";
-import { useScreenSize } from "../../hooks/index.ts";
+import { placeElement } from "../../floating/place.ts";
+import { useScreenSize } from "../../hooks/use-screen-size.ts";
 import { getBoundingBox } from "../../utils/geometry.ts";
 import { querySelector } from "../../utils/query.ts";
 import * as styles from "./Spotlight.module.css";
