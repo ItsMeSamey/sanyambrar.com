@@ -153,7 +153,7 @@ export function alignToAnchor(
   ];
 }
 
-export function autoPosition(
+function autoPosition(
   size: Size,
   anchor: Rect,
   screenSize: Size,

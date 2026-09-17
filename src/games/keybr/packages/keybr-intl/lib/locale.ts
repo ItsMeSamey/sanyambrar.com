@@ -18,47 +18,6 @@
  */
 export type LocaleId = string;
 export const defaultLocale: LocaleId = "en";
-export const allLocales: readonly LocaleId[] = [
-    defaultLocale,
-    "af",
-    "ar",
-    "bg",
-    "ca",
-    "cs",
-    "da",
-    "de",
-    "el",
-    "eo",
-    "es",
-    "et",
-    "fa",
-    "fi",
-    "fr",
-    "ga",
-    "he",
-    "hr",
-    "hu",
-    "id",
-    "it",
-    "ja",
-    "ko",
-    "ne",
-    "nl",
-    "pl",
-    "pt-br",
-    "pt-pt",
-    "ro",
-    "ru",
-    "sk",
-    "sv",
-    "th",
-    "tr",
-    "uk",
-    "vi",
-    "zh-hans",
-    "zh-hant",
-    "zh-tw",
-];
 export function getDir(locale: LocaleId): "ltr" | "rtl" {
     switch (locale) {
         case "ar":

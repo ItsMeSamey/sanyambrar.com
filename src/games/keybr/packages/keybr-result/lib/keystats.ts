@@ -95,7 +95,7 @@ export class MutableKeyStatsMap implements KeyStatsMap<MutableKeyStats> {
   }
 }
 
-export class MutableKeyStats implements KeyStats {
+class MutableKeyStats implements KeyStats {
   readonly #letter: Letter;
   readonly #samples: KeySample[];
   readonly #filter: Filter;

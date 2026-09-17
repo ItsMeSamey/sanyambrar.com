@@ -30,6 +30,6 @@ export const schedule = (
   });
 };
 
-export const defaultDelayer = (callback: () => void): void => {
+const defaultDelayer = (callback: () => void): void => {
   setTimeout(callback, 0); // Give the browser event loop a chance to run.
 };

@@ -15,7 +15,7 @@ const getResizeObserver = (): ResizeObserver => {
   return resizeObserver;
 };
 
-export const onElementResize = (element: Element, callback: ElementResizeCallback): (() => void) => {
+const onElementResize = (element: Element, callback: ElementResizeCallback): (() => void) => {
   const observer = getResizeObserver();
   observed.set(element, callback);
   observer.observe(element);

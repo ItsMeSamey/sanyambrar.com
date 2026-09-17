@@ -31,7 +31,7 @@ export function ChartCanvas(props: {
       <Canvas paint={chartArea(props.styles, props.paint)}/>
     </Chart>);
 }
-export function chartArea(styles: ChartStyles, cb: (d: Rect) => ShapeList) {
+function chartArea(styles: ChartStyles, cb: (d: Rect) => ShapeList) {
     return ({ width, height }: Size) => {
         const h = styles.lineHeight * 5;
         const v = styles.lineHeight * 2;

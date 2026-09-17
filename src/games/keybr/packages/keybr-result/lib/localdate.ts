@@ -1,6 +1,6 @@
 import { isNumber } from "@keybr/lang";
 
-export enum Month {
+enum Month {
   January = 1,
   February = 2,
   March = 3,
@@ -15,7 +15,7 @@ export enum Month {
   December = 12,
 }
 
-export enum DayOfWeek {
+enum DayOfWeek {
   Monday = 1,
   Tuesday = 2,
   Wednesday = 3,
@@ -111,7 +111,7 @@ export class LocalDate {
   }
 }
 
-export class LocalDateRange {
+class LocalDateRange {
   readonly #from: LocalDate;
   readonly #to: LocalDate;
 

@@ -32,7 +32,7 @@ export abstract class Polynomial implements Model {
   abstract derivative(): Polynomial;
 }
 
-export class Polynomial0 extends Polynomial {
+class Polynomial0 extends Polynomial {
   constructor(readonly y: number) {
     super([y]);
   }
@@ -46,7 +46,7 @@ export class Polynomial0 extends Polynomial {
   }
 }
 
-export class Polynomial1 extends Polynomial {
+class Polynomial1 extends Polynomial {
   constructor(
     readonly a: number,
     readonly b: number,
@@ -63,7 +63,7 @@ export class Polynomial1 extends Polynomial {
   }
 }
 
-export class Polynomial2 extends Polynomial {
+class Polynomial2 extends Polynomial {
   constructor(
     readonly a: number,
     readonly b: number,
@@ -81,7 +81,7 @@ export class Polynomial2 extends Polynomial {
   }
 }
 
-export class Polynomial3 extends Polynomial {
+class Polynomial3 extends Polynomial {
   constructor(
     readonly a: number,
     readonly b: number,
@@ -100,7 +100,7 @@ export class Polynomial3 extends Polynomial {
   }
 }
 
-export class PolynomialN extends Polynomial {
+class PolynomialN extends Polynomial {
   constructor(coef: readonly number[]) {
     super(coef);
   }

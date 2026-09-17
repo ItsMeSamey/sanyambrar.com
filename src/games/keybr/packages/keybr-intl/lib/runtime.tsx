@@ -241,8 +241,6 @@ export function FormattedMessage(props: MessageDescriptor & { values?: MessageVa
 export function RawIntlProvider(props: { value: IntlShape; children?: JSX.Element }): JSX.Element {
   return <IntlContext value={props.value}>{props.children}</IntlContext>;
 }
-export const IntlProvider = RawIntlProvider;
-
 export function createIntlCache(): Record<string, never> { return {}; }
 export function createIntl(config: { locale?: string; defaultLocale?: string; messages?: Record<string, string>; defaultRichTextElements?: Record<string, RichTextHandler>; onWarn?: (warning: unknown) => void; onError?: (error: Error & { code?: string }) => void }, _cache?: unknown): IntlShape {
   return makeIntl(

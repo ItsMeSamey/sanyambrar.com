@@ -9,7 +9,7 @@ export function NameValue(props: NameValueProps): JSX.Element {
       {asValue(props.value)}
     </span>);
 }
-export function asName(v: JSX.Element): JSX.Element {
+function asName(v: JSX.Element): JSX.Element {
     // Preserve rendered nodes and only wrap primitive labels.
     return typeof v === "string" || typeof v === "number"
         ? <Name name={String(v)}/>
@@ -20,7 +20,7 @@ export function Name(props: NameProps): JSX.Element {
       {props.children ?? (props.name != null ? props.name + ":" : null)}
     </span>);
 }
-export function asValue(v: JSX.Element): JSX.Element {
+function asValue(v: JSX.Element): JSX.Element {
     return typeof v === "string" || typeof v === "number"
         ? <Value value={v}/>
         : v;

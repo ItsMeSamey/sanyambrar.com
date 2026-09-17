@@ -33,7 +33,7 @@ export function resultToJson(result: Result): ResultJson {
   };
 }
 
-export function histogramToJson(histogram: Histogram): HistogramtJson {
+function histogramToJson(histogram: Histogram): HistogramtJson {
   const json: {
     [codePoint: number]: {
       h: number;
@@ -200,7 +200,7 @@ function histogramFromExportJson(json: unknown): Histogram | null {
   return new Histogram(samples);
 }
 
-export function histogramFromJson(json: HistogramtJson): Histogram | null {
+function histogramFromJson(json: HistogramtJson): Histogram | null {
   if (!isPlainObject(json)) {
     return null;
   }

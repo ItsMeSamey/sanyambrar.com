@@ -18,7 +18,7 @@ export const GaugeList = function GaugeRow(props: {
       <ScoreGauge summaryStats={props.summaryStats} names={props.names}/>
     </div>);
 };
-export const SpeedGauge = function SpeedGauge(props: {
+const SpeedGauge = function SpeedGauge(props: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -37,7 +37,7 @@ export const SpeedGauge = function SpeedGauge(props: {
             defaultMessage: "Typing speed in the last lesson.",
         })}/>);
 };
-export const AccuracyGauge = function AccuracyGauge(props: {
+const AccuracyGauge = function AccuracyGauge(props: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -56,7 +56,7 @@ export const AccuracyGauge = function AccuracyGauge(props: {
             defaultMessage: "The percentage of characters typed without errors in the last lesson.",
         })}/>);
 };
-export const ScoreGauge = function ScoreGauge(props: {
+const ScoreGauge = function ScoreGauge(props: {
     summaryStats: SummaryStats;
     names?: Names;
 }) {
@@ -76,7 +76,7 @@ export const ScoreGauge = function ScoreGauge(props: {
                 "Scores are greater when you type faster and with fewer errors.",
         })}/>);
 };
-export const Gauge = function Gauge(props: {
+const Gauge = function Gauge(props: {
     id?: string;
     className?: ClassName;
     name: JSX.Element;

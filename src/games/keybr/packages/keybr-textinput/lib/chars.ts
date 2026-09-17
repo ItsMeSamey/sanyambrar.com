@@ -79,41 +79,6 @@ export function splitStyledText(
   return list;
 }
 
-export function isStyledTextSpan(v: unknown): v is StyledTextSpan {
+function isStyledTextSpan(v: unknown): v is StyledTextSpan {
   return v != null && typeof v === "object" && "text" in v;
-}
-
-export function charsAreEqual(a: Char, b: Char): boolean {
-  if (a !== b) {
-    if (a.codePoint !== b.codePoint) {
-      return false;
-    }
-    if (a.attrs !== b.attrs) {
-      return false;
-    }
-    if (a.cls !== b.cls) {
-      return false;
-    }
-  }
-  return true;
-}
-
-export function charArraysAreEqual(
-  a: readonly Char[],
-  b: readonly Char[],
-): boolean {
-  if (a !== b) {
-    const { length } = a;
-    if (length !== b.length) {
-      return false;
-    }
-    for (let i = 0; i < length; i++) {
-      const x = a[i];
-      const y = b[i];
-      if (!charsAreEqual(x, y)) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
