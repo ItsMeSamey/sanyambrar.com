@@ -9,6 +9,8 @@
 - Preserve the shared theme, root-swap navigation, local game saves and lazy editor/worker loading.
 - Run `bun run check` before committing. Type checking, typed linting and browser interaction tests are separate checks.
 - `scripts/dev.mjs` uses the same Vite compiler as production. Run a build first for shared static assets.
+- Keep build and dev targets in the root `vite.config.ts`, selected by `SAMEY_VITE_BUILD`; do not reintroduce per-target Vite config files.
+- Keep `scripts/dev.mjs` on Node unless requalified; Vite 8 `createServer()` under Bun failed to bind the dev port while CLI build/preview under Bun worked.
 - Regenerate and commit `docs/` with source changes. Do not deploy or push without permission.
 - Keep experiments under `.tmp/`. Screenshots belong in `/home/a/Pictures/Screenshots/` and should identify the tested commit.
 - Keybr book previews must not advance storybook progress; cover reload, next/previous, settings-preview, and book-switch round trips when changing book navigation.
