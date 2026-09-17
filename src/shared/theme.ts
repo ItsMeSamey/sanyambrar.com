@@ -2,6 +2,7 @@ import { readHistoryState } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
 import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry } from './loadingSvg.ts';
+import appearanceConfig from '../static/shared/appearance.json';
 
 
 type Tone = "light" | "dark";
@@ -12,6 +13,7 @@ type Theme = RoleTheme & { tone: Tone; background: string; text: string; blurTin
 type SavedTheme = Theme & { id: string; name: string };
 type ThemeState = Theme & { color: string; selected: string; font: string; cursorMode: CursorMode; custom: Theme; savedName?: string };
 type UnknownRecord = Record<string, unknown>;
+type AppearanceConfig = { colors: Record<string, { label: string }>; fonts: Record<string, { label: string; stack: string }> };
 type CursorBitmap = { url: string; x: number; y: number; width: number; height: number } | null;
 type CursorBitmaps = { dot: CursorBitmap; text: CursorBitmap; grab: CursorBitmap; loading: CursorBitmap };
 type ThemePatch = UnknownRecord & { font?: string; color?: string; cursorMode?: CursorMode; custom?: Theme; savedThemes?: SavedTheme[]; menuThemes?: string[] };
@@ -33,8 +35,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const CURSOR_LABELS: Readonly<Record<CursorMode, string>> = Object.freeze({ invert: "Invert", hardware: "Hardware", native: "Native" });
   const isCursorMode = (value: unknown): value is CursorMode => value === "invert" || value === "hardware" || value === "native";
   const normalizeCursorMode = (value: unknown): CursorMode => isCursorMode(value) ? value : "hardware";
-  const config = globalThis.SameyAppearanceConfig;
-  if (config == null) throw new Error("Shared appearance config is not loaded");
+  const config: AppearanceConfig = Object.freeze(appearanceConfig);
 
   const validHex = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
   const mix = (a: string, b: string, weight: number) => {
