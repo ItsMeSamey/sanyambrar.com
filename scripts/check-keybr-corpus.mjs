@@ -3,7 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BOOK_DEFINITIONS } from '../src/games/keybr/packages/keybr-content/lib/books/catalog.ts';
 
-const dir = join(import.meta.dirname, '../src/games/keybr/packages/keybr-content-books/lib/data');
+const dir = join(import.meta.dirname, '../src/games/keybr/packages/keybr-content/assets/books');
 const coversDir = join(import.meta.dirname, '../src/games/keybr/packages/keybr-content/assets/book-covers');
 const expected = new Set(BOOK_DEFINITIONS.map(book => `${book.id}.json`));
 const actual = new Set((await readdir(dir)).filter(name => name.endsWith('.json')));

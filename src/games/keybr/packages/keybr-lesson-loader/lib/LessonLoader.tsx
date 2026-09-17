@@ -1,5 +1,4 @@
-import { loadContent } from "@keybr/content-books";
-import { loadWordList } from "@keybr/content-words";
+import { loadContent, loadWordList } from "@keybr/content";
 import { KeyboardOptions, useKeyboard } from "@keybr/keyboard";
 import {
   BooksLesson,
