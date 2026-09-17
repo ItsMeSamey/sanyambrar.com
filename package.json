@@ -9,7 +9,7 @@
     "build": "bun build.ts",
     "build:wordle": "bun build.ts wordle",
     "build:keybr": "bun build.ts keybr",
-    "build:static": "bun build.ts static",
+    "build:site": "bun build.ts site",
     "dev:wordle": "node scripts/dev.mjs wordle",
     "dev:keybr": "node scripts/dev.mjs keybr",
     "import:keybr-books": "bun scripts/import-keybr-books.mjs",
