@@ -47,7 +47,7 @@ Monaco is used as a normal pinned dependency; the repository does not patch or m
 
 ## Development and validation
 
-Build once for the shared static assets, then use `bun run dev` for the site, `bun run dev:wordle`, or `bun run dev:keybr`. These serve on localhost ports 4320, 4321 and 4322 and use the production Vite compiler.
+Build once for the generated site assets, then use `bun run dev` for the site, `bun run dev:wordle`, or `bun run dev:keybr`. These serve on localhost ports 4320, 4321 and 4322 and use the production Vite compiler.
 
 `bun run check` runs type checking, typed linting, the build, and Playwright tests. Tests use Chromium; an installed `/usr/bin/brave` is detected automatically, or set `BROWSER_EXECUTABLE` to your browser. Otherwise install Playwright's Chromium with `bunx playwright install chromium`.
 
@@ -60,6 +60,6 @@ src/shared/     browser shell, navigation, themes, shared UI
 src/tools/      tools, Monaco editors and DiffEditor
 src/games/      Wordle, Keybr, Chain Reaction
 src/blogs/      writing source
-src/static/     static page sources
+src/site/public/  site-root files copied into the generated deployment
 docs/           generated site served by GitHub Pages
 ```

@@ -12,7 +12,7 @@ type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
 
 const ROOT = import.meta.dirname;
-const STATIC = join(ROOT, "src/static");
+const SITE_PUBLIC = join(ROOT, "src/site/public");
 const DOCS = join(ROOT, "docs");
 const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
@@ -20,7 +20,7 @@ const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
 const GENERATED_KEYBR = join(ROOT, ".build", "keybr");
-const ALL = new Set(["wordle", "keybr", "static"]);
+const ALL = new Set(["wordle", "keybr", "site"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
 const invalidTargets = [...targets].filter((target) => !ALL.has(target));
@@ -57,14 +57,14 @@ async function generateSite(root: string) {
   ]);
 }
 
-async function run(cwd: string, file: string, args: string[], env: NodeJS.ProcessEnv = {}) {
-  const { stdout, stderr } = await runFile(file, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
+async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shared") {
+  const { stdout, stderr } = await runFile(process.execPath, ["./node_modules/vite/bin/vite.js", "build"], {
+    cwd: ROOT,
+    env: { ...process.env, SAMEY_VITE_BUILD: target },
+    maxBuffer: 64 * 1024 * 1024,
+  });
   if (stdout.trim()) process.stdout.write(stdout);
   if (stderr.trim()) process.stderr.write(stderr);
-}
-
-async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shared") {
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"], { SAMEY_VITE_BUILD: target });
 }
 
 async function generateAppearance() {
@@ -114,10 +114,10 @@ async function rollbackDocsTransaction() {
   if (docsExistedBeforeBuild && existsSync(DOCS_BACKUP)) await rename(DOCS_BACKUP, DOCS);
 }
 
-async function copyStatic() {
+async function publishSite() {
   await mkdir(DOCS, { recursive: true });
-  // A partial static build updates an existing docs tree. Remove every output
-  // owned by the site/static pipeline first, otherwise content-hashed Vite
+  // A partial site build updates an existing docs tree. Remove every output
+  // owned by the site pipeline first, otherwise content-hashed Vite
   // chunks and deleted routes accumulate forever. Standalone Wordle/Keybr
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
@@ -126,7 +126,7 @@ async function copyStatic() {
     "site.css", "shared-runtime.js", "vditor",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
-  await cp(STATIC, DOCS, { recursive: true, force: true });
+  await cp(SITE_PUBLIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SHARED_RUNTIME, DOCS, { recursive: true, force: true });
@@ -359,15 +359,15 @@ self.addEventListener('fetch', event => {
 }
 
 async function main() {
-  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, static, or all)`);
-  if (targets.has("static")) {
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, site, or all)`);
+  if (targets.has("site")) {
     await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
     await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
   }
   await beginDocsTransaction();
-  if (targets.has("static")) await copyStatic();
+  if (targets.has("site")) await publishSite();
   const jobs: Promise<void>[] = [];
   if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
