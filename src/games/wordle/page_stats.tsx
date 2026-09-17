@@ -97,7 +97,7 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
         <span class='stats-row-meta'>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
         <span class={`stats-row-status ${statusClass}`}>{status}</span>
       </PopoverTrigger>
-      <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
+      <PopoverContent aria-label={`Game details for ${value.w}`} class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
     </Popover>
   }
 
@@ -114,7 +114,7 @@ function WordHistory({value, selected, onSelect}: {value: Value, selected: Acces
             <span>{attempt.h.length / value.w.length} guesses / {entryMeta(attempt)}</span>
             <span class={statusClass}>{status}</span>
           </PopoverTrigger>
-          <PopoverContent class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
+          <PopoverContent aria-label={`Game details for ${value.w}, ${entryMeta(attempt)}`} class='rounded-none'>{renderHistoryEntry(value.w, attempt)}</PopoverContent>
         </Popover>
       }}</For>
     </AccordionContent>
