@@ -1,7 +1,7 @@
 'use strict'
 
 import { createSignal, Show } from 'solid-js';
-import { IconSettings } from '~/components/icons'
+import { Settings as SettingsIcon } from '~/components/lucide'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
 import { Switch, SwitchControl, SwitchInput, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
 import type { WordLength } from './word-list'
@@ -75,7 +75,7 @@ export default function Settings(props: SettingsControlsProps & {showActive: boo
   const [open, setOpen] = createSignal(false)
   return <Popover open={open()} onOpenChange={setOpen} placement='bottom-end' gutter={6} flip='top-end'>
     <PopoverTrigger class='top-icon site-topbar-icon game-settings-trigger settings-trigger' aria-label='Settings'>
-      <IconSettings class='size-5' />
+      <SettingsIcon class='size-5' />
     </PopoverTrigger>
     <PopoverContent aria-label='Game settings' class='game-settings-popover wordle-settings-popover'>
       <div class='game-settings-body'>

@@ -2,7 +2,7 @@
 
 import { createEffect, createMemo, createSignal, createStore, For, onCleanup, onSettled, Show, snapshot, untrack, type StoreSetter } from 'solid-js';
 import { showToast } from '~/registry/ui/toast'
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '~/registry/ui/drawer'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/registry/ui/dialog'
 
 import { showError } from '../../utils/toast'
 import { LocalstorageStore } from '../../utils/store'
@@ -348,9 +348,9 @@ export class WordleModel {
     const modeTitle = () => this.state.hard.mode === 'daily' ? 'Word of the day' : this.state.hard.mode === 'random' ? 'Random' : 'Advanced'
 
     return <div class='wordle-game-shell'>
-      <Drawer open={this.state.state.showPopOver} onOpenChange={value => this.state.setState(draft => { draft.showPopOver = value })}>
-        <DrawerContent class='result-dialog'>
-          <DrawerHeader>
+      <Dialog open={this.state.state.showPopOver} onOpenChange={value => this.state.setState(draft => { draft.showPopOver = value })}>
+        <DialogContent class='result-dialog'>
+          <DialogHeader>
             <button type='button' class='result-close top-icon' aria-label='Close result' onClick={() => this.state.setState(draft => { draft.showPopOver = false })}>×</button>
             {(() => {
               const last = this.state.currentEntry
@@ -359,13 +359,13 @@ export class WordleModel {
               const isRevealed = last[0] === answer && last[1].split('').every(s => s === 'b')
               return <>
                 <span class='result-kicker'>{isCorrect ? 'Solved' : isRevealed ? 'Revealed' : 'Game over'} / {modeTitle()}</span>
-                <DrawerTitle class={'result-word ' + (isCorrect ? 'text-success-foreground' : isRevealed ? 'wordle-revealed-text' : 'text-error-foreground')}>
+                <DialogTitle class={'result-word ' + (isCorrect ? 'text-success-foreground' : isRevealed ? 'wordle-revealed-text' : 'text-error-foreground')}>
                   <span class='result-answer'>{answer?.toUpperCase()}</span> <ShareTrigger word={() => answer} soft={this.state.soft} hard={this.state.hard} />
-                </DrawerTitle>
-                <DrawerDescription class='result-copy'>
+                </DialogTitle>
+                <DialogDescription class='result-copy'>
                   {isCorrect ? <>Solved in <strong>{this.state.history.length}</strong> guesses.</> :
                    isRevealed ? <>The answer has been revealed.</> : <>You used all <strong>{this.state.hard.maxTries}</strong> guesses.</>}
-                </DrawerDescription>
+                </DialogDescription>
                 <div class='result-actions'>
                   <Show when={this.state.hard.mode === 'random'}><button onClick={this.onNextChallenge}>Next random</button></Show>
                   <Show when={this.state.hard.mode === 'advanced'}><button onClick={this.onNextChallenge}>Play again</button></Show>
@@ -373,9 +373,9 @@ export class WordleModel {
                 </div>
               </>
             })()}
-          </DrawerHeader>
-        </DrawerContent>
-      </Drawer>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
       <div class='wordle-board mx-auto'>
         <For each={this.state.history.length ? this.state.history.slice(0, -1) : []}>{([word, mask]) => new Block(this.state.hard.wordLength, word, mask).render()}</For>
