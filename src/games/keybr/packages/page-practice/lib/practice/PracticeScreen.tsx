@@ -1,7 +1,7 @@
 import { KeyboardProvider } from "@keybr/keyboard";
 import { schedule } from "@keybr/lang";
 import { type Lesson } from "@keybr/lesson";
-import { LessonLoader } from "@keybr/lesson-loader";
+import { LessonLoader } from "@keybr/lesson";
 import { LoadingProgress } from "@keybr/pages-shared";
 import { type Result, useResults } from "@keybr/result";
 import { useSettings } from "@keybr/settings";

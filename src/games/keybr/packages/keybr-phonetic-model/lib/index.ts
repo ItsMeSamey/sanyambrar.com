@@ -4,3 +4,4 @@ export * from "./letter.ts";
 export * from "./phoneticmodel.ts";
 export * from "./transitiontable.ts";
 export * from "./context.ts";
+export * from "./loader.tsx";

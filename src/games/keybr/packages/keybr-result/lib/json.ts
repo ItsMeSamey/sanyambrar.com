@@ -1,6 +1,7 @@
 import { Layout } from "@keybr/keyboard";
 import { isPlainObject, isString } from "@keybr/lang";
-import { Result, TextType } from "@keybr/result";
+import { Result } from "./result.ts";
+import { TextType } from "./texttype.ts";
 import { Histogram } from "@keybr/textinput";
 
 export type ResultJson = {

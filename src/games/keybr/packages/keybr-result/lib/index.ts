@@ -10,3 +10,5 @@ export * from "./texttype.ts";
 export * from "./context.ts";
 export * from "./settings.ts";
 export * from "./speedunit.ts";
+export * from "./json.ts";
+export * from "./loader.tsx";

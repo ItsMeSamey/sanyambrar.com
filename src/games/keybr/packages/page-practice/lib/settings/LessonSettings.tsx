@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { type BooksLesson, type CustomTextLesson, type Lesson, lessonProps, LessonType, type WordListLesson, } from "@keybr/lesson";
-import { LessonLoader } from "@keybr/lesson-loader";
+import { LessonLoader } from "@keybr/lesson";
 import { type Settings, useSettings } from "@keybr/settings";
 import { SegmentedControl } from "@keybr/widget";
 

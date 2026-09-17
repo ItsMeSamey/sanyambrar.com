@@ -22,9 +22,6 @@
       "node"
     ],
     "paths": {
-      "@keybr/phonetic-model/*": [
-        "packages/keybr-phonetic-model/*"
-      ],
       "@keybr/*": [
         "packages/keybr-*/lib/index.ts",
         "packages/*/lib/index.ts"

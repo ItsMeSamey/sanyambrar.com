@@ -1,5 +1,5 @@
 import { Result, useResults } from "@keybr/result";
-import { resultFromJson, resultToJson } from "@keybr/result-io";
+import { resultFromJson, resultToJson } from "@keybr/result";
 import { Button, ErrorAlert, Field, FieldList, Icon } from "@keybr/widget";
 import { Trash2, Download, Upload } from "@keybr/widget";
 import { useIntl } from "@keybr/intl";
