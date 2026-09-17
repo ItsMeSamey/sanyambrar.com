@@ -112,6 +112,7 @@ function ensure() {
       event.preventDefault()
       active = (active + (event.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1)
       render()
+      results?.querySelector<HTMLElement>('.search-result.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     } else if (event.key === 'Enter' && visible[active]) {
       event.preventDefault()
       const targetUrl = new URL(visible[active].href, SCRIPT_ROOT)
