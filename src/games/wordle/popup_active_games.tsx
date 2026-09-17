@@ -157,7 +157,10 @@ export function ActiveGames({hard, onSelect, onBeforeOpen}: {hard: SettingsHardP
   return <Show when={games().length > 0}>
     <Dialog open={open()} onOpenChange={onOpenChange}>
       <DialogTrigger as='button' type='button' class='game-settings-action'>Active Games</DialogTrigger>
-      <DialogContent class='active-games-dialog'>
+      <DialogContent class='active-games-dialog' onCloseAutoFocus={event => {
+        event.preventDefault()
+        document.querySelector<HTMLButtonElement>('.game-settings-trigger')?.focus({preventScroll: true})
+      }}>
         <Show when={open()}>
           <div class='active-games-header'><strong>Active games</strong><span>{games().length}</span></div>
           <div class='active-games-list'>

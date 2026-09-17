@@ -78,7 +78,8 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('game.wordle.settings.hard')).maxTries)).toBe(7);
   await page.getByRole('button', { name: 'Reveal', exact: true }).click();
   await expect(page.getByText('The answer has been revealed.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Close result', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.result-dialog')).not.toBeVisible();
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible();
   await expect(page.locator('.stats-summary-item').filter({ hasText: 'Games' }).first()).toContainText('1');
@@ -116,6 +117,7 @@ test('Wordle active game stays contained at 128px', async ({ page }, info) => {
 });
 
 test('Wordle active games modal owns the overlay and switches saved games', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.addInitScript(() => {
     const put = (length, word, mask) => localStorage.setItem(`game.wordle.advanced.${length}.6.0.0`, JSON.stringify({
       config: { mode: 'advanced', wordLength: length, maxTries: 6, disabledLetters: 0, allowAny: false },
@@ -133,6 +135,19 @@ test('Wordle active games modal owns the overlay and switches saved games', asyn
   const activeGames = page.locator('.active-games-dialog');
   await expect(activeGames).toBeVisible();
   await expect(page.locator('.wordle-settings-popover')).not.toBeVisible();
+  const openingFrames = [];
+  for (let frame = 0; frame < 10; frame++) {
+    const box = await activeGames.boundingBox();
+    openingFrames.push(!!box && box.x >= -1 && box.y >= -1 && box.x + box.width <= 391 && box.y + box.height <= 845);
+    await page.waitForTimeout(12);
+  }
+  expect(openingFrames).not.toContain(false);
+  await page.keyboard.press('Escape');
+  await expect(activeGames).not.toBeVisible();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Active Games', exact: true }).click();
+  await expect(activeGames).toBeVisible();
   await page.setViewportSize({ width: 128, height: 1000 });
   await expect.poll(async () => {
     const box = await activeGames.boundingBox();
