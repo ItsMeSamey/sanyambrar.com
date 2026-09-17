@@ -1,6 +1,18 @@
 import { createEffect, createSignal, createTrackedEffect, onSettled, omit } from "solid-js";
 import { useElementSize } from "../../hooks/use-element-size.ts";
-import { type CanvasProps } from "./Canvas.types.ts";
+import type { JSX } from "@solidjs/web";
+import { type Size } from "../../utils/size.ts";
+import { type ClassName, type MouseProps, type WheelProps } from "../types.ts";
+import { type ShapeList } from "./graphics.ts";
+type PaintCallback = (size: Size) => ShapeList;
+type CanvasProps = {
+    readonly className?: ClassName;
+    readonly id?: string;
+    readonly paint: PaintCallback;
+    readonly style?: JSX.CSSProperties;
+    readonly title?: string;
+    readonly onResize?: (size: Size) => void;
+} & MouseProps & WheelProps;
 import { Graphics } from "./graphics.ts";
 
 export const Canvas = function Canvas(allProps: CanvasProps) {

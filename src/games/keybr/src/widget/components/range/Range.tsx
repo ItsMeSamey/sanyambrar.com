@@ -3,7 +3,18 @@ import { clsx } from "clsx";
 import { omit } from 'solid-js';
 import { sizeClassName } from "../../styles/size.ts";
 import styles from "./Range.module.css";
-import { type RangeProps } from "./Range.types.ts";
+import { type SizeName } from "../../styles/size.ts";
+import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
+type RangeProps = {
+    readonly max: number;
+    readonly min: number;
+    readonly name?: string;
+    readonly size?: SizeName;
+    readonly step: number;
+    readonly title?: string;
+    readonly value: number;
+    readonly onChange?: (value: number) => void;
+} & FocusProps & MouseProps & KeyboardProps;
 
 const THUMB_SIZE = 16;
 

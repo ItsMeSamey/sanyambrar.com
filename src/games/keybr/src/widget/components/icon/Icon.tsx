@@ -3,7 +3,13 @@ import { clsx } from "clsx";
 
 import { Dynamic } from '@solidjs/web';
 import styles from "./Icon.module.css";
-import { type IconProps } from "./Icon.types.ts";
+import { type LucideIcon } from '../../../../../../shared/components/Icons.tsx';
+import { type ClassName, type MouseProps } from "../types.ts";
+type IconProps = {
+  readonly shape: string | LucideIcon;
+  readonly className?: ClassName;
+  readonly viewBox?: string;
+} & MouseProps;
 import { createMemo, omit, merge } from 'solid-js';
 export const Icon = function Icon(allProps: IconProps): JSX.Element {
     const mergedProps = merge(allProps, { get viewBox() { return allProps.viewBox ?? "0 0 24 24"; } });
