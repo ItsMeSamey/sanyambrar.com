@@ -124,6 +124,7 @@ function SpaceSkipsWordsProp() {
     </>);
 }
 function FontProp() {
+    const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     const language = () => KeyboardOptions.from(settings).language;
     const fonts = () => Font.select(language());
@@ -133,7 +134,7 @@ function FontProp() {
         <FormattedMessage id="t_Font:" defaultMessage="Font:"/>
       </Field>
       <Field>
-        <OptionList options={fonts().map((item) => ({
+        <OptionList label={formatMessage({ id: "t_Font", defaultMessage: "Font" })} options={fonts().map((item) => ({
             value: item.id,
             name: <span style={item.cssProperties}>{item.name}</span>,
         }))} value={font().id} onSelect={(id) => {
@@ -227,13 +228,14 @@ function SoundsProp() {
     </>);
 }
 function SoundsThemeProp() {
+    const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
     return (<FieldList>
       <Field size={10}>
         <FormattedMessage id="t_Sound_theme:" defaultMessage="Sound theme:"/>
       </Field>
       <Field>
-        <OptionList options={SoundTheme.ALL.map((item) => ({
+        <OptionList label={formatMessage({ id: "t_Sound_theme", defaultMessage: "Sound theme" })} options={SoundTheme.ALL.map((item) => ({
             value: item.id,
             name: item.name,
         }))} value={settings.get(soundProps.soundTheme).id} onSelect={(id) => {

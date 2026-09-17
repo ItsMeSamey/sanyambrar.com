@@ -7,6 +7,7 @@ export type OptionListOption = {
 };
 export type OptionListProps = {
     readonly options: readonly OptionListOption[];
+    readonly label: string;
     readonly size?: SizeName;
     readonly title?: string;
     readonly value: string;

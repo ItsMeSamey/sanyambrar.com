@@ -4,12 +4,20 @@ import { useHotkeysHandler } from "../../hooks/use-hotkeys.ts";
 import { type OptionListProps } from "./OptionList.types.ts";
 import { OptionListButton } from "./OptionListButton.tsx";
 import { OptionListMenu } from "./OptionListMenu.tsx";
-import { omit, createSignal } from 'solid-js';
+import { omit, createSignal, createUniqueId } from 'solid-js';
 export function OptionList(allProps: OptionListProps): JSX.Element {
-    const local = allProps, props = omit(allProps, "disabled", "options", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
+    const local = allProps, props = omit(allProps, "disabled", "options", "label", "size", "tabIndex", "title", "value", "onBlur", "onFocus", "onSelect");
     const [focused, setFocused] = createSignal(false);
+    const id = createUniqueId();
+    const listboxId = `${id}-listbox`;
+    const optionId = (index: number) => `${id}-option-${index}`;
     const { open, setOpen, option, selectedOption, handleOpen, handleNavigate, handleSelect, } = useOptionList(local);
-    return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} size={local.size} tabIndex={local.tabIndex} title={local.title} onBlur={(event) => {
+    const activeOptionId = () => {
+        const selected = selectedOption();
+        const index = local.options.findIndex((candidate) => candidate.value === selected.value);
+        return index >= 0 ? optionId(index) : undefined;
+    };
+    return (<OptionListButton {...props} focused={focused()} open={open()} option={option()} label={local.label} listboxId={listboxId} activeOptionId={activeOptionId()} size={local.size} tabIndex={local.tabIndex} title={local.title} onBlur={(event) => {
             if (!local.disabled) {
                 setFocused(false);
                 setOpen(false);
@@ -25,8 +33,9 @@ export function OptionList(allProps: OptionListProps): JSX.Element {
                 }
             }
         }} onKeyDown={useHotkeysHandler({
-            ["Space"]: handleOpen,
-            ["Enter"]: handleSelect,
+            ["Space"]: () => open() ? handleSelect() : handleOpen(),
+            ["Enter"]: () => open() ? handleSelect() : handleOpen(),
+            ["Escape"]: () => setOpen(false),
             ["Home"]: () => handleNavigate("first"),
             ["ArrowUp"]: () => handleNavigate("prev"),
             ["ArrowDown"]: () => handleNavigate("next"),
@@ -35,7 +44,7 @@ export function OptionList(allProps: OptionListProps): JSX.Element {
             event.preventDefault();
             handleOpen();
         }}>
-      {open() && (<OptionListMenu options={local.options} selectedOption={selectedOption()} onSelect={(option) => {
+      {open() && (<OptionListMenu options={local.options} selectedOption={selectedOption()} id={listboxId} optionId={optionId} onSelect={(option) => {
                 setOpen(false);
                 if (local.onSelect != null) {
                     local.onSelect(option.value);
@@ -49,14 +58,15 @@ function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "va
         name: "-",
     };
     const [open, setOpen] = createSignal(false);
-    const [selectedOption, setSelectedOption] = createSignal(option);
+    const [selectedValue, setSelectedValue] = createSignal(props.value);
+    const selectedOption = () => props.options.find((candidate) => candidate.value === selectedValue()) ?? option();
     const handleOpen = () => {
         if (props.disabled) {
             return;
         }
         if (!open()) {
             setOpen(true);
-            setSelectedOption(option());
+            setSelectedValue(option().value);
         }
         else {
             setOpen(false);
@@ -68,11 +78,12 @@ function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "va
         }
         if (!open()) {
             setOpen(true);
-            setSelectedOption(option());
+            setSelectedValue(option().value);
         }
         else {
             const { length } = props.options;
-            let index = props.options.indexOf(selectedOption());
+            if (!length) return;
+            let index = props.options.findIndex((candidate) => candidate.value === selectedValue());
             if (index === -1) {
                 index = 0;
             }
@@ -96,7 +107,7 @@ function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "va
                     index = length - 1;
                     break;
             }
-            setSelectedOption(props.options[index]);
+            setSelectedValue(props.options[index].value);
         }
     };
     const handleSelect = () => {
@@ -106,7 +117,7 @@ function useOptionList(props: Pick<OptionListProps, "options" | "disabled" | "va
         if (open()) {
             setOpen(false);
             if (props.onSelect != null) {
-                props.onSelect(selectedOption().value);
+                props.onSelect(selectedValue());
             }
         }
     };

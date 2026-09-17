@@ -45,12 +45,12 @@ export function ResultGrouper(props: {
           <FormattedMessage id="t_Show_statistics_for:" defaultMessage="Show statistics for:"/>
         </Field>
         <Field>
-          <OptionList options={layoutOptions()} value={selectedLayout().id} onSelect={(value) => {
+          <OptionList label={formatMessage({ id: "t_Show_statistics_for:", defaultMessage: "Show statistics for" })} options={layoutOptions()} value={selectedLayout().id} onSelect={(value) => {
             setSelectedLayout(Layout.ALL.get(value));
         }}/>
         </Field>
         <Field size={16}>
-          <OptionList options={[
+          <OptionList label={formatMessage({ id: "stats.characterClass", defaultMessage: "Character class" })} options={[
             {
                 name: formatMessage({
                     id: "t_cc_Letters",

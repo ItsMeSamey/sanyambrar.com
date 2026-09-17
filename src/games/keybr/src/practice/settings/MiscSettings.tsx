@@ -29,7 +29,7 @@ function SpeedUnitProp(): JSX.Element {
           <FormattedMessage id="t_Measure_typing_speed_in:" defaultMessage="Measure typing speed in:"/>
         </Field>
         <Field>
-          <OptionList options={SpeedUnit.ALL.map((item) => ({
+          <OptionList label={formatMessage({ id: "t_Measure_typing_speed_in", defaultMessage: "Typing speed unit" })} options={SpeedUnit.ALL.map((item) => ({
             value: item.id,
             name: formatMessage(item.name),
         }))} value={settings.get(uiProps.speedUnit).id} onSelect={(id) => {
