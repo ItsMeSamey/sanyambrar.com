@@ -27,6 +27,8 @@ const setToolUrl = (tool:ToolId) => {
 
 function ToolTabs(props:{active:ToolId}) {
   const selected = () => toolOptions.find(tool => tool.id === props.active) ?? toolOptions[0];
+  const [selectOpen, setSelectOpen] = createSignal(false);
+  let selectTrigger!: HTMLButtonElement;
   return <div class="tool-switcher">
     <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => { if (isToolId(value)) setToolUrl(value); }}>
       <Tabs.List class="tool-tabs" aria-label="Tools">
@@ -38,18 +40,26 @@ function ToolTabs(props:{active:ToolId}) {
       optionValue="id"
       optionTextValue="label"
       value={selected()}
+      open={selectOpen()}
+      onOpenChange={setSelectOpen}
       onChange={tool => tool && setToolUrl(tool.id)}
       itemComponent={props => <Select.Item class="tool-select-item" item={props.item}>
         <Select.ItemLabel>{props.item.rawValue.label}</Select.ItemLabel>
         <Select.ItemIndicator class="tool-select-check"><Check aria-hidden="true"/></Select.ItemIndicator>
       </Select.Item>}
     >
-      <Select.Trigger class="tool-select-trigger" aria-label="Tool">
+      <Select.Trigger ref={el => selectTrigger = el} class="tool-select-trigger" aria-label="Tool">
         <Select.Value<(typeof toolOptions)[number]>>{state => state.selectedOption().label}</Select.Value>
         <Select.Icon class="tool-select-icon"><ChevronsUpDown aria-hidden="true"/></Select.Icon>
       </Select.Trigger>
       <Select.Portal>
-        <Select.Content data-samey-overlay="" class="tool-select-content"><Select.Listbox class="tool-select-list"/></Select.Content>
+        <Select.Content data-samey-overlay="" class="tool-select-content" onKeyDown={event => {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          setSelectOpen(false);
+          requestAnimationFrame(() => selectTrigger.isConnected && selectTrigger.focus({ preventScroll: true }));
+        }}><Select.Listbox class="tool-select-list"/></Select.Content>
       </Select.Portal>
     </Select.Root>
   </div>;
