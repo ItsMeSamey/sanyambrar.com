@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { join, relative } from "node:path";
 import { promisify } from "node:util";
 import { generateSite } from "./site.ts";
 
@@ -72,9 +72,7 @@ async function directDependenciesPresent(dir: string) {
   return true;
 }
 
-const dependencyInstalls = new Map<string, Promise<void>>();
-
-async function ensureDepsUnlocked(dir: string) {
+async function ensureDeps(dir: string) {
   const lock = join(dir, "bun.lock");
   const stamp = join(dir, "node_modules/.samey-deps-sha256");
   const wanted = await dependencySignature(dir);
@@ -111,19 +109,6 @@ async function ensureDepsUnlocked(dir: string) {
   await writeFile(stamp, `${await dependencySignature(dir)}\n`);
 }
 
-async function ensureDeps(dir: string) {
-  const key = resolve(dir);
-  const existing = dependencyInstalls.get(key);
-  if (existing) return existing;
-
-  const pending = ensureDepsUnlocked(key);
-  dependencyInstalls.set(key, pending);
-  try {
-    await pending;
-  } finally {
-    if (dependencyInstalls.get(key) === pending) dependencyInstalls.delete(key);
-  }
-}
 
 async function generateAppearance() {
   const config = await readJsonRecord(join(STATIC, "shared/appearance.json"));
@@ -207,7 +192,6 @@ async function cleanupBuildArtifacts() {
 
 
 async function buildSharedRuntime() {
-  await ensureDeps(ROOT);
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.shared.config.ts"]);
   must(existsSync(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js")), "shared runtime bundle missing");
   must(existsSync(join(GENERATED_SHARED_RUNTIME, "site.css")), "shared stylesheet bundle missing");
@@ -215,7 +199,6 @@ async function buildSharedRuntime() {
 }
 
 async function buildBlogPost() {
-  await ensureDeps(ROOT);
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.blog.config.ts"]);
   const candidates = await walk(GENERATED_BLOG_POST, (_path, name) => name === "btop-mutex.html");
   must(candidates.length === 1, `blog single-file build emitted ${candidates.length} btop-mutex.html files`);
@@ -227,7 +210,6 @@ async function buildBlogPost() {
 }
 
 async function buildSiteRuntime() {
-  await ensureDeps(ROOT);
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.site.config.ts"]);
   const siteEntries = await walk(GENERATED_SITE_RUNTIME, (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
@@ -235,7 +217,6 @@ async function buildSiteRuntime() {
 }
 
 async function buildWordle() {
-  await ensureDeps(ROOT);
   await Promise.all([
     run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
     run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"]),
@@ -257,7 +238,6 @@ async function buildWordle() {
 
 
 async function buildKeybr() {
-  await ensureDeps(ROOT);
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "src/games/keybr/vite.config.ts"]);
   const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
@@ -427,26 +407,21 @@ self.addEventListener('fetch', event => {
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, static, or all)`);
-  await generateAppearance();
-  await rm(GENERATED_SITE, { recursive: true, force: true });
-  await generateSite(GENERATED_SITE);
-  // Bootstrap dependencies once before launching build stages in parallel.
-  // ensureDeps is also single-flight so future concurrent callers cannot race
-  // multiple Bun installers against the same node_modules tree.
   await ensureDeps(ROOT);
-  await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
+  if (targets.has("static")) {
+    await generateAppearance();
+    await rm(GENERATED_SITE, { recursive: true, force: true });
+    await generateSite(GENERATED_SITE);
+    await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
+  }
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();
   const jobs: Promise<void>[] = [];
   if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
-  if (targets.has("static")) {
-    await versionMutableShellReferences();
-    await generateServiceWorker();
-  } else if (targets.has("keybr")) {
-    await generateServiceWorker();
-  }
+  await versionMutableShellReferences();
+  await generateServiceWorker();
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");
 }
 
