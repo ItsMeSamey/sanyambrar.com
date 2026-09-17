@@ -2,7 +2,7 @@ import { readHistoryState } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
 import { generateAnimatedSineCircleSvg, generateLoadingFrames, loadingGeometry } from './loadingSvg.ts';
-import appearanceConfig from '../static/shared/appearance.json';
+import appearanceConfig from './appearance.json';
 
 
 type Tone = "light" | "dark";

@@ -16,7 +16,7 @@ My personal site, plus a pile of small games and tools. It ships as static files
 ## Shape of the site
 
 ```text
-src/ + site.ts
+src/
       │
       ▼
    build.ts ──► docs/ ──► GitHub Pages
