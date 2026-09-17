@@ -1,5 +1,5 @@
 import { Tasks } from "../../../lang/tasks.ts";
-import { Move } from "../../icons.ts";
+import { Move } from "../../../../../shared/components/Icons.tsx";
 import { clsx } from "clsx";
 import { createEffect, createSignal, onCleanup } from 'solid-js';
 import { type JSX } from '@solidjs/web';

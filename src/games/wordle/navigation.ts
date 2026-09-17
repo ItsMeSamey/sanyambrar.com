@@ -16,7 +16,6 @@ let pageRootElement: HTMLElement | undefined
 export const setPageRoot = (element?: HTMLElement) => { pageRootElement = element }
 export const pageRoot = () => pageRootElement?.isConnected ? pageRootElement : null
 
-export const p = page
 export const selectP = (value: Page) => page() === value
 
 function commitPage(value: Page) {
@@ -51,7 +50,7 @@ export function mountPageNavigation() {
   return disposePageNavigation
 }
 
-export function disposePageNavigation() {
+function disposePageNavigation() {
   if (!pageNavigationMounted) return
   removeEventListener('popstate', onPopState)
   pageNavigationMounted = false

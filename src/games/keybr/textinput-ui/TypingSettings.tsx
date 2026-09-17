@@ -18,7 +18,7 @@ import { OptionList } from "../widget/components/optionlist/OptionList.tsx";
 import { Range } from "../widget/components/range/Range.tsx";
 import { SegmentedControl } from "../widget/components/segmented/SegmentedControl.tsx";
 import { Toggle } from "../widget/components/toggle/Toggle.tsx";
-import { CirclePlay, CircleStop } from "../widget/icons.ts";
+import { CirclePlay, CircleStop } from "../../../shared/components/Icons.tsx";
 import { createEffect, createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "../intl/runtime.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";

@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { X } from "../../icons.ts";
+import { X } from "../../../../../shared/components/Icons.tsx";
 
 import { IconButton } from "../button/IconButton.tsx";
 import { Icon } from "../icon/Icon.tsx";

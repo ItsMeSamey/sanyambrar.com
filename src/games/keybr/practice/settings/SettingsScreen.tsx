@@ -7,7 +7,7 @@ import { ExplainerBoundary } from "../../widget/components/explainer/ExplainerBo
 import { Header } from "../../widget/components/text/Header.tsx";
 import { Icon } from "../../widget/components/icon/Icon.tsx";
 import { Spacer } from "../../widget/components/text/Spacer.tsx";
-import { Trash2 } from "../../widget/icons.ts";
+import { Trash2 } from "../../../../shared/components/Icons.tsx";
 import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 import { ExplainSettings } from "./ExplainSettings.tsx";
 import { KeyboardSettings } from "./KeyboardSettings.tsx";

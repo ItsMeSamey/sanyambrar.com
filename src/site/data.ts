@@ -8,7 +8,7 @@ export const games:Entry[]=[
   {title:'Keybr',href:'/keybr.html',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
   {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Chain reaction clone with local AI.',tags:['canvas','game','ai']},
 ];
-export const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
+const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[
   {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android recorder that keeps a rolling audio window in memory.',tags:['kotlin','android','audio'],demo:true},
   {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw something and run the model in-browser with WASM.',tags:['python / zig','ml','mnist'],demo:true},
