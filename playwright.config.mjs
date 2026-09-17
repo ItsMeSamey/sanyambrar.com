@@ -9,9 +9,11 @@ const ports = { production: requestedPortBase, site: requestedPortBase + 1, word
 const parent = resolve(import.meta.dirname, '..');
 const projectRoot = basename(parent) === '.worktree' ? resolve(parent, '..') : import.meta.dirname;
 const browserTmp = resolve(projectRoot, '.tmp', `pw-${requestedPortBase}`);
+const outputDir = resolve(projectRoot, '.tmp', `playwright-artifacts-${requestedPortBase}`);
+const jsonReport = resolve(projectRoot, '.tmp', `playwright-results-${requestedPortBase}.json`);
 mkdirSync(browserTmp, { recursive: true });
 process.env.TMPDIR = browserTmp;
-const server = (command, port) => ({ command, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: 60_000 });
+const server = (command, port) => ({ command, url: `http://127.0.0.1:${port}`, reuseExistingServer: false, timeout: 180_000 });
 
 export default defineConfig({
   testDir: './tests',
@@ -20,7 +22,8 @@ export default defineConfig({
   fullyParallel: true,
   workers: 3,
   retries: 0,
-  reporter: [['list'], ['json', { outputFile: '.tmp/playwright-results.json' }]],
+  outputDir,
+  reporter: [['list'], ['json', { outputFile: jsonReport }]],
   use: {
     browserName: 'chromium',
     launchOptions: { executablePath, args: ['--disable-dev-shm-usage'] },
