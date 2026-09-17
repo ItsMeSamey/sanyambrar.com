@@ -30,7 +30,7 @@ src/ + site.ts
 
 Most pages share the same shell for navigation, themes, search, transitions, context menus, and the custom cursor. Same-origin navigation swaps real page roots instead of using iframes.
 
-The site, Wordle and the vendored Keybr port use Solid 2 RC and Vite. Keybr retains a small local API adapter for its ported components, not a React runtime. Larger editors and demos load only when opened.
+The site, Wordle and Keybr share Solid 2 RC and the same Vite compiler. `solid-js` and `@solidjs/web` are pinned to `2.0.0-rc.6`; `@kobalte/core` remains on `2.0.0-alpha.1`, with package overrides keeping Solid core, web, and signals on the same RC. Larger editors and demos load only when opened.
 
 Diff uses one editable Monaco DiffEditor. Monaco owns line alignment, gap zones, and character-level highlighting. It is used without dependency patches.
 
@@ -51,7 +51,6 @@ Build once for the shared static assets, then use `bun run dev` for the site, `b
 
 `bun run check` runs type checking, typed linting, the build, and Playwright tests. Tests use Chromium; an installed `/usr/bin/brave` is detected automatically, or set `BROWSER_EXECUTABLE` to your browser. Otherwise install Playwright's Chromium with `bunx playwright install chromium`.
 
-Read [the migration report](SOLID_V2_MIGRATION.md) for exact RC pins, Kobalte's experimental peer mismatch, and the native replacements for incompatible dependencies.
 
 ## Repository map
 
