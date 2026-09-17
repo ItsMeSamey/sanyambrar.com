@@ -287,7 +287,6 @@ export function App() {
   onSettled(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
-    globalThis.SameySolidNavigate = navigate;
     globalThis.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
     globalThis.SameySolidPreload = href => preloadUrl(new URL(href, location.href));
 
@@ -360,7 +359,6 @@ export function App() {
     return () => {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
-      globalThis.SameySolidNavigate = undefined;
       globalThis.SameyNavigate = undefined;
       globalThis.SameySolidPreload = undefined;
     };
