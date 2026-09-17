@@ -23,7 +23,7 @@ Browser
       └─ typing history
 ```
 
-The `packages/` directories contain the core modules and UI packages. The application entry point lives in `src/`.
+Core modules, UI, and the application entry point all live under `src/`.
 
 ## Build
 
@@ -45,7 +45,7 @@ Application code is chunked. Each book, language word list, and phonetic model i
 For local Keybr development from the repository root:
 
 ```sh
-bun --cwd src/games/keybr run dev
+bun run dev:keybr
 ```
 
 No separate Keybr dependency installation is required.
