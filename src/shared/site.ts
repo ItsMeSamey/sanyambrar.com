@@ -123,6 +123,18 @@ function ensure() {
     if (target?.closest('a.search-result')) close(false)
     else if (target?.closest('[data-close-search]')) close()
   })
+  box.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return
+    const focusable = [searchInput, ...searchResults.querySelectorAll<HTMLAnchorElement>('a.search-result')]
+    const current = document.activeElement
+    const index = focusable.indexOf(current as HTMLInputElement | HTMLAnchorElement)
+    const next = event.shiftKey
+      ? index <= 0 ? focusable[focusable.length - 1] : focusable[index - 1]
+      : index < 0 || index === focusable.length - 1 ? focusable[0] : focusable[index + 1]
+    event.preventDefault()
+    next.focus()
+    if (next instanceof HTMLAnchorElement) next.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  })
   searchInput.addEventListener('keydown', event => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
