@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { useCollator } from "@keybr/intl";
 import { KeyboardContext, keyboardProps, Layout, loadKeyboard, useFormattedNames, } from "@keybr/keyboard";
 import { Letter } from "@keybr/phonetic-model";
-import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
+import { PhoneticModelLoader } from "@keybr/phonetic-model";
 import { type KeyStatsMap, makeKeyStatsMap, ResultGroups, useResults, } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { Field, FieldList, OptionList } from "@keybr/widget";

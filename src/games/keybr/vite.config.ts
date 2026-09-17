@@ -7,13 +7,10 @@ const root = import.meta.dirname;
 const packagesDir = join(root, "packages");
 const packageDirs = readdirSync(packagesDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && existsSync(join(packagesDir, entry.name, "lib/index.ts")));
-const workspaceAliases = [
-  { find: "@keybr/phonetic-model/assets", replacement: join(packagesDir, "keybr-phonetic-model/assets") },
-  ...packageDirs.map((entry) => {
+const workspaceAliases = packageDirs.map((entry) => {
     const name = entry.name.startsWith("keybr-") ? entry.name.slice(6) : entry.name;
-    return { find: new RegExp(`^@keybr/${name}$`), replacement: join(packagesDir, entry.name, "lib/index.ts") };
-  }),
-];
+  return { find: new RegExp(`^@keybr/${name}$`), replacement: join(packagesDir, entry.name, "lib/index.ts") };
+});
 
 export default defineConfig(({ mode }) => ({
   root,

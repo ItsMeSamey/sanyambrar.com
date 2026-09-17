@@ -1,19 +1,16 @@
 import { loadContent, loadWordList } from "@keybr/content";
 import { KeyboardOptions, useKeyboard } from "@keybr/keyboard";
-import {
-  BooksLesson,
-  CodeLesson,
-  CustomTextLesson,
-  GuidedLesson,
-  type Lesson,
-  lessonProps,
-  LessonType,
-  NumbersLesson,
-  WordListLesson,
-} from "@keybr/lesson";
+import { BooksLesson } from "./books.ts";
+import { CodeLesson } from "./code.ts";
+import { CustomTextLesson } from "./customtext.ts";
+import { GuidedLesson } from "./guided.ts";
+import { type Lesson } from "./lesson.ts";
+import { LessonType } from "./lessontype.ts";
+import { NumbersLesson } from "./numbers.ts";
+import { lessonProps } from "./settings.ts";
+import { WordListLesson } from "./wordlist.ts";
 import { LoadingProgress } from "@keybr/pages-shared";
-import { type PhoneticModel } from "@keybr/phonetic-model";
-import { PhoneticModelLoader } from "@keybr/phonetic-model-loader";
+import { type PhoneticModel, PhoneticModelLoader } from "@keybr/phonetic-model";
 import { useSettings } from "@keybr/settings";
 import { createMemo, Loading, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
