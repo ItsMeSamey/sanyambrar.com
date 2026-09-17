@@ -1,5 +1,5 @@
 import { KeyboardProvider } from "@keybr/keyboard";
-import { Screen } from "@keybr/pages-shared";
+import { Screen } from "@keybr/ui";
 import { useSettings } from "@keybr/settings";
 import { TypingSettings } from "@keybr/textinput-ui";
 import { Button, ExplainerBoundary, Header, Icon, Spacer } from "@keybr/widget";

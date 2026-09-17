@@ -1,7 +1,7 @@
 import { ErrorHandler } from "@keybr/debug";
 import { loadIntl } from "@keybr/intl";
-import { PracticePage } from "@keybr/page-practice";
-import { LoadingProgress, Root } from "@keybr/pages-shared";
+import { PracticePage } from "@keybr/practice";
+import { LoadingProgress, Root } from "@keybr/ui";
 import { ResultLoader } from "@keybr/result";
 import { SettingsLoader } from "@keybr/settings";
 import { ThemeProvider } from "@keybr/themes";

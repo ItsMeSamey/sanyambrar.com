@@ -9,7 +9,7 @@ import { LessonType } from "./lessontype.ts";
 import { NumbersLesson } from "./numbers.ts";
 import { lessonProps } from "./settings.ts";
 import { WordListLesson } from "./wordlist.ts";
-import { LoadingProgress } from "@keybr/pages-shared";
+import { LoadingProgress } from "@keybr/ui";
 import { type PhoneticModel, PhoneticModelLoader } from "@keybr/phonetic-model";
 import { useSettings } from "@keybr/settings";
 import { createMemo, Loading, Show } from 'solid-js';

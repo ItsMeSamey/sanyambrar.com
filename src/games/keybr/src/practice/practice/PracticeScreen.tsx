@@ -2,7 +2,7 @@ import { KeyboardProvider } from "@keybr/keyboard";
 import { schedule } from "@keybr/lang";
 import { type Lesson } from "@keybr/lesson";
 import { LessonLoader } from "@keybr/lesson";
-import { LoadingProgress } from "@keybr/pages-shared";
+import { LoadingProgress } from "@keybr/ui";
 import { type Result, useResults } from "@keybr/result";
 import { useSettings } from "@keybr/settings";
 import { createEffect, createMemo, createSignal, Show, untrack } from 'solid-js';

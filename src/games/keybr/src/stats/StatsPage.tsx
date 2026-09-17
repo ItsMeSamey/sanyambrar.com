@@ -1,4 +1,4 @@
-import { Screen } from "@keybr/pages-shared";
+import { Screen } from "@keybr/ui";
 import {
   DailyStatsMap,
   type KeyStatsMap,
