@@ -4,7 +4,6 @@ import { createEffect, createMemo, createSignal, createStore, For, onCleanup, on
 import { showError, showToast } from '~/registry/ui/toast'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '~/registry/ui/dialog'
 
-import { LocalstorageStore } from '../../utils/store'
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { calcDiff, getCompletedDailyDates, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
 import { binarySearch, playableNextLetters, wordAt, wordCount } from './word-list'
@@ -15,7 +14,7 @@ import { GameTopBarActions, TopBar } from '../../shared/components/TopBar.tsx'
 import { WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx'
 import { WordleBackButton } from './WordleBackButton'
 import { animateRootSwap } from '../../shared/transitions.ts'
-import { pageRoot } from '../../utils/navigation.ts'
+import { pageRoot } from './navigation.ts'
 import { WordleDatePicker } from './WordleDatePicker'
 
 type WordleStringState = 'g' | 'y' | 'r'
@@ -137,12 +136,31 @@ const isWordleHistory = (value: unknown): value is [string, string][] =>
     Array.isArray(row) && row.length === 2 && typeof row[0] === 'string' && typeof row[1] === 'string'
   )
 
+type StorageCell<T> = { get(): T; set(value: T): void }
+
+function storageCell<T>(key: string, fallback: T, parse: (raw: string) => T, serialize: (value: T) => string): StorageCell<T> {
+  let value = fallback
+  const save = (next: T) => {
+    value = next
+    try { localStorage.setItem(key, serialize(next)) } catch {}
+    window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key}}))
+  }
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === null) save(fallback)
+    else value = parse(raw)
+  } catch {
+    save(fallback)
+  }
+  return {get: () => value, set: save}
+}
+
 class GameState {
   state: CurrentState
   readonly setState: StoreSetter<CurrentState>
   readonly stored: WordLocalStorageState
 
-  constructor(public soft: SettingsSoftProps, public hard: SettingsHardProps, public stateStore: LocalstorageStore<WordLocalStorageState>) {
+  constructor(public soft: SettingsSoftProps, public hard: SettingsHardProps, public stateStore: StorageCell<WordLocalStorageState>) {
     const stored = stateStore.get()
     if (!stored) throw new Error('Wordle state store has no initial state')
     this.stored = stored
@@ -270,7 +288,7 @@ class WordleModel {
   state: GameState
   currentBlock?: HTMLSpanElement
 
-  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: LocalstorageStore<WordLocalStorageState>, private onNextChallenge: () => void, private onChooseMode: () => void) {
+  constructor(soft: SettingsSoftProps, hard: SettingsHardProps, stateStore: StorageCell<WordLocalStorageState>, private onNextChallenge: () => void, private onChooseMode: () => void) {
     this.state = untrack(() => new GameState(soft, hard, stateStore))
   }
 
@@ -488,7 +506,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
       }
     }
   } catch {}
-  const stateStore = new LocalstorageStore<WordLocalStorageState>(
+  const stateStore = storageCell<WordLocalStorageState>(
     storageKey,
     {word: '', history: [['', '']], config: {...hard}},
     fromStorage,
@@ -497,7 +515,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
   return new WordleModel(soft, hard, stateStore, onNextChallenge, onChooseMode).render()
 }
 
-function getSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
+function getSettingsStore(): {softStore: StorageCell<SettingsSoftProps>, hardStore: StorageCell<SettingsHardProps>} {
   const daily = getDailyChallenge(localDateKey())
   const hardDefault: SettingsHardProps = {
     mode: 'daily', wordLength: daily.wordLength, maxTries: daily.maxTries,
@@ -514,8 +532,8 @@ function getSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, h
     return {mode: value.mode, wordLength: value.wordLength, maxTries: value.maxTries, disabledLetters: value.disabledLetters, allowAny: value.allowAny}
   }
   return {
-    softStore: new LocalstorageStore('game.wordle.settings.soft', {reveal: false, fastInvalidate: true}, parseSoft, value => JSON.stringify({fastInvalidate: value.fastInvalidate})),
-    hardStore: new LocalstorageStore('game.wordle.settings.hard', hardDefault, parseHard, JSON.stringify),
+    softStore: storageCell('game.wordle.settings.soft', {reveal: false, fastInvalidate: true}, parseSoft, value => JSON.stringify({fastInvalidate: value.fastInvalidate})),
+    hardStore: storageCell('game.wordle.settings.hard', hardDefault, parseHard, JSON.stringify),
   }
 }
 

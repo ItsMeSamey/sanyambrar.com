@@ -1,17 +1,16 @@
 'use strict'
 
 import { createSignal } from 'solid-js';
-import { UrlSearchStore } from './store'
-import { animateRootSwap } from '../shared/transitions.ts'
+import { readHistoryState } from '../../shared/history.ts'
+import { animateRootSwap } from '../../shared/transitions.ts'
 
 export enum Page {
   Wordle,
   Stats,
 }
 
-const parsePage = (value: string): Page => value === String(Page.Stats) ? Page.Stats : Page.Wordle
-const pageState = new UrlSearchStore('p', Page.Wordle, parsePage, String)
-const [page, setPage] = createSignal<Page>(pageState.get() ?? Page.Wordle)
+const readPage = (): Page => new URL(location.href).searchParams.get('p') === String(Page.Stats) ? Page.Stats : Page.Wordle
+const [page, setPage] = createSignal<Page>(readPage())
 let pageRootElement: HTMLElement | undefined
 
 export const setPageRoot = (element?: HTMLElement) => { pageRootElement = element }
@@ -21,7 +20,10 @@ export const p = page
 export const selectP = (value: Page) => page() === value
 
 function commitPage(value: Page) {
-  pageState.set(value)
+  const url = new URL(location.href)
+  if (value === Page.Wordle) url.searchParams.delete('p')
+  else url.searchParams.set('p', String(value))
+  history.pushState({...(readHistoryState() ?? {}), p: value}, '', url)
   setPage(value)
 }
 
@@ -32,7 +34,7 @@ export function setP(value: Page) {
 }
 
 const onPopState = () => {
-  const value = pageState.refresh() ?? Page.Wordle
+  const value = readPage()
   if (value === page()) return
   const current = pageRoot()
   void animateRootSwap(current, () => { setPage(value) }, pageRoot, value === Page.Wordle ? 'back' : 'forward')
@@ -40,7 +42,7 @@ const onPopState = () => {
 let pageNavigationMounted = false
 
 export function mountPageNavigation() {
-  const value = pageState.refresh() ?? Page.Wordle
+  const value = readPage()
   setPage(value)
   if (!pageNavigationMounted) {
     addEventListener('popstate', onPopState)
