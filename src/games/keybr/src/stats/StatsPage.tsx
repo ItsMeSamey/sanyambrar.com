@@ -4,19 +4,19 @@ import { type KeyStatsMap } from "../result/keystats.ts";
 import { makeSummaryStats } from "../result/summarystats.ts";
 import { ExplainerBoundary } from "../widget/components/explainer/ExplainerBoundary.tsx";
 import { createMemo } from 'solid-js';
-import { AccuracyStreaksSection } from "./stats/AccuracyStreaksSection.tsx";
-import { CalendarSection } from "./stats/CalendarSection.tsx";
-import { ExplainStats } from "./stats/ExplainStats.tsx";
-import { FooterSection } from "./stats/FooterSection.tsx";
-import { KeyFrequencyHeatmapSection } from "./stats/KeyFrequencyHeatmapSection.tsx";
-import { KeyFrequencyHistogramSection } from "./stats/KeyFrequencyHistogramSection.tsx";
-import { KeySpeedChartSection } from "./stats/KeySpeedChartSection.tsx";
-import { KeySpeedHistogramSection } from "./stats/KeySpeedHistogramSection.tsx";
-import { ProgressOverviewSection } from "./stats/ProgressOverviewSection.tsx";
-import { ResultGrouper } from "./stats/ResultGrouper.tsx";
-import { SpeedChartSection } from "./stats/SpeedChartSection.tsx";
-import { SpeedHistogramSection } from "./stats/SpeedHistogramSection.tsx";
-import { AllTimeSummary, TodaySummary } from "./stats/Summary.tsx";
+import { AccuracyStreaksSection } from "./AccuracyStreaksSection.tsx";
+import { CalendarSection } from "./CalendarSection.tsx";
+import { ExplainStats } from "./ExplainStats.tsx";
+import { FooterSection } from "./FooterSection.tsx";
+import { KeyFrequencyHeatmapSection } from "./KeyFrequencyHeatmapSection.tsx";
+import { KeyFrequencyHistogramSection } from "./KeyFrequencyHistogramSection.tsx";
+import { KeySpeedChartSection } from "./KeySpeedChartSection.tsx";
+import { KeySpeedHistogramSection } from "./KeySpeedHistogramSection.tsx";
+import { ProgressOverviewSection } from "./ProgressOverviewSection.tsx";
+import { ResultGrouper } from "./ResultGrouper.tsx";
+import { SpeedChartSection } from "./SpeedChartSection.tsx";
+import { SpeedHistogramSection } from "./SpeedHistogramSection.tsx";
+import { AllTimeSummary, TodaySummary } from "./Summary.tsx";
 
 /** Local statistics only; there is no user identity or public stats. */
 export function StatsPage() {

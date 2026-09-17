@@ -5,7 +5,7 @@ import { LoadingProgress } from "./ui/LoadingProgress.tsx";
 import { Root } from "./ui/Root.tsx";
 import { ResultLoader } from "./result/loader.tsx";
 import { SettingsLoader } from "./settings/loader.tsx";
-import { ThemeProvider } from "./themes/themes/ThemeProvider.tsx";
+import { ThemeProvider } from "./themes/ThemeProvider.tsx";
 import { PortalContainer } from "./widget/components/portal/Portal.tsx";
 import { Toaster } from "./widget/components/toast/Toaster.tsx";
 import { createEffect, createSignal, Show } from 'solid-js';
