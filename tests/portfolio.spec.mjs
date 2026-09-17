@@ -115,6 +115,38 @@ test('Wordle active game stays contained at 128px', async ({ page }, info) => {
   await expect.poll(contained).toBe(true);
 });
 
+test('Wordle active games modal owns the overlay and switches saved games', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    const put = (length, word, mask) => localStorage.setItem(`game.wordle.advanced.${length}.6.0.0`, JSON.stringify({
+      config: { mode: 'advanced', wordLength: length, maxTries: 6, disabledLetters: 0, allowAny: false },
+      history: [[word, mask], ['', '']],
+    }));
+    put(5, 'apple', 'rrrrr');
+    put(7, 'example', 'yrrrrrr');
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/wordle.html', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await expect(page.locator('.wordle-board')).toBeVisible();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Active Games', exact: true }).click();
+  const activeGames = page.locator('.active-games-dialog');
+  await expect(activeGames).toBeVisible();
+  await expect(page.locator('.wordle-settings-popover')).not.toBeVisible();
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await expect.poll(async () => {
+    const box = await activeGames.boundingBox();
+    return !!box && box.x >= -1 && box.x + box.width <= page.viewportSize().width + 1;
+  }).toBe(true);
+  await activeGames.locator('.active-game-card').filter({ hasText: '5 letters' }).click();
+  await expect(page.locator('.wordle-row').first().locator('.wordle-cell')).toHaveCount(5);
+  await page.setViewportSize({ width: 320, height: 180 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Active Games', exact: true }).click();
+  await page.locator('.active-game-card').filter({ hasText: '7 letters' }).click();
+  await expect(page.locator('.wordle-row').first().locator('.wordle-cell')).toHaveCount(7);
+});
+
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await visitKeybr(page, info);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -227,6 +259,36 @@ test('number conversion updates from edited input', async ({ page }, info) => {
       }),
     };
   })).toEqual({ toolContained: true, cardsContained: true, buttonsContained: true });
+});
+
+test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('samey.chain.matches.v1', JSON.stringify({
+    v: 1, base: { games: 0, wins: 0, largest: 0 },
+    matches: [{ id: 'qa-match', t: Date.now() - 1000, u: Date.now(), end: Date.now(), s: 'completed', w: 1, r: 4, c: 4, e: 1, m: [1024, 2063, 1025, 2062], q: true, p: [], parent: '', fork: 0 }],
+  })));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/chain/', info);
+  await page.getByRole('button', { name: 'Statistics', exact: true }).first().click();
+  await page.locator('.chain-stat-row-button').first().click();
+  const replay = page.locator('.chain-replay');
+  await expect(replay).toBeVisible();
+  for (const viewport of [{ width: 128, height: 1000 }, { width: 320, height: 180 }]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(async () => {
+      const box = await replay.boundingBox();
+      return !!box && box.x >= -1 && box.x + box.width <= viewport.width + 1;
+    }).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.locator('.chain-replay-controls output')).toHaveText('Move 1 / 4');
+  await page.getByRole('button', { name: 'Resume from here', exact: true }).click();
+  await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const db = JSON.parse(localStorage.getItem('samey.chain.matches.v1') ?? '{}');
+    const match = db.matches?.[0];
+    return match && { parent: match.parent, fork: match.fork, moves: match.m?.length };
+  })).toEqual({ parent: 'qa-match', fork: 1, moves: 1 });
 });
 
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {

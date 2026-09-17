@@ -117,9 +117,9 @@ function getActiveGames(): ActiveGame[] {
   return sortGames(games)
 }
 
-export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect: (config: SettingsHardProps) => void}): JSX.Element {
+export function ActiveGames({hard, onSelect, onBeforeOpen}: {hard: SettingsHardProps, onSelect: (config: SettingsHardProps) => void, onBeforeOpen?: () => void}): JSX.Element {
   const [open, setOpen] = createSignal(false)
-  const [games, setGames] = createSignal(getActiveGames())
+  const [games, setGames] = createSignal(getActiveGames(), {ownedWrite: true})
   const refresh = () => setGames(getActiveGames())
   const refreshKey = (key: string) => {
     if (!key.startsWith('game.wordle.') || key.startsWith('game.wordle.settings.')) return
@@ -149,8 +149,13 @@ export function ActiveGames({hard, onSelect}: {hard: SettingsHardProps, onSelect
       hard.disabledLetters === c.disabledLetters && hard.dailyDate === c.dailyDate && hard.dailyVersion === c.dailyVersion && hard.wordIndex === c.wordIndex
   }
 
+  const onOpenChange = (value: boolean) => {
+    if (value) { onBeforeOpen?.(); refresh(); }
+    setOpen(value)
+  }
+
   return <Show when={games().length > 0}>
-    <Dialog open={open()} onOpenChange={value => { if (value) refresh(); setOpen(value) }}>
+    <Dialog open={open()} onOpenChange={onOpenChange}>
       <DialogTrigger as='button' type='button' class='game-settings-action'>Active Games</DialogTrigger>
       <DialogContent class='active-games-dialog'>
         <Show when={open()}>

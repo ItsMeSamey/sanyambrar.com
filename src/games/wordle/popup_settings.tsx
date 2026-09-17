@@ -83,7 +83,7 @@ export default function Settings(props: SettingsControlsProps & {showActive: boo
         <div class='game-settings-actions'>
           <button type='button' class='game-settings-action' onClick={() => { setOpen(false); props.onSoftChange({reveal: true}) }}>Reveal</button>
           <Show when={props.showActive}>
-            <ActiveGames hard={props.hard} onSelect={props.onSelectActiveGame} />
+            <ActiveGames hard={props.hard} onSelect={props.onSelectActiveGame} onBeforeOpen={() => setOpen(false)} />
           </Show>
         </div>
       </div>
