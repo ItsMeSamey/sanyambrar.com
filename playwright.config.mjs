@@ -35,7 +35,7 @@ export default defineConfig({
     { name: 'development-desktop', metadata: { development: true, sitePort: ports.site, wordlePort: ports.wordle, keybrPort: ports.keybr }, use: { viewport: { width: 1440, height: 1000 } } },
   ],
   webServer: [
-    server(`node node_modules/vite/bin/vite.js preview --config vite.site.config.ts --outDir docs --host 127.0.0.1 --port ${ports.production} --strictPort`, ports.production),
+    server(`SAMEY_VITE_BUILD=site node node_modules/vite/bin/vite.js preview --config vite.config.ts --outDir docs --host 127.0.0.1 --port ${ports.production} --strictPort`, ports.production),
     server(`SAMEY_DEV_PORT=${ports.site} node scripts/dev.mjs site`, ports.site),
     server(`SAMEY_DEV_PORT=${ports.wordle} node scripts/dev.mjs wordle`, ports.wordle),
     server(`SAMEY_DEV_PORT=${ports.keybr} node scripts/dev.mjs keybr`, ports.keybr),

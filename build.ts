@@ -45,6 +45,10 @@ async function run(cwd: string, file: string, args: string[], env: NodeJS.Proces
   if (stderr.trim()) process.stderr.write(stderr);
 }
 
+async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shared") {
+  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"], { SAMEY_VITE_BUILD: target });
+}
+
 async function dependencySignature(dir: string) {
   const files = ["package.json", "bun.lock"].map(name => join(dir, name)).filter(existsSync);
   must(files.length > 0, `dependencies: ${relative(ROOT, dir) || "."} has no package.json or bun.lock`);
@@ -192,14 +196,14 @@ async function cleanupBuildArtifacts() {
 
 
 async function buildSharedRuntime() {
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.shared.config.ts"]);
+  await runViteBuild("shared");
   must(existsSync(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js")), "shared runtime bundle missing");
   must(existsSync(join(GENERATED_SHARED_RUNTIME, "site.css")), "shared stylesheet bundle missing");
   log("shared TypeScript runtime/CSS -> .build/shared-runtime");
 }
 
 async function buildBlogPost() {
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.blog.config.ts"]);
+  await runViteBuild("blog");
   const candidates = await walk(GENERATED_BLOG_POST, (_path, name) => name === "btop-mutex.html");
   must(candidates.length === 1, `blog single-file build emitted ${candidates.length} btop-mutex.html files`);
   if (candidates[0] !== join(GENERATED_BLOG_POST, "btop-mutex.html")) await rename(candidates[0], join(GENERATED_BLOG_POST, "btop-mutex.html"));
@@ -210,7 +214,7 @@ async function buildBlogPost() {
 }
 
 async function buildSiteRuntime() {
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.site.config.ts"]);
+  await runViteBuild("site");
   const siteEntries = await walk(GENERATED_SITE_RUNTIME, (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
   log("site SPA -> .build/site-runtime");
@@ -219,7 +223,7 @@ async function buildSiteRuntime() {
 async function buildWordle() {
   await Promise.all([
     run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
-    run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"]),
+    runViteBuild("wordle"),
   ]);
 
   // Keep Vite's output-name semantics out of the deployment contract. Vite 8
@@ -238,7 +242,7 @@ async function buildWordle() {
 
 
 async function buildKeybr() {
-  await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "src/games/keybr/vite.config.ts"]);
+  await runViteBuild("keybr");
   const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
   let source = await readFile(html[0], "utf8");

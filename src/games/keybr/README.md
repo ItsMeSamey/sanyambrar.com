@@ -33,7 +33,7 @@ The portfolio root owns dependencies and publication:
 bun build.ts keybr
 ```
 
-Vite builds `src/games/keybr/index.html` through `src/games/keybr/vite.config.ts`. `build.ts` publishes the small HTML shell and the split runtime/data assets as:
+Vite builds `src/games/keybr/index.html` through the Keybr target in the root `vite.config.ts`. `build.ts` publishes the small HTML shell and the split runtime/data assets as:
 
 ```text
 docs/keybr.html

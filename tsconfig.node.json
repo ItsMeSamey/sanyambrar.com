@@ -22,7 +22,6 @@
   },
   "include": [
     "vite*.config.ts",
-    "src/games/keybr/vite.config.ts",
     "build.ts",
     "site.ts"
   ]
