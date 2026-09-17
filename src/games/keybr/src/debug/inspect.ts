@@ -6,7 +6,7 @@ export type ReportItem = {
 
 export function formatReport(
   report: Report,
-  withStack: boolean = process.env.NODE_ENV !== "test",
+  withStack: boolean = import.meta.env.MODE !== "test",
 ): string {
   const lines = [];
   for (const item of report) {

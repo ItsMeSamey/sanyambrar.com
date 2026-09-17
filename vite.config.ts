@@ -7,7 +7,7 @@ const root = import.meta.dirname
 const keybrRoot = path.resolve(root, 'src/games/keybr')
 const target = process.env.SAMEY_VITE_BUILD ?? 'wordle'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   if (target === 'wordle') return {
     publicDir: false,
     input: path.resolve(root, 'src/games/wordle/index.html'),
@@ -75,7 +75,6 @@ export default defineConfig(({ mode }) => {
     base: './',
     assetsInclude: ['**/*.data'],
     plugins: [solid()],
-    define: { 'process.env.NODE_ENV': JSON.stringify(mode) },
     css: { modules: { localsConvention: 'camelCase' } },
     build: {
       outDir: path.resolve(root, '.build/keybr'),

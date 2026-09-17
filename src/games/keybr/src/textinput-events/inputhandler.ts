@@ -90,7 +90,7 @@ export class InputHandler implements Focusable {
   };
 
   handleKeyboard = (event: KeyboardEvent) => {
-    if (process.env.NODE_ENV === "production") {
+    if (import.meta.env.MODE === "production") {
       if (!(event instanceof KeyboardEvent && event.isTrusted)) {
         return;
       }
@@ -117,7 +117,7 @@ export class InputHandler implements Focusable {
   };
 
   handleInput = (event: InputEvent) => {
-    if (process.env.NODE_ENV === "production") {
+    if (import.meta.env.MODE === "production") {
       if (!(event instanceof InputEvent && event.isTrusted)) {
         return;
       }

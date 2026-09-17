@@ -70,14 +70,14 @@ export class LocalDate {
       const [year, month, day] = args;
       date = new Date(year, month - 1, day);
       if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-        throw new Error(process.env.NODE_ENV !== "production" ? "Invalid local date arguments" : undefined);
+        throw new Error(import.meta.env.MODE !== "production" ? "Invalid local date arguments" : undefined);
       }
     } else if (args.length === 1 && isNumber(args[0])) {
       date = new Date(args[0]);
     } else if (args.length === 1 && args[0] instanceof Date) {
       date = new Date(args[0].getTime());
     } else {
-      throw new TypeError(process.env.NODE_ENV !== "production" ? "Invalid local date arguments" : undefined);
+      throw new TypeError(import.meta.env.MODE !== "production" ? "Invalid local date arguments" : undefined);
     }
     date.setHours(0, 0, 0, 0);
     this.year = date.getFullYear();

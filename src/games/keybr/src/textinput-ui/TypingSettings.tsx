@@ -248,7 +248,7 @@ function SoundsThemeProp() {
 function SoundThemePreview() {
     const { settings } = useSettings();
     const player = createMemo(() => {
-        if (process.env.NODE_ENV === "test") {
+        if (import.meta.env.MODE === "test") {
             return () => { };
         }
         return makeSoundPlayer(new Settings()
