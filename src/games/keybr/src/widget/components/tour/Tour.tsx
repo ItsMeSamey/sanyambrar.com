@@ -10,7 +10,7 @@ import { Spotlight } from "../popup/Spotlight.tsx";
 import { Portal } from "../portal/Portal.tsx";
 import { Meter } from "./Meter.tsx";
 import { type SlideProps } from "./Slide.tsx";
-import * as styles from "./Tour.module.css";
+import styles from "./Tour.module.css";
 import { children, createMemo, omit, createSignal } from 'solid-js';
 export type TourProps = {
     readonly children?: readonly JSX.Element[];

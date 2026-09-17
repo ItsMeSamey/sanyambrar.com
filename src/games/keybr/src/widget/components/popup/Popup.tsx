@@ -5,7 +5,7 @@ import { useScreenSize } from "../../hooks/use-screen-size.ts";
 import { getBoundingBox } from "../../utils/geometry.ts";
 import { querySelector } from "../../utils/query.ts";
 import { type MouseProps } from "../types.ts";
-import * as styles from "./Popup.module.css";
+import styles from "./Popup.module.css";
 import { createEffect, createMemo, omit, merge } from 'solid-js';
 export type PopupProps = {
     readonly anchor?: Element | string;

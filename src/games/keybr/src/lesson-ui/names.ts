@@ -1,4 +1,4 @@
-import * as names from "./names.module.css";
+import names from "./names.module.css";
 export { names };
 
 export type Names = {

@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { type ClassName } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 
-import * as styles from "./Screen.module.css";
+import styles from "./Screen.module.css";
 export function Screen(props: {
     readonly className?: ClassName;
     readonly children?: JSX.Element;

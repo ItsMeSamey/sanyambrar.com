@@ -6,7 +6,7 @@ import { Popup } from "../../widget/components/popup/Popup.tsx";
 import { Portal } from "../../widget/components/portal/Portal.tsx";
 import { useHoverPopup } from "../../widget/hooks/use-hover-popup.ts";
 
-import * as styles from "./Indicators.module.css";
+import styles from "./Indicators.module.css";
 import { KeyExtendedDetails } from "./KeyExtendedDetails.tsx";
 import { type LessonState } from "./state/lesson-state.ts";
 export const Indicators = function Indicators(props: {

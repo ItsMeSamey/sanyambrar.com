@@ -3,7 +3,7 @@ import { Attr, type Char } from "../textinput/chars.ts";
 import { type TextDisplaySettings, WhitespaceStyle } from "../textinput/settings.ts";
 import { type CodePoint } from "../unicode/types.ts";
 
-import * as styles from "./chars.module.css";
+import styles from "./chars.module.css";
 import { getTextStyle } from "./styles.ts";
 export function renderChars(settings: TextDisplaySettings, chars: readonly Char[]): JSX.Element[] {
     const nodes: JSX.Element[] = [];

@@ -4,7 +4,7 @@ import { type DailyGoal as DailyGoalType } from "../lesson/dailygoal.ts";
 import { type ClassName } from "../widget/components/types.ts";
 import { Value } from "../widget/components/text/NameValue.tsx";
 import { clsx } from "clsx";
-import * as styles from "./DailyGoal.module.css";
+import styles from "./DailyGoal.module.css";
 export const DailyGoal = (props: {
     id?: string;
     className?: ClassName;

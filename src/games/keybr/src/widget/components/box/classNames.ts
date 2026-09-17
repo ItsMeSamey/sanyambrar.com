@@ -1,4 +1,4 @@
-import * as boxStyles from "./Box.module.css";
+import boxStyles from "./Box.module.css";
 import {
   type BoxAlignContent,
   type BoxAlignItems,

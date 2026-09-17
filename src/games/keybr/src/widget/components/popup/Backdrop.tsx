@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import * as styles from "./Backdrop.module.css";
+import styles from "./Backdrop.module.css";
 export function Backdrop(props: {
     readonly children: JSX.Element;
 }): JSX.Element {

@@ -7,7 +7,7 @@ import { Target } from "../../lesson/target.ts";
 import { Letter } from "../../phonetic-model/letter.ts";
 import { Settings } from "../../settings/settings.ts";
 
-import * as styles from "./KeyDetailsChartDemo.module.css";
+import styles from "./KeyDetailsChartDemo.module.css";
 export function KeyDetailsChartDemo(): JSX.Element {
     const settings = new Settings().set(lessonProps.targetSpeed, /* 35WPM */ 175);
     const target = new Target(settings);

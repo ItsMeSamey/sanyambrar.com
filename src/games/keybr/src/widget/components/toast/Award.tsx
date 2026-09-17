@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { type MouseProps } from "../types.ts";
-import * as styles from "./Award.module.css";
+import styles from "./Award.module.css";
 import { toastProps, useToast } from "./context.tsx";
 import { omit } from 'solid-js';
 export function Award(allProps: {

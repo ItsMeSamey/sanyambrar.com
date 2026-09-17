@@ -7,7 +7,7 @@ import { useDocumentEvent } from "../../hooks/use-document-event.ts";
 import { useWindowEvent } from "../../hooks/use-window-event.ts";
 import { Icon } from "../icon/Icon.tsx";
 import { place } from "./place.ts";
-import * as styles from "./Zoomer.module.css";
+import styles from "./Zoomer.module.css";
 import { type ZoomablePosition, type ZoomerProps } from "./Zoomer.types.ts";
 
 const globalMoving = { current: null as HTMLElement | null };

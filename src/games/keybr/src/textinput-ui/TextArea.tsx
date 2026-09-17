@@ -11,7 +11,7 @@ import { type ZoomableProps } from "../widget/components/zoomer/Zoomer.types.ts"
 import { FormattedMessage } from "../intl/runtime.tsx";
 import { createEffect, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import * as styles from "./TextArea.module.css";
+import styles from "./TextArea.module.css";
 import { TextLines, type TextLineSize } from "./TextLines.tsx";
 
 export function TextArea(props: {

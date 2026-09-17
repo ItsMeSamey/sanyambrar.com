@@ -9,7 +9,7 @@ import { useIntl } from "../intl/runtime.tsx";
 import { useFormatter } from "./format.ts";
 import { createMemo, Show } from 'solid-js';
 import { Happiness } from "./Happiness.tsx";
-import * as styles from "./styles.module.css";
+import styles from "./styles.module.css";
 export const KeyDetails = (props: {
     lessonKey: LessonKey;
 }) => {

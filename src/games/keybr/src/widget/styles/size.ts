@@ -1,5 +1,5 @@
 import { type ClassName } from "../components/types.ts";
-import * as styles from "./size.module.css";
+import styles from "./size.module.css";
 
 export const styleSizeFill = styles.sizeFill;
 const styleSizeFillAlt = styles.sizeFillAlt;

@@ -7,7 +7,7 @@ import { Redo2 } from '../../../../../shared/components/Icons.tsx';
 import { Undo2 } from '../../../../../shared/components/Icons.tsx';
 
 import { useIntl } from "../../intl/runtime.tsx";
-import * as styles from "./Controls.module.css";
+import styles from "./Controls.module.css";
 function ControlButton(props: {
     readonly title: string;
     readonly onClick: () => void;

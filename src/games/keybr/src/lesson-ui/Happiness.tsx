@@ -1,6 +1,6 @@
 import { Icon } from "../widget/components/icon/Icon.tsx";
 import { Smile, Frown } from "../widget/icons.ts";
-import * as styles from "./Happiness.module.css";
+import styles from "./Happiness.module.css";
 export function Happiness(props: {
     learningRate: number;
 }) {

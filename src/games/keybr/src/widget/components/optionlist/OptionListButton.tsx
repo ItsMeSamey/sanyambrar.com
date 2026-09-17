@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import { sizeClassName, type SizeName } from "../../styles/size.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 import { type OptionListOption } from "./OptionList.types.ts";
-import * as styles from "./OptionListButton.module.css";
+import styles from "./OptionListButton.module.css";
 import { omit } from 'solid-js';
 export function OptionListButton(allProps: {
     readonly children: JSX.Element;

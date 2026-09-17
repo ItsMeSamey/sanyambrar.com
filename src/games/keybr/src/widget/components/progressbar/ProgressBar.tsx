@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
-import * as styles from "./ProgressBar.module.css";
+import styles from "./ProgressBar.module.css";
 import { type ProgressBarProps } from "./ProgressBar.types.ts";
 import { Show } from 'solid-js';
 export function ProgressBar(props: ProgressBarProps): JSX.Element {

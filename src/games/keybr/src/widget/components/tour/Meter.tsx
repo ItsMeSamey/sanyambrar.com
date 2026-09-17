@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import * as styles from "./Meter.module.css";
+import styles from "./Meter.module.css";
 export function Meter(props: {
     readonly length: number;
     readonly slideIndex: number;

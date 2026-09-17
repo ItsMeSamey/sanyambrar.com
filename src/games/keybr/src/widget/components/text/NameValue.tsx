@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
-import * as styles from "./NameValue.module.css";
+import styles from "./NameValue.module.css";
 import { type NameProps, type NameValueProps, type ValueProps, } from "./NameValue.types.ts";
 export function NameValue(props: NameValueProps): JSX.Element {
     return (<span class={clsx(styles.nameValue, props.className)} title={props.title}>

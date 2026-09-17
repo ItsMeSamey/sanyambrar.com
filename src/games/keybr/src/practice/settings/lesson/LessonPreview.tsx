@@ -12,7 +12,7 @@ import { StaticText } from "../../../textinput-ui/StaticText.tsx";
 import { FieldSet } from "../../../widget/components/form/Form.tsx";
 import { createMemo } from "solid-js";
 import { useIntl } from "../../../intl/runtime.tsx";
-import * as styles from "./LessonPreview.module.css";
+import styles from "./LessonPreview.module.css";
 export function LessonPreview(props: {
     readonly lesson: Lesson;
 }): JSX.Element {

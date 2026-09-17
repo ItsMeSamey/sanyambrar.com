@@ -17,7 +17,7 @@ import { Controls } from "./Controls.tsx";
 import { Indicators } from "./Indicators.tsx";
 import { KeyboardPresenter } from "./KeyboardPresenter.tsx";
 import { PracticeTour } from "./PracticeTour.tsx";
-import * as styles from "./Presenter.module.css";
+import styles from "./Presenter.module.css";
 import { type LastLesson } from "./state/last-lesson.ts";
 import { type LessonState } from "./state/lesson-state.ts";
 
