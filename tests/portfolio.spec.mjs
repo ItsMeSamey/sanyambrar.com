@@ -474,6 +474,13 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
     const match = db.matches?.[0];
     return match && { parent: match.parent, fork: match.fork, moves: match.m?.length };
   })).toEqual({ parent: 'qa-match', fork: 2, moves: 2 });
+  const settings = page.getByRole('button', { name: 'Settings', exact: true });
+  await settings.click();
+  await page.locator('#chain-settings input[type="range"]').first().focus();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'true');
+  await expect(settings).toHaveAttribute('aria-expanded', 'false');
+  await expect(settings).toBeFocused();
 });
 
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
