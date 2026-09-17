@@ -662,9 +662,26 @@ test('Keybr settings and book library stay contained at extreme narrow widths', 
 test('Keybr tutorial advances through its content and closes cleanly', async ({ page }, info) => {
   await page.setViewportSize({ width: 180, height: 1000 });
   await visitKeybr(page, info);
-  await page.getByTitle('Show a guided tour with help slides.').click();
+  const trigger = page.getByTitle('Show a guided tour with help slides.');
+  await trigger.click();
   const portal = page.locator('#keybr-portal');
-  await expect(portal.locator('[data-samey-overlay]')).toBeVisible();
+  const dialog = portal.getByRole('dialog', { name: 'Typing tutorial' });
+  const closeTutorial = portal.getByRole('link', { name: 'Close tutorial' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(closeTutorial).toBeFocused();
+  expect(await page.locator('#keybr-root').evaluate(root => [...root.children].filter(child => child.id !== 'keybr-portal').every(child => child.inert))).toBe(true);
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByText('Next', { exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(closeTutorial).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  expect(await page.locator('#keybr-root').evaluate(root => [...root.children].every(child => !child.inert))).toBe(true);
+  await trigger.click();
+  await expect(dialog).toBeVisible();
+  await expect(closeTutorial).toBeFocused();
   let slides = 0;
   while (slides < 12 && await page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))) {
     slides += 1;
@@ -692,4 +709,6 @@ test('Keybr tutorial advances through its content and closes cleanly', async ({ 
   }
   expect(slides, 'Tutorial should not terminate before its known introductory content').toBeGreaterThanOrEqual(4);
   await expect.poll(() => page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))).toBe(false);
+  await expect(trigger).toBeFocused();
+  expect(await page.locator('#keybr-root').evaluate(root => [...root.children].every(child => !child.inert))).toBe(true);
 });

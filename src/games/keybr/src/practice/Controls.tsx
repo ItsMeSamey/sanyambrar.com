@@ -10,17 +10,17 @@ import { useIntl } from "../intl/runtime.tsx";
 import styles from "./Controls.module.css";
 function ControlButton(props: {
     readonly title: string;
-    readonly onClick: () => void;
+    readonly onClick: (trigger: HTMLButtonElement) => void;
     readonly children: JSX.Element;
 }) {
-    return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onPointerDown={(event) => event.preventDefault()} onClick={props.onClick}>{props.children}</button>;
+    return <button type="button" class={styles.controlButton} title={props.title} aria-label={props.title} onPointerDown={(event) => event.preventDefault()} onClick={(event) => props.onClick(event.currentTarget)}>{props.children}</button>;
 }
 export const Controls = function Controls(props: {
     readonly onChangeView: () => void;
     readonly onPreviousLesson: () => void;
     readonly previousLesson: boolean;
     readonly onSkipLesson: () => void;
-    readonly onHelp: () => void;
+    readonly onHelp: (trigger: HTMLButtonElement) => void;
 }): JSX.Element {
     const { formatMessage, locale } = useIntl();
     const rtl = getDir(locale) === "rtl";
