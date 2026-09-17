@@ -836,7 +836,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     });
     addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
     addEventListener("samey-pageleave", closeAppearance);
-    addEventListener("keydown", (event) => { if (event.key === "Escape" && advancedPage && !advancedPage.hidden) closeAdvanced(); });
+    addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (advancedPage && !advancedPage.hidden) { closeAdvanced(); return; }
+      if (!appearancePanel?.hidden) {
+        const trigger = appearanceTrigger;
+        closeAppearance();
+        if (trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
+        event.preventDefault();
+      }
+    });
     renderAppearancePanel();
     apply();
   };
