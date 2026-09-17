@@ -1,4 +1,5 @@
 import { createSignal, For, onCleanup, onSettled } from 'solid-js';
+import CnnWorker from '../workers/cnn-worker.ts?worker';
 
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
@@ -22,14 +23,6 @@ const isWorkerMessage = (value: unknown): value is WorkerMessage => {
     && typeof value.message === 'string';
 };
 
-
-function versionedRootAsset(path: string): string {
-  const version = document.querySelector<HTMLMetaElement>('meta[name="samey-build"]')?.content.trim();
-  if (!version) return path;
-  const url = new URL(path, location.origin);
-  url.searchParams.set('v', version);
-  return `${url.pathname}${url.search}`;
-}
 
 function emptyScores(): Array<number | null> {
   return Array.from({ length: OUTPUTS.length }, () => null);
@@ -256,7 +249,7 @@ export function CnnDemo() {
     resizeObserver = new ResizeObserver(() => { canvasRect = null; });
     resizeObserver.observe(canvas);
 
-    worker = new Worker(versionedRootAsset('/cnn-worker.js'));
+    worker = new CnnWorker();
     worker.addEventListener('message', event => {
       if (disposed) return;
       const message: unknown = event.data;
