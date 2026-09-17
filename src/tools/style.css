@@ -33,3 +33,11 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
   .tools-page>.site-topbar .tool-context{position:absolute;left:12px;right:12px;bottom:2px;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
 }
+@media(max-width:160px){
+  .number-tool{padding-inline:6px}
+  .radix-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .radix-choices button{padding-inline:2px}
+  .number-card{grid-template-columns:minmax(0,1fr) 28px;gap:5px;padding:7px}
+  .number-card header{grid-column:1/-1}
+  .number-card>button{width:28px;height:28px}
+}

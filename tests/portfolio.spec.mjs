@@ -213,6 +213,20 @@ test('number conversion updates from edited input', async ({ page }, info) => {
   await page.getByRole('textbox', { name: 'Input', exact: true }).fill('FF');
   await page.getByRole('button', { name: 'Base 16', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Decimal', exact: true })).toHaveValue('255');
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await expect.poll(() => page.evaluate(() => {
+    const tool = document.querySelector('.number-tool');
+    const cards = [...document.querySelectorAll('.number-card')];
+    const buttons = [...document.querySelectorAll('.number-card > button')];
+    return {
+      toolContained: !!tool && tool.scrollWidth <= tool.clientWidth + 1,
+      cardsContained: cards.every(card => card.scrollWidth <= card.clientWidth + 1),
+      buttonsContained: buttons.every(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.left >= -1 && rect.right <= innerWidth + 1;
+      }),
+    };
+  })).toEqual({ toolContained: true, cardsContained: true, buttonsContained: true });
 });
 
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
