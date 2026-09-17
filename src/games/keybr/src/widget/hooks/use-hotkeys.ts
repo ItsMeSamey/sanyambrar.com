@@ -47,7 +47,7 @@ const parseHotkey = (spec: string): Hotkey => {
     let hotkey = hotkeyCache.get(spec);
     if (hotkey == null) {
         const error = () => {
-            throw new TypeError(process.env.NODE_ENV !== "production"
+            throw new TypeError(import.meta.env.MODE !== "production"
                 ? `Invalid hotkey [${spec}]`
                 : undefined);
         };

@@ -43,7 +43,7 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
   const current = createMemo(() => {
     const name = currentView();
     const View = props.views[name];
-    if (View == null) throw new Error(process.env.NODE_ENV !== "production" ? `Unknown view [${name}]` : undefined);
+    if (View == null) throw new Error(import.meta.env.MODE !== "production" ? `Unknown view [${name}]` : undefined);
     return View;
   });
 

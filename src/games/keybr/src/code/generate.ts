@@ -86,7 +86,7 @@ export function generate(
     const rule = findRule(grammar, name);
     if (rule == null) {
       throw new Error(
-        process.env.NODE_ENV !== "production"
+        import.meta.env.MODE !== "production"
           ? `Unknown rule [${name}]`
           : undefined,
       );

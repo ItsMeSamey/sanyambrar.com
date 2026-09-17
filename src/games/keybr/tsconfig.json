@@ -17,8 +17,7 @@
     "allowImportingTsExtensions": true,
     "ignoreDeprecations": "6.0",
     "types": [
-      "vite/client",
-      "node"
+      "vite/client"
     ],
     "noUnusedLocals": true,
     "noUnusedParameters": true,

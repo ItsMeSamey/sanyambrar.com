@@ -33,7 +33,7 @@ export function ToastProvider(props: {
 export function useToast(): ToastContextValue {
     const value = useContext(ToastContext);
     if (value == null) {
-        throw new Error(process.env.NODE_ENV !== "production"
+        throw new Error(import.meta.env.MODE !== "production"
             ? "ToastContext is missing"
             : undefined);
     }

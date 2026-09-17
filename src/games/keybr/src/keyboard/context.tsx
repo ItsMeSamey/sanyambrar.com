@@ -8,7 +8,7 @@ import { KeyboardOptions } from "./settings.ts";
 export const KeyboardContext = createContext<Accessor<Keyboard>>();
 export function useKeyboard(): Accessor<Keyboard> {
   const value = useContext(KeyboardContext);
-  if (value == null) throw new Error(process.env.NODE_ENV !== "production" ? "KeyboardContext is missing" : undefined);
+  if (value == null) throw new Error(import.meta.env.MODE !== "production" ? "KeyboardContext is missing" : undefined);
   return value;
 }
 

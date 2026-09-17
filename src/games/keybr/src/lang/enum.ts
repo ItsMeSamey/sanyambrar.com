@@ -14,7 +14,7 @@ export class Enum<T extends EnumItem> implements Iterable<T> {
     for (const item of this.#items) {
       if (this.#byId.has(item.id)) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Duplicate item id ${item.id}`
             : undefined,
         );
@@ -35,7 +35,7 @@ export class Enum<T extends EnumItem> implements Iterable<T> {
   at(index: number): T {
     if (!Number.isInteger(index) || index < 0 || index >= this.#items.length) {
       throw new RangeError(
-        process.env.NODE_ENV !== "production"
+        import.meta.env.MODE !== "production"
           ? `Invalid item index ${index}`
           : undefined,
       );
@@ -59,7 +59,7 @@ export class Enum<T extends EnumItem> implements Iterable<T> {
     if (item == null) {
       if (defaultValue == null) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Item [${id}] not found`
             : undefined,
         );
@@ -101,7 +101,7 @@ export class XEnum<T extends XEnumItem> implements Iterable<T> {
     for (const item of this.#items) {
       if (this.#byId.has(item.id)) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Duplicate item id ${item.id}`
             : undefined,
         );
@@ -113,7 +113,7 @@ export class XEnum<T extends XEnumItem> implements Iterable<T> {
     for (const item of this.#items) {
       if (this.#byXId.has(item.xid)) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Duplicate item xid ${item.xid}`
             : undefined,
         );
@@ -134,7 +134,7 @@ export class XEnum<T extends XEnumItem> implements Iterable<T> {
   at(index: number): T {
     if (!Number.isInteger(index) || index < 0 || index >= this.#items.length) {
       throw new RangeError(
-        process.env.NODE_ENV !== "production"
+        import.meta.env.MODE !== "production"
           ? `Invalid item index ${index}`
           : undefined,
       );
@@ -158,7 +158,7 @@ export class XEnum<T extends XEnumItem> implements Iterable<T> {
     if (item == null) {
       if (defaultValue == null) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Item id [${id}] not found`
             : undefined,
         );
@@ -177,7 +177,7 @@ export class XEnum<T extends XEnumItem> implements Iterable<T> {
     if (item == null) {
       if (defaultValue == null) {
         throw new Error(
-          process.env.NODE_ENV !== "production"
+          import.meta.env.MODE !== "production"
             ? `Item xid [${xid}] not found`
             : undefined,
         );
