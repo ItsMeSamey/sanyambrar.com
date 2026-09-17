@@ -6,7 +6,7 @@ import StatsPage from './page_stats'
 import './style.css'
 
 import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'
-import ErrorPage from '../../pages/error_page'
+import ErrorPage from './error_page'
 import Wordle from './page'
 import { Toaster } from '../../shared/components/Toast.tsx'
 
