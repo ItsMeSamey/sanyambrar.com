@@ -97,6 +97,13 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   const advanced = page.locator('.samey-theme-advanced');
   const closeAdvanced = page.getByRole('button', { name: 'Close Advanced & Colorblind', exact: true });
   await expect(advanced).toBeVisible();
+  await expect(advanced).toHaveAttribute('role', 'dialog');
+  await expect(advanced).toHaveAttribute('aria-modal', 'true');
+  await expect(advanced).toHaveAttribute('aria-labelledby', 'samey-theme-advanced-title');
+  await expect(closeAdvanced).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect.poll(() => advanced.evaluate(element => element.contains(document.activeElement)), { message: 'Advanced appearance must trap reverse Tab navigation' }).toBe(true);
+  await page.keyboard.press('Tab');
   await expect(closeAdvanced).toBeFocused();
   await page.setViewportSize({ width: 128, height: 1000 });
   await expect.poll(() => advanced.evaluate(element => {
