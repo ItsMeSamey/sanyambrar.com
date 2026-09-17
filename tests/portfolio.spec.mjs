@@ -45,10 +45,17 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(page.getByRole('heading', { name: 'CNN', exact: true })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  await appearance.click();
+  const appearancePanel = page.locator('.samey-theme-panel');
   await page.locator('[data-theme-choice="dark"]').click();
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toContain('dark');
+  await expect(appearancePanel).not.toBeVisible();
+  await appearance.click();
+  await expect(appearancePanel).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(appearancePanel).not.toBeVisible();
+  await expect(appearance).toBeFocused();
 });
 
 test('Wordle typing, persistence, settings, reveal and statistics', async ({ page }, info) => {
@@ -77,9 +84,18 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await page.keyboard.press('ArrowRight');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('game.wordle.settings.hard')).maxTries)).toBe(7);
   await page.getByRole('button', { name: 'Reveal', exact: true }).click();
+  const resultDialog = page.locator('.result-dialog');
   await expect(page.getByText('The answer has been revealed.', { exact: true })).toBeVisible();
+  const shareTrigger = page.getByRole('button', { name: 'Share', exact: true });
+  await shareTrigger.click();
+  const shareDialog = page.getByRole('dialog', { name: 'Share challenge' });
+  await expect(shareDialog).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.result-dialog')).not.toBeVisible();
+  await expect(shareDialog).not.toBeVisible();
+  await expect(resultDialog).toBeVisible();
+  await expect(shareTrigger).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(resultDialog).not.toBeVisible();
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible();
   await expect(page.locator('.stats-summary-item').filter({ hasText: 'Games' }).first()).toContainText('1');
@@ -297,13 +313,15 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.locator('.chain-replay-controls output')).toHaveText('Move 1 / 4');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.locator('.chain-replay-controls output')).toHaveText('Move 2 / 4');
   await page.getByRole('button', { name: 'Resume from here', exact: true }).click();
   await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const db = JSON.parse(localStorage.getItem('samey.chain.matches.v1') ?? '{}');
     const match = db.matches?.[0];
     return match && { parent: match.parent, fork: match.fork, moves: match.m?.length };
-  })).toEqual({ parent: 'qa-match', fork: 1, moves: 1 });
+  })).toEqual({ parent: 'qa-match', fork: 2, moves: 2 });
 });
 
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
