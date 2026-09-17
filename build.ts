@@ -202,20 +202,7 @@ async function copyStatic() {
 }
 
 async function cleanupBuildArtifacts() {
-  const transientDocs = [
-    "app.html",
-    "app.js",
-    "app.css",
-  ];
-  await Promise.all([
-    rm(join(ROOT, ".build"), { recursive: true, force: true }),
-    rm(join(ROOT, "dist"), { recursive: true, force: true }),
-    rm(join(ROOT, "src/games/keybr/dist"), { recursive: true, force: true }),
-    ...transientDocs.map((name) => rm(join(DOCS, name), { recursive: true, force: true })),
-  ]);
-  for (const file of await walk(DOCS, (_path, name) => /^chunk-.*\.js$/.test(name))) {
-    await rm(file, { force: true });
-  }
+  await rm(join(ROOT, ".build"), { recursive: true, force: true });
 }
 
 
