@@ -1,11 +1,8 @@
-import {
-  Emulation,
-  type Keyboard,
-  keyboardProps,
-  KeyModifier,
-} from "@keybr/keyboard";
-import { type Settings } from "@keybr/settings";
-import { type CodePoint } from "@keybr/unicode";
+import { Emulation, keyboardProps } from "../keyboard/settings.ts";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { KeyModifier } from "../keyboard/keymodifier.ts";
+import { type Settings } from "../settings/settings.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import { isTextInput } from "./modifiers.ts";
 import { TimeToType } from "./timetotype.ts";
 import {

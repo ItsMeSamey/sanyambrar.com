@@ -1,9 +1,4 @@
-import {
-  type Enum,
-  type EnumItem,
-  type XEnum,
-  type XEnumItem,
-} from "@keybr/lang";
+import { type Enum, type EnumItem, type XEnum, type XEnumItem } from "../lang/enum.ts";
 
 export type EnumLike = { readonly [key: string]: number | string };
 

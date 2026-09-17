@@ -1,12 +1,6 @@
-import { Syntax } from "@keybr/code";
-import { Book } from "@keybr/content";
-import {
-  booleanProp,
-  flagsProp,
-  itemProp,
-  numberProp,
-  stringProp,
-} from "@keybr/settings";
+import { Syntax } from "../code/syntax.ts";
+import { Book } from "../content/books/book.ts";
+import { booleanProp, flagsProp, itemProp, numberProp, stringProp } from "../settings/props.ts";
 import { LessonType } from "./lessontype.ts";
 
 export const lessonProps = {

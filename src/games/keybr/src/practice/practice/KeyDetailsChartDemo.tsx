@@ -1,8 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { KeyDetailsChart } from "@keybr/chart";
-import { LearningRate, LessonKey, lessonProps, Target } from "@keybr/lesson";
-import { Letter } from "@keybr/phonetic-model";
-import { Settings } from "@keybr/settings";
+import { KeyDetailsChart } from "../../chart/KeyDetailsChart.tsx";
+import { LearningRate } from "../../lesson/learningrate.ts";
+import { LessonKey } from "../../lesson/key.ts";
+import { lessonProps } from "../../lesson/settings.ts";
+import { Target } from "../../lesson/target.ts";
+import { Letter } from "../../phonetic-model/letter.ts";
+import { Settings } from "../../settings/settings.ts";
 
 import * as styles from "./KeyDetailsChartDemo.module.css";
 export function KeyDetailsChartDemo(): JSX.Element {

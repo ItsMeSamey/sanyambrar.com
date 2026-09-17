@@ -1,12 +1,21 @@
 import type { JSX } from "@solidjs/web";
-import { wordListStats } from "@keybr/content";
-import { useIntlNumbers } from "@keybr/intl";
-import { lessonProps, type WordListLesson } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { Toggle, Description, Explainer, Field, FieldList, FieldSet, NameValue, Para, Range, TextField, } from "@keybr/widget";
+import { wordListStats } from "../../../content/words/stats.ts";
+import { useIntlNumbers } from "../../../intl/numbers.ts";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { type WordListLesson } from "../../../lesson/wordlist.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Toggle } from "../../../widget/components/toggle/Toggle.tsx";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
+import { NameValue } from "../../../widget/components/text/NameValue.tsx";
+import { Para } from "../../../widget/components/text/Para.tsx";
+import { Range } from "../../../widget/components/range/Range.tsx";
+import { TextField } from "../../../widget/components/textfield/TextField.tsx";
 
 import { createMemo } from 'solid-js';
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";

@@ -1,9 +1,14 @@
 import type { JSX } from "@solidjs/web";
-import { SpeedUnit, uiProps } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
+import { SpeedUnit } from "../../result/speedunit.ts";
+import { uiProps } from "../../result/settings.ts";
+import { useSettings } from "../../settings/context.ts";
+import { Description } from "../../widget/components/text/Description.tsx";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../widget/components/form/Form.tsx";
+import { OptionList } from "../../widget/components/optionlist/OptionList.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 export function MiscSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>

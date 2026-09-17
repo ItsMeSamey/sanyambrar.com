@@ -1,7 +1,9 @@
-import { booleanProp, Preferences } from "@keybr/settings";
-import { Button, useExplainerState } from "@keybr/widget";
+import { booleanProp } from "../settings/props.ts";
+import { Preferences } from "../settings/preferences.ts";
+import { Button } from "../widget/components/button/Button.tsx";
+import { useExplainerState } from "../widget/components/explainer/context.ts";
 import { onSettled } from "solid-js";
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 
 export function ExplainToggle(props: {
     readonly preference: string;

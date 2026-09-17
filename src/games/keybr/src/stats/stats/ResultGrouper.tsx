@@ -1,14 +1,21 @@
 import type { JSX } from "@solidjs/web";
-import { useCollator } from "@keybr/intl";
-import { KeyboardContext, keyboardProps, Layout, loadKeyboard, useFormattedNames, } from "@keybr/keyboard";
-import { Letter } from "@keybr/phonetic-model";
-import { PhoneticModelLoader } from "@keybr/phonetic-model";
-import { type KeyStatsMap, makeKeyStatsMap, ResultGroups, useResults, } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { Field, FieldList, OptionList } from "@keybr/widget";
+import { useCollator } from "../../intl/collator.ts";
+import { KeyboardContext } from "../../keyboard/context.tsx";
+import { keyboardProps } from "../../keyboard/settings.ts";
+import { Layout } from "../../keyboard/layout.ts";
+import { loadKeyboard } from "../../keyboard/load.ts";
+import { useFormattedNames } from "../../keyboard/use-formatted-names.ts";
+import { Letter } from "../../phonetic-model/letter.ts";
+import { PhoneticModelLoader } from "../../phonetic-model/loader.tsx";
+import { type KeyStatsMap, makeKeyStatsMap } from "../../result/keystats.ts";
+import { ResultGroups } from "../../result/group.ts";
+import { useResults } from "../../result/context.ts";
+import { useSettings } from "../../settings/context.ts";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { OptionList } from "../../widget/components/optionlist/OptionList.tsx";
 
 import { createMemo, createSignal } from 'solid-js';
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 export function ResultGrouper(props: {
     children: (keyStatsMap: KeyStatsMap) => JSX.Element;
     actions?: JSX.Element;

@@ -1,14 +1,17 @@
 import type { JSX } from "@solidjs/web";
-import { BooksLesson, type Lesson } from "@keybr/lesson";
-import { CurrentKeyRow, KeySetRow } from "@keybr/lesson-ui";
-import { LCG } from "@keybr/rand";
-import { makeKeyStatsMap, useResults } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { TextInput, toTextDisplaySettings, toTextInputSettings, } from "@keybr/textinput";
-import { StaticText } from "@keybr/textinput-ui";
-import { FieldSet } from "@keybr/widget";
+import { BooksLesson } from "../../../lesson/books.ts";
+import { type Lesson } from "../../../lesson/lesson.ts";
+import { CurrentKeyRow, KeySetRow } from "../../../lesson-ui/indicators.tsx";
+import { LCG } from "../../../rand/rng/lcg.ts";
+import { makeKeyStatsMap } from "../../../result/keystats.ts";
+import { useResults } from "../../../result/context.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { TextInput } from "../../../textinput/textinput.ts";
+import { toTextDisplaySettings, toTextInputSettings } from "../../../textinput/settings.ts";
+import { StaticText } from "../../../textinput-ui/StaticText.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
 import { createMemo } from "solid-js";
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../../../intl/runtime.tsx";
 import * as styles from "./LessonPreview.module.css";
 export function LessonPreview(props: {
     readonly lesson: Lesson;

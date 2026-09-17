@@ -1,4 +1,4 @@
-import { clamp } from "@keybr/lang";
+import { clamp } from "../lang/math.ts";
 import { type Color } from "./color.ts";
 import { type RgbColor } from "./color-rgb.ts";
 import { oklabToRgb, rgbToOklab0 } from "./convert-xyz.ts";

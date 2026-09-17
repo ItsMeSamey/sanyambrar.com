@@ -1,6 +1,6 @@
-import { catchError } from "@keybr/debug";
-import { type Language } from "@keybr/keyboard";
-import { LoadingProgress } from "@keybr/ui";
+import { catchError } from "../debug/logger.ts";
+import { type Language } from "../keyboard/language.ts";
+import { LoadingProgress } from "../ui/LoadingProgress.tsx";
 import { createMemo, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
 import { modelAssetPath } from "./assets.ts";

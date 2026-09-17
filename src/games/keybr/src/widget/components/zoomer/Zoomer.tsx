@@ -1,4 +1,4 @@
-import { Tasks } from "@keybr/lang";
+import { Tasks } from "../../../lang/tasks.ts";
 import { Move } from "../../icons.ts";
 import { clsx } from "clsx";
 import { createEffect, createSignal, onCleanup } from 'solid-js';

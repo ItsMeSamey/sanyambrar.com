@@ -1,4 +1,4 @@
-import { catchError } from "@keybr/debug";
+import { catchError } from "../debug/logger.ts";
 import { createMemo, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
 import { SettingsContext } from "./context.ts";

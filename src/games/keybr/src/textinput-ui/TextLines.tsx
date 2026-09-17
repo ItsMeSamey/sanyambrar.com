@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { type Char, type Line, type LineList, type TextDisplaySettings, textDisplaySettings, } from "@keybr/textinput";
+import { type Char, type Line, type LineList } from "../textinput/chars.ts";
+import { type TextDisplaySettings, textDisplaySettings } from "../textinput/settings.ts";
 import { clsx } from "clsx";
 
 import { renderChars } from "./chars.tsx";

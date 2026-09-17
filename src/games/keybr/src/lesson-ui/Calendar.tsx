@@ -1,6 +1,9 @@
-import { type DailyStats, type DailyStatsMap, LocalDate } from "@keybr/result";
-import { Popup, Portal, useHoverPopup } from "@keybr/widget";
-import { useIntl } from "@keybr/intl";
+import { type DailyStats, type DailyStatsMap } from "../result/dailystats.ts";
+import { LocalDate } from "../result/localdate.ts";
+import { Popup } from "../widget/components/popup/Popup.tsx";
+import { Portal } from "../widget/components/portal/Portal.tsx";
+import { useHoverPopup } from "../widget/hooks/use-hover-popup.ts";
+import { useIntl } from "../intl/runtime.tsx";
 import * as styles from "./Calendar.module.css";
 import { createMemo, For, Show } from 'solid-js';
 import { DailyStats as DailyStatsWidget } from "./DailyStats.tsx";

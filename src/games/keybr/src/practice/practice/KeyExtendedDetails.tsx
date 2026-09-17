@@ -1,10 +1,13 @@
 import type { JSX } from "@solidjs/web";
-import { KeyDetailsChart } from "@keybr/chart";
-import { LearningRate, type LessonKey, Target } from "@keybr/lesson";
-import { Key, KeyDetails } from "@keybr/lesson-ui";
-import { type KeyStats } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { Box } from "@keybr/widget";
+import { KeyDetailsChart } from "../../chart/KeyDetailsChart.tsx";
+import { LearningRate } from "../../lesson/learningrate.ts";
+import { type LessonKey } from "../../lesson/key.ts";
+import { Target } from "../../lesson/target.ts";
+import { Key } from "../../lesson-ui/Key.tsx";
+import { KeyDetails } from "../../lesson-ui/KeyDetails.tsx";
+import { type KeyStats } from "../../result/keystats.ts";
+import { useSettings } from "../../settings/context.ts";
+import { Box } from "../../widget/components/box/Box.tsx";
 
 import * as styles from "./KeyExtendedDetails.module.css";
 import { LearningRateDescription } from "./LearningRateDescription.tsx";

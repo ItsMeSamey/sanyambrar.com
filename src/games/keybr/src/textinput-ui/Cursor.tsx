@@ -1,8 +1,4 @@
-import {
-  CaretMovementStyle,
-  CaretShapeStyle,
-  type TextDisplaySettings,
-} from "@keybr/textinput";
+import { CaretMovementStyle, CaretShapeStyle, type TextDisplaySettings } from "../textinput/settings.ts";
 import { createEffect, onCleanup } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { findCursor } from "./chars.tsx";

@@ -1,8 +1,4 @@
-import {
-  type CodePoint,
-  type CodePointSet,
-  type HasCodePoint,
-} from "@keybr/unicode";
+import { type CodePoint, type CodePointSet, type HasCodePoint } from "../unicode/types.ts";
 import { Letter, type LetterLike } from "./letter.ts";
 
 export class Filter {

@@ -1,5 +1,5 @@
-import { Icon } from "@keybr/widget";
-import { Smile, Frown } from "@keybr/widget";
+import { Icon } from "../widget/components/icon/Icon.tsx";
+import { Smile, Frown } from "../widget/icons.ts";
 import * as styles from "./Happiness.module.css";
 export function Happiness(props: {
     learningRate: number;

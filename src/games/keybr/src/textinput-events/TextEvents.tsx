@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { type Focusable } from "@keybr/widget";
+import { type Focusable } from "../widget/components/types.ts";
 import { createEffect, onSettled } from "solid-js";
 import { type Callbacks, InputHandler } from "./inputhandler.ts";
 export const TextEvents = function TextEvents(props: Callbacks & {

@@ -1,4 +1,4 @@
-import { type StyledText, type StyledTextSpan } from "@keybr/textinput";
+import { type StyledText, type StyledTextSpan } from "../textinput/chars.ts";
 
 export class Output {
   static readonly Stop = new Error("STOP");

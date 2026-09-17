@@ -1,4 +1,6 @@
-import { type Keyboard, type KeyId, useKeyboard } from "@keybr/keyboard";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { type KeyId } from "../keyboard/types.ts";
+import { useKeyboard } from "../keyboard/context.tsx";
 import { createMemo } from "solid-js";
 import { makeKeyComponent } from "./Key.tsx";
 import { Surface } from "./shapes.tsx";

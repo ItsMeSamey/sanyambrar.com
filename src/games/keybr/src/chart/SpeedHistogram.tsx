@@ -1,8 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlNumbers } from "@keybr/intl";
-import { useFormatter } from "@keybr/lesson-ui";
-import { type Distribution, Range, Vector } from "@keybr/math";
-import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { useFormatter } from "../lesson-ui/format.ts";
+import { type Distribution } from "../math/dist.ts";
+import { Range } from "../math/range.ts";
+import { Vector } from "../math/vector.ts";
+import { type Rect } from "../widget/utils/rect.ts";
+import { type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts";
 
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";

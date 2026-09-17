@@ -1,6 +1,7 @@
-import { type Language } from "@keybr/keyboard";
-import { type Book, type Content } from "./books/index.ts";
-import { type WordList } from "./words/index.ts";
+import { type Language } from "../keyboard/language.ts";
+import { type Book } from "./books/book.ts";
+import { type Content } from "./books/types.ts";
+import { type WordList } from "./words/types.ts";
 
 const BOOKS_BY_PATH = import.meta.glob<string>("./assets/books/*.json", {
   eager: true,

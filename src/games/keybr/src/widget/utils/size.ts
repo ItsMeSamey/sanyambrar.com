@@ -1,4 +1,4 @@
-import { isNumber, isObjectLike } from "@keybr/lang";
+import { isNumber, isObjectLike } from "../../lang/types.ts";
 
 export type TSize = {
   width: number;

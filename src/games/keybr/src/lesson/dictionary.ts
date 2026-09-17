@@ -1,10 +1,7 @@
-import { type WordList } from "@keybr/content";
-import { type Filter } from "@keybr/phonetic-model";
-import {
-  type CodePoint,
-  type CodePointSet,
-  toCodePoints,
-} from "@keybr/unicode";
+import { type WordList } from "../content/words/types.ts";
+import { type Filter } from "../phonetic-model/filter.ts";
+import { type CodePoint, type CodePointSet } from "../unicode/types.ts";
+import { toCodePoints } from "../unicode/codepoints.ts";
 
 export class Dictionary implements Iterable<string> {
   readonly #words: Word[] = [];

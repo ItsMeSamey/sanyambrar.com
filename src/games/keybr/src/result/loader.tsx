@@ -1,4 +1,5 @@
-import { ErrorAlert, catchError } from "@keybr/debug";
+import { ErrorAlert } from "../debug/ErrorAlert.tsx";
+import { catchError } from "../debug/logger.ts";
 import { createMemo, createSignal, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
 import { ResultContext } from "./context.ts";

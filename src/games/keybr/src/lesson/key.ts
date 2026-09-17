@@ -1,6 +1,6 @@
-import { type Letter } from "@keybr/phonetic-model";
-import { type KeySample, type KeyStats, type KeyStatsMap } from "@keybr/result";
-import { type CodePoint } from "@keybr/unicode";
+import { type Letter } from "../phonetic-model/letter.ts";
+import { type KeySample, type KeyStats, type KeyStatsMap } from "../result/keystats.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import { type Target } from "./target.ts";
 
 export class LessonKey implements KeyStats {

@@ -1,4 +1,4 @@
-import { useComputedStyles } from "@keybr/themes";
+import { useComputedStyles } from "../themes/themes/use-computed-styles.ts";
 import { createMemo } from "solid-js";
 import * as styles from "./styles.module.css";
 export type ChartStyles = ReturnType<ReturnType<typeof useChartStyles>>;

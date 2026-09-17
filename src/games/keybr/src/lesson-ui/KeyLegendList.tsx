@@ -1,4 +1,4 @@
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../intl/runtime.tsx";
 import { KeyLegend } from "./KeyLegend.tsx";
 export const KeyLegendList = () => {
     return (<ul>

@@ -1,9 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlNumbers } from "@keybr/intl";
-import { textStatsOf } from "@keybr/unicode";
-import { NameValue } from "@keybr/widget";
+import { useIntlNumbers } from "../../intl/numbers.ts";
+import { textStatsOf } from "../../unicode/textstats.ts";
+import { NameValue } from "../../widget/components/text/NameValue.tsx";
 import { createMemo } from "solid-js";
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../../intl/runtime.tsx";
 import * as styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";

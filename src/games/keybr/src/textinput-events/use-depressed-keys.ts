@@ -1,6 +1,7 @@
-import { type Keyboard, type KeyId } from "@keybr/keyboard";
-import { type Settings } from "@keybr/settings";
-import { useWindowEvent } from "@keybr/widget";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { type KeyId } from "../keyboard/types.ts";
+import { type Settings } from "../settings/settings.ts";
+import { useWindowEvent } from "../widget/hooks/use-window-event.ts";
 import { type Accessor, createMemo, createSignal } from 'solid-js';
 
 import { emulateLayout } from "./emulation.ts";

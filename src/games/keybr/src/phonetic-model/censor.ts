@@ -1,5 +1,5 @@
-import { type Ngram1, type Ngram2 } from "@keybr/keyboard";
-import { type RNG } from "@keybr/rand";
+import { type Ngram1, type Ngram2 } from "../keyboard/ngram.ts";
+import { type RNG } from "../rand/types.ts";
 import { getBlacklist } from "./blacklist/blacklist.ts";
 import { type Filter } from "./filter.ts";
 import { PhoneticModel } from "./phoneticmodel.ts";

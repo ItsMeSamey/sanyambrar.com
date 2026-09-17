@@ -1,10 +1,7 @@
-import { KeyboardOptions, Language } from "@keybr/keyboard";
-import {
-  booleanProp,
-  enumProp,
-  itemProp,
-  type Settings,
-} from "@keybr/settings";
+import { KeyboardOptions } from "../keyboard/settings.ts";
+import { Language } from "../keyboard/language.ts";
+import { booleanProp, enumProp, itemProp } from "../settings/props.ts";
+import { type Settings } from "../settings/settings.ts";
 import { Font } from "./font.ts";
 
 /**

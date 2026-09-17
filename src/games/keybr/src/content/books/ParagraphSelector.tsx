@@ -1,9 +1,12 @@
 import type { JSX } from "@solidjs/web";
-import { getDir } from "@keybr/intl";
-import { Field, FieldList, Icon, IconButton, Range } from "@keybr/widget";
-import { SkipForward, SkipBack } from "@keybr/widget";
+import { getDir } from "../../intl/locale.ts";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { Icon } from "../../widget/components/icon/Icon.tsx";
+import { IconButton } from "../../widget/components/button/IconButton.tsx";
+import { Range } from "../../widget/components/range/Range.tsx";
+import { SkipForward, SkipBack } from "../../widget/icons.ts";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../../intl/runtime.tsx";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
 export function ParagraphSelector(props: {
     readonly paragraphs: readonly string[];

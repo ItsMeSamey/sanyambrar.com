@@ -1,5 +1,5 @@
-import { Enum, type EnumItem } from "@keybr/lang";
-import { TextType } from "@keybr/result";
+import { Enum, type EnumItem } from "../lang/enum.ts";
+import { TextType } from "../result/texttype.ts";
 
 export class LessonType implements EnumItem {
   static readonly GUIDED = new LessonType("guided", TextType.GENERATED);

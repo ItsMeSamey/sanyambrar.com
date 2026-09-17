@@ -1,4 +1,4 @@
-import { type Task } from "@keybr/lang";
+import { type Task } from "../../lang/tasks.ts";
 import { useTasks } from "./use-tasks.ts";
 export type TimeoutScheduler = {
     get pending(): boolean;

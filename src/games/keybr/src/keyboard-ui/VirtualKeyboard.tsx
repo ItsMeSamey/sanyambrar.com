@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { type Keyboard, KeyboardContext } from "@keybr/keyboard";
-import { type ZoomableProps } from "@keybr/widget";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { KeyboardContext } from "../keyboard/context.tsx";
+import { type ZoomableProps } from "../widget/components/zoomer/Zoomer.types.ts";
 
 import { getFrameSize } from "./shapes.tsx";
 import * as styles from "./VirtualKeyboard.module.css";

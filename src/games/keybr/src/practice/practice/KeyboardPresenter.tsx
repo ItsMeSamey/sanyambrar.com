@@ -1,10 +1,16 @@
 import type { JSX } from "@solidjs/web";
-import { keyboardProps, useKeyboard } from "@keybr/keyboard";
-import { flatten, HeatmapLayer, KeyLayer, PointersLayer, TransitionsLayer, VirtualKeyboard, ZonesLayer, } from "@keybr/keyboard-ui";
-import { useSettings } from "@keybr/settings";
-import { type CodePoint } from "@keybr/unicode";
+import { keyboardProps } from "../../keyboard/settings.ts";
+import { useKeyboard } from "../../keyboard/context.tsx";
+import { flatten, HeatmapLayer } from "../../keyboard-ui/HeatmapLayer.tsx";
+import { KeyLayer } from "../../keyboard-ui/KeyLayer.tsx";
+import { PointersLayer } from "../../keyboard-ui/PointersLayer.tsx";
+import { TransitionsLayer } from "../../keyboard-ui/TransitionsLayer.tsx";
+import { VirtualKeyboard } from "../../keyboard-ui/VirtualKeyboard.tsx";
+import { ZonesLayer } from "../../keyboard-ui/ZonesLayer.tsx";
+import { useSettings } from "../../settings/context.ts";
+import { type CodePoint } from "../../unicode/types.ts";
 
-import { type LastLesson } from "./state/index.ts";
+import { type LastLesson } from "./state/last-lesson.ts";
 export const KeyboardPresenter = function KeyboardPresenter(props: {
     readonly focus: boolean;
     readonly depressedKeys: readonly string[];

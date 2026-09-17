@@ -1,5 +1,5 @@
-import { type KeyId } from "@keybr/keyboard";
-import { type CodePoint } from "@keybr/unicode";
+import { type KeyId } from "../keyboard/types.ts";
+import { type CodePoint } from "../unicode/types.ts";
 
 export type InputListener = {
   readonly onKeyDown: (event: IKeyboardEvent) => void;

@@ -1,4 +1,4 @@
-import { type CodePoint, type HasCodePoint } from "@keybr/unicode";
+import { type CodePoint, type HasCodePoint } from "../unicode/types.ts";
 import { type KeyModifier } from "./keymodifier.ts";
 import { type KeyId } from "./types.ts";
 

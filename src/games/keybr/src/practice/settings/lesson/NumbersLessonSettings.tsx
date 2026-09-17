@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { Description, Explainer, FieldSet } from "@keybr/widget";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 import { BenfordProp } from "./BenfordProp.tsx";
 export function NumbersLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();

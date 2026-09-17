@@ -1,5 +1,6 @@
-import { Enum, type EnumItem } from "@keybr/lang";
-import { type CodePoint, toCodePoints } from "@keybr/unicode";
+import { Enum, type EnumItem } from "../lang/enum.ts";
+import { type CodePoint } from "../unicode/types.ts";
+import { toCodePoints } from "../unicode/codepoints.ts";
 
 export class Language implements EnumItem {
   static readonly AR = new Language(

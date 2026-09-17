@@ -1,6 +1,6 @@
-import { Enum, type EnumItem } from "@keybr/lang";
-import { type RNG } from "@keybr/rand";
-import { type StyledText } from "@keybr/textinput";
+import { Enum, type EnumItem } from "../lang/enum.ts";
+import { type RNG } from "../rand/types.ts";
+import { type StyledText } from "../textinput/chars.ts";
 import { type Grammar } from "./ast.ts";
 import { findFlags } from "./find-flags.ts";
 import { type Flags } from "./flags.ts";

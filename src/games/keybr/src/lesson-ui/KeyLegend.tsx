@@ -1,4 +1,4 @@
-import { type MouseProps } from "@keybr/widget";
+import { type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";

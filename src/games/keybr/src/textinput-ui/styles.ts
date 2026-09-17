@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { Attr } from "@keybr/textinput";
+import { Attr } from "../textinput/chars.ts";
 
 export const textItemStyle = {
     display: "inline-block",

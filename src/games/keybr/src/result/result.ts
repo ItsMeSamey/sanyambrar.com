@@ -1,5 +1,6 @@
-import { type Layout } from "@keybr/keyboard";
-import { type Histogram, type Stats } from "@keybr/textinput";
+import { type Layout } from "../keyboard/layout.ts";
+import { type Histogram } from "../textinput/histogram.ts";
+import { type Stats } from "../textinput/stats.ts";
 import { type TextType } from "./texttype.ts";
 
 export type Filter = {

@@ -1,5 +1,8 @@
 import type { JSX } from "@solidjs/web";
-import { Canvas, Rect, type ShapeList, Shapes, type Size } from "@keybr/widget";
+import { Canvas } from "../widget/components/canvas/Canvas.tsx";
+import { Rect } from "../widget/utils/rect.ts";
+import { type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts";
+import { type Size } from "../widget/utils/size.ts";
 
 import { type ChartStyles } from "./use-chart-styles.ts";
 export type SizeProps = {

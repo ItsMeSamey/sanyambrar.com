@@ -1,6 +1,8 @@
 import type { JSX } from "@solidjs/web";
-import { Tasks } from "@keybr/lang";
-import { type Char, type TextDisplaySettings, TextInput } from "@keybr/textinput";
+import { Tasks } from "../lang/tasks.ts";
+import { type Char } from "../textinput/chars.ts";
+import { type TextDisplaySettings } from "../textinput/settings.ts";
+import { TextInput } from "../textinput/textinput.ts";
 
 import { createEffect, createMemo, createSignal } from 'solid-js';
 import { StaticText } from "./StaticText.tsx";

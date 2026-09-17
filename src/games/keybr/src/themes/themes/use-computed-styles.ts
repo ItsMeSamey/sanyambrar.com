@@ -1,5 +1,5 @@
-import { parseColor } from "@keybr/color";
-import { type GraphicsStyle } from "@keybr/widget";
+import { parseColor } from "../../color/parse.ts";
+import { type GraphicsStyle } from "../../widget/components/canvas/graphics-style.ts";
 import { type ClassValue, clsx } from "clsx";
 import { useTheme } from "./context.ts";
 import { useDynamicStyles } from "./dynamic-styles-context.tsx";

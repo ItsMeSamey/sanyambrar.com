@@ -1,11 +1,10 @@
-import {
-  hasData,
-  type Polynomial,
-  polynomialRegression,
-  r2,
-  Vector,
-} from "@keybr/math";
-import { type KeySample, timeToSpeed } from "@keybr/result";
+import { hasData } from "../math/util.ts";
+import { type Polynomial } from "../math/polynomial.ts";
+import { polynomialRegression } from "../math/polynomial-regression.ts";
+import { r2 } from "../math/model.ts";
+import { Vector } from "../math/vector.ts";
+import { type KeySample } from "../result/keystats.ts";
+import { timeToSpeed } from "../result/result.ts";
 import { findSession } from "./learningsession.ts";
 import { type Target } from "./target.ts";
 

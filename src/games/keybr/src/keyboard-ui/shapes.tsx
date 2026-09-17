@@ -1,6 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { type Keyboard, type KeyShape } from "@keybr/keyboard";
-import { type MouseProps, Point, Size } from "@keybr/widget";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { type KeyShape } from "../keyboard/keyshape.ts";
+import { type MouseProps } from "../widget/components/types.ts";
+import { Point } from "../widget/utils/point.ts";
+import { Size } from "../widget/utils/size.ts";
 import { omit } from 'solid-js';
 export const margin = 15;
 export const keySize = 40;

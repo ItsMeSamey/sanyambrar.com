@@ -1,8 +1,13 @@
-import { useIntlNumbers } from "@keybr/intl";
-import { useFormatter } from "@keybr/lesson-ui";
-import { makeSummaryStats, MutableStreakList, type Result, type Streak, } from "@keybr/result";
-import { Explainer, Figure, NameValue, Para } from "@keybr/widget";
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { useIntlNumbers } from "../../intl/numbers.ts";
+import { useFormatter } from "../../lesson-ui/format.ts";
+import { makeSummaryStats } from "../../result/summarystats.ts";
+import { MutableStreakList, type Streak } from "../../result/accuracy.ts";
+import { type Result } from "../../result/result.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { NameValue } from "../../widget/components/text/NameValue.tsx";
+import { Para } from "../../widget/components/text/Para.tsx";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 import { createMemo, For, Show } from 'solid-js';
 export function AccuracyStreaksSection(props: {
     results: readonly Result[];

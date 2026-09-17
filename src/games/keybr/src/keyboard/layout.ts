@@ -1,4 +1,4 @@
-import { Enum, XEnum, type XEnumItem } from "@keybr/lang";
+import { Enum, XEnum, type XEnumItem } from "../lang/enum.ts";
 import { Geometry } from "./geometry.ts";
 import { Language } from "./language.ts";
 import { angleMod, angleWideMod, type Mod, nullMod } from "./mod.ts";

@@ -1,9 +1,10 @@
-import { type WordList } from "@keybr/content";
-import { type Keyboard } from "@keybr/keyboard";
-import { Letter, type PhoneticModel } from "@keybr/phonetic-model";
-import { type RNGStream } from "@keybr/rand";
-import { type KeyStatsMap } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { type WordList } from "../content/words/types.ts";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { Letter } from "../phonetic-model/letter.ts";
+import { type PhoneticModel } from "../phonetic-model/phoneticmodel.ts";
+import { type RNGStream } from "../rand/types.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { type Settings } from "../settings/settings.ts";
 import { filterWordList } from "./dictionary.ts";
 import { LessonKeys } from "./key.ts";
 import { Lesson } from "./lesson.ts";

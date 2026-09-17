@@ -1,10 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlNumbers } from "@keybr/intl";
-import { type SummaryStats } from "@keybr/result";
-import { type ClassName, Name, Value } from "@keybr/widget";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { type SummaryStats } from "../result/summarystats.ts";
+import { type ClassName } from "../widget/components/types.ts";
+import { Name, Value } from "../widget/components/text/NameValue.tsx";
 import { clsx } from "clsx";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { useFormatter } from "./format.ts";
 import * as styles from "./gauges.module.css";
 import { type Names } from "./names.ts";

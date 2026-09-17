@@ -1,13 +1,15 @@
-import { KeyboardProvider } from "@keybr/keyboard";
-import { schedule } from "@keybr/lang";
-import { type Lesson } from "@keybr/lesson";
-import { LessonLoader } from "@keybr/lesson";
-import { LoadingProgress } from "@keybr/ui";
-import { type Result, useResults } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
+import { KeyboardProvider } from "../../keyboard/context.tsx";
+import { schedule } from "../../lang/scheduler.ts";
+import { type Lesson } from "../../lesson/lesson.ts";
+import { LessonLoader } from "../../lesson/loader.tsx";
+import { LoadingProgress } from "../../ui/LoadingProgress.tsx";
+import { type Result } from "../../result/result.ts";
+import { useResults } from "../../result/context.ts";
+import { useSettings } from "../../settings/context.ts";
 import { createEffect, createMemo, createSignal, Show, untrack } from 'solid-js';
 import { Controller } from "./Controller.tsx";
-import { displayEvent, Progress } from "./state/index.ts";
+import { displayEvent } from "./state/EventAlert.tsx";
+import { Progress } from "./state/progress.ts";
 
 export function PracticeScreen() {
   return (

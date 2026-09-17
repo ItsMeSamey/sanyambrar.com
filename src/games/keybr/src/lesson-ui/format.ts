@@ -1,7 +1,8 @@
-import { useIntlNumbers } from "@keybr/intl";
-import { SpeedUnit, uiProps } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { useIntl } from "@keybr/intl";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { SpeedUnit } from "../result/speedunit.ts";
+import { uiProps } from "../result/settings.ts";
+import { useSettings } from "../settings/context.ts";
+import { useIntl } from "../intl/runtime.tsx";
 export type FormatterOptions = {
     readonly unit?: boolean;
 };

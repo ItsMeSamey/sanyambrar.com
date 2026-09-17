@@ -1,8 +1,8 @@
-import { Layout } from "@keybr/keyboard";
-import { isPlainObject, isString } from "@keybr/lang";
+import { Layout } from "../keyboard/layout.ts";
+import { isPlainObject, isString } from "../lang/types.ts";
 import { Result } from "./result.ts";
 import { TextType } from "./texttype.ts";
-import { Histogram } from "@keybr/textinput";
+import { Histogram } from "../textinput/histogram.ts";
 
 export type ResultJson = {
   readonly l: string;

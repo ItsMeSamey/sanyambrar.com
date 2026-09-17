@@ -1,4 +1,4 @@
-import { type CodePoint } from "@keybr/unicode";
+import { type CodePoint } from "../unicode/types.ts";
 import { type Step } from "./textinput.ts";
 
 export type Sample = {

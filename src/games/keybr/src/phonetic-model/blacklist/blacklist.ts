@@ -1,4 +1,4 @@
-import { Language } from "@keybr/keyboard";
+import { Language } from "../../keyboard/language.ts";
 import AR from "./blacklist-ar.json" with { type: "json" };
 import BE from "./blacklist-be.json" with { type: "json" };
 import DE from "./blacklist-de.json" with { type: "json" };

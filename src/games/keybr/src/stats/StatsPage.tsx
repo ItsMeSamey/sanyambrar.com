@@ -1,10 +1,8 @@
-import { Screen } from "@keybr/ui";
-import {
-  DailyStatsMap,
-  type KeyStatsMap,
-  makeSummaryStats,
-} from "@keybr/result";
-import { ExplainerBoundary } from "@keybr/widget";
+import { Screen } from "../ui/Screen.tsx";
+import { DailyStatsMap } from "../result/dailystats.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { makeSummaryStats } from "../result/summarystats.ts";
+import { ExplainerBoundary } from "../widget/components/explainer/ExplainerBoundary.tsx";
 import { createMemo } from 'solid-js';
 import { AccuracyStreaksSection } from "./stats/AccuracyStreaksSection.tsx";
 import { CalendarSection } from "./stats/CalendarSection.tsx";

@@ -1,10 +1,15 @@
 import type { JSX } from "@solidjs/web";
-import { useFormatter } from "@keybr/lesson-ui";
-import { hasData, Histogram, KeySet, Range } from "@keybr/math";
-import { type KeyStatsMap, timeToSpeed } from "@keybr/result";
-import { type Rect, type ShapeList } from "@keybr/widget";
+import { useFormatter } from "../lesson-ui/format.ts";
+import { hasData } from "../math/util.ts";
+import { Histogram } from "../math/histogram.ts";
+import { KeySet } from "../math/keyset.ts";
+import { Range } from "../math/range.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { timeToSpeed } from "../result/result.ts";
+import { type Rect } from "../widget/utils/rect.ts";
+import { type ShapeList } from "../widget/components/canvas/graphics.ts";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";

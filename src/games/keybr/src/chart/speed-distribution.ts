@@ -1,4 +1,4 @@
-import { Distribution } from "@keybr/math";
+import { Distribution } from "../math/dist.ts";
 import speed from "./dist_speed.json";
 
 let cached: Distribution | null = null;

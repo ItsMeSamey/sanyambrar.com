@@ -1,6 +1,7 @@
-import { type LessonKeys } from "@keybr/lesson";
-import { type ClassName, styleTextTruncate } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { type LessonKeys } from "../lesson/key.ts";
+import { type ClassName } from "../widget/components/types.ts";
+import { styleTextTruncate } from "../widget/styles/text.ts";
+import { FormattedMessage } from "../intl/runtime.tsx";
 import { Show } from 'solid-js';
 import { Key } from "./Key.tsx";
 import { KeyDetails } from "./KeyDetails.tsx";

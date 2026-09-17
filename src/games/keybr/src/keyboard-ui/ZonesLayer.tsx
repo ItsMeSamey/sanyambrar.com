@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import { createMemo } from "solid-js";
-import { type KeyShape, useKeyboard, type ZoneId } from "@keybr/keyboard";
-import { type Point } from "@keybr/widget";
+import { type KeyShape } from "../keyboard/keyshape.ts";
+import { useKeyboard } from "../keyboard/context.tsx";
+import { type ZoneId } from "../keyboard/types.ts";
+import { type Point } from "../widget/utils/point.ts";
 
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const ZonesLayer = function ZonesLayer(): JSX.Element {

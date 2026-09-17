@@ -1,13 +1,14 @@
-import {
-  type Keyboard,
-  KeyboardOptions,
-  type WeightedCodePointSet,
-} from "@keybr/keyboard";
-import { type Letter, PhoneticModel } from "@keybr/phonetic-model";
-import { LCG, type RNGStream } from "@keybr/rand";
-import { type KeyStatsMap, type Result } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
-import { type StyledText } from "@keybr/textinput";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { KeyboardOptions } from "../keyboard/settings.ts";
+import { type WeightedCodePointSet } from "../keyboard/types.ts";
+import { type Letter } from "../phonetic-model/letter.ts";
+import { PhoneticModel } from "../phonetic-model/phoneticmodel.ts";
+import { LCG } from "../rand/rng/lcg.ts";
+import { type RNGStream } from "../rand/types.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { type Result } from "../result/result.ts";
+import { type Settings } from "../settings/settings.ts";
+import { type StyledText } from "../textinput/chars.ts";
 import { type LessonKeys } from "./key.ts";
 
 export abstract class Lesson {

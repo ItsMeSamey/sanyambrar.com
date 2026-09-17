@@ -1,10 +1,5 @@
-import {
-  booleanProp,
-  enumProp,
-  itemProp,
-  type Settings,
-  xitemProp,
-} from "@keybr/settings";
+import { booleanProp, enumProp, itemProp, xitemProp } from "../settings/props.ts";
+import { type Settings } from "../settings/settings.ts";
 import { Geometry, ZoneMod } from "./geometry.ts";
 import { Language } from "./language.ts";
 import { Layout } from "./layout.ts";

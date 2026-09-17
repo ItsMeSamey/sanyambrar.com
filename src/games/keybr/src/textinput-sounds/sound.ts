@@ -1,9 +1,6 @@
-import { randomSample } from "@keybr/rand";
-import {
-  type PlayerId,
-  PlayerLibrary,
-  type SoundAssets,
-} from "./internal/index.ts";
+import { randomSample } from "../rand/sample.ts";
+import { PlayerLibrary } from "./internal/library.ts";
+import { type PlayerId, type SoundAssets } from "./internal/types.ts";
 
 export type SoundId = "click" | "blip";
 

@@ -1,4 +1,4 @@
-import { type CodePoint } from "@keybr/unicode";
+import { type CodePoint } from "../unicode/types.ts";
 
 type Entry1 = [codePoint: CodePoint, f: number];
 

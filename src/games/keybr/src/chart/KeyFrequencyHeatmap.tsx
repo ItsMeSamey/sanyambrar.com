@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { type Keyboard } from "@keybr/keyboard";
-import { flatten, HeatmapLayer, KeyLayer, VirtualKeyboard, } from "@keybr/keyboard-ui";
-import { type KeyStatsMap } from "@keybr/result";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { flatten, HeatmapLayer } from "../keyboard-ui/HeatmapLayer.tsx";
+import { KeyLayer } from "../keyboard-ui/KeyLayer.tsx";
+import { VirtualKeyboard } from "../keyboard-ui/VirtualKeyboard.tsx";
+import { type KeyStatsMap } from "../result/keystats.ts";
 
 import { createMemo } from 'solid-js';
 import { keyUsage } from "./keyusage.ts";

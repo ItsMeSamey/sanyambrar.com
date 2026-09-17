@@ -1,15 +1,17 @@
-import { ErrorHandler } from "@keybr/debug";
-import { loadIntl } from "@keybr/intl";
-import { PracticePage } from "@keybr/practice";
-import { LoadingProgress, Root } from "@keybr/ui";
-import { ResultLoader } from "@keybr/result";
-import { SettingsLoader } from "@keybr/settings";
-import { ThemeProvider } from "@keybr/themes";
-import { PortalContainer, Toaster } from "@keybr/widget";
+import { ErrorHandler } from "./debug/ErrorHandler.tsx";
+import { loadIntl } from "./intl/intl.ts";
+import { PracticePage } from "./practice/PracticePage.tsx";
+import { LoadingProgress } from "./ui/LoadingProgress.tsx";
+import { Root } from "./ui/Root.tsx";
+import { ResultLoader } from "./result/loader.tsx";
+import { SettingsLoader } from "./settings/loader.tsx";
+import { ThemeProvider } from "./themes/themes/ThemeProvider.tsx";
+import { PortalContainer } from "./widget/components/portal/Portal.tsx";
+import { Toaster } from "./widget/components/toast/Toaster.tsx";
 import { createEffect, createSignal, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { render } from '@solidjs/web';
-import { type IntlShape, RawIntlProvider } from "@keybr/intl";
+import { type IntlShape, RawIntlProvider } from "./intl/runtime.tsx";
 
 export function main(): void {
   const element = document.getElementById("app");

@@ -1,4 +1,4 @@
-import { XEnum, type XEnumItem } from "@keybr/lang";
+import { XEnum, type XEnumItem } from "../lang/enum.ts";
 
 export class TextType implements XEnumItem {
   static readonly GENERATED = new TextType("generated", 1);

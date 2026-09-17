@@ -1,6 +1,8 @@
-import { type Language, type Ngram1, type Ngram2 } from "@keybr/keyboard";
-import { randomSample, type RNG, weightedRandomSample } from "@keybr/rand";
-import { type CodePoint, type CodePointSet } from "@keybr/unicode";
+import { type Language } from "../keyboard/language.ts";
+import { type Ngram1, type Ngram2 } from "../keyboard/ngram.ts";
+import { randomSample, weightedRandomSample } from "../rand/sample.ts";
+import { type RNG } from "../rand/types.ts";
+import { type CodePoint, type CodePointSet } from "../unicode/types.ts";
 import { type Filter } from "./filter.ts";
 import { Letter } from "./letter.ts";
 import { TransitionTable } from "./transitiontable.ts";

@@ -1,6 +1,7 @@
-import { type Lesson } from "@keybr/lesson";
-import { type Letter } from "@keybr/phonetic-model";
-import { type KeyStatsMap, type Result } from "@keybr/result";
+import { type Lesson } from "../../../lesson/lesson.ts";
+import { type Letter } from "../../../phonetic-model/letter.ts";
+import { type KeyStatsMap } from "../../../result/keystats.ts";
+import { type Result } from "../../../result/result.ts";
 import {
   type LessonEventListener,
   type LessonEventSource,

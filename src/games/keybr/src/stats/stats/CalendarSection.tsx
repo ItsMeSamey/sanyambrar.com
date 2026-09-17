@@ -1,7 +1,10 @@
-import { Calendar, EffortLegend, useEffort } from "@keybr/lesson-ui";
-import { type DailyStatsMap } from "@keybr/result";
-import { Explainer, Figure } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { Calendar } from "../../lesson-ui/Calendar.tsx";
+import { EffortLegend } from "../../lesson-ui/EffortLegend.tsx";
+import { useEffort } from "../../lesson-ui/effort.ts";
+import { type DailyStatsMap } from "../../result/dailystats.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 export function CalendarSection(props: {
     dailyStatsMap: DailyStatsMap;
 }) {

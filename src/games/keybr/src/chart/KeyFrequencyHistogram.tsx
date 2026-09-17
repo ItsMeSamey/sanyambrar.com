@@ -1,9 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { hasData, Range } from "@keybr/math";
-import { type KeyStatsMap } from "@keybr/result";
-import { Rect, type ShapeList } from "@keybr/widget";
+import { hasData } from "../math/util.ts";
+import { Range } from "../math/range.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { Rect } from "../widget/utils/rect.ts";
+import { type ShapeList } from "../widget/components/canvas/graphics.ts";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintHistogram } from "./graph.ts";

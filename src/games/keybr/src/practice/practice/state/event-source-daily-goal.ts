@@ -1,5 +1,5 @@
-import { type MutableDailyGoal } from "@keybr/lesson";
-import { type Result } from "@keybr/result";
+import { type MutableDailyGoal } from "../../../lesson/dailygoal.ts";
+import { type Result } from "../../../result/result.ts";
 import {
   type LessonEventListener,
   type LessonEventSource,

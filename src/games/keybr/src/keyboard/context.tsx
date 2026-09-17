@@ -1,4 +1,4 @@
-import { useSettings } from "@keybr/settings";
+import { useSettings } from "../settings/context.ts";
 import { type Accessor, createContext, createMemo, useContext } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { type Keyboard } from "./keyboard.ts";

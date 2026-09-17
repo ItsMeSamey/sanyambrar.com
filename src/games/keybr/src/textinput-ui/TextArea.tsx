@@ -1,8 +1,14 @@
 import type { Component } from "solid-js";
-import { type LineList, type TextDisplaySettings } from "@keybr/textinput";
-import { type IInputEvent, type IKeyboardEvent, ModifierState, TextEvents } from "@keybr/textinput-events";
-import { type Focusable, useHotkeys, useWindowEvent, type ZoomableProps } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { type LineList } from "../textinput/chars.ts";
+import { type TextDisplaySettings } from "../textinput/settings.ts";
+import { type IInputEvent, type IKeyboardEvent } from "../textinput-events/types.ts";
+import { ModifierState } from "../textinput-events/modifiers.ts";
+import { TextEvents } from "../textinput-events/TextEvents.tsx";
+import { type Focusable } from "../widget/components/types.ts";
+import { useHotkeys } from "../widget/hooks/use-hotkeys.ts";
+import { useWindowEvent } from "../widget/hooks/use-window-event.ts";
+import { type ZoomableProps } from "../widget/components/zoomer/Zoomer.types.ts";
+import { FormattedMessage } from "../intl/runtime.tsx";
 import { createEffect, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import * as styles from "./TextArea.module.css";

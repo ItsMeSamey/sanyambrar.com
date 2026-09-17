@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { type Task, Tasks } from "@keybr/lang";
+import { type Task, Tasks } from "../../../lang/tasks.ts";
 
 import { type ToastOptions } from "./types.ts";
 const tasks = new Tasks();

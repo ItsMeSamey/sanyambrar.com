@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { ProgressBar } from "@keybr/widget";
+import { ProgressBar } from "../widget/components/progressbar/ProgressBar.tsx";
 
 import { onCleanup, onSettled } from 'solid-js';
 import * as styles from "./LoadingProgress.module.css";

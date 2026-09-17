@@ -1,13 +1,18 @@
-import { KeySpeedChart, Marker } from "@keybr/chart";
-import { LessonKey, Target } from "@keybr/lesson";
-import { KeyDetails, KeySelector } from "@keybr/lesson-ui";
-import { hasData } from "@keybr/math";
-import { type KeyStatsMap } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { Explainer, Figure, Para } from "@keybr/widget";
+import { KeySpeedChart } from "../../chart/KeySpeedChart.tsx";
+import { Marker } from "../../chart/Marker.tsx";
+import { LessonKey } from "../../lesson/key.ts";
+import { Target } from "../../lesson/target.ts";
+import { KeyDetails } from "../../lesson-ui/KeyDetails.tsx";
+import { KeySelector } from "../../lesson-ui/KeySelector.tsx";
+import { hasData } from "../../math/util.ts";
+import { type KeyStatsMap } from "../../result/keystats.ts";
+import { useSettings } from "../../settings/context.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { Para } from "../../widget/components/text/Para.tsx";
 
 import { createMemo, createSignal } from 'solid-js';
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
 export function KeySpeedChartSection(props: {

@@ -1,4 +1,6 @@
-import { Article, Header, Para } from "@keybr/widget";
+import { Article } from "../widget/components/text/Article.tsx";
+import { Header } from "../widget/components/text/Header.tsx";
+import { Para } from "../widget/components/text/Para.tsx";
 import { ErrorReport } from "./ErrorReport.tsx";
 
 export function ErrorScreen(props: { readonly report: string }) {

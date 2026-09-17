@@ -1,5 +1,5 @@
-import { type LessonKey } from "@keybr/lesson";
-import { type MouseProps } from "@keybr/widget";
+import { type LessonKey } from "../lesson/key.ts";
+import { type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 import * as styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";

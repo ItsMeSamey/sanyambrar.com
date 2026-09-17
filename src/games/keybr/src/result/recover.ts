@@ -1,4 +1,4 @@
-import { Histogram, validateSample } from "@keybr/textinput";
+import { Histogram, validateSample } from "../textinput/histogram.ts";
 import { Result } from "./result.ts";
 
 /**

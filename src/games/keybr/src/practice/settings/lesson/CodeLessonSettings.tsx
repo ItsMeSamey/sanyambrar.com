@@ -1,10 +1,15 @@
 import type { JSX } from "@solidjs/web";
-import { Syntax } from "@keybr/code";
-import { lessonProps } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { CheckBox, Description, Explainer, Field, FieldList, FieldSet, OptionList, } from "@keybr/widget";
+import { Syntax } from "../../../code/syntax.ts";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { CheckBox } from "../../../widget/components/checkbox/CheckBox.tsx";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
+import { OptionList } from "../../../widget/components/optionlist/OptionList.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function CodeLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();

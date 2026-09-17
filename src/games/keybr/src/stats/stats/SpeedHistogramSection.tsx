@@ -1,16 +1,15 @@
 import { createSignal } from 'solid-js';
-import { makeSpeedDistribution, SpeedHistogram } from "@keybr/chart";
-import { useIntlNumbers } from "@keybr/intl";
-import { type SummaryStats } from "@keybr/result";
-import {
-  Explainer,
-  Figure,
-  Para,
-  SegmentedControl,
-  Value,
-} from "@keybr/widget";
+import { makeSpeedDistribution } from "../../chart/speed-distribution.ts";
+import { SpeedHistogram } from "../../chart/SpeedHistogram.tsx";
+import { useIntlNumbers } from "../../intl/numbers.ts";
+import { type SummaryStats } from "../../result/summarystats.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { Para } from "../../widget/components/text/Para.tsx";
+import { SegmentedControl } from "../../widget/components/segmented/SegmentedControl.tsx";
+import { Value } from "../../widget/components/text/NameValue.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 
 type Period = "average" | "top";

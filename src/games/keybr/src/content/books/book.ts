@@ -1,5 +1,5 @@
-import { Language } from "@keybr/keyboard";
-import { Enum, type EnumItem } from "@keybr/lang";
+import { Language } from "../../keyboard/language.ts";
+import { Enum, type EnumItem } from "../../lang/enum.ts";
 import { BOOK_DEFINITIONS } from "./catalog.ts";
 
 const COVER_BY_PATH = import.meta.glob<string>("../assets/book-covers/*.jpg", {

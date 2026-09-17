@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { type ClassName } from "@keybr/widget";
+import { type ClassName } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 
 import * as styles from "./Screen.module.css";

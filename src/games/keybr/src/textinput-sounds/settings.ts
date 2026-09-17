@@ -1,5 +1,5 @@
-import { Enum, type EnumItem } from "@keybr/lang";
-import { enumProp, itemProp, numberProp } from "@keybr/settings";
+import { Enum, type EnumItem } from "../lang/enum.ts";
+import { enumProp, itemProp, numberProp } from "../settings/props.ts";
 
 export enum PlaySounds {
   None = 1,

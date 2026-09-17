@@ -1,4 +1,5 @@
-import { clamp, isNumber, round } from "@keybr/lang";
+import { clamp, round } from "../lang/math.ts";
+import { isNumber } from "../lang/types.ts";
 import { isHwb } from "./classify.ts";
 import { Color } from "./color.ts";
 import { hwbToHsl, hwbToHsv, hwbToRgb } from "./convert-rgb.ts";

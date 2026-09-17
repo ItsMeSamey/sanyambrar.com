@@ -1,13 +1,18 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlNumbers } from "@keybr/intl";
-import { Target } from "@keybr/lesson";
-import { useFormatter } from "@keybr/lesson-ui";
-import { hasData, linearRegression, Range, smooth, Vector } from "@keybr/math";
-import { type KeySample, timeToSpeed } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { type Rect, type ShapeList, Shapes } from "@keybr/widget";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { Target } from "../lesson/target.ts";
+import { useFormatter } from "../lesson-ui/format.ts";
+import { hasData, smooth } from "../math/util.ts";
+import { linearRegression } from "../math/linear-regression.ts";
+import { Range } from "../math/range.ts";
+import { Vector } from "../math/vector.ts";
+import { type KeySample } from "../result/keystats.ts";
+import { timeToSpeed } from "../result/result.ts";
+import { useSettings } from "../settings/context.ts";
+import { type Rect } from "../widget/utils/rect.ts";
+import { type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { ChartCanvas, type SizeProps } from "./Chart.tsx";
 import { withStyles } from "./decoration.ts";
 import { paintCurve, paintScatterPlot, projection } from "./graph.ts";
