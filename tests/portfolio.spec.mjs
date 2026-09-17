@@ -483,6 +483,31 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
   await expect(settings).toBeFocused();
 });
 
+test('Chain completed result owns modal focus', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    const board = new Uint8Array(16), owners = new Uint8Array(16), entered = new Uint8Array([0, 1, 1]);
+    board[0] = owners[0] = 1;
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({ v: 4, id: 'qa-result', pl: [], r: 4, c: 4, e: 1, b: encode(board), o: encode(owners), p: encode(entered), t: 1, g: true, i: true, m: [], q: true }));
+  });
+  await visit(page, '/chain/?p=game', info);
+  const result = page.getByRole('dialog', { name: 'You win' });
+  const playAgain = page.getByRole('button', { name: 'Play again', exact: true });
+  const gameMenu = page.getByRole('button', { name: 'Game menu', exact: true });
+  await expect(result).toBeVisible();
+  await expect(result).toHaveAttribute('aria-modal', 'true');
+  await expect(playAgain).toBeFocused();
+  expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].filter(child => !child.classList.contains('chain-result')).every(child => child.inert))).toBe(true);
+  await page.keyboard.press('Shift+Tab');
+  await expect(gameMenu).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(playAgain).toBeFocused();
+  await playAgain.click();
+  await expect(result).not.toBeVisible();
+  await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeFocused();
+  expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].every(child => !child.inert))).toBe(true);
+});
+
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
   await page.setViewportSize({ width: 128, height: 1000 });
   await visit(page, '/projects/reverb/', info);
