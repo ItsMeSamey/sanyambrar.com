@@ -4,7 +4,7 @@ import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/pro
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
-import { generateSite } from "./site.ts";
+import { details } from "./src/site/data.ts";
 
 const runFile = promisify(execFile);
 type BunSemver = { semver?: { satisfies?: (version: string, range: string) => boolean } };
@@ -37,6 +37,26 @@ const optionalRecord = (value: unknown, message: string): UnknownRecord => value
 async function readJsonRecord(path: string) {
   const value: unknown = JSON.parse(await readFile(path, "utf8"));
   return requireRecord(value, `${relative(ROOT, path)} must contain a JSON object`);
+}
+
+const siteShell = (title: string, kind: string, root = "./") => `<!doctype html><html lang="en" data-site-spa data-site-kind="${kind}" data-site-page="${kind}" data-home-href="${root}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>${title}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="${root}site.css" data-samey-shared><script src="${root}shared-runtime.js"></script><script type="module" src="${root}site-app.js"></script></head><body><div id="site-root"></div></body></html>`;
+
+async function generateSiteRoute(root: string, path: string, title: string, kind: string, assetRoot: string) {
+  const routeDir = join(root, path);
+  await mkdir(routeDir, { recursive: true });
+  await writeFile(join(routeDir, "index.html"), siteShell(title, kind, assetRoot));
+}
+
+async function generateSite(root: string) {
+  await mkdir(root, { recursive: true });
+  await writeFile(join(root, "index.html"), siteShell("Sanyam Brar", "home"));
+  await Promise.all([
+    generateSiteRoute(root, "work", "Work · Sanyam Brar", "work", "../"),
+    generateSiteRoute(root, "tools", "Tools · Sanyam Brar", "tools", "../"),
+    generateSiteRoute(root, "chain", "Chain Reaction", "chain", "../"),
+    generateSiteRoute(root, "blog", "Writing · Sanyam Brar", "blog", "../"),
+    ...Object.entries(details).map(([slug, detail]) => generateSiteRoute(root, `projects/${slug}`, `${detail.title} · Sanyam Brar`, "project", "../../")),
+  ]);
 }
 
 async function run(cwd: string, file: string, args: string[], env: NodeJS.ProcessEnv = {}) {
@@ -115,7 +135,7 @@ async function ensureDeps(dir: string) {
 
 
 async function generateAppearance() {
-  const config = await readJsonRecord(join(STATIC, "shared/appearance.json"));
+  const config = await readJsonRecord(join(ROOT, "src/shared/appearance.json"));
   const colors = requireRecord(config.colors, "appearance: colors must be an object");
   const fonts = requireRecord(config.fonts, "appearance: fonts must be an object");
   const hex = /^#[0-9a-f]{6}$/i;
@@ -169,7 +189,7 @@ async function copyStatic() {
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
     "index.html", "work", "tools", "chain",
-    "blog", "projects", "site-app.js", "site-chunks", "assets",
+    "blog", "projects", "site-app.js", "site-chunks", "assets", "shared",
     "site.css", "shared-runtime.js", "vditor",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
