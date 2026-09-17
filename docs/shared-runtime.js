@@ -984,6 +984,7 @@
 		};
 		let appearancePanel = null;
 		let appearanceTrigger = null;
+		let advancedReturnFocus = null;
 		let advancedPage = null;
 		let advancedEditor = null;
 		const apply = () => {
@@ -1517,6 +1518,7 @@
 		};
 		const openAdvanced = () => {
 			mountAdvancedPage();
+			advancedReturnFocus = appearanceTrigger?.isConnected ? appearanceTrigger : null;
 			closeAppearance();
 			const page = advancedPage;
 			if (!page) return;
@@ -1534,11 +1536,15 @@
 			page.hidden = false;
 			document.documentElement.classList.add("samey-advanced-open");
 			page.scrollTop = 0;
+			requestAnimationFrame(() => page.querySelector("[data-close-advanced]")?.focus({ preventScroll: true }));
 		};
-		const closeAdvanced = () => {
-			if (!advancedPage) return;
+		const closeAdvanced = (restoreFocus = true) => {
+			if (!advancedPage || advancedPage.hidden) return;
 			advancedPage.hidden = true;
 			document.documentElement.classList.remove("samey-advanced-open");
+			const trigger = advancedReturnFocus;
+			advancedReturnFocus = null;
+			if (restoreFocus && trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
 		};
 		const mountControls = () => {
 			if (appearancePanel) return;
@@ -1569,11 +1575,15 @@
 				if (event.target instanceof Node && !panel.contains(event.target)) closeAppearance();
 			});
 			addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
-			addEventListener("samey-pageleave", closeAppearance);
+			addEventListener("samey-pageleave", () => {
+				closeAppearance();
+				closeAdvanced(false);
+			});
 			addEventListener("keydown", (event) => {
 				if (event.key !== "Escape") return;
 				if (advancedPage && !advancedPage.hidden) {
 					closeAdvanced();
+					event.preventDefault();
 					return;
 				}
 				if (!appearancePanel?.hidden) {
@@ -2580,16 +2590,24 @@
 			menu.className = "samey-context-menu";
 			menu.dataset.sameyOverlayBlocker = "";
 			menu.hidden = true;
+			menu.setAttribute("role", "menu");
+			menu.setAttribute("aria-label", "Context menu");
 			document.body.append(menu);
 			let target = null;
-			const close = () => {
+			let returnFocus = null;
+			const close = (restoreFocus = false) => {
+				if (menu.hidden) return;
 				menu.hidden = true;
 				menu.replaceChildren();
+				const focusTarget = returnFocus;
+				returnFocus = null;
+				if (restoreFocus && focusTarget) requestAnimationFrame(() => focusTarget.isConnected && focusTarget.focus({ preventScroll: true }));
 			};
 			const add = (label, action, enabled = true, hint = "") => {
 				const button = document.createElement("button");
 				button.type = "button";
 				button.disabled = !enabled;
+				button.setAttribute("role", "menuitem");
 				const text = document.createElement("span");
 				text.textContent = label;
 				button.append(text);
@@ -2615,6 +2633,7 @@
 				event.preventDefault();
 				target = event.target;
 				menu.replaceChildren();
+				returnFocus = (target instanceof HTMLElement ? target.closest("a[href],button,input,textarea,select,[tabindex]") : null) ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 				const link = target instanceof Element ? target.closest("a[href]") : null;
 				const image = target instanceof Element ? target.closest("img[src]") : null;
 				const selection = selectedText();
@@ -2681,15 +2700,39 @@
 				const rect = menu.getBoundingClientRect();
 				menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
 				menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
+				menu.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });
 			}, true);
 			document.addEventListener("pointerdown", (event) => {
 				if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close();
 			}, true);
-			addEventListener("blur", close);
-			addEventListener("resize", close);
-			addEventListener("scroll", close, true);
+			addEventListener("blur", () => close());
+			addEventListener("resize", () => close());
+			addEventListener("scroll", (event) => {
+				if (!(event.target instanceof Node && menu.contains(event.target))) close();
+			}, true);
 			document.addEventListener("keydown", (event) => {
-				if (event.key === "Escape") close();
+				if (menu.hidden) return;
+				const items = [...menu.querySelectorAll("button:not(:disabled)")];
+				if (event.key === "Escape") {
+					event.preventDefault();
+					event.stopPropagation();
+					close(true);
+					return;
+				}
+				if (!items.length) return;
+				const index = Math.max(0, items.indexOf(document.activeElement));
+				let next = -1;
+				if (event.key === "ArrowDown") next = (index + 1) % items.length;
+				else if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+				else if (event.key === "Home") next = 0;
+				else if (event.key === "End") next = items.length - 1;
+				if (next >= 0) {
+					event.preventDefault();
+					items[next]?.focus({ preventScroll: true });
+					items[next]?.scrollIntoView({ block: "nearest" });
+					if (event.key === "Home") menu.scrollTop = 0;
+					else if (event.key === "End") menu.scrollTop = menu.scrollHeight;
+				}
 			});
 		};
 		const virtualBars = /* @__PURE__ */ new Map();
@@ -3523,6 +3566,23 @@
 			results.replaceChildren(empty);
 		}
 	}
+	function scrollActiveIntoView() {
+		results?.querySelector(".search-result.active")?.scrollIntoView({
+			block: "nearest",
+			inline: "nearest"
+		});
+	}
+	var resizeFrame = 0;
+	function keepActiveVisibleAfterResize() {
+		if (!box || box.hidden) return;
+		cancelAnimationFrame(resizeFrame);
+		resizeFrame = requestAnimationFrame(() => {
+			resizeFrame = 0;
+			if (!box?.hidden) scrollActiveIntoView();
+		});
+	}
+	addEventListener("resize", keepActiveVisibleAfterResize);
+	globalThis.visualViewport?.addEventListener("resize", keepActiveVisibleAfterResize);
 	function close(restoreFocus = true) {
 		if (!box || box.hidden) return;
 		box.hidden = true;
@@ -3562,6 +3622,7 @@
 				event.preventDefault();
 				active = (active + (event.key === "ArrowDown" ? 1 : visible.length - 1)) % Math.max(visible.length, 1);
 				render();
+				scrollActiveIntoView();
 			} else if (event.key === "Enter" && visible[active]) {
 				event.preventDefault();
 				const targetUrl = new URL(visible[active].href, SCRIPT_ROOT);
