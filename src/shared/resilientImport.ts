@@ -6,7 +6,7 @@ function errorText(error: unknown): string {
   return String(error ?? '');
 }
 
-export function isDynamicImportFetchFailure(error: unknown): boolean {
+function isDynamicImportFetchFailure(error: unknown): boolean {
   const message = errorText(error);
   return /Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed|Failed to load module script/i.test(message);
 }

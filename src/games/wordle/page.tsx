@@ -1,10 +1,9 @@
 'use strict'
 
 import { createEffect, createMemo, createSignal, createStore, For, onCleanup, onSettled, Show, snapshot, untrack, type StoreSetter } from 'solid-js';
-import { showToast } from '~/registry/ui/toast'
+import { showError, showToast } from '~/registry/ui/toast'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '~/registry/ui/dialog'
 
-import { showError } from '../../utils/toast'
 import { LocalstorageStore } from '../../utils/store'
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { calcDiff, getCompletedDailyDates, getGuessWord, getRandomWord, KindEnum, setDone } from './words'
@@ -121,7 +120,7 @@ export class Block {
 }
 
 interface CurrentState { keyboard: KeyboardState; showPopOver: boolean; disabled: string; history: [string, string][]; done?: KindEnum }
-export interface WordLocalStorageState {
+interface WordLocalStorageState {
   word: string
   wordIndex?: number
   history: [string, string][]
@@ -267,7 +266,7 @@ class GameState {
 
 }
 
-export class WordleModel {
+class WordleModel {
   state: GameState
   currentBlock?: HTMLSpanElement
 
@@ -498,7 +497,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
   return new WordleModel(soft, hard, stateStore, onNextChallenge, onChooseMode).render()
 }
 
-export function GetSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
+function getSettingsStore(): {softStore: LocalstorageStore<SettingsSoftProps>, hardStore: LocalstorageStore<SettingsHardProps>} {
   const daily = getDailyChallenge(localDateKey())
   const hardDefault: SettingsHardProps = {
     mode: 'daily', wordLength: daily.wordLength, maxTries: daily.maxTries,
@@ -584,7 +583,7 @@ function WordleModeMark(props:{mode: SettingsHardProps['mode']}) {
 }
 
 export default function Wordle() {
-  const {softStore, hardStore} = GetSettingsStore()
+  const {softStore, hardStore} = getSettingsStore()
   const savedHard = hardStore.get()!
   const savedSoft = softStore.get()!
   const urlChallenge = parseChallenge(new URL(location.href).searchParams.get(GAME_QUERY))

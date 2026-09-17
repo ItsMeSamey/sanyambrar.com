@@ -5,7 +5,6 @@ import { type JSX } from '@solidjs/web';
 
 import './error_page.css'
 import { Button } from '~/registry/ui/button'
-import { stripStack } from '../utils/toast'
 
 function SwingingLight(value: unknown, reset: () => void): JSX.Element {
   const err = value instanceof Error ? value : new Error(String(value))
@@ -19,7 +18,7 @@ function SwingingLight(value: unknown, reset: () => void): JSX.Element {
     </div>
     <div class='error-page-message'>
       <strong class='error-page-heading'>Something's Gone Horridly Wrong!</strong>
-      <p class='error-page-detail'>{err.name}: {stripStack(err.message)}</p>
+      <p class='error-page-detail'>{err.name}: {err.message.split('\n##-STACK-##\n')[0]}</p>
       <div class='error-page-actions'>
         <Button class='rounded-full' onClick={() => { history.back(); retry() }}>Go Back</Button>
         <Button class='rounded-full' onClick={retry}>Try Again</Button>

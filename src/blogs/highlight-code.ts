@@ -11,7 +11,7 @@ const token = (kind: string, text: string) => `<span class="syn-${kind}">${esc(t
 const identStart = (char: string) => /[A-Za-z_]/.test(char);
 const identPart = (char: string) => /[A-Za-z0-9_]/.test(char);
 
-export function highlightCpp(source: string): string {
+function highlightCpp(source: string): string {
   let out = '', i = 0, lineStart = true;
   while (i < source.length) {
     const char = source[i], next = source[i + 1] ?? '';

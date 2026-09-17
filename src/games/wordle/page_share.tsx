@@ -6,7 +6,7 @@ import { type JSX } from '@solidjs/web';
 import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '~/registry/ui/button'
-import { showError } from '../../utils/toast'
+import { showError } from '~/registry/ui/toast'
 import { binarySearch } from './word-list'
 import { challengeUrl, isWordLength } from './challenge'
 

@@ -104,7 +104,7 @@ function sameGame(a: ActiveGame, b: ActiveGame) {
   return a.history.every((row, index) => row[0] === b.history[index][0] && row[1] === b.history[index][1])
 }
 
-export function getActiveGames(): ActiveGame[] {
+function getActiveGames(): ActiveGame[] {
   const games: ActiveGame[] = []
   try {
     for (let n = 0; n < localStorage.length; n++) {

@@ -1,5 +1,5 @@
 export type ToolId='text'|'base'|'diff'|'markdown'|'number';
-export type ToolInfo={id:ToolId;label:string;title:string;note:string};
+type ToolInfo={id:ToolId;label:string;title:string;note:string};
 
 export const TOOLS:readonly ToolInfo[]=[
   {id:'text',label:'Text',title:'Text Inspector',note:'Word count and non-ASCII character detection.'},

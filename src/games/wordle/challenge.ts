@@ -21,7 +21,7 @@ type UnknownRecord = Record<string, unknown>
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value)
 export const isWordLength = (value: unknown): value is WordLength => typeof value === 'number' && Number.isInteger(value) && value >= 3 && value <= 20
 
-export interface DailyChallenge extends ChallengeConfig {
+interface DailyChallenge extends ChallengeConfig {
   mode: 'daily'
   dailyDate: string
   dailyVersion: number
@@ -173,14 +173,14 @@ export function gameStorageKey(config: ChallengeConfig): string {
 }
 
 
-export interface UrlChallenge {
+interface UrlChallenge {
   hard: ChallengeConfig
   fastInvalidate: boolean
 }
 
 export const GAME_QUERY = 'g'
-export const DEFAULT_FAST_INVALIDATE = true
-export const DEFAULT_ALLOW_ANY = false
+const DEFAULT_FAST_INVALIDATE = true
+const DEFAULT_ALLOW_ANY = false
 
 function parseHex(value: string | undefined): number | undefined {
   if (!value || !/^[0-9a-f]+$/i.test(value)) return undefined

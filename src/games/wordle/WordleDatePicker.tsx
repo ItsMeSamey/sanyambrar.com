@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 
 type View = 'day' | 'month' | 'year'
 
-export interface WordleDatePickerProps {
+interface WordleDatePickerProps {
   value: string
   max: string
   completedDates?: ReadonlySet<string>
