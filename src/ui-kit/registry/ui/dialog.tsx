@@ -6,8 +6,6 @@ export const Dialog = D.Root
 export const DialogTrigger = D.Trigger
 export const DialogTitle = D.Title
 export const DialogDescription = D.Description
-export const DialogHeader = (props: ComponentProps<'div'>) => <div {...props} />
-export const DialogFooter = (props: ComponentProps<'div'>) => <div {...props} />
 
 export function DialogContent(props: D.DialogContentProps & ComponentProps<'div'>) {
   const local = props, rest = omit(props, 'class')

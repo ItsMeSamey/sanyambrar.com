@@ -3,7 +3,7 @@
 import { createSignal, Show } from 'solid-js';
 import { Settings as SettingsIcon } from '~/components/lucide'
 import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
-import { Switch, SwitchControl, SwitchInput, SwitchLabel, SwitchThumb } from '~/registry/ui/switch'
+import * as Switch from '@kobalte/core/switch'
 import type { WordLength } from './word-list'
 import { ActiveGames } from './popup_active_games'
 import { isWordLength, type GameMode } from './challenge'
@@ -27,9 +27,9 @@ export interface SettingsHardProps {
 
 function SwitchContent(label: string, description: string) {
   return <>
-    <SwitchInput />
-    <SwitchControl><SwitchThumb /></SwitchControl>
-    <SwitchLabel class='settings-switch-label' title={description}>{label}</SwitchLabel>
+    <Switch.Input />
+    <Switch.Control class='samey-switch-control'><Switch.Thumb class='samey-switch-thumb' /></Switch.Control>
+    <Switch.Label class='settings-switch-label' title={description}>{label}</Switch.Label>
   </>
 }
 
@@ -54,13 +54,13 @@ function SettingRange(props: {label: string, min: number, max: number, value: nu
 
 export function SettingsKnobs(props: SettingsControlsProps) {
   return <>
-    <Switch class='settings-switch' onChange={fastInvalidate => props.onSoftChange({fastInvalidate})} checked={props.soft.fastInvalidate}>
+    <Switch.Root class='settings-switch' onChange={fastInvalidate => props.onSoftChange({fastInvalidate})} checked={props.soft.fastInvalidate}>
       {SwitchContent('Fast Invalidate', 'Marks each typed prefix as usable or impossible immediately.')}
-    </Switch>
+    </Switch.Root>
     <Show when={props.hard.mode === 'advanced'}>
-      <Switch class='settings-switch' onChange={allowAny => props.onHardChange({allowAny})} checked={props.hard.allowAny}>
+      <Switch.Root class='settings-switch' onChange={allowAny => props.onHardChange({allowAny})} checked={props.hard.allowAny}>
         {SwitchContent('Allow Any Word', 'Allow guesses that are not in the dictionary.')}
-      </Switch>
+      </Switch.Root>
       <div class='game-settings-section-title'>ADVANCED</div>
       <Show when={props.showWordLength}>
         <SettingRange label='Word length' min={3} max={20} value={props.hard.wordLength} onChange={wordLength => { if (isWordLength(wordLength)) props.onHardChange({wordLength}) }} />

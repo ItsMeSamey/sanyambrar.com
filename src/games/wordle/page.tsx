@@ -2,7 +2,7 @@
 
 import { createEffect, createMemo, createSignal, createStore, For, onCleanup, onSettled, Show, snapshot, untrack, type StoreSetter } from 'solid-js';
 import { showToast } from '~/registry/ui/toast'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/registry/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '~/registry/ui/dialog'
 
 import { showError } from '../../utils/toast'
 import { LocalstorageStore } from '../../utils/store'
@@ -350,7 +350,7 @@ export class WordleModel {
     return <div class='wordle-game-shell'>
       <Dialog open={this.state.state.showPopOver} onOpenChange={value => this.state.setState(draft => { draft.showPopOver = value })}>
         <DialogContent class='result-dialog'>
-          <DialogHeader>
+          <div>
             <button type='button' class='result-close top-icon' aria-label='Close result' onClick={() => this.state.setState(draft => { draft.showPopOver = false })}>×</button>
             {(() => {
               const last = this.state.currentEntry
@@ -373,7 +373,7 @@ export class WordleModel {
                 </div>
               </>
             })()}
-          </DialogHeader>
+          </div>
         </DialogContent>
       </Dialog>
 
