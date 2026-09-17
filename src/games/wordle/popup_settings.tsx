@@ -1,8 +1,8 @@
 'use strict'
 
 import { createSignal, Show } from 'solid-js';
-import { Settings as SettingsIcon } from '~/components/lucide'
-import { Popover, PopoverTrigger, PopoverContent } from '~/registry/ui/popover'
+import { Settings as SettingsIcon } from '../../ui-kit/components/lucide'
+import { Popover, PopoverTrigger, PopoverContent } from '../../ui-kit/registry/ui/popover'
 import * as Switch from '@kobalte/core/switch'
 import type { WordLength } from './word-list'
 import { ActiveGames } from './popup_active_games'

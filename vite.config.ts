@@ -12,7 +12,6 @@ export default defineConfig(({ mode }) => {
     publicDir: false,
     input: path.resolve(root, 'src/games/wordle/index.html'),
     plugins: [solid(), viteSingleFile({ removeViteModuleLoader: true })],
-    resolve: { alias: { '~': path.resolve(root, 'src/ui-kit') } },
     build: {
       outDir: path.resolve(root, '.build/wordle'),
       rolldownOptions: { checks: { pluginTimings: false } },
