@@ -378,6 +378,13 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
 test('Keybr storybook progress survives reload, preview and book switches', async ({ page }, info) => {
   await visitKeybr(page, info);
   const lessonText = async () => (await page.locator('[data-grab-cursor-on-drag]:has(textarea)').first().locator('div[dir]').allTextContents()).join('').replace(/[·␣]/g, ' ').trim();
+  const waitForLesson = async (previous = '') => {
+    await expect.poll(async () => {
+      const value = await lessonText();
+      return value.length > 0 && value !== previous;
+    }).toBe(true);
+    return lessonText();
+  };
   const chooseBook = async (query, name) => {
     await page.getByRole('button', { name: 'Choose book', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Choose a book' });
@@ -401,10 +408,9 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await chooseBook('Alice’s Adventures', /Alice’s Adventures in Wonderland.*Lewis Carroll/);
   await closeSettings();
 
-  const aliceFirst = await lessonText();
+  const aliceFirst = await waitForLesson();
   await page.getByRole('button', { name: 'Skip the current lesson (Ctrl + Right Arrow).', exact: true }).click();
-  await expect.poll(lessonText).not.toBe(aliceFirst);
-  const aliceSecond = await lessonText();
+  const aliceSecond = await waitForLesson(aliceFirst);
   const aliceKey = 'game.keybr.storybook.progress.v1.en-alice-wonderland';
   await expect.poll(() => page.evaluate(key => localStorage.getItem(key), aliceKey)).not.toBeNull();
 
@@ -425,10 +431,9 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await openSettings();
   await chooseBook('Jekyll', /The Strange Case Of Dr\. Jekyll And Mr\. Hyde.*Robert Louis Stevenson/);
   await closeSettings();
-  const jekyllFirst = await lessonText();
+  const jekyllFirst = await waitForLesson();
   await page.getByRole('button', { name: 'Skip the current lesson (Ctrl + Right Arrow).', exact: true }).click();
-  await expect.poll(lessonText).not.toBe(jekyllFirst);
-  const jekyllSecond = await lessonText();
+  const jekyllSecond = await waitForLesson(jekyllFirst);
   const jekyllKey = 'game.keybr.storybook.progress.v1.en-jekyll-hyde';
   await expect.poll(() => page.evaluate(key => localStorage.getItem(key), jekyllKey)).not.toBeNull();
 
@@ -469,6 +474,33 @@ test('number conversion updates from edited input', async ({ page }, info) => {
       }),
     };
   })).toEqual({ toolContained: true, cardsContained: true, buttonsContained: true });
+});
+
+test('Tools mobile selector dismisses and navigates by keyboard', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/tools/?tool=number', info);
+  const trigger = page.getByRole('button', { name: /Tool/ });
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-haspopup', 'listbox');
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const listbox = page.getByRole('listbox');
+  await expect(listbox).toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(listbox.getByRole('option', { name: 'Numbers', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(listbox).not.toBeVisible();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(listbox).toBeVisible();
+  await expect(listbox.getByRole('option', { name: 'Numbers', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(listbox.getByRole('option', { name: 'Markdown', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/tools\/\?tool=markdown$/);
+  await expect(trigger).toContainText('Markdown');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ page }, info) => {
