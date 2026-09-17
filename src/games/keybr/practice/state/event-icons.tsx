@@ -3,7 +3,7 @@ import { AlarmClockCheck, Trophy } from "../../widget/icons.ts";
 import { clsx } from "clsx";
 import styles from "./event-icons.module.css";
 import { Dynamic } from '@solidjs/web';
-import { type LucideIcon } from '../../../../../shared/components/Icons.tsx';
+import { type LucideIcon } from '../../../../shared/components/Icons.tsx';
 export function TrophyIcon() {
     return <Icon shape={Trophy} className={styles.trophy}/>;
 }

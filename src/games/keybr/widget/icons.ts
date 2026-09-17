@@ -21,4 +21,4 @@ export {
   Undo2,
   Upload,
   X,
-} from "../../../../shared/components/Icons.tsx";
+} from "../../../shared/components/Icons.tsx";
