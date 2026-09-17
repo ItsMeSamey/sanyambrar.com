@@ -1793,7 +1793,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       else if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
       else if (event.key === "Home") next = 0;
       else if (event.key === "End") next = items.length - 1;
-      if (next >= 0) { event.preventDefault(); items[next]?.focus({ preventScroll: true }); items[next]?.scrollIntoView({ block: "nearest" }); }
+      if (next >= 0) {
+        event.preventDefault();
+        items[next]?.focus({ preventScroll: true });
+        items[next]?.scrollIntoView({ block: "nearest" });
+        if (event.key === "Home") menu.scrollTop = 0;
+        else if (event.key === "End") menu.scrollTop = menu.scrollHeight;
+      }
     });
   };
 

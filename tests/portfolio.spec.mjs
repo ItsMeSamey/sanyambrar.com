@@ -39,10 +39,25 @@ for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
 test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
-  await page.getByPlaceholder('Search games, tools, writing, work…').fill('CNN');
+  const searchInput = page.getByPlaceholder('Search games, tools, writing, work…');
+  await page.setViewportSize({ width: 320, height: 180 });
+  await searchInput.fill('a');
+  for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowDown');
+  const activeSearchResultIsVisible = () => page.locator('.site-search-results').evaluate(element => {
+    const active = element.querySelector('.search-result.active');
+    if (!(active instanceof HTMLAnchorElement)) return false;
+    const bounds = element.getBoundingClientRect(), rect = active.getBoundingClientRect();
+    return rect.top >= bounds.top - 1 && rect.bottom <= bounds.bottom + 1;
+  });
+  await expect.poll(() => activeSearchResultIsVisible()).toBe(true);
+  expect(await page.locator('.site-search-results').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(() => activeSearchResultIsVisible(), { message: 'ArrowUp must keep the active search result visible' }).toBe(true);
+  const activeHref = await page.locator('.search-result.active').evaluate(element => element.href);
+  expect(new URL(activeHref).origin).toBe(new URL(page.url()).origin);
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/projects\/cnn/);
-  await expect(page.getByRole('heading', { name: 'CNN', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(activeHref);
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
@@ -155,8 +170,10 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await page.keyboard.press('End');
   await expect(enabledItems.last()).toBeFocused();
   await expect(menu).toBeVisible();
+  await expect.poll(() => menu.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   await page.keyboard.press('Home');
   await expect(enabledItems.first()).toBeFocused();
+  await expect.poll(() => menu.evaluate(element => element.scrollTop)).toBe(0);
   await page.keyboard.press('Escape');
   await expect(menu).not.toBeVisible();
   await expect(link).toBeFocused();
