@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { sizeClassName } from "../../styles/index.ts";
+import { sizeClassName } from "../../styles/size.ts";
 import * as styles from "./TextField.module.css";
 import { type TextFieldProps } from "./TextField.types.ts";
 import { createEffect, omit, merge } from 'solid-js';

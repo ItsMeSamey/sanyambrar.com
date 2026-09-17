@@ -1,4 +1,4 @@
-import { type ClassName } from "../components/index.ts";
+import { type ClassName } from "../components/types.ts";
 import * as styles from "./size.module.css";
 
 export const styleSizeFill = styles.sizeFill;

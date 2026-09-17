@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { type SizeName } from "../../styles/index.ts";
+import { type SizeName } from "../../styles/size.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 export type ButtonProps = {
     readonly autoFocus?: boolean;

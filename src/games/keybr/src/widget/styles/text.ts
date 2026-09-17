@@ -1,4 +1,4 @@
-import { type ClassName } from "../components/index.ts";
+import { type ClassName } from "../components/types.ts";
 import * as styles from "./text.module.css";
 
 const styleTextCenter = styles.textCenter;

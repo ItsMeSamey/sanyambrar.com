@@ -1,4 +1,5 @@
-import { type Rect, type Size } from "../utils/index.ts";
+import { type Rect } from "../utils/rect.ts";
+import { type Size } from "../utils/size.ts";
 import { type Place } from "./place.ts";
 import { type AlignOptions, type FloatingPosition } from "./types.ts";
 import { splitPosition } from "./util.ts";

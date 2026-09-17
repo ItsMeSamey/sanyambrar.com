@@ -1,4 +1,4 @@
-import { type SizeName } from "../../styles/index.ts";
+import { type SizeName } from "../../styles/size.ts";
 import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
 export type TextFieldType = "text" | "textarea" | "email" | "url" | "password";
 export type TextFieldProps = {

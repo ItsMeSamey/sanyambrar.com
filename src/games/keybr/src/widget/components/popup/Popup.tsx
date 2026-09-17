@@ -1,7 +1,9 @@
 import type { JSX } from "@solidjs/web";
-import { type FloatingPosition, place } from "../../floating/index.ts";
-import { useScreenSize } from "../../hooks/index.ts";
-import { getBoundingBox, querySelector } from "../../utils/index.ts";
+import { place } from "../../floating/fluent.ts";
+import { type FloatingPosition } from "../../floating/types.ts";
+import { useScreenSize } from "../../hooks/use-screen-size.ts";
+import { getBoundingBox } from "../../utils/geometry.ts";
+import { querySelector } from "../../utils/query.ts";
 import { type MouseProps } from "../types.ts";
 import * as styles from "./Popup.module.css";
 import { createEffect, createMemo, omit, merge } from 'solid-js';

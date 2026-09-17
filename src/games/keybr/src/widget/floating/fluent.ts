@@ -1,9 +1,6 @@
-import {
-  getBoundingBox,
-  getScreenSize,
-  type Rect,
-  type Size,
-} from "../utils/index.ts";
+import { getBoundingBox, getScreenSize } from "../utils/geometry.ts";
+import { type Rect } from "../utils/rect.ts";
+import { type Size } from "../utils/size.ts";
 import {
   alignToAnchor as alignToAnchor0,
   centerToScreen as centerToScreen0,
