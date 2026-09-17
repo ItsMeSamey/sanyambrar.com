@@ -1458,10 +1458,13 @@
 			if (advancedPage) return;
 			const page = document.createElement("div");
 			page.className = "samey-theme-advanced";
+			page.setAttribute("role", "dialog");
+			page.setAttribute("aria-modal", "true");
+			page.setAttribute("aria-labelledby", "samey-theme-advanced-title");
 			page.dataset.sameyOverlay = "";
 			page.dataset.sameyRuntime = "";
 			page.hidden = true;
-			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1>Advanced &amp; Colorblind</h1></div><button type="button" class="samey-ui-button samey-icon-button" data-close-advanced aria-label="Close Advanced &amp; Colorblind">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label><span>Theme name</span><input class="samey-ui-input" name="themeName" value="My theme" maxlength="80"></label><label><span>Tone</span><select class="samey-ui-select" name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input class="samey-ui-color" type="color" data-color-for="${key}" aria-label="${escapeHtml(label)} color"><input class="samey-ui-input" name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" class="samey-ui-button samey-ui-button-primary" data-save-theme>Save theme</button><button type="button" class="samey-ui-button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind</h2><p>Choose the vision profile and luminance variant independently. Changes preview immediately and remain editable.</p>${colorblindControls()}</section><section><h2>Theme menu</h2><p>Choose which standard and saved themes appear in the compact menu. Colorblind choices stay in this page instead of becoming nine separate menu entries.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+			page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1 id="samey-theme-advanced-title">Advanced &amp; Colorblind</h1></div><button type="button" class="samey-ui-button samey-icon-button" data-close-advanced aria-label="Close Advanced &amp; Colorblind">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label><span>Theme name</span><input class="samey-ui-input" name="themeName" value="My theme" maxlength="80"></label><label><span>Tone</span><select class="samey-ui-select" name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input class="samey-ui-color" type="color" data-color-for="${key}" aria-label="${escapeHtml(label)} color"><input class="samey-ui-input" name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" class="samey-ui-button samey-ui-button-primary" data-save-theme>Save theme</button><button type="button" class="samey-ui-button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind</h2><p>Choose the vision profile and luminance variant independently. Changes preview immediately and remain editable.</p>${colorblindControls()}</section><section><h2>Theme menu</h2><p>Choose which standard and saved themes appear in the compact menu. Colorblind choices stay in this page instead of becoming nine separate menu entries.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
 			document.body.append(page);
 			advancedPage = page;
 			const editor = page.querySelector("[data-advanced-editor]");
@@ -1492,6 +1495,15 @@
 					fillAdvancedEditor(read());
 				} else if (target.dataset.loadSaved) loadSavedIntoEditor(target.dataset.loadSaved);
 				else if (target.dataset.deleteSaved) deleteSavedTheme(target.dataset.deleteSaved);
+			});
+			page.addEventListener("keydown", (event) => {
+				if (event.key !== "Tab") return;
+				const focusable = [...page.querySelectorAll("a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex=\"-1\"])")].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden");
+				if (!focusable.length) return;
+				const index = focusable.indexOf(document.activeElement);
+				const next = event.shiftKey ? index <= 0 ? focusable[focusable.length - 1] : focusable[index - 1] : index < 0 || index === focusable.length - 1 ? focusable[0] : focusable[index + 1];
+				event.preventDefault();
+				next.focus();
 			});
 			page.addEventListener("change", (event) => {
 				const input = event.target instanceof HTMLInputElement ? event.target : null;
