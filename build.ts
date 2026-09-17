@@ -169,7 +169,7 @@ async function copyStatic() {
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
     "index.html", "work", "tools", "chain",
-    "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm", "cnn-worker.js",
+    "blog", "projects", "site-app.js", "site-chunks", "assets",
     "site.css", "shared-runtime.js", "vditor",
   ];
   await Promise.all(owned.map(name => rm(join(DOCS, name), { recursive: true, force: true })));
@@ -266,8 +266,7 @@ async function versionMutableShellReferences() {
   const siteEntries = await walk(join(DOCS, "site-chunks"), (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `deployment: expected one hashed site entry, found ${siteEntries.length}`);
   const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
-  const mutableAssets = ["site.css", "shared-runtime.js", "cnn-worker.js", "cnn.wasm"]
-    .filter(name => existsSync(join(DOCS, name)));
+  const mutableAssets = ["site.css", "shared-runtime.js"];
   must(mutableAssets.includes("site.css") && mutableAssets.includes("shared-runtime.js"),
     "deployment: mutable site shell assets are incomplete");
   const hash = createHash("sha256");
