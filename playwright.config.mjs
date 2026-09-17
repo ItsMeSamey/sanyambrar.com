@@ -20,7 +20,7 @@ export default defineConfig({
   fullyParallel: true,
   workers: 3,
   retries: 0,
-  reporter: [['list'], ['json', { outputFile: '.tmp/solid-v2/test-results.json' }]],
+  reporter: [['list'], ['json', { outputFile: '.tmp/playwright-results.json' }]],
   use: {
     browserName: 'chromium',
     launchOptions: { executablePath, args: ['--disable-dev-shm-usage'] },

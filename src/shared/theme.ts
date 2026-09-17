@@ -2077,22 +2077,22 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   globalThis.SameyPreloadPage = prefetch;
   let documentNavigationMounted = false;
   const mountSpa = () => {
-    if (document.documentElement.hasAttribute("data-solid-spa")) return;
+    if (document.documentElement.hasAttribute("data-site-spa")) return;
     globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
     if (documentNavigationMounted) return;
     documentNavigationMounted = true;
     document.addEventListener("pointerover", event => {
-      if (document.documentElement.hasAttribute("data-solid-spa")) return;
+      if (document.documentElement.hasAttribute("data-site-spa")) return;
       const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
       if (link && !link.target) prefetch(link.href);
     }, { passive: true });
     document.addEventListener("focusin", event => {
-      if (document.documentElement.hasAttribute("data-solid-spa")) return;
+      if (document.documentElement.hasAttribute("data-site-spa")) return;
       const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
       if (link && !link.target) prefetch(link.href);
     });
     document.addEventListener("click", event => {
-      if (document.documentElement.hasAttribute("data-solid-spa")) return;
+      if (document.documentElement.hasAttribute("data-site-spa")) return;
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
       if (!link || link.target || link.hasAttribute("download")) return;
@@ -2103,7 +2103,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       void loadPage(url.href, { direction }).catch(() => {});
     });
     addEventListener("popstate", () => {
-      if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
+      if (document.documentElement.hasAttribute("data-site-spa") || location.pathname === currentPagePath) return;
       const previousIndex = pageHistoryIndex;
       const nextIndex = readNavigationIndex();
       const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";
@@ -2210,7 +2210,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     // Only styles present on a directly loaded non-Solid document are initial page styles.
     // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;
     // marking those on the first swapped page would delete them on the next back navigation.
-    if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();
+    if (!document.documentElement.hasAttribute("data-site-spa")) markInitialPageStyles();
     mountSpa();
     addEventListener("samey-pageload", mountSpa);
   };
