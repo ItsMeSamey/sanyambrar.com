@@ -7,7 +7,7 @@ import { Root as Accordion, Content as AccordionContent, Item as AccordionItem, 
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
 import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value, WORD_STORES } from './words'
-import { Page, setP } from '../../utils/navigation'
+import { Page, setP } from './navigation'
 import { ShareTrigger } from './page_share'
 import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx'

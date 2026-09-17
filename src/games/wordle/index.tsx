@@ -5,7 +5,7 @@ import StatsPage from './page_stats'
 
 import './style.css'
 
-import { mountPageNavigation, Page, selectP, setPageRoot } from '../../utils/navigation'
+import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'
 import ErrorPage from '../../pages/error_page'
 import Wordle from './page'
 import { Toaster } from '~/registry/ui/toast'
