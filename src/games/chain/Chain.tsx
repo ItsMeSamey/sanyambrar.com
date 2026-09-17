@@ -1,6 +1,6 @@
+import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
-import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
 import { Settings } from '../../shared/components/Icons.tsx';
 import { ChartNoAxesColumn as BarChart3 } from '../../shared/components/Icons.tsx';
 import { createChainRefs } from './dom.ts';
@@ -15,6 +15,39 @@ function Slider(props:{label:string;min:number;max:number;inputRef:(el:HTMLInput
 
 export function ChainPage() {
   const refs = createChainRefs();
+  const [engineError, setEngineError] = createSignal<unknown>(null);
+  const [engineLoading, setEngineLoading] = createSignal(true);
+  let disposed = false;
+  let generation = 0;
+  let disposeEngine: () => void = () => {};
+
+  const startEngine = async () => {
+    const releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
+    const id = ++generation;
+    setEngineError(null);
+    setEngineLoading(true);
+    try { disposeEngine(); } catch {}
+    disposeEngine = () => {};
+    try {
+      const module = await resilientImport(() => import('./chain.ts'));
+      if (disposed || id !== generation) return;
+      disposeEngine = module.mountChain(refs) || (() => {});
+      setEngineLoading(false);
+    } catch (cause) {
+      if (disposed || id !== generation) return;
+      setEngineLoading(false);
+      setEngineError(cause);
+    } finally {
+      releaseLoading();
+    }
+  };
+  onSettled(() => { void startEngine(); });
+  onCleanup(() => {
+    disposed = true;
+    generation++;
+    try { disposeEngine(); } catch {}
+  });
+
   const statsButton = () => <TopBarIconButton ref={el => refs.statsButtons.push(el)} label="Statistics"><BarChart3 aria-hidden="true"/></TopBarIconButton>;
   const gameActions = (settings = false) => <GameTopBarActions ariaLabel="Chain Reaction">
     {statsButton()}
@@ -27,7 +60,7 @@ export function ChainPage() {
     ><Settings aria-hidden="true"/></TopBarIconButton>}
   </GameTopBarActions>;
 
-  return <EngineBoundary label="Chain Reaction" load={() => resilientImport(() => import('./chain.ts'))} mount={module => module.mountChain(refs)}>
+  return <>
     <div class="chain-shell">
       <section ref={el => refs.openingView = el} class="chain-opening chain-view">
         <TopBar nav={gameActions()}/>
@@ -119,5 +152,15 @@ export function ChainPage() {
         </section>
       </section>
     </div>
-  </EngineBoundary>;
+    <Show when={engineLoading()}>
+      <div class="engine-state engine-state-loading" role="status" aria-live="polite">Loading Chain Reaction</div>
+    </Show>
+    <Show when={engineError()}>{cause =>
+      <aside class="engine-state engine-state-error" role="alert" aria-live="assertive">
+        <strong>Chain Reaction failed to start</strong>
+        <span>{(() => { const value = cause(); return value instanceof Error ? value.message : String(value); })()}</span>
+        <button type="button" onClick={() => void startEngine()}>Retry</button>
+      </aside>
+    }</Show>
+  </>;
 }

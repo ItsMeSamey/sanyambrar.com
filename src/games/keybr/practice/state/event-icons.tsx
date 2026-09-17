@@ -1,5 +1,5 @@
 import { type ClassName } from "../../widget/components/types.ts";
-import { AlarmClockCheck, Trophy } from "../../widget/icons.ts";
+import { AlarmClockCheck, Trophy } from "../../../../shared/components/Icons.tsx";
 import { clsx } from "clsx";
 import styles from "./event-icons.module.css";
 import { Dynamic } from '@solidjs/web';

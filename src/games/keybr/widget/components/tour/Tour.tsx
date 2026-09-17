@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { X } from "../../icons.ts";
+import { X } from "../../../../../shared/components/Icons.tsx";
 import { useIntl } from "../../../intl/runtime.tsx";
 import { useHotkeys } from "../../hooks/use-hotkeys.ts";
 import { LinkButton } from "../button/LinkButton.tsx";

@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { CircleAlert, CircleCheck, Info, } from "../../icons.ts";
+import { CircleAlert, CircleCheck, Info, } from "../../../../../shared/components/Icons.tsx";
 
 import { Icon } from "../icon/Icon.tsx";
 export function SeverityIcon(props: {

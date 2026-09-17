@@ -2,7 +2,7 @@ import { omit } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
 
-export type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
+type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
   size?: number | string;
   strokeWidth?: number | string;
   absoluteStrokeWidth?: boolean;

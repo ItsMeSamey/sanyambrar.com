@@ -5,7 +5,7 @@ import { Button } from "../widget/components/button/Button.tsx";
 import { ErrorAlert } from "../widget/components/toast/ErrorAlert.tsx";
 import { Field, FieldList } from "../widget/components/fieldlist/FieldList.tsx";
 import { Icon } from "../widget/components/icon/Icon.tsx";
-import { Trash2, Download, Upload } from "../widget/icons.ts";
+import { Trash2, Download, Upload } from "../../../shared/components/Icons.tsx";
 import { useIntl } from "../intl/runtime.tsx";
 import styles from "./FooterSection.module.css";
 

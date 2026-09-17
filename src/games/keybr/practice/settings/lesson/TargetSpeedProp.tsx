@@ -10,7 +10,7 @@ import { Icon } from "../../../widget/components/icon/Icon.tsx";
 import { IconButton } from "../../../widget/components/button/IconButton.tsx";
 import { Range } from "../../../widget/components/range/Range.tsx";
 import { Value } from "../../../widget/components/text/NameValue.tsx";
-import { SkipForward, SkipBack } from "../../../widget/icons.ts";
+import { SkipForward, SkipBack } from "../../../../../shared/components/Icons.tsx";
 
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function TargetSpeedProp(): JSX.Element {

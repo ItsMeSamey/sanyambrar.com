@@ -2,7 +2,6 @@
 
 import { IDBPDatabase, openDB } from 'idb'
 import { binarySearch, wordAt, wordCount, type WordLength } from './word-list'
-export type { WordLength } from './word-list'
 import { SettingsHardProps } from './popup_settings'
 import { isWordLength, type GameMode } from './challenge'
 

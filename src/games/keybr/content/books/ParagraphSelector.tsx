@@ -4,7 +4,7 @@ import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.ts
 import { Icon } from "../../widget/components/icon/Icon.tsx";
 import { IconButton } from "../../widget/components/button/IconButton.tsx";
 import { Range } from "../../widget/components/range/Range.tsx";
-import { SkipForward, SkipBack } from "../../widget/icons.ts";
+import { SkipForward, SkipBack } from "../../../../shared/components/Icons.tsx";
 
 import { useIntl } from "../../intl/runtime.tsx";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
