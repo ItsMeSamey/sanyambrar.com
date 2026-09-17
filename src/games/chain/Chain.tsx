@@ -1,8 +1,8 @@
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { EngineBoundary } from '../../shared/components/EngineBoundary.tsx';
-import { Settings } from '../../ui-kit/components/lucide.tsx';
-import { ChartNoAxesColumn as BarChart3 } from '../../ui-kit/components/lucide.tsx';
+import { Settings } from '../../shared/components/Icons.tsx';
+import { ChartNoAxesColumn as BarChart3 } from '../../shared/components/Icons.tsx';
 import { createChainRefs } from './dom.ts';
 import { resilientImport } from '../../shared/resilientImport.ts';
 

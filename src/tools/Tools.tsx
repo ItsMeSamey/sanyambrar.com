@@ -1,8 +1,8 @@
 import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import * as Select from '@kobalte/core/select';
 import * as Tabs from '@kobalte/core/tabs';
-import { Check } from '../ui-kit/components/lucide.tsx';
-import { ChevronsUpDown } from '../ui-kit/components/lucide.tsx';
+import { Check } from '../shared/components/Icons.tsx';
+import { ChevronsUpDown } from '../shared/components/Icons.tsx';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { ToolContext, ToolSurface } from './ToolSurface.tsx';

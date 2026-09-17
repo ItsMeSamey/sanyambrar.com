@@ -1,10 +1,10 @@
 import type { JSX } from "@solidjs/web";
 import { getDir } from "../../intl/locale.ts";
 import { names } from "../../lesson-ui/names.ts";
-import { CircleHelp } from '../../../../../ui-kit/components/lucide.tsx';
-import { Maximize2 } from '../../../../../ui-kit/components/lucide.tsx';
-import { Redo2 } from '../../../../../ui-kit/components/lucide.tsx';
-import { Undo2 } from '../../../../../ui-kit/components/lucide.tsx';
+import { CircleHelp } from '../../../../../shared/components/Icons.tsx';
+import { Maximize2 } from '../../../../../shared/components/Icons.tsx';
+import { Redo2 } from '../../../../../shared/components/Icons.tsx';
+import { Undo2 } from '../../../../../shared/components/Icons.tsx';
 
 import { useIntl } from "../../intl/runtime.tsx";
 import * as styles from "./Controls.module.css";

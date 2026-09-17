@@ -1,6 +1,6 @@
 import { type JSX } from '@solidjs/web';
-import { MoonStar } from '../../ui-kit/components/lucide.tsx';
-import { Search } from '../../ui-kit/components/lucide.tsx';
+import { MoonStar } from './Icons.tsx';
+import { Search } from './Icons.tsx';
 import { HomeBrand } from './Brand.tsx';
 import { SmartLink } from './NavLink.tsx';
 

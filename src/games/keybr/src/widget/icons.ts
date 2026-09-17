@@ -21,4 +21,4 @@ export {
   Undo2,
   Upload,
   X,
-} from "../../../../ui-kit/components/lucide.tsx";
+} from "../../../../shared/components/Icons.tsx";

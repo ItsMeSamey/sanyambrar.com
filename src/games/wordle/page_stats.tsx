@@ -1,10 +1,10 @@
 'use strict'
 
-import { ChartNoAxesColumn as BarChart3 } from '../../ui-kit/components/lucide.tsx';
+import { ChartNoAxesColumn as BarChart3 } from '../../shared/components/Icons.tsx';
 import { Accessor, createMemo, createSignal, Errored, For, Loading, onSettled, refresh, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { Root as Accordion, Content as AccordionContent, Item as AccordionItem, Trigger as AccordionTrigger } from '@kobalte/core/accordion'
-import { Popover, PopoverContent, PopoverTrigger } from '../../ui-kit/registry/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../../shared/components/Popover.tsx'
 import { Block } from './page'
 import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value, WORD_STORES } from './words'
 import { Page, setP } from './navigation'
