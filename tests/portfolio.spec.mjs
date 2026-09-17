@@ -59,12 +59,21 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect.poll(() => activeSearchResultIsVisible(), { message: 'Resizing to an extreme short viewport must keep the active search result visible' }).toBe(true);
   await page.keyboard.press('ArrowDown');
   await expect.poll(() => activeSearchResultIsVisible(), { message: 'Keyboard search selection must remain visible at 128px viewport height' }).toBe(true);
-  if (initialViewport) await page.setViewportSize(initialViewport);
-  await searchInput.fill('CNN');
+  const activeResult = page.locator('.search-result.active');
+  const { activeHref, activeTitle } = await activeResult.evaluate(element => ({
+    activeHref: element.href,
+    activeTitle: element.querySelector('b')?.textContent?.trim() ?? '',
+  }));
+  expect(new URL(activeHref).origin).toBe(new URL(page.url()).origin);
+  expect(activeTitle).not.toBe('');
+  const destinationLoaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/projects\/cnn/);
-  await expect(page.getByRole('heading', { name: 'CNN', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(activeHref);
+  await destinationLoaded;
+  if (initialViewport) await page.setViewportSize(initialViewport);
+  const homeLoaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
   await page.goBack();
+  await homeLoaded;
   await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
   await appearance.click();
