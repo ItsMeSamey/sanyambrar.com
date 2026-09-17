@@ -311,21 +311,55 @@ export function runReverbDemoRuntime(
     showScreen(incidentsReturnScreen),
   );
 
-  const openAbout = () => {
+  const aboutSheet = byId<HTMLElement>("aboutSheet");
+  let aboutReturnFocus: HTMLElement | null = null;
+  const aboutFocusable = () => [...aboutSheet.querySelectorAll<HTMLElement>(
+    'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
+  )].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
+  const openAbout = (event: Event) => {
+    aboutReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    aboutSheet.inert = false;
+    aboutSheet.setAttribute("aria-hidden", "false");
     phone.classList.add("about-open");
     // The Android app hides the live visualizer while the About dialog is open,
     // which lets the blob settle back to its compact idle body under the scrim.
     syncBufferUi();
+    requestAnimationFrame(() => byId<HTMLElement>("aboutClose").focus({ preventScroll: true }));
   };
   const closeAbout = () => {
+    if (!phone.classList.contains("about-open")) return;
     phone.classList.remove("about-open");
+    aboutSheet.inert = true;
+    aboutSheet.setAttribute("aria-hidden", "true");
     syncBufferUi();
+    const target = aboutReturnFocus;
+    aboutReturnFocus = null;
+    if (target) requestAnimationFrame(() => target.isConnected && target.focus({ preventScroll: true }));
   };
   ["brandButton", "libraryBrand", "rangeBrand"].forEach((id) =>
     byId(id).addEventListener("click", openAbout),
   );
-  byId("aboutClose").addEventListener("click", closeAbout);
-  byId("aboutScrim").addEventListener("click", closeAbout);
+  byId("aboutClose").addEventListener("click", () => closeAbout());
+  byId("aboutScrim").addEventListener("click", () => closeAbout());
+  document.addEventListener("keydown", (event) => {
+    if (!(event instanceof KeyboardEvent) || !phone.classList.contains("about-open")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAbout();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = aboutFocusable();
+    if (!focusable.length) return;
+    const current = event.target instanceof HTMLElement ? event.target : null;
+    const index = current ? focusable.indexOf(current) : -1;
+    const next = event.shiftKey
+      ? index <= 0 ? focusable[focusable.length - 1] : focusable[index - 1]
+      : index < 0 || index === focusable.length - 1 ? focusable[0] : focusable[index + 1];
+    event.preventDefault();
+    next.focus({ preventScroll: true });
+  });
   const incidentCard = byId<HTMLElement>("incidentCard");
   const incidentIndicator = byId<HTMLElement>("ackIncident");
   const incidentCheckUse = byId<SVGUseElement>("incidentCheckUse");
