@@ -424,6 +424,8 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 }
 @media(max-width:520px){.wordle-topbar-context{--wordle-mark-cell:18px;--wordle-mark-font:8px}.wordle-back-wordmark{--wordle-mark-cell:18px;--wordle-mark-font:8px}}
 @media(max-width:440px){.wordle-opening{padding-inline:10px}.wordle-mode-grid{grid-template-columns:1fr}.wordle-mode-card-primary{grid-column:auto}.wordle-mode-card{min-height:132px}.wordle-key-row{gap:2px}.wordle-key-row-offset{padding-inline:3%}}
+@media(max-width:160px){.wordle-back-wordmark i:not(:first-child){display:none}.wordle-topbar-context{display:none!important}}
+@media(max-height:240px){.wordle-game-shell{padding-top:2px!important}.wordle-keyboard-inner{gap:2px}.wordle-key{height:28px;font-size:.7rem}}
 @media(max-height:560px){.wordle-keyboard{padding-bottom:2px}}
 
 /* Rectilinear game controls make construction transitions read as edges, not hover pills. */
