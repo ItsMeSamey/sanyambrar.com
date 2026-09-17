@@ -5,19 +5,20 @@ import { createServer } from 'vite';
 const root = resolve(import.meta.dirname, '..');
 const target = process.argv[2] ?? 'site';
 const targets = {
-  site: { config: 'vite.site.config.ts', port: 4320 },
-  wordle: { config: 'vite.config.ts', port: 4321, html: 'src/games/wordle/index.html' },
-  keybr: { config: 'src/games/keybr/vite.config.ts', port: 4322, html: 'src/games/keybr/index.html' },
+  site: { port: 4320 },
+  wordle: { port: 4321, html: 'src/games/wordle/index.html' },
+  keybr: { port: 4322, html: 'src/games/keybr/index.html' },
 };
 if (!Object.hasOwn(targets, target)) throw new Error('Expected site, wordle, or keybr');
 const settings = targets[target];
 const requestedPort = Number(process.env.SAMEY_DEV_PORT ?? settings.port);
 if (!Number.isSafeInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535) throw new Error('SAMEY_DEV_PORT must be a valid port');
 const docs = resolve(root, 'docs');
+process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
 const server = await createServer({
-  configFile: resolve(root, settings.config),
+  configFile: resolve(root, 'vite.config.ts'),
   cacheDir: resolve(root, `.tmp/vite-${target}-${requestedPort}`),
   server: { host: '127.0.0.1', port: requestedPort, strictPort: true },
   plugins: [{
