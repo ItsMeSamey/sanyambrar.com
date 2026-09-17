@@ -3,7 +3,7 @@
 import { ChartNoAxesColumn as BarChart3 } from '../../ui-kit/components/lucide.tsx';
 import { Accessor, createMemo, createSignal, Errored, For, Loading, onSettled, refresh, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/registry/ui/accordion'
+import { Root as Accordion, Content as AccordionContent, Item as AccordionItem, Trigger as AccordionTrigger } from '@kobalte/core/accordion'
 import { Popover, PopoverContent, PopoverTrigger } from '~/registry/ui/popover'
 import { Block } from './page'
 import { calcDiff, getReadyDB, HistoryEntry, KindEnum, Value, WORD_STORES } from './words'
