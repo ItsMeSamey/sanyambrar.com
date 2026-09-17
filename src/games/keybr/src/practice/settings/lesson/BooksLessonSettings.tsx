@@ -1,10 +1,19 @@
 import type { JSX } from "@solidjs/web";
-import { BookPreview, BookSelector, ParagraphPreview, ParagraphSelector, } from "@keybr/content";
-import { BooksLesson, lessonProps } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { Toggle, Description, Explainer, Field, FieldList, FieldSet, Spacer, } from "@keybr/widget";
+import { BookPreview } from "../../../content/books/BookPreview.tsx";
+import { BookSelector } from "../../../content/books/BookSelector.tsx";
+import { ParagraphPreview } from "../../../content/books/ParagraphPreview.tsx";
+import { ParagraphSelector } from "../../../content/books/ParagraphSelector.tsx";
+import { BooksLesson } from "../../../lesson/books.ts";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Toggle } from "../../../widget/components/toggle/Toggle.tsx";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
+import { Spacer } from "../../../widget/components/text/Spacer.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 export function BooksLessonSettings(props: {

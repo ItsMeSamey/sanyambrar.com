@@ -1,4 +1,4 @@
-import { Color } from "@keybr/color";
+import { Color } from "../../../color/color.ts";
 
 export type ColorValue = Color | string | CanvasGradient | CanvasPattern;
 

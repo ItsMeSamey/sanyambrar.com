@@ -1,4 +1,4 @@
-import { type Result } from "@keybr/result";
+import { type Result } from "../../../result/result.ts";
 import {
   type LessonEventListener,
   type LessonEventSource,

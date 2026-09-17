@@ -1,4 +1,4 @@
-import { type CodePoint, type CodePointSet } from "@keybr/unicode";
+import { type CodePoint, type CodePointSet } from "../unicode/types.ts";
 
 export type HasLetter = {
   readonly letter: Letter;

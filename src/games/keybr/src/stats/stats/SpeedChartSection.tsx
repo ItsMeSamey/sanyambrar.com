@@ -1,10 +1,12 @@
 import { createSignal } from 'solid-js';
-import { Marker, SpeedChart } from "@keybr/chart";
-import { hasData } from "@keybr/math";
-import { type Result } from "@keybr/result";
-import { Explainer, Figure } from "@keybr/widget";
+import { Marker } from "../../chart/Marker.tsx";
+import { SpeedChart } from "../../chart/SpeedChart.tsx";
+import { hasData } from "../../math/util.ts";
+import { type Result } from "../../result/result.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
 
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 import { SmoothnessRange } from "./SmoothnessRange.tsx";
 export function SpeedChartSection(props: {

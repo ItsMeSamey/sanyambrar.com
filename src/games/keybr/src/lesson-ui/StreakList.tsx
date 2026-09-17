@@ -1,7 +1,9 @@
-import { useIntlNumbers } from "@keybr/intl";
-import { type StreakList as StreakListType } from "@keybr/result";
-import { type ClassName, styleTextTruncate, Value } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { type StreakList as StreakListType } from "../result/accuracy.ts";
+import { type ClassName } from "../widget/components/types.ts";
+import { styleTextTruncate } from "../widget/styles/text.ts";
+import { Value } from "../widget/components/text/NameValue.tsx";
+import { FormattedMessage } from "../intl/runtime.tsx";
 export const StreakList = (props: {
     id?: string;
     className?: ClassName;

@@ -1,4 +1,4 @@
-import { type Focusable } from "@keybr/widget";
+import { type Focusable } from "../widget/components/types.ts";
 import { mapEvent, timeStampOf } from "./events.ts";
 import { isTextInput, ModifierState } from "./modifiers.ts";
 import { TimeToType } from "./timetotype.ts";

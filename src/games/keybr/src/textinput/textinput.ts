@@ -1,5 +1,5 @@
-import { filterText } from "@keybr/keyboard";
-import { type CodePoint } from "@keybr/unicode";
+import { filterText } from "../keyboard/filter.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import {
   Attr,
   type Char,

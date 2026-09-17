@@ -1,4 +1,4 @@
-import { itemProp } from "@keybr/settings";
+import { itemProp } from "../settings/props.ts";
 import { SpeedUnit } from "./speedunit.ts";
 
 export const uiProps = {

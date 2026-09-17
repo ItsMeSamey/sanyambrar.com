@@ -1,5 +1,6 @@
-import { Field, FieldList, Range } from "@keybr/widget";
-import { defineMessage, useIntl } from "@keybr/intl";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { Range } from "../../widget/components/range/Range.tsx";
+import { defineMessage, useIntl } from "../../intl/runtime.tsx";
 export function SmoothnessRange(props: {
     value: number;
     disabled: boolean;

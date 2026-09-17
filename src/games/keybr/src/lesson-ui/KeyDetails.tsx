@@ -1,9 +1,11 @@
-import { LearningRate, type LessonKey, Target } from "@keybr/lesson";
-import { timeToSpeed } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { Name, NameValue, Value } from "@keybr/widget";
+import { LearningRate } from "../lesson/learningrate.ts";
+import { type LessonKey } from "../lesson/key.ts";
+import { Target } from "../lesson/target.ts";
+import { timeToSpeed } from "../result/result.ts";
+import { useSettings } from "../settings/context.ts";
+import { Name, NameValue, Value } from "../widget/components/text/NameValue.tsx";
 import { clsx } from "clsx";
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { useFormatter } from "./format.ts";
 import { createMemo, Show } from 'solid-js';
 import { Happiness } from "./Happiness.tsx";

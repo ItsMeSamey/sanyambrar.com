@@ -1,10 +1,15 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlDurations } from "@keybr/intl";
-import { lessonProps } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { Description, Explainer, Field, FieldList, FieldSet, Range, Value, } from "@keybr/widget";
+import { useIntlDurations } from "../../../intl/durations.ts";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../../widget/components/form/Form.tsx";
+import { Range } from "../../../widget/components/range/Range.tsx";
+import { Value } from "../../../widget/components/text/NameValue.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function DailyGoalSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatDuration } = useIntlDurations();

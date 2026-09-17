@@ -1,4 +1,4 @@
-import { useIntlDisplayNames } from "@keybr/intl";
+import { useIntlDisplayNames } from "../intl/displaynames.ts";
 import { type Language } from "./language.ts";
 import { type Layout } from "./layout.ts";
 

@@ -1,5 +1,5 @@
-import { type LessonKey } from "@keybr/lesson";
-import { type Result } from "@keybr/result";
+import { type LessonKey } from "../../../lesson/key.ts";
+import { type Result } from "../../../result/result.ts";
 
 export type NewLetterEvent = {
   readonly type: "new-letter";

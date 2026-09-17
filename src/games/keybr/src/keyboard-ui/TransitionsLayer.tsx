@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { type KeyShape, useKeyboard } from "@keybr/keyboard";
-import { type CodePoint } from "@keybr/unicode";
+import { type KeyShape } from "../keyboard/keyshape.ts";
+import { useKeyboard } from "../keyboard/context.tsx";
+import { type CodePoint } from "../unicode/types.ts";
 import { clsx } from "clsx";
 
 import { getKeyCenter, Surface } from "./shapes.tsx";

@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { Alert, toast } from "@keybr/widget";
+import { Alert } from "../widget/components/toast/Alert.tsx";
+import { toast } from "../widget/components/toast/Toaster.tsx";
 
 import { ErrorReport } from "./ErrorReport.tsx";
 import { formatReport, inspectError } from "./inspect.ts";

@@ -1,14 +1,28 @@
 import { createEffect, createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
-import { useCollator } from "@keybr/intl";
-import { Emulation, Geometry, KeyboardOptions, keyboardProps, Language, Layout, useFormattedNames, useKeyboard, ZoneMod, } from "@keybr/keyboard";
-import { KeyLayer, PointersLayer, VirtualKeyboard } from "@keybr/keyboard-ui";
-import { Tasks } from "@keybr/lang";
-import { useSettings } from "@keybr/settings";
-import { ModifierState, useDepressedKeys } from "@keybr/textinput-events";
-import { type CodePoint } from "@keybr/unicode";
-import { Description, Explainer, Field, FieldList, FieldSet, OptionList, SegmentedControl, Toggle, } from "@keybr/widget";
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { useCollator } from "../../intl/collator.ts";
+import { Emulation, KeyboardOptions, keyboardProps } from "../../keyboard/settings.ts";
+import { Geometry, ZoneMod } from "../../keyboard/geometry.ts";
+import { Language } from "../../keyboard/language.ts";
+import { Layout } from "../../keyboard/layout.ts";
+import { useFormattedNames } from "../../keyboard/use-formatted-names.ts";
+import { useKeyboard } from "../../keyboard/context.tsx";
+import { KeyLayer } from "../../keyboard-ui/KeyLayer.tsx";
+import { PointersLayer } from "../../keyboard-ui/PointersLayer.tsx";
+import { VirtualKeyboard } from "../../keyboard-ui/VirtualKeyboard.tsx";
+import { Tasks } from "../../lang/tasks.ts";
+import { useSettings } from "../../settings/context.ts";
+import { ModifierState } from "../../textinput-events/modifiers.ts";
+import { useDepressedKeys } from "../../textinput-events/use-depressed-keys.ts";
+import { type CodePoint } from "../../unicode/types.ts";
+import { Description } from "../../widget/components/text/Description.tsx";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { FieldSet } from "../../widget/components/form/Form.tsx";
+import { OptionList } from "../../widget/components/optionlist/OptionList.tsx";
+import { SegmentedControl } from "../../widget/components/segmented/SegmentedControl.tsx";
+import { Toggle } from "../../widget/components/toggle/Toggle.tsx";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 export function KeyboardSettings(): JSX.Element {
     const { formatMessage } = useIntl();
     return (<>

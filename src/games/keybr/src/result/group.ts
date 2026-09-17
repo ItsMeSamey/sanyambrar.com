@@ -1,4 +1,4 @@
-import { type Layout } from "@keybr/keyboard";
+import { type Layout } from "../keyboard/layout.ts";
 import { LocalDate } from "./localdate.ts";
 import { type Result } from "./result.ts";
 

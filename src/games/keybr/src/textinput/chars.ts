@@ -1,4 +1,5 @@
-import { type CodePoint, toCodePoints } from "@keybr/unicode";
+import { type CodePoint } from "../unicode/types.ts";
+import { toCodePoints } from "../unicode/codepoints.ts";
 
 export type StyledText = string | StyledTextSpan | readonly StyledText[];
 

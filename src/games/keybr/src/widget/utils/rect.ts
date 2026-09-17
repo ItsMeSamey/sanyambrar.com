@@ -1,4 +1,4 @@
-import { isNumber, isObjectLike } from "@keybr/lang";
+import { isNumber, isObjectLike } from "../../lang/types.ts";
 import { Point, type TPoint } from "./point.ts";
 import { Size, type TSize } from "./size.ts";
 

@@ -1,4 +1,4 @@
-import { Tasks } from "@keybr/lang";
+import { Tasks } from "../../lang/tasks.ts";
 import { onCleanup } from "solid-js";
 
 export const useTasks = () => {

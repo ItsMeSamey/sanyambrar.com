@@ -1,8 +1,12 @@
 import type { JSX } from "@solidjs/web";
 import type { Component } from "solid-js";
-import { type DeadCharacter, KeyCharacters, type KeyShape, type LabelShape, type Language, type LigatureCharacter, } from "@keybr/keyboard";
-import { type CodePoint, isDiacritic } from "@keybr/unicode";
-import { type ClassName, type MouseProps } from "@keybr/widget";
+import { type DeadCharacter, type LabelShape, type LigatureCharacter } from "../keyboard/types.ts";
+import { KeyCharacters } from "../keyboard/keycharacters.ts";
+import { type KeyShape } from "../keyboard/keyshape.ts";
+import { type Language } from "../keyboard/language.ts";
+import { type CodePoint } from "../unicode/types.ts";
+import { isDiacritic } from "../unicode/diacritics.ts";
+import { type ClassName, type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 
 import * as styles from "./Key.module.css";

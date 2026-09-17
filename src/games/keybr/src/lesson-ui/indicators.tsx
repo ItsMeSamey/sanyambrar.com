@@ -1,8 +1,10 @@
-import { type DailyGoal as DailyGoalType, type LessonKey, type LessonKeys, } from "@keybr/lesson";
-import { type StreakList as StreakListType, type SummaryStats, } from "@keybr/result";
-import { Name } from "@keybr/widget";
+import { type DailyGoal as DailyGoalType } from "../lesson/dailygoal.ts";
+import { type LessonKey, type LessonKeys } from "../lesson/key.ts";
+import { type StreakList as StreakListType } from "../result/accuracy.ts";
+import { type SummaryStats } from "../result/summarystats.ts";
+import { Name } from "../widget/components/text/NameValue.tsx";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../intl/runtime.tsx";
 import { CurrentKey } from "./CurrentKey.tsx";
 import { DailyGoal } from "./DailyGoal.tsx";
 import { GaugeList } from "./gauges.tsx";

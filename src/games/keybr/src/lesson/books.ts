@@ -1,15 +1,12 @@
-import {
-  type Book,
-  type BookContent,
-  type Content,
-  flattenContent,
-  splitParagraph,
-} from "@keybr/content";
-import { filterText, type Keyboard } from "@keybr/keyboard";
-import { clamp } from "@keybr/lang";
-import { type PhoneticModel } from "@keybr/phonetic-model";
-import { type KeyStatsMap } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { type Book } from "../content/books/book.ts";
+import { type BookContent, type Content } from "../content/books/types.ts";
+import { flattenContent, splitParagraph } from "../content/books/util.ts";
+import { filterText } from "../keyboard/filter.ts";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { clamp } from "../lang/math.ts";
+import { type PhoneticModel } from "../phonetic-model/phoneticmodel.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { type Settings } from "../settings/settings.ts";
 import { LessonKeys } from "./key.ts";
 import { Lesson } from "./lesson.ts";
 import { lessonProps } from "./settings.ts";

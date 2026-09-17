@@ -1,10 +1,9 @@
-import { type Language } from "@keybr/keyboard";
-import {
-  type Filter,
-  type Letter,
-  type PhoneticModel,
-} from "@keybr/phonetic-model";
-import { randomSample, type RNG, weightedRandomSample } from "@keybr/rand";
+import { type Language } from "../../keyboard/language.ts";
+import { type Filter } from "../../phonetic-model/filter.ts";
+import { type Letter } from "../../phonetic-model/letter.ts";
+import { type PhoneticModel } from "../../phonetic-model/phoneticmodel.ts";
+import { randomSample, weightedRandomSample } from "../../rand/sample.ts";
+import { type RNG } from "../../rand/types.ts";
 
 export type WordGenerator = () => string | "" | null;
 

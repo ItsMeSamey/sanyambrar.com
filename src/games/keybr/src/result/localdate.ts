@@ -1,4 +1,4 @@
-import { isNumber } from "@keybr/lang";
+import { isNumber } from "../lang/types.ts";
 
 enum Month {
   January = 1,

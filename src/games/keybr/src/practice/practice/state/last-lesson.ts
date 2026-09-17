@@ -1,8 +1,9 @@
-import { Ngram2 } from "@keybr/keyboard";
-import { Histogram, KeySet } from "@keybr/math";
-import { type Result } from "@keybr/result";
-import { type Step } from "@keybr/textinput";
-import { type HasCodePoint } from "@keybr/unicode";
+import { Ngram2 } from "../../../keyboard/ngram.ts";
+import { Histogram } from "../../../math/histogram.ts";
+import { KeySet } from "../../../math/keyset.ts";
+import { type Result } from "../../../result/result.ts";
+import { type Step } from "../../../textinput/textinput.ts";
+import { type HasCodePoint } from "../../../unicode/types.ts";
 
 export type LastLesson = {
   readonly result: Result;

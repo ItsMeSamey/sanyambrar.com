@@ -1,8 +1,12 @@
-import { Result, useResults } from "@keybr/result";
-import { resultFromJson, resultToJson } from "@keybr/result";
-import { Button, ErrorAlert, Field, FieldList, Icon } from "@keybr/widget";
-import { Trash2, Download, Upload } from "@keybr/widget";
-import { useIntl } from "@keybr/intl";
+import { Result } from "../../result/result.ts";
+import { useResults } from "../../result/context.ts";
+import { resultFromJson, resultToJson } from "../../result/json.ts";
+import { Button } from "../../widget/components/button/Button.tsx";
+import { ErrorAlert } from "../../widget/components/toast/ErrorAlert.tsx";
+import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.tsx";
+import { Icon } from "../../widget/components/icon/Icon.tsx";
+import { Trash2, Download, Upload } from "../../widget/icons.ts";
+import { useIntl } from "../../intl/runtime.tsx";
 import * as styles from "./FooterSection.module.css";
 
 export function FooterSection() {

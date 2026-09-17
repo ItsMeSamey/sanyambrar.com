@@ -1,5 +1,5 @@
-import { type Settings } from "@keybr/settings";
-import { Feedback } from "@keybr/textinput";
+import { type Settings } from "../settings/settings.ts";
+import { Feedback } from "../textinput/textinput.ts";
 import { PlaySounds, soundProps, SoundTheme } from "./settings.ts";
 import { Theme } from "./sound.ts";
 import { defaultTheme } from "./themes/default.ts";

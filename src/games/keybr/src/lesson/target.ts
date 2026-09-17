@@ -1,5 +1,5 @@
-import { speedToTime } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { speedToTime } from "../result/result.ts";
+import { type Settings } from "../settings/settings.ts";
 import { lessonProps } from "./settings.ts";
 
 export class Target {

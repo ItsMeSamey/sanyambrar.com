@@ -16,16 +16,10 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "types": [
       "vite/client",
       "node"
     ],
-    "paths": {
-      "@keybr/*": [
-        "src/*/index.ts"
-      ]
-    },
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,

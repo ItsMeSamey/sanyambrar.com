@@ -1,5 +1,6 @@
 import type { JSX } from "@solidjs/web";
-import { type LineList, type TextDisplaySettings } from "@keybr/textinput";
+import { type LineList } from "../textinput/chars.ts";
+import { type TextDisplaySettings } from "../textinput/settings.ts";
 
 import { TextLines, type TextLineSize } from "./TextLines.tsx";
 export function StaticText(props: {

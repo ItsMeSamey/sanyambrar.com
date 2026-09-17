@@ -1,12 +1,11 @@
-import { type LoadingEventListener } from "@keybr/lang";
-import { type Lesson, MutableDailyGoal } from "@keybr/lesson";
-import {
-  MutableKeyStatsMap,
-  MutableStreakList,
-  MutableSummaryStats,
-  type Result,
-} from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { type LoadingEventListener } from "../../../lang/loading.ts";
+import { type Lesson } from "../../../lesson/lesson.ts";
+import { MutableDailyGoal } from "../../../lesson/dailygoal.ts";
+import { MutableKeyStatsMap } from "../../../result/keystats.ts";
+import { MutableStreakList } from "../../../result/accuracy.ts";
+import { MutableSummaryStats } from "../../../result/summarystats.ts";
+import { type Result } from "../../../result/result.ts";
+import { type Settings } from "../../../settings/settings.ts";
 import { DailyGoalEvents } from "./event-source-daily-goal.ts";
 import { LetterEvents } from "./event-source-letter.ts";
 import { TopScoreEvents } from "./event-source-top-score.ts";

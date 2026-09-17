@@ -1,9 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { useIntlNumbers } from "@keybr/intl";
-import { type LearningRate, type LessonKey } from "@keybr/lesson";
-import { Name, Para, Value } from "@keybr/widget";
+import { useIntlNumbers } from "../../intl/numbers.ts";
+import { type LearningRate } from "../../lesson/learningrate.ts";
+import { type LessonKey } from "../../lesson/key.ts";
+import { Name, Value } from "../../widget/components/text/NameValue.tsx";
+import { Para } from "../../widget/components/text/Para.tsx";
 
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 export function LearningRateDescription(props: {
     readonly lessonKey: LessonKey;
     readonly learningRate: LearningRate | null;

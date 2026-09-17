@@ -1,12 +1,19 @@
-import { type KeyId, useKeyboard } from "@keybr/keyboard";
-import { type Result } from "@keybr/result";
-import { type LineList } from "@keybr/textinput";
-import { addKey, deleteKey, emulateLayout } from "@keybr/textinput-events";
-import { makeSoundPlayer } from "@keybr/textinput-sounds";
-import { useDocumentEvent, useHotkeys, useTimeout, useWindowEvent } from "@keybr/widget";
+import { type KeyId } from "../../keyboard/types.ts";
+import { useKeyboard } from "../../keyboard/context.tsx";
+import { type Result } from "../../result/result.ts";
+import { type LineList } from "../../textinput/chars.ts";
+import { addKey, deleteKey } from "../../textinput-events/use-depressed-keys.ts";
+import { emulateLayout } from "../../textinput-events/emulation.ts";
+import { makeSoundPlayer } from "../../textinput-sounds/player.ts";
+import { useDocumentEvent } from "../../widget/hooks/use-document-event.ts";
+import { useHotkeys } from "../../widget/hooks/use-hotkeys.ts";
+import { useTimeout } from "../../widget/hooks/use-timeout.ts";
+import { useWindowEvent } from "../../widget/hooks/use-window-event.ts";
 import { createMemo, createSignal } from 'solid-js';
 import { Presenter } from "./Presenter.tsx";
-import { type LastLesson, LessonState, makeLastLesson, type Progress } from "./state/index.ts";
+import { type LastLesson, makeLastLesson } from "./state/last-lesson.ts";
+import { LessonState } from "./state/lesson-state.ts";
+import { type Progress } from "./state/progress.ts";
 
 export function Controller(props: {
   readonly progress: Progress;

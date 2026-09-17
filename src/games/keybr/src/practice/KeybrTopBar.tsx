@@ -2,7 +2,7 @@ import { HomeBrand, KeybrMark } from "../../../../shared/components/Brand.tsx";
 import { BackLink, GameTopBarActions, TopBar, TopBarIconButton } from "../../../../shared/components/TopBar.tsx";
 import { ChartNoAxesColumn as BarChart3 } from '../../../../ui-kit/components/lucide.tsx';
 import { Settings as SettingsIcon } from '../../../../ui-kit/components/lucide.tsx';
-import { useView } from "@keybr/widget";
+import { useView } from "../widget/components/view/ViewSwitch.tsx";
 import { Show } from 'solid-js';
 import { views } from "./views.tsx";
 

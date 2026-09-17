@@ -1,19 +1,12 @@
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite";
 
 const root = import.meta.dirname;
-const sourceDir = join(root, "src");
-const moduleAlias = {
-  find: /^@keybr\/([^/]+)$/,
-  replacement: join(sourceDir, "$1", "index.ts"),
-};
-
 export default defineConfig(({ mode }) => ({
   root,
   base: "./",
   assetsInclude: ["**/*.data"],
-  resolve: { alias: [moduleAlias] },
   plugins: [solid()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
   css: { modules: { localsConvention: "camelCase" } },

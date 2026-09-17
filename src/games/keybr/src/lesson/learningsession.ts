@@ -1,4 +1,4 @@
-import { type KeySample } from "@keybr/result";
+import { type KeySample } from "../result/keystats.ts";
 
 export function findSession(samples: readonly KeySample[]): KeySample[] {
   const { length } = samples;

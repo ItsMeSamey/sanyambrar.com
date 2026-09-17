@@ -1,10 +1,16 @@
 import type { JSX } from "@solidjs/web";
-import { type BooksLesson, type CustomTextLesson, type Lesson, lessonProps, LessonType, type WordListLesson, } from "@keybr/lesson";
-import { LessonLoader } from "@keybr/lesson";
-import { type Settings, useSettings } from "@keybr/settings";
-import { SegmentedControl } from "@keybr/widget";
+import { type BooksLesson } from "../../lesson/books.ts";
+import { type CustomTextLesson } from "../../lesson/customtext.ts";
+import { type Lesson } from "../../lesson/lesson.ts";
+import { lessonProps } from "../../lesson/settings.ts";
+import { LessonType } from "../../lesson/lessontype.ts";
+import { type WordListLesson } from "../../lesson/wordlist.ts";
+import { LessonLoader } from "../../lesson/loader.tsx";
+import { type Settings } from "../../settings/settings.ts";
+import { useSettings } from "../../settings/context.ts";
+import { SegmentedControl } from "../../widget/components/segmented/SegmentedControl.tsx";
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../../intl/runtime.tsx";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
 import { CodeLessonSettings } from "./lesson/CodeLessonSettings.tsx";
 import { CustomTextLessonSettings } from "./lesson/CustomTextLessonSettings.tsx";

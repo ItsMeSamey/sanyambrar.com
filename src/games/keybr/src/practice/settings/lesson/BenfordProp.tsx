@@ -1,9 +1,13 @@
 import type { JSX } from "@solidjs/web";
-import { lessonProps } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { Toggle, Description, Explainer, Field, FieldList, Link, } from "@keybr/widget";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Toggle } from "../../../widget/components/toggle/Toggle.tsx";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { Link } from "../../../widget/components/text/Link.tsx";
 
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function BenfordProp(): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();

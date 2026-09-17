@@ -1,4 +1,4 @@
-import { Language } from "@keybr/keyboard";
+import { Language } from "../keyboard/language.ts";
 import AR from "./assets/model-ar.data";
 import BE from "./assets/model-be.data";
 import BR from "./assets/model-br.data";

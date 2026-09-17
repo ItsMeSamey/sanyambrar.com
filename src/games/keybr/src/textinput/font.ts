@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { type Language } from "@keybr/keyboard";
-import { Enum, type EnumItem } from "@keybr/lang";
-import { type FontFace, FONTS_FACES, type Script, MONOSPACE, } from "@keybr/themes";
+import { type Language } from "../keyboard/language.ts";
+import { Enum, type EnumItem } from "../lang/enum.ts";
+import { type FontFace, FONTS_FACES, type Script, MONOSPACE } from "../themes/fonts.ts";
 
 export class Font implements EnumItem {
     static readonly ALL = new Enum<Font>(...FONTS_FACES.map((fontFace) => new Font(fontFace)));

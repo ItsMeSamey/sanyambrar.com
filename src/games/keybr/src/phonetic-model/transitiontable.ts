@@ -1,5 +1,6 @@
-import { type Language, Ngram1, Ngram2 } from "@keybr/keyboard";
-import { type CodePoint } from "@keybr/unicode";
+import { type Language } from "../keyboard/language.ts";
+import { Ngram1, Ngram2 } from "../keyboard/ngram.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import { Letter } from "./letter.ts";
 
 const signature = Object.freeze([

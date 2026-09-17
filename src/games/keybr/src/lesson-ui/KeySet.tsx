@@ -1,5 +1,5 @@
-import { type LessonKey, type LessonKeys } from "@keybr/lesson";
-import { type ClassName } from "@keybr/widget";
+import { type LessonKey, type LessonKeys } from "../lesson/key.ts";
+import { type ClassName } from "../widget/components/types.ts";
 import { Key } from "./Key.tsx";
 export const KeySet = (props: {
     id?: string;

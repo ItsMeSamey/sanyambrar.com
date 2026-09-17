@@ -1,8 +1,9 @@
-import { filterText, type Keyboard } from "@keybr/keyboard";
-import { type PhoneticModel } from "@keybr/phonetic-model";
-import { type RNGStream } from "@keybr/rand";
-import { type KeyStatsMap } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { filterText } from "../keyboard/filter.ts";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { type PhoneticModel } from "../phonetic-model/phoneticmodel.ts";
+import { type RNGStream } from "../rand/types.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { type Settings } from "../settings/settings.ts";
 import { LessonKeys } from "./key.ts";
 import { Lesson } from "./lesson.ts";
 import { lessonProps } from "./settings.ts";

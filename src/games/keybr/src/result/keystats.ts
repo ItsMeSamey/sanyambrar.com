@@ -1,5 +1,5 @@
-import { type Filter, makeFilter } from "@keybr/math";
-import { type Letter } from "@keybr/phonetic-model";
+import { type Filter, makeFilter } from "../math/filter.ts";
+import { type Letter } from "../phonetic-model/letter.ts";
 import { type Result } from "./result.ts";
 
 export function makeKeyStatsMap(

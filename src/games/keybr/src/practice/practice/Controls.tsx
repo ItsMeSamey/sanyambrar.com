@@ -1,12 +1,12 @@
 import type { JSX } from "@solidjs/web";
-import { getDir } from "@keybr/intl";
-import { names } from "@keybr/lesson-ui";
+import { getDir } from "../../intl/locale.ts";
+import { names } from "../../lesson-ui/names.ts";
 import { CircleHelp } from '../../../../../ui-kit/components/lucide.tsx';
 import { Maximize2 } from '../../../../../ui-kit/components/lucide.tsx';
 import { Redo2 } from '../../../../../ui-kit/components/lucide.tsx';
 import { Undo2 } from '../../../../../ui-kit/components/lucide.tsx';
 
-import { useIntl } from "@keybr/intl";
+import { useIntl } from "../../intl/runtime.tsx";
 import * as styles from "./Controls.module.css";
 function ControlButton(props: {
     readonly title: string;

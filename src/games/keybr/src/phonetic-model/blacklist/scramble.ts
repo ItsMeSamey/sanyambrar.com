@@ -1,4 +1,4 @@
-import { toCodePoints } from "@keybr/unicode";
+import { toCodePoints } from "../../unicode/codepoints.ts";
 
 const X = 23;
 const Y = 13;

@@ -1,14 +1,8 @@
-import {
-  type CodePoint,
-  type CodePointSet,
-  expand,
-  isControl,
-  isDiacritic,
-  isLinebreak,
-  isWhitespace,
-  replace,
-  toCodePoints,
-} from "@keybr/unicode";
+import { type CodePoint, type CodePointSet } from "../unicode/types.ts";
+import { expand, replace } from "../unicode/normalize.ts";
+import { isControl, isLinebreak, isWhitespace } from "../unicode/whitespace.ts";
+import { isDiacritic } from "../unicode/diacritics.ts";
+import { toCodePoints } from "../unicode/codepoints.ts";
 
 /**
  * Removes any illegal characters from the specified text, collapses whitespace.

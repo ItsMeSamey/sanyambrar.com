@@ -1,4 +1,4 @@
-import { type Settings } from "@keybr/settings";
+import { type Settings } from "../../settings/settings.ts";
 import { lessonProps } from "../settings.ts";
 import { type WordGenerator } from "./words.ts";
 

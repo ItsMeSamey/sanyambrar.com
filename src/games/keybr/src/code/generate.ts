@@ -1,5 +1,6 @@
-import { LCG, type RNG } from "@keybr/rand";
-import { type StyledText } from "@keybr/textinput";
+import { LCG } from "../rand/rng/lcg.ts";
+import { type RNG } from "../rand/types.ts";
+import { type StyledText } from "../textinput/chars.ts";
 import {
   findRule,
   type Grammar,

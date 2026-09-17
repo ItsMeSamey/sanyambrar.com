@@ -1,6 +1,8 @@
-import { useIntlDurations, useIntlNumbers } from "@keybr/intl";
-import { type DailyGoal as DailyGoalType } from "@keybr/lesson";
-import { type ClassName, Value } from "@keybr/widget";
+import { useIntlDurations } from "../intl/durations.ts";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { type DailyGoal as DailyGoalType } from "../lesson/dailygoal.ts";
+import { type ClassName } from "../widget/components/types.ts";
+import { Value } from "../widget/components/text/NameValue.tsx";
 import { clsx } from "clsx";
 import * as styles from "./DailyGoal.module.css";
 export const DailyGoal = (props: {

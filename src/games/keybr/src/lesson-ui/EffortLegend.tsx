@@ -1,5 +1,5 @@
-import { useIntlNumbers } from "@keybr/intl";
-import { FormattedMessage } from "@keybr/intl";
+import { useIntlNumbers } from "../intl/numbers.ts";
+import { FormattedMessage } from "../intl/runtime.tsx";
 import { type Effort } from "./effort.ts";
 import * as styles from "./EffortLegent.module.css";
 export function EffortLegend(props: {

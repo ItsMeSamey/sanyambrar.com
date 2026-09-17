@@ -1,9 +1,11 @@
 import { createMemo } from "solid-js";
-import { LessonKey, Target } from "@keybr/lesson";
-import { type Letter } from "@keybr/phonetic-model";
-import { type KeyStatsMap } from "@keybr/result";
-import { useSettings } from "@keybr/settings";
-import { type FocusProps, useHotkeysHandler } from "@keybr/widget";
+import { LessonKey } from "../lesson/key.ts";
+import { Target } from "../lesson/target.ts";
+import { type Letter } from "../phonetic-model/letter.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { useSettings } from "../settings/context.ts";
+import { type FocusProps } from "../widget/components/types.ts";
+import { useHotkeysHandler } from "../widget/hooks/use-hotkeys.ts";
 import { Key } from "./Key.tsx";
 import * as styles from "./KeySelector.module.css";
 export const KeySelector = (props: {

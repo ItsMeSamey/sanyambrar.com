@@ -1,4 +1,4 @@
-import { isPlainObject } from "@keybr/lang";
+import { isPlainObject } from "../lang/types.ts";
 import { type AnyProp } from "./props.ts";
 
 export type SettingsStorage = {

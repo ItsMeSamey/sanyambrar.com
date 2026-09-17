@@ -1,4 +1,4 @@
-import { clamp } from "@keybr/lang";
+import { clamp } from "../lang/math.ts";
 import { type Color } from "./color.ts";
 import { HslColor } from "./color-hsl.ts";
 import { HwbColor } from "./color-hwb.ts";

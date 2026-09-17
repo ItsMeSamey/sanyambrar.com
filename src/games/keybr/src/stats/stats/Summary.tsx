@@ -1,8 +1,10 @@
-import { useIntlNumbers } from "@keybr/intl";
-import { useFormatter } from "@keybr/lesson-ui";
-import { type SummaryStats } from "@keybr/result";
-import { formatDuration, Header, Para } from "@keybr/widget";
-import { FormattedMessage, useIntl } from "@keybr/intl";
+import { useIntlNumbers } from "../../intl/numbers.ts";
+import { useFormatter } from "../../lesson-ui/format.ts";
+import { type SummaryStats } from "../../result/summarystats.ts";
+import { formatDuration } from "../../widget/utils/format-duration.ts";
+import { Header } from "../../widget/components/text/Header.tsx";
+import { Para } from "../../widget/components/text/Para.tsx";
+import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
 import * as styles from "./Summary.module.css";
 export function AllTimeSummary(props: {
     stats: SummaryStats;

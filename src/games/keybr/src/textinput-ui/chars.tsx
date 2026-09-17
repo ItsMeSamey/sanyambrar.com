@@ -1,6 +1,7 @@
 import type { JSX } from "@solidjs/web";
-import { Attr, type Char, type TextDisplaySettings, WhitespaceStyle, } from "@keybr/textinput";
-import { type CodePoint } from "@keybr/unicode";
+import { Attr, type Char } from "../textinput/chars.ts";
+import { type TextDisplaySettings, WhitespaceStyle } from "../textinput/settings.ts";
+import { type CodePoint } from "../unicode/types.ts";
 
 import * as styles from "./chars.module.css";
 import { getTextStyle } from "./styles.ts";

@@ -1,7 +1,9 @@
-import { KeyLegendList, names } from "@keybr/lesson-ui";
-import { Slide, Tour } from "@keybr/widget";
+import { KeyLegendList } from "../../lesson-ui/KeyLegendList.tsx";
+import { names } from "../../lesson-ui/names.ts";
+import { Slide } from "../../widget/components/tour/Slide.tsx";
+import { Tour } from "../../widget/components/tour/Tour.tsx";
 
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 import { KeyDetailsChartDemo } from "./KeyDetailsChartDemo.tsx";
 export const PracticeTour = function PracticeTour(props: {
     readonly onClose?: () => void;

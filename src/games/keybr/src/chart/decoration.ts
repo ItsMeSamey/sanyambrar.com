@@ -1,6 +1,8 @@
-import { type Range } from "@keybr/math";
-import { type GraphicsStyle, type Rect, type ShapeList, Shapes, } from "@keybr/widget";
-import { type MessageDescriptor } from "@keybr/intl";
+import { type Range } from "../math/range.ts";
+import { type GraphicsStyle } from "../widget/components/canvas/graphics-style.ts";
+import { type Rect } from "../widget/utils/rect.ts";
+import { type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts";
+import { type MessageDescriptor } from "../intl/runtime.tsx";
 import { hBoxes, hTicks, vBoxes, vTicks } from "./geometry.ts";
 import { type ChartStyles } from "./use-chart-styles.ts";
 export type Edge = "left" | "right" | "top" | "bottom";

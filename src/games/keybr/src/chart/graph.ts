@@ -1,11 +1,9 @@
-import { type Model, type Range, type Vector } from "@keybr/math";
-import {
-  type Graphics,
-  type GraphicsStyle,
-  type Rect,
-  type ShapeList,
-  Shapes,
-} from "@keybr/widget";
+import { type Model } from "../math/model.ts";
+import { type Range } from "../math/range.ts";
+import { type Vector } from "../math/vector.ts";
+import { type Graphics, type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts";
+import { type GraphicsStyle } from "../widget/components/canvas/graphics-style.ts";
+import { type Rect } from "../widget/utils/rect.ts";
 import { vBoxes } from "./geometry.ts";
 
 export type Projection = {

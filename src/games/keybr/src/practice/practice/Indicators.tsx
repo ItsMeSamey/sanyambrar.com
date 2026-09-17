@@ -1,11 +1,14 @@
 import type { JSX } from "@solidjs/web";
-import { type LessonKey } from "@keybr/lesson";
-import { CurrentKeyRow, DailyGoalRow, GaugeRow, KeySetRow, names, StreakListRow, } from "@keybr/lesson-ui";
-import { Popup, Portal, useHoverPopup } from "@keybr/widget";
+import { type LessonKey } from "../../lesson/key.ts";
+import { CurrentKeyRow, DailyGoalRow, GaugeRow, KeySetRow, StreakListRow } from "../../lesson-ui/indicators.tsx";
+import { names } from "../../lesson-ui/names.ts";
+import { Popup } from "../../widget/components/popup/Popup.tsx";
+import { Portal } from "../../widget/components/portal/Portal.tsx";
+import { useHoverPopup } from "../../widget/hooks/use-hover-popup.ts";
 
 import * as styles from "./Indicators.module.css";
 import { KeyExtendedDetails } from "./KeyExtendedDetails.tsx";
-import { type LessonState } from "./state/index.ts";
+import { type LessonState } from "./state/lesson-state.ts";
 export const Indicators = function Indicators(props: {
     readonly state: LessonState;
 }): JSX.Element {

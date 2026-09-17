@@ -1,9 +1,13 @@
 import type { JSX } from "@solidjs/web";
-import { lessonProps } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { Description, Explainer, Field, FieldList, Range, Value, } from "@keybr/widget";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { Range } from "../../../widget/components/range/Range.tsx";
+import { Value } from "../../../widget/components/text/NameValue.tsx";
 
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage } from "../../../intl/runtime.tsx";
 export function RepeatWordsProp(): JSX.Element {
     const { settings, updateSettings } = useSettings();
     return (<>

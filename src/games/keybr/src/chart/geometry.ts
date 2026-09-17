@@ -1,4 +1,5 @@
-import { Point, Rect } from "@keybr/widget";
+import { Point } from "../widget/utils/point.ts";
+import { Rect } from "../widget/utils/rect.ts";
 
 export type Tick<T> = { readonly value: T; readonly point: Point };
 export type Box<T> = { readonly value: T; readonly rect: Rect };

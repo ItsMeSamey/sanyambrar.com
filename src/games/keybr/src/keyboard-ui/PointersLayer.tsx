@@ -1,8 +1,11 @@
 import { createEffect, createSignal } from 'solid-js';
 import type { JSX } from "@solidjs/web";
-import { type Keyboard, type KeyCombo, type KeyShape, useKeyboard, } from "@keybr/keyboard";
-import { Tasks } from "@keybr/lang";
-import { type CodePoint } from "@keybr/unicode";
+import { type Keyboard } from "../keyboard/keyboard.ts";
+import { type KeyCombo } from "../keyboard/keycombo.ts";
+import { type KeyShape } from "../keyboard/keyshape.ts";
+import { useKeyboard } from "../keyboard/context.tsx";
+import { Tasks } from "../lang/tasks.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import * as styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const PointersLayer = function PointersLayer(props: {

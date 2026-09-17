@@ -1,5 +1,6 @@
-import { type Result, Today } from "@keybr/result";
-import { type Settings } from "@keybr/settings";
+import { type Result } from "../result/result.ts";
+import { Today } from "../result/localdate.ts";
+import { type Settings } from "../settings/settings.ts";
 import { lessonProps } from "./settings.ts";
 
 export type DailyGoal = {

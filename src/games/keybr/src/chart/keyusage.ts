@@ -1,5 +1,6 @@
-import { Histogram, KeySet } from "@keybr/math";
-import { type KeyStatsMap } from "@keybr/result";
+import { Histogram } from "../math/histogram.ts";
+import { KeySet } from "../math/keyset.ts";
+import { type KeyStatsMap } from "../result/keystats.ts";
 
 export function keyUsage(keyStatsMap: KeyStatsMap) {
   const { letters } = keyStatsMap;

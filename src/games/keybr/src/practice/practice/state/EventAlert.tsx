@@ -1,6 +1,7 @@
-import { Key } from "@keybr/lesson-ui";
-import { Award, toast } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { Key } from "../../../lesson-ui/Key.tsx";
+import { Award } from "../../../widget/components/toast/Award.tsx";
+import { toast } from "../../../widget/components/toast/Toaster.tsx";
+import { FormattedMessage } from "../../../intl/runtime.tsx";
 import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
 import { type LessonEvent } from "./event-types.ts";
 export function EventAlert(props: {

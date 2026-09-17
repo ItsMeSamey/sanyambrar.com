@@ -1,13 +1,16 @@
-import { type KeyId } from "@keybr/keyboard";
-import { BooksLesson } from "@keybr/lesson";
-import { type CodePoint } from "@keybr/unicode";
-import { names } from "@keybr/lesson-ui";
-import { Screen } from "@keybr/ui";
-import { booleanProp, enumProp, Preferences } from "@keybr/settings";
-import { type LineList } from "@keybr/textinput";
-import { type IInputEvent, type IKeyboardEvent, ModifierState } from "@keybr/textinput-events";
-import { TextArea } from "@keybr/textinput-ui";
-import { type Focusable, Zoomer } from "@keybr/widget";
+import { type KeyId } from "../../keyboard/types.ts";
+import { BooksLesson } from "../../lesson/books.ts";
+import { type CodePoint } from "../../unicode/types.ts";
+import { names } from "../../lesson-ui/names.ts";
+import { Screen } from "../../ui/Screen.tsx";
+import { booleanProp, enumProp } from "../../settings/props.ts";
+import { Preferences } from "../../settings/preferences.ts";
+import { type LineList } from "../../textinput/chars.ts";
+import { type IInputEvent, type IKeyboardEvent } from "../../textinput-events/types.ts";
+import { ModifierState } from "../../textinput-events/modifiers.ts";
+import { TextArea } from "../../textinput-ui/TextArea.tsx";
+import { type Focusable } from "../../widget/components/types.ts";
+import { Zoomer } from "../../widget/components/zoomer/Zoomer.tsx";
 import { Match, Switch, createSignal, onSettled } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { Controls } from "./Controls.tsx";
@@ -15,7 +18,8 @@ import { Indicators } from "./Indicators.tsx";
 import { KeyboardPresenter } from "./KeyboardPresenter.tsx";
 import { PracticeTour } from "./PracticeTour.tsx";
 import * as styles from "./Presenter.module.css";
-import { type LastLesson, type LessonState } from "./state/index.ts";
+import { type LastLesson } from "./state/last-lesson.ts";
+import { type LessonState } from "./state/lesson-state.ts";
 
 type Props = {
   readonly state: LessonState;

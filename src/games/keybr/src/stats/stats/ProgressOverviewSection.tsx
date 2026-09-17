@@ -1,7 +1,9 @@
-import { Marker, ProgressOverviewChart } from "@keybr/chart";
-import { type KeyStatsMap } from "@keybr/result";
-import { Explainer, Figure } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { Marker } from "../../chart/Marker.tsx";
+import { ProgressOverviewChart } from "../../chart/ProgressOverviewChart.tsx";
+import { type KeyStatsMap } from "../../result/keystats.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 import { ChartWrapper } from "./ChartWrapper.tsx";
 export function ProgressOverviewSection(props: {
     keyStatsMap: KeyStatsMap;

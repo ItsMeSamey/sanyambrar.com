@@ -1,4 +1,4 @@
-import { Enum, type EnumItem } from "@keybr/lang";
+import { Enum, type EnumItem } from "../lang/enum.ts";
 import {
   STANDARD_MOD,
   SYMMETRIC_MOD,

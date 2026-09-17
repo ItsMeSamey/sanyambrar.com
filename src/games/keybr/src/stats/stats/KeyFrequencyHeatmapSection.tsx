@@ -1,8 +1,10 @@
-import { KeyFrequencyHeatmap, Marker } from "@keybr/chart";
-import { useKeyboard } from "@keybr/keyboard";
-import { type KeyStatsMap } from "@keybr/result";
-import { Explainer, Figure } from "@keybr/widget";
-import { FormattedMessage } from "@keybr/intl";
+import { KeyFrequencyHeatmap } from "../../chart/KeyFrequencyHeatmap.tsx";
+import { Marker } from "../../chart/Marker.tsx";
+import { useKeyboard } from "../../keyboard/context.tsx";
+import { type KeyStatsMap } from "../../result/keystats.ts";
+import { Explainer } from "../../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../../widget/components/figure/Figure.tsx";
+import { FormattedMessage } from "../../intl/runtime.tsx";
 export function KeyFrequencyHeatmapSection(props: {
     keyStatsMap: KeyStatsMap;
 }) {

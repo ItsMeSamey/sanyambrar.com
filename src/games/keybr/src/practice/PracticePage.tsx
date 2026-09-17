@@ -1,6 +1,7 @@
-import { KeyboardOptions, Layout } from "@keybr/keyboard";
-import { Settings } from "@keybr/settings";
-import { ViewSwitch } from "@keybr/widget";
+import { KeyboardOptions } from "../keyboard/settings.ts";
+import { Layout } from "../keyboard/layout.ts";
+import { Settings } from "../settings/settings.ts";
+import { ViewSwitch } from "../widget/components/view/ViewSwitch.tsx";
 import { views } from "./views.tsx";
 import { KeybrTopBar } from "./KeybrTopBar.tsx";
 

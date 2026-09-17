@@ -1,5 +1,5 @@
-import { isNumber, isObject } from "@keybr/lang";
-import { type CodePoint } from "@keybr/unicode";
+import { isNumber, isObject } from "../lang/types.ts";
+import { type CodePoint } from "../unicode/types.ts";
 import { KeyModifier } from "./keymodifier.ts";
 import {
   type Character,

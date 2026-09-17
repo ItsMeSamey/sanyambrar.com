@@ -1,7 +1,8 @@
-import { type Color, parseColor } from "@keybr/color";
-import { MutableDailyGoal } from "@keybr/lesson";
-import { useSettings } from "@keybr/settings";
-import { useComputedStyles } from "@keybr/themes";
+import { type Color } from "../color/color.ts";
+import { parseColor } from "../color/parse.ts";
+import { MutableDailyGoal } from "../lesson/dailygoal.ts";
+import { useSettings } from "../settings/context.ts";
+import { useComputedStyles } from "../themes/themes/use-computed-styles.ts";
 import { createMemo, type Accessor } from "solid-js";
 import { contrastTextRgb, type ContrastText } from "../../../../shared/contrast.ts";
 export type Effort = {

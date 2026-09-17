@@ -1,13 +1,18 @@
 import type { JSX } from "@solidjs/web";
-import { getDir } from "@keybr/intl";
-import { lessonProps } from "@keybr/lesson";
-import { useFormatter } from "@keybr/lesson-ui";
-import { useSettings } from "@keybr/settings";
-import { Description, Explainer, Field, FieldList, Icon, IconButton, Range, Value, } from "@keybr/widget";
-import { SkipForward, SkipBack } from "@keybr/widget";
+import { getDir } from "../../../intl/locale.ts";
+import { lessonProps } from "../../../lesson/settings.ts";
+import { useFormatter } from "../../../lesson-ui/format.ts";
+import { useSettings } from "../../../settings/context.ts";
+import { Description } from "../../../widget/components/text/Description.tsx";
+import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
+import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
+import { Icon } from "../../../widget/components/icon/Icon.tsx";
+import { IconButton } from "../../../widget/components/button/IconButton.tsx";
+import { Range } from "../../../widget/components/range/Range.tsx";
+import { Value } from "../../../widget/components/text/NameValue.tsx";
+import { SkipForward, SkipBack } from "../../../widget/icons.ts";
 
-import { useIntl } from "@keybr/intl";
-import { FormattedMessage } from "@keybr/intl";
+import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function TargetSpeedProp(): JSX.Element {
     const { formatSpeed } = useFormatter();
     const { locale } = useIntl();
