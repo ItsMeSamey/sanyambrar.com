@@ -353,6 +353,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
 
   let appearancePanel: HTMLDivElement | null = null;
   let appearanceTrigger: HTMLElement | null = null;
+  let advancedReturnFocus: HTMLElement | null = null;
   let advancedPage: HTMLDivElement | null = null;
   let advancedEditor: HTMLElement | null = null;
 
@@ -790,6 +791,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const openAdvanced = () => {
     mountAdvancedPage();
+    advancedReturnFocus = appearanceTrigger?.isConnected ? appearanceTrigger : null;
     closeAppearance();
     const page = advancedPage;
     if (!page) return;
@@ -803,11 +805,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     page.hidden = false;
     document.documentElement.classList.add("samey-advanced-open");
     page.scrollTop = 0;
+    requestAnimationFrame(() => page.querySelector<HTMLButtonElement>("[data-close-advanced]")?.focus({ preventScroll: true }));
   };
-  const closeAdvanced = () => {
-    if (!advancedPage) return;
+  const closeAdvanced = (restoreFocus = true) => {
+    if (!advancedPage || advancedPage.hidden) return;
     advancedPage.hidden = true;
     document.documentElement.classList.remove("samey-advanced-open");
+    const trigger = advancedReturnFocus;
+    advancedReturnFocus = null;
+    if (restoreFocus && trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
   };
 
   const mountControls = () => {
@@ -835,10 +841,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.target instanceof Node && !panel.contains(event.target)) closeAppearance();
     });
     addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
-    addEventListener("samey-pageleave", closeAppearance);
+    addEventListener("samey-pageleave", () => { closeAppearance(); closeAdvanced(false); });
     addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      if (advancedPage && !advancedPage.hidden) { closeAdvanced(); return; }
+      if (advancedPage && !advancedPage.hidden) { closeAdvanced(); event.preventDefault(); return; }
       if (!appearancePanel?.hidden) {
         const trigger = appearanceTrigger;
         closeAppearance();
@@ -1707,11 +1713,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (document.getElementById("samey-context-menu")) return;
     const menu = runtimeNode(document.createElement("div"));
     menu.id = "samey-context-menu"; menu.className = "samey-context-menu"; menu.dataset.sameyOverlayBlocker = ""; menu.hidden = true;
+    menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Context menu");
     document.body.append(menu);
     let target: EventTarget | null = null;
-    const close = () => { menu.hidden = true; menu.replaceChildren(); };
+    let returnFocus: HTMLElement | null = null;
+    const close = (restoreFocus = false) => {
+      if (menu.hidden) return;
+      menu.hidden = true; menu.replaceChildren();
+      const focusTarget = returnFocus; returnFocus = null;
+      if (restoreFocus && focusTarget) requestAnimationFrame(() => focusTarget.isConnected && focusTarget.focus({ preventScroll: true }));
+    };
     const add = (label: string, action: () => unknown | Promise<unknown>, enabled = true, hint = "") => {
-      const button = document.createElement("button"); button.type = "button"; button.disabled = !enabled;
+      const button = document.createElement("button"); button.type = "button"; button.disabled = !enabled; button.setAttribute("role", "menuitem");
       const text = document.createElement("span"); text.textContent = label; button.append(text);
       if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
       button.addEventListener("click", async () => { close(); try { await action(); } catch {} }); menu.append(button);
@@ -1721,6 +1734,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.shiftKey) return;
       event.preventDefault();
       target = event.target; menu.replaceChildren();
+      const focusTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("a[href],button,input,textarea,select,[tabindex]") : null;
+      returnFocus = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
       const image = target instanceof Element ? target.closest<HTMLImageElement>("img[src]") : null;
       const selection = selectedText();
@@ -1762,10 +1777,24 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const rect = menu.getBoundingClientRect();
       menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
       menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
+      menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }, true);
     document.addEventListener("pointerdown", (event) => { if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close(); }, true);
-    addEventListener("blur", close); addEventListener("resize", close); addEventListener("scroll", close, true);
-    document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+    addEventListener("blur", () => close()); addEventListener("resize", () => close());
+    addEventListener("scroll", (event) => { if (!(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
+    document.addEventListener("keydown", (event) => {
+      if (menu.hidden) return;
+      const items = [...menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); return; }
+      if (!items.length) return;
+      const index = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
+      let next = -1;
+      if (event.key === "ArrowDown") next = (index + 1) % items.length;
+      else if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = items.length - 1;
+      if (next >= 0) { event.preventDefault(); items[next]?.focus({ preventScroll: true }); items[next]?.scrollIntoView({ block: "nearest" }); }
+    });
   };
 
   const virtualBars = new Map<Element, HTMLDivElement>();
