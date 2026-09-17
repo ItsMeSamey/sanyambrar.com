@@ -34,6 +34,9 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
 }
 @media(max-width:160px){
+  .tools-page>.site-topbar .tool-context:has([data-diff-language]){gap:4px;overflow-x:hidden}
+  .tools-page>.site-topbar .tool-context [data-diff-language]{min-width:0;flex:1 1 0;padding-inline:4px}
+  .tools-page>.site-topbar .tool-context [data-diff-swap]{width:28px;flex:0 0 28px;padding:0}
   .number-tool{padding-inline:6px}
   .radix-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .radix-choices button{padding-inline:2px}
