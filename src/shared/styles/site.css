@@ -141,6 +141,7 @@ html[data-site-loading] .samey-loading-top{visibility:visible;transform:translat
 .samey-icon{border-radius:var(--site-radius-small)}.game-settings-trigger{border-radius:0}
 .samey-theme-panel,.samey-context-menu,.site-search-panel,.game-settings-popover{border-radius:var(--site-radius);border-color:color-mix(in srgb,var(--site-line,#ddd) 82%,transparent);box-shadow:0 18px 50px var(--site-shadow-3),0 2px 8px var(--site-shadow-1);background:linear-gradient(var(--site-blur-tint-layer),var(--site-blur-tint-layer)),color-mix(in srgb,var(--site-bg,#fff) 96%,transparent);backdrop-filter:blur(18px) saturate(1.08)}
 .site-search-input{min-height:52px}.search-result{min-height:54px;align-items:center}.search-result.active{box-shadow:inset 2px 0 var(--site-accent)}
+@media(max-height:160px){.site-search{padding-block:4px}.site-search-panel{max-height:calc(100dvh - 8px)}.site-search-input{min-height:36px;padding-inline:10px;gap:7px}.site-search-input>span{font-size:14px}.site-search-input input{font-size:13px}.site-search-input kbd{display:none}.site-search-results{box-sizing:border-box;max-height:calc(100dvh - 45px);padding:4px}.search-result{box-sizing:border-box;min-height:40px;padding:5px 7px;gap:7px}.search-result small{display:none}.search-result em{padding:3px 4px;font-size:8px}}
 .samey-vscroll,.samey-hscroll{opacity:.72;transition:opacity var(--site-fast) ease}.samey-vscroll:hover,.samey-hscroll:hover{opacity:1}
 
 @media(prefers-reduced-motion:reduce){

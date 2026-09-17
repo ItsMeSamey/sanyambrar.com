@@ -79,6 +79,22 @@ function render() {
   }
 }
 
+function scrollActiveIntoView() {
+  results?.querySelector<HTMLElement>('.search-result.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+
+let resizeFrame = 0
+function keepActiveVisibleAfterResize() {
+  if (!box || box.hidden) return
+  cancelAnimationFrame(resizeFrame)
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = 0
+    if (!box?.hidden) scrollActiveIntoView()
+  })
+}
+addEventListener('resize', keepActiveVisibleAfterResize)
+globalThis.visualViewport?.addEventListener('resize', keepActiveVisibleAfterResize)
+
 function close(restoreFocus = true) {
   if (!box || box.hidden) return
   box.hidden = true
@@ -112,7 +128,7 @@ function ensure() {
       event.preventDefault()
       active = (active + (event.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1)
       render()
-      results?.querySelector<HTMLElement>('.search-result.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      scrollActiveIntoView()
     } else if (event.key === 'Enter' && visible[active]) {
       event.preventDefault()
       const targetUrl = new URL(visible[active].href, SCRIPT_ROOT)

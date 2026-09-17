@@ -40,6 +40,7 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   const searchInput = page.getByPlaceholder('Search games, tools, writing, work…');
+  const initialViewport = page.viewportSize();
   await page.setViewportSize({ width: 320, height: 180 });
   await searchInput.fill('a');
   for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowDown');
@@ -54,10 +55,15 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await expect.poll(() => activeSearchResultIsVisible(), { message: 'ArrowUp must keep the active search result visible' }).toBe(true);
-  const activeHref = await page.locator('.search-result.active').evaluate(element => element.href);
-  expect(new URL(activeHref).origin).toBe(new URL(page.url()).origin);
+  await page.setViewportSize({ width: 128, height: 128 });
+  await expect.poll(() => activeSearchResultIsVisible(), { message: 'Resizing to an extreme short viewport must keep the active search result visible' }).toBe(true);
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => activeSearchResultIsVisible(), { message: 'Keyboard search selection must remain visible at 128px viewport height' }).toBe(true);
+  if (initialViewport) await page.setViewportSize(initialViewport);
+  await searchInput.fill('CNN');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(activeHref);
+  await expect(page).toHaveURL(/projects\/cnn/);
+  await expect(page.getByRole('heading', { name: 'CNN', exact: true })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
