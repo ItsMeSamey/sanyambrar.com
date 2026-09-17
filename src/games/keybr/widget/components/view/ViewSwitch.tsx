@@ -1,4 +1,4 @@
-import { readHistoryState } from '../../../../../../shared/history.ts';
+import { readHistoryState } from '../../../../../shared/history.ts';
 import { createContext, createMemo, createSignal, onCleanup, onSettled, useContext, type Accessor, type Component } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { Dynamic } from '@solidjs/web';

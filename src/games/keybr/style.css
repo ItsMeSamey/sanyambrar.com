@@ -1,4 +1,4 @@
-@import "../../../shared/styles/game-settings.css";
+@import "../../shared/styles/game-settings.css";
 
 /* Global Keybr styles shared by the application shell and game UI. */
 :where(html) {

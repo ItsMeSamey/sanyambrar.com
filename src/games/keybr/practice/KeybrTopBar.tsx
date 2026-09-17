@@ -1,7 +1,7 @@
-import { HomeBrand, KeybrMark } from "../../../../shared/components/Brand.tsx";
-import { BackLink, GameTopBarActions, TopBar, TopBarIconButton } from "../../../../shared/components/TopBar.tsx";
-import { ChartNoAxesColumn as BarChart3 } from '../../../../shared/components/Icons.tsx';
-import { Settings as SettingsIcon } from '../../../../shared/components/Icons.tsx';
+import { HomeBrand, KeybrMark } from "../../../shared/components/Brand.tsx";
+import { BackLink, GameTopBarActions, TopBar, TopBarIconButton } from "../../../shared/components/TopBar.tsx";
+import { ChartNoAxesColumn as BarChart3 } from '../../../shared/components/Icons.tsx';
+import { Settings as SettingsIcon } from '../../../shared/components/Icons.tsx';
 import { useView } from "../widget/components/view/ViewSwitch.tsx";
 import { Show } from 'solid-js';
 import { views } from "./views.tsx";

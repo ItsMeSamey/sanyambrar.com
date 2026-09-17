@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 
 import { Dynamic } from '@solidjs/web';
 import styles from "./Icon.module.css";
-import { type LucideIcon } from '../../../../../../shared/components/Icons.tsx';
+import { type LucideIcon } from '../../../../../shared/components/Icons.tsx';
 import { type ClassName, type MouseProps } from "../types.ts";
 type IconProps = {
   readonly shape: string | LucideIcon;

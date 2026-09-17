@@ -4,7 +4,7 @@ import { MutableDailyGoal } from "../lesson/dailygoal.ts";
 import { useSettings } from "../settings/context.ts";
 import { useComputedStyles } from "../themes/use-computed-styles.ts";
 import { createMemo, type Accessor } from "solid-js";
-import { contrastTextRgb, type ContrastText } from "../../../../shared/contrast.ts";
+import { contrastTextRgb, type ContrastText } from "../../../shared/contrast.ts";
 export type Effort = {
     readonly effort: (time: number) => number;
     readonly shade: (effort: number) => Color;
