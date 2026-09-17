@@ -1,7 +1,0 @@
-{
-  "private": true,
-  "name": "@keybr/lesson-loader",
-  "version": "0.0.0",
-  "type": "module",
-  "main": "lib/index.ts"
-}
