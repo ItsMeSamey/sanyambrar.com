@@ -7,7 +7,6 @@ import { promisify } from "node:util";
 import { details } from "./src/site/data.ts";
 
 const runFile = promisify(execFile);
-type BunSemver = { semver?: { satisfies?: (version: string, range: string) => boolean } };
 const APPEARANCE_COLOR_KEYS = ['background', 'text', 'accent', 'error', 'slow', 'fast', 'effort'] as const;
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -33,7 +32,6 @@ let docsExistedBeforeBuild = false;
 const log = (message: string) => console.log(`[build] ${message}`);
 const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
 const requireRecord = (value: unknown, message: string): UnknownRecord => { must(isRecord(value), message); return value; };
-const optionalRecord = (value: unknown, message: string): UnknownRecord => value === undefined ? {} : requireRecord(value, message);
 async function readJsonRecord(path: string) {
   const value: unknown = JSON.parse(await readFile(path, "utf8"));
   return requireRecord(value, `${relative(ROOT, path)} must contain a JSON object`);
@@ -68,71 +66,6 @@ async function run(cwd: string, file: string, args: string[], env: NodeJS.Proces
 async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shared") {
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build"], { SAMEY_VITE_BUILD: target });
 }
-
-async function dependencySignature(dir: string) {
-  const files = ["package.json", "bun.lock"].map(name => join(dir, name)).filter(existsSync);
-  must(files.length > 0, `dependencies: ${relative(ROOT, dir) || "."} has no package.json or bun.lock`);
-  const hash = createHash("sha256");
-  for (const file of files) hash.update(await readFile(file));
-  return hash.digest("hex");
-}
-
-async function directDependenciesPresent(dir: string) {
-  const packagePath = join(dir, "package.json");
-  if (!existsSync(packagePath) || !existsSync(join(dir, "node_modules"))) return false;
-  const pkg = await readJsonRecord(packagePath);
-  const label = relative(ROOT, packagePath) || "package.json";
-  const requested = { ...optionalRecord(pkg.dependencies, `${label}: dependencies must be an object`), ...optionalRecord(pkg.devDependencies, `${label}: devDependencies must be an object`) };
-  const satisfies = (globalThis as typeof globalThis & { Bun?: BunSemver }).Bun?.semver?.satisfies;
-  for (const [name, value] of Object.entries(requested)) {
-    if (typeof value !== "string") return false;
-    const installed = join(dir, "node_modules", ...name.split("/"), "package.json");
-    if (!existsSync(installed)) return false;
-    if (satisfies && /^[~^<>=*\da-zA-Z.+| -]+$/.test(value)) {
-      const version = (await readJsonRecord(installed)).version;
-      if (typeof version !== "string" || !satisfies(version, value)) return false;
-    }
-  }
-  return true;
-}
-
-async function ensureDeps(dir: string) {
-  const lock = join(dir, "bun.lock");
-  const stamp = join(dir, "node_modules/.samey-deps-sha256");
-  const wanted = await dependencySignature(dir);
-  if (existsSync(stamp) && (await readFile(stamp, "utf8")).trim() === wanted && await directDependenciesPresent(dir)) return;
-
-  // Dependency archives are valid build inputs even if bun.lock is absent or
-  // older than package.json. Verify the installed direct dependency versions
-  // and avoid a network install when the local tree already satisfies them.
-  if (await directDependenciesPresent(dir)) {
-    await writeFile(stamp, `${wanted}\n`);
-    return;
-  }
-
-  const installArgs = existsSync(lock) ? ["install", "--ignore-scripts", "--frozen-lockfile"] : ["install", "--ignore-scripts"];
-  try {
-    await run(dir, process.execPath, installArgs);
-  } catch (error: unknown) {
-    const failure = isRecord(error) ? error : {};
-    if (failure.code === "ENOENT" && !existsSync(process.execPath))
-      throw new Error(`dependencies for ${relative(ROOT, dir) || "."} are missing/stale and Bun is not installed`);
-
-    // Bun can leave a partially-populated package cache/tree after an
-    // interrupted install. A common symptom is ENOENT while linking a package
-    // binary (for example TypeScript's bin/tsc). Retry once from clean inputs,
-    // bypassing both the cache and hardlink backend.
-    const detail = `${error instanceof Error ? error.message : typeof failure.message === "string" ? failure.message : ""}\n${typeof failure.stderr === "string" ? failure.stderr : ""}`;
-    if (!/ENOENT: (?:copying|linking) file/i.test(detail)) throw error;
-    log(`dependency install hit a stale package tree; retrying cleanly for ${relative(ROOT, dir) || "."}`);
-    await rm(join(dir, "node_modules"), { recursive: true, force: true });
-    await run(dir, process.execPath, [...installArgs, "--no-cache", "--backend=copyfile"]);
-  }
-  await mkdir(join(dir, "node_modules"), { recursive: true });
-  must(await directDependenciesPresent(dir), `dependencies for ${relative(ROOT, dir) || "."} are incomplete after install`);
-  await writeFile(stamp, `${await dependencySignature(dir)}\n`);
-}
-
 
 async function generateAppearance() {
   const config = await readJsonRecord(join(ROOT, "src/shared/appearance.json"));
@@ -427,7 +360,6 @@ self.addEventListener('fetch', event => {
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, static, or all)`);
-  await ensureDeps(ROOT);
   if (targets.has("static")) {
     await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
