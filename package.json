@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs site",
-    "typecheck": "tsc -p tsconfig.app.json --pretty false && tsc -p tsconfig.node.json --pretty false && tsc -p tsconfig.worker.json --pretty false",
+    "typecheck": "tsc -b tsconfig.json --pretty false",
     "build": "bun build.ts",
     "build:wordle": "bun build.ts wordle",
     "build:keybr": "bun build.ts keybr",

@@ -221,10 +221,7 @@ async function buildSiteRuntime() {
 }
 
 async function buildWordle() {
-  await Promise.all([
-    run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
-    runViteBuild("wordle"),
-  ]);
+  await runViteBuild("wordle");
 
   // Keep Vite's output-name semantics out of the deployment contract. Vite 8
   // runs closeBundle before its Rolldown writer is necessarily visible on disk,
