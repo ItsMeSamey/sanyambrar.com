@@ -457,13 +457,23 @@ test('Keybr settings and book library stay contained at extreme narrow widths', 
 
 test('Keybr tutorial advances through its content and closes cleanly', async ({ page }, info) => {
   await page.setViewportSize({ width: 180, height: 1000 });
-  await visit(page, '/keybr.html', info);
+  await visitKeybr(page, info);
+  await page.getByTitle('Show a guided tour with help slides.').click();
   const portal = page.locator('#keybr-portal');
   await expect(portal.locator('[data-samey-overlay]')).toBeVisible();
   let slides = 0;
   while (slides < 12 && await page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))) {
     slides += 1;
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Tutorial must not widen the page').toBe(true);
+    if (slides === 5) {
+      for (const viewport of [{ width: 5120, height: 720 }, { width: 720, height: 5120 }, { width: 180, height: 1000 }]) {
+        await page.setViewportSize(viewport);
+        await expect.poll(async () => {
+          const box = await portal.locator('[data-samey-overlay]').boundingBox();
+          return !!box && box.x >= -1 && box.y >= -1 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
+        }, { message: 'Tutorial popup must settle inside extreme aspect ratios' }).toBe(true);
+      }
+    }
     const next = portal.getByText('Next', { exact: true });
     if (await next.count()) {
       await next.click();
