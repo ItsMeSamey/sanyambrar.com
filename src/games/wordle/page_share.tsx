@@ -3,7 +3,7 @@
 import { Share as ShareIcon } from '../../ui-kit/components/lucide.tsx';
 import { Accessor, createSignal, createStore, onCleanup, snapshot, untrack } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTrigger } from '~/registry/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '~/registry/ui/button'
 import { showError } from '../../utils/toast'
@@ -24,13 +24,13 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
         <ShareIcon class='size-5 stroke-foreground' />
       </DialogTrigger>
     <DialogContent aria-label='Share challenge' class='wordle-share-dialog flex flex-col gap-2 p-4 bg-background rounded'>
-      <DialogHeader class='wordle-share-header flex flex-row gap-2 items-center'>
+      <div class='wordle-share-header flex flex-row gap-2 items-center'>
         <span>Share</span> <span class='wordle-share-word wordle-revealed-text font-bold uppercase'>{props.word()}</span>
-      </DialogHeader>
+      </div>
 
       <SettingsKnobs soft={soft} hard={hard} showWordLength={false} onSoftChange={patch => setSoft(draft => { Object.assign(draft, patch) })} onHardChange={patch => setHard(draft => { Object.assign(draft, patch) })} />
 
-      <DialogFooter class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
+      <div class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button
           class='wordle-copy-button'
           onClick={async () => {
@@ -65,7 +65,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
         >
           {copyButtonText()}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 }
