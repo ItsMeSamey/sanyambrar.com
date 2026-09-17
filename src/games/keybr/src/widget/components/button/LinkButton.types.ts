@@ -4,5 +4,6 @@ export type LinkButtonProps = {
     readonly children?: JSX.Element;
     readonly className?: ClassName;
     readonly label?: JSX.Element;
+    readonly ariaLabel?: string;
     readonly title?: string;
 } & FocusProps & MouseProps & KeyboardProps;

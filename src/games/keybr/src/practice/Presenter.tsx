@@ -44,6 +44,7 @@ const propTourSeen = booleanProp("prefs.practice.tourSeen", false);
 
 export function Presenter(props: Props): JSX.Element {
   let focusTarget: Focusable | null = null;
+  let tourReturnFocus: HTMLButtonElement | null = null;
   const [view, setView] = createSignal(Preferences.get(propView));
   const [tour, setTour] = createSignal(false);
   const [focus, setFocus] = createSignal(false);
@@ -70,11 +71,15 @@ export function Presenter(props: Props): JSX.Element {
     props.onResetLesson();
     queueMicrotask(() => focusTarget?.focus());
   };
-  const help = () => {
+  const help = (trigger: HTMLButtonElement) => {
+    tourReturnFocus = trigger;
     setView(View.Normal); setTour(true); props.onResetLesson(); queueMicrotask(() => focusTarget?.blur());
   };
   const closeTour = () => {
-    setView(View.Normal); setTour(false); props.onResetLesson(); queueMicrotask(() => focusTarget?.focus());
+    const returnFocus = tourReturnFocus;
+    tourReturnFocus = null;
+    setView(View.Normal); setTour(false); props.onResetLesson();
+    queueMicrotask(() => returnFocus?.isConnected ? returnFocus.focus() : focusTarget?.focus());
   };
   const controls = () => <Controls onChangeView={changeView} onPreviousLesson={previous} previousLesson={props.state.lesson instanceof BooksLesson} onSkipLesson={skip} onHelp={help} />;
   const textInput = (size: "X0" | "X1" | "X2", id: string) => (
