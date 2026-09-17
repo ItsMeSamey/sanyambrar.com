@@ -247,6 +247,8 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible();
   await expect(page.locator('.stats-summary-item').filter({ hasText: 'Games' }).first()).toContainText('1');
+  await page.locator('.stats-history-trigger').first().click();
+  await expect(page.getByRole('dialog', { name: /^Game details for / })).toBeVisible();
 });
 
 test('Wordle date picker and daily start', async ({ page }, info) => {
