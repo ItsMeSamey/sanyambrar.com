@@ -113,7 +113,7 @@ body [role=dialog]:not(.site-search-panel){
   transform-origin:calc(var(--samey-dialog-origin-x) - 50vw + 50%) calc(var(--samey-dialog-origin-y) - 50vh + 50%);
   animation:samey-dialog-grow var(--site-medium) var(--site-ease-out);
 }
-@keyframes samey-dialog-grow{from{opacity:0;transform:scale(.965)}to{opacity:1;transform:scale(1)}}
+@keyframes samey-dialog-grow{from{opacity:0;scale:.965}to{opacity:1;scale:1}}
 .site-search-panel{transform-origin:calc(var(--samey-dialog-origin-x) - 50vw + 50%) calc(var(--samey-dialog-origin-y) - clamp(18px,9vh,88px));animation:samey-search-grow var(--site-medium) var(--site-ease-out)}
 @keyframes samey-search-grow{from{opacity:0;transform:translate3d(0,-6px,0) scale(.975)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
 .site-search-backdrop{animation:samey-backdrop-in var(--site-medium) ease-out both}
