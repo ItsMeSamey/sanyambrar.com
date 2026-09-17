@@ -59,7 +59,7 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await page.keyboard.press('Enter');
   await expect.poll(() => page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith('game.wordle.advanced.v2.')).map(([, value]) => JSON.parse(value).history[0][0]).join(''))).toBe('planet');
   const before = await page.locator('.wordle-board').textContent();
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('.wordle-board')).toHaveText(before);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settingsTrigger = page.getByRole('button', { name: 'Settings', exact: true });
@@ -104,7 +104,7 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await stop.focus();
   await page.keyboard.press('Space');
   await expect(stop).not.toBeChecked();
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('switch', { name: 'Stop cursor on error' })).not.toBeChecked();
   await page.locator('.keybr-view-back').click();
   await page.keyboard.press('Enter');
@@ -147,7 +147,7 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   const aliceKey = 'game.keybr.storybook.progress.v1.en-alice-wonderland';
   await expect.poll(() => page.evaluate(key => localStorage.getItem(key), aliceKey)).not.toBeNull();
 
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(lessonText).toBe(aliceSecond);
   const beforePreview = await page.evaluate(key => localStorage.getItem(key), aliceKey);
   await openSettings();
@@ -158,7 +158,7 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
 
   await page.getByRole('button', { name: 'Previous lesson (Ctrl + Left Arrow).', exact: true }).click();
   await expect.poll(lessonText).toBe(aliceFirst);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(lessonText).toBe(aliceFirst);
 
   await openSettings();
@@ -233,7 +233,7 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   }));
   await expect.poll(savedResults).toBe(1);
   await expect(page.locator('body')).toContainText(/Speed:\s*[1-9]\d*\.\d+wpm/);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(savedResults).toBe(1);
 });
 
@@ -284,6 +284,7 @@ test('Keybr tutorial advances through its content and closes cleanly', async ({ 
   await page.setViewportSize({ width: 180, height: 1000 });
   await visit(page, '/keybr.html', info);
   const portal = page.locator('#keybr-portal');
+  await expect(portal.locator('[data-samey-overlay]')).toBeVisible();
   let slides = 0;
   while (slides < 12 && await page.evaluate(() => Boolean(document.querySelector('#keybr-portal [data-samey-overlay]')))) {
     slides += 1;

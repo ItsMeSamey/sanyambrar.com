@@ -1,4 +1,4 @@
-import { StatsPage } from "@keybr/page-stats";
+import { StatsPage } from "@keybr/stats";
 import { PracticeScreen } from "./practice/PracticeScreen.tsx";
 import { SettingsScreen } from "./settings/SettingsScreen.tsx";
 export const views = {

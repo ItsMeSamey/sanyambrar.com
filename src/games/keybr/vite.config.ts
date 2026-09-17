@@ -1,22 +1,19 @@
-import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite";
 
 const root = import.meta.dirname;
 const sourceDir = join(root, "src");
-const moduleAliases = readdirSync(sourceDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && existsSync(join(sourceDir, entry.name, "index.ts")))
-  .map((entry) => ({
-    find: new RegExp(`^@keybr/${entry.name}$`),
-    replacement: join(sourceDir, entry.name, "index.ts"),
-  }));
+const moduleAlias = {
+  find: /^@keybr\/([^/]+)$/,
+  replacement: join(sourceDir, "$1", "index.ts"),
+};
 
 export default defineConfig(({ mode }) => ({
   root,
   base: "./",
   assetsInclude: ["**/*.data"],
-  resolve: { alias: moduleAliases },
+  resolve: { alias: [moduleAlias] },
   plugins: [solid()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
   css: { modules: { localsConvention: "camelCase" } },

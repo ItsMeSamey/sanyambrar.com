@@ -2,7 +2,7 @@ import { type KeyId } from "@keybr/keyboard";
 import { BooksLesson } from "@keybr/lesson";
 import { type CodePoint } from "@keybr/unicode";
 import { names } from "@keybr/lesson-ui";
-import { Screen } from "@keybr/pages-shared";
+import { Screen } from "@keybr/ui";
 import { booleanProp, enumProp, Preferences } from "@keybr/settings";
 import { type LineList } from "@keybr/textinput";
 import { type IInputEvent, type IKeyboardEvent, ModifierState } from "@keybr/textinput-events";
