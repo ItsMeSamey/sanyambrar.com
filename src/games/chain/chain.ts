@@ -1401,7 +1401,14 @@ export function mountChain(refs: ChainRefs) {
   };
   document.addEventListener('pointerdown', onDocumentPointerDown);
   for (const input of [rowsInput, colsInput, enemiesInput]) input.addEventListener('input', previewSettings);
-  const onDocumentKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setSettingsOpen(false); };
+  const onDocumentKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape' || settingsButton.getAttribute('aria-expanded') !== 'true') return;
+    const target = e.target instanceof Node ? e.target : null;
+    if (!target || (!settingsPanel.contains(target) && !settingsButton.contains(target))) return;
+    e.preventDefault();
+    setSettingsOpen(false);
+    settingsButton.focus({preventScroll:true});
+  };
   document.addEventListener('keydown', onDocumentKeyDown);
 
   const savedGame = readSavedGame();
