@@ -30,7 +30,7 @@ export function CodeLessonSettings(): JSX.Element {
             <FormattedMessage id="t_Syntax:" defaultMessage="Syntax:"/>
           </Field>
           <Field>
-            <OptionList options={Syntax.ALL.map((item) => ({
+            <OptionList label={formatMessage({ id: "t_Syntax", defaultMessage: "Syntax" })} options={Syntax.ALL.map((item) => ({
             value: item.id,
             name: item.name,
         }))} value={syntax().id} onSelect={(id) => {

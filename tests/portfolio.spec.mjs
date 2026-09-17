@@ -333,6 +333,33 @@ test('Wordle active games modal owns the overlay and switches saved games', asyn
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await visitKeybr(page, info);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  for (const label of ['Font', 'Sound theme', 'Language', 'Layout', 'Geometry', 'Zones', 'Typing speed unit'])
+    await expect(page.getByRole('combobox', { name: label, exact: true })).toBeVisible();
+  const speedUnit = page.getByRole('combobox', { name: 'Typing speed unit', exact: true });
+  const beforeUnit = await speedUnit.textContent();
+  await speedUnit.focus();
+  await page.keyboard.press('Enter');
+  await expect(speedUnit).toHaveAttribute('aria-expanded', 'true');
+  const listboxId = await speedUnit.getAttribute('aria-controls');
+  expect(listboxId).toBeTruthy();
+  const listbox = page.locator(`#${listboxId}`);
+  await expect(listbox).toHaveAttribute('role', 'listbox');
+  const activeBefore = await speedUnit.getAttribute('aria-activedescendant');
+  expect(activeBefore).toBeTruthy();
+  await expect(page.locator(`#${activeBefore}`)).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('ArrowDown');
+  const activeAfter = await speedUnit.getAttribute('aria-activedescendant');
+  expect(activeAfter).toBeTruthy();
+  expect(activeAfter).not.toBe(activeBefore);
+  await expect(page.locator(`#${activeAfter}`)).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(speedUnit).toHaveAttribute('aria-expanded', 'false');
+  await expect(speedUnit).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(speedUnit).toHaveAttribute('aria-expanded', 'false');
+  await expect(speedUnit).not.toHaveText(beforeUnit ?? '');
   const stop = page.getByRole('switch', { name: 'Stop cursor on error' });
   await expect(stop).toBeChecked();
   await stop.focus();

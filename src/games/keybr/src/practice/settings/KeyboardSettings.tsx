@@ -42,6 +42,7 @@ export function KeyboardSettings(): JSX.Element {
     </>);
 }
 function LayoutProp(): JSX.Element {
+    const { formatMessage } = useIntl();
     const { formatLanguageName, //
     formatLayoutName, formatFullLayoutName, } = useFormattedNames();
     const { compare } = useCollator();
@@ -53,7 +54,7 @@ function LayoutProp(): JSX.Element {
           <FormattedMessage id="t_Language:" defaultMessage="Language:"/>
         </Field>
         <Field>
-          <OptionList options={options()
+          <OptionList label={formatMessage({ id: "t_Language", defaultMessage: "Language" })} options={options()
             .selectableLanguages()
             .map((item) => ({
             value: item.id,
@@ -71,7 +72,7 @@ function LayoutProp(): JSX.Element {
           <FormattedMessage id="t_Layout:" defaultMessage="Layout:"/>
         </Field>
         <Field>
-          <OptionList options={options().selectableLayouts().map((item) => ({
+          <OptionList label={formatMessage({ id: "t_Layout", defaultMessage: "Layout" })} options={options().selectableLayouts().map((item) => ({
             value: item.id,
             name: item.language.id === options().language.id
                 ? formatLayoutName(item)
@@ -116,7 +117,7 @@ function GeometryProp(): JSX.Element {
           <FormattedMessage id="t_Geometry:" defaultMessage="Geometry:"/>
         </Field>
         <Field>
-          <OptionList options={options().selectableGeometries().map((item) => ({
+          <OptionList label={formatMessage({ id: "t_Geometry", defaultMessage: "Geometry" })} options={options().selectableGeometries().map((item) => ({
             value: item.id,
             name: item.name,
         }))} value={options().geometry.id} onSelect={(id) => {
@@ -130,7 +131,7 @@ function GeometryProp(): JSX.Element {
           <FormattedMessage id="t_Zones:" defaultMessage="Zones:"/>
         </Field>
         <Field>
-          <OptionList options={options().selectableZones().map((item) => ({
+          <OptionList label={formatMessage({ id: "t_Zones", defaultMessage: "Zones" })} options={options().selectableZones().map((item) => ({
             value: item.id,
             name: item.name,
         }))} value={options().zones.id} onSelect={(id) => {

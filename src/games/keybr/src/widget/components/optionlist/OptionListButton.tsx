@@ -11,10 +11,13 @@ export function OptionListButton(allProps: {
     readonly focused: boolean;
     readonly open: boolean;
     readonly option: OptionListOption;
+    readonly label: string;
+    readonly listboxId: string;
+    readonly activeOptionId?: string;
     readonly title?: string;
 } & FocusProps & MouseProps & KeyboardProps): JSX.Element {
-    const local = allProps, props = omit(allProps, "children", "size", "disabled", "focused", "open", "option", "tabIndex", "title", "onClick");
-    return (<span {...props} class={clsx(styles.root, local.focused && styles.focused, local.disabled && styles.disabled, sizeClassName(local.size))} data-cursor-round="" tabindex={local.disabled ? undefined : (local.tabIndex ?? 0)} title={local.title}>
+    const local = allProps, props = omit(allProps, "children", "size", "disabled", "focused", "open", "option", "label", "listboxId", "activeOptionId", "tabIndex", "title", "onClick");
+    return (<span {...props} class={clsx(styles.root, local.focused && styles.focused, local.disabled && styles.disabled, sizeClassName(local.size))} data-cursor-round="" role="combobox" aria-label={local.label} aria-haspopup="listbox" aria-expanded={local.open ? "true" : "false"} aria-controls={local.listboxId} aria-activedescendant={local.open ? local.activeOptionId : undefined} aria-disabled={local.disabled ? "true" : undefined} tabindex={local.disabled ? undefined : (local.tabIndex ?? 0)} title={local.title}>
       <span class={styles.placeholder} onClick={local.onClick}>
         <span class={styles.placeholderName}>{local.option.name}</span>
         <span class={styles.placeholderArrow}>
