@@ -56,6 +56,110 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await page.keyboard.press('Escape');
   await expect(appearancePanel).not.toBeVisible();
   await expect(appearance).toBeFocused();
+
+  await appearance.click();
+  await page.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+  const advanced = page.locator('.samey-theme-advanced');
+  const closeAdvanced = page.getByRole('button', { name: 'Close Advanced & Colorblind', exact: true });
+  await expect(advanced).toBeVisible();
+  await expect(closeAdvanced).toBeFocused();
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await expect.poll(() => advanced.evaluate(element => {
+    const controls = [...element.querySelectorAll('button,input,select')].filter(control => {
+      const style = getComputedStyle(control), rect = control.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    });
+    return document.documentElement.scrollWidth <= innerWidth + 1 && document.body.scrollWidth <= innerWidth + 1 && controls.every(control => {
+      const rect = control.getBoundingClientRect(); return rect.left >= -1 && rect.right <= innerWidth + 1;
+    });
+  }), { message: 'Advanced appearance controls must stay usable at 128px' }).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(advanced).not.toBeVisible();
+  await expect(appearance).toBeFocused();
+});
+
+test('advanced appearance saves, previews, loads and deletes themes', async ({ page }, info) => {
+  await visit(page, '/', info);
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  const panel = page.locator('.samey-theme-panel');
+  const advanced = page.locator('.samey-theme-advanced');
+  const openAdvanced = async () => {
+    if (!await panel.isVisible()) {
+      await appearance.click();
+      await expect(panel).toBeVisible();
+    }
+    await panel.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+    await expect(advanced).toBeVisible();
+  };
+  await openAdvanced();
+  const themeName = advanced.locator('[name="themeName"]');
+  const background = advanced.locator('[name="background"]');
+  await themeName.fill('QA Theme');
+  await background.fill('#123456');
+  await expect(advanced.locator('[data-color-for="background"]')).toHaveValue('#123456');
+  await advanced.getByRole('button', { name: 'Save theme', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('keybr.theme') ?? '{}');
+    return !!prefs.savedThemes?.find(theme => theme.name === 'QA Theme') && String(prefs.color).startsWith('saved:');
+  })).toBe(true);
+  await advanced.getByRole('button', { name: 'Close Advanced & Colorblind', exact: true }).click();
+  await expect(advanced).not.toBeVisible();
+  await appearance.click();
+  const savedChoice = panel.locator('[data-theme-choice^="saved:"]').filter({ hasText: 'QA Theme' });
+  await expect(savedChoice).toBeVisible();
+  await savedChoice.click();
+  await openAdvanced();
+  await advanced.locator('[data-colorblind-profile]').getByText('Protanopia', { exact: true }).click();
+  await advanced.locator('[data-colorblind-variant]').getByText('Dark', { exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('keybr.theme') ?? '{}');
+    return prefs.colorblindProfile === 'protanopia' && prefs.colorblindVariant === 'dark' && prefs.color === 'custom';
+  })).toBe(true);
+  await advanced.getByRole('button', { name: 'QA Theme', exact: true }).click();
+  await expect(themeName).toHaveValue('QA Theme');
+  await expect(background).toHaveValue('#123456');
+  await advanced.getByRole('button', { name: 'Delete QA Theme', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const prefs = JSON.parse(localStorage.getItem('keybr.theme') ?? '{}');
+    return !prefs.savedThemes?.some(theme => theme.name === 'QA Theme') && !prefs.menuThemes?.some(id => String(id).startsWith('saved:'));
+  })).toBe(true);
+});
+
+test('custom context menu stays contained and keyboard navigable', async ({ page }, info) => {
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await visit(page, '/', info);
+  const link = page.getByRole('link', { name: /Sanyam Brar.*Home/ }).first();
+  await link.focus();
+  await link.evaluate(element => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 126, clientY: 998 })));
+  const menu = page.getByRole('menu', { name: 'Context menu' });
+  await expect(menu).toBeVisible();
+  await expect.poll(async () => {
+    const box = await menu.boundingBox(), viewport = page.viewportSize();
+    return !!box && box.x >= 7 && box.y >= 7 && box.x + box.width <= viewport.width - 7 && box.y + box.height <= viewport.height - 7;
+  }).toBe(true);
+  await expect(menu.locator('[role="menuitem"]:not(:disabled)').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toBeVisible();
+  await expect(link).toBeFocused();
+
+  await page.setViewportSize({ width: 320, height: 180 });
+  await link.focus();
+  await page.keyboard.press('Shift+F10');
+  await expect(menu).toBeVisible();
+  await expect.poll(async () => {
+    const box = await menu.boundingBox(), viewport = page.viewportSize();
+    return !!box && box.x >= 7 && box.y >= 7 && box.x + box.width <= viewport.width - 7 && box.y + box.height <= viewport.height - 7;
+  }).toBe(true);
+  const enabledItems = menu.locator('[role="menuitem"]:not(:disabled)');
+  await expect(enabledItems.first()).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(enabledItems.last()).toBeFocused();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(enabledItems.first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toBeVisible();
+  await expect(link).toBeFocused();
 });
 
 test('Wordle typing, persistence, settings, reveal and statistics', async ({ page }, info) => {
