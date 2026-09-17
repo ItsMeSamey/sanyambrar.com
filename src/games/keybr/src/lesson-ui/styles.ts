@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { mixColors } from "../color/mix.ts";
 import { parseColor } from "../color/parse.ts";
-import { useComputedStyles } from "../themes/themes/use-computed-styles.ts";
+import { useComputedStyles } from "../themes/use-computed-styles.ts";
 import { createMemo } from "solid-js";
 export function useKeyStyles() {
     const computed = useComputedStyles();

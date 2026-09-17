@@ -2,7 +2,7 @@ import { type Color } from "../color/color.ts";
 import { parseColor } from "../color/parse.ts";
 import { MutableDailyGoal } from "../lesson/dailygoal.ts";
 import { useSettings } from "../settings/context.ts";
-import { useComputedStyles } from "../themes/themes/use-computed-styles.ts";
+import { useComputedStyles } from "../themes/use-computed-styles.ts";
 import { createMemo, type Accessor } from "solid-js";
 import { contrastTextRgb, type ContrastText } from "../../../../shared/contrast.ts";
 export type Effort = {

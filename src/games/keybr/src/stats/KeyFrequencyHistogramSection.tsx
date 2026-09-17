@@ -1,0 +1,34 @@
+import { KeyFrequencyHistogram } from "../chart/KeyFrequencyHistogram.tsx";
+import { Marker } from "../chart/Marker.tsx";
+import { type KeyStatsMap } from "../result/keystats.ts";
+import { Explainer } from "../widget/components/explainer/Explainer.tsx";
+import { Figure } from "../widget/components/figure/Figure.tsx";
+import { FormattedMessage } from "../intl/runtime.tsx";
+import { ChartWrapper } from "./ChartWrapper.tsx";
+export function KeyFrequencyHistogramSection(props: {
+    keyStatsMap: KeyStatsMap;
+}) {
+    return (<Figure>
+      <Figure.Caption>
+        <FormattedMessage id="stats.chart.keyFrequencyHistogram.caption" defaultMessage="Key Frequency Histogram"/>
+      </Figure.Caption>
+
+      <Explainer>
+        <Figure.Description>
+          <FormattedMessage id="stats.chart.keyFrequencyHistogram.description" defaultMessage="This chart shows relative key frequencies."/>
+        </Figure.Description>
+      </Explainer>
+
+      <ChartWrapper>
+        <KeyFrequencyHistogram keyStatsMap={props.keyStatsMap} width="100%" height="28rem"/>
+      </ChartWrapper>
+
+      <Figure.Legend>
+        <FormattedMessage id="stats.chart.keyFrequencyHistogram.legend" defaultMessage="Bar color: {label1} – hit count, {label2} – miss count, {label3} – miss/hit ratio (relative miss frequency)." values={{
+            label1: <Marker type="histogram-h"/>,
+            label2: <Marker type="histogram-m"/>,
+            label3: <Marker type="histogram-r"/>,
+        }}/>
+      </Figure.Legend>
+    </Figure>);
+}
