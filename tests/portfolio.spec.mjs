@@ -298,6 +298,8 @@ test('Wordle active games modal owns the overlay and switches saved games', asyn
   await page.getByRole('button', { name: 'Active Games', exact: true }).click();
   const activeGames = page.locator('.active-games-dialog');
   await expect(activeGames).toBeVisible();
+  await expect(activeGames).toHaveAttribute('aria-modal', 'true');
+  await expect(activeGames).toHaveAttribute('aria-label', 'Active games');
   await expect(page.locator('.wordle-settings-popover')).not.toBeVisible();
   const openingFrames = [];
   for (let frame = 0; frame < 10; frame++) {
