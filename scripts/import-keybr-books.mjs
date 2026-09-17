@@ -2,7 +2,7 @@ import { mkdir, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { BOOK_DEFINITIONS } from '../src/games/keybr/packages/keybr-content/lib/books/catalog.ts';
 
-const outDir = join(import.meta.dirname, '../src/games/keybr/packages/keybr-content-books/lib/data');
+const outDir = join(import.meta.dirname, '../src/games/keybr/packages/keybr-content/assets/books');
 const refresh = process.argv.includes('--refresh');
 const selected = BOOK_DEFINITIONS.filter(book => book.gutenbergId != null);
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
 import "./style.css";
-import { main } from "@keybr/app";
+import { main } from "./App.tsx";
 
 main();
