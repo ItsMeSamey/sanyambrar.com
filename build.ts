@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { cp, mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -21,7 +21,7 @@ const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
 const GENERATED_KEYBR = join(ROOT, ".build", "keybr");
-const ALL = new Set(["solid", "keybr", "static"]);
+const ALL = new Set(["wordle", "keybr", "static"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
 const invalidTargets = [...targets].filter((target) => !ALL.has(target));
@@ -175,11 +175,11 @@ async function rollbackDocsTransaction() {
 async function copyStatic() {
   await mkdir(DOCS, { recursive: true });
   // A partial static build updates an existing docs tree. Remove every output
-  // owned by the Solid/static pipeline first, otherwise content-hashed Vite
+  // owned by the site/static pipeline first, otherwise content-hashed Vite
   // chunks and deleted routes accumulate forever. Standalone Wordle/Keybr
   // artifacts are intentionally preserved unless their own target is built.
   const owned = [
-    "index.html", "work.html", "tools.html", "chain.html", "work", "tools", "chain",
+    "index.html", "work", "tools", "chain",
     "blog", "projects", "site-app.js", "site-chunks", "assets", "cnn.wasm", "cnn-worker.js",
     "site.css", "shared-runtime.js", "vditor",
   ];
@@ -244,10 +244,10 @@ async function buildSiteRuntime() {
   await run(ROOT, process.execPath, ["./node_modules/vite/bin/vite.js", "build", "--config", "vite.site.config.ts"]);
   const siteEntries = await walk(GENERATED_SITE_RUNTIME, (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
-  log("solid site SPA -> .build/site-runtime");
+  log("site SPA -> .build/site-runtime");
 }
 
-async function buildSolid() {
+async function buildWordle() {
   await ensureDeps(ROOT);
   await Promise.all([
     run(ROOT, process.execPath, ["./node_modules/typescript/bin/tsc", "-b", "tsconfig.json", "--pretty", "false"]),
@@ -264,7 +264,7 @@ async function buildSolid() {
   await rm(join(DOCS, "wordle.html"), { force: true });
   await rename(html[0], join(DOCS, "wordle.html"));
   must(existsSync(join(DOCS, "wordle.html")), "Wordle publish did not emit docs/wordle.html");
-  log("solid -> docs/wordle.html");
+  log("wordle -> docs/wordle.html");
 }
 
 
@@ -283,7 +283,7 @@ async function buildKeybr() {
   must(existsSync(assets), "Keybr build did not emit split assets");
   await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
   await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
-  log("solid keybr -> docs/keybr.html + docs/keybr-assets");
+  log("keybr -> docs/keybr.html + docs/keybr-assets");
 }
 
 async function deployAssets() {
@@ -310,7 +310,7 @@ async function versionMutableShellReferences() {
   const mutableRef = /((?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js))(?:\?v=[^"']*)?(["'])/g;
   for (const file of htmlFiles) {
     let source = await readFile(file, "utf8");
-    if (source.includes("data-solid-spa"))
+    if (source.includes("data-site-spa"))
       source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
     source = source.replace(mutableRef, `$1?v=${version}$2`);
     if (!/<meta\s+name=["']samey-build["']/i.test(source))
@@ -322,7 +322,7 @@ async function versionMutableShellReferences() {
     const refs = [...source.matchAll(/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/g)].map(match => match[0]);
     must(refs.every(ref => ref.includes(`?v=${version}`)), `deployment: stale mutable shell reference remains in ${relative(DOCS, file)}`);
     must(!source.includes("site-app.js"), `deployment: mutable site-app reference remains in ${relative(DOCS, file)}`);
-    if (source.includes("data-solid-spa"))
+    if (source.includes("data-site-spa"))
       must(source.includes(siteEntry), `deployment: hashed site entry missing in ${relative(DOCS, file)}`);
     must(source.includes(`<meta name="samey-build" content="${version}">`), `deployment: missing build version in ${relative(DOCS, file)}`);
   }
@@ -438,14 +438,8 @@ self.addEventListener('fetch', event => {
   await writeFile(join(DOCS, "sw.js"), source);
 }
 
-async function removeCompressionSidecars() {
-  const sidecars = await walk(DOCS, (_path, name) => /\.html\.(?:gz|br)$/.test(name));
-  await Promise.all(sidecars.map(path => unlink(path)));
-  if (sidecars.length) log(`removed ${sidecars.length} obsolete HTML compression sidecars`);
-}
-
 async function main() {
-  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use solid, keybr, static, or all)`);
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, static, or all)`);
   await generateAppearance();
   await rm(GENERATED_SITE, { recursive: true, force: true });
   await generateSite(GENERATED_SITE);
@@ -457,10 +451,9 @@ async function main() {
   await beginDocsTransaction();
   if (targets.has("static")) await copyStatic();
   const jobs: Promise<void>[] = [];
-  if (targets.has("solid")) jobs.push(buildSolid());
+  if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
-  await removeCompressionSidecars();
   if (targets.has("static")) {
     await versionMutableShellReferences();
     await generateServiceWorker();

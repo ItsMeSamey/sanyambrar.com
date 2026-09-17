@@ -3132,22 +3132,22 @@
 		globalThis.SameyPreloadPage = prefetch;
 		let documentNavigationMounted = false;
 		const mountSpa = () => {
-			if (document.documentElement.hasAttribute("data-solid-spa")) return;
+			if (document.documentElement.hasAttribute("data-site-spa")) return;
 			globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
 			if (documentNavigationMounted) return;
 			documentNavigationMounted = true;
 			document.addEventListener("pointerover", (event) => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
+				if (document.documentElement.hasAttribute("data-site-spa")) return;
 				const link = eventElement(event)?.closest("a[href]");
 				if (link && !link.target) prefetch(link.href);
 			}, { passive: true });
 			document.addEventListener("focusin", (event) => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
+				if (document.documentElement.hasAttribute("data-site-spa")) return;
 				const link = eventElement(event)?.closest("a[href]");
 				if (link && !link.target) prefetch(link.href);
 			});
 			document.addEventListener("click", (event) => {
-				if (document.documentElement.hasAttribute("data-solid-spa")) return;
+				if (document.documentElement.hasAttribute("data-site-spa")) return;
 				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 				const link = eventElement(event)?.closest("a[href]");
 				if (!link || link.target || link.hasAttribute("download")) return;
@@ -3158,7 +3158,7 @@
 				loadPage(url.href, { direction }).catch(() => {});
 			});
 			addEventListener("popstate", () => {
-				if (document.documentElement.hasAttribute("data-solid-spa") || location.pathname === currentPagePath) return;
+				if (document.documentElement.hasAttribute("data-site-spa") || location.pathname === currentPagePath) return;
 				const previousIndex = pageHistoryIndex;
 				const nextIndex = readNavigationIndex();
 				const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";
@@ -3288,7 +3288,7 @@
 			mountContextMenu();
 			mountVirtualScrollbars();
 			mountSmoothSliderMotion();
-			if (!document.documentElement.hasAttribute("data-solid-spa")) markInitialPageStyles();
+			if (!document.documentElement.hasAttribute("data-site-spa")) markInitialPageStyles();
 			mountSpa();
 			addEventListener("samey-pageload", mountSpa);
 		};
