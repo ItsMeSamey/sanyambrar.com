@@ -111,9 +111,9 @@ export function ChainPage() {
           <canvas ref={el => refs.canvas = el} role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
           <div ref={el => refs.statusEl = el} class="sr-only" aria-live="polite"/>
         </main>
-        <section ref={el => refs.resultPanel = el} class="chain-result" data-samey-overlay="" hidden aria-live="polite">
+        <section ref={el => refs.resultPanel = el} class="chain-result" data-samey-overlay="" hidden role="dialog" aria-modal="true" aria-labelledby="chain-result-title" aria-live="polite">
           <span class="chain-result-eyebrow">Match complete</span>
-          <h2 ref={el => refs.resultTitle = el}>You win</h2>
+          <h2 ref={el => refs.resultTitle = el} id="chain-result-title">You win</h2>
           <p ref={el => refs.resultCopy = el}/>
           <div class="chain-result-actions"><button ref={el => refs.playAgainButton = el} class="chain-result-primary" type="button">Play again</button><button ref={el => refs.resultMenuButton = el} class="chain-result-secondary" type="button">Game menu</button></div>
         </section>

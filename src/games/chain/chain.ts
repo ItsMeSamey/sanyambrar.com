@@ -1150,7 +1150,7 @@ export function mountChain(refs: ChainRefs) {
     replayComplete = true;
     currentMatchId = newMatchId();
     gamePlayers = createPlayers(config.enemies);
-    resultPanel.hidden = true;
+    setResultOpen(false);
     buildBoard();
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     syncSettings();
@@ -1238,7 +1238,7 @@ export function mountChain(refs: ChainRefs) {
     const commit = () => {
       if (wasInGame) gameVersion++;
       setSettingsOpen(false);
-      resultPanel.hidden = true;
+      setResultOpen(false);
       if (wasInGame || readSavedGame()) saveGameState(false);
       updateResumeCard();
     };
@@ -1257,7 +1257,7 @@ export function mountChain(refs: ChainRefs) {
     const commit = () => {
       if (wasInGame) saveGameState(false);
       setSettingsOpen(false);
-      resultPanel.hidden = true;
+      setResultOpen(false);
       renderStats();
     };
     showView(statsView, commit, direction);
@@ -1280,12 +1280,19 @@ export function mountChain(refs: ChainRefs) {
     showView(gameView, commit, requestedDirection ?? (fromStats ? 'back' : 'forward'));
   }
 
+  function setResultOpen(open: boolean) {
+    resultPanel.hidden = !open;
+    for (const child of gameView.children)
+      if (child instanceof HTMLElement && child !== resultPanel) child.inert = open;
+  }
+
   function showResult() {
     if (!gameOver || gameView.hidden) return;
     resultTitle.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
     resultCopy.textContent = `${boardSummary()} · The board belongs to ${turn === HUMAN ? 'you' : `enemy ${turn - 1}`}.`;
     const wasHidden = resultPanel.hidden;
-    resultPanel.hidden = false;
+    setResultOpen(true);
+    if (wasHidden) requestAnimationFrame(() => !resultPanel.hidden && playAgainButton.focus({preventScroll:true}));
     if (wasHidden && resultPanel.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       resultPanel.animate(
         [{opacity:0, transform:'translate(-50%,-48%) scale(.97)'},{opacity:1, transform:'translate(-50%,-50%) scale(1)'}],
@@ -1385,7 +1392,7 @@ export function mountChain(refs: ChainRefs) {
     cols: clampInt(button.dataset.cols, ...limits.cols, defaults.cols),
     enemies: clampInt(button.dataset.enemies, ...limits.enemies, defaults.enemies),
   })));
-  playAgainButton.addEventListener('click', () => startNewGame(config));
+  playAgainButton.addEventListener('click', () => { startNewGame(config); requestAnimationFrame(() => canvas.focus({preventScroll:true})); });
   resultMenuButton.addEventListener('click', () => showMenu());
   statsButtons.forEach(button => button.addEventListener('click', () => showStats()));
   statsBackButton.addEventListener('click', () => showMenu());
@@ -1402,6 +1409,15 @@ export function mountChain(refs: ChainRefs) {
   document.addEventListener('pointerdown', onDocumentPointerDown);
   for (const input of [rowsInput, colsInput, enemiesInput]) input.addEventListener('input', previewSettings);
   const onDocumentKeyDown = (e: KeyboardEvent) => {
+    if (!resultPanel.hidden && e.key === 'Tab') {
+      e.preventDefault();
+      const current = document.activeElement;
+      const next = e.shiftKey
+        ? current === playAgainButton ? resultMenuButton : playAgainButton
+        : current === resultMenuButton ? playAgainButton : resultMenuButton;
+      next.focus({preventScroll:true});
+      return;
+    }
     if (e.key !== 'Escape' || settingsButton.getAttribute('aria-expanded') !== 'true') return;
     const target = e.target instanceof Node ? e.target : null;
     if (!target || (!settingsPanel.contains(target) && !settingsButton.contains(target))) return;
