@@ -32,11 +32,6 @@ let docsExistedBeforeBuild = false;
 const log = (message: string) => console.log(`[build] ${message}`);
 const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
 const requireRecord = (value: unknown, message: string): UnknownRecord => { must(isRecord(value), message); return value; };
-async function readJsonRecord(path: string) {
-  const value: unknown = JSON.parse(await readFile(path, "utf8"));
-  return requireRecord(value, `${relative(ROOT, path)} must contain a JSON object`);
-}
-
 const siteShell = (title: string, kind: string, root = "./") => `<!doctype html><html lang="en" data-site-spa data-site-kind="${kind}" data-site-page="${kind}" data-home-href="${root}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>${title}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="${root}site.css" data-samey-shared><script src="${root}shared-runtime.js"></script><script type="module" src="${root}site-app.js"></script></head><body><div id="site-root"></div></body></html>`;
 
 async function generateSiteRoute(root: string, path: string, title: string, kind: string, assetRoot: string) {
@@ -68,7 +63,8 @@ async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shar
 }
 
 async function generateAppearance() {
-  const config = await readJsonRecord(join(ROOT, "src/shared/appearance.json"));
+  const appearancePath = join(ROOT, "src/shared/appearance.json");
+  const config = requireRecord(JSON.parse(await readFile(appearancePath, "utf8")), `${relative(ROOT, appearancePath)} must contain a JSON object`);
   const colors = requireRecord(config.colors, "appearance: colors must be an object");
   const fonts = requireRecord(config.fonts, "appearance: fonts must be an object");
   const hex = /^#[0-9a-f]{6}$/i;
