@@ -4,7 +4,7 @@ import type { Accessor } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 
 import './error_page.css'
-import { Button } from '../shared/components/Button.tsx'
+import { Button } from '../../shared/components/Button.tsx'
 
 function SwingingLight(value: unknown, reset: () => void): JSX.Element {
   const err = value instanceof Error ? value : new Error(String(value))
