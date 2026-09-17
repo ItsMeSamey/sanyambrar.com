@@ -1,0 +1,1 @@
+import{x as e}from"./site-app-sffkeyu1.js";import{t}from"./_.contribution-SCWM52fn.js";t({id:`css`,extensions:[`.css`],aliases:[`CSS`,`css`],mimetypes:[`text/css`],loader:()=>e(()=>import(`./css-DIMkf-bt.js`),[])});
