@@ -143,11 +143,6 @@ async function publishSite() {
   await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
 }
 
-async function cleanupBuildArtifacts() {
-  await rm(join(ROOT, ".build"), { recursive: true, force: true });
-}
-
-
 async function buildSharedRuntime() {
   await runViteBuild("shared");
   must(existsSync(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js")), "shared runtime bundle missing");
@@ -220,8 +215,6 @@ async function versionMutableShellReferences() {
   must(siteEntries.length === 1, `deployment: expected one hashed site entry, found ${siteEntries.length}`);
   const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
   const mutableAssets = ["site.css", "shared-runtime.js"];
-  must(mutableAssets.includes("site.css") && mutableAssets.includes("shared-runtime.js"),
-    "deployment: mutable site shell assets are incomplete");
   const hash = createHash("sha256");
   hash.update(siteEntry).update("\0");
   for (const name of mutableAssets) hash.update(name).update("\0").update(await readFile(join(DOCS, name))).update("\0");
@@ -383,5 +376,5 @@ try {
   await rollbackDocsTransaction();
   throw error;
 } finally {
-  await cleanupBuildArtifacts();
+  await rm(join(ROOT, ".build"), { recursive: true, force: true });
 }

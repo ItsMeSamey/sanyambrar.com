@@ -954,12 +954,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   let directLoading = false;
   let loadingTasks = 0;
   let loadingState = false;
+  let updateLoadingCursor: ((loading: boolean) => void) | undefined;
   const publishLoading = () => {
     const on = directLoading || loadingTasks > 0;
     if (on === loadingState) return;
     loadingState = on;
     document.documentElement.toggleAttribute("data-site-loading", on);
-    dispatchEvent(new CustomEvent("samey-loading", { detail: on }));
+    updateLoadingCursor?.(on);
   };
   globalThis.SameyLoading = (value) => { directLoading = !!value; publishLoading(); };
   globalThis.SameyLoadingBegin = () => {
@@ -1055,7 +1056,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         cursor.removeAttribute("data-text");
         if (cursorMode === "invert") setCursorVisible(true);
       }
-      document.documentElement.toggleAttribute("data-site-loading", !!loading);
       if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
       if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
       if (!loading) {
@@ -1063,7 +1063,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         if (cursorMode === "invert" && cursorVisible) armCursorIdle();
       }
     };
-    addEventListener("samey-loading", () => setLoading(loadingState));
+    updateLoadingCursor = setLoading;
     if (loadingState) queueMicrotask(() => { if (loadingState) setLoading(true); });
 
     // `difference` with a fixed white source has an unavoidable 50% gray
@@ -1839,7 +1839,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("blur", () => close()); addEventListener("resize", () => close());
     addEventListener("scroll", (event) => { if (!(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
     document.addEventListener("keydown", (event) => {
-      if (menu.hidden) return;
+      if (menu.hidden) {
+        if ((event.shiftKey && event.key === "F10") || event.key === "ContextMenu") {
+          event.preventDefault();
+          const origin = document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
+          const rect = origin.getBoundingClientRect();
+          origin.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + Math.min(rect.width / 2, 24), clientY: rect.top + Math.min(rect.height, 24) }));
+        }
+        return;
+      }
       const items = [...menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); return; }
       if (!items.length) return;

@@ -69,8 +69,7 @@ const hashTarget = (url: URL) => {
 };
 const preload = (route: Route) => loadModule(route.kind);
 const setLoading = (value: boolean) => {
-  if (globalThis.SameyLoading) globalThis.SameyLoading(value);
-  else dispatchEvent(new CustomEvent('samey-loading', { detail: value }));
+  globalThis.SameyLoading?.(value);
   document.documentElement.toggleAttribute('data-solid-loading', value);
 };
 const cancelSharedPageSwap = () => globalThis.SameyCancelPageSwap?.();
@@ -267,7 +266,6 @@ export function App() {
       if (id === navigationId) {
         const message = error instanceof Error ? error.message : 'The page module could not be loaded.';
         setNavigationError({ url: url.href, message, detail: formatThrownError(error) });
-        dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: url.href, error } }));
       }
     } finally {
       if (id === navigationId) setLoading(false);
@@ -349,7 +347,6 @@ export function App() {
         if (id === navigationId) {
           setLoading(false);
           setNavigationError({ url: url.href, message: error instanceof Error ? error.message : 'The page could not be restored.', detail: formatThrownError(error) });
-          dispatchEvent(new CustomEvent('samey-loaderror', { detail: { url: location.href, error } }));
         }
       });
     };

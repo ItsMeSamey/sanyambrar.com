@@ -16,11 +16,6 @@ tmp/
 temp/
 Archive.tar.gz
 
-# Vditor runtime is generated into docs/ for GitHub Pages.
-!docs/vditor/
-!docs/vditor/dist/
-!docs/vditor/dist/**
-
 .tmp/
 .worktree/
 playwright-report/
