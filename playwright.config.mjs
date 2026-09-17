@@ -5,6 +5,8 @@ import { basename, resolve } from 'node:path';
 const executablePath = process.env.BROWSER_EXECUTABLE ?? (existsSync('/usr/bin/brave') ? '/usr/bin/brave' : undefined);
 const requestedPortBase = Number(process.env.SAMEY_TEST_PORT_BASE ?? 4319);
 if (!Number.isSafeInteger(requestedPortBase) || requestedPortBase < 1024 || requestedPortBase > 65532) throw new Error('SAMEY_TEST_PORT_BASE must leave four valid ports');
+const requestedWorkers = Number(process.env.SAMEY_TEST_WORKERS ?? 3);
+if (!Number.isSafeInteger(requestedWorkers) || requestedWorkers < 1) throw new Error('SAMEY_TEST_WORKERS must be a positive integer');
 const ports = { production: requestedPortBase, site: requestedPortBase + 1, wordle: requestedPortBase + 2, keybr: requestedPortBase + 3 };
 const parent = resolve(import.meta.dirname, '..');
 const projectRoot = basename(parent) === '.worktree' ? resolve(parent, '..') : import.meta.dirname;
@@ -20,7 +22,7 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 8_000 },
   fullyParallel: true,
-  workers: 3,
+  workers: requestedWorkers,
   retries: 0,
   outputDir,
   reporter: [['list'], ['json', { outputFile: jsonReport }]],
