@@ -1,7 +1,0 @@
-{
-  "private": true,
-  "name": "@keybr/result-loader",
-  "version": "0.0.0",
-  "type": "module",
-  "main": "lib/index.ts"
-}

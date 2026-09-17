@@ -1,24 +1,19 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite";
 
 const root = import.meta.dirname;
 const packagesDir = join(root, "packages");
-const workspaceAliases = Object.fromEntries(
-  readdirSync(packagesDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const dir = join(packagesDir, entry.name);
-      try {
-        const pkg: unknown = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
-        const name = pkg !== null && typeof pkg === "object" && "name" in pkg ? pkg.name : undefined;
-        return typeof name === "string" && name.startsWith("@keybr/") ? [[name, dir]] : [];
-      } catch {
-        return [];
-      }
-    }),
-);
+const packageDirs = readdirSync(packagesDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(packagesDir, entry.name, "lib/index.ts")));
+const workspaceAliases = [
+  { find: "@keybr/phonetic-model/assets", replacement: join(packagesDir, "keybr-phonetic-model/assets") },
+  ...packageDirs.map((entry) => {
+    const name = entry.name.startsWith("keybr-") ? entry.name.slice(6) : entry.name;
+    return { find: new RegExp(`^@keybr/${name}$`), replacement: join(packagesDir, entry.name, "lib/index.ts") };
+  }),
+];
 
 export default defineConfig(({ mode }) => ({
   root,

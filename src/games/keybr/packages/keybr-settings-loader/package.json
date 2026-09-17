@@ -1,7 +1,0 @@
-{
-  "private": true,
-  "name": "@keybr/settings-loader",
-  "version": "0.0.0",
-  "type": "module",
-  "main": "lib/index.ts"
-}
