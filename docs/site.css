@@ -349,6 +349,14 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
   color: var(--color-foreground, var(--site-fg, #121213));
 }
 
+@media (max-width: 720px) {
+  .game-settings-slider[class] {
+    inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+  }
+}
+
 @media (max-width: 640px) {
   :root { --game-control-top: 9px; --game-control-right: 8px; }
   .game-settings-popover { width: min(var(--game-settings-width), calc(100vw - 16px)); max-height: calc(100dvh - 18px); }
@@ -500,6 +508,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .site-standard .reverb-demo-fullscreen-button.is-active .collapse-icon{display:block}
 .site-standard .reverb-demo-host{display:block;width:100%;height:100%;min-height:0;overflow:hidden;border:0;border-radius:0;background:transparent;box-shadow:none}
 .site-standard .reverb-demo-frame.is-fullscreen{position:fixed;inset:0;z-index:calc(var(--samey-z-overlay) - 1);width:100vw;height:100vh;height:100dvh;margin:0;background:color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg,var(--site-accent)) 6%)}
+.site-route:has(.reverb-demo-frame.is-fullscreen){will-change:opacity}
 .site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-host{width:100%;height:100%;border:0;border-radius:0;box-shadow:none}
 .site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button{top:12px;right:12px;border-color:color-mix(in srgb,var(--site-line) 72%,transparent);background:color-mix(in srgb,var(--site-bg) 78%,transparent);color:var(--site-fg);opacity:0}
 @media(max-width:700px){.site-standard .reverb-demo-section{margin-top:32px}.site-standard .reverb-demo-frame-shell{height:820px;min-height:820px}.site-standard .reverb-demo-head{align-items:flex-start}}
@@ -575,6 +584,14 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
   .tools-page>.site-topbar .site-topbar-start,.tools-page>.site-topbar .site-topbar-nav{height:36px;align-self:start}
   .tools-page>.site-topbar .tool-context{position:absolute;left:12px;right:12px;bottom:2px;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
+}
+@media(max-width:160px){
+  .number-tool{padding-inline:6px}
+  .radix-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .radix-choices button{padding-inline:2px}
+  .number-card{grid-template-columns:minmax(0,1fr) 28px;gap:5px;padding:7px}
+  .number-card header{grid-column:1/-1}
+  .number-card>button{width:28px;height:28px}
 }
 .chain-shell,.chain-shell *{box-sizing:border-box}
 body.site-chain-active{margin:0;width:100%;height:100%;overflow:hidden;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font-family:var(--site-font,Arial,Helvetica,sans-serif)}
