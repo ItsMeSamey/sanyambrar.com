@@ -41,6 +41,6 @@ export function DialogContent(props: D.DialogContentProps & ComponentProps<'div'
   createEffect(context.isOpen, open => open ? registerEscape(entry) : undefined)
   return <D.Portal>
     <D.Overlay data-samey-overlay-backdrop='' class='samey-dialog-overlay' />
-    <D.Content data-samey-overlay='' class={['samey-dialog', local.class]} {...rest} />
+    <D.Content data-samey-overlay='' class={['samey-dialog', local.class]} {...rest} aria-modal={context.modal() ? 'true' : undefined} />
   </D.Portal>
 }
