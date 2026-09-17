@@ -43,6 +43,11 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   const initialViewport = page.viewportSize();
   await page.setViewportSize({ width: 320, height: 180 });
   await searchInput.fill('a');
+  await searchInput.focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('.search-result').last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(searchInput).toBeFocused();
   for (let i = 0; i < 8; i += 1) await page.keyboard.press('ArrowDown');
   const activeSearchResultIsVisible = () => page.locator('.site-search-results').evaluate(element => {
     const active = element.querySelector('.search-result.active');
