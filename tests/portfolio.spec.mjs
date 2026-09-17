@@ -36,6 +36,28 @@ for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   expect(await page.title()).not.toBe('');
 });
 
+test('extreme narrow call-to-actions and article controls stay reachable', async ({ page }, info) => {
+  await page.setViewportSize({ width: 128, height: 1000 });
+  const expectContained = async selector => {
+    const targets = page.locator(selector);
+    expect(await targets.count()).toBeGreaterThan(0);
+    await expect.poll(() => targets.evaluateAll(elements => elements.every(element => {
+      const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || rect.width === 0 || rect.height === 0) return true;
+      return rect.left >= -1 && rect.right <= innerWidth + 1;
+    })), { message: `${selector} must remain horizontally reachable at 128px` }).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  };
+  await visit(page, '/', info);
+  await expectContained('.home-writing-read');
+  await visit(page, '/projects/reverb/', info);
+  await expectContained('.reverb-demo-store-link');
+  await visit(page, '/blog/posts/btop-mutex.html', info);
+  await expectContained('.article-route main button, .article-route main a[href]');
+  await visit(page, '/tools/?tool=diff', info);
+  await expectContained('[data-diff-language], [data-diff-swap]');
+});
+
 test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -605,13 +627,21 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   await expectContained();
   await host.scrollIntoViewIfNeeded();
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
-  await expect.poll(() => page.locator('.reverb-demo-frame').evaluate(frame => {
-    const rect = frame.getBoundingClientRect();
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+  await fullscreen.click();
+  const frame = page.locator('.reverb-demo-frame');
+  const exitFullscreen = page.getByRole('button', { name: 'Exit fullscreen demo' });
+  await expect.poll(() => frame.evaluate(element => {
+    const rect = element.getBoundingClientRect();
     return [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)];
   })).toEqual([0, 0, 320, 180]);
+  await expect(exitFullscreen).toHaveCSS('opacity', '1');
+  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
   await expectContained();
-  await page.getByRole('button', { name: 'Exit fullscreen demo' }).click();
+  await page.keyboard.press('Escape');
+  await expect(frame).not.toHaveClass(/is-fullscreen/);
+  await expect(fullscreen).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
 });
 
 test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
@@ -630,6 +660,14 @@ test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
   await page.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(page.locator('.cnn-prediction')).toHaveText('—');
   await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await expect.poll(() => page.locator('.cnn-demo-shell').evaluate(element => {
+    const controls = [...element.querySelectorAll('button,input')];
+    return element.scrollWidth <= element.clientWidth + 1 && controls.every(control => {
+      const rect = control.getBoundingClientRect();
+      return rect.left >= -1 && rect.right <= innerWidth + 1;
+    });
+  }), { message: 'CNN demo controls must stay usable at 128px' }).toBe(true);
 });
 
 test('Keybr completed lesson updates metrics and survives reload', async ({ page }, info) => {

@@ -1,0 +1,1 @@
+import{x as e}from"./site-app-qfRjvEEk.js";import{t}from"./_.contribution-DLgFRF2S.js";t({id:`rust`,extensions:[`.rs`,`.rlib`],aliases:[`Rust`,`rust`],loader:()=>e(()=>import(`./rust-DdL9SqIa.js`),[])});

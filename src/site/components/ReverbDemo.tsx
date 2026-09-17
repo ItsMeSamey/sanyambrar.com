@@ -103,13 +103,18 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const onButtonClick = () => active ? exitFullscreen() : enterFullscreen();
   const onPopState = () => setFullscreen(stateIsOurs());
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (active && event.key === 'Escape') exitFullscreen();
+  };
 
   button.addEventListener('click', onButtonClick);
   window.addEventListener('popstate', onPopState);
+  window.addEventListener('keydown', onKeyDown);
 
   return () => {
     button.removeEventListener('click', onButtonClick);
     window.removeEventListener('popstate', onPopState);
+    window.removeEventListener('keydown', onKeyDown);
     if (active) {
       frame.classList.remove('is-fullscreen');
       host.removeAttribute('data-fullscreen');
