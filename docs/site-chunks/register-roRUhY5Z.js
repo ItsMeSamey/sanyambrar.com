@@ -1,1 +1,0 @@
-import{x as e}from"./site-app-DpRZGpep.js";import{t}from"./_.contribution-Cw9aN55Q.js";t({id:`css`,extensions:[`.css`],aliases:[`CSS`,`css`],mimetypes:[`text/css`],loader:()=>e(()=>import(`./css-DIMkf-bt.js`),[])});
