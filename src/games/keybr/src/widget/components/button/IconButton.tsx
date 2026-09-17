@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import * as styles from "./IconButton.module.css";
+import styles from "./IconButton.module.css";
 import { type IconButtonProps } from "./IconButton.types.ts";
 import { omit } from 'solid-js';
 export function IconButton(allProps: IconButtonProps): JSX.Element {

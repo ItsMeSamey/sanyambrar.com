@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import * as styles from "./LinkButton.module.css";
+import styles from "./LinkButton.module.css";
 import { type LinkButtonProps } from "./LinkButton.types.ts";
 import { omit } from 'solid-js';
 export function LinkButton(allProps: LinkButtonProps): JSX.Element {

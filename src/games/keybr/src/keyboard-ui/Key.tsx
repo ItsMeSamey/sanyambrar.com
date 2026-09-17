@@ -9,7 +9,7 @@ import { isDiacritic } from "../unicode/diacritics.ts";
 import { type ClassName, type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
 
-import * as styles from "./Key.module.css";
+import styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
 import { omit } from 'solid-js';
 export type KeyProps = {

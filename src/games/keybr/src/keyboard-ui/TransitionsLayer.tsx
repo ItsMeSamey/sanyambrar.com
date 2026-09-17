@@ -5,7 +5,7 @@ import { type CodePoint } from "../unicode/types.ts";
 import { clsx } from "clsx";
 
 import { getKeyCenter, Surface } from "./shapes.tsx";
-import * as styles from "./TransitionsLayer.module.css";
+import styles from "./TransitionsLayer.module.css";
 export const TransitionsLayer = function TransitionsLayer(props: {
     readonly histogram: Iterable<readonly [
         CodePoint,

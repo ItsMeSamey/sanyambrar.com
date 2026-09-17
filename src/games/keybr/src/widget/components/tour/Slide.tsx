@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import { type FloatingPosition } from "../../floating/types.ts";
-import * as styles from "./Slide.module.css";
+import styles from "./Slide.module.css";
 import { omit } from 'solid-js';
 export type SlideProps = {
     readonly anchor?: string;

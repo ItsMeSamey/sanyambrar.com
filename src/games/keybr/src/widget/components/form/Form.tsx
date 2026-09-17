@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
-import * as styles from "./Form.module.css";
+import styles from "./Form.module.css";
 import { type FieldSetProps, type LegendProps, } from "./Form.types.ts";
 export function FieldSet(props: FieldSetProps): JSX.Element {
     return (<fieldset id={props.id} //

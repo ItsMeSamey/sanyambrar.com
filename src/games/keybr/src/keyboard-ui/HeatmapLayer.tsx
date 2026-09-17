@@ -4,7 +4,7 @@ import { useKeyboard } from "../keyboard/context.tsx";
 import { type CodePoint } from "../unicode/types.ts";
 import { clsx } from "clsx";
 
-import * as styles from "./HeatmapLayer.module.css";
+import styles from "./HeatmapLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const HeatmapLayer = function HeatmapLayer(props: {
     readonly histogram: Iterable<readonly [

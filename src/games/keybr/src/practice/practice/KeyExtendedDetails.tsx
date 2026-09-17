@@ -9,7 +9,7 @@ import { type KeyStats } from "../../result/keystats.ts";
 import { useSettings } from "../../settings/context.ts";
 import { Box } from "../../widget/components/box/Box.tsx";
 
-import * as styles from "./KeyExtendedDetails.module.css";
+import styles from "./KeyExtendedDetails.module.css";
 import { LearningRateDescription } from "./LearningRateDescription.tsx";
 export function KeyExtendedDetails(props: {
     readonly lessonKey: LessonKey;

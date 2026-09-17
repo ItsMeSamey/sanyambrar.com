@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import { Dynamic } from '@solidjs/web';
-import * as styles from "./Figure.module.css";
+import styles from "./Figure.module.css";
 import { type FigureCaptionProps, type FigureDescriptionProps, type FigureLegendProps, type FigureProps, } from "./Figure.types.ts";
 
 export function Figure(props: FigureProps): JSX.Element {

@@ -4,7 +4,7 @@ import { KeyboardContext } from "../keyboard/context.tsx";
 import { type ZoomableProps } from "../widget/components/zoomer/Zoomer.types.ts";
 
 import { getFrameSize } from "./shapes.tsx";
-import * as styles from "./VirtualKeyboard.module.css";
+import styles from "./VirtualKeyboard.module.css";
 import { createMemo, omit } from 'solid-js';
 export const VirtualKeyboard = function VirtualKeyboard(allProps: {
     readonly children?: JSX.Element;

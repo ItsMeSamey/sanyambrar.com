@@ -8,7 +8,7 @@ import { useIntl } from "../intl/runtime.tsx";
 import { CurrentKey } from "./CurrentKey.tsx";
 import { DailyGoal } from "./DailyGoal.tsx";
 import { GaugeList } from "./gauges.tsx";
-import * as styles from "./indicators.module.css";
+import styles from "./indicators.module.css";
 import { KeySet } from "./KeySet.tsx";
 import { type Names } from "./names.ts";
 import { StreakList } from "./StreakList.tsx";

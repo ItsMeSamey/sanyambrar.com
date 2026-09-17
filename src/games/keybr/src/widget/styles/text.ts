@@ -1,5 +1,5 @@
 import { type ClassName } from "../components/types.ts";
-import * as styles from "./text.module.css";
+import styles from "./text.module.css";
 
 const styleTextCenter = styles.textCenter;
 const styleTextStart = styles.textStart;

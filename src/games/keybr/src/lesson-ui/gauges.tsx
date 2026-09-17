@@ -7,7 +7,7 @@ import { clsx } from "clsx";
 
 import { useIntl } from "../intl/runtime.tsx";
 import { useFormatter } from "./format.ts";
-import * as styles from "./gauges.module.css";
+import styles from "./gauges.module.css";
 import { type Names } from "./names.ts";
 export const GaugeList = function GaugeRow(props: {
     summaryStats: SummaryStats;

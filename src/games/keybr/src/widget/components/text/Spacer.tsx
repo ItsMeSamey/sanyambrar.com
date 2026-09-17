@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
-import * as styles from "./Spacer.module.css";
+import styles from "./Spacer.module.css";
 import { type SpacerProps } from "./Spacer.types.ts";
 export function Spacer(props: SpacerProps): JSX.Element {
     return (<div class={clsx(styles.root, {

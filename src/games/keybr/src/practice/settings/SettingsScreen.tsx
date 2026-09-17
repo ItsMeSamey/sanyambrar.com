@@ -13,7 +13,7 @@ import { ExplainSettings } from "./ExplainSettings.tsx";
 import { KeyboardSettings } from "./KeyboardSettings.tsx";
 import { LessonSettings } from "./LessonSettings.tsx";
 import { MiscSettings } from "./MiscSettings.tsx";
-import * as styles from "./SettingsScreen.module.css";
+import styles from "./SettingsScreen.module.css";
 
 export function SettingsScreen() {
     return (<KeyboardProvider>

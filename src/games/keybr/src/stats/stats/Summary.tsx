@@ -5,7 +5,7 @@ import { formatDuration } from "../../widget/utils/format-duration.ts";
 import { Header } from "../../widget/components/text/Header.tsx";
 import { Para } from "../../widget/components/text/Para.tsx";
 import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
-import * as styles from "./Summary.module.css";
+import styles from "./Summary.module.css";
 export function AllTimeSummary(props: {
     stats: SummaryStats;
 }) {

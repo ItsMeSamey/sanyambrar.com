@@ -2,7 +2,7 @@ import { createSignal, onSettled } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 import { ToastProvider } from "./context.tsx";
 import { state, Toast } from "./state.ts";
-import * as styles from "./Toaster.module.css";
+import styles from "./Toaster.module.css";
 import { type ToastOptions } from "./types.ts";
 export function Toaster(): JSX.Element {
     const [toasts, setToasts] = createSignal(state.toasts);

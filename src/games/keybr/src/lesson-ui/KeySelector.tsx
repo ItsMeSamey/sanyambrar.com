@@ -7,7 +7,7 @@ import { useSettings } from "../settings/context.ts";
 import { type FocusProps } from "../widget/components/types.ts";
 import { useHotkeysHandler } from "../widget/hooks/use-hotkeys.ts";
 import { Key } from "./Key.tsx";
-import * as styles from "./KeySelector.module.css";
+import styles from "./KeySelector.module.css";
 export const KeySelector = (props: {
     current: Letter;
     keyStatsMap: KeyStatsMap;

@@ -1,6 +1,6 @@
 import { type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
-import * as styles from "./styles.module.css";
+import styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
 import { omit, merge } from 'solid-js';
 export const KeyLegend = (allProps: {

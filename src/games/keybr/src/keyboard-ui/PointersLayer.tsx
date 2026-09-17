@@ -6,7 +6,7 @@ import { type KeyShape } from "../keyboard/keyshape.ts";
 import { useKeyboard } from "../keyboard/context.tsx";
 import { Tasks } from "../lang/tasks.ts";
 import { type CodePoint } from "../unicode/types.ts";
-import * as styles from "./PointersLayer.module.css";
+import styles from "./PointersLayer.module.css";
 import { getKeyCenter, Surface } from "./shapes.tsx";
 export const PointersLayer = function PointersLayer(props: {
     readonly suffix: readonly CodePoint[];

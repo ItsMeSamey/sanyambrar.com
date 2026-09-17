@@ -1,7 +1,7 @@
 import { useIntlNumbers } from "../intl/numbers.ts";
 import { FormattedMessage } from "../intl/runtime.tsx";
 import { type Effort } from "./effort.ts";
-import * as styles from "./EffortLegent.module.css";
+import styles from "./EffortLegent.module.css";
 export function EffortLegend(props: {
     effort: Effort;
 }) {

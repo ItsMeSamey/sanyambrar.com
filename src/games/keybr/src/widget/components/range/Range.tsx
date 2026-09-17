@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 import { omit } from 'solid-js';
 import { sizeClassName } from "../../styles/size.ts";
-import * as styles from "./Range.module.css";
+import styles from "./Range.module.css";
 import { type RangeProps } from "./Range.types.ts";
 
 const THUMB_SIZE = 16;

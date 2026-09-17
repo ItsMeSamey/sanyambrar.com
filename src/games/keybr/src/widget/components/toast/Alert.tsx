@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { type MouseProps } from "../types.ts";
-import * as styles from "./Alert.module.css";
+import styles from "./Alert.module.css";
 import { CloseButton } from "./CloseButton.tsx";
 import { toastProps, useToast } from "./context.tsx";
 import { SeverityIcon } from "./SeverityIcon.tsx";

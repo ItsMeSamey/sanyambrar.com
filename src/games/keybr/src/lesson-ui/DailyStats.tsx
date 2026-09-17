@@ -4,7 +4,7 @@ import { formatDuration } from "../widget/utils/format-duration.ts";
 import { NameValue } from "../widget/components/text/NameValue.tsx";
 import { Para } from "../widget/components/text/Para.tsx";
 import { useIntl } from "../intl/runtime.tsx";
-import * as styles from "./DailyStats.module.css";
+import styles from "./DailyStats.module.css";
 import { type Effort } from "./effort.ts";
 import { useFormatter } from "./format.ts";
 export function DailyStats(props: {

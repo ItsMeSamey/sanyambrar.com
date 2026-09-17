@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import * as styles from "./Marker.module.css";
+import styles from "./Marker.module.css";
 type Props = {
     readonly type: "slow" | "fast" | "speed" | "accuracy" | "complexity" | "threshold" | "histogram-h" | "histogram-m" | "histogram-r";
 };

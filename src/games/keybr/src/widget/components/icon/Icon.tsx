@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import { Dynamic } from '@solidjs/web';
-import * as styles from "./Icon.module.css";
+import styles from "./Icon.module.css";
 import { type IconProps } from "./Icon.types.ts";
 import { createMemo, omit, merge } from 'solid-js';
 export const Icon = function Icon(allProps: IconProps): JSX.Element {

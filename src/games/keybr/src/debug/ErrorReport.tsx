@@ -1,4 +1,4 @@
-import * as styles from "./ErrorReport.module.css";
+import styles from "./ErrorReport.module.css";
 export function ErrorReport(props: {
     readonly report: string;
 }) {

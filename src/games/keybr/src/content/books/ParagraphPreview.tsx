@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import { createMemo, For } from 'solid-js';
-import * as styles from "./ParagraphPreview.module.css";
+import styles from "./ParagraphPreview.module.css";
 export const ParagraphPreview = function ParagraphPreview(props: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;

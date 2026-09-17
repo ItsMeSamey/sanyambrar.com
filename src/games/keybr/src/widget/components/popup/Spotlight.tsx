@@ -4,7 +4,7 @@ import { placeElement } from "../../floating/place.ts";
 import { useScreenSize } from "../../hooks/use-screen-size.ts";
 import { getBoundingBox } from "../../utils/geometry.ts";
 import { querySelector } from "../../utils/query.ts";
-import * as styles from "./Spotlight.module.css";
+import styles from "./Spotlight.module.css";
 export type SpotlightProps = {
     readonly anchor?: Element | string;
     readonly margin?: number;

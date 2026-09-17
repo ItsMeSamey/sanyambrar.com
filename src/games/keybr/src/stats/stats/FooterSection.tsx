@@ -7,7 +7,7 @@ import { Field, FieldList } from "../../widget/components/fieldlist/FieldList.ts
 import { Icon } from "../../widget/components/icon/Icon.tsx";
 import { Trash2, Download, Upload } from "../../widget/icons.ts";
 import { useIntl } from "../../intl/runtime.tsx";
-import * as styles from "./FooterSection.module.css";
+import styles from "./FooterSection.module.css";
 
 export function FooterSection() {
     const { formatMessage } = useIntl();

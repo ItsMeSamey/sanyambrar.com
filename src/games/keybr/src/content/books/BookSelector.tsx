@@ -2,7 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { clsx } from "clsx";
 
-import * as styles from "./BookSelector.module.css";
+import styles from "./BookSelector.module.css";
 import { Book } from "./book.ts";
 
 const BOOKS = Book.ALL.map((book) => book).sort((a, b) =>

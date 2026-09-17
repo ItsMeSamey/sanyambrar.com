@@ -22,7 +22,7 @@ import { CirclePlay, CircleStop } from "../widget/icons.ts";
 import { createEffect, createMemo, createSignal } from 'solid-js';
 import { FormattedMessage, useIntl } from "../intl/runtime.tsx";
 import { AnimatedText } from "./AnimatedText.tsx";
-import * as styles from "./TypingSettings.module.css";
+import styles from "./TypingSettings.module.css";
 export function TypingSettings() {
     const { formatMessage } = useIntl();
     return (<>

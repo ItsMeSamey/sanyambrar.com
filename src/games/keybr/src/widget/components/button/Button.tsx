@@ -1,8 +1,8 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 import { sizeClassName } from "../../styles/size.ts";
-import * as iconStyles from "../icon/Icon.module.css";
-import * as styles from "./Button.module.css";
+import iconStyles from "../icon/Icon.module.css";
+import styles from "./Button.module.css";
 import { type ButtonProps } from "./Button.types.ts";
 import { omit } from 'solid-js';
 export function Button(allProps: ButtonProps): JSX.Element {

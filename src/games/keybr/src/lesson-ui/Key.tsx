@@ -1,7 +1,7 @@
 import { type LessonKey } from "../lesson/key.ts";
 import { type MouseProps } from "../widget/components/types.ts";
 import { clsx } from "clsx";
-import * as styles from "./styles.module.css";
+import styles from "./styles.module.css";
 import { useKeyStyles } from "./styles.ts";
 import { merge, omit } from 'solid-js';
 
