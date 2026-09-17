@@ -2,7 +2,9 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import styles from "./Spacer.module.css";
-import { type SpacerProps } from "./Spacer.types.ts";
+type SpacerProps = {
+  readonly size: 1 | 2 | 3 | 4 | 5 | 10;
+};
 export function Spacer(props: SpacerProps): JSX.Element {
     return (<div class={clsx(styles.root, {
             [styles.size1]: props.size === 1,

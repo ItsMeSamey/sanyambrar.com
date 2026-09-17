@@ -2,7 +2,12 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 
 import styles from "./ProgressBar.module.css";
-import { type ProgressBarProps } from "./ProgressBar.types.ts";
+import { type ClassName } from "../types.ts";
+type ProgressBarProps = {
+  readonly className?: ClassName;
+  readonly total: number;
+  readonly current: number;
+};
 import { Show } from 'solid-js';
 export function ProgressBar(props: ProgressBarProps): JSX.Element {
     const value = () => Number.isFinite(props.total) && Number.isFinite(props.current) && props.total > 0

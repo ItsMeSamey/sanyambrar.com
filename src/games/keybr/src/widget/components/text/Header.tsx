@@ -1,7 +1,8 @@
 import type { JSX } from "@solidjs/web";
 import type { ValidComponent } from "@solidjs/web";
 import { Dynamic } from '@solidjs/web';
-import { type HeaderProps } from "./Header.types.ts";
+import { type ElementProps } from "../types.ts";
+type HeaderProps = ElementProps & { readonly level?: 1 | 2 | 3 | 4 | 5 };
 export function Header(props: HeaderProps): JSX.Element {
     const component = () => {
         let component: ValidComponent;

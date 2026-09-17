@@ -2,7 +2,23 @@ import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 import { sizeClassName } from "../../styles/size.ts";
 import styles from "./TextField.module.css";
-import { type TextFieldProps } from "./TextField.types.ts";
+import { type SizeName } from "../../styles/size.ts";
+import { type FocusProps, type KeyboardProps, type MouseProps, } from "../types.ts";
+type TextFieldType = "text" | "textarea" | "email" | "url" | "password";
+type TextFieldProps = {
+    readonly error?: string | null;
+    readonly maxLength?: number;
+    readonly name?: string;
+    readonly placeholder?: string;
+    readonly readOnly?: boolean;
+    readonly rows?: number;
+    readonly size?: SizeName;
+    readonly title?: string;
+    readonly type?: TextFieldType;
+    readonly value?: string;
+    readonly onChange?: (value: string) => void;
+    readonly onInput?: (event: InputEvent) => void;
+} & FocusProps & MouseProps & KeyboardProps;
 import { createEffect, omit, merge } from 'solid-js';
 export function TextField(allProps: TextFieldProps): JSX.Element {
     const mergedProps = merge(allProps, { get type() { return allProps.type ?? "text"; } });

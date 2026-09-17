@@ -3,7 +3,39 @@ import { clsx } from "clsx";
 
 import { Dynamic } from '@solidjs/web';
 import styles from "./Figure.module.css";
-import { type FigureCaptionProps, type FigureDescriptionProps, type FigureLegendProps, type FigureProps, } from "./Figure.types.ts";
+import type { ValidComponent } from "@solidjs/web";
+import { type ClassName } from "../types.ts";
+type FigureProps = {
+    readonly as?: ValidComponent;
+    readonly className?: ClassName;
+    readonly id?: string;
+    readonly title?: string;
+    readonly children?: JSX.Element;
+    readonly caption?: JSX.Element;
+    readonly description?: JSX.Element;
+    readonly legend?: JSX.Element;
+};
+type FigureCaptionProps = {
+    readonly as?: ValidComponent;
+    readonly className?: ClassName;
+    readonly id?: string;
+    readonly title?: string;
+    readonly children?: JSX.Element;
+};
+type FigureDescriptionProps = {
+    readonly as?: ValidComponent;
+    readonly className?: ClassName;
+    readonly id?: string;
+    readonly title?: string;
+    readonly children?: JSX.Element;
+};
+type FigureLegendProps = {
+    readonly as?: ValidComponent;
+    readonly className?: ClassName;
+    readonly id?: string;
+    readonly title?: string;
+    readonly children?: JSX.Element;
+};
 
 export function Figure(props: FigureProps): JSX.Element {
     return (<Dynamic component={(props.as ?? "figure")} id={props.id} title={props.title} class={clsx(styles.root, props.className)}>

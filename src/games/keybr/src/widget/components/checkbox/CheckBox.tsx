@@ -1,6 +1,15 @@
 import type { JSX } from "@solidjs/web";
 import * as CheckboxPrimitive from "@kobalte/core/checkbox";
-import { type CheckBoxProps } from "./CheckBox.types.ts";
+import { type FocusProps } from "../types.ts";
+type CheckBoxProps = {
+  readonly checked?: boolean;
+  readonly children?: JSX.Element;
+  readonly label?: JSX.Element;
+  readonly name?: string;
+  readonly title?: string;
+  readonly value?: string;
+  readonly onChange?: (checked: boolean) => void;
+} & FocusProps;
 
 /** Solid/Kobalte checkbox using the same interaction model as Solid UI. */
 export function CheckBox(props: CheckBoxProps): JSX.Element {
