@@ -25,7 +25,7 @@ interface GameStats {
 }
 
 
-export async function fetchStats(): Promise<GameStats> {
+async function fetchStats(): Promise<GameStats> {
   const db = await getReadyDB()
   let totalGames = 0
   let totalWins = 0

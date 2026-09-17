@@ -1,6 +1,6 @@
 import { omit } from 'solid-js';
 import type { JSX } from '@solidjs/web';
-import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, House as HouseNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, SunMoon as SunMoonNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
+import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
 
 export type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
   size?: number | string;
@@ -42,7 +42,6 @@ export const CirclePlay = /* @__PURE__ */ icon(CirclePlayNode, 'circle-play');
 export const CircleStop = /* @__PURE__ */ icon(CircleStopNode, 'circle-stop');
 export const Download = /* @__PURE__ */ icon(DownloadNode, 'download');
 export const Frown = /* @__PURE__ */ icon(FrownNode, 'frown');
-export const House = /* @__PURE__ */ icon(HouseNode, 'house');
 export const Info = /* @__PURE__ */ icon(InfoNode, 'info');
 export const Maximize2 = /* @__PURE__ */ icon(Maximize2Node, 'maximize2');
 export const MoonStar = /* @__PURE__ */ icon(MoonStarNode, 'moon-star');
@@ -54,7 +53,6 @@ export const Share = /* @__PURE__ */ icon(ShareNode, 'share');
 export const SkipBack = /* @__PURE__ */ icon(SkipBackNode, 'skip-back');
 export const SkipForward = /* @__PURE__ */ icon(SkipForwardNode, 'skip-forward');
 export const Smile = /* @__PURE__ */ icon(SmileNode, 'smile');
-export const SunMoon = /* @__PURE__ */ icon(SunMoonNode, 'sun-moon');
 export const Trash2 = /* @__PURE__ */ icon(Trash2Node, 'trash2');
 export const Trophy = /* @__PURE__ */ icon(TrophyNode, 'trophy');
 export const Undo2 = /* @__PURE__ */ icon(Undo2Node, 'undo2');
