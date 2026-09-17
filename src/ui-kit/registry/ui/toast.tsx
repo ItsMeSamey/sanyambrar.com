@@ -11,6 +11,11 @@ export function showToast(options: ToastOptions) {
   setTimeout(() => setItems(items => items.filter(candidate => candidate.id !== item.id)), options.duration ?? 3000)
 }
 
+export function showError(error: Error) {
+  console.error(error)
+  showToast({title: error.name, description: error.message, variant: 'error', duration: 4000})
+}
+
 export function Toaster(props: { class?: string }) {
   return <div class={['samey-toaster', props.class].filter(Boolean).join(' ')} aria-live='polite'>
     <For each={items()}>{item =>

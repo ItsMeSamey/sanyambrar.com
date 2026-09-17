@@ -34,13 +34,13 @@ export function TopBarIconButton(props: TopBarButtonProps) {
   >{props.children}</button>;
 }
 
-export function AppearanceButton(props:{class?:string;label?:string}) {
+function AppearanceButton(props:{class?:string;label?:string}) {
   return <button class={`${props.class || 'top-icon'} site-topbar-icon`} type="button" data-samey-appearance aria-label="Appearance" aria-expanded="false">
     <MoonStar aria-hidden="true"/>{props.label && <span class="site-topbar-icon-label">{props.label}</span>}
   </button>;
 }
 
-export function SearchButton() {
+function SearchButton() {
   return <button class="site-topbar-search" type="button" data-open-search aria-label="Search">
     <Search class="site-topbar-search-icon" aria-hidden="true"/>
     <kbd data-search-shortcut>Ctrl K</kbd>
@@ -55,20 +55,13 @@ export function GameTopBarActions(props:{children?:JSX.Element;ariaLabel?:string
   </nav>;
 }
 
-export function PrimaryNav() {
-  return <nav class="top-nav site-topbar-nav" aria-label="Primary">
-    <AppearanceButton/>
-    <SearchButton/>
-  </nav>;
-}
-
 /** The only site top bar implementation. Pages customize content through slots. */
 export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;nav?:JSX.Element|false}) {
   return <header class="site-topbar">
     <div class="site-topbar-inner site-topbar-inner-contained">
       <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
       <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
-      {props.nav === false ? null : (props.nav ?? <PrimaryNav/>)}
+      {props.nav === false ? null : (props.nav ?? <nav class="top-nav site-topbar-nav" aria-label="Primary"><AppearanceButton/><SearchButton/></nav>)}
     </div>
   </header>;
 }
