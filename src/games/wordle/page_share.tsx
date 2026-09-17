@@ -3,10 +3,10 @@
 import { Share as ShareIcon } from '../../ui-kit/components/lucide.tsx';
 import { Accessor, createSignal, createStore, onCleanup, snapshot, untrack } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import { Dialog, DialogContent, DialogTrigger } from '~/registry/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger } from '../../ui-kit/registry/ui/dialog'
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
-import { Button } from '~/registry/ui/button'
-import { showError } from '~/registry/ui/toast'
+import { Button } from '../../ui-kit/registry/ui/button'
+import { showError } from '../../ui-kit/registry/ui/toast'
 import { binarySearch } from './word-list'
 import { challengeUrl, isWordLength } from './challenge'
 
