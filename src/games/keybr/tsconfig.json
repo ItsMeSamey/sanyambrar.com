@@ -23,8 +23,7 @@
     ],
     "paths": {
       "@keybr/*": [
-        "packages/keybr-*/lib/index.ts",
-        "packages/*/lib/index.ts"
+        "src/*/index.ts"
       ]
     },
     "noUnusedLocals": true,
@@ -35,8 +34,6 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "packages/**/*.ts",
-    "packages/**/*.tsx",
     "src/**/*.d.ts",
     "../../shared/runtime-globals.d.ts"
   ]

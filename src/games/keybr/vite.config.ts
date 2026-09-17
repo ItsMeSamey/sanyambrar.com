@@ -4,19 +4,19 @@ import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite";
 
 const root = import.meta.dirname;
-const packagesDir = join(root, "packages");
-const packageDirs = readdirSync(packagesDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && existsSync(join(packagesDir, entry.name, "lib/index.ts")));
-const workspaceAliases = packageDirs.map((entry) => {
-    const name = entry.name.startsWith("keybr-") ? entry.name.slice(6) : entry.name;
-  return { find: new RegExp(`^@keybr/${name}$`), replacement: join(packagesDir, entry.name, "lib/index.ts") };
-});
+const sourceDir = join(root, "src");
+const moduleAliases = readdirSync(sourceDir, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join(sourceDir, entry.name, "index.ts")))
+  .map((entry) => ({
+    find: new RegExp(`^@keybr/${entry.name}$`),
+    replacement: join(sourceDir, entry.name, "index.ts"),
+  }));
 
 export default defineConfig(({ mode }) => ({
   root,
   base: "./",
   assetsInclude: ["**/*.data"],
-  resolve: { alias: workspaceAliases },
+  resolve: { alias: moduleAliases },
   plugins: [solid()],
   define: { "process.env.NODE_ENV": JSON.stringify(mode) },
   css: { modules: { localsConvention: "camelCase" } },
@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => ({
             },
             {
               name: "keybr",
-              test: /packages[\\/]/,
+              test: /src[\\/][^\\/]+[\\/]/,
               minSize: 40_000,
               maxSize: 180_000,
               includeDependenciesRecursively: false,

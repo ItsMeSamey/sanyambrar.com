@@ -52,7 +52,7 @@ No separate Keybr dependency installation is required.
 
 ## Book corpus
 
-The catalog contains 100 English books plus the existing French, German, and Spanish editions. The 97 added English works are pinned to Project Gutenberg ebook IDs in `packages/keybr-content/lib/books/catalog.ts`; the importer strips Gutenberg wrappers and rejects suspiciously truncated results.
+The catalog contains 100 English books plus the existing French, German, and Spanish editions. The 97 added English works are pinned to Project Gutenberg ebook IDs in `src/content/books/catalog.ts`; the importer strips Gutenberg wrappers and rejects suspiciously truncated results.
 
 ```sh
 bun run import:keybr-books
