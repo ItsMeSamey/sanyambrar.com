@@ -7,3 +7,16 @@
 .gauge {
   min-inline-size: 5rem;
 }
+
+@media (max-width: 160px) {
+  .gaugeList {
+    min-inline-size: 0;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .gauge {
+    min-inline-size: min(5rem, 100%);
+  }
+}

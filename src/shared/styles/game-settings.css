@@ -88,6 +88,14 @@
   color: var(--color-foreground, var(--site-fg, #121213));
 }
 
+@media (max-width: 720px) {
+  .game-settings-slider[class] {
+    inline-size: 100% !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+  }
+}
+
 @media (max-width: 640px) {
   :root { --game-control-top: 9px; --game-control-right: 8px; }
   .game-settings-popover { width: min(var(--game-settings-width), calc(100vw - 16px)); max-height: calc(100dvh - 18px); }

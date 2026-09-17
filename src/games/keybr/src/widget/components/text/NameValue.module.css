@@ -37,3 +37,17 @@
 .name + .value {
   margin-inline-start: 0.2rem;
 }
+
+@media (max-width: 160px) {
+  .nameValue {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .name {
+    max-inline-size: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

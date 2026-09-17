@@ -1,7 +1,7 @@
 .root {
   display: inline-block;
   width: 100%;
-  min-width: 12rem;
+  min-width: min(12rem, 100%);
   vertical-align: middle;
   --color-primary: var(--secondary);
   --color-background: var(--primary);
