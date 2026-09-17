@@ -80,7 +80,7 @@ export class MutableSummaryStats implements SummaryStats {
   }
 }
 
-export class MutableMetric implements Metric {
+class MutableMetric implements Metric {
   #last: number = 0;
   #delta: number = 0;
   #count: number = 0;

@@ -34,7 +34,7 @@ export function ParagraphIndex(props: {
 }) {
     return <span class={styles.index}>#{props.paragraphIndex + 1}</span>;
 }
-export function ParagraphContent(props: {
+function ParagraphContent(props: {
     readonly paragraph: string;
 }) {
     return <span class={styles.content}>{props.paragraph}</span>;

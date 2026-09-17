@@ -1,16 +1,15 @@
 import { type ClassName } from "../components/index.ts";
 import * as styles from "./size.module.css";
 
-export const styleSizeFit = styles.sizeFit;
 export const styleSizeFill = styles.sizeFill;
-export const styleSizeFillAlt = styles.sizeFillAlt;
-export const styleSizeFull = styles.sizeFull;
+const styleSizeFillAlt = styles.sizeFillAlt;
+const styleSizeFull = styles.sizeFull;
 
-export const styleWidth6 = styles.width6;
-export const styleWidth10 = styles.width10;
-export const styleWidth16 = styles.width16;
-export const styleWidth24 = styles.width24;
-export const styleWidth32 = styles.width32;
+const styleWidth6 = styles.width6;
+const styleWidth10 = styles.width10;
+const styleWidth16 = styles.width16;
+const styleWidth24 = styles.width24;
+const styleWidth32 = styles.width32;
 
 export type SizeName =
   | "default"

@@ -39,7 +39,7 @@ export function makeStats(steps: readonly Step[]): Stats {
   }
 }
 
-export function countErrors(steps: readonly Step[]): number {
+function countErrors(steps: readonly Step[]): number {
   let errors = 0;
   for (const item of steps) {
     if (item.typo) {
@@ -49,6 +49,6 @@ export function countErrors(steps: readonly Step[]): number {
   return errors;
 }
 
-export function computeSpeed(length: number, time: number): number {
+function computeSpeed(length: number, time: number): number {
   return time > 0 ? (length / (time / 1000)) * 60 : 0;
 }

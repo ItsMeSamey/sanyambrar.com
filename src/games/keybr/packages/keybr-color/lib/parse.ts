@@ -8,7 +8,7 @@ import { RgbColor } from "./color-rgb.ts";
 import { namedColors } from "./named-colors.ts";
 import { parseHex } from "./parse-hex.ts";
 
-export function tryParseColor(value: string): Color | null {
+function tryParseColor(value: string): Color | null {
   value = value.trim();
   if (value === "transparent") {
     return new RgbColor(0, 0, 0, 0);

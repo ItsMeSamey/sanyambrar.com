@@ -14,7 +14,7 @@ type ViewContextValue = {
   readonly setBeforeLeave: (handler: BeforeLeave) => () => void;
 };
 
-export const ViewContext = createContext<ViewContextValue>({
+const ViewContext = createContext<ViewContextValue>({
   setView: () => {},
   currentView: () => "",
   setBeforeLeave: () => () => {},

@@ -7,7 +7,7 @@ export type ToastContextValue = {
     readonly hover: (over: boolean) => void;
     readonly click: () => void;
 };
-export const ToastContext = createContext<ToastContextValue>(null!);
+const ToastContext = createContext<ToastContextValue>(null!);
 export function ToastProvider(props: {
     readonly toast: Toast;
     readonly render: () => JSX.Element;

@@ -36,22 +36,22 @@ const allScripts = [
     "thai",
 ] as const satisfies readonly Script[];
 const face = (family: string, weight: FontWeight, style: FontStyle, fallback: Fallback) => new FontFace(family, weight, style, [fallback], allScripts);
-export const SANS_SERIF = face("sans-serif", "400", "normal", "sans-serif");
-export const SANS_SERIF_I = face("sans-serif", "400", "italic", "sans-serif");
-export const SANS_SERIF_B = face("sans-serif", "700", "normal", "sans-serif");
-export const SANS_SERIF_BI = face("sans-serif", "700", "italic", "sans-serif");
-export const SERIF = face("serif", "400", "normal", "serif");
-export const SERIF_I = face("serif", "400", "italic", "serif");
-export const SERIF_B = face("serif", "700", "normal", "serif");
-export const SERIF_BI = face("serif", "700", "italic", "serif");
+const SANS_SERIF = face("sans-serif", "400", "normal", "sans-serif");
+const SANS_SERIF_I = face("sans-serif", "400", "italic", "sans-serif");
+const SANS_SERIF_B = face("sans-serif", "700", "normal", "sans-serif");
+const SANS_SERIF_BI = face("sans-serif", "700", "italic", "sans-serif");
+const SERIF = face("serif", "400", "normal", "serif");
+const SERIF_I = face("serif", "400", "italic", "serif");
+const SERIF_B = face("serif", "700", "normal", "serif");
+const SERIF_BI = face("serif", "700", "italic", "serif");
 export const MONOSPACE = face("monospace", "400", "normal", "monospace");
-export const MONOSPACE_I = face("monospace", "400", "italic", "monospace");
-export const MONOSPACE_B = face("monospace", "700", "normal", "monospace");
-export const MONOSPACE_BI = face("monospace", "700", "italic", "monospace");
-export const CURSIVE = face("cursive", "400", "normal", "cursive");
-export const CURSIVE_I = face("cursive", "400", "italic", "cursive");
-export const CURSIVE_B = face("cursive", "700", "normal", "cursive");
-export const CURSIVE_BI = face("cursive", "700", "italic", "cursive");
+const MONOSPACE_I = face("monospace", "400", "italic", "monospace");
+const MONOSPACE_B = face("monospace", "700", "normal", "monospace");
+const MONOSPACE_BI = face("monospace", "700", "italic", "monospace");
+const CURSIVE = face("cursive", "400", "normal", "cursive");
+const CURSIVE_I = face("cursive", "400", "italic", "cursive");
+const CURSIVE_B = face("cursive", "700", "normal", "cursive");
+const CURSIVE_BI = face("cursive", "700", "italic", "cursive");
 export const FONTS_FACES: readonly FontFace[] = [
     MONOSPACE,
     MONOSPACE_I,

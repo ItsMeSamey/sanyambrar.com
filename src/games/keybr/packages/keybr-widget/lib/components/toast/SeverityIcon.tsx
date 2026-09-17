@@ -16,12 +16,12 @@ export function SeverityIcon(props: {
             return null;
     }
 }
-export function InfoIcon(): JSX.Element {
+function InfoIcon(): JSX.Element {
     return <Icon shape={Info}/>;
 }
-export function SuccessIcon(): JSX.Element {
+function SuccessIcon(): JSX.Element {
     return <Icon shape={CircleCheck}/>;
 }
-export function ErrorIcon(): JSX.Element {
+function ErrorIcon(): JSX.Element {
     return <Icon shape={CircleAlert}/>;
 }

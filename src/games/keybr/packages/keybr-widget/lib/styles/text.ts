@@ -1,9 +1,9 @@
 import { type ClassName } from "../components/index.ts";
 import * as styles from "./text.module.css";
 
-export const styleTextCenter = styles.textCenter;
-export const styleTextStart = styles.textStart;
-export const styleTextEnd = styles.textEnd;
+const styleTextCenter = styles.textCenter;
+const styleTextStart = styles.textStart;
+const styleTextEnd = styles.textEnd;
 export const styleTextTruncate = styles.textTruncate;
 
 export type AlignName = "start" | "center" | "end";
