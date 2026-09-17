@@ -849,7 +849,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     renderAppearancePanel();
     apply();
   };
-  globalThis.SameyOpenAppearance = (trigger) => toggleAppearance(trigger);
 
   const pushState = history.pushState.bind(history);
   const replaceState = history.replaceState.bind(history);
@@ -1983,7 +1982,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   let currentPagePath = location.pathname;
   const swapPage = (doc: Document, baseUrl: URL, url: URL, replace: boolean) => {
-    try { globalThis.SameyToolsDispose?.(); delete globalThis.SameyToolsDispose; } catch {}
     try { globalThis.SameySolidDispose?.(); } catch {}
     try { globalThis.SameyWordleDispose?.(); } catch {}
     try { globalThis.SameyKeybrDispose?.(); } catch {}

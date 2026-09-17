@@ -1586,7 +1586,6 @@
 			renderAppearancePanel();
 			apply();
 		};
-		globalThis.SameyOpenAppearance = (trigger) => toggleAppearance(trigger);
 		const pushState = history.pushState.bind(history);
 		const replaceState = history.replaceState.bind(history);
 		const NAV_INDEX_KEY = "__sameyNavIndex";
@@ -3009,10 +3008,6 @@
 		};
 		let currentPagePath = location.pathname;
 		const swapPage = (doc, baseUrl, url, replace) => {
-			try {
-				globalThis.SameyToolsDispose?.();
-				delete globalThis.SameyToolsDispose;
-			} catch {}
 			try {
 				globalThis.SameySolidDispose?.();
 			} catch {}

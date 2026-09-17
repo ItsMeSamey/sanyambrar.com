@@ -16,7 +16,6 @@ declare global {
   interface DocumentEventMap { pointerrawupdate: PointerEvent; }
   var MonacoEnvironment: ({ getWorker(moduleId: string, label: string): Worker }) | undefined;
   var SameyAppearanceConfig: AppearanceConfig | undefined;
-  var SameyOpenAppearance: ((trigger: HTMLElement) => void) | undefined;
   var SameyLoadingSvg: (() => string) | undefined;
   var SameyAnimateLocalSwap: ((root: HTMLElement, commit: () => void | Promise<void>, direction?: NavigationDirection) => Promise<void>) | undefined;
   var SameyAppearance: ({ get(): AppearanceSnapshot }) | undefined;
@@ -27,11 +26,9 @@ declare global {
   var SameyPageSwapNavigate: ((href: string, options?: NavigationOptions) => Promise<void>) | undefined;
   var SameyNavigate: ((href: string, options?: NavigationOptions) => Promise<void> | void) | undefined;
   var SameyPreloadPage: ((href: string) => void) | undefined;
-  var SameySolidNavigate: ((href: string, replace?: boolean, direction?: NavigationDirection) => Promise<void>) | undefined;
   var SameySolidPreload: ((href: string) => void) | undefined;
   var SameyMountSolid: (() => void) | undefined;
   var SameySolidDispose: (() => void) | undefined;
-  var SameyToolsDispose: (() => void) | undefined;
   var SameyWordleDispose: (() => void) | undefined;
   var SameyKeybrDispose: (() => void) | undefined;
 }

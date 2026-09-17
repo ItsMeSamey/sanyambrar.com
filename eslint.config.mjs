@@ -6,7 +6,7 @@ export default [{
   languageOptions: {
     parser: tseslint.parser,
     parserOptions: {
-      project: ['tsconfig.app.json', 'tsconfig.node.json', 'tsconfig.worker.json'],
+      project: ['tsconfig.app.json', 'tsconfig.node.json'],
       tsconfigRootDir: import.meta.dirname,
     },
   },
