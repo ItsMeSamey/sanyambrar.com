@@ -87,13 +87,32 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
 test('Wordle date picker and daily start', async ({ page }, info) => {
   await visit(page, '/wordle.html', info);
   await page.getByRole('button', { name: /^Choose date,/ }).click();
-  await expect(page.getByRole('dialog', { name: 'Choose date' })).toBeVisible();
+  const picker = page.getByRole('dialog', { name: 'Choose date' });
+  await expect(picker).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 180 });
+  await expect.poll(async () => {
+    const box = await picker.boundingBox(), viewport = page.viewportSize();
+    return !!box && box.x >= 7 && box.y >= 7 && box.x + box.width <= viewport.width - 7 && box.y + box.height <= viewport.height - 7;
+  }, { message: 'Date picker must stay inside an extreme short viewport' }).toBe(true);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog', { name: 'Choose date' })).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
   await expect(page.getByRole('button', { name: /^Choose date,/ })).toBeFocused();
   await page.getByRole('button', { name: 'Play', exact: true }).first().click();
   await expect(page.locator('.wordle-board')).toBeVisible();
   await expect(page).toHaveURL(/\?/);
+});
+
+test('Wordle active game stays contained at 128px', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/wordle.html', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await expect(page.locator('.wordle-board')).toBeVisible();
+  await page.setViewportSize({ width: 128, height: 1000 });
+  const contained = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && document.body.scrollWidth <= innerWidth + 1);
+  await expect.poll(contained).toBe(true);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Game settings' })).toBeVisible();
+  await expect.poll(contained).toBe(true);
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
