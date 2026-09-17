@@ -1,8 +1,8 @@
 'use strict'
 
 import { createEffect, createMemo, createSignal, createStore, For, onCleanup, onSettled, Show, snapshot, untrack, type StoreSetter } from 'solid-js';
-import { showError, showToast } from '../../ui-kit/registry/ui/toast'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../ui-kit/registry/ui/dialog'
+import { showError, showToast } from '../../shared/components/Toast.tsx'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../shared/components/Dialog.tsx'
 
 import Settings, { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { calcDiff, getCompletedDailyDates, getGuessWord, getRandomWord, KindEnum, setDone } from './words'

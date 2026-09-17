@@ -1,7 +1,7 @@
 'use strict'
 
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { Popover, PopoverContent, PopoverTrigger } from '../../ui-kit/registry/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../../shared/components/Popover.tsx'
 
 // Adapted to this project from Solid UI's Date Picker surface:
 // https://www.solid-ui.com/docs/components/date-picker

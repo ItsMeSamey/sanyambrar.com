@@ -8,7 +8,7 @@ import './style.css'
 import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'
 import ErrorPage from '../../pages/error_page'
 import Wordle from './page'
-import { Toaster } from '../../ui-kit/registry/ui/toast'
+import { Toaster } from '../../shared/components/Toast.tsx'
 
 const disposePageNavigation = mountPageNavigation()
 const mount = document.getElementById('wordle-app-mount')

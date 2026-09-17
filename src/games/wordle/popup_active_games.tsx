@@ -2,7 +2,7 @@
 
 import { createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
-import { Dialog, DialogContent, DialogTrigger } from '../../ui-kit/registry/ui/dialog'
+import { Dialog, DialogContent, DialogTrigger } from '../../shared/components/Dialog.tsx'
 import { Block } from './page'
 import { SettingsHardProps } from './popup_settings'
 import { getDailyChallenge, LEGACY_DAILY_CHALLENGE_VERSION, isChallengeConfig, isDailyChallengeVersion, isWordLength } from './challenge'

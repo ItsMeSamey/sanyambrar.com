@@ -1,4 +1,4 @@
-import { type LucideIcon } from '../../../../../../ui-kit/components/lucide.tsx';
+import { type LucideIcon } from '../../../../../../shared/components/Icons.tsx';
 import { type ClassName, type MouseProps } from "../types.ts";
 
 export type IconProps = {
