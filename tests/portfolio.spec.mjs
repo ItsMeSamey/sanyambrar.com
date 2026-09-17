@@ -196,6 +196,33 @@ test('number conversion updates from edited input', async ({ page }, info) => {
   await expect(page.getByRole('textbox', { name: 'Decimal', exact: true })).toHaveValue('255');
 });
 
+test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await expect(host).toBeVisible();
+  const expectContained = async () => expect.poll(() => host.evaluate(element => {
+    const root = element.shadowRoot, phone = root?.querySelector('#phone'), active = root?.querySelector('.screen.active');
+    if (!phone || !active) return false;
+    const hostRect = element.getBoundingClientRect(), phoneRect = phone.getBoundingClientRect();
+    return phoneRect.left >= hostRect.left - 1 && phoneRect.right <= hostRect.right + 1 && phoneRect.top >= hostRect.top - 1 && phoneRect.bottom <= hostRect.bottom + 1 && active.scrollWidth <= active.clientWidth + 1;
+  })).toBe(true);
+  await expect.poll(() => host.evaluate(element => element.hasAttribute('data-compact-scale'))).toBe(true);
+  await expectContained();
+  await host.evaluate(element => element.shadowRoot?.querySelector('#openRange')?.click());
+  await page.setViewportSize({ width: 320, height: 180 });
+  await expectContained();
+  await host.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
+  await expect.poll(() => page.locator('.reverb-demo-frame').evaluate(frame => {
+    const rect = frame.getBoundingClientRect();
+    return [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)];
+  })).toEqual([0, 0, 320, 180]);
+  await expectContained();
+  await page.getByRole('button', { name: 'Exit fullscreen demo' }).click();
+});
+
 test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
   await visit(page, '/projects/cnn/', info);
   const canvas = page.locator('.cnn-pad');
@@ -237,6 +264,17 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   await expect.poll(savedResults).toBe(1);
 });
 
+test('Keybr practice metrics stay contained at 128px', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await visit(page, '/keybr.html?p=practice', info);
+  await expect(page.getByText('Metrics:', { exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => ({
+    documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
+    bodyContained: document.body.scrollWidth <= innerWidth + 1,
+  }))).toEqual({ documentContained: true, bodyContained: true });
+});
+
 test('Keybr settings and book library stay contained at extreme narrow widths', async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await page.setViewportSize({ width: 720, height: 1000 });
@@ -245,9 +283,8 @@ test('Keybr settings and book library stay contained at extreme narrow widths', 
   const expectContained = async (width, height) => {
     await page.setViewportSize({ width, height });
     await expect.poll(() => page.evaluate(() => ({
-      documentWidth: document.documentElement.scrollWidth,
-      bodyWidth: document.body.scrollWidth,
-      viewportWidth: innerWidth,
+      documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
+      bodyContained: document.body.scrollWidth <= innerWidth + 1,
       segmentOverflow: [...document.querySelectorAll('.keybr-segmented')]
         .filter(element => {
           const style = getComputedStyle(element);
@@ -256,16 +293,25 @@ test('Keybr settings and book library stay contained at extreme narrow widths', 
         })
         .some(element => element.scrollWidth > element.clientWidth + 1),
     })), { message: `Keybr layout must stay contained at ${width}x${height}` }).toEqual({
-      documentWidth: width,
-      bodyWidth: width,
-      viewportWidth: width,
+      documentContained: true,
+      bodyContained: true,
       segmentOverflow: false,
     });
   };
 
+  await expectContained(128, 1000);
+  const rangeWidths = await page.locator('input[type="range"]').evaluateAll(inputs => inputs.flatMap(input => {
+    const rect = input.getBoundingClientRect();
+    const style = getComputedStyle(input);
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.height > 0 ? [rect.width] : [];
+  }));
+  expect(rangeWidths.length, 'Guided settings should expose range controls').toBeGreaterThan(0);
+  expect(Math.min(...rangeWidths), 'Range controls must remain usable at 128px').toBeGreaterThanOrEqual(40);
+
   for (const label of ['Guided lessons', 'Common words', 'Books', 'Custom text', 'Source code', 'Numbers']) {
     await page.setViewportSize({ width: 720, height: 1000 });
     await page.getByRole('radio', { name: label, exact: true }).click();
+    await expectContained(128, 1000);
     await expectContained(180, 1000);
     await expectContained(240, 900);
   }
@@ -274,6 +320,7 @@ test('Keybr settings and book library stay contained at extreme narrow widths', 
   await page.getByRole('radio', { name: 'Books', exact: true }).click();
   await page.getByRole('button', { name: 'Choose book', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await expectContained(128, 1000);
   await expectContained(180, 1000);
   await expectContained(240, 900);
   await page.getByPlaceholder('Title or author').fill('gatsby');

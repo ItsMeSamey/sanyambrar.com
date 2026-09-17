@@ -4,6 +4,9 @@ import demoHtml from '../demos/reverb-home.html?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
+const REVERB_PHONE_WIDTH = 411;
+const REVERB_PHONE_HEIGHT = 912;
+const REVERB_COMPACT_EMBED_WIDTH = 328;
 
 function animateFrame(frame: HTMLDivElement, before: DOMRect, reduceMotion: boolean) {
   frame.getAnimations().forEach(animation => animation.cancel());
@@ -21,6 +24,35 @@ function animateFrame(frame: HTMLDivElement, before: DOMRect, reduceMotion: bool
     duration: 280,
     easing: 'cubic-bezier(.2,0,0,1)',
   });
+}
+
+function installResponsivePhone(host: HTMLDivElement) {
+  const sync = () => {
+    const width = host.clientWidth;
+    const height = host.clientHeight;
+    if (width <= 0 || height <= 0) return;
+    const fullscreen = host.hasAttribute('data-fullscreen');
+    const compact = fullscreen
+      ? width < REVERB_PHONE_WIDTH || height < REVERB_PHONE_HEIGHT
+      : width < REVERB_COMPACT_EMBED_WIDTH;
+    const scale = fullscreen
+      ? Math.min(1, width / REVERB_PHONE_WIDTH, height / REVERB_PHONE_HEIGHT)
+      : Math.min(1, width / REVERB_PHONE_WIDTH);
+    host.toggleAttribute('data-compact-scale', compact);
+    if (compact) host.style.setProperty('--reverb-demo-scale', String(scale));
+    else host.style.removeProperty('--reverb-demo-scale');
+  };
+  const resizeObserver = new ResizeObserver(sync);
+  const fullscreenObserver = new MutationObserver(sync);
+  resizeObserver.observe(host);
+  fullscreenObserver.observe(host, { attributes: true, attributeFilter: ['data-fullscreen'] });
+  sync();
+  return () => {
+    resizeObserver.disconnect();
+    fullscreenObserver.disconnect();
+    host.removeAttribute('data-compact-scale');
+    host.style.removeProperty('--reverb-demo-scale');
+  };
 }
 
 function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: HTMLButtonElement) {
@@ -161,8 +193,9 @@ export function ReverbDemo() {
   let dispose = () => {};
   onSettled(() => {
     const disposeDemo = mountReverbDemo(host);
+    const disposeScale = installResponsivePhone(host);
     const disposeFullscreen = installFullscreen(frame, host, fullscreenButton);
-    dispose = () => { disposeFullscreen(); disposeDemo(); };
+    dispose = () => { disposeFullscreen(); disposeScale(); disposeDemo(); };
   });
   onCleanup(() => dispose());
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">

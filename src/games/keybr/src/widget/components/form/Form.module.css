@@ -1,6 +1,6 @@
 .fieldSet {
   display: block;
-  min-inline-size: auto;
+  min-inline-size: 0;
   max-inline-size: 100%;
   margin-inline: 0;
   margin-block: 0;

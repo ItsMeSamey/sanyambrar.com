@@ -46,3 +46,20 @@
     padding-inline-end: 0.5rem;
   }
 }
+
+@media (max-width: 160px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .name {
+    inline-size: 100%;
+    padding-inline-end: 0;
+    text-align: start;
+  }
+
+  .value {
+    min-inline-size: 0;
+    flex-basis: 100%;
+  }
+}
