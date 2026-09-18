@@ -262,6 +262,21 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await expect(menu).not.toBeVisible();
   await expect(link).toBeFocused();
 
+  const nativeShiftClick = await link.evaluate(element => element.dispatchEvent(new MouseEvent('contextmenu', {
+    bubbles: true, cancelable: true, shiftKey: true, button: 2, clientX: 12, clientY: 12,
+  })));
+  expect(nativeShiftClick).toBe(true);
+  await expect(menu).not.toBeVisible();
+  await link.evaluate(element => element.dispatchEvent(new MouseEvent('contextmenu', {
+    bubbles: true, cancelable: true, shiftKey: true, button: 0, clientX: 12, clientY: 12,
+  })));
+  await expect(menu).toBeVisible();
+  await page.evaluate(() => dispatchEvent(new Event('resize')));
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toBeVisible();
+  await expect(link).toBeFocused();
+
   await page.setViewportSize({ width: 320, height: 180 });
   await link.focus();
   await page.keyboard.press('Shift+F10');

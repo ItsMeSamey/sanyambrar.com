@@ -1773,6 +1773,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.body.append(menu);
     let target: EventTarget | null = null;
     let returnFocus: HTMLElement | null = null;
+    let menuViewportWidth = 0;
+    let menuViewportHeight = 0;
     const close = (restoreFocus = false) => {
       if (menu.hidden) return;
       menu.hidden = true; menu.replaceChildren();
@@ -1787,7 +1789,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
     document.addEventListener("contextmenu", (event) => {
-      if (event.shiftKey) return;
+      if (event.shiftKey && event.button === 2) return;
       event.preventDefault();
       target = event.target; menu.replaceChildren();
       const focusTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("a[href],button,input,textarea,select,[tabindex]") : null;
@@ -1830,13 +1832,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
       menu.hidden = false;
+      menuViewportWidth = innerWidth;
+      menuViewportHeight = innerHeight;
       const rect = menu.getBoundingClientRect();
       menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
       menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
       menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
     }, true);
     document.addEventListener("pointerdown", (event) => { if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close(); }, true);
-    addEventListener("blur", () => close()); addEventListener("resize", () => close());
+    addEventListener("blur", () => close());
+    addEventListener("resize", () => {
+      if (!menu.hidden && (innerWidth !== menuViewportWidth || innerHeight !== menuViewportHeight)) close();
+    });
     addEventListener("scroll", (event) => { if (!(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
     document.addEventListener("keydown", (event) => {
       if (menu.hidden) {
