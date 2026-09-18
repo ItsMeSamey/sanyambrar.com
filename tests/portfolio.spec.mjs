@@ -1015,6 +1015,29 @@ test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
   }
 });
 
+test('Tools topbar controls keep visible keyboard focus', async ({ page }, info) => {
+  await visit(page, '/tools/?tool=diff', info);
+  await page.keyboard.press('Tab');
+  const controls = [
+    page.getByLabel('Syntax language'),
+    page.getByRole('button', { name: 'Swap sides', exact: true }),
+  ];
+  for (const control of controls) {
+    await control.focus();
+    const state = await control.evaluate(element => {
+      const style = getComputedStyle(element);
+      return {
+        focusVisible: element.matches(':focus-visible'),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+      };
+    });
+    expect(state.focusVisible).toBe(true);
+    expect(state.outlineStyle).not.toBe('none');
+    expect(state.outlineWidth).toBeGreaterThanOrEqual(2);
+  }
+});
+
 test('number conversion updates from edited input', async ({ page }, info) => {
   await visit(page, '/tools/?tool=number', info);
   await page.getByRole('textbox', { name: 'Input', exact: true }).fill('1024');
