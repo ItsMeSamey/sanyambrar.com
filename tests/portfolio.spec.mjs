@@ -793,8 +793,14 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await expect.poll(lessonText).toBe(jekyllSecond);
 });
 
-for (const route of ['/', '/wordle', '/tools/?tool=number']) test(`accessible ${route}`, async ({ page }, info) => {
+for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff']) test(`accessible ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
+  if (route === '/tools/?tool=diff') {
+    const editContexts = page.locator('.monaco-diff-editor .native-edit-context');
+    await expect(editContexts).toHaveCount(2);
+    await expect(editContexts.nth(0)).toHaveAttribute('aria-label', 'Original text');
+    await expect(editContexts.nth(1)).toHaveAttribute('aria-label', 'Modified text');
+  }
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });

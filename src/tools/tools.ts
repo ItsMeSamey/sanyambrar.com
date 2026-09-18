@@ -458,7 +458,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     await ensureLanguage(language);
     if (!currentRender(generation) || route() !== 'diff') return;
 
-    root.innerHTML = '<section class="diff-monaco"><div id="diff-editor" class="monaco-host" aria-label="Editable diff"></div></section>';
+    root.innerHTML = '<section class="diff-monaco"><div id="diff-editor" class="monaco-host"></div></section>';
     const original = monaco.editor.createModel(left, language);
     const modified = monaco.editor.createModel(right, language);
     const diffEditor = monaco.editor.createDiffEditor(query<HTMLElement>(root, '#diff-editor'), editorOptions(language, {
@@ -480,6 +480,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       hideUnchangedRegions:{enabled:false},
     }));
     diffEditor.setModel({ original, modified });
+    diffEditor.getOriginalEditor().updateOptions({ ariaLabel: 'Original text' });
+    diffEditor.getModifiedEditor().updateOptions({ ariaLabel: 'Modified text' });
     // localStorage is synchronous. Keep full-string persistence off the input
     // event so large documents remain responsive while Monaco's DiffEditor
     // handles line alignment, view zones, and character-level highlighting.
