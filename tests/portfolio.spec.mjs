@@ -449,6 +449,95 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(appearance).toBeFocused();
 });
 
+test('Advanced appearance controls keep strong keyboard focus contrast', async ({ page }, info) => {
+  await visit(page, '/', info);
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  await appearance.click();
+  await page.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+  const advanced = page.locator('.samey-theme-advanced');
+  await expect(advanced).toBeVisible();
+
+  const focusState = async control => {
+    await page.keyboard.press('Tab');
+    await control.focus();
+    return control.evaluate(element => {
+      const ring = element.classList.contains('samey-control-native') ? element.nextElementSibling : element;
+      if (!(ring instanceof HTMLElement)) throw new Error('Could not resolve focus ring element');
+      const sample = cssColor => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('Could not create focus contrast sampling context');
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = cssColor;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const composite = (foreground, background) => {
+        const alpha = foreground[3] / 255;
+        return [
+          foreground[0] * alpha + background[0] * (1 - alpha),
+          foreground[1] * alpha + background[1] * (1 - alpha),
+          foreground[2] * alpha + background[2] * (1 - alpha),
+          255,
+        ];
+      };
+      const luminance = rgb => {
+        const linear = rgb.slice(0, 3).map(channel => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+      const effectiveBackground = start => {
+        const chain = [];
+        for (let node = start; node instanceof HTMLElement; node = node.parentElement) chain.unshift(node);
+        let background = [255, 255, 255, 255];
+        for (const node of chain) {
+          const layer = sample(getComputedStyle(node).backgroundColor);
+          if (layer[3] > 0) background = composite(layer, background);
+        }
+        return background;
+      };
+      const style = getComputedStyle(ring);
+      const offset = Number.parseFloat(style.outlineOffset) || 0;
+      const background = effectiveBackground(offset < 0 ? ring : ring.parentElement);
+      const outline = composite(sample(style.outlineColor), background);
+      const light = Math.max(luminance(outline), luminance(background));
+      const dark = Math.min(luminance(outline), luminance(background));
+      return {
+        focusVisible: element.matches(':focus-visible'),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        contrast: (light + 0.05) / (dark + 0.05),
+      };
+    });
+  };
+
+  const controls = [
+    ['close', page.getByRole('button', { name: 'Close Advanced & Colorblind', exact: true })],
+    ['theme name', page.locator('.samey-ui-input[name="themeName"]')],
+    ['tone', page.locator('.samey-ui-select[name="tone"]')],
+    ['color', page.locator('.samey-ui-color').first()],
+    ['save', page.locator('[data-save-theme]')],
+    ['radio', page.locator('.samey-control-native[type="radio"]').first()],
+    ['checkbox', page.locator('.samey-control-native[type="checkbox"]').first()],
+  ];
+
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    await page.waitForTimeout(220);
+    for (const [name, control] of controls) {
+      await expect(control, `${name} control must exist`).toHaveCount(1);
+      const state = await focusState(control);
+      expect(state.focusVisible, `${name} must use :focus-visible in ${color}`).toBe(true);
+      expect(state.outlineStyle, `${name} must render a focus outline in ${color}`).not.toBe('none');
+      expect(state.outlineWidth, `${name} focus outline must be at least 2px in ${color}`).toBeGreaterThanOrEqual(2);
+      expect(state.contrast, `${name} focus contrast in ${color}`).toBeGreaterThanOrEqual(3);
+    }
+  }
+});
+
 test('loading strip animates only while visible', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
