@@ -742,6 +742,10 @@ export function runReverbDemoRuntime(
   };
   phone.addEventListener("pointerup", clearGesture);
   phone.addEventListener("pointercancel", clearGesture);
+  const removeBlurListener = addWindowEventListener("blur", () => {
+    clearGesture();
+    blobControl.classList.remove("pressed");
+  });
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
   function resolveCssColor(
@@ -1194,6 +1198,7 @@ void main(){
     },
     dispose() {
       removeResizeListener();
+      removeBlurListener();
     },
   };
 }

@@ -1,0 +1,1 @@
+import{x as e}from"./site-app-BiNd0pJD.js";import{t}from"./_.contribution-Cj-wTw34.js";t({id:`shell`,extensions:[`.sh`,`.bash`],aliases:[`Shell`,`sh`],loader:()=>e(()=>import(`./shell-CC2rA5mh.js`),[])});
