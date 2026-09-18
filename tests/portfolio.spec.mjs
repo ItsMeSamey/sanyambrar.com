@@ -114,35 +114,67 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
   await expectContained('[data-diff-language], [data-diff-swap]');
 });
 
-test('search traps wheel scrolling at result-list boundaries', async ({ page }, info) => {
+test('search scopes wheel handling to the dialog surface', async ({ page }, info) => {
   await page.setViewportSize({ width: 800, height: 220 });
   await visit(page, '/', info);
-  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await page.evaluate(() => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    scrollTo(0, Math.max(1, Math.min(300, max - 100)));
+  });
   const backgroundScroll = await page.evaluate(() => scrollY);
   expect(backgroundScroll).toBeGreaterThan(0);
 
   await page.keyboard.press('Control+K');
   const searchInput = page.getByPlaceholder('Search games, tools, writing, work…');
-  expect(await page.evaluate(() => scrollY), 'Opening search by shortcut must preserve the page scroll position').toBe(backgroundScroll);
   const searchResults = page.locator('.site-search-results');
+  const searchHeader = page.locator('.site-search-input');
   await searchInput.fill('a');
   await expect(searchResults).toBeVisible();
+  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
   expect(await searchResults.evaluate(element => getComputedStyle(element).overscrollBehaviorY)).toBe('contain');
-  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
+
+  await searchHeader.hover();
+  await page.mouse.wheel(0, 320);
+  expect(await page.evaluate(() => scrollY), 'Wheel over the dialog header must not scroll the page').toBe(backgroundScroll);
 
   await searchResults.evaluate(element => { element.scrollTop = element.scrollHeight; });
-  expect(await searchResults.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   await searchResults.hover();
   await page.mouse.wheel(0, 1200);
-  expect(await page.evaluate(() => scrollY), 'Wheel-down at the end of search results must not scroll the page').toBe(backgroundScroll);
+  expect(await page.evaluate(() => scrollY), 'Wheel past the result-list end must not scroll the page').toBe(backgroundScroll);
 
   await searchResults.evaluate(element => { element.scrollTop = 0; });
   await page.mouse.wheel(0, -1200);
-  expect(await page.evaluate(() => scrollY), 'Wheel-up at the start of search results must not scroll the page').toBe(backgroundScroll);
+  expect(await page.evaluate(() => scrollY), 'Wheel past the result-list start must not scroll the page').toBe(backgroundScroll);
+
+  await page.mouse.move(4, 110);
+  await page.mouse.wheel(0, 320);
+  await expect.poll(() => page.evaluate(() => scrollY), { message: 'Wheel over the blurred background must scroll the underlying page' }).toBeGreaterThan(backgroundScroll);
+  await expect(searchInput).toBeVisible();
 
   await page.keyboard.press('Escape');
   await expect(searchResults).not.toBeVisible();
-  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
+});
+
+test('search backdrop uses fixed progressive blur', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await visit(page, '/', info);
+  await page.keyboard.press('Control+K');
+  const search = page.locator('.site-search');
+  const backdrop = page.locator('.site-search-backdrop');
+  await expect(search).toBeVisible();
+
+  const openStyle = await backdrop.evaluate(element => {
+    const style = getComputedStyle(element, '::before');
+    return { backdropFilter: style.backdropFilter, animationName: style.animationName, opacity: style.opacity };
+  });
+  expect(openStyle.backdropFilter).toContain('blur(4px)');
+  expect(openStyle.animationName).toBe('samey-search-blur-in');
+  expect(openStyle.opacity).toBe('1');
+
+  await page.keyboard.press('Escape');
+  await expect(search).toHaveClass(/is-closing/);
+  expect(await backdrop.evaluate(element => getComputedStyle(element, '::before').animationName)).toBe('samey-search-blur-out');
+  await expect(search).toBeHidden();
 });
 
 test('search, SPA navigation, history and theme', async ({ page }, info) => {
