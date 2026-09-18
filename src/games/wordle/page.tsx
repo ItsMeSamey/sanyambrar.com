@@ -59,6 +59,12 @@ class Keyboard {
             const isDisabled = key.length === 1 && this.disabled.includes(key.toLowerCase())
             const evObj = {key, code: key, location: 0, ctrlKey: false, shiftKey: false, altKey: false, metaKey: false, repeat: false}
             const dispatch = (type: 'keydown' | 'keyup') => document.dispatchEvent(new KeyboardEvent(type, evObj))
+            let activePointerId: number | null = null
+            const releasePress = (pointerId?: number) => {
+              if (activePointerId == null || (pointerId != null && pointerId !== activePointerId)) return
+              activePointerId = null
+              dispatch('keyup')
+            }
             return <button
               type='button'
               disabled={isDisabled}
@@ -66,16 +72,20 @@ class Keyboard {
               onPointerDown={e => {
                 if (isDisabled) return
                 e.preventDefault()
+                activePointerId = e.pointerId
                 e.currentTarget.setPointerCapture?.(e.pointerId)
                 dispatch('keydown')
               }}
+              onPointerMove={e => {
+                if (!isDisabled && activePointerId === e.pointerId && !e.currentTarget.hasPointerCapture?.(e.pointerId)) releasePress(e.pointerId)
+              }}
               onPointerUp={e => {
                 if (isDisabled) return
-                dispatch('keyup')
+                releasePress(e.pointerId)
                 if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
               }}
-              onPointerCancel={() => !isDisabled && dispatch('keyup')}
-              onLostPointerCapture={() => !isDisabled && dispatch('keyup')}
+              onPointerCancel={e => !isDisabled && releasePress(e.pointerId)}
+              onLostPointerCapture={e => !isDisabled && releasePress(e.pointerId)}
               onClick={e => {
                 // Native keyboard activation emits click with detail=0. Pointer input
                 // is already handled on down/up so it must not insert twice.
