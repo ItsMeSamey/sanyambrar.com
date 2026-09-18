@@ -931,6 +931,35 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].every(child => !child.inert))).toBe(true);
 });
 
+test('project source links use Git branding and Reverb exposes F-Droid beside Source', async ({ page }, info) => {
+  for (const path of ['/projects/zhtml/', '/projects/reverb/', '/projects/oneserial/', '/projects/cnn/']) {
+    await visit(page, path, info);
+    const source = page.locator('.project-source-link');
+    await expect(source).toHaveCount(1);
+    await expect(source).toContainText('Source');
+    await expect(source.locator('svg.project-link-icon-git')).toBeVisible();
+    await expect(source.locator('svg.project-link-icon-git path')).toHaveAttribute('d', /^M13\.09 23\.549/);
+
+    const fdroid = page.locator('.project-fdroid-link');
+    if (path === '/projects/reverb/') {
+      await expect(fdroid).toHaveCount(1);
+      await expect(fdroid).toContainText('Available on F-Droid');
+      await expect(fdroid.locator('svg.project-link-icon-fdroid')).toBeVisible();
+      await expect(fdroid.locator('svg.project-link-icon-fdroid path')).toHaveAttribute('d', /^M20\.472 10\.081/);
+      await expect(page.locator('.project-action-links')).toHaveCSS('display', 'flex');
+      const sourceBox = await source.boundingBox();
+      const fdroidBox = await fdroid.boundingBox();
+      if (!sourceBox || !fdroidBox) throw new Error('Project action links have no geometry');
+      expect(Math.abs(sourceBox.y - fdroidBox.y), 'F-Droid should sit beside Source when the row fits').toBeLessThan(2);
+
+      const demoFdroid = page.locator('.reverb-demo-store-link');
+      await expect(demoFdroid.locator('svg.project-link-icon-fdroid')).toBeVisible();
+    } else {
+      await expect(fdroid).toHaveCount(0);
+    }
+  }
+});
+
 test('Reverb demo preserves the 411x912 reference surface without stretching', async ({ page }, info) => {
   const dimensions = async (host) => host.evaluate(element => {
     const phone = element.shadowRoot?.querySelector('#phone');
