@@ -2012,7 +2012,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
       }
       scheduleTargets(targets);
-    }).observe(document.body, { subtree: true, childList: true });
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "hidden", "style"] });
     new ResizeObserver(() => { scheduleVirtualBars(); scheduleTargets([document.body]); }).observe(document.documentElement);
     addEventListener("resize", () => { scheduleVirtualBars(); scheduleTargets([document.body]); });
     addEventListener("scroll", scheduleVirtualBars, true);

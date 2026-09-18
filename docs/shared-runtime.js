@@ -3015,7 +3015,13 @@
 				scheduleTargets(targets);
 			}).observe(document.body, {
 				subtree: true,
-				childList: true
+				childList: true,
+				attributes: true,
+				attributeFilter: [
+					"class",
+					"hidden",
+					"style"
+				]
 			});
 			new ResizeObserver(() => {
 				scheduleVirtualBars();

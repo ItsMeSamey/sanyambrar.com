@@ -464,6 +464,51 @@ test('loading strip animates only while visible', async ({ page }, info) => {
   await expect.poll(runningAnimations, { message: 'Loading stripe animation must stop when hidden' }).toBe(0);
 });
 
+test('virtual scrollbar disappears when its fixed scroll owner is hidden', async ({ page }, info) => {
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const owner = document.createElement('div');
+    owner.id = 'qa-virtual-scroll-owner';
+    Object.assign(owner.style, {
+      position: 'fixed',
+      left: '24px',
+      top: '96px',
+      width: '160px',
+      height: '80px',
+      overflowY: 'auto',
+    });
+    const content = document.createElement('div');
+    content.style.height = '480px';
+    content.textContent = 'virtual scrollbar lifecycle probe';
+    owner.append(content);
+    document.body.append(owner);
+  });
+
+  const markOwnerBar = () => page.evaluate(() => {
+    const owner = document.querySelector('#qa-virtual-scroll-owner');
+    if (!(owner instanceof HTMLElement)) return false;
+    const rect = owner.getBoundingClientRect();
+    const bar = [...document.querySelectorAll('.samey-vscroll')].find(candidate => {
+      if (!(candidate instanceof HTMLElement) || candidate.hidden) return false;
+      const barRect = candidate.getBoundingClientRect();
+      return Math.abs(barRect.left - (rect.right - 7)) <= 1
+        && Math.abs(barRect.top - rect.top) <= 1
+        && Math.abs(barRect.height - rect.height) <= 1;
+    });
+    if (!(bar instanceof HTMLElement)) return false;
+    bar.dataset.qaOwnerBar = '';
+    return true;
+  });
+
+  await expect.poll(markOwnerBar, { message: 'Scrollable fixed panel should receive a virtual scrollbar' }).toBe(true);
+  const ownerBar = page.locator('.samey-vscroll[data-qa-owner-bar]');
+  await expect(ownerBar).toBeVisible();
+  await page.locator('#qa-virtual-scroll-owner').evaluate(element => { element.hidden = true; });
+  await expect.poll(() => ownerBar.evaluateAll(bars => bars.length === 0 || bars.every(bar => (
+    bar instanceof HTMLElement && (bar.hidden || getComputedStyle(bar).display === 'none')
+  ))), { message: 'Virtual scrollbar must disappear when its owner becomes hidden' }).toBe(true);
+});
+
 test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 260 });
   await visit(page, '/blog/posts/btop-mutex', info);
