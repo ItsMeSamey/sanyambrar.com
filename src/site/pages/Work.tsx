@@ -1,3 +1,4 @@
+import '../styles/home.css';
 import { contributions,projects } from '../data.ts';
 import { CompactList,ProjectCards } from '../components/Entries.tsx';
 import { Intro,Section } from '../components/SiteChrome.tsx';

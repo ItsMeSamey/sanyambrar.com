@@ -9,7 +9,18 @@ import { details, games, posts, projects } from "./src/site/data.ts";
 const runFile = promisify(execFile);
 const APPEARANCE_COLOR_KEYS = ['background', 'text', 'accent', 'error', 'slow', 'fast', 'effort'] as const;
 type UnknownRecord = Record<string, unknown>;
+type ViteManifestEntry = {
+  file: string;
+  src?: string;
+  imports?: string[];
+  dynamicImports?: string[];
+  css?: string[];
+  assets?: string[];
+};
+type ViteManifest = Record<string, ViteManifestEntry>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
+let siteManifest: ViteManifest = {};
+let keybrManifest: ViteManifest = {};
 
 const ROOT = import.meta.dirname;
 const SITE_PUBLIC = join(ROOT, "src/site/public");
@@ -92,6 +103,91 @@ async function walk(root: string, accept: (path: string, name: string) => boolea
   return files.sort();
 }
 
+async function readViteManifest(root: string): Promise<ViteManifest> {
+  const path = join(root, ".vite", "manifest.json");
+  const raw = requireRecord(JSON.parse(await readFile(path, "utf8")), relative(ROOT, path) + " must contain a manifest object");
+  const out: ViteManifest = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!isRecord(value) || typeof value.file !== "string") continue;
+    out[key] = {
+      file: value.file,
+      src: typeof value.src === "string" ? value.src : undefined,
+      imports: Array.isArray(value.imports) ? value.imports.filter((item): item is string => typeof item === "string") : undefined,
+      dynamicImports: Array.isArray(value.dynamicImports) ? value.dynamicImports.filter((item): item is string => typeof item === "string") : undefined,
+      css: Array.isArray(value.css) ? value.css.filter((item): item is string => typeof item === "string") : undefined,
+      assets: Array.isArray(value.assets) ? value.assets.filter((item): item is string => typeof item === "string") : undefined,
+    };
+  }
+  return out;
+}
+
+function manifestEntryKey(manifest: ViteManifest, sourceSuffix: string): string {
+  const match = Object.entries(manifest).find(([key, entry]) =>
+    key.endsWith(sourceSuffix) || entry.src?.endsWith(sourceSuffix));
+  must(match, "manifest entry missing for " + sourceSuffix);
+  return match[0];
+}
+
+function manifestStaticResources(manifest: ViteManifest, sourceSuffix: string): { scripts: string[]; styles: string[] } {
+  const scripts = new Set<string>();
+  const styles = new Set<string>();
+  const seen = new Set<string>();
+  const visit = (key: string) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const entry = manifest[key];
+    must(entry, "manifest import missing: " + key);
+    scripts.add(entry.file);
+    for (const css of entry.css ?? []) styles.add(css);
+    for (const imported of entry.imports ?? []) visit(imported);
+  };
+  visit(manifestEntryKey(manifest, sourceSuffix));
+  return { scripts: [...scripts], styles: [...styles] };
+}
+
+const htmlAttr = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
+
+async function injectSitePreloadHints() {
+  const siteEntryResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
+  const siteEntryScripts = new Set(siteEntryResources.scripts);
+  const routes: { file: string; assetRoot: string; sources: string[] }[] = [
+    { file: "index.html", assetRoot: "./", sources: ["src/site/pages/Home.tsx"] },
+    { file: "work/index.html", assetRoot: "../", sources: ["src/site/pages/Work.tsx"] },
+    { file: "tools/index.html", assetRoot: "../", sources: ["src/tools/Tools.tsx"] },
+    { file: "chain/index.html", assetRoot: "../", sources: ["src/games/chain/Chain.tsx"] },
+    { file: "blog/index.html", assetRoot: "../", sources: ["src/blogs/Blog.tsx"] },
+    { file: "projects/reverb/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx", "src/site/components/ReverbDemo.tsx"] },
+    { file: "projects/cnn/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx", "src/site/components/CnnDemo.tsx"] },
+    { file: "projects/zhtml/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx"] },
+    { file: "projects/oneserial/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx"] },
+  ];
+  for (const route of routes) {
+    const scripts = new Set<string>();
+    const styles = new Set<string>();
+    for (const sourcePath of route.sources) {
+      const resources = manifestStaticResources(siteManifest, sourcePath);
+      resources.scripts.forEach(item => { if (!siteEntryScripts.has(item)) scripts.add(item); });
+      resources.styles.forEach(item => styles.add(item));
+    }
+    const inlinedStyles = await Promise.all([...styles].map(async file => {
+      const css = (await readFile(join(DOCS, file), "utf8"))
+        .replace(/[ \t]+$/gm, "")
+        .replaceAll("</style", "<\\/style");
+      return '<style data-samey-route-style data-samey-style-src="' + htmlAttr(route.assetRoot + file) + '">' + css + "</style>";
+    }));
+    const preload = [
+      ...inlinedStyles,
+      ...[...scripts].map(file => '<link rel="modulepreload" crossorigin data-samey-route-module href="' + htmlAttr(route.assetRoot + file) + '">'),
+    ].join("");
+    const path = join(DOCS, route.file);
+    let source = await readFile(path, "utf8");
+    source = source.replace("</head>", preload + "</head>");
+    await writeFile(path, source);
+  }
+  log("embedded route dependency hints in HTML");
+}
+
 async function beginDocsTransaction() {
   docsExistedBeforeBuild = existsSync(DOCS);
   await rm(DOCS_BACKUP, { recursive: true, force: true });
@@ -137,6 +233,7 @@ async function publishSite() {
   }
   await mkdir(join(DOCS, "blog", "posts"), { recursive: true });
   await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
+  await injectSitePreloadHints();
 }
 
 async function buildSharedRuntime() {
@@ -159,8 +256,10 @@ async function buildBlogPost() {
 
 async function buildSiteRuntime() {
   await runViteBuild("site");
+  siteManifest = await readViteManifest(GENERATED_SITE_RUNTIME);
   const siteEntries = await walk(GENERATED_SITE_RUNTIME, (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
+  await rm(join(GENERATED_SITE_RUNTIME, ".vite"), { recursive: true, force: true });
   log("site SPA -> .build/site-runtime");
 }
 
@@ -184,18 +283,62 @@ async function buildWordle() {
 
 async function buildKeybr() {
   await runViteBuild("keybr");
+  keybrManifest = await readViteManifest(GENERATED_KEYBR);
   const html = await walk(GENERATED_KEYBR, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Keybr Vite build emitted ${html.length} HTML files`);
   let source = await readFile(html[0], "utf8");
+
+  const entryScriptRe = /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']([^"']+)["'])[^>]*><\/script>/i;
+  const entryScriptMatch = source.match(entryScriptRe);
+  must(entryScriptMatch?.[1], "Keybr HTML is missing its module entry script");
+  const entryScriptHref = entryScriptMatch[1].replace(/^\.\//, "");
+  must(/^keybr-assets\/index-[A-Za-z0-9_-]+\.js$/.test(entryScriptHref), "unexpected Keybr entry script: " + entryScriptHref);
+  const entryScript = (await readFile(join(GENERATED_KEYBR, entryScriptHref), "utf8"))
+    .replace(/(from\s*["']|import\s*["']|import\(\s*["'])\.\//g, "$1./keybr-assets/")
+    .replaceAll("</script", "<\\/script");
+  source = source.replace(entryScriptRe, '<script type="module" crossorigin data-keybr-entry>' + entryScript + "</script>");
+
+  const stylesheetRe = /<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+  const cssHrefs = [...source.matchAll(stylesheetRe)].map(match => match[1]).filter((href): href is string => typeof href === "string");
+  const cssParts: string[] = [];
+  for (const href of cssHrefs) {
+    const local = href.replace(/^\.\//, "");
+    must(local.startsWith("keybr-assets/") && local.endsWith(".css"), "unexpected Keybr stylesheet: " + href);
+    cssParts.push((await readFile(join(GENERATED_KEYBR, local), "utf8")).replace(/[ \t]+$/gm, ""));
+  }
+  source = source.replace(stylesheetRe, "").replace(/^[ \t]+$/gm, "");
+  const criticalCss = '<style data-keybr-page-css>' + cssParts.join("\n") + "</style>";
+
+  const assetMap = (pattern: RegExp) => {
+    const out: Record<string, string> = {};
+    for (const [key, entry] of Object.entries(keybrManifest)) {
+      const sourcePath = entry.src ?? key;
+      const match = sourcePath.match(pattern);
+      if (match?.[1]) out[match[1]] = "./" + entry.file;
+    }
+    return out;
+  };
+  const prefetchAssets = {
+    models: assetMap(/(?:^|\/)model-(.+)\.data$/),
+    words: assetMap(/(?:^|\/)words-(.+)\.json$/),
+    books: assetMap(/(?:^|\/)books\/([^/]+)\.json$/),
+  };
+  must(prefetchAssets.models.en, "Keybr prefetch manifest is missing the English phonetic model");
+  must(prefetchAssets.words.en, "Keybr prefetch manifest is missing the English word list");
+  const prefetchData = '<script type="application/json" data-samey-prefetch-assets>' + jsonForHtml(prefetchAssets) + "</script>";
+  const directPreload = '<script data-samey-keybr-preload>(function(){try{var n=document.querySelector("[data-samey-prefetch-assets]");if(!n)return;var m=JSON.parse(n.textContent||"{}"),s=JSON.parse(localStorage.getItem("settings")||"{}"),l=typeof s["keyboard.language"]==="string"?s["keyboard.language"]:"en",t=typeof s["lesson.type"]==="string"?s["lesson.type"]:"guided",u=[m.models&&m.models[l]];if(t==="guided"||t==="wordlist")u.push(m.words&&m.words[l]);else if(t==="books"){var b=typeof s["lesson.books.book"]==="string"?s["lesson.books.book"]:"en-alice-wonderland";u.push(m.books&&m.books[b])}for(var i=0;i<u.length;i++)if(u[i]){var a=document.createElement("link");a.rel="preload";a.as="fetch";a.href=u[i];a.crossOrigin="anonymous";document.head.append(a)}}catch(e){}})();</script>';
   const shared = '<link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
-  source = source.replace("</head>", `${shared}</head>`);
+  source = source.replace("</head>", criticalCss + prefetchData + directPreload + shared + "</head>");
+
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);
   const assets = join(GENERATED_KEYBR, "keybr-assets");
   must(existsSync(assets), "Keybr build did not emit split assets");
   await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
   await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
-  log("keybr -> docs/keybr.html + docs/keybr-assets");
+  await rm(join(DOCS, entryScriptHref), { force: true });
+  for (const href of cssHrefs) await rm(join(DOCS, href.replace(/^\.\//, "")), { force: true });
+  log("keybr -> docs/keybr.html with inline entry/CSS + split dependency/data assets");
 }
 
 const PUBLIC_ORIGIN = "https://sanyambrar.com";

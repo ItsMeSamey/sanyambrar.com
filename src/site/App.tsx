@@ -38,7 +38,7 @@ const Blog = lazy(() => loadModule('blog').then(m => ({ default: m.Blog })));
 
 type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationDirection = 'forward' | 'back';
-type NavigationError = { url: string; message: string; detail: string };
+type NavigationError = { url: string; returnUrl: string; message: string; detail: string };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 const NAV_INDEX_KEY = '__sameyNavIndex';
 const readNavigationIndex = () => {
@@ -77,12 +77,9 @@ const cancelSharedPageSwap = () => globalThis.SameyCancelPageSwap?.();
 const pageSwapNavigate = () => globalThis.SameyPageSwapNavigate;
 const preloadUrl = (url: URL) => {
   if (url.origin !== location.origin) return;
-  if (isStandaloneApp(url)) {
-    globalThis.SameyPreloadPage?.(url.href);
-    return;
-  }
-  const next = routeFromUrl(url);
-  if (next) void preload(next);
+  // Prefetch must stay side-effect free. The shared runtime fetches the target
+  // into an inert detached Document and warms declared subresources as bytes.
+  globalThis.SameyPreloadPage?.(url.href);
 };
 
 async function animateRouteSwap(commit: () => void, direction: NavigationDirection = 'forward') {
@@ -145,7 +142,7 @@ function isolateErrorPage(page: HTMLElement) {
   };
 }
 
-function RouteError(props: { error: NavigationError; onRetry: () => void; onDismiss: () => void }) {
+function RouteError(props: { error: NavigationError; onRetry: () => void; onGoBack: () => void }) {
   let page!: HTMLElement;
   onSettled(() => isolateErrorPage(page));
   const destination = () => {
@@ -172,8 +169,8 @@ function RouteError(props: { error: NavigationError; onRetry: () => void; onDism
       <pre class="site-route-error-stack samey-error-stack" tabindex="0">{props.error.detail}</pre>
       <div class="site-route-error-actions samey-error-page-actions">
         <button type="button" class="primary" onClick={props.onRetry}>Retry</button>
-        <a href={props.error.url}>Open normally</a>
-        <button type="button" class="quiet" onClick={props.onDismiss}>Go back</button>
+        <a href={props.error.url} data-samey-native-nav>Open normally</a>
+        <button type="button" class="quiet" onClick={props.onGoBack}>Go back</button>
       </div>
     </div>
   </section>;
@@ -186,7 +183,14 @@ export function App() {
   const projectDetail = () => { const slug = route().slug; return route().kind === 'project' && slug ? details[slug] : undefined; };
   let navigationId = 0;
   let navigationIndex = readNavigationIndex() ?? 0;
+  let lastStableUrl = location.href;
   let resetRouteError: (() => void) | undefined;
+  const navigationFailure = (url: URL, error: unknown, fallback: string): NavigationError => ({
+    url: url.href,
+    returnUrl: lastStableUrl,
+    message: error instanceof Error ? error.message : fallback,
+    detail: formatThrownError(error),
+  });
   const retryRenderedRoute = () => {
     const reset = resetRouteError;
     resetRouteError = undefined;
@@ -224,6 +228,7 @@ export function App() {
     queueMicrotask(retryRenderedRoute);
     syncDocument(next);
     writeHistory(url, replace);
+    lastStableUrl = url.href;
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
     queueMicrotask(() => {
       if (url.hash) document.getElementById(hashTarget(url))?.scrollIntoView();
@@ -256,14 +261,14 @@ export function App() {
         if (pageSwap) { await pageSwap(url.href, { replace }); return; }
         location.assign(url.href);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'The game could not be loaded.';
-        setNavigationError({ url: url.href, message, detail: formatThrownError(error) });
+        setNavigationError(navigationFailure(url, error, 'The game could not be loaded.'));
       } finally { if (id === navigationId) setLoading(false); }
       return;
     }
     if (sameDocumentHash(url)) {
       setLoading(false);
       writeHistory(url, replace);
+      lastStableUrl = url.href;
       document.getElementById(hashTarget(url))?.scrollIntoView();
       return;
     }
@@ -275,12 +280,13 @@ export function App() {
         if (pageSwap) await pageSwap(url.href, {replace});
         else location.assign(url.href);
       } catch (error) {
-        if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be loaded.',detail:formatThrownError(error)});
+        if (id === navigationId) setNavigationError(navigationFailure(url, error, 'The page could not be loaded.'));
       } finally { if (id === navigationId) setLoading(false); }
       return;
     }
     if (next.kind === route().kind && cleanPath(url.pathname) === cleanPath(location.pathname)) {
       writeHistory(url, replace);
+      lastStableUrl = url.href;
       syncDocument(next);
       dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
       queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })); });
@@ -294,8 +300,7 @@ export function App() {
       await finishNavigation(next, url, replace, direction);
     } catch (error) {
       if (id === navigationId) {
-        const message = error instanceof Error ? error.message : 'The page module could not be loaded.';
-        setNavigationError({ url: url.href, message, detail: formatThrownError(error) });
+        setNavigationError(navigationFailure(url, error, 'The page module could not be loaded.'));
       }
     } finally {
       if (id === navigationId) setLoading(false);
@@ -309,7 +314,15 @@ export function App() {
     const next = routeFromUrl(url);
     if (next) moduleCache.delete(next.kind);
     setNavigationError(null);
+    if (url.href === location.href) { location.reload(); return; }
     void navigate(url.href);
+  };
+  const goBackError = () => {
+    const error = navigationError();
+    if (!error) return;
+    const target = new URL(error.returnUrl, location.href);
+    setNavigationError(null);
+    if (target.href !== location.href) location.replace(target.href);
   };
 
   onSettled(() => {
@@ -322,7 +335,7 @@ export function App() {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const target = event.target instanceof Element ? event.target : null;
       const anchor = target?.closest('a[href]');
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute('download')) return;
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target || anchor.hasAttribute('download') || anchor.hasAttribute('data-samey-native-nav')) return;
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
       if (sameDocumentHash(url)) return;
@@ -347,12 +360,13 @@ export function App() {
         if (!pageSwap) { location.reload(); return; }
         setLoading(true);
         void pageSwap(url.href, {replace: true, force: true}).catch((error: unknown) => {
-          if (id === navigationId) setNavigationError({url:url.href,message:error instanceof Error ? error.message : 'The page could not be restored.',detail:formatThrownError(error)});
+          if (id === navigationId) setNavigationError(navigationFailure(url, error, 'The page could not be restored.'));
         }).finally(() => { if (id === navigationId) setLoading(false); });
         return;
       }
       if (next.key === route().key) {
         setLoading(false);
+        lastStableUrl = url.href;
         syncDocument(next);
         dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
         queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } })); });
@@ -367,6 +381,7 @@ export function App() {
             dispatchEvent(new Event('samey-pageleave'));
             setRoute(next);
             syncDocument(next);
+            lastStableUrl = location.href;
             queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })); });
           }, direction);
         } finally {
@@ -376,7 +391,7 @@ export function App() {
       }).catch((error: unknown) => {
         if (id === navigationId) {
           setLoading(false);
-          setNavigationError({ url: url.href, message: error instanceof Error ? error.message : 'The page could not be restored.', detail: formatThrownError(error) });
+          setNavigationError(navigationFailure(url, error, 'The page could not be restored.'));
         }
       });
     };
@@ -411,6 +426,6 @@ export function App() {
         </Switch>
       </Loading>
     </Errored>
-    <Show when={navigationError()}>{error => <RouteError error={error()} onRetry={retryError} onDismiss={() => setNavigationError(null)}/>}</Show>
+    <Show when={navigationError()}>{error => <RouteError error={error()} onRetry={retryError} onGoBack={goBackError}/>}</Show>
   </div>;
 }

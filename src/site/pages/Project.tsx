@@ -1,3 +1,4 @@
+import '../styles/home.css';
 import { lazy, Show } from 'solid-js';
 import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';

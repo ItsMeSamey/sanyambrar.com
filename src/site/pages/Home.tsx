@@ -1,3 +1,4 @@
+import '../styles/home.css';
 import { ArrowUpRight } from '../../shared/components/Icons.tsx';
 import { games, posts, projects } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';

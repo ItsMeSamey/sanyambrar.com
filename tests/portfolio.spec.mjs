@@ -32,6 +32,20 @@ async function visitKeybr(page, info) {
   await visit(page, '/keybr', info);
 }
 
+async function keybrRootModule(page, info) {
+  const port = info.project.metadata.port;
+  const response = await page.request.get(`http://127.0.0.1:${port}/keybr`);
+  if (!response.ok()) throw new Error(`Could not read built Keybr HTML: ${response.status()}`);
+  const html = await response.text();
+  const entry = html.match(/<script\b[^>]*data-keybr-entry[^>]*>([\s\S]*?)<\/script>/i)?.[1];
+  const rootImport = entry?.match(/import\{\s*([A-Za-z_$][\w$]*)\s+as\s+[A-Za-z_$][\w$]*\s*\}from["']\.\/(keybr-assets\/[^"']+\.js)["']/);
+  if (!rootImport?.[1] || !rootImport[2]) throw new Error('Could not find the inlined Keybr entry dependency');
+  return {
+    pattern: new RegExp('/' + rootImport[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\?.*)?$'),
+    exportName: rootImport[1],
+  };
+}
+
 async function expectFullErrorPage(page, errorPage) {
   await expect(errorPage).toBeVisible();
   await expect(errorPage).toBeFocused();
@@ -141,17 +155,20 @@ test('SPA mount failures surface the original exception stack and cause', async 
   test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets the built Keybr entry module');
 
   const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: keybr entry root cause`;
-  await page.route(/\/keybr-assets\/index-[^/]+\.js(?:\?.*)?$/, route => route.fulfill({
+  const keybrEntry = await keybrRootModule(page, info);
+  await page.route(keybrEntry.pattern, route => route.fulfill({
     status: 200,
     contentType: 'text/javascript',
-    body: `const cause = new Error(${JSON.stringify(marker)});
-window.dispatchEvent(new ErrorEvent('error', {
-  message: cause.message,
-  error: cause,
-  filename: import.meta.url,
-  lineno: 1,
-  colno: 1,
-}));`,
+    body: `export const ${keybrEntry.exportName} = () => {
+  const cause = new Error(${JSON.stringify(marker)});
+  window.dispatchEvent(new ErrorEvent('error', {
+    message: cause.message,
+    error: cause,
+    filename: import.meta.url,
+    lineno: 1,
+    colno: 1,
+  }));
+};`,
   }));
 
   await visit(page, '/', info);
@@ -174,12 +191,30 @@ window.dispatchEvent(new ErrorEvent('error', {
   await expect(stack).toContainText(`Error: ${marker}`);
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+
+  await loadError.getByRole('button', { name: 'Go back', exact: true }).click();
+  await page.waitForURL(url => url.pathname === '/');
+  await expect(page.locator('#solid-site-app')).toBeVisible();
+  await expect(loadError).toHaveCount(0);
+
+  await page.evaluate(async () => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    await navigate('/keybr').catch(() => {});
+  });
+  await expectFullErrorPage(page, loadError);
+  await page.unroute(keybrEntry.pattern);
+  await loadError.getByRole('link', { name: 'Open normally', exact: true }).click();
+  await page.waitForURL(url => url.pathname === '/keybr');
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect(loadError).toHaveCount(0);
 });
 
 test('Keybr SPA navigation waits for a slow entry module without a false startup timeout', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Production bundle delay injection targets the built Keybr entry module');
 
-  await page.route(/\/keybr-assets\/index-[^/]+\.js(?:\?.*)?$/, async route => {
+  const keybrEntry = await keybrRootModule(page, info);
+  await page.route(keybrEntry.pattern, async route => {
     await new Promise(resolve => setTimeout(resolve, 2200));
     await route.continue();
   });
@@ -225,11 +260,101 @@ test('Keybr remounts after leaving and returning through SPA navigation', async 
   await expect(page.locator('#samey-load-error')).toHaveCount(0);
 });
 
+test('Keybr hover prefetch warms subdependencies without mounting the app', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch is exercised by the production shell');
+
+  const requested = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/keybr' || url.pathname.startsWith('/keybr-assets/')) requested.push(url.pathname);
+  });
+
+  await visit(page, '/', info);
+  const keybr = page.locator('.game-card-1');
+  await expect(keybr).toBeVisible();
+  await keybr.hover();
+
+  await expect.poll(() => requested.some(path => path === '/keybr'), { message: 'Keybr HTML should prefetch on hover' }).toBe(true);
+  await expect.poll(() => requested.filter(path => /\/keybr-assets\/.*\.js$/.test(path)).length, {
+    message: 'Keybr module graph should prefetch on hover',
+  }).toBeGreaterThan(5);
+  await expect.poll(() => requested.some(path => /\/keybr-assets\/model-en-[^/]+\.data$/.test(path)), {
+    message: 'Selected Keybr phonetic model should prefetch on hover',
+  }).toBe(true);
+  await expect.poll(() => requested.some(path => /\/keybr-assets\/words-en-[^/]+\.json$/.test(path)), {
+    message: 'Selected Keybr word list should prefetch on hover',
+  }).toBe(true);
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#app')).toHaveCount(0);
+  expect(await page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('undefined');
+
+  await keybr.click();
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect(page.locator('#samey-load-error')).toHaveCount(0);
+});
+
+test('speculative prefetch keeps destination HTML inert', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch is exercised by the production shell');
+
+  let htmlPrefetched = false;
+  await page.route(/\/keybr(?:\?.*)?$/, async route => {
+    const response = await route.fetch();
+    const body = (await response.text()).replace(
+      '</body>',
+      '<div id="rogue-prefetch-element"></div><script>globalThis.__roguePrefetchExecuted=true;document.body.append(Object.assign(document.createElement("div"),{id:"rogue-script-element"}));</script></body>',
+    );
+    htmlPrefetched = true;
+    await route.fulfill({ response, body });
+  });
+
+  await visit(page, '/', info);
+  const bodyChildrenBefore = await page.locator('body').evaluate(body => body.children.length);
+  await page.locator('.game-card-1').hover();
+  await expect.poll(() => htmlPrefetched).toBe(true);
+  await page.waitForTimeout(250);
+
+  expect(await page.evaluate(() => globalThis.__roguePrefetchExecuted)).toBeUndefined();
+  await expect(page.locator('#rogue-prefetch-element')).toHaveCount(0);
+  await expect(page.locator('#rogue-script-element')).toHaveCount(0);
+  await expect(page.locator('#app')).toHaveCount(0);
+  expect(await page.locator('body').evaluate(body => body.children.length)).toBe(bodyChildrenBefore);
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('direct site routes inline their route CSS and preload static route modules', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route inlining and preload hints');
+
+  for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
+    await visit(page, route, info);
+    const styles = page.locator('style[data-samey-route-style]');
+    await expect(styles).not.toHaveCount(0);
+    expect((await styles.allTextContents()).join('').length).toBeGreaterThan(500);
+    await expect(page.locator('link[rel="modulepreload"][data-samey-route-module]')).not.toHaveCount(0);
+  }
+});
+
+test('Keybr inlines page CSS and declares startup data preloads', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns the inlined CSS contract');
+
+  await visit(page, '/keybr', info);
+  const inlineCss = page.locator('style[data-keybr-page-css]');
+  await expect(inlineCss).toHaveCount(1);
+  expect((await inlineCss.textContent())?.length ?? 0).toBeGreaterThan(20_000);
+  await expect(page.locator('link[rel="stylesheet"][href*="keybr-assets/"]')).toHaveCount(0);
+  await expect(page.locator('script[data-samey-prefetch-assets]')).toHaveCount(1);
+  const entry = page.locator('script[type="module"][data-keybr-entry]');
+  await expect(entry).toHaveCount(1);
+  await expect(entry).not.toHaveAttribute('src');
+  await expect(page.locator('link[rel="preload"][as="fetch"]')).not.toHaveCount(0);
+});
+
 test('site navigation failures become full error pages', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets a built site chunk');
 
   const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: work route root cause`;
-  await page.route(/\/site-chunks\/Work-[^/]+\.js(?:\?.*)?$/, route => route.fulfill({
+  const workChunk = /\/site-chunks\/Work-[^/]+\.js(?:\?.*)?$/;
+  await page.route(workChunk, route => route.fulfill({
     status: 200,
     contentType: 'text/javascript',
     body: `throw new Error(${JSON.stringify(marker)});`,
@@ -254,6 +379,20 @@ test('site navigation failures become full error pages', async ({ page }, info) 
   await expect(errorPage).not.toBeVisible();
   await expect(page.locator('.site-route')).not.toHaveAttribute('inert', '');
   await expect(page.locator('.site-route')).not.toHaveAttribute('aria-hidden', 'true');
+  await expect(page).toHaveURL(/\/$/);
+
+  await page.evaluate(async () => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    await navigate('/work/').catch(() => {});
+  });
+  await expectFullErrorPage(page, errorPage);
+  await page.unroute(workChunk);
+  await errorPage.getByRole('link', { name: 'Open normally', exact: true }).click();
+  await page.waitForURL(url => url.pathname === '/work/');
+  await expect(page).toHaveTitle('Work · Sanyam Brar');
+  await expect(page.locator('.site-route')).toBeVisible();
+  await expect(errorPage).toHaveCount(0);
 });
 
 test('Keybr error page preserves settings failure stack and cause', async ({ page }, info) => {

@@ -1,3 +1,5 @@
+import '../../shared/styles/game-settings.css';
+import './style.css';
 import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
 import { ChainBackMark, ChainLiveMark } from '../../shared/components/ChainLogo.tsx';

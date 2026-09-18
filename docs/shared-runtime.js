@@ -3072,20 +3072,92 @@
 		};
 		const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
 		if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
+		const warmedResources = /* @__PURE__ */ new Map();
+		const warmResource = (url) => {
+			if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return Promise.resolve();
+			if (!/\.(?:js|css|json|data|wasm|woff2?|ttf)$/i.test(url.pathname)) return Promise.resolve();
+			const cached = warmedResources.get(url.href);
+			if (cached) return cached;
+			const task = fetch(url, {
+				credentials: "same-origin",
+				cache: "force-cache"
+			}).then((response) => {
+				if (!response.ok) throw new Error("Prefetch failed: HTTP " + response.status + " for " + url.href);
+			}).catch((error) => {
+				warmedResources.delete(url.href);
+				console.debug("Navigation resource prefetch failed", url.href, error);
+			});
+			warmedResources.set(url.href, task);
+			return task;
+		};
+		const addWarmUrl = (urls, value, baseUrl) => {
+			if (!value) return;
+			try {
+				const url = new URL(value, baseUrl);
+				if (url.origin === location.origin && /^https?:$/.test(url.protocol)) urls.add(url.href);
+			} catch {}
+		};
+		const keybrPrefetchResources = (doc, baseUrl, urls) => {
+			const data = doc.querySelector("script[type=\"application/json\"][data-samey-prefetch-assets]");
+			if (!data?.textContent) return;
+			let rawAssets;
+			try {
+				rawAssets = JSON.parse(data.textContent);
+			} catch {
+				return;
+			}
+			if (!isRecord(rawAssets)) return;
+			const stringMap = (value) => {
+				if (!isRecord(value)) return void 0;
+				return Object.fromEntries(Object.entries(value).filter((entry) => typeof entry[1] === "string"));
+			};
+			const assets = {
+				models: stringMap(rawAssets.models),
+				words: stringMap(rawAssets.words),
+				books: stringMap(rawAssets.books)
+			};
+			let settings = {};
+			try {
+				const raw = JSON.parse(localStorage.getItem("settings") || "{}");
+				if (isRecord(raw)) settings = raw;
+			} catch {}
+			const language = typeof settings["keyboard.language"] === "string" ? settings["keyboard.language"] : "en";
+			const lessonType = typeof settings["lesson.type"] === "string" ? settings["lesson.type"] : "guided";
+			addWarmUrl(urls, assets.models?.[language] ?? assets.models?.en, baseUrl);
+			if (lessonType === "guided" || lessonType === "wordlist") addWarmUrl(urls, assets.words?.[language] ?? assets.words?.en, baseUrl);
+			else if (lessonType === "books") {
+				const book = typeof settings["lesson.books.book"] === "string" ? settings["lesson.books.book"] : "en-alice-wonderland";
+				addWarmUrl(urls, assets.books?.[book], baseUrl);
+			}
+		};
+		const pageWarmResources = (doc, baseUrl) => {
+			const urls = /* @__PURE__ */ new Set();
+			for (const script of doc.querySelectorAll("script[src]")) addWarmUrl(urls, script.getAttribute("src"), baseUrl);
+			for (const link of doc.querySelectorAll("link[href]")) if ((link.getAttribute("rel") || "").toLowerCase().split(/\s+/).some((value) => value === "stylesheet" || value === "modulepreload" || value === "preload" || value === "prefetch")) addWarmUrl(urls, link.getAttribute("href"), baseUrl);
+			for (const style of doc.querySelectorAll("style[data-samey-style-src]")) addWarmUrl(urls, style.dataset.sameyStyleSrc, baseUrl);
+			if (doc.documentElement.dataset.siteKind === "keybr") keybrPrefetchResources(doc, baseUrl, urls);
+			return [...urls];
+		};
 		const fetchPage = async (url) => {
-			const key = url.href;
+			const logical = extensionlessPageUrl(url);
+			const key = logical.href;
 			const cached = pageCache.get(key);
 			if (cached) return cached;
 			const task = (async () => {
-				const logical = extensionlessPageUrl(url);
-				const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
+				const response = await fetch(logical, {
+					headers: { "X-Samey-SPA": "1" },
+					credentials: "same-origin"
+				});
 				if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || "Unknown"} for ${logical.href}`);
 				const doc = new DOMParser().parseFromString(await response.text(), "text/html");
 				const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
+				const baseUrl = new URL(baseTag || ".", logical.href);
+				const ready = Promise.all(pageWarmResources(doc, baseUrl).map((value) => warmResource(new URL(value)))).then(() => {});
 				return {
 					doc,
-					baseUrl: new URL(baseTag || ".", logical.href),
-					responseUrl: logical.href
+					baseUrl,
+					responseUrl: logical.href,
+					ready
 				};
 			})();
 			pageCache.set(key, task);
@@ -3134,6 +3206,7 @@
 				const source = old.getAttribute("src");
 				const resolved = source ? new URL(source, baseUrl).href : "";
 				if (resolved && /\/shared-runtime\.js(?:[?#]|$)/.test(resolved)) continue;
+				if (old.hasAttribute("data-keybr-entry") && typeof globalThis.SameyMountKeybr === "function") continue;
 				const fresh = document.createElement("script");
 				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
 				fresh.dataset.spaPageScript = "";
@@ -3151,6 +3224,7 @@
 			return runtimeAnchor;
 		};
 		let currentPagePath = location.pathname;
+		let currentPageUrl = extensionlessPageUrl(new URL(location.href)).href;
 		const swapPage = (doc, baseUrl, url, replace) => {
 			const disposalErrors = [];
 			for (const [label, dispose] of [
@@ -3181,6 +3255,7 @@
 			document.title = doc.title;
 			syncHtmlData(doc, baseUrl);
 			currentPagePath = url.pathname;
+			currentPageUrl = url.href;
 			writePageHistory(url, replace);
 			const scriptsReady = Promise.all([runBodyScripts(baseUrl), runHeadScripts(doc, baseUrl)]).then(() => {});
 			apply();
@@ -3278,7 +3353,7 @@
 			document.getElementById("samey-load-error")?.remove();
 			restoreLoadErrorBackground();
 		};
-		const showLoadError = (url, error, retry) => {
+		const showLoadError = (url, error, retry, returnUrl) => {
 			dismissLoadError();
 			const panel = runtimeNode(document.createElement("section"));
 			panel.id = "samey-load-error";
@@ -3299,12 +3374,25 @@
 			if (messageNode) messageNode.textContent = message;
 			if (destinationNode) destinationNode.textContent = destination;
 			if (stackNode) stackNode.textContent = formatThrownError(error);
-			if (normal) normal.href = url.href;
+			if (normal) {
+				normal.href = url.href;
+				normal.dataset.sameyNativeNav = "";
+				normal.addEventListener("click", (event) => {
+					if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+					event.preventDefault();
+					event.stopPropagation();
+					location.assign(url.href);
+				});
+			}
 			retryButton?.addEventListener("click", () => {
 				dismissLoadError();
 				retry();
 			});
-			dismissButton?.addEventListener("click", dismissLoadError);
+			dismissButton?.addEventListener("click", () => {
+				dismissLoadError();
+				const target = extensionlessPageUrl(new URL(returnUrl, location.href));
+				if (target.href !== extensionlessPageUrl(new URL(location.href)).href) location.replace(target.href);
+			});
 			document.body.append(panel);
 			loadErrorBackground = [...document.body.children].filter((node) => node instanceof HTMLElement && node !== panel && !node.hasAttribute("data-samey-runtime")).map((node) => ({
 				node,
@@ -3323,8 +3411,9 @@
 			setLoading(false);
 		};
 		globalThis.SameyCancelPageSwap = cancelPageNavigation;
-		const loadPage = async (href, { replace = false, force = false, direction } = {}) => {
+		const loadPage = async (href, { replace = false, force = false, direction, returnUrl } = {}) => {
 			const id = ++pageNavigationId;
+			const stableReturnUrl = returnUrl ?? currentPageUrl;
 			const url = extensionlessPageUrl(new URL(href, location.href));
 			if (url.origin !== location.origin) {
 				location.href = url.href;
@@ -3337,7 +3426,8 @@
 			}
 			setLoading(true);
 			try {
-				const { doc, baseUrl } = await fetchPage(url);
+				const { doc, baseUrl, ready } = await fetchPage(url);
+				await ready;
 				if (id !== pageNavigationId) return;
 				const current = destinationRoot();
 				const commit = async () => {
@@ -3357,8 +3447,9 @@
 				if (id !== pageNavigationId) return;
 				showLoadError(url, error, () => loadPage(url.href, {
 					replace,
-					force
-				}));
+					force,
+					returnUrl: stableReturnUrl
+				}), stableReturnUrl);
 				throw error;
 			} finally {
 				if (id === pageNavigationId) setLoading(false);
@@ -3370,7 +3461,7 @@
 		const prefetch = (href) => {
 			const url = new URL(href, location.href);
 			if (!shouldSpa(url)) return;
-			fetchPage(url).catch((error) => console.error("Page prefetch failed", error));
+			fetchPage(url).then((page) => page.ready).catch((error) => console.debug("Page prefetch failed", error));
 		};
 		globalThis.SameyPreloadPage = prefetch;
 		let documentNavigationMounted = false;
@@ -3393,7 +3484,7 @@
 				if (document.documentElement.hasAttribute("data-site-spa")) return;
 				if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 				const link = eventElement(event)?.closest("a[href]");
-				if (!link || link.target || link.hasAttribute("download")) return;
+				if (!link || link.target || link.hasAttribute("download") || link.hasAttribute("data-samey-native-nav")) return;
 				const url = new URL(link.href, location.href);
 				if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
 				event.preventDefault();

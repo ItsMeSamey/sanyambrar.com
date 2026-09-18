@@ -8,8 +8,8 @@ function prefetch(href: unknown) {
   try {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) return;
-    if (globalThis.SameySolidPreload) globalThis.SameySolidPreload(url.href);
-    else globalThis.SameyPreloadPage?.(url.href);
+    if (globalThis.SameyPreloadPage) globalThis.SameyPreloadPage(url.href);
+    else globalThis.SameySolidPreload?.(url.href);
   } catch (error) {
     console.warn('Could not prefetch navigation target', href, error);
   }
