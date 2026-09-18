@@ -20,7 +20,7 @@ export const GaugeRow = function GaugeRow(props: {
     names?: Names;
 }) {
     const { formatMessage } = useIntl();
-    return (<div class={styles.row}>
+    return (<div class={`${styles.row} ${styles.gaugeRow}`}>
       <Name className={styles.name} name={formatMessage({
             id: "t_Metrics",
             defaultMessage: "Metrics",

@@ -3,12 +3,12 @@
 }
 
 .textInput_compact {
-  margin-inline: -4rem;
+  margin-inline: max(-4rem, calc((100vw - 100%) / -2 + 1rem));
   margin-block-start: 3rem;
 }
 
 .textInput_bare {
-  margin-inline: -8rem;
+  margin-inline: max(-8rem, calc((100vw - 100%) / -2 + 1rem));
   padding-block-start: 10rem;
 }
 

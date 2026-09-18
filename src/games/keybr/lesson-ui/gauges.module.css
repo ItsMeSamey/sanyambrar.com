@@ -1,11 +1,15 @@
 .gaugeList {
   display: flex;
-  gap: 1rem;
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   align-items: center;
 }
 
 .gauge {
   min-inline-size: 5rem;
+  white-space: nowrap;
 }
 
 @media (max-width: 160px) {
@@ -18,5 +22,7 @@
 
   .gauge {
     min-inline-size: min(5rem, 100%);
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }

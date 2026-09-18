@@ -22,6 +22,11 @@
   align-items: center;
 }
 
+.gaugeRow {
+  box-sizing: border-box;
+  padding-inline-end: clamp(5.5rem, calc(5vw + 3.5rem), 8rem);
+}
+
 .keySetValue {
   min-inline-size: 0;
 }
@@ -44,6 +49,12 @@
   .keySetRow .name {
     inline-size: 8rem;
     padding-inline-end: 0.5rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .gaugeRow {
+    padding-inline-end: 0;
   }
 }
 

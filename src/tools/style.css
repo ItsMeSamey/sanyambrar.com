@@ -30,10 +30,15 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
 @media(max-width:420px){
   .tools-page>.site-topbar>.site-topbar-inner{position:relative}
   .tools-page>.site-topbar .site-topbar-start,.tools-page>.site-topbar .site-topbar-nav{height:36px;align-self:start}
-  .tools-page>.site-topbar .tool-context{position:absolute;left:12px;right:12px;bottom:2px;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
+  .tools-page>.site-topbar .tools-topbar-context{position:absolute;left:12px;right:12px;bottom:2px;display:flex;width:auto;height:28px;gap:4px;align-items:center}
+  .tools-page>.site-topbar .tool-switcher{flex:0 1 96px;width:auto;min-width:0;height:28px}
+  .tools-page>.site-topbar .tool-select-trigger{min-width:0;height:28px;overflow:hidden}
+  .tools-page>.site-topbar .tool-context{position:static;flex:1 1 0;min-width:0;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
 }
 @media(max-width:160px){
+  .tools-page>.site-topbar .tool-switcher{flex-basis:40px}
+  .tools-page>.site-topbar .tool-select-trigger{gap:2px;padding-inline:4px}
   .tools-page>.site-topbar .tool-context:has([data-diff-language]){gap:4px;overflow-x:hidden}
   .tools-page>.site-topbar .tool-context [data-diff-language]{min-width:0;flex:1 1 0;padding-inline:4px}
   .tools-page>.site-topbar .tool-context [data-diff-swap]{width:28px;flex:0 0 28px;padding:0}
