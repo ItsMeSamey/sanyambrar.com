@@ -1,4 +1,5 @@
 import type { JSX } from "@solidjs/web";
+import { createUniqueId } from "solid-js";
 import { type KeyShape } from "../keyboard/keyshape.ts";
 import { useKeyboard } from "../keyboard/context.tsx";
 import { type CodePoint } from "../unicode/types.ts";
@@ -20,9 +21,10 @@ export const TransitionsLayer = function TransitionsLayer(props: {
         f: number
     ];
     const keyboard = useKeyboard();
+    const markerId = `${styles.arrow}-${createUniqueId()}`;
     return (<Surface>
       <defs>
-        <marker id={styles.arrow} markerWidth="5" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+        <marker id={markerId} markerWidth="5" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
           <path class={styles.arrow} d="M 0 0 L 0 6 L 5 3 z" fill="context-stroke" stroke="none"/>
         </marker>
       </defs>
@@ -84,7 +86,7 @@ export const TransitionsLayer = function TransitionsLayer(props: {
         const Y1 = y0 + Math.sin(theta) * t;
         const X2 = x1 - Math.cos(theta) * t;
         const Y2 = y1 - Math.sin(theta) * t;
-        return (<path class={clsx(styles.arc, modifierStyle(props.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${styles.arrow})`}/>);
+        return (<path class={clsx(styles.arc, modifierStyle(props.modifier))} d={`M ${X1} ${Y1} Q ${mx} ${my} ${X2} ${Y2}`} opacity={f * 0.9 + 0.1} marker-end={`url(#${markerId})`}/>);
     }
 };
 function modifierStyle(m: "h" | "m" | "f") {

@@ -785,6 +785,23 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   }));
   await expect.poll(savedResults).toBe(1);
   await expect(page.locator('body')).toContainText(/Speed:\s*[1-9]\d*\.\d+wpm/);
+  const transitionMarkers = await page.evaluate(() => {
+    const markers = [...document.querySelectorAll('marker[id]')];
+    const paths = [...document.querySelectorAll('path[marker-end]')];
+    return {
+      markerCount: markers.length,
+      uniqueMarkerCount: new Set(markers.map(marker => marker.id)).size,
+      pathCount: paths.length,
+      pathsOwnMarker: paths.every(path => {
+        const id = path.getAttribute('marker-end')?.match(/^url\(#(.+)\)$/)?.[1];
+        return !!id && !!path.ownerSVGElement?.querySelector('marker#' + CSS.escape(id));
+      }),
+    };
+  });
+  expect(transitionMarkers.markerCount).toBe(2);
+  expect(transitionMarkers.uniqueMarkerCount).toBe(2);
+  expect(transitionMarkers.pathCount).toBeGreaterThan(0);
+  expect(transitionMarkers.pathsOwnMarker).toBe(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect.poll(savedResults).toBe(1);
 });
