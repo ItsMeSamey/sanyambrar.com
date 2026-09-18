@@ -1,4 +1,4 @@
-import { getBoundingBox, getScreenSize } from "../utils/geometry.ts";
+import { getBoundingBox, getScreenSize, px } from "../utils/geometry.ts";
 import { type Rect } from "../utils/rect.ts";
 import { type Size } from "../utils/size.ts";
 import {
@@ -6,12 +6,17 @@ import {
   centerToScreen as centerToScreen0,
 } from "./align.ts";
 import { placeElement } from "./place.ts";
-import { resizeElement } from "./resize.ts";
 import {
   type AlignOptions,
   type FloatingHeight,
   type FloatingWidth,
 } from "./types.ts";
+
+const resizeElement = (element: HTMLElement, anchorSize: Size, width: FloatingWidth | null, height: FloatingHeight | null): void => {
+  const { style } = element;
+  if (width != null) style.inlineSize = width === "anchor" ? px(anchorSize.width) : px(width);
+  if (height != null) style.blockSize = height === "anchor" ? px(anchorSize.height) : px(height);
+};
 
 export const place = (popup: HTMLElement, arrow: HTMLElement | null = null) => {
   let options = {} as Partial<AlignOptions>;
