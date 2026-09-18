@@ -3342,12 +3342,16 @@
 			}, true);
 			document.addEventListener("pointerup", (event) => release(event.pointerId), true);
 			document.addEventListener("pointercancel", (event) => release(event.pointerId), true);
-			addEventListener("samey-pageleave", () => {
+			const abort = () => {
 				if (frame) cancelAnimationFrame(frame);
 				frame = 0;
+				clearTimeout(snapTimer);
+				snapTimer = 0;
 				if (active) clearRoot(active.root);
 				active = null;
-			});
+			};
+			addEventListener("blur", abort);
+			addEventListener("samey-pageleave", abort);
 		};
 		const mountRuntime = () => {
 			if (readNavigationIndex() == null) replaceState({
