@@ -688,6 +688,14 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const toolRoot = query<HTMLElement>(root, '.markdown-tool');
     const divider = query<HTMLElement>(root, '.markdown-divider');
     const richHost = query<HTMLElement>(root, '#md-rich');
+    const syncDividerAria = () => {
+      divider.setAttribute('aria-valuemin', '20');
+      divider.setAttribute('aria-valuemax', '80');
+      divider.setAttribute('aria-valuenow', String(Math.round(split * 100) / 100));
+      divider.setAttribute('aria-valuetext', `${Math.round(split)}% source pane`);
+      divider.setAttribute('aria-orientation', matchMedia('(max-width:700px)').matches ? 'horizontal' : 'vertical');
+    };
+    syncDividerAria();
     const model = monaco.editor.createModel(value, 'markdown');
     const editor = monaco.editor.create(query<HTMLElement>(root, '#md-input'), editorOptions('markdown'));
     editor.setModel(model);
@@ -799,6 +807,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
         richReady = true;
         richHost.dataset.ready = 'true';
         richHost.removeAttribute('aria-busy');
+        const exportFrame = richHost.querySelector<HTMLIFrameElement>('#vditorExportIframe');
+        if (exportFrame) exportFrame.title = 'Markdown export preview';
         syncRichTheme();
         const current = model.getValue();
         if (rich.getValue() !== current) rich.setValue(current, false);
@@ -809,10 +819,13 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const richResize = new ResizeObserver(scheduleLayout);
     richResize.observe(richHost);
     const themeChange = () => syncRichTheme();
+    const viewportChange = () => syncDividerAria();
     addEventListener('samey-themechange', themeChange);
+    addEventListener('resize', viewportChange, { passive: true });
     const applySplit = (value: number) => {
       split = Math.max(20, Math.min(80, value));
       toolRoot.style.setProperty('--md-split', `${split}%`);
+      syncDividerAria();
       localSet('markdown', 'split', split.toFixed(2));
       scheduleLayout();
     };
@@ -849,6 +862,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       if (richLayoutFrame) cancelAnimationFrame(richLayoutFrame);
       richResize.disconnect();
       removeEventListener('samey-themechange', themeChange);
+      removeEventListener('resize', viewportChange);
       change.dispose();
       rich.destroy();
       editor.dispose();
