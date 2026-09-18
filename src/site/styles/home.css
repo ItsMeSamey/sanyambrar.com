@@ -78,7 +78,7 @@
 @media(max-width:700px){.site-standard .reverb-demo-section{margin-top:32px}.site-standard .reverb-demo-frame-shell{height:912px;min-height:912px}.site-standard .reverb-demo-head{align-items:flex-start}}
 
 /* CNN project: canvas left / predictions right on wide screens, stacked on mobile. */
-.site-standard .cnn-demo-section{margin-top:38px;user-select:none;-webkit-user-select:none}
+.site-standard .cnn-demo-section{--cnn-muted:color-mix(in srgb,var(--site-fg,#121213) 10%,var(--site-muted,#787c7e));margin-top:38px;user-select:none;-webkit-user-select:none}
 .site-standard .cnn-demo-head{margin-bottom:12px}
 .site-standard .cnn-demo-head h2{margin:0;font-size:15px}
 .site-standard .cnn-demo-shell{position:relative;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(280px,.92fr);gap:0;min-height:448px;border:1px solid color-mix(in srgb,var(--site-line) 88%,var(--site-fg) 12%);border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--site-bg) 90%,var(--site-soft));box-shadow:0 14px 38px color-mix(in srgb,var(--site-shadow-tint,#000) 9%,transparent),inset 0 1px 0 color-mix(in srgb,var(--site-fg) 4%,transparent)}
@@ -88,7 +88,7 @@
 .site-standard .cnn-pad{position:absolute;inset:0;z-index:2;width:100%;height:100%;display:block;border:0;border-radius:inherit;touch-action:none;cursor:crosshair}
 .site-standard .cnn-controls-row{display:grid;grid-template-columns:minmax(180px,1fr) auto;align-items:end;gap:16px;padding:14px 16px 16px;border-top:1px solid color-mix(in srgb,var(--site-line,#d3d6da) 84%,transparent)}
 .site-standard .cnn-ink-control{min-width:0}
-.site-standard .cnn-ink-control .game-settings-slider-head{color:var(--site-muted)}
+.site-standard .cnn-ink-control .game-settings-slider-head{color:var(--cnn-muted)}
 .site-standard .cnn-ink-control .game-settings-slider-label{font-size:.78rem;font-weight:600}
 .site-standard .cnn-ink-control .game-settings-slider-value{color:var(--site-fg);font-size:.78rem}
 .site-standard .cnn-clear{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:88px;white-space:nowrap}
@@ -96,19 +96,19 @@
 .site-standard .cnn-clear svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .site-standard .cnn-output-pane{position:relative;display:flex;flex-direction:column;min-width:0;min-height:448px;padding:18px 18px 14px;border-left:1px solid color-mix(in srgb,var(--site-line) 84%,transparent);background:color-mix(in srgb,var(--site-bg) 62%,var(--site-soft))}
 .site-standard .cnn-output-summary{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:3px 2px 18px}
-.site-standard .cnn-output-label,.site-standard .cnn-confidence span{display:block;color:var(--site-muted);font:800 8px/1 var(--site-font,system-ui);letter-spacing:.1em}
+.site-standard .cnn-output-label,.site-standard .cnn-confidence span{display:block;color:var(--cnn-muted);font:800 8px/1 var(--site-font,system-ui);letter-spacing:.1em}
 .site-standard .cnn-output-summary strong{display:block;margin-top:7px;color:var(--site-fg);font:800 42px/.85 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:-.08em;text-shadow:0 8px 24px color-mix(in srgb,var(--site-accent) 12%,transparent)}
 .site-standard .cnn-confidence{text-align:right}
 .site-standard .cnn-confidence b{display:block;margin-top:6px;color:color-mix(in srgb,var(--site-fg) 88%,var(--site-accent));font:750 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
 .site-standard .cnn-probabilities{display:grid;gap:8px;margin-top:2px}
 .site-standard .cnn-probability-row{display:grid;grid-template-columns:18px minmax(0,1fr) 46px;align-items:center;gap:9px;min-width:0}
-.site-standard .cnn-class{color:var(--site-muted);font:750 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center}
+.site-standard .cnn-class{color:var(--cnn-muted);font:750 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center}
 .site-standard .cnn-meter{height:5px;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--site-line) 45%,transparent);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--site-shadow-tint,#000) 6%,transparent)}
 .site-standard .cnn-meter i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--site-fg) 54%,var(--site-muted)),color-mix(in srgb,var(--site-fg) 74%,var(--site-muted)))}
-.site-standard .cnn-percent{color:var(--site-muted);font:650 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right;font-variant-numeric:tabular-nums}
+.site-standard .cnn-percent{color:var(--cnn-muted);font:650 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right;font-variant-numeric:tabular-nums}
 .site-standard .cnn-probability-row[data-leading="true"] .cnn-class,.site-standard .cnn-probability-row[data-leading="true"] .cnn-percent{color:var(--site-fg)}
 .site-standard .cnn-probability-row[data-leading="true"] .cnn-meter i{background:linear-gradient(90deg,var(--site-accent),color-mix(in srgb,var(--site-accent) 62%,var(--site-effort-color,var(--site-accent))))}
-.site-standard .cnn-output-foot{display:flex;justify-content:flex-end;margin-top:auto;padding-top:13px;color:var(--site-muted);font:700 8px/1 var(--site-font,system-ui);letter-spacing:.08em;text-transform:uppercase}
+.site-standard .cnn-output-foot{display:flex;justify-content:flex-end;margin-top:auto;padding-top:13px;color:var(--cnn-muted);font:700 8px/1 var(--site-font,system-ui);letter-spacing:.08em;text-transform:uppercase}
 .site-standard .cnn-unknown-key{display:inline-flex;align-items:center;gap:5px}
 .site-standard .cnn-unknown-key b{display:grid;place-items:center;width:16px;height:16px;border:1px solid color-mix(in srgb,var(--site-line) 84%,transparent);border-radius:5px;background:color-mix(in srgb,var(--site-bg) 76%,transparent);color:var(--site-fg);font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
 @media(max-width:700px){.site-standard .cnn-demo-section{margin-top:32px}.site-standard .cnn-demo-shell{grid-template-columns:1fr;min-height:0}.site-standard .cnn-draw-pane{min-height:0}.site-standard .cnn-pad-wrap{width:100%;max-width:none}.site-standard .cnn-output-pane{min-height:390px;padding:18px 16px 14px;border-left:0;border-top:1px solid color-mix(in srgb,var(--site-line) 84%,transparent)}.site-standard .cnn-output-summary strong{font-size:36px}}

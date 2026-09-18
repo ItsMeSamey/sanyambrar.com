@@ -781,6 +781,17 @@ test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
     await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
     await expect.poll(() => contrastViolations('.wordle-date-picker-popover')).toEqual([]);
   }
+
+  for (const [route, selector] of [
+    ['/projects/cnn/', '.cnn-demo-section'],
+    ['/blog/posts/btop-mutex.html', '.article-route > main'],
+  ]) {
+    await visit(page, route, info);
+    for (const color of ['light', 'dark']) {
+      await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+      await expect.poll(() => contrastViolations(selector)).toEqual([]);
+    }
+  }
 });
 
 test('number conversion updates from edited input', async ({ page }, info) => {
