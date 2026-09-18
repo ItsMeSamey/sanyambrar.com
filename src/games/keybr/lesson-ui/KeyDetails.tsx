@@ -4,11 +4,11 @@ import { Target } from "../lesson/target.ts";
 import { timeToSpeed } from "../result/result.ts";
 import { useSettings } from "../settings/context.ts";
 import { Name, NameValue, Value } from "../widget/components/text/NameValue.tsx";
-import { clsx } from "clsx";
 import { useIntl } from "../intl/runtime.tsx";
 import { useFormatter } from "./format.ts";
 import { createMemo, Show } from 'solid-js';
-import { Happiness } from "./Happiness.tsx";
+import { Icon } from "../widget/components/icon/Icon.tsx";
+import { Smile, Frown } from "../../../shared/components/Icons.tsx";
 import styles from "./styles.module.css";
 export const KeyDetails = (props: {
     lessonKey: LessonKey;
@@ -22,9 +22,9 @@ export const KeyDetails = (props: {
         const learningRate = LearningRate.from(props.lessonKey.samples, new Target(settings))?.learningRate ?? null;
         return { timeToType, bestTimeToType, confidence, bestConfidence, learningRate };
     });
-    return (<Show when={details()} keyed fallback={<span class={clsx(styles.keyDetails, styles.keyDetailsUncalibrated)}>
+    return (<Show when={details()} keyed fallback={<span class={styles.keyDetails}>
       {formatMessage({ id: "t_Not_calibrated_", defaultMessage: "Not calibrated, need more samples." })}
-    </span>}>{({ timeToType, bestTimeToType, confidence, bestConfidence, learningRate }) => <span class={clsx(styles.keyDetails, styles.keyDetailsCalibrated)}>
+    </span>}>{({ timeToType, bestTimeToType, confidence, bestConfidence, learningRate }) => <span class={styles.keyDetails}>
         <NameValue name={<Name name={formatMessage({
                     id: "t_Last_speed",
                     defaultMessage: "Last speed",
@@ -49,3 +49,15 @@ export const KeyDetails = (props: {
                 </>} delta={learningRate ?? 0}/>}/>
       </span>}</Show>);
 };
+
+function Happiness(props: { learningRate: number }) {
+    const Happy = () => <Icon className={styles.happinessIcon} shape={Smile}/>;
+    const Sad = () => <Icon className={styles.happinessIcon} shape={Frown}/>;
+    if (props.learningRate > 0) return <span class={styles.happy}>
+      <Happy/>{props.learningRate >= 5 && <Happy/>}{props.learningRate >= 10 && <Happy/>}
+    </span>;
+    if (props.learningRate < 0) return <span class={styles.sad}>
+      <Sad/>{props.learningRate <= -5 && <Sad/>}{props.learningRate <= -10 && <Sad/>}
+    </span>;
+    return null;
+}

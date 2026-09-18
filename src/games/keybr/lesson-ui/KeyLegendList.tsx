@@ -1,5 +1,7 @@
 import { FormattedMessage } from "../intl/runtime.tsx";
-import { KeyLegend } from "./KeyLegend.tsx";
+import { clsx } from "clsx";
+import styles from "./styles.module.css";
+import { useKeyStyles } from "./styles.ts";
 export const KeyLegendList = () => {
     return (<ul>
       <li>
@@ -34,3 +36,18 @@ export const KeyLegendList = () => {
       </li>
     </ul>);
 };
+
+function KeyLegend(props: { confidence: number | null; isIncluded: boolean; isFocused: boolean; isForced: boolean }) {
+    const keyStyles = useKeyStyles();
+    return <span class={clsx(
+      styles.lessonKey,
+      styles.lessonKeyNormal,
+      props.isIncluded ? styles.lessonKeyIncluded : styles.lessonKeyExcluded,
+      props.isIncluded && props.confidence == null && styles.lessonKeyUncalibrated,
+      props.isIncluded && props.isFocused && styles.lessonKeyFocused,
+      props.isIncluded && props.isForced && styles.lessonKeyForced,
+    )} style={keyStyles().keyStyles(props.isIncluded, props.confidence)}>
+      ?
+      {!props.isIncluded && <svg viewBox="0 0 100 100" class={styles.cross}><path d="M 0 100 L 100 0"/></svg>}
+    </span>;
+}

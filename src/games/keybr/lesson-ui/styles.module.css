@@ -72,14 +72,6 @@
   display: inline-block;
 }
 
-.keyDetails_calibrated {
-  
-}
-
-.keyDetails_uncalibrated {
-  
-}
-
 .lessonKey + .keyDetails {
   margin-inline-start: 0.5rem;
 }
@@ -89,4 +81,18 @@
   inset: 0;
   stroke: var(--LessonKey--excluded__color);
   stroke-width: 2px;
+}
+
+.happinessIcon {
+  inline-size: 1rem;
+  block-size: 1rem;
+  fill: var(--text-color);
+}
+
+.happy .happinessIcon {
+  fill: var(--Value--more__color);
+}
+
+.sad .happinessIcon {
+  fill: var(--Value--less__color);
 }

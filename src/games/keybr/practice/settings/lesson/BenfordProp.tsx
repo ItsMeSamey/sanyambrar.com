@@ -5,8 +5,6 @@ import { Toggle } from "../../../widget/components/toggle/Toggle.tsx";
 import { Description } from "../../../widget/components/text/Description.tsx";
 import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
 import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
-import { Link } from "../../../widget/components/text/Link.tsx";
-
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 export function BenfordProp(): JSX.Element {
     const { formatMessage } = useIntl();
@@ -25,9 +23,9 @@ export function BenfordProp(): JSX.Element {
       <Explainer>
         <Description>
           <FormattedMessage id="settings.benfordsLaw.description" defaultMessage="<a>Benford’s law</a> is an observation that in many real-life numerical data sets, the leading digit is likely to be small." values={{
-            a: (chunks: JSX.Element) => (<Link href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank">
+            a: (chunks: JSX.Element) => (<a href="https://en.wikipedia.org/wiki/Benford's_law" target="_blank" rel="noopener noreferrer">
                   {chunks}
-                </Link>),
+                </a>),
         }}/>
         </Description>
       </Explainer>
