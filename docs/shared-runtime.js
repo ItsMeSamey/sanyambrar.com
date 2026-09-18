@@ -2597,6 +2597,8 @@
 			document.body.append(menu);
 			let target = null;
 			let returnFocus = null;
+			let menuViewportWidth = 0;
+			let menuViewportHeight = 0;
 			const close = (restoreFocus = false) => {
 				if (menu.hidden) return;
 				menu.hidden = true;
@@ -2631,7 +2633,7 @@
 				menu.append(hr);
 			};
 			document.addEventListener("contextmenu", (event) => {
-				if (event.shiftKey) return;
+				if (event.shiftKey && event.button === 2) return;
 				event.preventDefault();
 				target = event.target;
 				menu.replaceChildren();
@@ -2699,6 +2701,8 @@
 				add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
 				if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
 				menu.hidden = false;
+				menuViewportWidth = innerWidth;
+				menuViewportHeight = innerHeight;
 				const rect = menu.getBoundingClientRect();
 				menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
 				menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
@@ -2708,7 +2712,9 @@
 				if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close();
 			}, true);
 			addEventListener("blur", () => close());
-			addEventListener("resize", () => close());
+			addEventListener("resize", () => {
+				if (!menu.hidden && (innerWidth !== menuViewportWidth || innerHeight !== menuViewportHeight)) close();
+			});
 			addEventListener("scroll", (event) => {
 				if (!(event.target instanceof Node && menu.contains(event.target))) close();
 			}, true);
