@@ -3,7 +3,7 @@ import { SmartLink } from '../../shared/components/NavLink.tsx';
 
 const PERSONAL_GITHUB = 'https://github.com/ItsMeSamey';
 const ORG_GITHUB = 'https://github.com/SmallThingz';
-const SITE_SOURCE = 'https://github.com/ItsMeSamey/itsmesamey.github.io';
+const SITE_SOURCE = 'https://github.com/ItsMeSamey/sanyambrar.com';
 
 function ExternalLink(props:{href:string;children:JSX.Element;copyLabel?:string}) {
   return <a href={props.href} data-copy-label={props.copyLabel} target="_blank" rel="noopener noreferrer">{props.children}</a>;

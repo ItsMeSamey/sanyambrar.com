@@ -57,7 +57,7 @@ async function download(book) {
   for (const url of urls) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const response = await fetch(url, { headers: { 'user-agent': 'ItsMeSamey-Keybr/1.0 (+https://github.com/ItsMeSamey/itsmesamey.github.io)' } });
+        const response = await fetch(url, { headers: { 'user-agent': 'ItsMeSamey-Keybr/1.0 (+https://github.com/ItsMeSamey/sanyambrar.com)' } });
         if (response.ok) { raw = await response.text(); break; }
         if (response.status === 404) break;
         lastError = new Error(`${response.status} ${url}`);
