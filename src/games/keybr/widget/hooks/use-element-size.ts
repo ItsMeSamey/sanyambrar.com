@@ -2,7 +2,7 @@ import { type Accessor, createEffect, createSignal } from "solid-js";
 import { getElementSize } from "../utils/geometry.ts";
 import { type Size } from "../utils/size.ts";
 
-export type ElementResizeCallback = (entry: ResizeObserverEntry) => void;
+ type ElementResizeCallback = (entry: ResizeObserverEntry) => void;
 const observed = new WeakMap<Element, ElementResizeCallback>();
 let resizeObserver: ResizeObserver | null = null;
 

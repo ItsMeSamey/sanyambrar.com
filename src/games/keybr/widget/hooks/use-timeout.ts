@@ -1,6 +1,6 @@
 import { type Task } from "../../lang/tasks.ts";
 import { useTasks } from "./use-tasks.ts";
-export type TimeoutScheduler = {
+ type TimeoutScheduler = {
     get pending(): boolean;
     cancel(): void;
     schedule(callback: () => void, timeout: number): void;

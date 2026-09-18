@@ -7,7 +7,7 @@ export type Rules = Record<string, Prod>;
 
 export type Prod = Cond | Span | Opt | Seq | Alt | Ref | string;
 
-export type Cond = {
+ type Cond = {
   readonly flag: string;
   readonly inv: boolean;
   readonly cond: Prod;
@@ -18,12 +18,12 @@ export type Span = {
   readonly span: Prod;
 };
 
-export type Opt = {
+ type Opt = {
   readonly f: number;
   readonly opt: Prod;
 };
 
-export type Seq = {
+ type Seq = {
   readonly seq: readonly Prod[];
 };
 
@@ -31,7 +31,7 @@ export type Alt = {
   readonly alt: readonly Prod[];
 };
 
-export type Ref = {
+ type Ref = {
   readonly ref: string;
 };
 

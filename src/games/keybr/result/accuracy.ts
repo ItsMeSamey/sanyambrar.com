@@ -11,7 +11,7 @@ export type StreakList = {
   readonly level3: Streak;
 } & Iterable<Streak>;
 
-export type AcceptStreak = (streak: Streak) => void;
+ type AcceptStreak = (streak: Streak) => void;
 
 export class MutableStreakList implements StreakList {
   static readonly level1 = 1.0;

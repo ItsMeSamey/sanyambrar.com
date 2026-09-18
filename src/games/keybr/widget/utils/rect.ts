@@ -2,7 +2,7 @@ import { isNumber, isObjectLike } from "../../lang/types.ts";
 import { Point, type TPoint } from "./point.ts";
 import { Size, type TSize } from "./size.ts";
 
-export type TRect = TPoint & TSize;
+ type TRect = TPoint & TSize;
 
 export class Rect implements Readonly<TRect> {
   readonly x: number;

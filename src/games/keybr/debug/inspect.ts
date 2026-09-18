@@ -1,5 +1,5 @@
 export type Report = readonly ReportItem[];
-export type ReportItem = {
+ type ReportItem = {
   readonly message: string;
   readonly stack: string | null;
 };

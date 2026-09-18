@@ -1,9 +1,9 @@
 import type { JSX } from "@solidjs/web";
 import type { ValidComponent } from "@solidjs/web";
-export type FocusEventHandler<T extends Element = Element> = (event: FocusEvent & { currentTarget: T }) => void;
-export type KeyboardEventHandler<T extends Element = Element> = (event: KeyboardEvent & { currentTarget: T }) => void;
-export type MouseEventHandler<T extends Element = Element> = (event: MouseEvent & { currentTarget: T }) => void;
-export type WheelEventHandler<T extends Element = Element> = (event: WheelEvent & { currentTarget: T }) => void;
+ type FocusEventHandler<T extends Element = Element> = (event: FocusEvent & { currentTarget: T }) => void;
+ type KeyboardEventHandler<T extends Element = Element> = (event: KeyboardEvent & { currentTarget: T }) => void;
+ type MouseEventHandler<T extends Element = Element> = (event: MouseEvent & { currentTarget: T }) => void;
+ type WheelEventHandler<T extends Element = Element> = (event: WheelEvent & { currentTarget: T }) => void;
 export type ClassName = string | undefined;
 export type ElementProps = {
     readonly as?: ValidComponent;
@@ -15,9 +15,6 @@ export type ElementProps = {
 export type Focusable = {
     blur(): void;
     focus(): void;
-};
-export type Selectable = {
-    select(): void;
 };
 export type FocusProps = {
     readonly tabIndex?: number;

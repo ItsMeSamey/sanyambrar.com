@@ -5,7 +5,7 @@ import { useScreenSize } from "../../hooks/use-screen-size.ts";
 import { getBoundingBox } from "../../utils/geometry.ts";
 import { querySelector } from "../../utils/query.ts";
 import styles from "./Spotlight.module.css";
-export type SpotlightProps = {
+ type SpotlightProps = {
     readonly anchor?: Element | string;
     readonly margin?: number;
 };

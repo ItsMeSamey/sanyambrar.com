@@ -7,7 +7,7 @@ export type Group<T> = {
   readonly results: readonly Result[];
 };
 
-export type KeyOf<T> = (result: Result) => T;
+ type KeyOf<T> = (result: Result) => T;
 
 const layoutKey = (): KeyOf<Layout> => {
   return ({ layout }) => layout;

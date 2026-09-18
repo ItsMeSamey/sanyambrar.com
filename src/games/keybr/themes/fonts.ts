@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
-export type FontWeight = "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900";
-export type FontStyle = "normal" | "italic";
-export type Fallback = "cursive" | "fantasy" | "monospace" | "sans-serif" | "serif" | string;
+ type FontWeight = "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900";
+ type FontStyle = "normal" | "italic";
+ type Fallback = "cursive" | "fantasy" | "monospace" | "sans-serif" | "serif" | string;
 export type Script = "arabic" | "cyrillic" | "greek" | "hebrew" | "hiragana" | "katakana" | "latin" | "thai";
 export class FontFace {
     readonly family: string;

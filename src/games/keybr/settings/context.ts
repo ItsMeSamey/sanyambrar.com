@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'solid-js';
 import { type Settings } from "./settings.ts";
 
-export type SettingsContextProps = {
+ type SettingsContextProps = {
   readonly settings: Settings;
   readonly updateSettings: (newSettings: Settings) => void;
 };

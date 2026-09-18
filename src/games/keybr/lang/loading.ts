@@ -1,4 +1,4 @@
-export type LoadingEvent = {
+ type LoadingEvent = {
   readonly total: number;
   readonly current: number;
 };

@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import { For } from 'solid-js';
 
-export type SegmentedOption<T> = {
+ type SegmentedOption<T> = {
   readonly value: T;
   readonly label: JSX.Element;
   readonly title?: string;

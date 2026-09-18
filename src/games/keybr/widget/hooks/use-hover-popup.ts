@@ -2,7 +2,7 @@ import { createEffect, createSignal } from 'solid-js';
 import { useTasks } from "./use-tasks.ts";
 
 type Visible<T> = T & { type: "visible-in" | "visible" | "visible-out" };
-export type HoverPopupState<T> = { type: "hidden" } | Visible<T>;
+ type HoverPopupState<T> = { type: "hidden" } | Visible<T>;
 
 export function useHoverPopup<T extends Record<string, unknown>>(delay = 300) {
   const [state, setState] = createSignal<HoverPopupState<T>>({ type: "hidden" });

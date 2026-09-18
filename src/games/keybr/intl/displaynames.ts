@@ -1,6 +1,6 @@
 import { type IntlShape, useIntl } from "./runtime.tsx";
 import { intlMemo } from "./memo.ts";
-export type IntlDisplayNames = {
+ type IntlDisplayNames = {
     formatRegionName(id: string): string;
     formatLanguageName(id: string): string;
     formatLocalLanguageName(id: string): string;

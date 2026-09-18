@@ -1,6 +1,6 @@
 import { type CodePoint, type CodePointSet } from "../unicode/types.ts";
 
-export type HasLetter = {
+ type HasLetter = {
   readonly letter: Letter;
 };
 

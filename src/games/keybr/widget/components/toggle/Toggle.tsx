@@ -1,7 +1,7 @@
 import type { JSX } from "@solidjs/web";
 import * as SwitchPrimitive from "@kobalte/core/switch";
 
-export type ToggleProps = {
+ type ToggleProps = {
   readonly checked?: boolean;
   readonly disabled?: boolean;
   readonly label?: JSX.Element;

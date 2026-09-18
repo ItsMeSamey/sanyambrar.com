@@ -2,7 +2,7 @@ import { createContext, useContext } from 'solid-js';
 import type { JSX } from "@solidjs/web";
 
 import { state, type Toast } from "./state.ts";
-export type ToastContextValue = {
+ type ToastContextValue = {
     readonly close: () => void;
     readonly hover: (over: boolean) => void;
     readonly click: () => void;

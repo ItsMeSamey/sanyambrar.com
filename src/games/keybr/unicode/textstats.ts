@@ -1,7 +1,7 @@
 import { toCodePoints } from "./codepoints.ts";
 import { isWhitespace } from "./whitespace.ts";
 
-export type TextStats = {
+ type TextStats = {
   readonly numWhitespace: number;
   readonly numCharacters: number;
   readonly numWords: number;
@@ -10,7 +10,7 @@ export type TextStats = {
   readonly wordCount: readonly WordCount[];
 };
 
-export type WordCount = {
+ type WordCount = {
   readonly word: string;
   readonly count: number;
 };

@@ -3,8 +3,8 @@ import { createContext, createMemo, createSignal, onCleanup, onSettled, useConte
 import { type JSX } from '@solidjs/web';
 import { Dynamic } from '@solidjs/web';
 
-export type ViewName = string;
-export type ViewMap = { readonly [name: ViewName]: Component };
+ type ViewName = string;
+ type ViewMap = { readonly [name: ViewName]: Component };
 
 type BeforeLeave = () => void;
 

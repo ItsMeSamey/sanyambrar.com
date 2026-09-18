@@ -6,7 +6,7 @@ import { type GraphicsStyle } from "../widget/components/canvas/graphics-style.t
 import { type Rect } from "../widget/utils/rect.ts";
 import { vBoxes } from "./geometry.ts";
 
-export type Projection = {
+ type Projection = {
   readonly box: Rect;
   readonly xmin: number;
   readonly xmax: number;

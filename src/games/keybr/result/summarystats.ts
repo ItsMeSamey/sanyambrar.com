@@ -21,7 +21,7 @@ export type SummaryStats = {
   readonly score: Metric;
 };
 
-export type Metric = {
+ type Metric = {
   /** The last value. */
   readonly last: number;
   /** The change in last value compared to average. */

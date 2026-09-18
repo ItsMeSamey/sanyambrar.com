@@ -7,7 +7,7 @@ import { querySelector } from "../../utils/query.ts";
 import { type MouseProps } from "../types.ts";
 import styles from "./Popup.module.css";
 import { createEffect, createMemo, omit, merge } from 'solid-js';
-export type PopupProps = {
+ type PopupProps = {
     readonly anchor?: Element | string;
     readonly arrow?: boolean;
     readonly children?: JSX.Element;
