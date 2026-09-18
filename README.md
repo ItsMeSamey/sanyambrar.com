@@ -2,7 +2,7 @@
 
 My personal site, plus a pile of small games and tools. It ships as static files, but navigation still feels like one app.
 
-**[Live site](https://itsmesamey.github.io/)** · [Work](https://itsmesamey.github.io/work/) · [Writing](https://itsmesamey.github.io/blog/) · [Tools](https://itsmesamey.github.io/tools/)
+**[Live site](https://sanyambrar.com/)** · [Work](https://sanyambrar.com/work/) · [Writing](https://sanyambrar.com/blog/) · [Tools](https://sanyambrar.com/tools/)
 
 ## What's here
 
