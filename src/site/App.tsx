@@ -120,15 +120,63 @@ function FatalRouteError(props: { error: unknown; reset: () => void }) {
   </div>;
 }
 
+function isolateErrorPage(page: HTMLElement) {
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const siblings = [...(page.parentElement?.children ?? [])].filter(
+    (node): node is HTMLElement => node instanceof HTMLElement && node !== page,
+  );
+  const snapshots = siblings.map(node => ({
+    node,
+    inert: node.inert,
+    ariaHidden: node.getAttribute('aria-hidden'),
+  }));
+  for (const { node } of snapshots) {
+    node.inert = true;
+    node.setAttribute('aria-hidden', 'true');
+  }
+  queueMicrotask(() => page.focus({ preventScroll: true }));
+  return () => {
+    for (const { node, inert, ariaHidden } of snapshots) {
+      node.inert = inert;
+      if (ariaHidden == null) node.removeAttribute('aria-hidden');
+      else node.setAttribute('aria-hidden', ariaHidden);
+    }
+    if (previousFocus?.isConnected) queueMicrotask(() => previousFocus.focus({ preventScroll: true }));
+  };
+}
+
 function RouteError(props: { error: NavigationError; onRetry: () => void; onDismiss: () => void }) {
-  return <aside class="site-route-error" role="alert" aria-live="assertive">
-    <div><strong>Page failed to load</strong><span>{props.error.message}</span><pre class="site-route-error-stack">{props.error.detail}</pre></div>
-    <div class="site-route-error-actions">
-      <button type="button" onClick={props.onRetry}>Retry</button>
-      <a href={props.error.url}>Open normally</a>
-      <button type="button" class="quiet" onClick={props.onDismiss}>Dismiss</button>
+  let page!: HTMLElement;
+  onSettled(() => isolateErrorPage(page));
+  const destination = () => {
+    try {
+      const url = new URL(props.error.url, location.href);
+      return url.pathname + url.search + url.hash;
+    } catch {
+      return props.error.url;
+    }
+  };
+  return <section
+    ref={page}
+    class="site-route-error samey-error-page"
+    role="alert"
+    aria-live="assertive"
+    aria-labelledby="site-route-error-title"
+    tabindex="-1"
+  >
+    <div class="samey-error-page-panel">
+      <span class="samey-error-page-kicker">Navigation error</span>
+      <h1 id="site-route-error-title">Page failed to load</h1>
+      <p class="samey-error-page-message">{props.error.message}</p>
+      <div class="samey-error-page-target"><span>Destination</span><code>{destination()}</code></div>
+      <pre class="site-route-error-stack samey-error-stack">{props.error.detail}</pre>
+      <div class="site-route-error-actions samey-error-page-actions">
+        <button type="button" class="primary" onClick={props.onRetry}>Retry</button>
+        <a href={props.error.url}>Open normally</a>
+        <button type="button" class="quiet" onClick={props.onDismiss}>Go back</button>
+      </div>
     </div>
-  </aside>;
+  </section>;
 }
 
 export function App() {

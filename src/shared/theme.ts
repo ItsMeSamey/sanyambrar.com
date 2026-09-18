@@ -2201,26 +2201,58 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }
     throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount before the startup timeout.`);
   };
-  const dismissLoadError = () => document.getElementById("samey-load-error")?.remove();
+  type ErrorPageBackgroundSnapshot = {
+    node: HTMLElement;
+    inert: boolean;
+    ariaHidden: string | null;
+  };
+  let loadErrorBackground: ErrorPageBackgroundSnapshot[] = [];
+  const restoreLoadErrorBackground = () => {
+    for (const { node, inert, ariaHidden } of loadErrorBackground) {
+      if (!node.isConnected) continue;
+      node.inert = inert;
+      if (ariaHidden == null) node.removeAttribute("aria-hidden");
+      else node.setAttribute("aria-hidden", ariaHidden);
+    }
+    loadErrorBackground = [];
+  };
+  const dismissLoadError = () => {
+    document.getElementById("samey-load-error")?.remove();
+    restoreLoadErrorBackground();
+  };
   const showLoadError = (url: URL, error: unknown, retry: () => unknown | Promise<unknown>) => {
     dismissLoadError();
-    const panel = runtimeNode(document.createElement("aside"));
+    const panel = runtimeNode(document.createElement("section"));
     panel.id = "samey-load-error";
-    panel.className = "samey-load-error";
+    panel.className = "samey-load-error samey-error-page";
     panel.setAttribute("role", "alert");
+    panel.setAttribute("aria-live", "assertive");
+    panel.setAttribute("aria-labelledby", "samey-load-error-title");
+    panel.tabIndex = -1;
     const message = errorMessage(error, "The page could not be loaded.");
-    panel.innerHTML = `<div><strong>Page failed to load</strong><span></span><pre class="samey-error-stack samey-load-error-stack"></pre></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
-    const messageNode = panel.querySelector<HTMLElement>("span");
+    const destination = url.pathname + url.search + url.hash;
+    panel.innerHTML = `<div class="samey-error-page-panel"><span class="samey-error-page-kicker">Navigation error</span><h1 id="samey-load-error-title">Page failed to load</h1><p class="samey-error-page-message"></p><div class="samey-error-page-target"><span>Destination</span><code></code></div><pre class="samey-error-stack samey-load-error-stack"></pre><div class="samey-load-error-actions samey-error-page-actions"><button type="button" class="primary" data-retry>Retry</button><a>Open normally</a><button type="button" class="quiet" data-dismiss>Go back</button></div></div>`;
+    const messageNode = panel.querySelector<HTMLElement>(".samey-error-page-message");
+    const destinationNode = panel.querySelector<HTMLElement>(".samey-error-page-target code");
     const stackNode = panel.querySelector<HTMLElement>(".samey-load-error-stack");
     const normal = panel.querySelector<HTMLAnchorElement>("a");
     const retryButton = panel.querySelector<HTMLButtonElement>("[data-retry]");
     const dismissButton = panel.querySelector<HTMLButtonElement>("[data-dismiss]");
     if (messageNode) messageNode.textContent = message;
+    if (destinationNode) destinationNode.textContent = destination;
     if (stackNode) stackNode.textContent = formatThrownError(error);
     if (normal) normal.href = url.href;
     retryButton?.addEventListener("click", () => { dismissLoadError(); void retry(); });
     dismissButton?.addEventListener("click", dismissLoadError);
     document.body.append(panel);
+    loadErrorBackground = [...document.body.children]
+      .filter((node): node is HTMLElement => node instanceof HTMLElement && node !== panel && !node.hasAttribute("data-samey-runtime"))
+      .map(node => ({ node, inert: node.inert, ariaHidden: node.getAttribute("aria-hidden") }));
+    for (const { node } of loadErrorBackground) {
+      node.inert = true;
+      node.setAttribute("aria-hidden", "true");
+    }
+    queueMicrotask(() => panel.focus({ preventScroll: true }));
   };
   let pageNavigationId = 0;
   const cancelPageNavigation = () => { pageNavigationId++; setLoading(false); };

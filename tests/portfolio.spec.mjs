@@ -32,6 +32,21 @@ async function visitKeybr(page, info) {
   await visit(page, '/keybr', info);
 }
 
+async function expectFullErrorPage(page, errorPage) {
+  await expect(errorPage).toBeVisible();
+  await expect(errorPage).toBeFocused();
+  await expect.poll(async () => {
+    const box = await errorPage.boundingBox();
+    const viewport = page.viewportSize();
+    return !!box && !!viewport
+      && Math.abs(box.x) <= 1
+      && Math.abs(box.y) <= 1
+      && Math.abs(box.width - viewport.width) <= 1
+      && Math.abs(box.height - viewport.height) <= 1;
+  }, { message: 'Error surface must own the full viewport' }).toBe(true);
+  await expect(errorPage).toHaveCSS('position', 'fixed');
+}
+
 async function seedKeybrHistory(page) {
   const now = Date.now();
   const records = Array.from({ length: 48 }, (_, index) => {
@@ -148,13 +163,48 @@ window.dispatchEvent(new ErrorEvent('error', {
 
   const loadError = page.locator('#samey-load-error');
   const stack = loadError.locator('.samey-error-stack');
-  await expect(loadError).toBeVisible();
+  await expectFullErrorPage(page, loadError);
+  expect(await page.evaluate(() => [...document.body.children]
+    .filter(node => node.id !== 'samey-load-error' && !node.hasAttribute('data-samey-runtime'))
+    .every(node => node.hasAttribute('inert') && node.getAttribute('aria-hidden') === 'true')),
+  'Broken destination content must be inaccessible behind the error page').toBe(true);
   await expect(loadError).toContainText('application failed while mounting');
   await expect(stack).toContainText(marker);
   await expect(stack).toContainText('Caused by:');
   await expect(stack).toContainText(`Error: ${marker}`);
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+});
+
+test('site navigation failures become full error pages', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets a built site chunk');
+
+  const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: work route root cause`;
+  await page.route(/\/site-chunks\/Work-[^/]+\.js(?:\?.*)?$/, route => route.fulfill({
+    status: 200,
+    contentType: 'text/javascript',
+    body: `throw new Error(${JSON.stringify(marker)});`,
+  }));
+
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    void navigate('/work/');
+  });
+
+  const errorPage = page.locator('.site-route-error');
+  await expectFullErrorPage(page, errorPage);
+  await expect(errorPage).toContainText('Page failed to load');
+  await expect(errorPage.locator('.samey-error-page-target')).toContainText('/work/');
+  await expect(errorPage.locator('.samey-error-stack')).toContainText(marker);
+  await expect(page.locator('.site-route')).toHaveAttribute('inert', '');
+  await expect(page.locator('.site-route')).toHaveAttribute('aria-hidden', 'true');
+
+  await errorPage.getByRole('button', { name: 'Go back', exact: true }).click();
+  await expect(errorPage).not.toBeVisible();
+  await expect(page.locator('.site-route')).not.toHaveAttribute('inert', '');
+  await expect(page.locator('.site-route')).not.toHaveAttribute('aria-hidden', 'true');
 });
 
 test('Keybr error page preserves settings failure stack and cause', async ({ page }, info) => {
