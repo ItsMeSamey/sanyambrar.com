@@ -46,6 +46,7 @@ export default defineConfig(() => {
       outDir: path.resolve(root, '.build/site-runtime'),
       emptyOutDir: true,
       target: 'es2022',
+      manifest: true,
       cssCodeSplit: true,
       rolldownOptions: {
         output: {
@@ -100,6 +101,7 @@ export default defineConfig(() => {
       outDir: path.resolve(root, '.build/keybr'),
       emptyOutDir: true,
       target: 'es2022',
+      manifest: true,
       cssMinify: 'lightningcss',
       minify: 'oxc',
       assetsDir: 'keybr-assets',

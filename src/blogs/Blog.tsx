@@ -1,3 +1,4 @@
+import '../site/styles/home.css';
 import { CompactList } from '../site/components/Entries.tsx';
 import { Section } from '../site/components/SiteChrome.tsx';
 import { TopBar } from '../shared/components/TopBar.tsx';

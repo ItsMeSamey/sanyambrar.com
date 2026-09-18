@@ -1,3 +1,4 @@
+import './style.css';
 import { Show, createContext, createSignal, onCleanup, onSettled, useContext, type Accessor } from 'solid-js';
 import * as Select from '@kobalte/core/select';
 import * as Tabs from '@kobalte/core/tabs';

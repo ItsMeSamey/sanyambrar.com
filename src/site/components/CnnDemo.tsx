@@ -1,3 +1,4 @@
+import '../../shared/styles/game-settings.css';
 import { createSignal, For, Show, onCleanup, onSettled } from 'solid-js';
 import { formatThrownError } from '../../shared/error.ts';
 import CnnWorker from '../workers/cnn-worker.ts?worker';

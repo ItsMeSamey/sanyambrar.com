@@ -3,6 +3,7 @@ import { render } from '@solidjs/web'
 import { Errored, Match, Switch, type Accessor } from 'solid-js';
 import StatsPage from './page_stats'
 
+import '../../shared/styles/game-settings.css'
 import './style.css'
 
 import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'

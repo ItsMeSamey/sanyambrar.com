@@ -21,3 +21,5 @@
 - Keybr assets are emitted as normal JSON/data files; do not reintroduce custom gzip Vite middleware or browser-side decompression. Hosting owns transport compression.
 - Empty CSS-module selectors can intentionally generate scoped class/id tokens; trace their JSX/query consumers before deleting them as no-op styling.
 - Assigning canvas width/height clears its bitmap and resets context state; reactive canvas code must order backing-store resize before paint in one effect, round DPR dimensions, and test real painted pixels after mount/resize/theme changes.
+- Speculative navigation prefetch must stay side-effect free: parse destination HTML into a detached inert document and warm only declared same-origin resource bytes; never execute destination scripts or adopt prefetched DOM before navigation commits.
+- Keep route-local CSS with the route that owns it and inline always-needed route CSS into generated direct-load HTML; shared `site.css` should contain only genuinely cross-route runtime styling.
