@@ -47,7 +47,7 @@
     <p>Before the fix, <code>atomic_lock</code> was basically a <code>std::atomic&lt;bool&gt;</code> with RAII around it. Construction set it to <code>true</code>, destruction put it back to <code>false</code>. With <code>wait=true</code>, the constructor used compare-exchange and was meant to wait until it could flip unlocked to locked.</p>
 
     <div class="code-label"><span>Before PR #1649</span><a href="https://github.com/aristocratos/btop/blob/6e39144aaf5a6bc01b9f795010b0914431067183/src/btop_tools.cpp#L553-L561" data-copy-label="btop_tools.cpp lines 553–561" target="_blank" rel="noopener noreferrer">btop_tools.cpp</a></div>
-    <pre><code>atomic_lock::atomic_lock(atomic&lt;bool&gt;&amp; atom, bool wait) : atom(atom) {
+    <pre tabindex="0"><code>atomic_lock::atomic_lock(atomic&lt;bool&gt;&amp; atom, bool wait) : atom(atom) {
     if (wait)
         while (not this-&gt;atom.compare_exchange_strong(this-&gt;not_true, true));
     else
@@ -65,7 +65,7 @@ atomic_lock::~atomic_lock() noexcept {
 
     <p>The one compare-exchange detail that matters here is this:</p>
 
-    <pre><code>atom.compare_exchange_strong(expected, desired)</code></pre>
+    <pre tabindex="0"><code>atom.compare_exchange_strong(expected, desired)</code></pre>
 
     <p>If <code>atom == expected</code>, it stores <code>desired</code> and returns true. If not, it returns false <strong>and writes the value it saw back into <code>expected</code></strong>.</p>
 
@@ -158,7 +158,7 @@ atomic_lock::~atomic_lock() noexcept {
     <p>The wait helper was this:</p>
 
     <div class="code-label"><span>Old wait</span><span>btop_tools.cpp</span></div>
-    <pre><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
+    <pre tabindex="0"><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
     atom.wait(old, std::memory_order_relaxed);
 }
 
@@ -194,7 +194,7 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
     <p>My first fix was just to make that contract real: acquire on the waits, release on unlock/store.</p>
 
     <div class="code-label"><span>Commit <code>88b0ed6</code>, then tightened by <code>5aaca91</code> and <code>312592f</code></span><a href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931" data-copy-label="btop commit 88b0ed6" target="_blank" rel="noopener noreferrer">view commit</a></div>
-    <pre><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
+    <pre tabindex="0"><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
     atom.wait(old, std::memory_order_acquire);
 }
 
@@ -219,14 +219,14 @@ atom.store(false, std::memory_order_release);</code></pre>
 
     <p>The runner read it while drawing:</p>
 
-    <pre><code>!Config::current_preset.has_value()
+    <pre tabindex="0"><code>!Config::current_preset.has_value()
     ? "*"
     : to_string(Config::current_preset.value())</code></pre>
 
     <p>Meanwhile <code>p</code>/<code>P</code> could change the same optional from the input thread. There was an <code>atomic_wait(Runner::active)</code> in the path, which looked reassuring until I noticed it happened <em>after</em> the reads and mutations:</p>
 
     <div class="code-label"><span>Before <code>557fbe5</code></span><span>btop_input.cpp</span></div>
-    <pre><code>const auto old_preset = Config::current_preset;
+    <pre tabindex="0"><code>const auto old_preset = Config::current_preset;
 
 // reads and writes current_preset here
 ...
@@ -258,7 +258,7 @@ Config::apply_preset(...);</code></pre>
 
     <p>A condition variable fit the job better:</p>
 
-    <pre><code>class atomic_waiting_lock {
+    <pre tabindex="0"><code>class atomic_waiting_lock {
     bool value{};
     mutable std::mutex mtx;
     mutable std::condition_variable cv;
