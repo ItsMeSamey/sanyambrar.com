@@ -1,6 +1,7 @@
 import { readHistoryState } from '../../shared/history.ts';
 import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
+import { FDroidIcon } from './BrandIcons.tsx';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
@@ -220,7 +221,7 @@ export function ReverbDemo() {
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
     <div class="reverb-demo-head">
       <h2 id="reverb-ui-demo-title">UI demo</h2>
-      <a class="reverb-demo-store-link" href="https://f-droid.org/packages/app.smallthingz.reverb/" target="_blank" rel="noopener noreferrer">Available on F-Droid <span aria-hidden="true">↗</span></a>
+      <a class="reverb-demo-store-link" href="https://f-droid.org/packages/app.smallthingz.reverb/" target="_blank" rel="noopener noreferrer"><FDroidIcon/><span>Available on F-Droid</span><span class="project-action-arrow" aria-hidden="true">↗</span></a>
     </div>
     <div class="reverb-demo-frame-shell">
       <div ref={frame} class="reverb-demo-frame">
