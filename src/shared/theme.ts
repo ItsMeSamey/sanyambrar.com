@@ -2231,7 +2231,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     panel.tabIndex = -1;
     const message = errorMessage(error, "The page could not be loaded.");
     const destination = url.pathname + url.search + url.hash;
-    panel.innerHTML = `<div class="samey-error-page-panel"><span class="samey-error-page-kicker">Navigation error</span><h1 id="samey-load-error-title">Page failed to load</h1><p class="samey-error-page-message"></p><div class="samey-error-page-target"><span>Destination</span><code></code></div><pre class="samey-error-stack samey-load-error-stack"></pre><div class="samey-load-error-actions samey-error-page-actions"><button type="button" class="primary" data-retry>Retry</button><a>Open normally</a><button type="button" class="quiet" data-dismiss>Go back</button></div></div>`;
+    panel.innerHTML = `<div class="samey-error-page-panel"><span class="samey-error-page-kicker">Navigation error</span><h1 id="samey-load-error-title">Page failed to load</h1><p class="samey-error-page-message"></p><div class="samey-error-page-target"><span>Destination</span><code></code></div><pre class="samey-error-stack samey-load-error-stack" tabindex="0"></pre><div class="samey-load-error-actions samey-error-page-actions"><button type="button" class="primary" data-retry>Retry</button><a>Open normally</a><button type="button" class="quiet" data-dismiss>Go back</button></div></div>`;
     const messageNode = panel.querySelector<HTMLElement>(".samey-error-page-message");
     const destinationNode = panel.querySelector<HTMLElement>(".samey-error-page-target code");
     const stackNode = panel.querySelector<HTMLElement>(".samey-load-error-stack");
