@@ -87,7 +87,7 @@ export function runReverbDemoRuntime(
   let live = true;
   let activeBuffer: BufferSlot | null = "one";
   let selectedBuffer: BufferSlot = "one";
-  let oneSeconds = 4 * 3600 + 55 * 60 + 42;
+  let oneSeconds = 30 * 60;
   let loopSeconds = 47 * 3600 + 59 * 60 + 55;
   let oneLimitSeconds = 24 * 3600;
   let loopLimitSeconds = 48 * 3600;
@@ -195,7 +195,7 @@ export function runReverbDemoRuntime(
     blobControl.classList.toggle("dimmed", blockedByOther);
     blobControl.setAttribute(
       "aria-label",
-      displayedActive ? "Tap to pause buffer" : "Tap to record buffer",
+      displayedActive ? "Tap to pause capture" : "Tap to start capture",
     );
     blobIconUse.setAttribute("href", displayedActive ? PAUSE_PATH : WAVE_PATH);
     blobTime.textContent = formatTimer(currentSeconds());
@@ -376,56 +376,89 @@ export function runReverbDemoRuntime(
     event.preventDefault();
     next.focus({ preventScroll: true });
   });
-  const incidentCard = byId<HTMLElement>("incidentCard");
-  const incidentIndicator = byId<HTMLElement>("ackIncident");
-  const incidentCheckUse = byId<SVGUseElement>("incidentCheckUse");
-  let incidentAcknowledged = true;
-  let incidentHoldTimer = 0;
-  let incidentHoldTriggered = false;
-  const incidentCopyText = incidentCard.innerText.trim();
-  const syncIncidentState = () => {
-    incidentCard.classList.toggle("unread", !incidentAcknowledged);
-    incidentCheckUse.setAttribute(
-      "href",
-      incidentAcknowledged ? "#i-checked" : "#i-unchecked",
+  const incidentCards = [
+    ...document.querySelectorAll<HTMLElement>(".incident-card"),
+  ];
+  const activeIncidentHoldTimers = new Set<number>();
+  const syncIncidentAlert = () =>
+    setIncidentAlert(
+      incidentCards.some((card) => card.dataset.acknowledged === "false"),
     );
-    incidentIndicator.setAttribute(
-      "aria-label",
-      incidentAcknowledged
-        ? "Mark incident unchecked"
-        : "Mark incident checked",
-    );
-    setIncidentAlert(!incidentAcknowledged);
-  };
-  const copyIncident = () => {
-    incidentHoldTriggered = true;
-    void navigator.clipboard
-      ?.writeText(incidentCopyText)
-      .catch(() => undefined);
-    showToast("Incident copied");
-  };
-  incidentCard.addEventListener("click", () => {
-    if (incidentHoldTriggered) {
+  incidentCards.forEach((incidentCard) => {
+    const incidentIndicator =
+      incidentCard.querySelector<HTMLElement>(".incident-ack");
+    const incidentCheckUse =
+      incidentCard.querySelector<SVGUseElement>(".incident-ack use");
+    if (!incidentIndicator || !incidentCheckUse) return;
+
+    let incidentAcknowledged =
+      incidentCard.dataset.acknowledged !== "false";
+    let incidentHoldTimer = 0;
+    let incidentHoldTriggered = false;
+    const incidentCopyText = incidentCard.innerText.trim();
+    const syncIncidentState = () => {
+      incidentCard.dataset.acknowledged = String(incidentAcknowledged);
+      incidentCard.classList.toggle("unread", !incidentAcknowledged);
+      incidentCheckUse.setAttribute(
+        "href",
+        incidentAcknowledged ? "#i-checked" : "#i-unchecked",
+      );
+      incidentIndicator.setAttribute(
+        "aria-label",
+        incidentAcknowledged
+          ? "Mark incident unchecked"
+          : "Mark incident checked",
+      );
+      syncIncidentAlert();
+    };
+    const copyIncident = () => {
+      incidentHoldTriggered = true;
+      void navigator.clipboard
+        ?.writeText(incidentCopyText)
+        .catch(() => undefined);
+      showToast("Incident copied");
+    };
+    const toggleIncident = () => {
+      if (incidentHoldTriggered) {
+        incidentHoldTriggered = false;
+        return;
+      }
+      incidentAcknowledged = !incidentAcknowledged;
+      syncIncidentState();
+    };
+    incidentCard.addEventListener("click", toggleIncident);
+    incidentCard.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleIncident();
+    });
+    const clearIncidentHold = () => {
+      if (!incidentHoldTimer) return;
+      clearTimeout(incidentHoldTimer);
+      activeIncidentHoldTimers.delete(incidentHoldTimer);
+      incidentHoldTimer = 0;
+    };
+    incidentCard.addEventListener("pointerdown", () => {
       incidentHoldTriggered = false;
-      return;
-    }
-    incidentAcknowledged = !incidentAcknowledged;
+      clearIncidentHold();
+      incidentHoldTimer = setTimeout(() => {
+        activeIncidentHoldTimers.delete(incidentHoldTimer);
+        incidentHoldTimer = 0;
+        copyIncident();
+      }, 520);
+      activeIncidentHoldTimers.add(incidentHoldTimer);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((type) =>
+      incidentCard.addEventListener(type, clearIncidentHold),
+    );
+    incidentCard.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      clearIncidentHold();
+      copyIncident();
+    });
     syncIncidentState();
   });
-  incidentCard.addEventListener("pointerdown", () => {
-    incidentHoldTriggered = false;
-    clearTimeout(incidentHoldTimer);
-    incidentHoldTimer = setTimeout(copyIncident, 520);
-  });
-  ["pointerup", "pointercancel", "pointerleave"].forEach((type) =>
-    incidentCard.addEventListener(type, () => clearTimeout(incidentHoldTimer)),
-  );
-  incidentCard.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-    clearTimeout(incidentHoldTimer);
-    copyIncident();
-  });
-  syncIncidentState();
+  syncIncidentAlert();
   document
     .querySelectorAll<HTMLElement>("[data-toast]")
     .forEach((element) =>
@@ -745,8 +778,8 @@ export function runReverbDemoRuntime(
   const removeBlurListener = addWindowEventListener("blur", () => {
     clearGesture();
     blobControl.classList.remove("pressed");
-    clearTimeout(incidentHoldTimer);
-    incidentHoldTimer = 0;
+    for (const timer of activeIncidentHoldTimers) clearTimeout(timer);
+    activeIncidentHoldTimers.clear();
   });
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
