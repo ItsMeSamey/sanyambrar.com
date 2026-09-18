@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-COtB1BJM.js";import{t}from"./_.contribution-DbStT6pC.js";t({id:`java`,extensions:[`.java`,`.jav`],aliases:[`Java`,`java`],mimetypes:[`text/x-java-source`,`text/x-java`],loader:()=>e(()=>import(`./java-BEtHBSE6.js`),[])});
