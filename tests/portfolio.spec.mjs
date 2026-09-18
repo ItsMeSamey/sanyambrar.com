@@ -740,6 +740,76 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
 });
 
+test('Reverb blob falls back after WebGL context loss', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blobPainted = () => host.evaluate(element => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const canvas = element.shadowRoot?.querySelector('#blobCanvas');
+      if (!(canvas instanceof HTMLCanvasElement) || canvas.width <= 0 || canvas.height <= 0) {
+        resolve(false);
+        return;
+      }
+      const gl = canvas.getContext('webgl');
+      if (gl && !gl.isContextLost()) {
+        const data = new Uint8Array(canvas.width * canvas.height * 4);
+        gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        let painted = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] !== 0 && ++painted >= 64) {
+            resolve(true);
+            return;
+          }
+        }
+        resolve(false);
+        return;
+      }
+      const context = canvas.getContext('2d');
+      if (!context) {
+        resolve(false);
+        return;
+      }
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let painted = 0;
+      for (let i = 3; i < data.length; i += 4) {
+        if (data[i] !== 0 && ++painted >= 64) {
+          resolve(true);
+          return;
+        }
+      }
+      resolve(false);
+    }));
+  }));
+  await expect.poll(blobPainted, { message: 'Reverb WebGL blob must paint before context loss' }).toBe(true);
+
+  const contextLossSupported = await host.evaluate(element => {
+    const canvas = element.shadowRoot?.querySelector('#blobCanvas');
+    if (!(canvas instanceof HTMLCanvasElement)) return false;
+    element.__sameyQaBlobCanvas = canvas;
+    const extension = canvas.getContext('webgl')?.getExtension('WEBGL_lose_context');
+    if (!extension) return false;
+    extension.loseContext();
+    return true;
+  });
+  expect(contextLossSupported).toBe(true);
+  await expect.poll(() => host.evaluate(element => {
+    const canvas = element.shadowRoot?.querySelector('#blobCanvas');
+    return canvas instanceof HTMLCanvasElement
+      && canvas !== element.__sameyQaBlobCanvas
+      && canvas.getContext('2d') != null;
+  }), { message: 'Context loss must replace the dead WebGL canvas with the 2D fallback' }).toBe(true);
+  await expect.poll(blobPainted, { message: '2D fallback must remain visibly painted' }).toBe(true);
+
+  await page.evaluate(() => globalThis.SameyAppearance.set({ color: 'light' }));
+  await expect.poll(blobPainted).toBe(true);
+  await page.evaluate(() => globalThis.SameyAppearance.set({ color: 'dark' }));
+  await expect.poll(blobPainted).toBe(true);
+  const blobControl = host.locator('#blobControl');
+  await blobControl.click();
+  await expect(blobControl).toHaveAttribute('aria-label', 'Tap to record buffer');
+  await expect.poll(blobPainted, { message: 'Paused 2D fallback must remain visible' }).toBe(true);
+});
+
 test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
   await visit(page, '/projects/cnn/', info);
   const canvas = page.locator('.cnn-pad');
