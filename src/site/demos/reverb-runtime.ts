@@ -745,6 +745,8 @@ export function runReverbDemoRuntime(
   const removeBlurListener = addWindowEventListener("blur", () => {
     clearGesture();
     blobControl.classList.remove("pressed");
+    clearTimeout(incidentHoldTimer);
+    incidentHoldTimer = 0;
   });
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
