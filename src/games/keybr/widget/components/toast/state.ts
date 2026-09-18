@@ -22,7 +22,7 @@ export class Toast {
         }
     }
 }
-export type Listener = (toasts: Toast[]) => void;
+type Listener = (toasts: Toast[]) => void;
 export const state = new (class {
     readonly #toasts = new Set<Toast>();
     readonly #listeners = new Set<Listener>();

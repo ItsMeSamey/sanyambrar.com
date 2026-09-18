@@ -44,7 +44,7 @@ export type AnyProp<T> = {
   readonly all: Flags;
 } & AnyProp<Flags>;
 
-export type Flags = readonly string[];
+type Flags = readonly string[];
 
 export function booleanProp(key: string, defaultValue: boolean): BooleanProp {
   return {

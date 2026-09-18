@@ -1,4 +1,4 @@
-export type Report = readonly ReportItem[];
+type Report = readonly ReportItem[];
  type ReportItem = {
   readonly message: string;
   readonly stack: string | null;

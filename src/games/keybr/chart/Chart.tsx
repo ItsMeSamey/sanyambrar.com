@@ -9,7 +9,7 @@ export type SizeProps = {
     readonly width: string;
     readonly height: string;
 };
-export function Chart(props: {
+function Chart(props: {
     readonly children: JSX.Element;
 } & SizeProps): JSX.Element {
     return (<div style={{

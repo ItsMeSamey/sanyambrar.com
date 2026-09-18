@@ -27,12 +27,6 @@ export type TextInputSettings = {
   readonly spaceSkipsWords: boolean;
 };
 
-export const textInputSettings = {
-  stopOnError: true,
-  forgiveErrors: true,
-  spaceSkipsWords: true,
-} as const satisfies TextInputSettings;
-
 export const textInputProps = {
   stopOnError: booleanProp("textInput.stopOnError", true),
   forgiveErrors: booleanProp("textInput.forgiveErrors", true),

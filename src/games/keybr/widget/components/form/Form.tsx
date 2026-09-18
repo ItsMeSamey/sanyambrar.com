@@ -24,7 +24,7 @@ export function FieldSet(props: FieldSetProps): JSX.Element {
       {props.children}
     </fieldset>);
 }
-export function Legend(props: LegendProps): JSX.Element {
+function Legend(props: LegendProps): JSX.Element {
     return (<legend id={props.id} //
      class={clsx(styles.legend, props.className)} title={props.title}>
       {props.children}

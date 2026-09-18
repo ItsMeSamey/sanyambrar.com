@@ -3,7 +3,7 @@ import { type Histogram } from "../textinput/histogram.ts";
 import { type Stats } from "../textinput/stats.ts";
 import { type TextType } from "./texttype.ts";
 
-export type Filter = {
+type Filter = {
   readonly minLength: number;
   readonly minTime: number;
   readonly minComplexity: number;

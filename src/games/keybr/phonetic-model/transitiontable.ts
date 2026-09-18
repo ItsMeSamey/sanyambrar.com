@@ -32,7 +32,7 @@ class Reader {
   }
 }
 
-export type Entry = {
+type Entry = {
   readonly codePoint: CodePoint;
   readonly frequency: number;
 };
@@ -119,7 +119,7 @@ export class TransitionTable {
   }
 }
 
-export class Chain {
+class Chain {
   readonly order: number;
   readonly alphabet: readonly CodePoint[];
   readonly size: number;

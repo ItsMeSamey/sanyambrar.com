@@ -4,7 +4,7 @@ import { toast } from "../../widget/components/toast/Toaster.tsx";
 import { FormattedMessage } from "../../intl/runtime.tsx";
 import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
 import { type LessonEvent } from "./event-types.ts";
-export function EventAlert(props: {
+function EventAlert(props: {
     readonly event: LessonEvent;
 }) {
     switch (props.event.type) {

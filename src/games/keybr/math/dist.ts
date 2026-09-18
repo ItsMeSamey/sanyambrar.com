@@ -1,4 +1,4 @@
-export type Sample = Readonly<{ index: number; pmf: number; cdf: number }>;
+type Sample = Readonly<{ index: number; pmf: number; cdf: number }>;
 
 /** Empirical discrete distribution used by the original Keybr charts. */
 export class Distribution implements Iterable<Sample> {
