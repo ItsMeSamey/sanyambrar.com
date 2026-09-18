@@ -33,7 +33,11 @@ type ScreenId =
   | "libraryScreen"
   | "incidentsScreen"
   | "rangeScreen";
-type BlobRuntime = { setActive(active: boolean): void; refreshTheme(): void };
+type BlobRuntime = {
+  setActive(active: boolean): void;
+  setVisible(visible: boolean): void;
+  refreshTheme(): void;
+};
 type Uniforms = Record<string, WebGLUniformLocation | null>;
 type SettingsSnapshot = {
   theme: string;
@@ -140,6 +144,7 @@ export function runReverbDemoRuntime(
     screens.forEach((screen) =>
       screen.classList.toggle("active", screen.id === id),
     );
+    blobShader.setVisible(id === "homeScreen");
     closeDropdown();
   }
   function openSettings(): void {
@@ -870,13 +875,16 @@ void main(){
     const targetBands = new Float32Array(8),
       currentBands = new Float32Array(8);
     let activeState = true,
+      visibleState = true,
       last = performance.now(),
-      signalClock = 0;
+      signalClock = 0,
+      frameQueued = false;
     let fallback: BlobRuntime | null = null;
     function failOverTo2d() {
       if (fallback) return fallback;
       fallback = makeFallbackBlob(canvas);
       fallback.setActive(activeState);
+      fallback.setVisible(visibleState);
       fallback.refreshTheme();
       return fallback;
     }
@@ -940,8 +948,15 @@ void main(){
         );
       }
     }
+    const queueFrame = () => {
+      if (visibleState && !fallback && !frameQueued) {
+        frameQueued = true;
+        requestAnimationFrame(frame);
+      }
+    };
     function frame(now: number) {
-      if (fallback) return;
+      frameQueued = false;
+      if (!visibleState || fallback) return;
       if (gl.isContextLost()) {
         failOverTo2d();
         return;
@@ -961,9 +976,9 @@ void main(){
       gl.uniform4fv(u.bands0, currentBands.subarray(0, 4));
       gl.uniform4fv(u.bands1, currentBands.subarray(4, 8));
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      requestAnimationFrame(frame);
+      queueFrame();
     }
-    requestAnimationFrame(frame);
+    queueFrame();
     return {
       setActive(v: boolean) {
         activeState = v;
@@ -973,6 +988,14 @@ void main(){
           targetBands.fill(0);
         }
         fallback?.setActive(v);
+      },
+      setVisible(v: boolean) {
+        visibleState = v;
+        fallback?.setVisible(v);
+        if (v) {
+          last = performance.now();
+          queueFrame();
+        }
       },
       refreshTheme() {
         if (fallback) fallback.refreshTheme();
@@ -1009,6 +1032,7 @@ void main(){
         setActive(v: boolean) {
           canvas.style.opacity = v ? "1" : ".56";
         },
+        setVisible() {},
         refreshTheme() {},
       };
     }
@@ -1031,8 +1055,10 @@ void main(){
       targetActivity = 0.22,
       currentActivity = 0.22,
       activeState = true,
+      visibleState = true,
       last = performance.now(),
-      signalClock = 0;
+      signalClock = 0,
+      frameQueued = false;
     const targetBands = new Float32Array(8),
       currentBands = new Float32Array(8),
       x = new Float32Array(40),
@@ -1078,7 +1104,15 @@ void main(){
       currentLife += (targetLife - currentLife) * mix;
       if (Math.abs(currentLife - targetLife) <= 0.006) currentLife = targetLife;
     }
+    const queueFrame = () => {
+      if (visibleState && !frameQueued) {
+        frameQueued = true;
+        requestAnimationFrame(frame);
+      }
+    };
     function frame(now: number) {
+      frameQueued = false;
+      if (!visibleState) return;
       const r = canvas.getBoundingClientRect(),
         dpr = Math.min(devicePixelRatio || 1, 2),
         w = Math.max(1, Math.round(r.width * dpr)),
@@ -1127,9 +1161,9 @@ void main(){
         context2d.fillStyle = g;
       } else context2d.fillStyle = pausedColor;
       context2d.fill();
-      requestAnimationFrame(frame);
+      queueFrame();
     }
-    requestAnimationFrame(frame);
+    queueFrame();
     return {
       setActive(v: boolean) {
         activeState = v;
@@ -1137,6 +1171,13 @@ void main(){
         if (!v) {
           targetActivity = 0;
           targetBands.fill(0);
+        }
+      },
+      setVisible(v: boolean) {
+        visibleState = v;
+        if (v) {
+          last = performance.now();
+          queueFrame();
         }
       },
       refreshTheme,

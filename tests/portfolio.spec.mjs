@@ -813,6 +813,36 @@ test('Reverb settings dropdown closes when its geometry changes', async ({ page 
   await expect(menu).not.toHaveClass(/show/);
 });
 
+test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    globalThis.__sameyQaReverbDraws = 0;
+    const original = WebGLRenderingContext.prototype.drawArrays;
+    WebGLRenderingContext.prototype.drawArrays = function(...args) {
+      globalThis.__sameyQaReverbDraws += 1;
+      return original.apply(this, args);
+    };
+  });
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const drawCount = () => page.evaluate(() => globalThis.__sameyQaReverbDraws ?? 0);
+  await expect.poll(drawCount, { message: 'Visible Reverb blob must actively render' }).toBeGreaterThan(0);
+  const initialBacking = await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]);
+
+  await host.locator('#openSettings').click();
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await page.waitForTimeout(80);
+  const hiddenDrawCount = await drawCount();
+  await page.waitForTimeout(250);
+  expect(await drawCount(), 'Hidden Reverb blob must stop issuing WebGL draws').toBe(hiddenDrawCount);
+  expect(await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]),
+    'Hiding the blob must not collapse its backing store').toEqual(initialBacking);
+
+  await host.locator('#settingsNav').click();
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+  await expect.poll(async () => await drawCount() > hiddenDrawCount,
+    { message: 'Reverb blob rendering must resume when Home becomes visible' }).toBe(true);
+});
+
 test('Reverb demo releases its resize listener after SPA leave', async ({ page }, info) => {
   await page.addInitScript(() => {
     const listeners = new Set();
