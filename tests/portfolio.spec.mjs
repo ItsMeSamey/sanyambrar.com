@@ -668,6 +668,40 @@ test('number conversion updates from edited input', async ({ page }, info) => {
   })).toEqual({ toolContained: true, cardsContained: true, buttonsContained: true });
 });
 
+test('Markdown divider drag ends after pointer capture loss', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await visit(page, '/tools/?tool=markdown', info);
+  const tool = page.locator('.markdown-tool');
+  const divider = page.locator('.markdown-divider');
+  await expect(divider).toBeVisible();
+  await divider.evaluate(element => {
+    element.addEventListener('pointerdown', event => {
+      globalThis.__sameyQaMarkdownPointerId = event.pointerId;
+    }, { once: true });
+  });
+  const box = await divider.boundingBox();
+  if (!box) throw new Error('Markdown divider has no geometry');
+  const initialSplit = await tool.evaluate(element => element.style.getPropertyValue('--md-split'));
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await divider.evaluate(element => {
+    const pointerId = globalThis.__sameyQaMarkdownPointerId;
+    if (typeof pointerId !== 'number' || !element.hasPointerCapture(pointerId)) throw new Error('Markdown divider did not capture the pointer');
+    element.releasePointerCapture(pointerId);
+  });
+  await page.mouse.move(x + 120, y);
+  await page.mouse.up();
+
+  const fresh = await divider.boundingBox();
+  if (!fresh) throw new Error('Markdown divider disappeared after capture loss');
+  await page.mouse.move(fresh.x - 80, fresh.y + fresh.height / 2);
+  await page.mouse.move(fresh.x + fresh.width - 0.5, fresh.y + fresh.height / 2);
+  await expect.poll(() => tool.evaluate(element => element.style.getPropertyValue('--md-split')),
+    { message: 'Hovering after capture loss must not continue the old Markdown drag' }).toBe(initialSplit);
+});
+
 test('Tools mobile selector dismisses and navigates by keyboard', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, '/tools/?tool=number', info);

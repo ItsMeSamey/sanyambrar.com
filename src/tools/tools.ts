@@ -821,10 +821,12 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
         divider.removeEventListener('pointermove', move);
         divider.removeEventListener('pointerup', up);
         divider.removeEventListener('pointercancel', up);
+        divider.removeEventListener('lostpointercapture', up);
       };
       divider.addEventListener('pointermove', move);
       divider.addEventListener('pointerup', up);
       divider.addEventListener('pointercancel', up);
+      divider.addEventListener('lostpointercapture', up);
     });
     divider.addEventListener('keydown', event => {
       const stacked = matchMedia('(max-width:700px)').matches;
