@@ -20,3 +20,4 @@
 - Native popovers need a single owner of native open/close state; do not combine a `popovertarget` auto-open with an effect that calls `showPopover`/`togglePopover` for the same click.
 - Keybr assets are emitted as normal JSON/data files; do not reintroduce custom gzip Vite middleware or browser-side decompression. Hosting owns transport compression.
 - Empty CSS-module selectors can intentionally generate scoped class/id tokens; trace their JSX/query consumers before deleting them as no-op styling.
+- Assigning canvas width/height clears its bitmap and resets context state; reactive canvas code must order backing-store resize before paint in one effect, round DPR dimensions, and test real painted pixels after mount/resize/theme changes.

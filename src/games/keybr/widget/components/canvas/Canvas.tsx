@@ -1,4 +1,4 @@
-import { createEffect, createSignal, createTrackedEffect, onSettled, omit } from "solid-js";
+import { createEffect, createSignal, onSettled, omit } from "solid-js";
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import type { JSX } from "@solidjs/web";
 import { type Size } from "../../utils/size.ts";
@@ -28,24 +28,30 @@ export const Canvas = function Canvas(allProps: CanvasProps) {
     return () => removeEventListener("samey-themechange", repaint);
   });
 
-  createEffect(size, (currentSize) => {
-    if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return;
-    const canvas = element()!;
-    const context = canvas.getContext("2d")!;
-    const ratio = devicePixelRatio;
-    canvas.width = Math.max(1, currentSize.width * ratio);
-    canvas.height = Math.max(1, currentSize.height * ratio);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    local.onResize?.(currentSize);
-  });
-
-  createTrackedEffect(() => {
-    const currentSize = size();
-    themeRevision();
-    if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return;
-    const context = element()!.getContext("2d")!;
-    new Graphics(context).paint(local.paint(currentSize));
-  });
+  createEffect(
+    () => {
+      const currentSize = size();
+      themeRevision();
+      if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return null;
+      return { size: currentSize, shapes: local.paint(currentSize) };
+    },
+    (frame) => {
+      if (frame == null) return;
+      const canvas = element()!;
+      const ratio = devicePixelRatio;
+      const width = Math.max(1, Math.round(frame.size.width * ratio));
+      const height = Math.max(1, Math.round(frame.size.height * ratio));
+      const resized = canvas.width !== width || canvas.height !== height;
+      if (resized) {
+        canvas.width = width;
+        canvas.height = height;
+        local.onResize?.(frame.size);
+      }
+      const context = canvas.getContext("2d")!;
+      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+      new Graphics(context).paint(frame.shapes);
+    },
+  );
 
   return <canvas {...props} ref={setElement} id={local.id} class={local.className} style={{
     display: "block",

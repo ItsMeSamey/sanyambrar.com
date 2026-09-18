@@ -28,6 +28,62 @@ async function visitKeybr(page, info) {
   await visit(page, '/keybr.html', info);
 }
 
+async function seedKeybrHistory(page) {
+  const now = Date.now();
+  const records = Array.from({ length: 48 }, (_, index) => {
+    const histogram = {};
+    for (const [offset, codePoint] of [97, 98, 99, 100, 101, 102, 103, 104].entries()) {
+      histogram[codePoint] = {
+        h: 5 + ((index + offset) % 7),
+        m: (index + offset) % 3 === 0 ? 1 : 0,
+        t: 160 + ((index * 13 + offset * 17) % 180),
+      };
+    }
+    return {
+      l: 'en-us',
+      m: 'generated',
+      ts: now - (48 - index) * 3_600_000,
+      n: 60,
+      t: 26_000 + (index % 7) * 900,
+      e: index % 4,
+      h: histogram,
+    };
+  });
+  await page.evaluate(async values => {
+    const request = indexedDB.open('history', 1);
+    const db = await new Promise((resolve, reject) => {
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains('history')) request.result.createObjectStore('history', { autoIncrement: true });
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('history', 'readwrite');
+      const store = tx.objectStore('history');
+      store.clear();
+      for (const value of values) store.add(value);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+      tx.oncomplete = resolve;
+    });
+    db.close();
+  }, records);
+}
+
+async function keybrChartsPainted(page) {
+  return page.locator('figure canvas').evaluateAll(canvases => canvases.length === 6 && canvases.every(canvas => {
+    const context = canvas.getContext('2d');
+    if (!context || canvas.width <= 0 || canvas.height <= 0) return false;
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let painted = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] !== 0 && ++painted >= 64) return true;
+    }
+    return false;
+  }));
+}
+
 const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/posts/btop-mutex.html', '/wordle.html', '/keybr.html', '/chain/'];
 for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
@@ -395,6 +451,46 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await expect(page.locator('body')).not.toContainText(/Oh no, something bad/);
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Statistics', exact: true })).toBeDisabled();
+});
+
+test('Keybr statistics canvases paint and survive resize and theme repaint', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await seedKeybrHistory(page);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+
+  const charts = page.locator('figure canvas');
+  await expect(charts).toHaveCount(6);
+  await expect.poll(() => keybrChartsPainted(page), { message: 'Every Keybr statistics canvas must contain painted pixels' }).toBe(true);
+
+  await page.setViewportSize({ width: 704, height: 900 });
+  await expect.poll(() => charts.evaluateAll(canvases => canvases.every(canvas => {
+    const ratio = devicePixelRatio;
+    return canvas.width === Math.max(1, Math.round(canvas.clientWidth * ratio))
+      && canvas.height === Math.max(1, Math.round(canvas.clientHeight * ratio));
+  })), { message: 'Canvas backing stores must track their rendered size' }).toBe(true);
+  await expect.poll(() => keybrChartsPainted(page), { message: 'Resizing must not clear Keybr statistics canvases' }).toBe(true);
+
+  const canvasChecksum = () => charts.evaluateAll(canvases => canvases.map(canvas => {
+    const context = canvas.getContext('2d');
+    if (!context) return 0;
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let hash = 2166136261;
+    const stride = Math.max(4, Math.floor(data.length / 4096 / 4) * 4);
+    for (let i = 0; i < data.length; i += stride) {
+      hash ^= data[i] | (data[i + 1] << 8) | (data[i + 2] << 16) | (data[i + 3] << 24);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }).join(','));
+
+  await page.evaluate(() => globalThis.SameyAppearance.set({ color: 'light' }));
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toContain('light');
+  const lightChecksum = await canvasChecksum();
+  await page.evaluate(() => globalThis.SameyAppearance.set({ color: 'dark' }));
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toContain('dark');
+  await expect.poll(async () => await canvasChecksum() !== lightChecksum, { message: 'Theme changes must repaint chart colors' }).toBe(true);
+  await expect.poll(() => keybrChartsPainted(page), { message: 'Theme repaint must keep every statistics canvas visible' }).toBe(true);
 });
 
 test('Keybr storybook progress survives reload, preview and book switches', async ({ page }, info) => {
