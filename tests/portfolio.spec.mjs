@@ -1022,19 +1022,46 @@ test('Tools topbar controls keep visible keyboard focus', async ({ page }, info)
     page.getByLabel('Syntax language'),
     page.getByRole('button', { name: 'Swap sides', exact: true }),
   ];
-  for (const control of controls) {
-    await control.focus();
-    const state = await control.evaluate(element => {
-      const style = getComputedStyle(element);
-      return {
-        focusVisible: element.matches(':focus-visible'),
-        outlineStyle: style.outlineStyle,
-        outlineWidth: Number.parseFloat(style.outlineWidth),
-      };
-    });
-    expect(state.focusVisible).toBe(true);
-    expect(state.outlineStyle).not.toBe('none');
-    expect(state.outlineWidth).toBeGreaterThanOrEqual(2);
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    await page.waitForTimeout(220);
+    for (const control of controls) {
+      await control.focus();
+      const state = await control.evaluate(element => {
+        const sample = cssColor => {
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          const context = canvas.getContext('2d', { willReadFrequently: true });
+          if (!context) throw new Error('Could not create focus color sampling context');
+          context.clearRect(0, 0, 1, 1);
+          context.fillStyle = cssColor;
+          context.fillRect(0, 0, 1, 1);
+          return [...context.getImageData(0, 0, 1, 1).data];
+        };
+        const luminance = rgb => {
+          const linear = rgb.slice(0, 3).map(channel => {
+            const value = channel / 255;
+            return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+        };
+        const style = getComputedStyle(element);
+        const foreground = sample(style.outlineColor);
+        const background = sample(style.backgroundColor);
+        const light = Math.max(luminance(foreground), luminance(background));
+        const dark = Math.min(luminance(foreground), luminance(background));
+        return {
+          focusVisible: element.matches(':focus-visible'),
+          outlineStyle: style.outlineStyle,
+          outlineWidth: Number.parseFloat(style.outlineWidth),
+          contrast: (light + 0.05) / (dark + 0.05),
+        };
+      });
+      expect(state.focusVisible).toBe(true);
+      expect(state.outlineStyle).not.toBe('none');
+      expect(state.outlineWidth).toBeGreaterThanOrEqual(2);
+      expect(state.contrast).toBeGreaterThanOrEqual(3);
+    }
   }
 });
 
