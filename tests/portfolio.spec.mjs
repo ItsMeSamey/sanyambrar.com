@@ -1162,10 +1162,13 @@ test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, 
   const hiddenDrawCount = await drawCount();
   const hiddenRafCount = await rafCount();
   const hiddenTimer = await timerSeconds();
-  await page.waitForTimeout(1100);
+  await expect.poll(timerSeconds, {
+    message: 'Capture time must keep advancing while Settings is open',
+    timeout: 3000,
+    intervals: [100, 200, 300],
+  }).toBeGreaterThan(hiddenTimer);
   expect(await drawCount(), 'Hidden Reverb blob must stop issuing WebGL draws').toBe(hiddenDrawCount);
   expect(await rafCount(), 'Hidden Reverb screen must not keep a frame polling loop alive').toBe(hiddenRafCount);
-  expect(await timerSeconds(), 'Capture time must keep advancing while Settings is open').toBeGreaterThan(hiddenTimer);
   expect(await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]),
     'Hiding the blob must not collapse its backing store').toEqual(initialBacking);
 
