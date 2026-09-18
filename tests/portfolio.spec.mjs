@@ -1065,6 +1065,78 @@ test('Tools topbar controls keep visible keyboard focus', async ({ page }, info)
   }
 });
 
+test('Tools tabs and toggles keep strong keyboard focus contrast', async ({ page }, info) => {
+  const focusState = async control => {
+    await page.keyboard.press('Tab');
+    await control.focus();
+    return control.evaluate(element => {
+      const sample = cssColor => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('Could not create focus contrast sampling context');
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = cssColor;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const luminance = rgb => {
+        const linear = rgb.slice(0, 3).map(channel => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+      const style = getComputedStyle(element);
+      const offset = Number.parseFloat(style.outlineOffset) || 0;
+      let backgroundNode = offset < 0 ? element : element.parentElement;
+      let background = [0, 0, 0, 0];
+      while (backgroundNode instanceof HTMLElement) {
+        const candidate = sample(getComputedStyle(backgroundNode).backgroundColor);
+        if (candidate[3] >= 250) {
+          background = candidate;
+          break;
+        }
+        backgroundNode = backgroundNode.parentElement;
+      }
+      if (background[3] < 250) background = sample(getComputedStyle(document.documentElement).backgroundColor);
+      const outline = sample(style.outlineColor);
+      const light = Math.max(luminance(outline), luminance(background));
+      const dark = Math.min(luminance(outline), luminance(background));
+      return {
+        focusVisible: element.matches(':focus-visible'),
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        contrast: (light + 0.05) / (dark + 0.05),
+      };
+    });
+  };
+
+  await visit(page, '/tools/?tool=diff', info);
+  await expect(page.locator('.monaco-diff-editor')).toBeVisible();
+  const selectedTab = page.locator('.tool-tab[data-selected]');
+  if (await selectedTab.isVisible()) {
+    for (const color of ['light', 'dark']) {
+      await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+      await page.waitForTimeout(220);
+      const state = await focusState(selectedTab);
+      expect(state.focusVisible).toBe(true);
+      expect(state.outlineWidth).toBeGreaterThanOrEqual(2);
+      expect(state.contrast).toBeGreaterThanOrEqual(3);
+    }
+  }
+
+  await visit(page, '/tools/?tool=base', info);
+  await expect(page.locator('.codec-flow')).toBeVisible();
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    await page.waitForTimeout(220);
+    const state = await focusState(page.locator('.codec-line-toggle'));
+    expect(state.focusVisible).toBe(true);
+    expect(state.outlineWidth).toBeGreaterThanOrEqual(2);
+    expect(state.contrast).toBeGreaterThanOrEqual(3);
+  }
+});
+
 test('number conversion updates from edited input', async ({ page }, info) => {
   await visit(page, '/tools/?tool=number', info);
   await page.getByRole('textbox', { name: 'Input', exact: true }).fill('1024');
