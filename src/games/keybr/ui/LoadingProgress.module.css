@@ -4,3 +4,33 @@
   inset-inline-end: 0;
   inset-block-start: 0;
 }
+
+.progress {
+  position: relative;
+}
+
+.bar {
+  block-size: 0.5rem;
+}
+
+.determined {
+  background-color: var(--site-fg, var(--text-color));
+}
+
+.intermediate {
+  background: linear-gradient(
+    -45deg,
+    transparent 0rem,
+    transparent calc(1rem * 2.828427125 / 2),
+    var(--site-fg, var(--text-color)) calc(1rem * 2.828427125 / 2),
+    var(--site-fg, var(--text-color)) calc(1rem * 2.828427125),
+    transparent calc(1rem * 2.828427125)
+  );
+  background-size: 4rem 2rem;
+  animation: stripesAnimation 0.5s linear infinite;
+}
+
+@keyframes stripesAnimation {
+  from { background-position: 0 0; }
+  to { background-position: 4rem 0; }
+}
