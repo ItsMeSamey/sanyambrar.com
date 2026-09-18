@@ -926,6 +926,69 @@ test('Reverb demo preserves the 411x912 reference surface without stretching', a
   await page.keyboard.press('Escape');
 });
 
+test('Reverb demo mirrors the captured Android state and palette', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+
+  await expect(blob).toHaveAttribute('aria-label', 'Tap to pause capture');
+  const initialSeconds = await host.locator('#blobTime').evaluate(element =>
+    element.textContent.split(':').map(Number).reduce((total, part) => total * 60 + part, 0));
+  expect(initialSeconds).toBeGreaterThanOrEqual(30 * 60);
+  expect(initialSeconds).toBeLessThan(30 * 60 + 15);
+  await expect(host.locator('#blobSummary')).toContainText('MiB');
+  await expect(host.locator('#openIncidents')).toHaveClass(/alert/);
+
+  expect(await host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    if (!phone) return null;
+    const style = getComputedStyle(phone);
+    return {
+      surface: style.getPropertyValue('--surface').trim(),
+      onSurface: style.getPropertyValue('--on-surface').trim(),
+      primary: style.getPropertyValue('--primary').trim(),
+      primaryContainer: style.getPropertyValue('--primary-container').trim(),
+      tertiary: style.getPropertyValue('--tertiary').trim(),
+      outlineVariant: style.getPropertyValue('--outline-variant').trim(),
+      error: style.getPropertyValue('--error').trim(),
+    };
+  })).toEqual({
+    surface: '#0a0f10',
+    onSurface: '#dde7e9',
+    primary: '#9ccfd7',
+    primaryContainer: '#265a61',
+    tertiary: '#c9e2ff',
+    outlineVariant: '#404a4b',
+    error: '#fa746f',
+  });
+
+  await host.locator('#openIncidents').click();
+  const incidents = host.locator('.incident-card');
+  await expect(incidents).toHaveCount(3);
+  await expect(incidents.nth(0)).toContainText('Fri, 18 Sept 2026');
+  await expect(incidents.nth(0)).toContainText('Package updated · status 0 · PID 12662');
+  await expect(incidents.nth(0)).toHaveClass(/unread/);
+  await expect(incidents.nth(1)).toContainText('Thu, 17 Sept 2026');
+  await expect(incidents.nth(2)).toContainText('Wed, 16 Sept 2026');
+  await incidents.nth(0).focus();
+  await page.keyboard.press('Space');
+  await expect(incidents.nth(0)).not.toHaveClass(/unread/);
+  await host.locator('#incidentsBack').click();
+  await expect(host.locator('#openIncidents')).not.toHaveClass(/alert/);
+
+  await host.locator('#openRange').click();
+  await expect(host.locator('#rangeStart')).toHaveText('0:00.0');
+  const rangeEndSeconds = await host.locator('#rangeEnd').evaluate(element => {
+    const parts = element.textContent.split(':').map(Number);
+    return parts.reduce((total, part) => total * 60 + part, 0);
+  });
+  expect(rangeEndSeconds).toBeGreaterThanOrEqual(30 * 60);
+  expect(rangeEndSeconds).toBeLessThan(30 * 60 + 15);
+  await expect(host.locator('#selectedWaveRect')).toHaveAttribute('x', '0.00');
+  await expect(host.locator('#selectedWaveRect')).toHaveAttribute('width', '360.00');
+  await expect(host.locator('.wheel-face')).toHaveCount(20);
+});
+
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
   await page.setViewportSize({ width: 128, height: 1000 });
   await visit(page, '/projects/reverb/', info);
@@ -1056,7 +1119,7 @@ test('Reverb cancels incident long press on blur', async ({ page }, info) => {
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
   await host.evaluate(element => element.shadowRoot?.querySelector('#openIncidents')?.click());
-  const incident = host.locator('.incident-card');
+  const incident = host.locator('.incident-card').first();
   const toast = host.locator('#toast');
   await incident.evaluate(element => {
     element.dispatchEvent(new PointerEvent('pointerdown', {
@@ -1212,7 +1275,7 @@ test('Reverb blob falls back after WebGL context loss', async ({ page }, info) =
   await expect.poll(blobPainted).toBe(true);
   const blobControl = host.locator('#blobControl');
   await blobControl.click();
-  await expect(blobControl).toHaveAttribute('aria-label', 'Tap to record buffer');
+  await expect(blobControl).toHaveAttribute('aria-label', 'Tap to start capture');
   await expect.poll(blobPainted, { message: 'Paused 2D fallback must remain visible' }).toBe(true);
 });
 
