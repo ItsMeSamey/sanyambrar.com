@@ -216,17 +216,22 @@ export function runReverbDemoRuntime(
       loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds);
     }
   }
-  function tick(now: number): void {
+  function scheduleTick(): void {
+    const elapsed = performance.now() - lastTick;
+    setTimeout(tick, Math.max(16, 1000 - (elapsed % 1000)));
+  }
+  function tick(): void {
+    const now = performance.now();
     if (now - lastTick >= 1000) {
       const elapsed = Math.floor((now - lastTick) / 1000);
       lastTick += elapsed * 1000;
       appendCapture(elapsed);
       syncBufferUi();
     }
-    requestAnimationFrame(tick);
+    scheduleTick();
   }
   syncBufferUi();
-  requestAnimationFrame(tick);
+  scheduleTick();
 
   const rememberedRangeDurationSeconds = 2 * 3600 + 23 * 60 + 53.7;
   function formatRangeTime(seconds: number): string {
