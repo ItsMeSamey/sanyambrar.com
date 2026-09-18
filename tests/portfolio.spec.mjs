@@ -755,6 +755,29 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
 });
 
+test('Reverb settings dropdown closes when its geometry changes', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await host.locator('#openSettings').click();
+  const rate = host.locator('.settings-card.dropdown').filter({ hasText: 'Rate' }).first();
+  const menu = host.locator('#dropdownMenu');
+  await rate.scrollIntoViewIfNeeded();
+
+  await rate.click();
+  await expect(menu).toHaveClass(/show/);
+  await host.evaluate(element => {
+    const body = element.shadowRoot?.querySelector('.settings-body');
+    if (body) body.scrollTop += 180;
+  });
+  await expect(menu).not.toHaveClass(/show/);
+
+  await rate.scrollIntoViewIfNeeded();
+  await rate.click();
+  await expect(menu).toHaveClass(/show/);
+  await page.setViewportSize({ width: 700, height: 700 });
+  await expect(menu).not.toHaveClass(/show/);
+});
+
 test('Reverb blob falls back after WebGL context loss', async ({ page }, info) => {
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });

@@ -608,6 +608,10 @@ export function runReverbDemoRuntime(
     dropdownMenu.replaceChildren();
     activeDropdown = null;
   }
+  document
+    .querySelector<HTMLElement>(".settings-body")
+    ?.addEventListener("scroll", closeDropdown, { passive: true });
+  addEventListener("resize", closeDropdown, { passive: true });
   document.addEventListener(
     "pointerdown",
     (event) => {
