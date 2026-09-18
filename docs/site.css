@@ -496,7 +496,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 
 /* Demo project pages carry their atmosphere across the full route. */
 .site-standard:has(.cnn-demo-section){background:radial-gradient(circle at 18% 25%,color-mix(in srgb,var(--site-accent) 8%,transparent),transparent 38%),radial-gradient(circle at 88% 72%,color-mix(in srgb,var(--site-effort-color,var(--site-accent)) 5%,transparent),transparent 34%),var(--site-bg,#fff)}
-.site-standard:has(.reverb-demo-section){background:color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg,var(--site-accent)) 6%)}
+.site-standard:has(.reverb-demo-section){background:color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg,var(--site-accent)) 6%)}.site-standard:has(.reverb-demo-section) .project-detail>.eyebrow,.site-standard:has(.reverb-demo-section) .project-description>p{color:color-mix(in srgb,var(--site-fg,#121213) 18%,var(--site-muted,#787c7e))}
 
 /* Reverb project: the demo is seamless with the themed route. */
 .site-standard .reverb-demo-section{margin-top:38px}
