@@ -879,6 +879,53 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].every(child => !child.inert))).toBe(true);
 });
 
+test('Reverb demo preserves the 411x912 reference surface without stretching', async ({ page }, info) => {
+  const dimensions = async (host) => host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    if (!phone) return null;
+    const rect = phone.getBoundingClientRect();
+    return [rect.width, rect.height];
+  });
+  const expectReferenceRatio = async (host) => expect.poll(async () => {
+    const size = await dimensions(host);
+    if (!size) return null;
+    return Number((size[0] / size[1]).toFixed(6));
+  }).toBe(Number((411 / 912).toFixed(6)));
+
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await expect.poll(() => dimensions(host)).toEqual([411, 912]);
+  await expectReferenceRatio(host);
+
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+  await fullscreen.click();
+  await expect.poll(() => dimensions(host)).toEqual([411, 912]);
+  await expectReferenceRatio(host);
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectReferenceRatio(host);
+  await expect.poll(() => host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    if (!phone) return false;
+    const outer = element.getBoundingClientRect();
+    const inner = phone.getBoundingClientRect();
+    return inner.width <= outer.width + 1 && inner.height <= outer.height + 1;
+  })).toBe(true);
+
+  await fullscreen.click();
+  await expectReferenceRatio(host);
+  await expect.poll(() => host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    if (!phone) return false;
+    const outer = element.getBoundingClientRect();
+    const inner = phone.getBoundingClientRect();
+    return inner.width <= outer.width + 1 && inner.height <= outer.height + 1;
+  })).toBe(true);
+  await page.keyboard.press('Escape');
+});
+
 test('Reverb demo stays usable when narrow and fullscreen from a scrolled page', async ({ page }, info) => {
   await page.setViewportSize({ width: 128, height: 1000 });
   await visit(page, '/projects/reverb/', info);
@@ -925,7 +972,7 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
     const rect = element.getBoundingClientRect();
     return [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)];
   })).toEqual([0, 0, 320, 180]);
-  await expect(exitFullscreen).toHaveCSS('opacity', '1');
+  await expect(exitFullscreen).toHaveCSS('opacity', '0');
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
   await expectContained();
   await page.keyboard.press('Escape');
