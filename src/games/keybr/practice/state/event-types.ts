@@ -1,5 +1,4 @@
 import { type LessonKey } from "../../lesson/key.ts";
-import { type Result } from "../../result/result.ts";
 
  type NewLetterEvent = {
   readonly type: "new-letter";
@@ -29,7 +28,3 @@ export type LessonEvent =
   | DailyGoalEvent;
 
 export type LessonEventListener = (event: LessonEvent) => void;
-
-export type LessonEventSource = {
-  append(result: Result, listener: LessonEventListener): void;
-};
