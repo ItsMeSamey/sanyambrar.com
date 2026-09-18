@@ -2999,19 +2999,21 @@
 				document.documentElement.setAttribute(attr.name, value);
 			}
 		};
-		const logicalPageUrl = (url) => {
-			const logical = new URL(url.href);
-			if (logical.pathname.endsWith("/blog")) logical.pathname += "/index.html";
-			else if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
-			else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
-			return logical;
+		const extensionlessPageUrl = (url) => {
+			const clean = new URL(url.href);
+			if (clean.origin !== location.origin) return clean;
+			if (/\/index\.html$/i.test(clean.pathname)) clean.pathname = clean.pathname.replace(/index\.html$/i, "");
+			else if (/\.html$/i.test(clean.pathname)) clean.pathname = clean.pathname.slice(0, -5);
+			return clean;
 		};
+		const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
+		if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
 		const fetchPage = async (url) => {
 			const key = url.href;
 			const cached = pageCache.get(key);
 			if (cached) return cached;
 			const task = (async () => {
-				const logical = logicalPageUrl(url);
+				const logical = extensionlessPageUrl(url);
 				const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
 				if (!response.ok) throw new Error("page fetch failed");
 				const doc = new DOMParser().parseFromString(await response.text(), "text/html");
@@ -3161,7 +3163,7 @@
 		globalThis.SameyCancelPageSwap = cancelPageNavigation;
 		const loadPage = async (href, { replace = false, force = false, direction } = {}) => {
 			const id = ++pageNavigationId;
-			const url = new URL(href, location.href);
+			const url = extensionlessPageUrl(new URL(href, location.href));
 			if (url.origin !== location.origin) {
 				location.href = url.href;
 				return;
@@ -3417,14 +3419,14 @@
 	var games = [
 		{
 			title: "Wordle",
-			href: "/wordle.html",
+			href: "/wordle",
 			kind: "Game",
 			note: "A Wordle clone.",
 			tags: ["solidjs", "word game"]
 		},
 		{
 			title: "Keybr",
-			href: "/keybr.html",
+			href: "/keybr",
 			kind: "Game",
 			note: "A local-first fork of keybr.com.",
 			tags: ["typing", "local-first"]
@@ -3472,7 +3474,7 @@
 	}];
 	var posts = [{
 		title: "btop's broken lock",
-		href: "/blog/posts/btop-mutex.html",
+		href: "/blog/posts/btop-mutex",
 		kind: "Writing",
 		note: "the mutex that wasn't",
 		tags: [

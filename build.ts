@@ -4,7 +4,7 @@ import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/pro
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
-import { details } from "./src/site/data.ts";
+import { details, games, posts, projects } from "./src/site/data.ts";
 
 const runFile = promisify(execFile);
 const APPEARANCE_COLOR_KEYS = ['background', 'text', 'accent', 'error', 'slow', 'fast', 'effort'] as const;
@@ -198,6 +198,30 @@ async function buildKeybr() {
   log("keybr -> docs/keybr.html + docs/keybr-assets");
 }
 
+const PUBLIC_ORIGIN = "https://sanyambrar.com";
+const exposesHtmlSuffix = (href: string, base = PUBLIC_ORIGIN + "/") => {
+  try {
+    const url = new URL(href, base);
+    return url.origin === PUBLIC_ORIGIN && /\.html$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+};
+
+async function validateExtensionlessPublicLinks() {
+  for (const entry of [...games, ...posts, ...projects])
+    must(!exposesHtmlSuffix(entry.href), `public link must not expose .html: ${entry.href}`);
+
+  const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
+  for (const file of htmlFiles) {
+    const source = await readFile(file, "utf8");
+    const base = new URL(relative(DOCS, file).replaceAll("\\", "/"), PUBLIC_ORIGIN + "/").href;
+    for (const match of source.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi))
+      must(!exposesHtmlSuffix(match[1], base), `generated link must not expose .html in ${relative(DOCS, file)}: ${match[1]}`);
+  }
+  log("verified extensionless public links");
+}
+
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
@@ -362,6 +386,7 @@ async function main() {
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
   await versionMutableShellReferences();
+  await validateExtensionlessPublicLinks();
   await generateServiceWorker();
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");
 }

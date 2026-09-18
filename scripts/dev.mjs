@@ -6,8 +6,8 @@ const root = resolve(import.meta.dirname, '..');
 const target = process.argv[2] ?? 'site';
 const targets = {
   site: { port: 4320 },
-  wordle: { port: 4321, html: 'src/games/wordle/index.html' },
-  keybr: { port: 4322, html: 'src/games/keybr/index.html' },
+  wordle: { port: 4321, html: 'src/games/wordle/index.html', route: '/wordle' },
+  keybr: { port: 4322, html: 'src/games/keybr/index.html', route: '/keybr' },
 };
 if (!Object.hasOwn(targets, target)) throw new Error('Expected site, wordle, or keybr');
 const settings = targets[target];
@@ -16,6 +16,26 @@ if (!Number.isSafeInteger(requestedPort) || requestedPort < 1024 || requestedPor
 const docs = resolve(root, 'docs');
 process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
+
+const existingFile = async file => {
+  try { return (await stat(file)).isFile() ? file : null; }
+  catch (error) {
+    if (error?.code === 'ENOENT' || error?.code === 'ENOTDIR') return null;
+    throw error;
+  }
+};
+
+const htmlFileFor = async path => {
+  if (settings.html && (path === '/' || path === settings.route || path === settings.route + '.html'))
+    return resolve(root, settings.html);
+  if (path.endsWith('/')) return existingFile(resolve(docs, '.' + path, 'index.html'));
+  if (path.endsWith('.html')) return existingFile(resolve(docs, '.' + path));
+  if (!extname(path)) {
+    return await existingFile(resolve(docs, '.' + path + '.html'))
+      ?? existingFile(resolve(docs, '.' + path, 'index.html'));
+  }
+  return null;
+};
 
 const server = await createServer({
   configFile: resolve(root, 'vite.config.ts'),
@@ -27,10 +47,11 @@ const server = await createServer({
       server.middlewares.use(async (request, response, next) => {
         try {
           const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-          const file = resolve(docs, '.' + path, path.endsWith('/') ? 'index.html' : '');
-          if (!file.startsWith(docs + sep)) return next();
-          if (path.endsWith('/') || path.endsWith('.html')) {
-            let html = await readFile(settings.html ? resolve(root, settings.html) : file, 'utf8');
+          const file = resolve(docs, '.' + path);
+          if (file !== docs && !file.startsWith(docs + sep)) return next();
+          const htmlFile = await htmlFileFor(path);
+          if (htmlFile) {
+            let html = await readFile(htmlFile, 'utf8');
             if (target === 'site') html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, 'src="/src/site/main.tsx"');
             if (!html.includes('shared-runtime.js')) html = html.replace('</head>', '<link rel="stylesheet" href="/site.css" data-samey-shared><script src="/shared-runtime.js"></script></head>');
             if (!html.includes('rel="icon"')) html = html.replace('</head>', '<link rel="icon" href="/favicon.svg"></head>');

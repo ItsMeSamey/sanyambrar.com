@@ -4,8 +4,8 @@ export type Entry={title:string;href:string;kind:string;note:string;tags?:string
 export type ProjectDetail={title:string;dek:string;facts:string[];body:string;links:Entry[];demo?:'reverb-ui'|'cnn-draw'};
 
 export const games:Entry[]=[
-  {title:'Wordle',href:'/wordle.html',kind:'Game',note:'A Wordle clone.',tags:['solidjs','word game']},
-  {title:'Keybr',href:'/keybr.html',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
+  {title:'Wordle',href:'/wordle',kind:'Game',note:'A Wordle clone.',tags:['solidjs','word game']},
+  {title:'Keybr',href:'/keybr',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
   {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Chain reaction clone with local AI.',tags:['canvas','game','ai']},
 ];
 const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
@@ -14,7 +14,7 @@ export const projects:Entry[]=[
   {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw something and run the model in-browser with WASM.',tags:['python / zig','ml','mnist'],demo:true},
 ];
 
-export const posts:Entry[]=[{title:"btop's broken lock",href:'/blog/posts/btop-mutex.html',kind:'Writing',note:"the mutex that wasn't",tags:['c++','concurrency','btop']}];
+export const posts:Entry[]=[{title:"btop's broken lock",href:'/blog/posts/btop-mutex',kind:'Writing',note:"the mutex that wasn't",tags:['c++','concurrency','btop']}];
 export const contributions:Entry[]=[
   {title:'aristocratos/btop · PR #1649',href:'https://github.com/aristocratos/btop/pull/1649',kind:'OSS',note:'Data races, mutex-like locking and signal-safety fixes.',tags:['c++','concurrency']},
   {title:'karlseguin/http.zig',href:'https://github.com/karlseguin/http.zig',kind:'OSS',note:'Memory leak fixes, CORS performance and Zig build updates.',tags:['zig','http']},

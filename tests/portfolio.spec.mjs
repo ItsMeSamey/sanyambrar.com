@@ -25,7 +25,7 @@ async function visit(page, route, info) {
 
 async function visitKeybr(page, info) {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
-  await visit(page, '/keybr.html', info);
+  await visit(page, '/keybr', info);
 }
 
 async function seedKeybrHistory(page) {
@@ -84,12 +84,38 @@ async function keybrChartsPainted(page) {
   }));
 }
 
-const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/posts/btop-mutex.html', '/wordle.html', '/keybr.html', '/chain/'];
+const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/projects/zhtml/', '/projects/oneserial/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/posts/btop-mutex', '/wordle', '/keybr', '/chain/'];
 for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
   await expect(page.locator('body')).not.toHaveText('');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'No horizontal page overflow').toBe(true);
   expect(await page.title()).not.toBe('');
+  expect(new URL(page.url()).pathname, 'Public URLs must be extensionless').not.toMatch(/\.html$/i);
+  const htmlLinks = await page.locator('a[href]').evaluateAll(anchors => anchors.flatMap(anchor => {
+    const url = new URL(anchor.href, location.href);
+    return url.origin === location.origin && /\.html$/i.test(url.pathname) ? [anchor.getAttribute('href')] : [];
+  }));
+  expect(htmlLinks, 'Internal links must never expose .html').toEqual([]);
+});
+
+const legacyHtmlRoutes = [
+  '/index.html',
+  '/work/index.html',
+  '/tools/index.html',
+  '/chain/index.html',
+  '/blog/index.html',
+  '/projects/reverb/index.html',
+  '/projects/cnn/index.html',
+  '/projects/oneserial/index.html',
+  '/projects/zhtml/index.html',
+  '/wordle.html',
+  '/keybr.html',
+  '/blog/posts/btop-mutex.html',
+];
+for (const legacyRoute of legacyHtmlRoutes) test(`canonicalizes legacy ${legacyRoute}`, async ({ page }, info) => {
+  await visit(page, legacyRoute, info);
+  const canonicalPath = legacyRoute.endsWith('/index.html') ? legacyRoute.slice(0, -10) : legacyRoute.slice(0, -5);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(canonicalPath);
 });
 
 test('extreme narrow call-to-actions and article controls stay reachable', async ({ page }, info) => {
@@ -108,7 +134,7 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
   await expectContained('.home-writing-read');
   await visit(page, '/projects/reverb/', info);
   await expectContained('.reverb-demo-store-link');
-  await visit(page, '/blog/posts/btop-mutex.html', info);
+  await visit(page, '/blog/posts/btop-mutex', info);
   await expectContained('.article-route main button, .article-route main a[href]');
   await visit(page, '/tools/?tool=diff', info);
   await expectContained('[data-diff-language], [data-diff-swap]');
@@ -278,7 +304,7 @@ test('loading strip animates only while visible', async ({ page }, info) => {
 
 test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 260 });
-  await visit(page, '/blog/posts/btop-mutex.html', info);
+  await visit(page, '/blog/posts/btop-mutex', info);
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
   const panel = page.locator('.samey-theme-panel');
 
@@ -396,7 +422,13 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
 });
 
 test('Wordle typing, persistence, settings, reveal and statistics', async ({ page }, info) => {
-  await visit(page, '/wordle.html', info);
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'clipboard', {
+      configurable: true,
+      get: () => ({ writeText: async text => { globalThis.__sameyCopiedChallengeUrl = text; } }),
+    });
+  });
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   await expect(page.locator('.wordle-board')).toBeVisible();
   await page.keyboard.type('planet');
@@ -427,6 +459,10 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await shareTrigger.click();
   const shareDialog = page.getByRole('dialog', { name: 'Share challenge' });
   await expect(shareDialog).toBeVisible();
+  await page.getByRole('button', { name: 'Copy', exact: true }).click();
+  const copiedChallengeUrl = await page.evaluate(() => globalThis.__sameyCopiedChallengeUrl ?? '');
+  expect(copiedChallengeUrl).toContain('/wordle?g=');
+  expect(copiedChallengeUrl).not.toContain('.html');
   await page.keyboard.press('Escape');
   await expect(shareDialog).not.toBeVisible();
   await expect(resultDialog).toBeVisible();
@@ -441,7 +477,7 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
 });
 
 test('Wordle on-screen key clears after pointer capture loss', async ({ page }, info) => {
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   const key = page.getByRole('button', { name: 'A', exact: true });
   await key.evaluate(element => {
@@ -465,7 +501,7 @@ test('Wordle on-screen key clears after pointer capture loss', async ({ page }, 
 });
 
 test('shared slider drag aborts on window blur', async ({ page }, info) => {
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const slider = page.getByRole('slider', { name: 'Max guesses', exact: true });
@@ -500,7 +536,7 @@ test('shared slider drag aborts on window blur', async ({ page }, info) => {
 });
 
 test('Wordle date picker and daily start', async ({ page }, info) => {
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: /^Choose date,/ }).click();
   const picker = page.getByRole('dialog', { name: 'Choose date' });
   await expect(picker).toBeVisible();
@@ -519,7 +555,7 @@ test('Wordle date picker and daily start', async ({ page }, info) => {
 
 test('Wordle active game stays contained at 128px', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   await expect(page.locator('.wordle-board')).toBeVisible();
   await page.setViewportSize({ width: 128, height: 1000 });
@@ -541,7 +577,7 @@ test('Wordle active games modal owns the overlay and switches saved games', asyn
     put(7, 'example', 'yrrrrrr');
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   await expect(page.locator('.wordle-board')).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -757,7 +793,7 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await expect.poll(lessonText).toBe(jekyllSecond);
 });
 
-for (const route of ['/', '/wordle.html', '/tools/?tool=number']) test(`accessible ${route}`, async ({ page }, info) => {
+for (const route of ['/', '/wordle', '/tools/?tool=number']) test(`accessible ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
@@ -775,7 +811,7 @@ test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
     await expect.poll(() => contrastViolations('.project-detail')).toEqual([]);
   }
 
-  await visit(page, '/wordle.html', info);
+  await visit(page, '/wordle', info);
   await page.getByRole('button', { name: /^Choose date,/ }).click();
   for (const color of ['light', 'dark']) {
     await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
@@ -784,7 +820,7 @@ test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
 
   for (const [route, selector] of [
     ['/projects/cnn/', '.cnn-demo-section'],
-    ['/blog/posts/btop-mutex.html', '.article-route > main'],
+    ['/blog/posts/btop-mutex', '.article-route > main'],
   ]) {
     await visit(page, route, info);
     for (const color of ['light', 'dark']) {
@@ -1443,7 +1479,7 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
 test('Keybr practice metrics stay contained at 128px', async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await page.setViewportSize({ width: 128, height: 1000 });
-  await visit(page, '/keybr.html?p=practice', info);
+  await visit(page, '/keybr?p=practice', info);
   await expect(page.getByText('Metrics:', { exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => ({
     documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
@@ -1454,7 +1490,7 @@ test('Keybr practice metrics stay contained at 128px', async ({ page }, info) =>
 test('Keybr settings and book library stay contained at extreme narrow widths', async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await page.setViewportSize({ width: 720, height: 1000 });
-  await visit(page, '/keybr.html?p=settings', info);
+  await visit(page, '/keybr?p=settings', info);
 
   const expectContained = async (width, height) => {
     await page.setViewportSize({ width, height });

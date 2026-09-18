@@ -1,11 +1,31 @@
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import solid from '@solidjs/vite-plugin'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 const root = import.meta.dirname
 const keybrRoot = path.resolve(root, 'src/games/keybr')
 const target = process.env.SAMEY_VITE_BUILD ?? 'wordle'
+
+const extensionlessHtmlPreview: Plugin = {
+  name: 'samey-extensionless-html-preview',
+  configurePreviewServer(server) {
+    server.middlewares.use((request, _response, next) => {
+      const raw = request.url
+      if (!raw) return next()
+      const url = new URL(raw, 'http://samey.local')
+      const pathname = decodeURIComponent(url.pathname)
+      if (pathname !== '/' && !pathname.endsWith('/') && !path.extname(pathname)) {
+        const outDir = path.resolve(root, server.config.build.outDir)
+        const htmlFile = path.resolve(outDir, '.' + pathname + '.html')
+        if (htmlFile.startsWith(outDir + path.sep) && existsSync(htmlFile))
+          request.url = pathname + '.html' + url.search
+      }
+      next()
+    })
+  },
+}
 
 export default defineConfig(() => {
   if (target === 'wordle') return {
@@ -21,7 +41,7 @@ export default defineConfig(() => {
   if (target === 'site') return {
     publicDir: false,
     input: path.resolve(root, 'src/site/main.tsx'),
-    plugins: [solid()],
+    plugins: [extensionlessHtmlPreview, solid()],
     build: {
       outDir: path.resolve(root, '.build/site-runtime'),
       emptyOutDir: true,

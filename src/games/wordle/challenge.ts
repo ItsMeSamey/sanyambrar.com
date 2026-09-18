@@ -272,7 +272,7 @@ export function parseChallenge(raw: string | null): UrlChallenge | undefined {
 export function challengeUrl(config: ChallengeConfig, fastInvalidate: boolean): URL | undefined {
   const value = serializeChallenge(config, fastInvalidate)
   if (!value) return undefined
-  const base = /^https?:$/.test(location.protocol) ? new URL('/wordle.html', location.origin) : new URL('https://sanyambrar.com/wordle.html')
+  const base = /^https?:$/.test(location.protocol) ? new URL('/wordle', location.origin) : new URL('https://sanyambrar.com/wordle')
   base.searchParams.set(GAME_QUERY, value)
   return base
 }
