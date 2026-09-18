@@ -27,6 +27,9 @@ let results: HTMLDivElement | undefined
 let opener: HTMLElement | null = null
 let active = 0
 let visible: Entry[] = []
+let pageScrollLocked = false
+let previousBodyOverflow = ''
+let previousHtmlOverflow = ''
 
 const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K'
 const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
@@ -95,9 +98,26 @@ function keepActiveVisibleAfterResize() {
 addEventListener('resize', keepActiveVisibleAfterResize)
 globalThis.visualViewport?.addEventListener('resize', keepActiveVisibleAfterResize)
 
+function unlockPageScroll() {
+  if (!pageScrollLocked) return
+  document.body.style.overflow = previousBodyOverflow
+  document.documentElement.style.overflow = previousHtmlOverflow
+  pageScrollLocked = false
+}
+
+function lockPageScroll() {
+  if (pageScrollLocked) return
+  previousBodyOverflow = document.body.style.overflow
+  previousHtmlOverflow = document.documentElement.style.overflow
+  document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
+  pageScrollLocked = true
+}
+
 function close(restoreFocus = true) {
   if (!box || box.hidden) return
   box.hidden = true
+  unlockPageScroll()
   const target = opener
   opener = null
   if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
@@ -157,6 +177,7 @@ function open(trigger?: EventTarget | null) {
   opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null
   if (!box || !input) return
   box.hidden = false
+  lockPageScroll()
   active = 0
   input.value = ''
   render()
