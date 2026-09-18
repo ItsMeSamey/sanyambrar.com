@@ -131,6 +131,274 @@ for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   expect(htmlLinks, 'Internal links must never expose .html').toEqual([]);
 });
 
+test('responsive route surfaces stay contained across common and extreme aspect ratios', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the explicit responsive viewport matrix');
+
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 1366, height: 768 },
+    { width: 1280, height: 720 },
+    { width: 1180, height: 650 },
+    { width: 1024, height: 768 },
+    { width: 960, height: 640 },
+    { width: 900, height: 700 },
+    { width: 820, height: 720 },
+    { width: 768, height: 1024 },
+    { width: 700, height: 760 },
+    { width: 600, height: 900 },
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 240, height: 720 },
+    { width: 180, height: 1000 },
+    { width: 128, height: 1000 },
+    { width: 1600, height: 500 },
+    { width: 500, height: 1200 },
+  ];
+
+  const geometryIssues = () => page.evaluate(() => {
+    const visible = element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return false;
+      if (element.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const hasHorizontalScrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    const describe = element => {
+      const name = element.getAttribute('aria-label')
+        || element.getAttribute('title')
+        || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80)
+        || element.tagName.toLowerCase();
+      const id = element.id ? `#${element.id}` : '';
+      return `${element.tagName.toLowerCase()}${id} "${name}"`;
+    };
+    const issues = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) issues.push(`document overflow ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    if (document.body.scrollWidth > innerWidth + 1) issues.push(`body overflow ${document.body.scrollWidth} > ${innerWidth}`);
+
+    const interactive = document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="radio"],[role="checkbox"],[role="slider"],[contenteditable="true"]');
+    for (const element of interactive) {
+      if (!visible(element) || hasHorizontalScrollOwner(element)) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) {
+        issues.push(`offscreen control ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+      }
+    }
+
+    const controls = [...interactive].filter(element => visible(element)
+      && !hasHorizontalScrollOwner(element)
+      && getComputedStyle(element).pointerEvents !== 'none');
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const aRect = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) {
+          issues.push(`colliding controls ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+        }
+      }
+    }
+
+    const overlays = document.querySelectorAll('[role="dialog"],[data-samey-overlay],.site-route-error,#samey-load-error');
+    for (const element of overlays) {
+      if (!visible(element)) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1 || rect.width > innerWidth + 1) {
+        issues.push(`offscreen overlay ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+      }
+    }
+    return issues.slice(0, 30);
+  });
+
+  for (const route of routes) {
+    await page.setViewportSize({ width: 1180, height: 650 });
+    await visit(page, route, info);
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(geometryIssues, {
+        message: `${route} must stay reachable at ${viewport.width}x${viewport.height}`,
+      }).toEqual([]);
+    }
+    await page.setViewportSize({ width: 1180, height: 650 });
+    await expect.poll(geometryIssues, { message: `${route} must recover after responsive resize round-trip` }).toEqual([]);
+  }
+});
+
+test('stateful surfaces stay contained through live responsive resizing', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the stateful responsive matrix');
+  test.setTimeout(120_000);
+
+  const stateViewports = [
+    { width: 1180, height: 650 },
+    { width: 1024, height: 768 },
+    { width: 900, height: 700 },
+    { width: 768, height: 1024 },
+    { width: 700, height: 760 },
+    { width: 600, height: 900 },
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 240, height: 720 },
+    { width: 180, height: 1000 },
+    { width: 128, height: 1000 },
+    { width: 1600, height: 500 },
+    { width: 500, height: 1200 },
+  ];
+
+  const geometryIssues = () => page.evaluate(() => {
+    const visible = element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return false;
+      if (element.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const hasHorizontalScrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    const describe = element => {
+      const name = element.getAttribute('aria-label')
+        || element.getAttribute('title')
+        || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80)
+        || element.tagName.toLowerCase();
+      return `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''} "${name}"`;
+    };
+    const issues = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) issues.push(`document overflow ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    if (document.body.scrollWidth > innerWidth + 1) issues.push(`body overflow ${document.body.scrollWidth} > ${innerWidth}`);
+    const interactive = [...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="radio"],[role="checkbox"],[role="slider"],[contenteditable="true"]')];
+    for (const element of interactive) {
+      if (!visible(element) || hasHorizontalScrollOwner(element)) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) issues.push(`offscreen control ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+    }
+    const surfaceOf = element => element.closest('dialog,[role="dialog"],[role="listbox"],[role="menu"],[data-samey-overlay],.site-search,.samey-theme-advanced,.reverb-demo-frame.is-fullscreen,#chain-settings') ?? document.body;
+    const controls = interactive.filter(element => visible(element)
+      && !hasHorizontalScrollOwner(element)
+      && getComputedStyle(element).pointerEvents !== 'none');
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const aSurface = surfaceOf(a);
+      const aRect = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (aSurface !== surfaceOf(b) || a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) issues.push(`colliding controls ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+      }
+    }
+    for (const element of document.querySelectorAll('[role="dialog"],[role="listbox"],[role="menu"],[data-samey-overlay],.site-search-panel,.reverb-demo-frame.is-fullscreen,#chain-settings')) {
+      if (!visible(element)) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1 || rect.width > innerWidth + 1) {
+        issues.push(`offscreen surface ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+      }
+    }
+    return issues.slice(0, 30);
+  });
+
+  const expectResponsive = async (label, viewports = stateViewports) => {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(geometryIssues, { message: `${label} at ${viewport.width}x${viewport.height}` }).toEqual([]);
+    }
+  };
+
+  await page.setViewportSize({ width: 1180, height: 650 });
+  await visit(page, '/', info);
+  await page.keyboard.press('Control+K');
+  await page.getByPlaceholder('Search games, tools, writing, work…').fill('a');
+  await expect(page.locator('.site-search')).toBeVisible();
+  await expectResponsive('Search overlay');
+  await page.keyboard.press('Escape');
+
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  await appearance.click();
+  await page.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+  await expect(page.locator('.samey-theme-advanced')).toBeVisible();
+  await expectResponsive('Advanced appearance');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: /^Choose date,/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Choose date' })).toBeVisible();
+  await expectResponsive('Wordle date picker');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Game settings' })).toBeVisible();
+  await expectResponsive('Wordle settings');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 700, height: 760 });
+  await visit(page, '/tools/?tool=number', info);
+  const toolTrigger = page.getByRole('button', { name: /Tool/ });
+  await toolTrigger.click();
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expectResponsive('Tools mobile selector', stateViewports.filter(({ width }) => width <= 700));
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/projects/reverb/', info);
+  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
+  await expect(page.locator('.reverb-demo-frame.is-fullscreen')).toBeVisible();
+  await expectResponsive('Reverb fullscreen');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.evaluate(() => {
+    const board = new Uint8Array(16);
+    const owners = new Uint8Array(16);
+    const entered = new Uint8Array(3);
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({
+      v: 4, id: 'qa-responsive', pl: [], r: 4, c: 4, e: 1,
+      b: encode(board), o: encode(owners), p: encode(entered),
+      t: 1, g: false, i: true, m: [], q: true,
+    }));
+  });
+  await visit(page, '/chain/?p=game', info);
+  const chainSettings = page.getByRole('button', { name: 'Settings', exact: true });
+  await chainSettings.click();
+  await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'false');
+  await expectResponsive('Chain settings');
+  await page.keyboard.press('Escape');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/keybr?p=settings', info);
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose book', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expectResponsive('Keybr book picker');
+});
+
 const legacyHtmlRoutes = [
   '/index.html',
   '/work/index.html',
@@ -2084,6 +2352,9 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   }));
   await expect.poll(savedResults).toBe(1);
   await expect(page.locator('body')).toContainText(/Speed:\s*[1-9]\d*\.\d+wpm/);
+  await expect.poll(async () => (await area.textContent())?.replace(/[·␣]/g, ' ').trim() ?? '', {
+    message: 'Completing a lesson must publish the freshly generated lesson immediately',
+  }).not.toBe(lesson);
   const transitionMarkers = await page.evaluate(() => {
     const markers = [...document.querySelectorAll('marker[id]')];
     const paths = [...document.querySelectorAll('path[marker-end]')];
@@ -2105,15 +2376,164 @@ test('Keybr completed lesson updates metrics and survives reload', async ({ page
   await expect.poll(savedResults).toBe(1);
 });
 
-test('Keybr practice metrics stay contained at 128px', async ({ page }, info) => {
+test('Keybr practice metrics and controls stay collision-free across responsive viewports', async ({ page }, info) => {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
-  await page.setViewportSize({ width: 128, height: 1000 });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await visit(page, '/keybr?p=practice', info);
+  await seedKeybrHistory(page);
+  await page.reload({ waitUntil: 'networkidle' });
   await expect(page.getByText('Metrics:', { exact: true })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => ({
-    documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
-    bodyContained: document.body.scrollWidth <= innerWidth + 1,
-  }))).toEqual({ documentContained: true, bodyContained: true });
+
+  const geometry = () => page.evaluate(() => {
+    const visible = element => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number.parseFloat(style.opacity || '1') > 0.001 && rect.width > 0 && rect.height > 0;
+    };
+    const metricsLabel = [...document.querySelectorAll('span')].find(element => element.textContent?.trim() === 'Metrics:');
+    const row = metricsLabel?.parentElement;
+    const gaugeList = row?.children[1];
+    const help = [...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === 'Show a guided tour with help slides.');
+    const controls = help?.parentElement;
+    if (!(row instanceof HTMLElement) || !(gaugeList instanceof HTMLElement) || !(controls instanceof HTMLElement)) {
+      return { missing: true };
+    }
+    const controlRect = controls.getBoundingClientRect();
+    const gauges = [...gaugeList.children].filter(element => element instanceof HTMLElement && visible(element));
+    const overlaps = gauges.flatMap((gauge, index) => {
+      const rect = gauge.getBoundingClientRect();
+      const width = Math.max(0, Math.min(rect.right, controlRect.right) - Math.max(rect.left, controlRect.left));
+      const height = Math.max(0, Math.min(rect.bottom, controlRect.bottom) - Math.max(rect.top, controlRect.top));
+      return width > 1 && height > 1 ? [{ index, width, height, text: gauge.textContent?.trim() ?? '' }] : [];
+    });
+    const clipped = gauges.flatMap((gauge, index) => {
+      const rect = gauge.getBoundingClientRect();
+      return rect.left < -1 || rect.right > innerWidth + 1
+        ? [{ index, left: rect.left, right: rect.right, text: gauge.textContent?.trim() ?? '' }]
+        : [];
+    });
+    return {
+      missing: false,
+      documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
+      bodyContained: document.body.scrollWidth <= innerWidth + 1,
+      rowContained: row.scrollWidth <= row.clientWidth + 1,
+      gaugeListContained: gaugeList.scrollWidth <= gaugeList.clientWidth + 1,
+      overlaps,
+      clipped,
+    };
+  });
+
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 1366, height: 768 },
+    { width: 1280, height: 720 },
+    { width: 1180, height: 820 },
+    { width: 1024, height: 768 },
+    { width: 960, height: 640 },
+    { width: 900, height: 700 },
+    { width: 820, height: 720 },
+    { width: 768, height: 1024 },
+    { width: 700, height: 760 },
+    { width: 600, height: 900 },
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 240, height: 720 },
+    { width: 180, height: 1000 },
+    { width: 128, height: 1000 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await expect.poll(geometry, { message: `Keybr metrics must stay clear of controls at ${viewport.width}x${viewport.height}` }).toEqual({
+      missing: false,
+      documentContained: true,
+      bodyContained: true,
+      rowContained: true,
+      gaugeListContained: true,
+      overlaps: [],
+      clipped: [],
+    });
+  }
+
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 768, height: 1024 },
+    { width: 1180, height: 650 },
+    { width: 520, height: 900 },
+    { width: 1366, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(geometry, { message: `Keybr resize must settle cleanly at ${viewport.width}x${viewport.height}` }).toEqual({
+      missing: false,
+      documentContained: true,
+      bodyContained: true,
+      rowContained: true,
+      gaugeListContained: true,
+      overlaps: [],
+      clipped: [],
+    });
+  }
+});
+
+test('Keybr practice view modes stay contained across responsive viewports', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('prefs.practice.tourSeen', 'true');
+    localStorage.setItem('prefs.practice.view', '1');
+  });
+  await page.setViewportSize({ width: 1180, height: 650 });
+  await visit(page, '/keybr?p=practice', info);
+  const switchView = page.getByTitle('Switch the current interface layout.');
+
+  const geometry = () => page.evaluate(() => {
+    const input = document.querySelector('[data-grab-cursor-on-drag]:has(textarea)');
+    const controls = [...document.querySelectorAll('button')].find(button => button.getAttribute('aria-label') === 'Switch the current interface layout.')?.parentElement;
+    if (!(input instanceof HTMLElement) || !(controls instanceof HTMLElement)) return { missing: true };
+    const inputRect = input.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    return {
+      missing: false,
+      documentContained: document.documentElement.scrollWidth <= innerWidth + 1,
+      bodyContained: document.body.scrollWidth <= innerWidth + 1,
+      inputContained: inputRect.left >= -1 && inputRect.right <= innerWidth + 1,
+      controlsContained: controlsRect.left >= -1 && controlsRect.right <= innerWidth + 1,
+    };
+  });
+
+  const viewports = [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 720 },
+    { width: 1024, height: 768 },
+    { width: 900, height: 700 },
+    { width: 768, height: 1024 },
+    { width: 700, height: 760 },
+    { width: 600, height: 900 },
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 240, height: 720 },
+    { width: 180, height: 1000 },
+    { width: 128, height: 1000 },
+    { width: 1600, height: 500 },
+    { width: 500, height: 1200 },
+  ];
+
+  for (const mode of ['Normal', 'Compact', 'Bare']) {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(geometry, { message: `Keybr ${mode} practice view at ${viewport.width}x${viewport.height}` }).toEqual({
+        missing: false,
+        documentContained: true,
+        bodyContained: true,
+        inputContained: true,
+        controlsContained: true,
+      });
+    }
+    if (mode !== 'Bare') {
+      await page.setViewportSize({ width: 1180, height: 650 });
+      await switchView.click();
+    }
+  }
 });
 
 test('Keybr settings and book library stay contained at extreme narrow widths', async ({ page }, info) => {

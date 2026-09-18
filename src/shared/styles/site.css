@@ -171,7 +171,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .site-route.tools-page,.site-route.site-page-chain{height:100dvh;min-height:0;overflow:hidden}
 
 /* Home identity is visibly navigational everywhere. */
-.home-brand-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-brand-name{display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .home-brand-link,.brand.home-brand-link{display:inline-flex;align-items:center;min-width:0;margin:-7px -12px;padding:7px 12px;border-radius:7px;color:inherit;text-decoration:none;font-size:15px;font-weight:720;line-height:1;letter-spacing:-.025em;white-space:nowrap}
 .home-brand-link:hover,.home-brand-link:focus-visible{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
 
@@ -194,7 +194,8 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .site-topbar-icon svg{width:17px;height:17px}.site-topbar-search{grid-auto-flow:column;gap:6px}.site-topbar-search-icon{width:15px;height:15px;opacity:1}.site-topbar-search kbd{display:inline-flex;align-items:center;height:22px;padding:0 6px;border:1px solid var(--site-line,#d3d6da);border-bottom-color:color-mix(in srgb,var(--site-line,#d3d6da) 72%,var(--site-fg,#121213));border-radius:5px;color:var(--site-fg,#121213);background:color-mix(in srgb,var(--site-bg,#fff) 75%,var(--site-soft,#eee));box-shadow:0 1px 0 var(--site-shadow-2);font:600 10px/1 var(--site-font,system-ui)}.site-topbar-search:hover kbd,.site-topbar-search:focus-visible kbd{color:var(--site-fg,#121213);border-color:color-mix(in srgb,var(--site-accent,#787c7e) 55%,var(--site-line,#d3d6da))}
 @media(max-width:860px){.site-topbar-inner:has(.site-topbar-context:not(:empty)) .site-topbar-nav>a{display:none}}
 @media(max-width:700px){:root{--site-topbar-height:40px}.site-topbar-inner-contained{padding-inline:12px}.site-topbar-inner-contained::after{left:12px}.site-topbar-search{width:26px;padding:4px;margin-left:0}.site-topbar-search-icon{display:block;width:17px;height:17px}.site-topbar-search kbd{display:none}}
-@media(max-width:420px){.site-topbar-inner{gap:4px}.site-topbar-nav{gap:0}.site-topbar-nav>a{padding-inline:6px}.site-topbar-icon{width:26px;height:26px;padding:4px}}
+@media(max-width:420px){.site-topbar-inner{gap:4px}.site-topbar-nav{gap:0}.site-topbar-nav>a{padding-inline:6px}.site-topbar-icon{width:26px;height:26px;padding:4px}.home-brand-link,.brand.home-brand-link{max-width:calc(100vw - 84px);margin-inline:0;padding-inline:0}}
+@media(max-width:200px){.site-topbar:has(.game-topbar-nav){--site-topbar-height:72px;flex-basis:72px;height:72px}.site-topbar-inner:has(.game-topbar-nav){position:relative;height:72px}.site-topbar-inner:has(.game-topbar-nav) .site-topbar-start,.site-topbar-inner:has(.game-topbar-nav) .site-topbar-context{height:36px;align-self:start}.site-topbar-inner:has(.game-topbar-nav) .game-topbar-nav{position:absolute;left:12px;right:12px;bottom:2px;height:28px;justify-content:flex-end;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}.site-topbar-inner:has(.game-topbar-nav) .game-topbar-nav::-webkit-scrollbar{display:none}}
 
 /* Visible, recoverable async failures instead of blank or permanently-loading pages. */
 .site-route-loading{min-height:180px;display:grid;place-items:center;color:var(--site-muted,#787c7e);font:600 11px/1.3 var(--site-font,system-ui);text-transform:uppercase;letter-spacing:.08em}
@@ -225,6 +226,7 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 .site-topbar-icon-label{font:750 10px/1 var(--site-font,system-ui)}
 .wordle-text-mark{display:inline-flex;align-items:center;gap:0;vertical-align:middle}.wordle-text-mark i{box-sizing:border-box;display:grid;place-items:center;flex:0 0 var(--wordle-mark-cell,22px);width:var(--wordle-mark-cell,22px);height:var(--wordle-mark-cell,22px);border:0;color:var(--site-on-fg,#fff);font:850 var(--wordle-mark-font,10px)/1 var(--site-font,system-ui);font-style:normal;text-transform:uppercase}
 .backline{appearance:none;display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin:24px 0;padding:6px 0;border:0;background:transparent;color:var(--site-muted,#787c7e);font:inherit;text-decoration:none;white-space:nowrap}.backline-mark{font:700 1em/1 var(--site-font,system-ui)}.backline:hover,.backline:focus-visible{color:var(--site-fg,#121213)}.site-topbar .backline{margin:0;padding-block:5px}
+@media(max-width:160px){.site-topbar .backline{max-width:max(24px,calc(100vw - 88px));overflow:hidden}.site-topbar .backline>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis}}
 
 /* Chain Reaction's mark is a tiny live board: the word itself is the board geometry. */
 .chain-live-mark{display:block;min-width:0;aspect-ratio:13.5/1;overflow:hidden;border:1px solid var(--site-line,#d3d6da);background:var(--site-bg,#fff);contain:layout paint size;pointer-events:none}
