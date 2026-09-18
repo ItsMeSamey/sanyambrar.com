@@ -869,6 +869,54 @@ test('Reverb settings dropdown closes when its geometry changes', async ({ page 
   await expect(menu).not.toHaveClass(/show/);
 });
 
+test('Reverb clears interrupted pointer state on blur', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const result = await host.evaluate(element => {
+    const root = element.shadowRoot;
+    const phone = root?.querySelector('#phone');
+    const blob = root?.querySelector('#blobControl');
+    const home = root?.querySelector('#homeScreen');
+    const settings = root?.querySelector('#settingsScreen');
+    if (!(phone instanceof HTMLElement) || !(blob instanceof HTMLElement)
+      || !(home instanceof HTMLElement) || !(settings instanceof HTMLElement)) {
+      throw new Error('Reverb pointer-state fixture is incomplete');
+    }
+
+    blob.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 41, clientX: 200, clientY: 400,
+    }));
+    const pressedBefore = blob.classList.contains('pressed');
+    window.dispatchEvent(new Event('blur'));
+    const pressedAfter = blob.classList.contains('pressed');
+
+    const blobRect = blob.getBoundingClientRect();
+    const phoneRect = phone.getBoundingClientRect();
+    const x = phoneRect.left + phoneRect.width / 2;
+    const y = Math.max(phoneRect.top + 5, blobRect.top - 24);
+    phone.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 42, clientX: x, clientY: y,
+    }));
+    window.dispatchEvent(new Event('blur'));
+    phone.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 42, clientX: x, clientY: y + 80,
+    }));
+
+    return {
+      pressedBefore,
+      pressedAfter,
+      homeActive: home.classList.contains('active'),
+      settingsActive: settings.classList.contains('active'),
+    };
+  });
+  expect(result).toEqual({
+    pressedBefore: true,
+    pressedAfter: false,
+    homeActive: true,
+    settingsActive: false,
+  });
+});
+
 test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, info) => {
   await page.addInitScript(() => {
     globalThis.__sameyQaReverbDraws = 0;
