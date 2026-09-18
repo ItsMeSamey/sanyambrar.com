@@ -2006,7 +2006,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const pageCache = new Map<string, Promise<FetchedPage>>();
   const setLoading = (value: boolean) => {
     globalThis.SameyLoading?.(value);
-    document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
   };
   const syncHtmlData = (doc: Document, baseUrl: URL) => {
     const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color"]);

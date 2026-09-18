@@ -2972,7 +2972,6 @@
 		const pageCache = /* @__PURE__ */ new Map();
 		const setLoading = (value) => {
 			globalThis.SameyLoading?.(value);
-			document.getElementById("samey-loading-layer")?.removeAttribute("data-visible");
 		};
 		const syncHtmlData = (doc, baseUrl) => {
 			const keep = /* @__PURE__ */ new Set([
