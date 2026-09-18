@@ -169,7 +169,7 @@ function RouteError(props: { error: NavigationError; onRetry: () => void; onDism
       <h1 id="site-route-error-title">Page failed to load</h1>
       <p class="samey-error-page-message">{props.error.message}</p>
       <div class="samey-error-page-target"><span>Destination</span><code>{destination()}</code></div>
-      <pre class="site-route-error-stack samey-error-stack">{props.error.detail}</pre>
+      <pre class="site-route-error-stack samey-error-stack" tabindex="0">{props.error.detail}</pre>
       <div class="site-route-error-actions samey-error-page-actions">
         <button type="button" class="primary" onClick={props.onRetry}>Retry</button>
         <a href={props.error.url}>Open normally</a>
