@@ -153,6 +153,8 @@ window.dispatchEvent(new ErrorEvent('error', {
   await expect(stack).toContainText(marker);
   await expect(stack).toContainText('Caused by:');
   await expect(stack).toContainText(`Error: ${marker}`);
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
 test('Keybr error page preserves settings failure stack and cause', async ({ page }, info) => {
@@ -175,6 +177,8 @@ test('Keybr error page preserves settings failure stack and cause', async ({ pag
   await expect(report).toContainText(marker);
   await expect(report).toContainText('Caused by:');
   await expect(report).toContainText(`Error: ${marker}`);
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
 test('extreme narrow call-to-actions and article controls stay reachable', async ({ page }, info) => {
@@ -883,6 +887,43 @@ test('accessible open search', async ({ page }, info) => {
     await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+    const placeholderContrast = await page.locator('.site-search-input input').evaluate(input => {
+      const sample = cssColor => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('Could not create color sampling context');
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = cssColor;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const composite = (front, back) => {
+        const alpha = front[3] / 255;
+        return [
+          front[0] * alpha + back[0] * (1 - alpha),
+          front[1] * alpha + back[1] * (1 - alpha),
+          front[2] * alpha + back[2] * (1 - alpha),
+          255,
+        ];
+      };
+      const luminance = rgb => {
+        const linear = rgb.slice(0, 3).map(channel => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+      };
+      const panel = input.closest('.site-search-panel');
+      if (!(panel instanceof HTMLElement)) throw new Error('Search panel is unavailable');
+      const pageBackground = sample(getComputedStyle(document.documentElement).backgroundColor);
+      const background = composite(sample(getComputedStyle(panel).backgroundColor), pageBackground);
+      const foreground = composite(sample(getComputedStyle(input, '::placeholder').color), background);
+      const light = Math.max(luminance(foreground), luminance(background));
+      const dark = Math.min(luminance(foreground), luminance(background));
+      return (light + 0.05) / (dark + 0.05);
+    });
+    expect(placeholderContrast).toBeGreaterThanOrEqual(4.5);
   }
 });
 
