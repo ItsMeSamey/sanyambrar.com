@@ -4,8 +4,11 @@ import { type StreakList as StreakListType } from "../result/accuracy.ts";
 import { type SummaryStats } from "../result/summarystats.ts";
 import { Name } from "../widget/components/text/NameValue.tsx";
 
-import { useIntl } from "../intl/runtime.tsx";
-import { CurrentKey } from "./CurrentKey.tsx";
+import { FormattedMessage, useIntl } from "../intl/runtime.tsx";
+import { Show } from "solid-js";
+import { styleTextTruncate } from "../widget/styles/text.ts";
+import { Key } from "./Key.tsx";
+import { KeyDetails } from "./KeyDetails.tsx";
 import { DailyGoal } from "./DailyGoal.tsx";
 import { GaugeList } from "./gauges.tsx";
 import styles from "./indicators.module.css";
@@ -79,4 +82,13 @@ export const DailyGoalRow = function DailyGoalRow(props: {
         })}/>
       <DailyGoal id={props.names?.dailyGoal} className={styles.value} dailyGoal={props.dailyGoal}/>
     </div>);
+};
+
+const CurrentKey = (props: { id?: string; className?: string; lessonKeys: LessonKeys }) => {
+    const focusedKey = () => props.lessonKeys.findFocusedKey();
+    return <span id={props.id} class={props.className}>
+      <Show when={focusedKey()} keyed fallback={<span class={styleTextTruncate}>
+        <FormattedMessage id="t_All_keys_are_unlocked" defaultMessage="All keys are unlocked."/>
+      </span>}>{(key) => <><Key lessonKey={key}/> <KeyDetails lessonKey={key}/></>}</Show>
+    </span>;
 };

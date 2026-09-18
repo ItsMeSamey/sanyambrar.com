@@ -1,8 +1,12 @@
 import { Key } from "../../lesson-ui/Key.tsx";
-import { Award } from "../../widget/components/toast/Award.tsx";
+import type { JSX } from "@solidjs/web";
+import { Dynamic } from "@solidjs/web";
+import { clsx } from "clsx";
+import { AlarmClockCheck, Trophy, type LucideIcon } from "../../../../shared/components/Icons.tsx";
+import { toastProps, useToast } from "../../widget/components/toast/context.tsx";
 import { toast } from "../../widget/components/toast/Toaster.tsx";
 import { FormattedMessage } from "../../intl/runtime.tsx";
-import { DailyGoalIcon, TrophyIcon } from "./event-icons.tsx";
+import styles from "./EventAlert.module.css";
 import { type LessonEvent } from "./event-types.ts";
 function EventAlert(props: {
     readonly event: LessonEvent;
@@ -33,3 +37,16 @@ export function displayEvent(event: LessonEvent): void {
         pauseOnHover: true,
     });
 }
+
+function Award(props: { readonly icon: JSX.Element; readonly children: JSX.Element }): JSX.Element {
+    const toast = useToast();
+    return <div class={styles.award} {...toastProps(toast)}>
+      <div class={styles.awardIcon}>{props.icon}</div>
+      <div class={styles.message}>{props.children}</div>
+    </div>;
+}
+function EventIcon(props: { readonly shape: LucideIcon; readonly trophy?: boolean }) {
+    return <Dynamic component={props.shape} class={clsx(styles.icon, props.trophy && styles.trophy)}/>;
+}
+function TrophyIcon() { return <EventIcon shape={Trophy} trophy/>; }
+function DailyGoalIcon() { return <EventIcon shape={AlarmClockCheck}/>; }

@@ -1,9 +1,10 @@
 import type { JSX } from "@solidjs/web";
+import { CircleAlert, CircleCheck, Info, X } from "../../../../../shared/components/Icons.tsx";
 import { type MouseProps } from "../types.ts";
+import { IconButton } from "../button/IconButton.tsx";
+import { Icon } from "../icon/Icon.tsx";
 import styles from "./Alert.module.css";
-import { CloseButton } from "./CloseButton.tsx";
 import { toastProps, useToast } from "./context.tsx";
-import { SeverityIcon } from "./SeverityIcon.tsx";
 import { omit, merge } from 'solid-js';
 export function Alert(allProps: {
     readonly children: JSX.Element;
@@ -16,6 +17,15 @@ export function Alert(allProps: {
     return (<div {...props} class={styles.alert} {...toastProps(toast)}>
       {local.severity && <SeverityIcon severity={local.severity}/>}
       <div class={styles.message}>{local.children}</div>
-      {local.closeButton && <CloseButton />}
+      {local.closeButton && <IconButton icon={<Icon shape={X}/>} onClick={() => toast.close()}/>}
     </div>);
+}
+
+function SeverityIcon(props: { readonly severity: "info" | "success" | "error" | null }): JSX.Element {
+    switch (props.severity) {
+        case "info": return <Icon shape={Info}/>;
+        case "success": return <Icon shape={CircleCheck}/>;
+        case "error": return <Icon shape={CircleAlert}/>;
+        default: return null;
+    }
 }

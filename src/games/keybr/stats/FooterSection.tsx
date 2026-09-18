@@ -2,7 +2,8 @@ import { Result } from "../result/result.ts";
 import { useResults } from "../result/context.ts";
 import { resultFromJson, resultToJson } from "../result/json.ts";
 import { Button } from "../widget/components/button/Button.tsx";
-import { ErrorAlert } from "../widget/components/toast/ErrorAlert.tsx";
+import { Alert } from "../widget/components/toast/Alert.tsx";
+import { toast } from "../widget/components/toast/Toaster.tsx";
 import { Field, FieldList } from "../widget/components/fieldlist/FieldList.tsx";
 import { Icon } from "../widget/components/icon/Icon.tsx";
 import { Trash2, Download, Upload } from "../../../shared/components/Icons.tsx";
@@ -19,7 +20,7 @@ export function FooterSection() {
             event.currentTarget.value = "";
             if (file != null) {
                 handleUploadData(file).catch((error) => {
-                    ErrorAlert.report(error);
+                    reportError(error);
                 });
             }
         }}/>
@@ -103,4 +104,10 @@ function download(blob: Blob, name: string) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+}
+
+function reportError(error: unknown) {
+    toast(() => <Alert severity="error">
+      {error instanceof AggregateError ? error.errors.map((child) => <p>{String(child)}</p>) : <p>{String(error)}</p>}
+    </Alert>);
 }
