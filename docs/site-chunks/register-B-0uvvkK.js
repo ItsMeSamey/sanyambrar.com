@@ -1,1 +1,0 @@
-import{x as e}from"./site-app-B77Eke8K.js";import{t}from"./_.contribution-QWF-CriX.js";t({id:`shell`,extensions:[`.sh`,`.bash`],aliases:[`Shell`,`sh`],loader:()=>e(()=>import(`./shell-CC2rA5mh.js`),[])});

@@ -19,6 +19,11 @@ type DemoSetTimeout = (
   ...args: unknown[]
 ) => number;
 type DemoClearTimeout = (id?: number) => void;
+type DemoAddWindowEventListener = (
+  type: keyof WindowEventMap,
+  listener: EventListenerOrEventListenerObject,
+  options?: boolean | AddEventListenerOptions,
+) => () => void;
 type BufferSlot = "one" | "loop";
 type RetentionMode = "time" | "size";
 type GestureMode = "settings" | "library";
@@ -51,7 +56,8 @@ export function runReverbDemoRuntime(
   setTimeout: DemoSetTimeout,
   clearTimeout: DemoClearTimeout,
   devicePixelRatio: number,
-): Pick<BlobRuntime, "refreshTheme"> {
+  addWindowEventListener: DemoAddWindowEventListener,
+): Pick<BlobRuntime, "refreshTheme"> & { dispose(): void } {
   const byId = <T extends Element = HTMLElement>(id: string): T => {
     const element = document.querySelector<T>(`#${id}`);
     if (!element) throw new Error(`Reverb demo is missing #${id}`);
@@ -611,7 +617,9 @@ export function runReverbDemoRuntime(
   document
     .querySelector<HTMLElement>(".settings-body")
     ?.addEventListener("scroll", closeDropdown, { passive: true });
-  addEventListener("resize", closeDropdown, { passive: true });
+  const removeResizeListener = addWindowEventListener("resize", closeDropdown, {
+    passive: true,
+  });
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -1137,6 +1145,9 @@ void main(){
   return {
     refreshTheme() {
       blobShader.refreshTheme?.();
+    },
+    dispose() {
+      removeResizeListener();
     },
   };
 }
