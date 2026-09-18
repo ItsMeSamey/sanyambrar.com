@@ -1,19 +1,13 @@
 type LoadingEventListener = (event: { readonly total: number; readonly current: number }) => void;
 import { type Lesson } from "../../lesson/lesson.ts";
+import { type Letter } from "../../phonetic-model/letter.ts";
 import { MutableDailyGoal } from "../../lesson/dailygoal.ts";
 import { MutableKeyStatsMap } from "../../result/keystats.ts";
 import { MutableStreakList } from "../../result/accuracy.ts";
 import { MutableSummaryStats } from "../../result/summarystats.ts";
 import { type Result } from "../../result/result.ts";
 import { type Settings } from "../../settings/settings.ts";
-import { DailyGoalEvents } from "./event-source-daily-goal.ts";
-import { LetterEvents } from "./event-source-letter.ts";
-import { TopScoreEvents } from "./event-source-top-score.ts";
-import { TopSpeedEvents } from "./event-source-top-speed.ts";
-import {
-  type LessonEventListener,
-  type LessonEventSource,
-} from "./event-types.ts";
+import { type LessonEventListener } from "./event-types.ts";
 
 export class Progress {
   readonly #settings: Settings;
@@ -23,7 +17,11 @@ export class Progress {
   readonly #summaryStats: MutableSummaryStats;
   readonly #streakList: MutableStreakList;
   readonly #dailyGoal: MutableDailyGoal;
-  readonly #events: LessonEventSource;
+  readonly #included = new Set<Letter>();
+  #resultCount = 0;
+  #topSpeed = 0;
+  #topScore = 0;
+  #lastDailyGoalValue = 0;
 
   constructor(settings: Settings, lesson: Lesson) {
     this.#settings = settings;
@@ -34,18 +32,9 @@ export class Progress {
     this.#streakList = new MutableStreakList();
     this.#dailyGoal = new MutableDailyGoal(this.#settings);
 
-    const letter = new LetterEvents(this.#lesson, this.#keyStatsMap);
-    const topSpeed = new TopSpeedEvents();
-    const topScore = new TopScoreEvents();
-    const dailyGoal = new DailyGoalEvents(this.#dailyGoal);
-    this.#events = new (class implements LessonEventSource {
-      append(result: Result, listener: LessonEventListener): void {
-        letter.append(result, listener);
-        topSpeed.append(result, listener);
-        topScore.append(result, listener);
-        dailyGoal.append(result, listener);
-      }
-    })();
+    for (const lessonKey of this.#lesson.update(this.#keyStatsMap).findIncludedKeys()) {
+      this.#included.add(lessonKey.letter);
+    }
   }
 
   async *seedAsync(
@@ -91,7 +80,34 @@ export class Progress {
     this.#summaryStats.append(result);
     this.#streakList.append(result);
     this.#dailyGoal.append(result);
-    this.#events.append(result, listener);
+    this.#appendEvents(result, listener);
+  }
+
+  #appendEvents(result: Result, listener: LessonEventListener): void {
+    for (const lessonKey of this.#lesson.update(this.#keyStatsMap).findIncludedKeys()) {
+      if (!this.#included.has(lessonKey.letter)) {
+        this.#included.add(lessonKey.letter);
+        listener({ type: "new-letter", lessonKey });
+      }
+    }
+
+    this.#resultCount += 1;
+    if (result.speed > this.#topSpeed) {
+      if (this.#resultCount >= 3) {
+        listener({ type: "top-speed", speed: result.speed, previous: this.#topSpeed });
+      }
+      this.#topSpeed = result.speed;
+    }
+    if (result.score > this.#topScore) {
+      if (this.#resultCount >= 3) {
+        listener({ type: "top-score", score: result.score, previous: this.#topScore });
+      }
+      this.#topScore = result.score;
+    }
+    if (this.#lastDailyGoalValue < 1 && this.#dailyGoal.value >= 1) {
+      listener({ type: "daily-goal" });
+    }
+    this.#lastDailyGoalValue = this.#dailyGoal.value;
   }
 
   get settings() {
