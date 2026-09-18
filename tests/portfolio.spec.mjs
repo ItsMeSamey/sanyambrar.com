@@ -917,6 +917,23 @@ test('Reverb clears interrupted pointer state on blur', async ({ page }, info) =
   });
 });
 
+test('Reverb cancels incident long press on blur', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await host.evaluate(element => element.shadowRoot?.querySelector('#openIncidents')?.click());
+  const incident = host.locator('.incident-card');
+  const toast = host.locator('#toast');
+  await incident.evaluate(element => {
+    element.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 55, clientX: 200, clientY: 350,
+    }));
+    window.dispatchEvent(new Event('blur'));
+  });
+  await page.waitForTimeout(650);
+  await expect(toast, 'Blur must cancel the pending incident long-press action').not.toHaveClass(/show/);
+  await expect(toast).not.toHaveText('Incident copied');
+});
+
 test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, info) => {
   await page.addInitScript(() => {
     globalThis.__sameyQaReverbDraws = 0;
