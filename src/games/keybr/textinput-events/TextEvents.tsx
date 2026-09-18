@@ -23,7 +23,7 @@ export const TextEvents = function TextEvents(props: Callbacks & {
         };
     });
     return (<div style={divStyle}>
-      <textarea ref={el => input = el} autocapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
+      <textarea ref={el => input = el} aria-label="Typing input" autocapitalize="off" autocorrect="off" spellcheck={false} style={inputStyle}/>
     </div>);
 };
 const divStyle = {
