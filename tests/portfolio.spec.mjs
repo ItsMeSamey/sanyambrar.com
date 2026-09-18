@@ -176,6 +176,55 @@ window.dispatchEvent(new ErrorEvent('error', {
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
+test('Keybr SPA navigation waits for a slow entry module without a false startup timeout', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Production bundle delay injection targets the built Keybr entry module');
+
+  await page.route(/\/keybr-assets\/index-[^/]+\.js(?:\?.*)?$/, async route => {
+    await new Promise(resolve => setTimeout(resolve, 2200));
+    await route.continue();
+  });
+
+  await visit(page, '/', info);
+  await page.evaluate(async () => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    await navigate('/keybr');
+  });
+
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect(page.locator('#samey-load-error')).toHaveCount(0);
+});
+
+test('Keybr remounts after leaving and returning through SPA navigation', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Cross-app SPA navigation is exercised by the production shell');
+
+  await visit(page, '/', info);
+  const navigate = route => page.evaluate(async href => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    await navigate(href);
+  }, route);
+
+  await navigate('/keybr');
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('function');
+
+  await navigate('/');
+  await expect(page.locator('#solid-site-app')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).not.toBe('function');
+
+  await navigate('/keybr');
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect(page.locator('#samey-load-error')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('function');
+
+  await page.goBack();
+  await expect(page.locator('#solid-site-app')).toBeVisible();
+  await page.goForward();
+  await expect(page.locator('#keybr-root')).toBeVisible();
+  await expect(page.locator('#samey-load-error')).toHaveCount(0);
+});
+
 test('site navigation failures become full error pages', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets a built site chunk');
 

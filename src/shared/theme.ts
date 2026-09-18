@@ -2073,16 +2073,29 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       el.setAttribute("src", new URL(value, baseUrl).href);
     }
   };
+  const externalScriptReady = (script: HTMLScriptElement) => new Promise<void>(resolve => {
+    const done = () => resolve();
+    script.addEventListener("load", done, { once: true });
+    script.addEventListener("error", done, { once: true });
+  });
   const runBodyScripts = (baseUrl: URL) => {
+    const pending: Promise<void>[] = [];
     for (const old of [...document.body.querySelectorAll<HTMLScriptElement>("script")]) {
       const fresh = document.createElement("script");
       for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
       const source = old.getAttribute("src");
-      if (source) fresh.src = new URL(source, baseUrl).href; else fresh.textContent = old.textContent;
+      if (source) {
+        pending.push(externalScriptReady(fresh));
+        fresh.src = new URL(source, baseUrl).href;
+      } else {
+        fresh.textContent = old.textContent;
+      }
       old.replaceWith(fresh);
     }
+    return Promise.all(pending).then(() => {});
   };
   const runHeadScripts = (doc: Document, baseUrl: URL) => {
+    const pending: Promise<void>[] = [];
     document.head.querySelectorAll("script[data-spa-page-script]").forEach(script => script.remove());
     for (const old of [...doc.head.querySelectorAll<HTMLScriptElement>("script")]) {
       const source = old.getAttribute("src");
@@ -2091,9 +2104,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const fresh = document.createElement("script");
       for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
       fresh.dataset.spaPageScript = "";
-      if (resolved) fresh.src = resolved; else fresh.textContent = old.textContent;
+      if (resolved) {
+        pending.push(externalScriptReady(fresh));
+        fresh.src = resolved;
+      } else {
+        fresh.textContent = old.textContent;
+      }
       document.head.append(fresh);
     }
+    return Promise.all(pending).then(() => {});
   };
   const clearPageBody = (): HTMLElement | null => {
     const runtimeAnchor = document.body.querySelector<HTMLElement>("[data-samey-runtime]");
@@ -2130,13 +2149,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.title = doc.title; syncHtmlData(doc, baseUrl);
     currentPagePath = url.pathname;
     writePageHistory(url, replace);
-    runBodyScripts(baseUrl);
-    runHeadScripts(doc, baseUrl);
-    if (document.getElementById("site-root")) queueMicrotask(() => globalThis.SameyMountSolid?.());
+    const scriptsReady = Promise.all([
+      runBodyScripts(baseUrl),
+      runHeadScripts(doc, baseUrl),
+    ]).then(() => {});
     apply(); scanVirtualScrollers();
     if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
     else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
     dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
+    return scriptsReady;
   };
   const destinationRoot = (): HTMLElement | null => {
     if (document.documentElement.dataset.siteKind === "keybr") return document.getElementById("app");
@@ -2149,6 +2170,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (kind === "wordle") return typeof globalThis.SameyWordleDispose === "function";
     if (document.documentElement.hasAttribute("data-static-article")) return Boolean(root?.childElementCount);
     return Boolean(root?.childElementCount);
+  };
+  const remountReusableDestination = () => {
+    const kind = document.documentElement.dataset.siteKind;
+    if (kind === "keybr" && typeof globalThis.SameyKeybrDispose !== "function" && document.getElementById("app"))
+      globalThis.SameyMountKeybr?.();
+    else if (document.getElementById("site-root"))
+      globalThis.SameyMountSolid?.();
   };
   const beginDestinationFailureCapture = () => {
     let failed = false;
@@ -2179,8 +2207,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       },
     };
   };
-  const waitForDestinationRoot = async (capturedFailure: () => unknown | undefined) => {
-    for (let i = 0; i < 90; i++) {
+  const DESTINATION_STARTUP_TIMEOUT_MS = 15_000;
+  const DESTINATION_STARTUP_POLL_MS = 25;
+  const waitForDestinationRoot = async (
+    capturedFailure: () => unknown | undefined,
+    scriptsReady: Promise<void>,
+  ) => {
+    let scriptsSettled = false;
+    void scriptsReady.then(() => { scriptsSettled = true; });
+    const deadline = performance.now() + DESTINATION_STARTUP_TIMEOUT_MS;
+    while (performance.now() < deadline) {
       const root = destinationRoot();
       if (destinationMounted(root)) return root;
       const failure = capturedFailure();
@@ -2190,7 +2226,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
           failure,
         );
       }
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      if (scriptsSettled) {
+        remountReusableDestination();
+        const mountedRoot = destinationRoot();
+        if (destinationMounted(mountedRoot)) return mountedRoot;
+      }
+      await new Promise<void>(resolve => setTimeout(resolve, DESTINATION_STARTUP_POLL_MS));
     }
     const failure = capturedFailure();
     if (failure !== undefined) {
@@ -2199,7 +2240,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         failure,
       );
     }
-    throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount before the startup timeout.`);
+    const kind = document.documentElement.dataset.siteKind || "destination";
+    throw new Error(
+      scriptsSettled
+        ? `The ${kind} application did not mount before the startup timeout.`
+        : `The ${kind} application scripts did not finish loading before the startup timeout.`,
+    );
   };
   type ErrorPageBackgroundSnapshot = {
     node: HTMLElement;
@@ -2271,8 +2317,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const commit = async () => {
         const failures = beginDestinationFailureCapture();
         try {
-          swapPage(doc, baseUrl, url, replace);
-          await waitForDestinationRoot(failures.failure);
+          const scriptsReady = swapPage(doc, baseUrl, url, replace);
+          await waitForDestinationRoot(failures.failure, scriptsReady);
           document.getElementById("samey-boot")?.remove();
           document.getElementById("samey-boot-style")?.remove();
         } finally {

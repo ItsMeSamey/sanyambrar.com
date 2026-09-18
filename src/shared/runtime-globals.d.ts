@@ -21,5 +21,6 @@ declare global {
   var SameyMountSolid: (() => void) | undefined;
   var SameySolidDispose: (() => void) | undefined;
   var SameyWordleDispose: (() => void) | undefined;
+  var SameyMountKeybr: (() => void) | undefined;
   var SameyKeybrDispose: (() => void) | undefined;
 }
