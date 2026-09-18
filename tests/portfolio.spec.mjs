@@ -401,6 +401,41 @@ test('Wordle on-screen key clears after pointer capture loss', async ({ page }, 
   await page.mouse.up();
 });
 
+test('shared slider drag aborts on window blur', async ({ page }, info) => {
+  await visit(page, '/wordle.html', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const slider = page.getByRole('slider', { name: 'Max guesses', exact: true });
+  const result = await slider.evaluate(async element => {
+    const root = element.closest('.game-settings-slider');
+    if (!(root instanceof HTMLElement)) throw new Error('Shared slider root is missing');
+    const rect = element.getBoundingClientRect();
+    element.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, pointerId: 77, button: 0,
+      clientX: rect.left + 20, clientY: rect.top + 5,
+    }));
+    const draggingBefore = root.hasAttribute('data-samey-slider-dragging');
+    window.dispatchEvent(new Event('blur'));
+    document.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, pointerId: 77,
+      clientX: rect.right - 5, clientY: rect.top + 5,
+    }));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    return {
+      draggingBefore,
+      draggingAfter: root.hasAttribute('data-samey-slider-dragging'),
+      offset: root.style.getPropertyValue('--samey-slider-drag-offset'),
+      fill: root.style.getPropertyValue('--samey-slider-drag-fill'),
+    };
+  });
+  expect(result).toEqual({
+    draggingBefore: true,
+    draggingAfter: false,
+    offset: '',
+    fill: '',
+  });
+});
+
 test('Wordle date picker and daily start', async ({ page }, info) => {
   await visit(page, '/wordle.html', info);
   await page.getByRole('button', { name: /^Choose date,/ }).click();
