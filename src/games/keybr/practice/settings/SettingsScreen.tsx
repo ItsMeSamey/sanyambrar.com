@@ -9,7 +9,7 @@ import { Icon } from "../../widget/components/icon/Icon.tsx";
 import { Spacer } from "../../widget/components/text/Spacer.tsx";
 import { Trash2 } from "../../../../shared/components/Icons.tsx";
 import { FormattedMessage, useIntl } from "../../intl/runtime.tsx";
-import { ExplainSettings } from "./ExplainSettings.tsx";
+import { ExplainToggle } from "../../ui/ExplainToggle.tsx";
 import { KeyboardSettings } from "./KeyboardSettings.tsx";
 import { LessonSettings } from "./LessonSettings.tsx";
 import { MiscSettings } from "./MiscSettings.tsx";
@@ -37,7 +37,7 @@ function Content() {
             })} onClick={() => {
                 updateSettings(settings.reset());
             }}/>
-            <ExplainSettings />
+            <ExplainToggle preference="prefs.settings.explain" messageId="t_Explain_settings" defaultMessage="Explain settings" />
           </div>
         </div>
         <LessonSettings />

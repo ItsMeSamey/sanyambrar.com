@@ -6,7 +6,7 @@ import { ExplainerBoundary } from "../widget/components/explainer/ExplainerBound
 import { createMemo } from 'solid-js';
 import { AccuracyStreaksSection } from "./AccuracyStreaksSection.tsx";
 import { CalendarSection } from "./CalendarSection.tsx";
-import { ExplainStats } from "./ExplainStats.tsx";
+import { ExplainToggle } from "../ui/ExplainToggle.tsx";
 import { FooterSection } from "./FooterSection.tsx";
 import { KeyFrequencyHeatmapSection } from "./KeyFrequencyHeatmapSection.tsx";
 import { KeyFrequencyHistogramSection } from "./KeyFrequencyHistogramSection.tsx";
@@ -23,7 +23,7 @@ export function StatsPage() {
   return (
     <Screen>
       <ExplainerBoundary>
-        <ResultGrouper actions={<ExplainStats />}>
+        <ResultGrouper actions={<ExplainToggle preference="prefs.stats.explain" messageId="t_Explain_charts" defaultMessage="Explain charts" />}>
           {(keyStatsMap) => <Content keyStatsMap={keyStatsMap} />}
         </ResultGrouper>
       </ExplainerBoundary>

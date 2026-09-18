@@ -2,12 +2,16 @@ import { parseColor } from "../color/parse.ts";
 import { type GraphicsStyle } from "../widget/components/canvas/graphics-style.ts";
 import { type ClassValue, clsx } from "clsx";
 import { useTheme } from "./context.ts";
-import { useDynamicStyles } from "./dynamic-styles-context.tsx";
-import { type PropName } from "./theme-props.ts";
+type PropName =
+    | "--slow-key-color"
+    | "--fast-key-color"
+    | "--slow-key-background-color"
+    | "--fast-key-background-color"
+    | "--effort-color"
+    | "--Calendar-cell--background-color";
 export const useComputedStyles = () => {
     const theme = useTheme();
-    const { getStyledElement } = useDynamicStyles();
-    const element = getStyledElement();
+    const element = document.body;
     const getPropertyValue = (name: PropName): string => {
         theme();
         return getComputedStyle(element).getPropertyValue(name);
