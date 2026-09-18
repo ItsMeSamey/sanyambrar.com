@@ -3102,17 +3102,27 @@
 				el.setAttribute("src", new URL(value, baseUrl).href);
 			}
 		};
+		const externalScriptReady = (script) => new Promise((resolve) => {
+			const done = () => resolve();
+			script.addEventListener("load", done, { once: true });
+			script.addEventListener("error", done, { once: true });
+		});
 		const runBodyScripts = (baseUrl) => {
+			const pending = [];
 			for (const old of [...document.body.querySelectorAll("script")]) {
 				const fresh = document.createElement("script");
 				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
 				const source = old.getAttribute("src");
-				if (source) fresh.src = new URL(source, baseUrl).href;
-				else fresh.textContent = old.textContent;
+				if (source) {
+					pending.push(externalScriptReady(fresh));
+					fresh.src = new URL(source, baseUrl).href;
+				} else fresh.textContent = old.textContent;
 				old.replaceWith(fresh);
 			}
+			return Promise.all(pending).then(() => {});
 		};
 		const runHeadScripts = (doc, baseUrl) => {
+			const pending = [];
 			document.head.querySelectorAll("script[data-spa-page-script]").forEach((script) => script.remove());
 			for (const old of [...doc.head.querySelectorAll("script")]) {
 				const source = old.getAttribute("src");
@@ -3121,10 +3131,13 @@
 				const fresh = document.createElement("script");
 				for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
 				fresh.dataset.spaPageScript = "";
-				if (resolved) fresh.src = resolved;
-				else fresh.textContent = old.textContent;
+				if (resolved) {
+					pending.push(externalScriptReady(fresh));
+					fresh.src = resolved;
+				} else fresh.textContent = old.textContent;
 				document.head.append(fresh);
 			}
+			return Promise.all(pending).then(() => {});
 		};
 		const clearPageBody = () => {
 			const runtimeAnchor = document.body.querySelector("[data-samey-runtime]");
@@ -3163,9 +3176,7 @@
 			syncHtmlData(doc, baseUrl);
 			currentPagePath = url.pathname;
 			writePageHistory(url, replace);
-			runBodyScripts(baseUrl);
-			runHeadScripts(doc, baseUrl);
-			if (document.getElementById("site-root")) queueMicrotask(() => globalThis.SameyMountSolid?.());
+			const scriptsReady = Promise.all([runBodyScripts(baseUrl), runHeadScripts(doc, baseUrl)]).then(() => {});
 			apply();
 			scanVirtualScrollers();
 			if (!url.hash) scrollTo({
@@ -3175,6 +3186,7 @@
 			});
 			else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
 			dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
+			return scriptsReady;
 		};
 		const destinationRoot = () => {
 			if (document.documentElement.dataset.siteKind === "keybr") return document.getElementById("app");
@@ -3187,6 +3199,10 @@
 			if (kind === "wordle") return typeof globalThis.SameyWordleDispose === "function";
 			if (document.documentElement.hasAttribute("data-static-article")) return Boolean(root?.childElementCount);
 			return Boolean(root?.childElementCount);
+		};
+		const remountReusableDestination = () => {
+			if (document.documentElement.dataset.siteKind === "keybr" && typeof globalThis.SameyKeybrDispose !== "function" && document.getElementById("app")) globalThis.SameyMountKeybr?.();
+			else if (document.getElementById("site-root")) globalThis.SameyMountSolid?.();
 		};
 		const beginDestinationFailureCapture = () => {
 			let failed = false;
@@ -3217,17 +3233,30 @@
 				}
 			};
 		};
-		const waitForDestinationRoot = async (capturedFailure) => {
-			for (let i = 0; i < 90; i++) {
+		const DESTINATION_STARTUP_TIMEOUT_MS = 15e3;
+		const DESTINATION_STARTUP_POLL_MS = 25;
+		const waitForDestinationRoot = async (capturedFailure, scriptsReady) => {
+			let scriptsSettled = false;
+			scriptsReady.then(() => {
+				scriptsSettled = true;
+			});
+			const deadline = performance.now() + DESTINATION_STARTUP_TIMEOUT_MS;
+			while (performance.now() < deadline) {
 				const root = destinationRoot();
 				if (destinationMounted(root)) return root;
 				const failure = capturedFailure();
 				if (failure !== void 0) throw errorWithCause(`The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`, failure);
-				await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+				if (scriptsSettled) {
+					remountReusableDestination();
+					const mountedRoot = destinationRoot();
+					if (destinationMounted(mountedRoot)) return mountedRoot;
+				}
+				await new Promise((resolve) => setTimeout(resolve, DESTINATION_STARTUP_POLL_MS));
 			}
 			const failure = capturedFailure();
 			if (failure !== void 0) throw errorWithCause(`The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`, failure);
-			throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount before the startup timeout.`);
+			const kind = document.documentElement.dataset.siteKind || "destination";
+			throw new Error(scriptsSettled ? `The ${kind} application did not mount before the startup timeout.` : `The ${kind} application scripts did not finish loading before the startup timeout.`);
 		};
 		let loadErrorBackground = [];
 		const restoreLoadErrorBackground = () => {
@@ -3308,8 +3337,8 @@
 				const commit = async () => {
 					const failures = beginDestinationFailureCapture();
 					try {
-						swapPage(doc, baseUrl, url, replace);
-						await waitForDestinationRoot(failures.failure);
+						const scriptsReady = swapPage(doc, baseUrl, url, replace);
+						await waitForDestinationRoot(failures.failure, scriptsReady);
 						document.getElementById("samey-boot")?.remove();
 						document.getElementById("samey-boot-style")?.remove();
 					} finally {
