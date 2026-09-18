@@ -841,7 +841,7 @@ void main(){
       const pixel = colorCtx.getImageData(0, 0, 1, 1).data;
       return [pixel[0] / 255, pixel[1] / 255, pixel[2] / 255, pixel[3] / 255];
     }
-    function refreshTheme() {
+    function refreshWebGLTheme() {
       gl.useProgram(prog);
       gl.uniform4fv(u.primaryColor, colorVector("--blob-primary", "#2DD4BF"));
       gl.uniform4fv(u.tertiaryColor, colorVector("--blob-tertiary", "#ACCBE5"));
@@ -850,7 +850,7 @@ void main(){
         colorVector("--surface-container-highest", "#2A3244"),
       );
     }
-    refreshTheme();
+    refreshWebGLTheme();
     let targetLife = 1,
       currentLife = 1,
       targetActivity = 0.22,
@@ -860,6 +860,21 @@ void main(){
     let activeState = true,
       last = performance.now(),
       signalClock = 0;
+    let fallback: BlobRuntime | null = null;
+    function failOverTo2d() {
+      if (fallback) return fallback;
+      fallback = makeFallbackBlob(canvas);
+      fallback.setActive(activeState);
+      fallback.refreshTheme();
+      return fallback;
+    }
+    canvas.addEventListener(
+      "webglcontextlost",
+      () => {
+        failOverTo2d();
+      },
+      { once: true },
+    );
     function resize() {
       const dpr = Math.min(devicePixelRatio || 1, 2);
       const r = canvas.getBoundingClientRect();
@@ -914,6 +929,11 @@ void main(){
       }
     }
     function frame(now: number) {
+      if (fallback) return;
+      if (gl.isContextLost()) {
+        failOverTo2d();
+        return;
+      }
       resize();
       const dt = Math.max(0.001, Math.min(0.1, (now - last) / 1000));
       last = now;
@@ -940,8 +960,12 @@ void main(){
           targetActivity = 0;
           targetBands.fill(0);
         }
+        fallback?.setActive(v);
       },
-      refreshTheme,
+      refreshTheme() {
+        if (fallback) fallback.refreshTheme();
+        else refreshWebGLTheme();
+      },
     };
   }
   function makeBlobShader(canvas: HTMLCanvasElement): BlobRuntime {
