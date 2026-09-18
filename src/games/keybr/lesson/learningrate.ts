@@ -5,7 +5,6 @@ import { r2 } from "../math/model.ts";
 import { Vector } from "../math/vector.ts";
 import { type KeySample } from "../result/keystats.ts";
 import { timeToSpeed } from "../result/result.ts";
-import { findSession } from "./learningsession.ts";
 import { type Target } from "./target.ts";
 
 export class LearningRate {
@@ -90,6 +89,17 @@ export class LearningRate {
       }
     }
   }
+}
+
+function findSession(samples: readonly KeySample[]): KeySample[] {
+  const { length } = samples;
+  for (let i = length - 1; i > 0; i--) {
+    const a = samples[i - 1];
+    const b = samples[i];
+    if (b.timeStamp - a.timeStamp > 3600000) return samples.slice(i);
+    if (b.filteredTimeToType > a.filteredTimeToType && length - i + 1 >= 5) return samples.slice(i);
+  }
+  return samples.slice(0);
 }
 
 function getPolynomialDegree(length: number): number {

@@ -1,4 +1,15 @@
-import { getAudioContext } from "./audiocontext.ts";
+let audioContext: AudioContext | null = null;
+const getAudioContext = (): AudioContext | null => {
+  if (audioContext == null) {
+    try {
+      audioContext = new AudioContext();
+    } catch {
+      audioContext = null;
+    }
+  }
+  return audioContext;
+};
+
 import { nullPlayer, WebAudioPlayer } from "./player.ts";
 import { type Player, type PlayerId, type SoundAssets } from "./types.ts";
 
