@@ -875,6 +875,17 @@ for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff',
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
+test('accessible open search', async ({ page }, info) => {
+  await visit(page, '/', info);
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible();
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+  }
+});
+
 test('accessible Keybr practice input', async ({ page }, info) => {
   await visitKeybr(page, info);
   await expect(page.locator('textarea[aria-label="Typing input"]').first()).toBeAttached();
