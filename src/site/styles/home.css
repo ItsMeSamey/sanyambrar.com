@@ -59,7 +59,7 @@
 .site-standard .reverb-demo-store-link{display:inline-flex;align-items:center;gap:5px;color:var(--site-fg);font:650 11px/1 var(--site-font,system-ui);white-space:nowrap}
 .site-standard .reverb-demo-store-link span{color:var(--site-muted);transition:transform var(--site-fast,110ms) var(--site-ease-out,ease)}
 .site-standard .reverb-demo-store-link:hover span,.site-standard .reverb-demo-store-link:focus-visible span{transform:translate(2px,-2px)}
-.site-standard .reverb-demo-frame-shell{width:100%;height:820px;min-height:0}
+.site-standard .reverb-demo-frame-shell{width:100%;height:912px;min-height:0}
 .site-standard .reverb-demo-frame{position:relative;width:100%;height:100%;min-height:0}
 .site-standard .reverb-demo-fullscreen-button{position:absolute;z-index:4;right:0;top:-46px;width:38px;height:38px;border:1px solid color-mix(in srgb,var(--site-line) 72%,transparent);border-radius:9px;background:color-mix(in srgb,var(--site-bg) 82%,transparent);color:var(--site-fg);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 5px 18px var(--site-shadow-2);backdrop-filter:blur(10px);-webkit-tap-highlight-color:transparent}
 .site-standard .reverb-demo-fullscreen-button svg{width:20px;height:20px;fill:currentColor}
@@ -70,8 +70,8 @@
 .site-standard .reverb-demo-frame.is-fullscreen{position:fixed;inset:0;z-index:calc(var(--samey-z-overlay) - 1);width:100vw;height:100vh;height:100dvh;margin:0;background:color-mix(in srgb,var(--site-bg,#fff) 94%,var(--site-accent-fg,var(--site-accent)) 6%)}
 .site-route:has(.reverb-demo-frame.is-fullscreen){will-change:opacity}
 .site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-host{width:100%;height:100%;border:0;border-radius:0;box-shadow:none}
-.site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button{top:12px;right:12px;border-color:color-mix(in srgb,var(--site-line) 72%,transparent);background:color-mix(in srgb,var(--site-bg) 78%,transparent);color:var(--site-fg)}
-@media(max-width:700px){.site-standard .reverb-demo-section{margin-top:32px}.site-standard .reverb-demo-frame-shell{height:820px;min-height:820px}.site-standard .reverb-demo-head{align-items:flex-start}}
+.site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button{top:12px;right:12px;border-color:color-mix(in srgb,var(--site-line) 72%,transparent);background:color-mix(in srgb,var(--site-bg) 78%,transparent);color:var(--site-fg);opacity:0}.site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button:hover,.site-standard .reverb-demo-frame.is-fullscreen .reverb-demo-fullscreen-button:focus-visible{opacity:1}
+@media(max-width:700px){.site-standard .reverb-demo-section{margin-top:32px}.site-standard .reverb-demo-frame-shell{height:912px;min-height:912px}.site-standard .reverb-demo-head{align-items:flex-start}}
 
 /* CNN project: canvas left / predictions right on wide screens, stacked on mobile. */
 .site-standard .cnn-demo-section{margin-top:38px;user-select:none;-webkit-user-select:none}
