@@ -1,1 +1,0 @@
-import{x as e}from"./site-app-B77Eke8K.js";import{t}from"./_.contribution-QWF-CriX.js";t({id:`go`,extensions:[`.go`],aliases:[`Go`],loader:()=>e(()=>import(`./go-C-y9NEjX.js`),[])});

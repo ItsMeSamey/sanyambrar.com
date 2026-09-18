@@ -173,15 +173,31 @@ function mountReverbDemo(host: HTMLDivElement) {
     querySelectorAll: selectors => shadow.querySelectorAll(selectors),
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
   };
+  const addDemoWindowEventListener = (
+    type: keyof WindowEventMap,
+    listener: EventListenerOrEventListenerObject,
+    options?: boolean | AddEventListenerOptions,
+  ) => {
+    window.addEventListener(type, listener as EventListener, options);
+    return () => window.removeEventListener(type, listener as EventListener, options);
+  };
 
   const syncCursorMode = () => host.setAttribute('data-cursor-mode', document.documentElement.dataset.cursorMode || 'invert');
   syncCursorMode();
-  const runtime = runReverbDemoRuntime(demoDocument, requestDemoFrame, setDemoTimeout, clearDemoTimeout, window.devicePixelRatio || 1);
+  const runtime = runReverbDemoRuntime(
+    demoDocument,
+    requestDemoFrame,
+    setDemoTimeout,
+    clearDemoTimeout,
+    window.devicePixelRatio || 1,
+    addDemoWindowEventListener,
+  );
   const refreshTheme = () => { syncCursorMode(); runtime?.refreshTheme?.(); };
   window.addEventListener('samey-themechange', refreshTheme);
 
   return () => {
     disposed = true;
+    runtime.dispose();
     window.removeEventListener('samey-themechange', refreshTheme);
     for (const id of rafs) window.cancelAnimationFrame(id);
     for (const id of timers) window.clearTimeout(id);

@@ -793,6 +793,40 @@ test('Reverb settings dropdown closes when its geometry changes', async ({ page 
   await expect(menu).not.toHaveClass(/show/);
 });
 
+test('Reverb demo releases its resize listener after SPA leave', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    const listeners = new Set();
+    const add = EventTarget.prototype.addEventListener;
+    const remove = EventTarget.prototype.removeEventListener;
+    Object.defineProperty(globalThis, '__sameyQaResizeListeners', { value: listeners });
+    EventTarget.prototype.addEventListener = function(type, listener, options) {
+      if (this === window && type === 'resize' && listener) listeners.add(listener);
+      return add.call(this, type, listener, options);
+    };
+    EventTarget.prototype.removeEventListener = function(type, listener, options) {
+      if (this === window && type === 'resize' && listener) listeners.delete(listener);
+      return remove.call(this, type, listener, options);
+    };
+  });
+  await visit(page, '/', info);
+  const resizeListenerCount = () => page.evaluate(() => globalThis.__sameyQaResizeListeners?.size ?? -1);
+  const baseline = await resizeListenerCount();
+  const navigate = async href => {
+    const loaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
+    await page.evaluate(next => { void globalThis.SameyNavigate?.(next); }, href);
+    await loaded;
+  };
+
+  await navigate('/projects/reverb/');
+  await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
+  await expect.poll(resizeListenerCount).toBe(baseline + 1);
+
+  await navigate('/work/');
+  await expect(page).toHaveURL(/\/work\/$/);
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.siteKind)).toBe('work');
+  await expect.poll(resizeListenerCount, { message: 'Reverb runtime resize listener must be removed on unmount' }).toBe(baseline);
+});
+
 test('Reverb blob falls back after WebGL context loss', async ({ page }, info) => {
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
