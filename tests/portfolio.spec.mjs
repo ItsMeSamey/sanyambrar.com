@@ -816,15 +816,24 @@ test('Reverb settings dropdown closes when its geometry changes', async ({ page 
 test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, info) => {
   await page.addInitScript(() => {
     globalThis.__sameyQaReverbDraws = 0;
-    const original = WebGLRenderingContext.prototype.drawArrays;
+    globalThis.__sameyQaRafCallbacks = 0;
+    const originalDrawArrays = WebGLRenderingContext.prototype.drawArrays;
     WebGLRenderingContext.prototype.drawArrays = function(...args) {
       globalThis.__sameyQaReverbDraws += 1;
-      return original.apply(this, args);
+      return originalDrawArrays.apply(this, args);
     };
+    const originalRaf = globalThis.requestAnimationFrame.bind(globalThis);
+    globalThis.requestAnimationFrame = callback => originalRaf(time => {
+      globalThis.__sameyQaRafCallbacks += 1;
+      callback(time);
+    });
   });
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
   const drawCount = () => page.evaluate(() => globalThis.__sameyQaReverbDraws ?? 0);
+  const rafCount = () => page.evaluate(() => globalThis.__sameyQaRafCallbacks ?? 0);
+  const timerSeconds = () => host.locator('#blobTime').evaluate(element =>
+    element.textContent.split(':').map(Number).reduce((total, part) => total * 60 + part, 0));
   await expect.poll(drawCount, { message: 'Visible Reverb blob must actively render' }).toBeGreaterThan(0);
   const initialBacking = await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]);
 
@@ -832,8 +841,12 @@ test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, 
   await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
   await page.waitForTimeout(80);
   const hiddenDrawCount = await drawCount();
-  await page.waitForTimeout(250);
+  const hiddenRafCount = await rafCount();
+  const hiddenTimer = await timerSeconds();
+  await page.waitForTimeout(1100);
   expect(await drawCount(), 'Hidden Reverb blob must stop issuing WebGL draws').toBe(hiddenDrawCount);
+  expect(await rafCount(), 'Hidden Reverb screen must not keep a frame polling loop alive').toBe(hiddenRafCount);
+  expect(await timerSeconds(), 'Capture time must keep advancing while Settings is open').toBeGreaterThan(hiddenTimer);
   expect(await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]),
     'Hiding the blob must not collapse its backing store').toEqual(initialBacking);
 
