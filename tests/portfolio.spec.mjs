@@ -198,6 +198,21 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(appearance).toBeFocused();
 });
 
+test('loading strip animates only while visible', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await visit(page, '/', info);
+  const runningAnimations = () => page.locator('.samey-loading-top-bar').evaluate(element =>
+    element.getAnimations().filter(animation => animation.playState === 'running').length);
+  await expect.poll(runningAnimations, { message: 'Hidden loading stripe must not keep animating' }).toBe(0);
+
+  await page.evaluate(() => globalThis.SameyLoading?.(true));
+  await expect(page.locator('#samey-loading-top')).toHaveCSS('visibility', 'visible');
+  await expect.poll(runningAnimations, { message: 'Visible loading stripe must animate' }).toBe(1);
+
+  await page.evaluate(() => globalThis.SameyLoading?.(false));
+  await expect.poll(runningAnimations, { message: 'Loading stripe animation must stop when hidden' }).toBe(0);
+});
+
 test('advanced appearance saves, previews, loads and deletes themes', async ({ page }, info) => {
   await visit(page, '/', info);
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
