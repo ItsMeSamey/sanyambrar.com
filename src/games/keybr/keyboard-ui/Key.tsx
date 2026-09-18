@@ -14,7 +14,6 @@ import { keyGap, keySize } from "./shapes.tsx";
 import { omit } from 'solid-js';
 type KeyProps = {
     readonly depressed?: boolean;
-    readonly toggled?: boolean;
     readonly showColors?: boolean;
 } & MouseProps;
 export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Component<KeyProps> {
@@ -80,10 +79,10 @@ export function makeKeyComponent({ letterName }: Language, shape: KeyShape): Com
     if (isLigature(d)) {
         children.push(makeLigatureLabel(d, 25, 12, styles.secondarySymbol));
     }
-    const zoneClassName = zoneClassNameOf(shape);
+    const zoneClassName = fingerClassNameOf(shape);
     function KeyComponent(props: KeyProps): JSX.Element {
-        const local = props, mouse = omit(props, "depressed", "toggled", "showColors");
-        return (<svg {...mouse} class={clsx(styles.key, local.depressed && styles.depressedKey, local.toggled && styles.toggledKey, local.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
+        const local = props, mouse = omit(props, "depressed", "showColors");
+        return (<svg {...mouse} class={clsx(local.depressed && styles.depressedKey, local.showColors && zoneClassName)} x={x} y={y} width={w} height={h} data-key={id}>
         {children}
       </svg>);
     }
@@ -150,18 +149,6 @@ function makeLabel(label: LabelShape, className: ClassName = undefined): JSX.Ele
     return (<text class={clsx(styles.symbol, className)} x={x} y={y} text-anchor={textAnchor} dominant-baseline={dominantBaseline}>
       {text}
     </text>);
-}
-function zoneClassNameOf(shape: KeyShape): string | null {
-    return clsx(handClassNameOf(shape), fingerClassNameOf(shape));
-}
-function handClassNameOf({ hand }: KeyShape): string | null {
-    switch (hand) {
-        case "left":
-            return styles.handLeft;
-        case "right":
-            return styles.handRight;
-    }
-    return null;
 }
 function fingerClassNameOf({ finger }: KeyShape): string | null {
     switch (finger) {

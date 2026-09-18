@@ -31,18 +31,6 @@
   fill: var(--KeyboardKey-symbol__color);
 }
 
-.handLeft {
-  .button {
-    
-  }
-}
-
-.handRight {
-  .button {
-    
-  }
-}
-
 .fingerPinky {
   .button {
     fill: var(--pinky-zone-color);
@@ -79,16 +67,6 @@
   }
 }
 
-.key {
-  .button {
-    
-  }
-
-  .symbol {
-    
-  }
-}
-
 .depressedKey {
   .button {
     fill: var(--KeyboardKey-button--depressed__color);
@@ -96,15 +74,5 @@
 
   .symbol {
     fill: var(--KeyboardKey-symbol--depressed__color);
-  }
-}
-
-.toggledKey {
-  .button {
-    
-  }
-
-  .symbol {
-    
   }
 }
