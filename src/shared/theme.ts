@@ -2026,19 +2026,21 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       document.documentElement.setAttribute(attr.name, value);
     }
   };
-  const logicalPageUrl = (url: URL) => {
-    const logical = new URL(url.href);
-    if (logical.pathname.endsWith("/blog")) logical.pathname += "/index.html";
-    else if (logical.pathname.endsWith("/")) logical.pathname += "index.html";
-    else if (!/\.[a-z0-9]+$/i.test(logical.pathname)) logical.pathname += ".html";
-    return logical;
+  const extensionlessPageUrl = (url: URL) => {
+    const clean = new URL(url.href);
+    if (clean.origin !== location.origin) return clean;
+    if (/\/index\.html$/i.test(clean.pathname)) clean.pathname = clean.pathname.replace(/index\.html$/i, "");
+    else if (/\.html$/i.test(clean.pathname)) clean.pathname = clean.pathname.slice(0, -5);
+    return clean;
   };
+  const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
+  if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
   const fetchPage = async (url: URL): Promise<FetchedPage> => {
     const key = url.href;
     const cached = pageCache.get(key);
     if (cached) return cached;
     const task = (async () => {
-      const logical = logicalPageUrl(url);
+      const logical = extensionlessPageUrl(url);
       const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
       if (!response.ok) throw new Error("page fetch failed");
       const doc = new DOMParser().parseFromString(await response.text(), "text/html");
@@ -2156,7 +2158,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   globalThis.SameyCancelPageSwap = cancelPageNavigation;
   const loadPage = async (href: string | URL, { replace = false, force = false, direction }: PageNavigationOptions = {}) => {
     const id = ++pageNavigationId;
-    const url = new URL(href, location.href);
+    const url = extensionlessPageUrl(new URL(href, location.href));
     if (url.origin !== location.origin) { location.href = url.href; return; }
     dismissLoadError();
     if (!force && url.href === location.href) { setLoading(false); return; }
