@@ -1012,6 +1012,26 @@ test('Keybr tutorial advances through its content and closes cleanly', async ({ 
           return !!box && box.x >= -1 && box.y >= -1 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1;
         }, { message: 'Tutorial popup must settle inside extreme aspect ratios' }).toBe(true);
       }
+
+      await page.setViewportSize({ width: 900, height: 400 });
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.mouse.move(20, 20);
+      await page.mouse.wheel(0, 300);
+      await expect.poll(() => page.evaluate(() => scrollY), { message: 'Tutorial page must exercise a real scroll' }).toBeGreaterThan(0);
+      await expect.poll(() => page.evaluate(() => {
+        const portal = document.querySelector('#keybr-portal');
+        const slide = portal?.querySelector('[data-tour-anchor]');
+        const selector = slide?.getAttribute('data-tour-anchor');
+        const anchor = selector ? document.querySelector(selector) : null;
+        const spotlight = portal?.firstElementChild?.firstElementChild;
+        const marker = spotlight?.lastElementChild;
+        if (!(anchor instanceof HTMLElement) || !(marker instanceof HTMLElement)) return false;
+        const a = anchor.getBoundingClientRect(), m = marker.getBoundingClientRect();
+        return Math.abs(m.left - (a.left - 10)) <= 1
+          && Math.abs(m.top - (a.top - 10)) <= 1
+          && Math.abs(m.width - (a.width + 20)) <= 1
+          && Math.abs(m.height - (a.height + 20)) <= 1;
+      }), { message: 'Tutorial spotlight must follow its anchor while the page scrolls' }).toBe(true);
     }
     const next = portal.getByText('Next', { exact: true });
     if (await next.count()) {
