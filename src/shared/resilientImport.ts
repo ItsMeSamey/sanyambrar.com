@@ -15,9 +15,11 @@ function reloadForStaleImport(): boolean {
   if (typeof location === 'undefined' || typeof sessionStorage === 'undefined') return false;
   const now = Date.now();
   let previous = 0;
-  try { previous = Number(sessionStorage.getItem(STALE_IMPORT_RELOAD_KEY) || 0); } catch {}
+  try { previous = Number(sessionStorage.getItem(STALE_IMPORT_RELOAD_KEY) || 0); }
+  catch (error) { console.warn('Could not read stale-import reload marker', error); }
   if (Number.isFinite(previous) && now - previous < STALE_IMPORT_RELOAD_WINDOW_MS) return false;
-  try { sessionStorage.setItem(STALE_IMPORT_RELOAD_KEY, String(now)); } catch {}
+  try { sessionStorage.setItem(STALE_IMPORT_RELOAD_KEY, String(now)); }
+  catch (error) { console.warn('Could not persist stale-import reload marker', error); }
   location.reload();
   return true;
 }

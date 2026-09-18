@@ -1,6 +1,7 @@
 import type * as Monaco from 'monaco-editor/editor/editor.api';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
+import { formatThrownError } from '../shared/error.ts';
 
 type MonacoModule = typeof import('../site/monaco.ts');
 type MonacoApi = MonacoModule['monaco'];
@@ -47,10 +48,15 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   const route = () => toolId;
   const stateKey = (tool: ToolId, name: string) => `tool.${tool}.${name}`;
   const localGet = (tool: ToolId, name: string, fallback = '') => {
-    try { return localStorage.getItem(stateKey(tool, name)) ?? fallback; } catch { return fallback; }
+    try { return localStorage.getItem(stateKey(tool, name)) ?? fallback; }
+    catch (error) {
+      console.warn(`Could not read ${tool} tool state "${name}"; using fallback`, error);
+      return fallback;
+    }
   };
   const localSet = (tool: ToolId, name: string, value: unknown) => {
-    try { localStorage.setItem(stateKey(tool, name), String(value)); } catch {}
+    try { localStorage.setItem(stateKey(tool, name), String(value)); }
+    catch (error) { console.warn(`Could not persist ${tool} tool state "${name}"`, error); }
   };
   const get = (name: string, fallback = '') => localGet(route(), name, fallback);
   const set = (name: string, value: unknown) => localSet(route(), name, value);
@@ -852,14 +858,14 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
 
   function render() {
     const generation = ++renderGeneration;
-    try { disposeTool(); } catch {}
+    try { disposeTool(); } catch (error) { console.error('Tool cleanup failed', error); }
     disposeTool = () => {};
     const tool = route();
     const run = ({ text: textTool, base: baseTool, diff: diffTool, number: numberTool, markdown: markdownTool })[tool] || textTool;
     document.title = `${TOOLS.find(({ id }) => id === tool)?.title || 'Tools'} · Sanyam Brar`;
     Promise.resolve(run(generation)).catch(error => {
       if (!currentRender(generation)) return;
-      root.innerHTML = `<div class="tool-fatal"><strong>Editor failed to load.</strong><span>${esc(errorMessage(error))}</span><button type="button">Retry</button></div>`;
+      root.innerHTML = `<div class="tool-fatal"><strong>Editor failed to load.</strong><pre class="samey-error-stack">${esc(formatThrownError(error))}</pre><button type="button">Retry</button></div>`;
       query<HTMLButtonElement>(root, 'button').onclick = render;
       setContext('');
     });
@@ -869,7 +875,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   return () => {
     disposed = true;
     renderGeneration++;
-    try { disposeTool(); } catch {}
+    try { disposeTool(); } catch (error) { console.error('Tool cleanup failed during unmount', error); }
     setContext('');
     if (monacoThemeListener) removeEventListener('samey-themechange', monacoThemeListener);
   };

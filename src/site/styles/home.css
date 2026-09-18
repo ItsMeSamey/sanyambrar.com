@@ -81,6 +81,9 @@
 .site-standard .cnn-demo-section{--cnn-muted:color-mix(in srgb,var(--site-fg,#121213) 10%,var(--site-muted,#787c7e));margin-top:38px;user-select:none;-webkit-user-select:none}
 .site-standard .cnn-demo-head{margin-bottom:12px}
 .site-standard .cnn-demo-head h2{margin:0;font-size:15px}
+.site-standard .cnn-demo-error{display:grid;gap:8px;margin:0 0 12px;padding:12px;border:1px solid color-mix(in srgb,var(--site-error,#dc2626) 45%,var(--site-line));border-radius:8px;background:var(--site-error-bg);color:var(--site-fg)}
+.site-standard .cnn-demo-error .samey-error-stack{margin:0}
+.site-standard .cnn-demo-error button{justify-self:start;min-height:32px;padding:0 10px;border:1px solid var(--site-line);border-radius:6px;background:var(--site-bg);color:var(--site-fg)}
 .site-standard .cnn-demo-shell{position:relative;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(280px,.92fr);gap:0;min-height:448px;border:1px solid color-mix(in srgb,var(--site-line) 88%,var(--site-fg) 12%);border-radius:14px;overflow:hidden;background:color-mix(in srgb,var(--site-bg) 90%,var(--site-soft));box-shadow:0 14px 38px color-mix(in srgb,var(--site-shadow-tint,#000) 9%,transparent),inset 0 1px 0 color-mix(in srgb,var(--site-fg) 4%,transparent)}
 .site-standard .cnn-draw-pane{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:0;min-width:0;min-height:448px;padding:0;background:color-mix(in srgb,var(--site-bg) 76%,var(--site-soft))}
 .site-standard .cnn-pad-wrap{position:relative;width:min(100%,420px);aspect-ratio:1;min-height:0;margin:auto;overflow:hidden;border:0;border-radius:0;padding:0;background:color-mix(in srgb,var(--site-bg) 80%,var(--site-soft));box-shadow:none;isolation:isolate;contain:paint}

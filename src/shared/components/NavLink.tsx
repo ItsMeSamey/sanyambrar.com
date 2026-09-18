@@ -10,7 +10,9 @@ function prefetch(href: unknown) {
     if (url.origin !== location.origin) return;
     if (globalThis.SameySolidPreload) globalThis.SameySolidPreload(url.href);
     else globalThis.SameyPreloadPage?.(url.href);
-  } catch {}
+  } catch (error) {
+    console.warn('Could not prefetch navigation target', href, error);
+  }
 }
 
 export function SmartLink(props: SmartLinkProps) {

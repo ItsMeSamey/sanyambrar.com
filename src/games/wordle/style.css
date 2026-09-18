@@ -531,10 +531,13 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .error-page-message {
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
+  width: min(920px, calc(100% - 24px));
   margin-top: 3.5rem;
   text-align: center;
   color: color-mix(in srgb,var(--site-fg,#121213) 68%,transparent);
 }
+.error-page-stack { margin-inline: auto; }
 
 .error-page-heading {
   display: block;

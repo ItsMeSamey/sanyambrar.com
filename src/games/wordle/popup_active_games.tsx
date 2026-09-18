@@ -93,7 +93,9 @@ function readActiveGame(key: string): ActiveGame | undefined {
       !Array.isArray(current) || current.length !== 2 || typeof current[0] !== 'string' || typeof current[1] !== 'string' ||
       current[0].length > config.wordLength || current[1] !== '') return
     return {key, config, history: played}
-  } catch {}
+  } catch (error) {
+    console.warn(`Could not read active Wordle game "${key}"`, error)
+  }
 }
 
 function sameGame(a: ActiveGame, b: ActiveGame) {
@@ -113,7 +115,9 @@ function getActiveGames(): ActiveGame[] {
       const game = readActiveGame(key)
       if (game) games.push(game)
     }
-  } catch {}
+  } catch (error) {
+    console.warn('Could not enumerate active Wordle games', error)
+  }
   return sortGames(games)
 }
 

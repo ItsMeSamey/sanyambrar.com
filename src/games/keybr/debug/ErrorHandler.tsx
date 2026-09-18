@@ -5,6 +5,7 @@ import { Para } from "../widget/components/text/Para.tsx";
 import { ErrorReport } from "./ErrorReport.tsx";
 import styles from "./ErrorHandler.module.css";
 import { catchError, silentCatchError } from "./logger.ts";
+import { formatThrownError } from "../../../shared/error.ts";
 
 function ErrorScreen(props: { readonly report: string }) {
   return <article class={styles.root}>
@@ -28,7 +29,7 @@ export function ErrorHandler(props: Props): JSX.Element {
   const Display = props.display ?? ErrorScreen;
   const BoundaryReport = (props: { error: Accessor<unknown> }) => {
     createEffect(props.error, error => { silentCatchError(error); });
-    return <Display report={String(props.error())} />;
+    return <Display report={formatThrownError(props.error())} />;
   };
   return (
     <Show when={report()} fallback={

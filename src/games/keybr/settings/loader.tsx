@@ -1,4 +1,5 @@
 import { catchError } from "../debug/logger.ts";
+import { errorMessage, errorWithCause } from "../../../shared/error.ts";
 import { createMemo, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
 import { SettingsContext } from "./context.ts";
@@ -9,12 +10,25 @@ export function SettingsLoader(props: { readonly children: JSX.Element; readonly
   const storage = createMemo<SettingsStorage>(() => {
     const key = "settings";
     const read = (): Settings => {
+      let value: string | null;
       try {
-        const value = localStorage.getItem(key);
-        if (value != null) return new Settings(JSON.parse(value));
-      } catch {}
+        value = localStorage.getItem(key);
+      } catch (error) {
+        throw errorWithCause(`Could not read Keybr settings: ${errorMessage(error)}`, error);
+      }
+      if (value != null) {
+        try {
+          return new Settings(JSON.parse(value));
+        } catch (error) {
+          throw errorWithCause(`Keybr settings are invalid: ${errorMessage(error)}`, error);
+        }
+      }
       const settings = new Settings(undefined, true);
-      localStorage.setItem(key, JSON.stringify(settings.toJSON()));
+      try {
+        localStorage.setItem(key, JSON.stringify(settings.toJSON()));
+      } catch (error) {
+        throw errorWithCause(`Could not initialize Keybr settings: ${errorMessage(error)}`, error);
+      }
       return settings;
     };
     return {

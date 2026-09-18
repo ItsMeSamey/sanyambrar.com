@@ -17,10 +17,13 @@ function getItem(key: string): unknown {
     if (item == null) return null;
     try {
       return JSON.parse(item);
-    } catch {
+    } catch (error) {
+      console.warn(`Invalid Keybr preference "${key}"; removing it`, error);
       window.localStorage.removeItem(key);
     }
-  } catch {}
+  } catch (error) {
+    console.warn(`Could not read Keybr preference "${key}"`, error);
+  }
   return null;
 }
 
@@ -29,5 +32,7 @@ function setItem(key: string, value: unknown): void {
   try {
     if (value != null) window.localStorage.setItem(key, JSON.stringify(value));
     else window.localStorage.removeItem(key);
-  } catch {}
+  } catch (error) {
+    console.warn(`Could not persist Keybr preference "${key}"`, error);
+  }
 }

@@ -6,6 +6,7 @@ import { ChevronsUpDown } from '../shared/components/Icons.tsx';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { resilientImport } from '../shared/resilientImport.ts';
+import { formatThrownError } from '../shared/error.ts';
 
 
 const ToolContext = createContext<Accessor<HTMLDivElement | undefined>>(() => undefined);
@@ -42,8 +43,9 @@ function ToolSurface(props:{tool:ToolId}) {
       box.className = 'tool-fatal';
       const title = document.createElement('strong');
       title.textContent = 'Tool failed to load.';
-      const detail = document.createElement('span');
-      detail.textContent = error instanceof Error ? error.message : String(error);
+      const detail = document.createElement('pre');
+      detail.className = 'samey-error-stack';
+      detail.textContent = formatThrownError(error);
       box.append(title, detail);
       root.replaceChildren(box);
     });

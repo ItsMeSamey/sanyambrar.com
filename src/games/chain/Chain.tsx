@@ -5,6 +5,7 @@ import { Settings } from '../../shared/components/Icons.tsx';
 import { ChartNoAxesColumn as BarChart3 } from '../../shared/components/Icons.tsx';
 import { createChainRefs } from './dom.ts';
 import { resilientImport } from '../../shared/resilientImport.ts';
+import { errorWithCause, formatThrownError } from '../../shared/error.ts';
 
 function Slider(props:{label:string;min:number;max:number;inputRef:(el:HTMLInputElement)=>void;outputRef:(el:HTMLOutputElement)=>void}) {
   return <label class="game-settings-slider">
@@ -26,7 +27,13 @@ export function ChainPage() {
     const id = ++generation;
     setEngineError(null);
     setEngineLoading(true);
-    try { disposeEngine(); } catch {}
+    try { disposeEngine(); }
+    catch (cause) {
+      setEngineLoading(false);
+      setEngineError(errorWithCause('Previous Chain Reaction engine cleanup failed', cause));
+      releaseLoading();
+      return;
+    }
     disposeEngine = () => {};
     try {
       const module = await resilientImport(() => import('./chain.ts'));
@@ -45,7 +52,7 @@ export function ChainPage() {
   onCleanup(() => {
     disposed = true;
     generation++;
-    try { disposeEngine(); } catch {}
+    try { disposeEngine(); } catch (error) { console.error('Chain Reaction cleanup failed during unmount', error); }
   });
 
   const statsButton = () => <TopBarIconButton ref={el => refs.statsButtons.push(el)} label="Statistics"><BarChart3 aria-hidden="true"/></TopBarIconButton>;
@@ -158,7 +165,7 @@ export function ChainPage() {
     <Show when={engineError()}>{cause =>
       <aside class="engine-state engine-state-error" role="alert" aria-live="assertive">
         <strong>Chain Reaction failed to start</strong>
-        <span>{(() => { const value = cause(); return value instanceof Error ? value.message : String(value); })()}</span>
+        <pre class="samey-error-stack">{formatThrownError(cause())}</pre>
         <button type="button" onClick={() => void startEngine()}>Retry</button>
       </aside>
     }</Show>

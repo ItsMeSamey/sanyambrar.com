@@ -127,11 +127,15 @@ export function mountChain(refs: ChainRefs) {
         cols: clampInt(saved.cols, ...limits.cols, defaults.cols),
         enemies: clampInt(saved.enemies, ...limits.enemies, defaults.enemies),
       };
-    } catch { return {...defaults}; }
+    } catch (error) {
+      console.warn('Could not read Chain Reaction settings; using defaults', error);
+      return {...defaults};
+    }
   }
 
   function saveConfig() {
-    try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); } catch {}
+    try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); }
+    catch (error) { console.warn('Could not persist Chain Reaction settings', error); }
   }
 
   function bytesToB64(bytes: Uint8Array) {
@@ -256,11 +260,15 @@ export function mountChain(refs: ChainRefs) {
       };
       localStorage.setItem(MATCHES_KEY, JSON.stringify(db));
       return db;
-    } catch { return emptyMatchDb(); }
+    } catch (error) {
+      console.warn('Could not read Chain Reaction match history; using empty history', error);
+      return emptyMatchDb();
+    }
   }
 
   function persistMatchDb(db: MatchDb) {
-    try { localStorage.setItem(MATCHES_KEY, JSON.stringify({...db,matches:db.matches.slice(0,120)})); } catch {}
+    try { localStorage.setItem(MATCHES_KEY, JSON.stringify({...db,matches:db.matches.slice(0,120)})); }
+    catch (error) { console.warn('Could not persist Chain Reaction match history', error); }
   }
 
 
@@ -350,7 +358,10 @@ export function mountChain(refs: ChainRefs) {
         matchId:version >= 4 && typeof saved.id === 'string' ? saved.id : '',
         players:version >= 4 ? normalizePlayers(saved.pl, cfg.enemies) : createPlayers(cfg.enemies),
       };
-    } catch { return null; }
+    } catch (error) {
+      console.warn('Could not read Chain Reaction saved game', error);
+      return null;
+    }
   }
 
   function saveGameState(inGame = !gameView.hidden) {
@@ -363,7 +374,7 @@ export function mountChain(refs: ChainRefs) {
       }));
       localStorage.removeItem(LEGACY_GAME_KEY);
       localStorage.removeItem(LEGACY_GAME_KEY_V2);
-    } catch {}
+    } catch (error) { console.warn('Could not persist Chain Reaction game state', error); }
     syncMatchRecord(gameOver ? 'completed' : 'active', gameOver ? turn : 0);
     updateResumeCard();
     renderStats();
