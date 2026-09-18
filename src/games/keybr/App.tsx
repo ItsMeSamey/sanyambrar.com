@@ -2,7 +2,6 @@ import { ErrorHandler } from "./debug/ErrorHandler.tsx";
 import { loadIntl } from "./intl/intl.ts";
 import { PracticePage } from "./practice/PracticePage.tsx";
 import { LoadingProgress } from "./ui/LoadingProgress.tsx";
-import { Root } from "./ui/Root.tsx";
 import { ResultLoader } from "./result/loader.tsx";
 import { SettingsLoader } from "./settings/loader.tsx";
 import { ThemeProvider } from "./themes/ThemeProvider.tsx";
@@ -37,11 +36,11 @@ function Bootstrap(): JSX.Element {
           <ErrorHandler>
             <SettingsLoader fallback={<LoadingProgress />}>
               <ResultLoader fallback={<LoadingProgress />}>
-                <Root>
+                <div id="keybr-root">
                   <PracticePage />
                   <PortalContainer />
                   <Toaster />
-                </Root>
+                </div>
               </ResultLoader>
             </SettingsLoader>
           </ErrorHandler>

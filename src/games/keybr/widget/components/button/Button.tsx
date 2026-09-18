@@ -1,9 +1,17 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
-import { sizeClassName } from "../../styles/size.ts";
+import { sizeClassName, type SizeName } from "../../styles/size.ts";
 import iconStyles from "../icon/Icon.module.css";
 import styles from "./Button.module.css";
-import { type ButtonProps } from "./Button.types.ts";
+import { type FocusProps, type KeyboardProps, type MouseProps } from "../types.ts";
+type ButtonProps = {
+    readonly autoFocus?: boolean;
+    readonly children?: JSX.Element;
+    readonly icon?: JSX.Element;
+    readonly label?: JSX.Element;
+    readonly size?: SizeName;
+    readonly title?: string;
+} & FocusProps & MouseProps & KeyboardProps;
 import { omit } from 'solid-js';
 export function Button(allProps: ButtonProps): JSX.Element {
     const local = allProps, props = omit(allProps, "children", "disabled", "icon", "label", "size", "tabIndex", "title");

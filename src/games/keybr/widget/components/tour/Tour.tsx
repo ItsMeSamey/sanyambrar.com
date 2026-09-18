@@ -4,14 +4,13 @@ import { useIntl } from "../../../intl/runtime.tsx";
 import { useHotkeys } from "../../hooks/use-hotkeys.ts";
 import { LinkButton } from "../button/LinkButton.tsx";
 import { Icon } from "../icon/Icon.tsx";
-import { Backdrop } from "../popup/Backdrop.tsx";
 import { Popup } from "../popup/Popup.tsx";
 import { Spotlight } from "../popup/Spotlight.tsx";
 import { Portal, PortalContainer } from "../portal/Portal.tsx";
-import { Meter } from "./Meter.tsx";
 import { type SlideProps } from "./Slide.tsx";
 import styles from "./Tour.module.css";
 import { children, createMemo, omit, createSignal, onCleanup, onSettled } from 'solid-js';
+import { clsx } from "clsx";
  type TourProps = {
     readonly children?: readonly JSX.Element[];
     readonly onClose?: () => void;
@@ -81,7 +80,7 @@ export function Tour(allProps: TourProps): JSX.Element {
     const anchor = () => currentSlide()?.dataset.tourAnchor || undefined;
     const position = () => (currentSlide()?.dataset.tourPosition || undefined) as SlideProps["position"];
     return (<Portal>
-      <Backdrop>
+      <div class={styles.backdrop} data-samey-overlay-backdrop="">
         <Spotlight anchor={anchor()}/>
 
         <Popup {...props} anchor={anchor()} position={position()} offset={30}>
@@ -93,7 +92,9 @@ export function Tour(allProps: TourProps): JSX.Element {
             </LinkButton>
 
             <div class={styles.footer}>
-              <Meter length={slides().length} slideIndex={slideIndex()}/>
+              <div class={styles.meter}>
+                {new Array(slides().length).fill(null).map((_slide, index) => (<span class={clsx(styles.meterItem, slideIndex() === index && styles.meterCurrent)}/>))}
+              </div>
 
               {slideIndex() > 0 && (<LinkButton className={styles.prev} onClick={selectPrev}>
                   {formatMessage({
@@ -116,6 +117,6 @@ export function Tour(allProps: TourProps): JSX.Element {
             </div>
           </div>
         </Popup>
-      </Backdrop>
+      </div>
     </Portal>);
 }

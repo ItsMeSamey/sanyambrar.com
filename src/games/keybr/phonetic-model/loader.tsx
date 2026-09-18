@@ -5,7 +5,6 @@ import { createMemo, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
 import { modelAssetPath } from "./assets.ts";
 import { censor } from "./censor.ts";
-import { PhoneticModelContext } from "./context.ts";
 import { makePhoneticModel, PhoneticModel } from "./phoneticmodel.ts";
 
 async function loadModel(language: Language): Promise<PhoneticModel> {
@@ -26,7 +25,7 @@ export function PhoneticModelLoader(props: {
   }));
   return <Loading fallback={props.fallback ?? <LoadingProgress/>}>
     <Show keyed when={result()}>{value =>
-      <PhoneticModelContext value={value}>{props.children(value)}</PhoneticModelContext>
+      props.children(value)
     }</Show>
   </Loading>;
 }
