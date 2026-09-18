@@ -872,6 +872,13 @@ for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff',
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
+test('accessible Keybr practice input', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await expect(page.locator('textarea[aria-label="Typing input"]').first()).toBeAttached();
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+});
+
 test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
   const contrastViolations = async selector => {
     const results = await new AxeBuilder({ page }).include(selector).withRules(['color-contrast']).analyze();
