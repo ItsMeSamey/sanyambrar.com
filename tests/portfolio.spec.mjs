@@ -560,6 +560,28 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await expect(page.getByRole('button', { name: 'Statistics', exact: true })).toBeDisabled();
 });
 
+test('Keybr zoomer drag aborts on window blur', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  const textarea = page.locator('textarea').first();
+  await expect(textarea).toBeVisible();
+  const zoomer = textarea.locator('xpath=ancestor::div[contains(@style, "transform: scale")][1]');
+  const box = await zoomer.boundingBox();
+  if (!box) throw new Error('Keybr zoomer has no geometry');
+  const position = () => zoomer.evaluate(element => [element.style.left, element.style.top]);
+
+  await page.mouse.move(box.x + 40, box.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 60, box.y + 55);
+  await expect.poll(position, { message: 'Keybr zoomer must move while dragging' }).not.toEqual(['0px', '0px']);
+  const beforeBlur = await position();
+
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await page.mouse.move(box.x + 140, box.y + 115);
+  await page.waitForTimeout(60);
+  expect(await position(), 'Keybr zoomer must stop moving after window blur').toEqual(beforeBlur);
+  await page.mouse.up();
+});
+
 test('Keybr statistics canvases paint and survive resize and theme repaint', async ({ page }, info) => {
   await visitKeybr(page, info);
   await seedKeybrHistory(page);

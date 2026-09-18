@@ -32,6 +32,12 @@ export function Zoomer(props: ZoomerProps): JSX.Element {
     setPosition((p) => ({ x: p.x + ev.movementX, y: p.y + ev.movementY, zoom: p.zoom }));
     ev.preventDefault();
   });
+  useWindowEvent("blur", () => {
+    if (!moving()) return;
+    setMoving(false);
+    setHover(false);
+    if (globalMoving.current === root) globalMoving.current = null;
+  });
   useWindowEvent("resize", () => setPosition((p) => place(root).fitToScreen(p)));
 
   createEffect(position, p => {
