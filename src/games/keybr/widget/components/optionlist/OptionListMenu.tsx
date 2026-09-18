@@ -1,10 +1,16 @@
 import type { JSX } from "@solidjs/web";
 import { clsx } from "clsx";
 import { createEffect } from "solid-js";
-import { ensureVisible } from "../../utils/scroll.ts";
 import iconStyles from "../icon/Icon.module.css";
 import { type OptionListOption } from "./OptionList.types.ts";
 import styles from "./OptionListMenu.module.css";
+const ensureVisible = (list: HTMLElement | null, item: HTMLElement | null): void => {
+    if (list == null || item == null) return;
+    if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop;
+    else if (item.offsetTop + item.offsetHeight > list.scrollTop + list.offsetHeight)
+        list.scrollTop = item.offsetTop + item.offsetHeight - list.offsetHeight;
+};
+
 export function OptionListMenu(props: {
     readonly options: readonly OptionListOption[];
     readonly selectedOption: OptionListOption;

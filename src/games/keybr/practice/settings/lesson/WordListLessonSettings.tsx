@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { wordListStats } from "../../../content/words/stats.ts";
 import { useIntlNumbers } from "../../../intl/numbers.ts";
 import { lessonProps } from "../../../lesson/settings.ts";
 import { type WordListLesson } from "../../../lesson/wordlist.ts";
@@ -72,6 +71,15 @@ function WordListPreview(props: {
       </Para>
     </>);
 }
+const wordListStats = (wordList: WordListLesson["wordList"]) => {
+    let wordLength = 0;
+    let wordCount = 0;
+    for (const word of wordList) {
+        wordLength += word.length;
+        wordCount += 1;
+    }
+    return { wordCount, avgWordLength: wordCount > 0 ? wordLength / wordCount : 0 };
+};
 function WordListStats(props: {
     readonly lesson: WordListLesson;
 }): JSX.Element {

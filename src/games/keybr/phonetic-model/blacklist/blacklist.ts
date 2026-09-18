@@ -1,4 +1,5 @@
 import { Language } from "../../keyboard/language.ts";
+import { toCodePoints } from "../../unicode/codepoints.ts";
 import AR from "./blacklist-ar.json" with { type: "json" };
 import BE from "./blacklist-be.json" with { type: "json" };
 import DE from "./blacklist-de.json" with { type: "json" };
@@ -15,7 +16,15 @@ import RU from "./blacklist-ru.json" with { type: "json" };
 import SV from "./blacklist-sv.json" with { type: "json" };
 import TR from "./blacklist-tr.json" with { type: "json" };
 import UK from "./blacklist-uk.json" with { type: "json" };
-import { unscrambleWord } from "./scramble.ts";
+const SCRAMBLE_X = 23;
+const SCRAMBLE_Y = 13;
+const unscrambleWord = (word: string): string => {
+  const input = [...toCodePoints(word)];
+  const output = new Array<number>(input.length);
+  for (let i = 0; i < input.length; i++) output[i] = input[(SCRAMBLE_X * i + SCRAMBLE_Y) % input.length];
+  return String.fromCodePoint(...output);
+};
+
 
 const blacklistByLanguage = ((items: [Language, string[]][]) =>
   new Map<Language, Set<string>>(

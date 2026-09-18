@@ -1,4 +1,4 @@
-import { type LoadingEventListener } from "../../lang/loading.ts";
+type LoadingEventListener = (event: { readonly total: number; readonly current: number }) => void;
 import { type Lesson } from "../../lesson/lesson.ts";
 import { MutableDailyGoal } from "../../lesson/dailygoal.ts";
 import { MutableKeyStatsMap } from "../../result/keystats.ts";
