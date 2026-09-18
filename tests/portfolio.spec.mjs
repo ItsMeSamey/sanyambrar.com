@@ -114,6 +114,37 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
   await expectContained('[data-diff-language], [data-diff-swap]');
 });
 
+test('search traps wheel scrolling at result-list boundaries', async ({ page }, info) => {
+  await page.setViewportSize({ width: 800, height: 220 });
+  await visit(page, '/', info);
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  const backgroundScroll = await page.evaluate(() => scrollY);
+  expect(backgroundScroll).toBeGreaterThan(0);
+
+  await page.keyboard.press('Control+K');
+  const searchInput = page.getByPlaceholder('Search games, tools, writing, work…');
+  expect(await page.evaluate(() => scrollY), 'Opening search by shortcut must preserve the page scroll position').toBe(backgroundScroll);
+  const searchResults = page.locator('.site-search-results');
+  await searchInput.fill('a');
+  await expect(searchResults).toBeVisible();
+  expect(await searchResults.evaluate(element => getComputedStyle(element).overscrollBehaviorY)).toBe('contain');
+  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
+
+  await searchResults.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  expect(await searchResults.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await searchResults.hover();
+  await page.mouse.wheel(0, 1200);
+  expect(await page.evaluate(() => scrollY), 'Wheel-down at the end of search results must not scroll the page').toBe(backgroundScroll);
+
+  await searchResults.evaluate(element => { element.scrollTop = 0; });
+  await page.mouse.wheel(0, -1200);
+  expect(await page.evaluate(() => scrollY), 'Wheel-up at the start of search results must not scroll the page').toBe(backgroundScroll);
+
+  await page.keyboard.press('Escape');
+  await expect(searchResults).not.toBeVisible();
+  expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
+});
+
 test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
