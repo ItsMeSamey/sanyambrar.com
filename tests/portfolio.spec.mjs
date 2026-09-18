@@ -852,7 +852,7 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await expect.poll(lessonText).toBe(jekyllSecond);
 });
 
-for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff', '/tools/?tool=markdown']) test(`accessible ${route}`, async ({ page }, info) => {
+for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff', '/tools/?tool=markdown', '/blog/posts/btop-mutex']) test(`accessible ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
   if (route === '/tools/?tool=diff') {
     const editContexts = page.locator('.monaco-diff-editor .native-edit-context');
@@ -867,6 +867,9 @@ for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff',
     await expect(divider).toHaveAttribute('aria-valuemax', '80');
     await expect(divider).toHaveAttribute('aria-valuenow', /\d/);
     await expect(page.locator('#vditorExportIframe')).toHaveAttribute('title', 'Markdown export preview');
+  }
+  if (route === '/blog/posts/btop-mutex') {
+    await expect(page.locator('.article-route > main pre[tabindex="0"]')).toHaveCount(7);
   }
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
