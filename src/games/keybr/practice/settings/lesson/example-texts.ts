@@ -1,4 +1,4 @@
-export type ExampleText = {
+type ExampleText = {
   readonly title: string;
   readonly content: string;
 };

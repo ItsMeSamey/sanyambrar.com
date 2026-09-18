@@ -1,7 +1,7 @@
 import { type CodePoint } from "../unicode/types.ts";
 import { type Step } from "./textinput.ts";
 
-export type Sample = {
+type Sample = {
   readonly codePoint: CodePoint;
   readonly hitCount: number;
   readonly missCount: number;

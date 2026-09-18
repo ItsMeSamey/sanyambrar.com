@@ -17,7 +17,6 @@
  * @see https://www.rfc-editor.org/rfc/rfc5646.txt
  */
  type LocaleId = string;
-export const defaultLocale: LocaleId = "en";
 export function getDir(locale: LocaleId): "ltr" | "rtl" {
     switch (locale) {
         case "ar":

@@ -12,7 +12,7 @@ import { clsx } from "clsx";
 import styles from "./Key.module.css";
 import { keyGap, keySize } from "./shapes.tsx";
 import { omit } from 'solid-js';
-export type KeyProps = {
+type KeyProps = {
     readonly depressed?: boolean;
     readonly toggled?: boolean;
     readonly showColors?: boolean;

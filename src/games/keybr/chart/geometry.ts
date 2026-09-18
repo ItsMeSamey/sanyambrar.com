@@ -2,7 +2,7 @@ import { Point } from "../widget/utils/point.ts";
 import { Rect } from "../widget/utils/rect.ts";
 
  type Tick<T> = { readonly value: T; readonly point: Point };
-export type Box<T> = { readonly value: T; readonly rect: Rect };
+type Box<T> = { readonly value: T; readonly rect: Rect };
 
 export function vTicks<T>(box: Rect, items: readonly T[]): Tick<T>[] {
   const { length } = items;

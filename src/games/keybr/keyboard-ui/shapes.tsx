@@ -5,7 +5,7 @@ import { type MouseProps } from "../widget/components/types.ts";
 import { Point } from "../widget/utils/point.ts";
 import { Size } from "../widget/utils/size.ts";
 import { omit } from 'solid-js';
-export const margin = 15;
+const margin = 15;
 export const keySize = 40;
 export const keyGap = 2;
 export const getKeyCenter = (shape: KeyShape): Point => {

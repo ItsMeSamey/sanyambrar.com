@@ -2,7 +2,7 @@ import { type Layout } from "../keyboard/layout.ts";
 import { LocalDate } from "./localdate.ts";
 import { type Result } from "./result.ts";
 
-export type Group<T> = {
+type Group<T> = {
   readonly key: T;
   readonly results: readonly Result[];
 };

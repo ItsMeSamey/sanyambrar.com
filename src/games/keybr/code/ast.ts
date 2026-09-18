@@ -13,7 +13,7 @@ export type Prod = Cond | Span | Opt | Seq | Alt | Ref | string;
   readonly cond: Prod;
 };
 
-export type Span = {
+type Span = {
   readonly cls: string;
   readonly span: Prod;
 };
@@ -27,7 +27,7 @@ export type Span = {
   readonly seq: readonly Prod[];
 };
 
-export type Alt = {
+type Alt = {
   readonly alt: readonly Prod[];
 };
 
