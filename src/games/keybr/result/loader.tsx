@@ -1,4 +1,7 @@
-import { ErrorAlert } from "../debug/ErrorAlert.tsx";
+import { ErrorReport } from "../debug/ErrorReport.tsx";
+import { formatReport, inspectError } from "../debug/inspect.ts";
+import { Alert } from "../widget/components/toast/Alert.tsx";
+import { toast } from "../widget/components/toast/Toaster.tsx";
 import { catchError } from "../debug/logger.ts";
 import { createMemo, createSignal, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
@@ -48,10 +51,15 @@ function ResultProvider(props: {
 
 function reportStorageError(error: unknown) {
   console.error(error);
-  ErrorAlert.toast(<>
+  toast(() => <Alert severity="error" closeButton={true}>
     <p>Could not access local typing history.</p>
     <p>Check that this browser allows local site storage.</p>
-  </>, error);
+    <ErrorReport report={formatReport(inspectError(error))}/>
+  </Alert>, {
+    autoClose: false,
+    pauseOnHover: false,
+    closeOnClick: false,
+  });
 }
 
 function createResultStorage(): ResultStorage {

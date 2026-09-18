@@ -7,7 +7,8 @@ import { emulateLayout } from "../textinput-events/emulation.ts";
 import { makeSoundPlayer } from "../textinput-sounds/player.ts";
 import { useDocumentEvent } from "../widget/hooks/use-document-event.ts";
 import { useHotkeys } from "../widget/hooks/use-hotkeys.ts";
-import { useTimeout } from "../widget/hooks/use-timeout.ts";
+import { type Task } from "../lang/tasks.ts";
+import { useTasks } from "../widget/hooks/use-tasks.ts";
 import { useWindowEvent } from "../widget/hooks/use-window-event.ts";
 import { createMemo, createSignal } from 'solid-js';
 import { Presenter } from "./Presenter.tsx";
@@ -143,5 +144,21 @@ function useLessonState(progress: () => Progress, onResult: () => (result: Resul
     handleKeyDown: (event: Parameters<ReturnType<typeof handlers>["onKeyDown"]>[0]) => handlers().onKeyDown(event),
     handleKeyUp: (event: Parameters<ReturnType<typeof handlers>["onKeyUp"]>[0]) => handlers().onKeyUp(event),
     handleInput: (event: Parameters<ReturnType<typeof handlers>["onInput"]>[0]) => handlers().onInput(event),
+  };
+}
+
+function useTimeout() {
+  const tasks = useTasks();
+  let task: Task | null = null;
+  return {
+    get pending() { return task != null; },
+    cancel() {
+      task?.cancel();
+      task = null;
+    },
+    schedule(callback: () => void, timeout: number) {
+      task?.cancel();
+      task = tasks.delayed(timeout, callback);
+    },
   };
 }
