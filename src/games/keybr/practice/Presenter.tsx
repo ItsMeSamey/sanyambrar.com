@@ -7,7 +7,6 @@ import { booleanProp, enumProp } from "../settings/props.ts";
 import { Preferences } from "../settings/preferences.ts";
 import { type LineList } from "../textinput/chars.ts";
 import { type IInputEvent, type IKeyboardEvent } from "../textinput-events/types.ts";
-import { ModifierState } from "../textinput-events/modifiers.ts";
 import { TextArea } from "../textinput-ui/TextArea.tsx";
 import { type Focusable } from "../widget/components/types.ts";
 import { Zoomer } from "../widget/components/zoomer/Zoomer.tsx";
@@ -103,7 +102,7 @@ export function Presenter(props: Props): JSX.Element {
   return (
     <Switch>
       <Match when={view() === View.Normal}>
-        <NormalLayout state={props.state} focus={tour() || focus()} depressedKeys={props.depressedKeys} suffix={props.suffix} toggledKeys={ModifierState.modifiers} lastLesson={props.lastLesson} controls={controls()} textInput={textInput("X0", "TextArea/Normal")} tour={tour() && <PracticeTour onClose={closeTour} />} />
+        <NormalLayout state={props.state} focus={tour() || focus()} depressedKeys={props.depressedKeys} suffix={props.suffix} lastLesson={props.lastLesson} controls={controls()} textInput={textInput("X0", "TextArea/Normal")} tour={tour() && <PracticeTour onClose={closeTour} />} />
       </Match>
       <Match when={view() === View.Compact}>
         <CompactLayout state={props.state} controls={controls()} textInput={textInput("X1", "TextArea/Compact")} />
@@ -115,12 +114,12 @@ export function Presenter(props: Props): JSX.Element {
   );
 }
 
-function NormalLayout(props: { readonly state: LessonState; readonly focus: boolean; readonly depressedKeys: readonly string[]; readonly suffix: readonly CodePoint[]; readonly toggledKeys: readonly string[]; readonly lastLesson: LastLesson | null; readonly controls: JSX.Element; readonly textInput: JSX.Element; readonly tour: JSX.Element }) {
+function NormalLayout(props: { readonly state: LessonState; readonly focus: boolean; readonly depressedKeys: readonly string[]; readonly suffix: readonly CodePoint[]; readonly lastLesson: LastLesson | null; readonly controls: JSX.Element; readonly textInput: JSX.Element; readonly tour: JSX.Element }) {
   return <Screen>
     <Indicators state={props.state} />
     <div id={names.textInput} class={styles.textInputNormal}>{props.textInput}</div>
     <div id={names.keyboard} class={styles.keyboard}>
-      <Zoomer id="Keyboard/Normal"><KeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} suffix={props.suffix} lastLesson={props.lastLesson} /></Zoomer>
+      <Zoomer id="Keyboard/Normal"><KeyboardPresenter focus={props.focus} depressedKeys={props.depressedKeys} suffix={props.suffix} lastLesson={props.lastLesson} /></Zoomer>
     </div>
     {props.controls}{props.tour}
   </Screen>;

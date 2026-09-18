@@ -6,7 +6,6 @@ import { makeKeyComponent } from "./Key.tsx";
 import { Surface } from "./shapes.tsx";
 export const KeyLayer = function KeyLayer(props: {
     readonly depressedKeys?: readonly KeyId[];
-    readonly toggledKeys?: readonly KeyId[];
     readonly showColors?: boolean;
     readonly onKeyHoverIn?: (key: KeyId, elem: Element) => void;
     readonly onKeyHoverOut?: (key: KeyId, elem: Element) => void;
@@ -22,7 +21,7 @@ export const KeyLayer = function KeyLayer(props: {
         }} onClick={(event) => {
             relayEvent(svg, event, props.onKeyClick);
         }}>
-      {keys().map(({ shape, Component }) => (<Component depressed={(props.depressedKeys ?? []).includes(shape.id)} toggled={(props.toggledKeys ?? []).includes(shape.id)} showColors={props.showColors ?? false}/>))}
+      {keys().map(({ shape, Component }) => (<Component depressed={(props.depressedKeys ?? []).includes(shape.id)} showColors={props.showColors ?? false}/>))}
     </Surface>);
 };
 function relayEvent(root: Element, { target }: {

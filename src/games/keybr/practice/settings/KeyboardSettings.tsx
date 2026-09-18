@@ -12,7 +12,6 @@ import { PointersLayer } from "../../keyboard-ui/PointersLayer.tsx";
 import { VirtualKeyboard } from "../../keyboard-ui/VirtualKeyboard.tsx";
 import { Tasks } from "../../lang/tasks.ts";
 import { useSettings } from "../../settings/context.ts";
-import { ModifierState } from "../../textinput-events/modifiers.ts";
 import { useDepressedKeys } from "../../textinput-events/use-depressed-keys.ts";
 import { type CodePoint } from "../../unicode/types.ts";
 import { Description } from "../../widget/components/text/Description.tsx";
@@ -176,7 +175,7 @@ const KeyboardPreview = function KeyboardPreview(): JSX.Element {
     const keyboard = useKeyboard();
     const depressedKeys = useDepressedKeys(settings, keyboard());
     return (<VirtualKeyboard keyboard={keyboard()} height="16rem">
-      <KeyLayer depressedKeys={depressedKeys()} toggledKeys={ModifierState.modifiers} showColors={settings.get(keyboardProps.colors)}/>
+      <KeyLayer depressedKeys={depressedKeys()} showColors={settings.get(keyboardProps.colors)}/>
       {settings.get(keyboardProps.pointers) && <PointersPreview />}
     </VirtualKeyboard>);
 };

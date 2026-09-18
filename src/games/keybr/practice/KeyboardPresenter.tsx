@@ -14,7 +14,6 @@ import { type LastLesson } from "./state/last-lesson.ts";
 export const KeyboardPresenter = function KeyboardPresenter(props: {
     readonly focus: boolean;
     readonly depressedKeys: readonly string[];
-    readonly toggledKeys: readonly string[];
     readonly suffix: readonly CodePoint[];
     readonly lastLesson: LastLesson | null;
 }): JSX.Element {
@@ -24,7 +23,7 @@ export const KeyboardPresenter = function KeyboardPresenter(props: {
     const pointers = () => settings.get(keyboardProps.pointers);
     const hasLastLesson = () => props.lastLesson != null;
     return (<VirtualKeyboard keyboard={keyboard()} height="16rem">
-      <KeyLayer depressedKeys={props.depressedKeys} toggledKeys={props.toggledKeys} showColors={colors()}/>
+      <KeyLayer depressedKeys={props.depressedKeys} showColors={colors()}/>
       {!hasLastLesson() && props.focus && props.depressedKeys.length === 0 && pointers() && <PointersLayer suffix={props.suffix}/>}
       {props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.misses)} modifier="m"/>)}
       {props.lastLesson && (<HeatmapLayer histogram={flatten(props.lastLesson.hits)} modifier="h"/>)}
