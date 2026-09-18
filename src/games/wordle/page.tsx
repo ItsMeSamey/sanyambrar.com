@@ -75,6 +75,7 @@ class Keyboard {
                 if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
               }}
               onPointerCancel={() => !isDisabled && dispatch('keyup')}
+              onLostPointerCapture={() => !isDisabled && dispatch('keyup')}
               onClick={e => {
                 // Native keyboard activation emits click with detail=0. Pointer input
                 // is already handled on down/up so it must not insert twice.

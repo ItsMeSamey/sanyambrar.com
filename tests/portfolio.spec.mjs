@@ -379,6 +379,30 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await expect(page.getByRole('dialog', { name: /^Game details for / })).toBeVisible();
 });
 
+test('Wordle on-screen key clears after pointer capture loss', async ({ page }, info) => {
+  await visit(page, '/wordle.html', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  const key = page.getByRole('button', { name: 'A', exact: true });
+  await key.evaluate(element => {
+    element.addEventListener('pointerdown', event => {
+      globalThis.__sameyQaWordlePointerId = event.pointerId;
+    }, { once: true });
+  });
+  const box = await key.boundingBox();
+  if (!box) throw new Error('Wordle A key has no geometry');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(key).toHaveClass(/wordle-key-pressed/);
+  await key.evaluate(element => {
+    const pointerId = globalThis.__sameyQaWordlePointerId;
+    if (typeof pointerId !== 'number' || !element.hasPointerCapture(pointerId)) throw new Error('Wordle key did not capture the pointer');
+    element.releasePointerCapture(pointerId);
+  });
+  await page.mouse.move(box.x + box.width / 2 + 3, box.y + box.height / 2 + 3);
+  await expect(key, 'Lost pointer capture must clear the pressed key state').not.toHaveClass(/wordle-key-pressed/);
+  await page.mouse.up();
+});
+
 test('Wordle date picker and daily start', async ({ page }, info) => {
   await visit(page, '/wordle.html', info);
   await page.getByRole('button', { name: /^Choose date,/ }).click();
