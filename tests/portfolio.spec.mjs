@@ -763,6 +763,26 @@ for (const route of ['/', '/wordle.html', '/tools/?tool=number']) test(`accessib
   expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });
 
+test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
+  const contrastViolations = async selector => {
+    const results = await new AxeBuilder({ page }).include(selector).withRules(['color-contrast']).analyze();
+    return results.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }));
+  };
+
+  await visit(page, '/projects/reverb/', info);
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    await expect.poll(() => contrastViolations('.project-detail')).toEqual([]);
+  }
+
+  await visit(page, '/wordle.html', info);
+  await page.getByRole('button', { name: /^Choose date,/ }).click();
+  for (const color of ['light', 'dark']) {
+    await page.evaluate(value => globalThis.SameyAppearance?.set({ color: value }), color);
+    await expect.poll(() => contrastViolations('.wordle-date-picker-popover')).toEqual([]);
+  }
+});
+
 test('number conversion updates from edited input', async ({ page }, info) => {
   await visit(page, '/tools/?tool=number', info);
   await page.getByRole('textbox', { name: 'Input', exact: true }).fill('1024');
