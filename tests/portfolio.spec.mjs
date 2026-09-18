@@ -213,6 +213,26 @@ test('loading strip animates only while visible', async ({ page }, info) => {
   await expect.poll(runningAnimations, { message: 'Loading stripe animation must stop when hidden' }).toBe(0);
 });
 
+test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
+  await page.setViewportSize({ width: 900, height: 260 });
+  await visit(page, '/blog/posts/btop-mutex.html', info);
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  const panel = page.locator('.samey-theme-panel');
+
+  await appearance.click();
+  await expect(panel).toBeVisible();
+  await panel.hover();
+  await page.mouse.wheel(0, 180);
+  await expect.poll(() => panel.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await expect(panel, 'Scrolling inside the Appearance menu must not dismiss it').toBeVisible();
+
+  await page.mouse.move(40, 220);
+  await page.mouse.wheel(0, 450);
+  await expect.poll(() => page.evaluate(() => scrollY), { message: 'The page itself must actually scroll' }).toBeGreaterThan(0);
+  await expect(panel, 'Appearance menu must dismiss once its trigger moves with page scroll').not.toBeVisible();
+  await expect(appearance).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('advanced appearance saves, previews, loads and deletes themes', async ({ page }, info) => {
   await visit(page, '/', info);
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });

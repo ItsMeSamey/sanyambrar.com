@@ -897,6 +897,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.target instanceof Node && !panel.contains(event.target)) closeAppearance();
     });
     addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
+    addEventListener("scroll", (event) => {
+      if (!panel.hidden && !(event.target instanceof Node && panel.contains(event.target))) closeAppearance();
+    }, { passive: true, capture: true });
     addEventListener("samey-pageleave", () => { closeAppearance(); closeAdvanced(false); });
     addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
