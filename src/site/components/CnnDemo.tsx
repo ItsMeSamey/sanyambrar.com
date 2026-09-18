@@ -1,4 +1,5 @@
-import { createSignal, For, onCleanup, onSettled } from 'solid-js';
+import { createSignal, For, Show, onCleanup, onSettled } from 'solid-js';
+import { formatThrownError } from '../../shared/error.ts';
 import CnnWorker from '../workers/cnn-worker.ts?worker';
 
 const INPUT_SIZE = 28;
@@ -9,7 +10,7 @@ const DEFAULT_INK = 0.72;
 type WorkerMessage =
   | { type: 'ready' }
   | { type: 'result'; id: number; classId: number; probabilities: number[] }
-  | { type: 'error'; id?: number; message: string };
+  | { type: 'error'; id?: number; message: string; detail: string };
 
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -20,7 +21,7 @@ const isWorkerMessage = (value: unknown): value is WorkerMessage => {
     && typeof value.classId === 'number' && Number.isInteger(value.classId)
     && Array.isArray(value.probabilities) && value.probabilities.every(score => typeof score === 'number');
   return value.type === 'error' && (value.id === undefined || typeof value.id === 'number' && Number.isInteger(value.id))
-    && typeof value.message === 'string';
+    && typeof value.message === 'string' && typeof value.detail === 'string';
 };
 
 
@@ -61,6 +62,7 @@ export function CnnDemo() {
   const [predictedClass, setPredictedClass] = createSignal<number | null>(null);
   const [hasInk, setHasInk] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
+  const [workerFailure, setWorkerFailure] = createSignal<string | null>(null);
 
   const readThemeInk = () => {
     const style = getComputedStyle(document.documentElement);
@@ -258,11 +260,14 @@ export function CnnDemo() {
         inferenceBusy = false;
         inferenceDirty = false;
         clearResult();
-        console.error('CNN worker returned an invalid message');
+        const failure = new Error('CNN worker returned an invalid protocol message');
+        setWorkerFailure(formatThrownError(failure));
+        console.error(failure, message);
         return;
       }
       if (message.type === 'ready') {
         workerReady = true;
+        setWorkerFailure(null);
         if (inferenceDirty && inkPresent) queueInference();
         return;
       }
@@ -270,12 +275,15 @@ export function CnnDemo() {
         inferenceBusy = false;
         const next = validScores(message.probabilities);
         if (!next || message.classId < 0 || message.classId >= OUTPUTS.length) {
-          console.error('CNN worker returned an invalid result');
+          const failure = new Error(`CNN worker returned an invalid result for request ${message.id}`);
+          setWorkerFailure(formatThrownError(failure));
+          console.error(failure, message);
           if (message.id === activeRequestId && activeRequestEpoch === contentEpoch) clearResult();
         } else if (message.id === activeRequestId && activeRequestEpoch === contentEpoch && inkPresent) {
           // Show every completed prediction even if a newer canvas state is
           // already dirty. The next inference immediately catches up instead
           // of hiding useful in-flight results until drawing stops.
+          setWorkerFailure(null);
           setScores(next);
           setPredictedClass(message.classId);
         }
@@ -285,7 +293,8 @@ export function CnnDemo() {
       inferenceBusy = false;
       if (message.id == null) workerReady = false;
       if (message.id == null || (message.id === activeRequestId && activeRequestEpoch === contentEpoch)) clearResult();
-      console.error('CNN worker failed', message.message);
+      setWorkerFailure(message.detail);
+      console.error('CNN worker failed', message.detail);
       if (inferenceDirty && inkPresent) queueInference();
     });
     worker.addEventListener('error', error => {
@@ -294,7 +303,11 @@ export function CnnDemo() {
       inferenceBusy = false;
       inferenceDirty = false;
       clearResult();
-      console.error('CNN worker crashed', error);
+      const rawError = (error as unknown as { error?: unknown }).error;
+      const failure: unknown = rawError ?? new Error(`CNN worker crashed: ${error.message || 'unknown worker error'}`);
+      const detail = formatThrownError(failure);
+      setWorkerFailure(detail);
+      console.error('CNN worker crashed', detail);
     });
   });
 
@@ -310,6 +323,13 @@ export function CnnDemo() {
 
   return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">
     <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw something</h2></div>
+    <Show when={workerFailure()}>{detail =>
+      <aside class="cnn-demo-error" role="alert" aria-live="assertive">
+        <strong>CNN demo failed</strong>
+        <pre class="samey-error-stack">{detail()}</pre>
+        <button type="button" onClick={() => location.reload()}>Reload page</button>
+      </aside>
+    }</Show>
 
     <div class="cnn-demo-shell">
       <div class="cnn-draw-pane">

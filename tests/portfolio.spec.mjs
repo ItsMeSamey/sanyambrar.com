@@ -1,13 +1,17 @@
 import { test as base, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+const EXPECTED_ERROR_SURFACE_MARKER = 'QA_EXPECTED_ERROR_SURFACE';
+
 const test = base.extend({
   page: async ({ page }, use, testInfo) => {
     const errors = [], warnings = [];
-    page.on('pageerror', error => errors.push(error.message));
+    page.on('pageerror', error => {
+      if (!error.message.includes(EXPECTED_ERROR_SURFACE_MARKER)) errors.push(error.message);
+    });
     page.on('response', response => { if (response.status() >= 400) errors.push(response.status() + ' ' + response.url()); });
     page.on('console', message => {
-      if (message.type() === 'error') errors.push(message.text());
+      if (message.type() === 'error' && !message.text().includes(EXPECTED_ERROR_SURFACE_MARKER)) errors.push(message.text());
       if (message.type() === 'warning' && message.text().includes('STRICT_')) warnings.push(message.text());
     });
     await use(page);
@@ -116,6 +120,61 @@ for (const legacyRoute of legacyHtmlRoutes) test(`canonicalizes legacy ${legacyR
   await visit(page, legacyRoute, info);
   const canonicalPath = legacyRoute.endsWith('/index.html') ? legacyRoute.slice(0, -10) : legacyRoute.slice(0, -5);
   await expect.poll(() => new URL(page.url()).pathname).toBe(canonicalPath);
+});
+
+test('SPA mount failures surface the original exception stack and cause', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets the built Keybr entry module');
+
+  const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: keybr entry root cause`;
+  await page.route(/\/keybr-assets\/index-[^/]+\.js(?:\?.*)?$/, route => route.fulfill({
+    status: 200,
+    contentType: 'text/javascript',
+    body: `const cause = new Error(${JSON.stringify(marker)});
+window.dispatchEvent(new ErrorEvent('error', {
+  message: cause.message,
+  error: cause,
+  filename: import.meta.url,
+  lineno: 1,
+  colno: 1,
+}));`,
+  }));
+
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const navigate = globalThis.SameyNavigate;
+    if (!navigate) throw new Error('SameyNavigate is unavailable');
+    void navigate('/keybr.html');
+  });
+
+  const loadError = page.locator('#samey-load-error');
+  const stack = loadError.locator('.samey-error-stack');
+  await expect(loadError).toBeVisible();
+  await expect(loadError).toContainText('application failed while mounting');
+  await expect(stack).toContainText(marker);
+  await expect(stack).toContainText('Caused by:');
+  await expect(stack).toContainText(`Error: ${marker}`);
+});
+
+test('Keybr error page preserves settings failure stack and cause', async ({ page }, info) => {
+  const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: keybr settings read root cause`;
+  await page.addInitScript(value => {
+    const originalGetItem = Storage.prototype.getItem;
+    Storage.prototype.getItem = function(key) {
+      if (key === 'settings') throw new Error(value);
+      return originalGetItem.call(this, key);
+    };
+  }, marker);
+
+  const metadata = info.project.metadata;
+  const port = metadata.development ? metadata.keybrPort : metadata.port;
+  await page.goto(`http://127.0.0.1:${port}/keybr.html`, { waitUntil: 'networkidle' });
+
+  await expect(page.getByRole('heading', { name: 'Error', exact: true })).toBeVisible();
+  const report = page.locator('article pre').first();
+  await expect(report).toContainText('Could not read Keybr settings');
+  await expect(report).toContainText(marker);
+  await expect(report).toContainText('Caused by:');
+  await expect(report).toContainText(`Error: ${marker}`);
 });
 
 test('extreme narrow call-to-actions and article controls stay reachable', async ({ page }, info) => {

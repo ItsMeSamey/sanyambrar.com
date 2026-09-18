@@ -9,6 +9,7 @@ import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'
 import Wordle from './page'
 import { Button } from '../../shared/components/Button.tsx'
 import { Toaster } from '../../shared/components/Toast.tsx'
+import { formatThrownError, renderFatalError } from '../../shared/error.ts'
 
 function ErrorPage(error: Accessor<unknown>, reset: () => void) {
   const value = error()
@@ -23,6 +24,7 @@ function ErrorPage(error: Accessor<unknown>, reset: () => void) {
     <div class='error-page-message'>
       <strong class='error-page-heading'>Something's Gone Horridly Wrong!</strong>
       <p class='error-page-detail'>{err.name}: {err.message.split('\n##-STACK-##\n')[0]}</p>
+      <pre class='samey-error-stack error-page-stack'>{formatThrownError(value)}</pre>
       <div class='error-page-actions'>
         <Button class='rounded-full' onClick={() => { history.back(); reset() }}>Go Back</Button>
         <Button class='rounded-full' onClick={reset}>Try Again</Button>
@@ -31,34 +33,42 @@ function ErrorPage(error: Accessor<unknown>, reset: () => void) {
   </div>
 }
 
-const disposePageNavigation = mountPageNavigation()
-const mount = document.getElementById('wordle-app-mount')
-if (!mount) throw new Error('Wordle mount node is missing')
+function main(): void {
+  const disposePageNavigation = mountPageNavigation()
+  const mount = document.getElementById('wordle-app-mount')
+  if (!mount) throw new Error('Wordle mount node is missing')
 
-const disposeWordle = render(function() {
-  return <>
-    <Toaster class='wordle-toaster' />
+  const disposeWordle = render(function() {
+    return <>
+      <Toaster class='wordle-toaster' />
 
-    <div ref={setPageRoot} data-wordle-root>
-      <Errored fallback={ErrorPage}>
-        <Switch>
-          <Match when={selectP(Page.Wordle)}>
-            <Wordle />
-          </Match>
-          <Match when={selectP(Page.Stats)}>
-            <StatsPage />
-          </Match>
-        </Switch>
-      </Errored>
-    </div>
+      <div ref={setPageRoot} data-wordle-root>
+        <Errored fallback={ErrorPage}>
+          <Switch>
+            <Match when={selectP(Page.Wordle)}>
+              <Wordle />
+            </Match>
+            <Match when={selectP(Page.Stats)}>
+              <StatsPage />
+            </Match>
+          </Switch>
+        </Errored>
+      </div>
 
-  </>
-}, mount)
+    </>
+  }, mount)
 
+  globalThis.SameyWordleDispose = () => {
+    disposePageNavigation()
+    setPageRoot()
+    disposeWordle()
+    delete globalThis.SameyWordleDispose
+  }
+}
 
-;globalThis.SameyWordleDispose = () => {
-  disposePageNavigation()
-  setPageRoot()
-  disposeWordle()
-  delete globalThis.SameyWordleDispose
+try {
+  main()
+} catch (error) {
+  renderFatalError(document.getElementById('wordle-app-mount') ?? document.body, 'Wordle failed to start', error)
+  throw error
 }

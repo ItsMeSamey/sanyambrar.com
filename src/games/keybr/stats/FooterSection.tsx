@@ -3,6 +3,7 @@ import { useResults } from "../result/context.ts";
 import { resultFromJson, resultToJson } from "../result/json.ts";
 import { Button } from "../widget/components/button/Button.tsx";
 import { Alert } from "../widget/components/toast/Alert.tsx";
+import { formatThrownError } from "../../../shared/error.ts";
 import { toast } from "../widget/components/toast/Toaster.tsx";
 import { Field, FieldList } from "../widget/components/fieldlist/FieldList.tsx";
 import { Icon } from "../widget/components/icon/Icon.tsx";
@@ -108,6 +109,6 @@ function download(blob: Blob, name: string) {
 
 function reportError(error: unknown) {
     toast(() => <Alert severity="error">
-      {error instanceof AggregateError ? error.errors.map((child) => <p>{String(child)}</p>) : <p>{String(error)}</p>}
+      <pre class="samey-error-stack">{formatThrownError(error)}</pre>
     </Alert>);
 }

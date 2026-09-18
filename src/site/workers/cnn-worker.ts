@@ -1,4 +1,5 @@
 import cnnWasmUrl from './cnn.wasm?url';
+import { errorMessage, formatThrownError } from '../../shared/error.ts';
 
 type CnnExports = {
   memory: WebAssembly.Memory;
@@ -72,7 +73,7 @@ workerScope.addEventListener('message', event => {
     if (classId >= wasm.class_count()) throw new Error(`Invalid class ${classId}`);
     workerScope.postMessage({ type: 'result', id: message.id, classId, probabilities: probabilities(wasm) });
   } catch (error) {
-    workerScope.postMessage({ type: 'error', id: message.id, message: error instanceof Error ? error.message : String(error) });
+    workerScope.postMessage({ type: 'error', id: message.id, message: errorMessage(error), detail: formatThrownError(error) });
   }
 });
 
@@ -80,5 +81,5 @@ instantiateCnn().then(instance => {
   wasm = instance;
   workerScope.postMessage({ type: 'ready' });
 }).catch(error => {
-  workerScope.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+  workerScope.postMessage({ type: 'error', message: errorMessage(error), detail: formatThrownError(error) });
 });

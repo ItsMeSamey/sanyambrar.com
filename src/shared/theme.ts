@@ -1,6 +1,7 @@
 import { readHistoryState } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
+import { errorMessage, errorWithCause, formatThrownError } from './error.ts';
 import appearanceConfig from './appearance.json';
 
 
@@ -271,7 +272,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   let volatileFont: string | undefined;
   const rawPrefs = (): UnknownRecord => {
     let stored: UnknownRecord = {};
-    try { stored = asRecord(JSON.parse(localStorage.getItem(KEY) || "null")); } catch {}
+    try { stored = asRecord(JSON.parse(localStorage.getItem(KEY) || "null")); }
+    catch (error) { console.warn("Could not read saved appearance preferences; using volatile defaults", error); }
     return { ...stored, ...volatileThemePrefs };
   };
   const defaultFont = () => document.documentElement.dataset.siteKind === "keybr" ? "monospace" : "sans-serif";
@@ -280,7 +282,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     try {
       const value = localStorage.getItem(FONT_KEY);
       if (value && FONT_IDS.includes(value)) return value;
-    } catch {}
+    } catch (error) {
+      console.warn("Could not read saved font preference; using fallback", error);
+    }
     const legacy = rawPrefs().font;
     return typeof legacy === "string" && FONT_IDS.includes(legacy) ? legacy : defaultFont();
   };
@@ -517,7 +521,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const setPrefs = (patch: ThemePatch) => {
     if (typeof patch.font === "string") {
       try { nativeSetItem.call(localStorage, FONT_KEY, patch.font); volatileFont = undefined; }
-      catch { volatileFont = patch.font; }
+      catch (error) {
+        console.warn("Could not persist font preference; keeping it for this session", error);
+        volatileFont = patch.font;
+      }
     }
     const themePatch = { ...patch };
     delete themePatch.font;
@@ -526,7 +533,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const { font: _legacyFont, ...theme } = raw;
       const next = { ...theme, ...themePatch };
       try { nativeSetItem.call(localStorage, KEY, JSON.stringify(next)); volatileThemePrefs = {}; }
-      catch { volatileThemePrefs = next; }
+      catch (error) {
+        console.warn("Could not persist appearance preferences; keeping them for this session", error);
+        volatileThemePrefs = next;
+      }
     }
     apply();
   };
@@ -1788,7 +1798,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const button = document.createElement("button"); button.type = "button"; button.disabled = !enabled; button.setAttribute("role", "menuitem");
       const text = document.createElement("span"); text.textContent = label; button.append(text);
       if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
-      button.addEventListener("click", async () => { close(); try { await action(); } catch {} }); menu.append(button);
+      button.addEventListener("click", async () => { close(); try { await action(); } catch (error) { console.error("Context menu action failed", error); } }); menu.append(button);
     };
     const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
     document.addEventListener("contextmenu", (event) => {
@@ -2042,7 +2052,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const task = (async () => {
       const logical = extensionlessPageUrl(url);
       const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" } });
-      if (!response.ok) throw new Error("page fetch failed");
+      if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || 'Unknown'} for ${logical.href}`);
       const doc = new DOMParser().parseFromString(await response.text(), "text/html");
       const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
       const baseUrl = new URL(baseTag || ".", logical.href);
@@ -2055,12 +2065,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     for (const el of doc.querySelectorAll<HTMLElement>("[href]")) {
       const value = el.getAttribute("href");
       if (!value || value.startsWith("#") || /^(?:mailto:|tel:|javascript:|data:)/i.test(value)) continue;
-      try { el.setAttribute("href", new URL(value, baseUrl).href); } catch {}
+      el.setAttribute("href", new URL(value, baseUrl).href);
     }
     for (const el of doc.querySelectorAll<HTMLElement>("[src]")) {
       const value = el.getAttribute("src");
       if (!value || /^(?:data:|blob:)/i.test(value)) continue;
-      try { el.setAttribute("src", new URL(value, baseUrl).href); } catch {}
+      el.setAttribute("src", new URL(value, baseUrl).href);
     }
   };
   const runBodyScripts = (baseUrl: URL) => {
@@ -2092,9 +2102,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   let currentPagePath = location.pathname;
   const swapPage = (doc: Document, baseUrl: URL, url: URL, replace: boolean) => {
-    try { globalThis.SameySolidDispose?.(); } catch {}
-    try { globalThis.SameyWordleDispose?.(); } catch {}
-    try { globalThis.SameyKeybrDispose?.(); } catch {}
+    const disposalErrors: unknown[] = [];
+    for (const [label, dispose] of [
+      ["Solid", globalThis.SameySolidDispose],
+      ["Wordle", globalThis.SameyWordleDispose],
+      ["Keybr", globalThis.SameyKeybrDispose],
+    ] as const) {
+      try { dispose?.(); }
+      catch (error) { disposalErrors.push(errorWithCause(`${label} teardown failed`, error)); }
+    }
+    if (disposalErrors.length) throw new AggregateError(disposalErrors, "Current page teardown failed");
     dispatchEvent(new Event("samey-pageleave"));
     normalizePageUrls(doc, baseUrl);
     document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
@@ -2115,7 +2132,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     writePageHistory(url, replace);
     runBodyScripts(baseUrl);
     runHeadScripts(doc, baseUrl);
-    queueMicrotask(() => globalThis.SameyMountSolid?.());
+    if (document.getElementById("site-root")) queueMicrotask(() => globalThis.SameyMountSolid?.());
     apply(); scanVirtualScrollers();
     if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
     else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
@@ -2126,13 +2143,63 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (document.documentElement.hasAttribute("data-static-article")) return document.querySelector<HTMLElement>(".article-route");
     return document.querySelector<HTMLElement>("#solid-site-app,[data-wordle-root],.site-route,.article-route");
   };
-  const waitForDestinationRoot = async () => {
+  const destinationMounted = (root: HTMLElement | null) => {
+    const kind = document.documentElement.dataset.siteKind;
+    if (kind === "keybr") return typeof globalThis.SameyKeybrDispose === "function";
+    if (kind === "wordle") return typeof globalThis.SameyWordleDispose === "function";
+    if (document.documentElement.hasAttribute("data-static-article")) return Boolean(root?.childElementCount);
+    return Boolean(root?.childElementCount);
+  };
+  const beginDestinationFailureCapture = () => {
+    let failed = false;
+    let failure: unknown;
+    const record = (error: unknown) => {
+      if (failed) return;
+      failed = true;
+      failure = error;
+    };
+    const onError = (event: Event) => {
+      if (event instanceof ErrorEvent) {
+        const locationText = [event.filename, event.lineno && event.colno ? `${event.lineno}:${event.colno}` : ""].filter(Boolean).join(":");
+        record(event.error ?? new Error(`${event.message || "Uncaught page error"}${locationText ? ` at ${locationText}` : ""}`));
+        return;
+      }
+      const target = event.target;
+      if (target instanceof HTMLScriptElement) record(new Error(`Script failed to load: ${target.src || "[inline script]"}`));
+      else if (target instanceof HTMLLinkElement) record(new Error(`Stylesheet failed to load: ${target.href || "[unknown stylesheet]"}`));
+    };
+    const onRejection = (event: PromiseRejectionEvent) => record(event.reason);
+    addEventListener("error", onError, true);
+    addEventListener("unhandledrejection", onRejection);
+    return {
+      failure: () => failed ? failure : undefined,
+      stop: () => {
+        removeEventListener("error", onError, true);
+        removeEventListener("unhandledrejection", onRejection);
+      },
+    };
+  };
+  const waitForDestinationRoot = async (capturedFailure: () => unknown | undefined) => {
     for (let i = 0; i < 90; i++) {
       const root = destinationRoot();
-      if (root && root.childElementCount > 0) return root;
+      if (destinationMounted(root)) return root;
+      const failure = capturedFailure();
+      if (failure !== undefined) {
+        throw errorWithCause(
+          `The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`,
+          failure,
+        );
+      }
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     }
-    throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount.`);
+    const failure = capturedFailure();
+    if (failure !== undefined) {
+      throw errorWithCause(
+        `The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`,
+        failure,
+      );
+    }
+    throw new Error(`The ${document.documentElement.dataset.siteKind || "destination"} application did not mount before the startup timeout.`);
   };
   const dismissLoadError = () => document.getElementById("samey-load-error")?.remove();
   const showLoadError = (url: URL, error: unknown, retry: () => unknown | Promise<unknown>) => {
@@ -2141,13 +2208,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     panel.id = "samey-load-error";
     panel.className = "samey-load-error";
     panel.setAttribute("role", "alert");
-    const message = error instanceof Error ? error.message : "The page could not be loaded.";
-    panel.innerHTML = `<div><strong>Page failed to load</strong><span></span></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
+    const message = errorMessage(error, "The page could not be loaded.");
+    panel.innerHTML = `<div><strong>Page failed to load</strong><span></span><pre class="samey-error-stack samey-load-error-stack"></pre></div><div class="samey-load-error-actions"><button type="button" data-retry>Retry</button><a>Open normally</a><button type="button" data-dismiss>Dismiss</button></div>`;
     const messageNode = panel.querySelector<HTMLElement>("span");
+    const stackNode = panel.querySelector<HTMLElement>(".samey-load-error-stack");
     const normal = panel.querySelector<HTMLAnchorElement>("a");
     const retryButton = panel.querySelector<HTMLButtonElement>("[data-retry]");
     const dismissButton = panel.querySelector<HTMLButtonElement>("[data-dismiss]");
     if (messageNode) messageNode.textContent = message;
+    if (stackNode) stackNode.textContent = formatThrownError(error);
     if (normal) normal.href = url.href;
     retryButton?.addEventListener("click", () => { dismissLoadError(); void retry(); });
     dismissButton?.addEventListener("click", dismissLoadError);
@@ -2168,10 +2237,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (id !== pageNavigationId) return;
       const current = destinationRoot();
       const commit = async () => {
-        swapPage(doc, baseUrl, url, replace);
-        await waitForDestinationRoot();
-        document.getElementById("samey-boot")?.remove();
-        document.getElementById("samey-boot-style")?.remove();
+        const failures = beginDestinationFailureCapture();
+        try {
+          swapPage(doc, baseUrl, url, replace);
+          await waitForDestinationRoot(failures.failure);
+          document.getElementById("samey-boot")?.remove();
+          document.getElementById("samey-boot-style")?.remove();
+        } finally {
+          failures.stop();
+        }
       };
       const swapDirection = direction ?? (url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "back" : "forward");
       await animateRootSwap(current, commit, destinationRoot, swapDirection);
@@ -2189,7 +2263,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const prefetch = (href: string) => {
     const url = new URL(href, location.href);
     if (!shouldSpa(url)) return;
-    fetchPage(url).catch(() => {});
+    fetchPage(url).catch(error => console.error("Page prefetch failed", error));
   };
   globalThis.SameyPreloadPage = prefetch;
   let documentNavigationMounted = false;
@@ -2217,7 +2291,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
       event.preventDefault();
       const direction = link.dataset.navDirection === "back" || url.pathname === "/" ? "back" : "forward";
-      void loadPage(url.href, { direction }).catch(() => {});
+      void loadPage(url.href, { direction }).catch(error => console.error("SPA navigation failed", error));
     });
     addEventListener("popstate", () => {
       if (document.documentElement.hasAttribute("data-site-spa") || location.pathname === currentPagePath) return;
@@ -2225,7 +2299,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const nextIndex = readNavigationIndex();
       const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";
       if (nextIndex != null) pageHistoryIndex = nextIndex;
-      void loadPage(location.href, { replace: true, force: true, direction }).catch(() => {});
+      void loadPage(location.href, { replace: true, force: true, direction }).catch(error => console.error("SPA history restoration failed", error));
     });
   };
 
@@ -2340,6 +2414,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
     const serviceWorkerUrl = new URL("sw.js", SCRIPT_ROOT);
     if (BUILD_VERSION) serviceWorkerUrl.searchParams.set("v", BUILD_VERSION);
-    navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: "none" }).catch(() => {});
+    navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: "none" }).catch(error => console.error("Service worker registration failed", error));
   }
 })();

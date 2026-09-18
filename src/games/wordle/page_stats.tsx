@@ -13,6 +13,7 @@ import type { SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx'
 import { isWordLength } from './challenge'
 import { WordleBackButton } from './WordleBackButton'
+import { formatThrownError } from '../../shared/error.ts'
 
 interface GameStats {
   totalGames: number
@@ -223,8 +224,9 @@ export default function StatsPage() {
   return <main class='stats-page'>
     <TopBar start={<WordleBackButton onClick={() => setP(Page.Wordle)}/>} nav={<GameTopBarActions ariaLabel='Wordle'><StatsPageTrigger /></GameTopBarActions>}/>
     <header class='stats-page-header'><h1>Statistics</h1></header>
-    <Errored fallback={(_error, reset) => <div class='stats-state text-error-foreground' role='alert'>
+    <Errored fallback={(error, reset) => <div class='stats-state text-error-foreground' role='alert'>
       <p>Could not load statistics.</p>
+      <pre class='samey-error-stack'>{formatThrownError(error())}</pre>
       <button type='button' onClick={() => { refreshStats(); reset() }}>Try again</button>
     </div>}>
       <Loading fallback={<p class='stats-state' role='status'>Loading statistics…</p>}>

@@ -2,6 +2,7 @@ import { readHistoryState } from '../shared/history.ts';
 import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
+import { formatThrownError } from '../shared/error.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
 import { details } from './data';
 
@@ -102,25 +103,6 @@ function RouteLoading() {
   return <div class="site-route-loading" role="status" aria-live="polite"><span>Loading page</span></div>;
 }
 
-
-function formatThrownError(value: unknown): string {
-  const seen = new Set<unknown>();
-  const format = (error: unknown, depth = 0): string => {
-    if (seen.has(error)) return '[circular error cause]';
-    if (error && (typeof error === 'object' || typeof error === 'function')) seen.add(error);
-    if (error instanceof Error) {
-      let text = error.stack || `${error.name}: ${error.message}`;
-      if (typeof AggregateError !== 'undefined' && error instanceof AggregateError && error.errors.length) {
-        text += error.errors.map((nested, index) => `\n\nAggregate error ${index + 1}:\n${format(nested, depth + 1)}`).join('');
-      }
-      if ('cause' in error && error.cause !== undefined) text += `\n\nCaused by:\n${format(error.cause, depth + 1)}`;
-      return text;
-    }
-    if (typeof error === 'string') return error;
-    try { return JSON.stringify(error, null, 2) || String(error); } catch { return String(error); }
-  };
-  return format(value);
-}
 
 function FatalRouteError(props: { error: unknown; reset: () => void }) {
   return <div class="site-fatal-shell">

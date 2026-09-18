@@ -143,14 +143,16 @@ function storageCell<T>(key: string, fallback: T, parse: (raw: string) => T, ser
   let value = fallback
   const save = (next: T) => {
     value = next
-    try { localStorage.setItem(key, serialize(next)) } catch {}
+    try { localStorage.setItem(key, serialize(next)) }
+    catch (error) { console.warn(`Could not persist Wordle state "${key}"`, error) }
     window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key}}))
   }
   try {
     const raw = localStorage.getItem(key)
     if (raw === null) save(fallback)
     else value = parse(raw)
-  } catch {
+  } catch (error) {
+    console.warn(`Could not read Wordle state "${key}"; using fallback`, error)
     save(fallback)
   }
   return {get: () => value, set: save}
@@ -495,7 +497,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
         window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key: storageKey}}))
       }
     }
-  } catch {}
+  } catch (error) { console.warn(`Could not migrate legacy Wordle advanced state "${storageKey}"`, error) }
   if (hard.mode === 'daily' && (hard.dailyVersion ?? DAILY_CHALLENGE_VERSION) === 1 && hard.dailyDate) try {
     if (!localStorage.getItem(storageKey)) {
       const legacyKey = `game.wordle.daily.${hard.dailyDate}`
@@ -506,7 +508,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
         window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key: storageKey}}))
       }
     }
-  } catch {}
+  } catch (error) { console.warn(`Could not migrate legacy Wordle daily state "${storageKey}"`, error) }
   const stateStore = storageCell<WordLocalStorageState>(
     storageKey,
     {word: '', history: [['', '']], config: {...hard}},
@@ -616,7 +618,7 @@ export default function Wordle() {
     hardStore.set(config)
     if (config.mode === 'advanced') try {
       localStorage.setItem('game.wordle.settings.advanced', JSON.stringify({...config, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}))
-    } catch {}
+    } catch (error) { console.warn('Could not persist advanced Wordle settings', error) }
   })
   createEffect(() => ({...soft}), config => softStore.set(config))
   createEffect(() => ({opening: showOpening(), config: {...hard}, fastInvalidate: soft.fastInvalidate}), value => {
@@ -648,7 +650,7 @@ export default function Wordle() {
       const stored: unknown = JSON.parse(localStorage.getItem('game.wordle.settings.advanced') ?? '{}')
       const candidate = {...saved, ...(isRecord(stored) ? stored : {}), mode: 'advanced'}
       if (isChallengeSettings(candidate)) saved = candidate
-    } catch {}
+    } catch (error) { console.warn('Could not read advanced Wordle settings; using defaults', error) }
     void applyConfig({...saved, dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined})
   }
   const nextChallenge = () => {

@@ -1,5 +1,5 @@
 import { ErrorReport } from "../debug/ErrorReport.tsx";
-import { formatReport, inspectError } from "../debug/inspect.ts";
+import { formatThrownError } from "../../../shared/error.ts";
 import { Alert } from "../widget/components/toast/Alert.tsx";
 import { toast } from "../widget/components/toast/Toaster.tsx";
 import { catchError } from "../debug/logger.ts";
@@ -20,7 +20,7 @@ export function ResultLoader(props: { readonly children: JSX.Element; readonly f
   const storage = createMemo<ResultStorage>(() => createResultStorage());
   const results = createMemo(() => storage().load().catch(error => {
     catchError(error);
-    return [];
+    throw error;
   }));
   return <Loading fallback={props.fallback ?? null}>
     <Show keyed when={results()}>{value =>
@@ -54,7 +54,7 @@ function reportStorageError(error: unknown) {
   toast(() => <Alert severity="error" closeButton={true}>
     <p>Could not access local typing history.</p>
     <p>Check that this browser allows local site storage.</p>
-    <ErrorReport report={formatReport(inspectError(error))}/>
+    <ErrorReport report={formatThrownError(error)}/>
   </Alert>, {
     autoClose: false,
     pauseOnHover: false,
