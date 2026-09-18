@@ -37,7 +37,7 @@ export type Entry = {
   readonly frequency: number;
 };
 
-export type Segment = readonly Entry[];
+ type Segment = readonly Entry[];
 
 export class TransitionTable {
   static load(buffer: Uint8Array): TransitionTable {

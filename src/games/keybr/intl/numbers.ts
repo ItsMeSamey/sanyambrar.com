@@ -1,6 +1,6 @@
 import { type FormatNumberOptions, type IntlShape, useIntl } from "./runtime.tsx";
 import { intlMemo } from "./memo.ts";
-export type IntlNumbers = {
+ type IntlNumbers = {
     formatInteger(value: number): string;
     formatNumber(value: number, opts?: number | FormatNumberOptions): string;
     formatPercents(value: number, opts?: number | FormatNumberOptions): string;

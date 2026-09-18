@@ -12,7 +12,7 @@ import { withStyles } from "./decoration.ts";
 import { memoizePaint } from "./memoized-paint.ts";
 import { type ChartStyles, useChartStyles } from "./use-chart-styles.ts";
 
-export type SpeedThreshold = Readonly<{ label: string; value: number }>;
+ type SpeedThreshold = Readonly<{ label: string; value: number }>;
 
 export function SpeedHistogram(props: {
   readonly distribution: Distribution;

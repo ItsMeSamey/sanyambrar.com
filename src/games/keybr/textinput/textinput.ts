@@ -23,7 +23,7 @@ export type Step = {
   readonly typo: boolean;
 };
 
-export type StepListener = (step: Step) => void;
+ type StepListener = (step: Step) => void;
 
 const recoverBufferLength = 3;
 const garbageBufferLength = 10;

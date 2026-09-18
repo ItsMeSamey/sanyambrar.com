@@ -18,5 +18,3 @@ export type BoxProps = {
     readonly title?: string;
     readonly children?: JSX.Element;
 };
-export type HBoxProps = Omit<BoxProps, "direction">;
-export type VBoxProps = Omit<BoxProps, "direction">;

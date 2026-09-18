@@ -1,5 +1,4 @@
 import type { JSX } from "@solidjs/web";
-import { type Rect } from "../utils/rect.ts";
 export type FloatingSide = "block-start" | "block-end" | "inline-start" | "inline-end";
 export type FloatingPlacement = "end" | "center" | "start";
 export type FloatingPosition = "auto" | FloatingSide | `${FloatingSide}-${FloatingPlacement}`;
@@ -11,7 +10,4 @@ export type AlignOptions = {
     readonly shift: boolean;
     readonly offset: number;
     readonly screenMargin: number;
-};
-export type Anchor = {
-    getBoundingBox(): Rect;
 };

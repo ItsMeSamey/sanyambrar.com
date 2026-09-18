@@ -1,6 +1,6 @@
 import { type Enum, type EnumItem, type XEnum, type XEnumItem } from "../lang/enum.ts";
 
-export type EnumLike = { readonly [key: string]: number | string };
+ type EnumLike = { readonly [key: string]: number | string };
 
 export type AnyProp<T> = {
   readonly key: string;
@@ -9,37 +9,37 @@ export type AnyProp<T> = {
   fromJson(value: unknown, defaultValue?: T): T;
 };
 
-export type BooleanProp = {
+ type BooleanProp = {
   readonly type: "boolean";
 } & AnyProp<boolean>;
 
-export type NumberProp = {
+ type NumberProp = {
   readonly type: "number";
   readonly min: number;
   readonly max: number;
 } & AnyProp<number>;
 
-export type StringProp = {
+ type StringProp = {
   readonly type: "string";
   readonly maxLength: number;
 } & AnyProp<string>;
 
-export type EnumProp = {
+ type EnumProp = {
   readonly type: "enum";
   readonly all: EnumLike;
 } & AnyProp<number>;
 
-export type ItemProp<T extends EnumItem> = {
+ type ItemProp<T extends EnumItem> = {
   readonly type: "item";
   readonly all: Enum<T>;
 } & AnyProp<T>;
 
-export type XItemProp<T extends XEnumItem> = {
+ type XItemProp<T extends XEnumItem> = {
   readonly type: "xitem";
   readonly all: XEnum<T>;
 } & AnyProp<T>;
 
-export type FlagsProp = {
+ type FlagsProp = {
   readonly type: "flags";
   readonly all: Flags;
 } & AnyProp<Flags>;

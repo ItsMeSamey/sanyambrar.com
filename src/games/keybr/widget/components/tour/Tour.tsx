@@ -12,7 +12,7 @@ import { Meter } from "./Meter.tsx";
 import { type SlideProps } from "./Slide.tsx";
 import styles from "./Tour.module.css";
 import { children, createMemo, omit, createSignal, onCleanup, onSettled } from 'solid-js';
-export type TourProps = {
+ type TourProps = {
     readonly children?: readonly JSX.Element[];
     readonly onClose?: () => void;
 };

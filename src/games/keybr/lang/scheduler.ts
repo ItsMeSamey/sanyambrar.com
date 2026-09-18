@@ -1,4 +1,4 @@
-export type SchedulerOptions = {
+ type SchedulerOptions = {
   readonly delayer: (callback: () => void) => void;
   readonly signal: AbortSignal | null;
 };

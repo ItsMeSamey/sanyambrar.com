@@ -3,10 +3,10 @@ import { SpeedUnit } from "../result/speedunit.ts";
 import { uiProps } from "../result/settings.ts";
 import { useSettings } from "../settings/context.ts";
 import { useIntl } from "../intl/runtime.tsx";
-export type FormatterOptions = {
+ type FormatterOptions = {
     readonly unit?: boolean;
 };
-export type Formatter = {
+ type Formatter = {
     readonly formatSpeed: (value: number, options?: FormatterOptions) => string;
     readonly formatConfidence: (value: number | null) => string;
     readonly formatLearningRate: (lr: number | null) => string;

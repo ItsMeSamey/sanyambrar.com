@@ -8,7 +8,7 @@ import {
   toCanvasColor,
 } from "./graphics-style.ts";
 
-export type Shape = (g: Graphics) => void;
+ type Shape = (g: Graphics) => void;
 
 export type ShapeList = null | false | Shape | readonly ShapeList[];
 

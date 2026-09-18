@@ -1,11 +1,11 @@
 import { type IntlShape, useIntl } from "./runtime.tsx";
 import { intlMemo } from "./memo.ts";
-export type Duration = {
+ type Duration = {
     readonly seconds?: number;
     readonly minutes?: number;
     readonly hours?: number;
 };
-export type IntlDurations = {
+ type IntlDurations = {
     formatDuration(duration: Duration): string;
     /**
      * Formats time duration as a string of hours, minutes and seconds

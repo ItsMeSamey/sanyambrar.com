@@ -2,7 +2,7 @@ import { randomSample } from "../rand/sample.ts";
 import { PlayerLibrary } from "./internal/library.ts";
 import { type PlayerId, type SoundAssets } from "./internal/types.ts";
 
-export type SoundId = "click" | "blip";
+ type SoundId = "click" | "blip";
 
 export type ThemeConfig = Record<SoundId, readonly string[]>;
 

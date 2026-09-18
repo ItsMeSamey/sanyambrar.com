@@ -1,24 +1,24 @@
 import { type LessonKey } from "../../lesson/key.ts";
 import { type Result } from "../../result/result.ts";
 
-export type NewLetterEvent = {
+ type NewLetterEvent = {
   readonly type: "new-letter";
   readonly lessonKey: LessonKey;
 };
 
-export type TopSpeedEvent = {
+ type TopSpeedEvent = {
   readonly type: "top-speed";
   readonly speed: number;
   readonly previous: number;
 };
 
-export type TopScoreEvent = {
+ type TopScoreEvent = {
   readonly type: "top-score";
   readonly score: number;
   readonly previous: number;
 };
 
-export type DailyGoalEvent = {
+ type DailyGoalEvent = {
   readonly type: "daily-goal";
 };
 

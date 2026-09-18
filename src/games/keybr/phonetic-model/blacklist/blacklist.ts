@@ -42,7 +42,7 @@ const blacklistByLanguage = ((items: [Language, string[]][]) =>
   [Language.UK, UK],
 ]);
 
-export type Blacklist = { readonly allow: (word: string) => boolean };
+ type Blacklist = { readonly allow: (word: string) => boolean };
 
 export function getBlacklist(language: Language): Blacklist {
   const blacklist = blacklistByLanguage.get(language) ?? null;

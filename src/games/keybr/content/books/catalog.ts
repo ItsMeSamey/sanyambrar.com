@@ -1,4 +1,4 @@
-export type BookDefinition = {
+ type BookDefinition = {
   readonly id: string;
   readonly language: string;
   readonly title: string;

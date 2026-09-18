@@ -5,7 +5,7 @@ import { type ShapeList, Shapes } from "../widget/components/canvas/graphics.ts"
 import { type MessageDescriptor } from "../intl/runtime.tsx";
 import { hBoxes, hTicks, vBoxes, vTicks } from "./geometry.ts";
 import { type ChartStyles } from "./use-chart-styles.ts";
-export type Edge = "left" | "right" | "top" | "bottom";
+ type Edge = "left" | "right" | "top" | "bottom";
 export function withStyles(styles: ChartStyles) {
     const stroke = (style: GraphicsStyle, width: number, lines: ShapeList): ShapeList =>
         Shapes.stroke({ ...style, lineWidth: width, lineCap: "round", lineJoin: "round" }, lines);

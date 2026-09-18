@@ -4,7 +4,7 @@ import { Result } from "./result.ts";
 import { TextType } from "./texttype.ts";
 import { Histogram } from "../textinput/histogram.ts";
 
-export type ResultJson = {
+ type ResultJson = {
   readonly l: string;
   readonly m: string;
   readonly ts: number;
@@ -14,7 +14,7 @@ export type ResultJson = {
   readonly h: HistogramtJson;
 };
 
-export type HistogramtJson = {
+ type HistogramtJson = {
   readonly [codePoint: number]: {
     readonly h: number;
     readonly m: number;
