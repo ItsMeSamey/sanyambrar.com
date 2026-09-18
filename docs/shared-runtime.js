@@ -3550,9 +3550,7 @@
 	var opener = null;
 	var active = 0;
 	var visible = [];
-	var pageScrollLocked = false;
-	var previousBodyOverflow = "";
-	var previousHtmlOverflow = "";
+	var closeTimer = 0;
 	var shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K";
 	var syncShortcutLabels = () => document.querySelectorAll("[data-search-shortcut]").forEach((element) => element.textContent = shortcutLabel);
 	syncShortcutLabels();
@@ -3616,27 +3614,24 @@
 	}
 	addEventListener("resize", keepActiveVisibleAfterResize);
 	globalThis.visualViewport?.addEventListener("resize", keepActiveVisibleAfterResize);
-	function unlockPageScroll() {
-		if (!pageScrollLocked) return;
-		document.body.style.overflow = previousBodyOverflow;
-		document.documentElement.style.overflow = previousHtmlOverflow;
-		pageScrollLocked = false;
-	}
-	function lockPageScroll() {
-		if (pageScrollLocked) return;
-		previousBodyOverflow = document.body.style.overflow;
-		previousHtmlOverflow = document.documentElement.style.overflow;
-		document.body.style.overflow = "hidden";
-		document.documentElement.style.overflow = "hidden";
-		pageScrollLocked = true;
-	}
 	function close(restoreFocus = true) {
-		if (!box || box.hidden) return;
-		box.hidden = true;
-		unlockPageScroll();
+		if (!box || box.hidden || box.classList.contains("is-closing")) return;
 		const target = opener;
 		opener = null;
-		if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus());
+		if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			box.hidden = true;
+			if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus());
+			return;
+		}
+		box.classList.add("is-closing");
+		clearTimeout(closeTimer);
+		closeTimer = window.setTimeout(() => {
+			closeTimer = 0;
+			if (!box) return;
+			box.hidden = true;
+			box.classList.remove("is-closing");
+			if (restoreFocus && target) target.isConnected && target.focus();
+		}, 180);
 	}
 	function ensure() {
 		if (box) return;
@@ -3649,13 +3644,17 @@
 		document.body.append(box);
 		const searchInput = box.querySelector("input");
 		const searchResults = box.querySelector(".site-search-results");
-		if (!searchInput || !searchResults) {
+		const searchPanel = box.querySelector(".site-search-panel");
+		if (!searchInput || !searchResults || !searchPanel) {
 			box.remove();
 			box = void 0;
 			throw new Error("Search UI failed to initialize");
 		}
 		input = searchInput;
 		results = searchResults;
+		searchPanel.addEventListener("wheel", (event) => {
+			if (!(event.target instanceof Element ? event.target : null)?.closest(".site-search-results")) event.preventDefault();
+		}, { passive: false });
 		searchInput.addEventListener("input", () => {
 			active = 0;
 			render();
@@ -3698,8 +3697,10 @@
 		ensure();
 		opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		if (!box || !input) return;
+		clearTimeout(closeTimer);
+		closeTimer = 0;
+		box.classList.remove("is-closing");
 		box.hidden = false;
-		lockPageScroll();
 		active = 0;
 		input.value = "";
 		render();
@@ -3710,7 +3711,7 @@
 	addEventListener("keydown", (event) => {
 		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
 			event.preventDefault();
-			box && !box.hidden ? close() : open$1();
+			box && !box.hidden && !box.classList.contains("is-closing") ? close() : open$1();
 		} else if (event.key === "Escape") close();
 	});
 	document.addEventListener("click", (event) => {

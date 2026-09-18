@@ -27,9 +27,7 @@ let results: HTMLDivElement | undefined
 let opener: HTMLElement | null = null
 let active = 0
 let visible: Entry[] = []
-let pageScrollLocked = false
-let previousBodyOverflow = ''
-let previousHtmlOverflow = ''
+let closeTimer = 0
 
 const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K'
 const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
@@ -98,29 +96,24 @@ function keepActiveVisibleAfterResize() {
 addEventListener('resize', keepActiveVisibleAfterResize)
 globalThis.visualViewport?.addEventListener('resize', keepActiveVisibleAfterResize)
 
-function unlockPageScroll() {
-  if (!pageScrollLocked) return
-  document.body.style.overflow = previousBodyOverflow
-  document.documentElement.style.overflow = previousHtmlOverflow
-  pageScrollLocked = false
-}
-
-function lockPageScroll() {
-  if (pageScrollLocked) return
-  previousBodyOverflow = document.body.style.overflow
-  previousHtmlOverflow = document.documentElement.style.overflow
-  document.body.style.overflow = 'hidden'
-  document.documentElement.style.overflow = 'hidden'
-  pageScrollLocked = true
-}
-
 function close(restoreFocus = true) {
-  if (!box || box.hidden) return
-  box.hidden = true
-  unlockPageScroll()
+  if (!box || box.hidden || box.classList.contains('is-closing')) return
   const target = opener
   opener = null
-  if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    box.hidden = true
+    if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
+    return
+  }
+  box.classList.add('is-closing')
+  clearTimeout(closeTimer)
+  closeTimer = window.setTimeout(() => {
+    closeTimer = 0
+    if (!box) return
+    box.hidden = true
+    box.classList.remove('is-closing')
+    if (restoreFocus && target) target.isConnected && target.focus()
+  }, 180)
 }
 
 function ensure() {
@@ -134,9 +127,14 @@ function ensure() {
   document.body.append(box)
   const searchInput = box.querySelector<HTMLInputElement>('input')
   const searchResults = box.querySelector<HTMLDivElement>('.site-search-results')
-  if (!searchInput || !searchResults) { box.remove(); box = undefined; throw new Error('Search UI failed to initialize') }
+  const searchPanel = box.querySelector<HTMLDivElement>('.site-search-panel')
+  if (!searchInput || !searchResults || !searchPanel) { box.remove(); box = undefined; throw new Error('Search UI failed to initialize') }
   input = searchInput
   results = searchResults
+  searchPanel.addEventListener('wheel', event => {
+    const target = event.target instanceof Element ? event.target : null
+    if (!target?.closest('.site-search-results')) event.preventDefault()
+  }, { passive: false })
   searchInput.addEventListener('input', () => { active = 0; render() })
   box.addEventListener('click', event => {
     const target = event.target instanceof Element ? event.target : null
@@ -176,8 +174,10 @@ function open(trigger?: EventTarget | null) {
   ensure()
   opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null
   if (!box || !input) return
+  clearTimeout(closeTimer)
+  closeTimer = 0
+  box.classList.remove('is-closing')
   box.hidden = false
-  lockPageScroll()
   active = 0
   input.value = ''
   render()
@@ -189,7 +189,7 @@ addEventListener('samey-pageleave', () => close(false))
 addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
-    box && !box.hidden ? close() : open()
+    box && !box.hidden && !box.classList.contains('is-closing') ? close() : open()
   } else if (event.key === 'Escape') close()
 })
 document.addEventListener('click', event => {
