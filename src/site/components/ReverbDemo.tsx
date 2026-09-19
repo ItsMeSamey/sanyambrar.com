@@ -60,8 +60,16 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
   let previousBodyOverflow = '';
   let previousHtmlOverflow = '';
   let releaseBackground = () => {};
+  let exitTraversalPending = false;
 
   const stateIsOurs = () => Boolean(readHistoryState() && readHistoryState()[FULLSCREEN_STATE_KEY] === token);
+  const clearOwnedHistoryState = () => {
+    const state = readHistoryState();
+    if (!state || typeof state !== 'object' || state[FULLSCREEN_STATE_KEY] !== token) return;
+    const next = { ...state };
+    delete next[FULLSCREEN_STATE_KEY];
+    history.replaceState(next, '', location.href);
+  };
   const deepActiveElement = () => {
     let activeElement: Element | null = document.activeElement;
     while (activeElement instanceof HTMLElement && activeElement.shadowRoot?.activeElement)
@@ -158,6 +166,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const enterFullscreen = () => {
     if (active) return;
+    exitTraversalPending = false;
     const state = readHistoryState() && typeof readHistoryState() === 'object' ? readHistoryState() : {};
     history.pushState({ ...state, [FULLSCREEN_STATE_KEY]: token }, '', location.href);
     setFullscreen(true);
@@ -165,12 +174,20 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const exitFullscreen = () => {
     if (!active) return;
-    if (stateIsOurs()) history.back();
+    if (stateIsOurs()) {
+      if (exitTraversalPending) return;
+      exitTraversalPending = true;
+      history.back();
+    }
     else setFullscreen(false);
   };
 
   const onButtonClick = () => active ? exitFullscreen() : enterFullscreen();
-  const onPopState = () => setFullscreen(stateIsOurs());
+  const onPopState = () => {
+    exitTraversalPending = false;
+    setFullscreen(stateIsOurs());
+  };
+  const onPageLeave = () => clearOwnedHistoryState();
   const onGlobalShortcut = (event: KeyboardEvent) => {
     if (!active) return;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -181,6 +198,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
   const onKeyDown = (event: KeyboardEvent) => {
     if (!active) return;
     if (event.key === 'Escape') {
+      event.preventDefault();
       exitFullscreen();
       return;
     }
@@ -199,14 +217,17 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   button.addEventListener('click', onButtonClick);
   window.addEventListener('popstate', onPopState);
+  window.addEventListener('samey-pageleave', onPageLeave);
   window.addEventListener('keydown', onGlobalShortcut, true);
   window.addEventListener('keydown', onKeyDown);
 
   return () => {
     button.removeEventListener('click', onButtonClick);
     window.removeEventListener('popstate', onPopState);
+    window.removeEventListener('samey-pageleave', onPageLeave);
     window.removeEventListener('keydown', onGlobalShortcut, true);
     window.removeEventListener('keydown', onKeyDown);
+    clearOwnedHistoryState();
     if (active) {
       frame.classList.remove('is-fullscreen');
       frame.removeAttribute('role');
