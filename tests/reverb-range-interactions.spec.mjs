@@ -136,6 +136,154 @@ test('Reverb Range initial surface stays visually stable while controls become s
   await expect(end).toHaveCSS('width', '100px');
   await expect(end).toHaveCSS('height', '34px');
   await expect(wheel).toHaveCSS('height', '160px');
+  await expect(wheel).toHaveCSS('touch-action', 'none');
   await expect(host.locator('#rangeStartBoundary')).toHaveClass(/active/);
   await expect(host.locator('#rangeEndBoundary')).not.toHaveClass(/active/);
+});
+
+test('Reverb Range duration wheel owns pointer edits through settle', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const play = host.locator('#rangePlay');
+  const exportButton = host.locator('#rangeExport');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+
+  await start.fill('7:00.0');
+  await expect(start).toBeFocused();
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.68;
+  const y = box.y + box.height * 0.5;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+
+  await expect(wheel).toBeFocused();
+  await expect(start).toHaveText('5:00.0');
+  await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(play).toBeDisabled();
+  await expect(exportButton).toBeDisabled();
+
+  await page.mouse.move(x, y - box.height * (42 / 160), { steps: 4 });
+  await page.mouse.up();
+  await expect(exportButton).toBeDisabled();
+
+  await page.waitForTimeout(180);
+  await expect(exportButton).toBeEnabled();
+  await expect(play).toBeEnabled();
+  await expect(start).toHaveText('4:59.0');
+});
+
+test('Reverb Range duration wheel drops a delayed commit after target handoff', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('20:00.0');
+  await page.keyboard.press('Enter');
+  await start.focus();
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.68;
+  const y = box.y + box.height * 0.5;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - box.height * (42 / 160), { steps: 4 });
+  await page.mouse.up();
+  await expect(exportButton).toBeDisabled();
+
+  await end.focus();
+  await expect(end).toBeFocused();
+  await page.waitForTimeout(180);
+
+  await expect(exportButton).toBeEnabled();
+  await expect(start).toHaveText('5:00.0');
+  await expect(end).toHaveText('20:00.0');
+});
+
+test('Reverb Range duration wheel releases ownership on window blur', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  const play = host.locator('#rangePlay');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.68;
+  const y = box.y + box.height * 0.5;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - box.height * (42 / 160), { steps: 4 });
+  await expect(exportButton).toBeDisabled();
+
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(exportButton).toBeEnabled();
+  await expect(play).toBeEnabled();
+  await page.mouse.up();
+  await page.waitForTimeout(180);
+
+  await expect(start).toHaveText('5:00.0');
+  await expect(exportButton).toBeEnabled();
+});
+
+test('Reverb Range wheel scrolling invalidates text drafts and preview', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const play = host.locator('#rangePlay');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  await start.fill('7:00.0');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  await page.mouse.move(box.x + box.width * 0.92, box.y + box.height * 0.5);
+  await page.mouse.wheel(0, 120);
+
+  await expect(start).toHaveText('5:00.0');
+  await expect(start).not.toBeFocused();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
 });

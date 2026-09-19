@@ -334,6 +334,7 @@ export function runReverbDemoRuntime(
   const rangeStartBoundary = byId<HTMLElement>("rangeStartBoundary");
   const rangeEndBoundary = byId<HTMLElement>("rangeEndBoundary");
   const rangeDurationWheel = byId<HTMLElement>("rangeDurationWheel");
+  const rangeExportButton = byId<HTMLButtonElement>("rangeExport");
   const rangeWavebox =
     document.querySelector<HTMLElement>(".range-timeline .wavebox");
   if (!rangeWavebox) throw new Error("Reverb demo is missing range waveform");
@@ -343,6 +344,18 @@ export function runReverbDemoRuntime(
   let rangeEditTarget: RangeEditTarget = "start";
   let rangeWheelProfileIndex = 0;
   const rangeWheelProfiles = ["1x", "5x", "15x"] as const;
+  type RangeWheelColumn = "hour" | "minute" | "second" | "profile";
+  let rangeWheelPointerId = -1;
+  let rangeWheelPointerColumn: RangeWheelColumn | null = null;
+  let rangeWheelPinnedTarget: RangeEditTarget | null = null;
+  let rangeWheelPointerDownY = 0;
+  let rangeWheelPointerY = 0;
+  let rangeWheelPointerDragged = false;
+  let rangeWheelCommitAllowed = false;
+  let rangeWheelSettleTimer = 0;
+  let rangeWheelSuppressClick = false;
+  const rangeWheelInteractionActive = () =>
+    rangeWheelPointerId !== -1 || rangeWheelSettleTimer !== 0;
 
   function formatRangeTime(seconds: number): string {
     const tenths = Math.max(0, Math.round(seconds * 10));
@@ -511,6 +524,7 @@ export function runReverbDemoRuntime(
     renderRangeUi();
   }
   function setRangeEditTarget(target: RangeEditTarget): void {
+    if (rangeWheelInteractionActive()) rangeWheelCommitAllowed = false;
     rangeEditTarget = target;
     renderRangeUi();
   }
@@ -554,11 +568,14 @@ export function runReverbDemoRuntime(
     rangeEditTarget = target;
     renderRangeUi();
   }
-  function resizeRangeSelection(requestedSeconds: number): void {
+  function resizeRangeSelection(
+    requestedSeconds: number,
+    target: RangeEditTarget = rangeEditTarget,
+  ): void {
     const duration = Math.max(0, rangeTimelineDurationSeconds);
     const minimum = Math.min(0.05, duration);
     const requested = Math.max(minimum, requestedSeconds);
-    if (rangeEditTarget === "start") {
+    if (target === "start") {
       rangeStartSeconds = Math.max(
         0,
         Math.min(
@@ -624,6 +641,7 @@ export function runReverbDemoRuntime(
   let rangeWavePointerId = -1;
   rangeWavebox.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeWheelInteractionActive()) return;
     const path = event.composedPath();
     const target: RangeEditTarget = path.includes(rangeEndBoundary)
       ? "end"
@@ -657,8 +675,11 @@ export function runReverbDemoRuntime(
   rangeWavebox.addEventListener("pointerup", endRangeWavePointer);
   rangeWavebox.addEventListener("pointercancel", endRangeWavePointer);
 
-  const adjustRangeWheel = (deltaSeconds: number) => {
-    resizeRangeSelection(rangeSelectionSeconds() + deltaSeconds);
+  const adjustRangeWheel = (
+    deltaSeconds: number,
+    target: RangeEditTarget = rangeEditTarget,
+  ) => {
+    resizeRangeSelection(rangeSelectionSeconds() + deltaSeconds, target);
   };
   const cycleRangeWheelProfile = (direction: number) => {
     rangeWheelProfileIndex =
@@ -668,28 +689,155 @@ export function runReverbDemoRuntime(
       rangeWheelProfiles.length;
     renderRangeWheel();
   };
-  const adjustRangeWheelAt = (
-    clientX: number,
-    direction: number,
-  ) => {
+  const rangeWheelColumnAt = (clientX: number): RangeWheelColumn => {
     const rect = rangeDurationWheel.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
     const ratio = x / Math.max(1, rect.width);
-    if (ratio >= 0.81) {
+    return ratio >= 0.81
+      ? "profile"
+      : ratio < 0.27
+        ? "hour"
+        : ratio < 0.54
+          ? "minute"
+          : "second";
+  };
+  const adjustRangeWheelColumn = (
+    column: RangeWheelColumn,
+    direction: number,
+    target: RangeEditTarget = rangeEditTarget,
+  ) => {
+    if (column === "profile") {
       cycleRangeWheelProfile(direction);
       return;
     }
     const profileStep = rangeWheelStepSeconds();
     const unit =
-      ratio < 0.27 ? 3600 : ratio < 0.54 ? 60 * profileStep : profileStep;
-    adjustRangeWheel(direction * unit);
+      column === "hour"
+        ? 3600
+        : column === "minute"
+          ? 60 * profileStep
+          : profileStep;
+    adjustRangeWheel(direction * unit, target);
   };
-  rangeDurationWheel.addEventListener("wheel", (event) => {
-    if (event.deltaY === 0) return;
+  const adjustRangeWheelAt = (clientX: number, direction: number) =>
+    adjustRangeWheelColumn(rangeWheelColumnAt(clientX), direction);
+  const setRangeWheelInteractionUi = (active: boolean) => {
+    rangeExportButton.disabled = active;
+    byId<HTMLButtonElement>("rangePlay").disabled = active;
+    rangeDurationWheel.toggleAttribute("data-editing", active);
+  };
+  const cancelRangeWheelInteraction = () => {
+    if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
+    const pointerId = rangeWheelPointerId;
+    rangeWheelSettleTimer = 0;
+    rangeWheelPointerId = -1;
+    rangeWheelPointerColumn = null;
+    rangeWheelPinnedTarget = null;
+    rangeWheelPointerDragged = false;
+    rangeWheelCommitAllowed = false;
+    if (pointerId !== -1) {
+      rangeWheelSuppressClick = true;
+      setTimeout(() => {
+        rangeWheelSuppressClick = false;
+      }, 500);
+    }
+    if (pointerId !== -1 && rangeDurationWheel.hasPointerCapture?.(pointerId))
+      rangeDurationWheel.releasePointerCapture(pointerId);
+    setRangeWheelInteractionUi(false);
+  };
+  const finishRangeWheelInteraction = (event: PointerEvent) => {
+    if (event.pointerId !== rangeWheelPointerId) return;
+    const pointerId = rangeWheelPointerId;
+    const column = rangeWheelPointerColumn;
+    const pinnedTarget = rangeWheelPinnedTarget;
+    const rect = rangeDurationWheel.getBoundingClientRect();
+    const rowPx = Math.max(1, rect.height * (56 / 160));
+    const rawSteps = rangeWheelPointerDragged
+      ? -(rangeWheelPointerY - rangeWheelPointerDownY) / rowPx
+      : event.clientY - rect.top < rect.height / 3
+        ? -1
+        : event.clientY - rect.top > (rect.height * 2) / 3
+          ? 1
+          : 0;
+    const steps = Math.round(rawSteps);
+    const needsSettle = Math.abs(steps - rawSteps) > 0.0001;
+    rangeWheelPointerId = -1;
+    rangeWheelPointerColumn = null;
+    rangeWheelPinnedTarget = null;
+    rangeWheelPointerDragged = false;
+    rangeWheelSuppressClick = true;
+    setTimeout(() => {
+      rangeWheelSuppressClick = false;
+    }, 0);
+    if (rangeDurationWheel.hasPointerCapture?.(pointerId))
+      rangeDurationWheel.releasePointerCapture(pointerId);
+    const commit = () => {
+      rangeWheelSettleTimer = 0;
+      if (rangeWheelCommitAllowed && column && pinnedTarget && steps !== 0)
+        adjustRangeWheelColumn(column, steps, pinnedTarget);
+      rangeWheelCommitAllowed = false;
+      setRangeWheelInteractionUi(false);
+    };
+    if (needsSettle) {
+      rangeWheelSettleTimer = setTimeout(commit, 150);
+    } else {
+      commit();
+    }
+  };
+  rangeDurationWheel.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
+    rangeWheelSettleTimer = 0;
+    rangeWheelPointerId = event.pointerId;
+    rangeWheelPointerColumn = rangeWheelColumnAt(event.clientX);
+    rangeWheelPinnedTarget = rangeEditTarget;
+    rangeWheelPointerDownY = event.clientY;
+    rangeWheelPointerY = event.clientY;
+    rangeWheelPointerDragged = false;
+    rangeWheelCommitAllowed = true;
+    renderRangeUi();
+    setRangePlaying(false);
+    setRangeWheelInteractionUi(true);
+    rangeDurationWheel.focus({ preventScroll: true });
+    rangeDurationWheel.setPointerCapture?.(event.pointerId);
     event.preventDefault();
-    adjustRangeWheelAt(event.clientX, event.deltaY < 0 ? -1 : 1);
+  });
+  rangeDurationWheel.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== rangeWheelPointerId) return;
+    rangeWheelPointerY = event.clientY;
+    if (Math.abs(rangeWheelPointerY - rangeWheelPointerDownY) > 8)
+      rangeWheelPointerDragged = true;
+    event.preventDefault();
+  });
+  rangeDurationWheel.addEventListener("pointerup", finishRangeWheelInteraction);
+  rangeDurationWheel.addEventListener("pointercancel", finishRangeWheelInteraction);
+  rangeDurationWheel.addEventListener("lostpointercapture", (event) => {
+    if (event.pointerId === rangeWheelPointerId) finishRangeWheelInteraction(event);
+  });
+  rangeDurationWheel.addEventListener("wheel", (event) => {
+    if (event.deltaY === 0 || rangeWheelInteractionActive()) return;
+    const pinnedTarget = rangeEditTarget;
+    renderRangeUi();
+    rangeStartInput.blur();
+    rangeEndInput.blur();
+    setRangePlaying(false);
+    event.preventDefault();
+    adjustRangeWheelColumn(
+      rangeWheelColumnAt(event.clientX),
+      event.deltaY < 0 ? -1 : 1,
+      pinnedTarget,
+    );
   });
   rangeDurationWheel.addEventListener("click", (event) => {
+    if (rangeWheelSuppressClick) {
+      rangeWheelSuppressClick = false;
+      event.preventDefault();
+      return;
+    }
+    if (rangeWheelInteractionActive()) {
+      event.preventDefault();
+      return;
+    }
     const rect = rangeDurationWheel.getBoundingClientRect();
     const y = event.clientY - rect.top;
     const direction =
@@ -697,6 +845,7 @@ export function runReverbDemoRuntime(
     if (direction !== 0) adjustRangeWheelAt(event.clientX, direction);
   });
   rangeDurationWheel.addEventListener("keydown", (event) => {
+    if (rangeWheelInteractionActive()) return;
     const profileStep = rangeWheelStepSeconds();
     let delta = 0;
     if (event.key === "ArrowUp" || event.key === "ArrowRight")
@@ -778,14 +927,20 @@ export function runReverbDemoRuntime(
     settingsReturnFocus = byId<HTMLElement>("openLibrary");
     showScreen("settingsScreen");
   });
-  byId("rangeSettings").addEventListener("click", openSettings);
+  byId("rangeSettings").addEventListener("click", (event) => {
+    cancelRangeWheelInteraction();
+    openSettings(event);
+  });
   byId("openIncidents").addEventListener("click", openIncidents);
   byId("libraryIncidents").addEventListener("click", () => {
     incidentsReturnScreen = "homeScreen";
     incidentsReturnFocus = byId<HTMLElement>("openLibrary");
     showScreen("incidentsScreen");
   });
-  byId("rangeIncidents").addEventListener("click", openIncidents);
+  byId("rangeIncidents").addEventListener("click", (event) => {
+    cancelRangeWheelInteraction();
+    openIncidents(event);
+  });
   byId("openLibrary").addEventListener("click", () =>
     showScreen("libraryScreen"),
   );
@@ -798,6 +953,7 @@ export function runReverbDemoRuntime(
   });
   const rangeClose = byId<HTMLElement>("rangeClose");
   rangeClose.addEventListener("pointerdown", () => {
+    cancelRangeWheelInteraction();
     renderRangeUi();
   });
   rangeClose.addEventListener("click", () => {
@@ -1053,7 +1209,7 @@ export function runReverbDemoRuntime(
     document.querySelector<HTMLElement>(".range-screen .fine-control");
   if (!rangeFineControl)
     throw new Error("Reverb demo is missing range fine-seek control");
-  const rangePlay = byId<HTMLElement>("rangePlay");
+  const rangePlay = byId<HTMLButtonElement>("rangePlay");
   let rangePlaying = false;
   let rangeFinePointerId = -1;
   let rangeFineStartedOnPuck = false;
@@ -1205,6 +1361,7 @@ export function runReverbDemoRuntime(
   };
   rangeFineControl.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeWheelInteractionActive()) return;
     rangeFinePointerId = event.pointerId;
     rangeFineDownX = event.clientX;
     rangeFineDownY = event.clientY;
@@ -1890,6 +2047,7 @@ export function runReverbDemoRuntime(
   phone.addEventListener("pointercancel", clearGesture);
   const removeBlurListener = addWindowEventListener("blur", () => {
     clearGesture();
+    cancelRangeWheelInteraction();
     finishRangeFineAdjust(true);
     blobControl.classList.remove("pressed");
     for (const timer of activeIncidentHoldTimers) clearTimeout(timer);
