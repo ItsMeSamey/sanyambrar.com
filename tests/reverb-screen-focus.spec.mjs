@@ -187,3 +187,21 @@ test('Reverb Range consumes Escape before fullscreen', async ({ page }, info) =>
   await expect(frame).not.toHaveClass(/is-fullscreen/);
   await expect(fullscreen).toBeFocused();
 });
+
+test('Reverb screen focus handoff cannot steal a later external focus', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+
+  await host.locator('#openIncidents').click();
+  await expectScreenFocus(host, 'incidentsScreen', 'incidentsBack');
+  await host.evaluate(element => {
+    const back = element.shadowRoot?.querySelector('#incidentsBack');
+    if (!(back instanceof HTMLElement)) throw new Error('Incidents Back is unavailable');
+    back.click();
+  });
+  await fullscreen.focus();
+  await expect(fullscreen).toBeFocused();
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  await expect(fullscreen).toBeFocused();
+});

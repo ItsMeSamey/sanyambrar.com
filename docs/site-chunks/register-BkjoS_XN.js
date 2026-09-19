@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-DANEflud.js";import{t}from"./_.contribution-BSFb8z_A.js";t({id:`sql`,extensions:[`.sql`],aliases:[`SQL`],loader:()=>e(()=>import(`./sql-NEE52Syq.js`),[])});
