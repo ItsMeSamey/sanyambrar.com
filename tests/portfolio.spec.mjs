@@ -399,6 +399,277 @@ test('stateful surfaces stay contained through live responsive resizing', async 
   await expectResponsive('Keybr book picker');
 });
 
+test('responsive topbars stay collision-free through live state transitions', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the live topbar transition matrix');
+  test.setTimeout(120_000);
+
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 180, height: 1000 },
+    { width: 128, height: 1000 },
+  ];
+
+  const topbarIssues = () => page.evaluate(() => {
+    const topbar = document.querySelector('.site-topbar');
+    if (!(topbar instanceof HTMLElement)) return ['missing topbar'];
+    const visible = element => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const describe = element => element.getAttribute('aria-label')
+      || element.getAttribute('title')
+      || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 60)
+      || element.tagName.toLowerCase();
+    const controls = [...topbar.querySelectorAll('a[href],button,input,select,[role="button"],[role="link"]')]
+      .filter(element => visible(element) && getComputedStyle(element).pointerEvents !== 'none');
+    const issues = [];
+    const topbarRect = topbar.getBoundingClientRect();
+    if (topbarRect.left < -1 || topbarRect.right > innerWidth + 1) issues.push('topbar outside viewport');
+    for (const control of controls) {
+      const rect = control.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) {
+        issues.push(`offscreen ${describe(control)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+      }
+    }
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const aRect = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) issues.push(`collision ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+      }
+    }
+    return issues;
+  });
+
+  const expectTopbar = async label => {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(topbarIssues, {
+        message: `${label} at ${viewport.width}x${viewport.height}`,
+        timeout: 3000,
+        intervals: [100, 200, 300],
+      }).toEqual([]);
+    }
+  };
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/wordle', info);
+  await expectTopbar('Wordle opening');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await expect(page.locator('.wordle-board')).toBeVisible();
+  await expectTopbar('Wordle game');
+  await page.setViewportSize({ width: 180, height: 1000 });
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Statistics', exact: true })).toBeVisible();
+  await expectTopbar('Wordle statistics');
+  await page.setViewportSize({ width: 180, height: 1000 });
+  await page.getByRole('link', { name: 'Back to Wordle' }).click();
+  await expect(page.locator('.wordle-board')).toBeVisible();
+  await expectTopbar('Wordle game after stats return');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/keybr?p=practice', info);
+  await expectTopbar('Keybr practice');
+  await page.setViewportSize({ width: 180, height: 1000 });
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expectTopbar('Keybr settings');
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expectTopbar('Keybr statistics');
+  await page.getByRole('link', { name: 'Keybr', exact: true }).click();
+  await expect(page.getByText('Metrics:', { exact: true })).toBeVisible();
+  await expectTopbar('Keybr practice after view return');
+
+  await page.setViewportSize({ width: 180, height: 1000 });
+  await visit(page, '/chain/', info);
+  await expectTopbar('Chain opening');
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeVisible();
+  await expectTopbar('Chain game');
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expect(page.locator('.chain-stats-view')).toBeVisible();
+  await expectTopbar('Chain statistics');
+
+});
+
+test('Tools topbar stays contained while switching tools at 128px', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the narrow live-switch regression');
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await visit(page, '/tools/?tool=text', info);
+
+  const issues = () => page.evaluate(() => {
+    const topbar = document.querySelector('.site-topbar');
+    if (!(topbar instanceof HTMLElement)) return ['missing topbar'];
+    const visible = element => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+    };
+    const controls = [...topbar.querySelectorAll('a[href],button,select,[role="button"]')].filter(visible);
+    const out = [];
+    for (const control of controls) {
+      const rect = control.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) out.push(`offscreen ${control.getAttribute('aria-label') || control.textContent?.trim() || control.tagName}`);
+    }
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const aRect = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) out.push(`collision ${a.getAttribute('aria-label') || a.textContent?.trim()} <> ${b.getAttribute('aria-label') || b.textContent?.trim()}`);
+      }
+    }
+    return out;
+  });
+  const expectContained = async label => expect.poll(issues, {
+    message: label,
+    timeout: 3000,
+    intervals: [100, 200, 300],
+  }).toEqual([]);
+
+  await expectContained('Tools text at 128px');
+  const trigger = page.getByRole('button', { name: /Tool/ });
+  await expect(trigger).toContainText('Text');
+  const hitState = await trigger.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return {
+      rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+      hitTag: hit?.tagName ?? null,
+      hitClass: hit instanceof Element ? hit.getAttribute('class') : null,
+      hitLabel: hit instanceof Element ? hit.getAttribute('aria-label') : null,
+      hitInsideTrigger: hit === element || (hit instanceof Node && element.contains(hit)),
+      pointerEvents: getComputedStyle(element).pointerEvents,
+      zIndex: getComputedStyle(element).zIndex,
+    };
+  });
+  expect(hitState.hitInsideTrigger, JSON.stringify(hitState)).toBe(true);
+  const triggerBox = await trigger.boundingBox();
+  if (!triggerBox) throw new Error('Tool selector trigger has no geometry at 128px');
+  await page.mouse.move(triggerBox.x + triggerBox.width / 2, triggerBox.y + triggerBox.height / 2);
+  await page.mouse.down();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  const pointerDownGeometry = await page.locator('.tool-select-list').evaluate(element => {
+    const box = value => {
+      const rect = value?.getBoundingClientRect();
+      return rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height } : null;
+    };
+    const triggerElement = document.querySelector('.tool-select-trigger');
+    const content = element.closest('.tool-select-content');
+    const positioner = content?.parentElement;
+    const trigger = triggerElement?.getBoundingClientRect();
+    const list = element.getBoundingClientRect();
+    if (!trigger) return null;
+    return {
+      trigger: box(triggerElement),
+      content: box(content),
+      positioner: box(positioner),
+      list: box(element),
+      positionerStyle: positioner instanceof HTMLElement ? {
+        transform: positioner.style.transform,
+        top: positioner.style.top,
+        left: positioner.style.left,
+        width: positioner.style.width,
+        maxHeight: positioner.style.maxHeight,
+      } : null,
+      contentStyle: content instanceof HTMLElement ? {
+        position: getComputedStyle(content).position,
+        width: getComputedStyle(content).width,
+        maxHeight: getComputedStyle(content).maxHeight,
+        overflow: getComputedStyle(content).overflow,
+        visibility: getComputedStyle(content).visibility,
+        pointerEvents: getComputedStyle(content).pointerEvents,
+      } : null,
+      overlapWidth: Math.max(0, Math.min(trigger.right, list.right) - Math.max(trigger.left, list.left)),
+      overlapHeight: Math.max(0, Math.min(trigger.bottom, list.bottom) - Math.max(trigger.top, list.top)),
+    };
+  });
+  expect(pointerDownGeometry, 'Tool selector list must have geometry while pointer is held').not.toBeNull();
+  if (!pointerDownGeometry.positionerStyle?.transform?.includes('translate3d')) {
+    expect(pointerDownGeometry.contentStyle?.visibility, JSON.stringify(pointerDownGeometry)).toBe('hidden');
+    expect(pointerDownGeometry.contentStyle?.pointerEvents, JSON.stringify(pointerDownGeometry)).toBe('none');
+  } else {
+    expect(pointerDownGeometry.overlapWidth * pointerDownGeometry.overlapHeight, JSON.stringify(pointerDownGeometry)).toBe(0);
+  }
+  await page.mouse.up();
+  await expect(trigger, 'Opening pointer-up must not immediately close the Tool selector').toHaveAttribute('aria-expanded', 'true');
+  const initiallyOpenList = page.getByRole('listbox');
+  await expect(initiallyOpenList).toBeVisible();
+  await expect.poll(() => initiallyOpenList.evaluate(element => {
+    const trigger = document.querySelector('.tool-select-trigger')?.getBoundingClientRect();
+    const list = element.getBoundingClientRect();
+    const positioner = element.closest('.tool-select-content')?.parentElement;
+    if (!trigger) return null;
+    const positionerStyle = positioner instanceof HTMLElement ? getComputedStyle(positioner) : null;
+    const overlapWidth = Math.max(0, Math.min(trigger.right, list.right) - Math.max(trigger.left, list.left));
+    const overlapHeight = Math.max(0, Math.min(trigger.bottom, list.bottom) - Math.max(trigger.top, list.top));
+    return {
+      position: positionerStyle?.position ?? null,
+      overlapArea: overlapWidth * overlapHeight,
+      contained: list.left >= -1 && list.right <= innerWidth + 1 && list.top >= -1 && list.bottom <= innerHeight + 1,
+    };
+  }), { message: 'Tool selector must settle in the viewport without covering its trigger' }).toEqual({
+    position: 'fixed',
+    overlapArea: 0,
+    contained: true,
+  });
+  await initiallyOpenList.getByRole('option', { name: 'Diff', exact: true }).click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toContainText('Diff');
+  await expectContained('Tools Diff at 128px after pointer-open selection');
+  for (const option of ['Numbers', 'Markdown', 'Encode']) {
+    await trigger.click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const listbox = page.getByRole('listbox');
+    await expect(listbox).toBeVisible();
+    await listbox.getByRole('option', { name: option, exact: true }).click();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(trigger).toContainText(option);
+    await expectContained(`Tools ${option} at 128px after live switch`);
+  }
+
+  await page.setViewportSize({ width: 128, height: 180 });
+  await expectContained('Tools topbar at 128x180');
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  const shortContent = page.locator('.tool-select-content');
+  const shortList = page.getByRole('listbox');
+  await expect(shortContent).toBeVisible();
+  await expect.poll(() => shortContent.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return {
+      contained: rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1,
+      scrollable: element.scrollHeight > element.clientHeight + 1,
+    };
+  }), { message: '128x180 Tool selector must stay contained and become vertically scrollable' }).toEqual({
+    contained: true,
+    scrollable: true,
+  });
+  const textOption = shortList.getByRole('option', { name: 'Text', exact: true });
+  await textOption.scrollIntoViewIfNeeded();
+  await expect(textOption).toBeVisible();
+  await textOption.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toContainText('Text');
+});
+
 const legacyHtmlRoutes = [
   '/index.html',
   '/work/index.html',
