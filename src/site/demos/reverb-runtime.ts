@@ -767,9 +767,36 @@ export function runReverbDemoRuntime(
     resetRangeUi();
     showScreen("rangeScreen");
   });
-  byId("rangeClose").addEventListener("click", () =>
-    showScreen("homeScreen", byId<HTMLElement>("openRange")),
-  );
+  byId("rangeClose").addEventListener("click", () => {
+    rangeStartInput.blur();
+    rangeEndInput.blur();
+    renderRangeUi();
+    setRangePlaying(false);
+    showScreen("homeScreen", byId<HTMLElement>("openRange"));
+  });
+  byId("rangeExport").addEventListener("click", () => {
+    const activeDraft =
+      rangeStartInput.matches(":focus")
+        ? ([rangeStartInput, "start"] as const)
+        : rangeEndInput.matches(":focus")
+          ? ([rangeEndInput, "end"] as const)
+          : null;
+    if (
+      activeDraft &&
+      !commitRangeInput(activeDraft[0], activeDraft[1])
+    ) {
+      activeDraft[0].focus({ preventScroll: true });
+      return;
+    }
+    const invalid = [rangeStartInput, rangeEndInput].find(
+      (input) => input.getAttribute("aria-invalid") === "true",
+    );
+    if (invalid) {
+      invalid.focus({ preventScroll: true });
+      return;
+    }
+    showToast("Exporting range");
+  });
   byId("incidentsBack").addEventListener("click", () =>
     showScreen(incidentsReturnScreen, incidentsReturnFocus),
   );
@@ -1157,15 +1184,18 @@ export function runReverbDemoRuntime(
     if (rangeFinePointerId !== -1) finishRangeFineAdjust(true);
   });
 
+  function setRangePlaying(playing: boolean): void {
+    rangePlaying = playing;
+    const use = rangePlay.querySelector("use");
+    use?.setAttribute("href", rangePlaying ? "#i-pause" : "#i-play");
+    rangePlay.setAttribute("aria-label", rangePlaying ? "Pause" : "Play");
+  }
   rangePlay.addEventListener("click", (event) => {
     if (rangeFineSuppressClick) {
       event.preventDefault();
       return;
     }
-    rangePlaying = !rangePlaying;
-    const use = rangePlay.querySelector("use");
-    use?.setAttribute("href", rangePlaying ? "#i-pause" : "#i-play");
-    rangePlay.setAttribute("aria-label", rangePlaying ? "Pause" : "Play");
+    setRangePlaying(!rangePlaying);
   });
 
   const wakeSwitch = byId<HTMLElement>("wakeSwitch");
