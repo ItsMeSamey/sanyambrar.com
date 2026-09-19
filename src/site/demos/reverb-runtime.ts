@@ -308,6 +308,22 @@ export function runReverbDemoRuntime(
   scheduleTick();
 
   const rememberedRangeDurationSeconds = 2 * 3600 + 23 * 60 + 53.7;
+  type RangeEditTarget = "start" | "end";
+  const rangeStartInput = byId<HTMLElement>("rangeStart");
+  const rangeEndInput = byId<HTMLElement>("rangeEnd");
+  const rangeStartBoundary = byId<HTMLElement>("rangeStartBoundary");
+  const rangeEndBoundary = byId<HTMLElement>("rangeEndBoundary");
+  const rangeDurationWheel = byId<HTMLElement>("rangeDurationWheel");
+  const rangeWavebox =
+    document.querySelector<HTMLElement>(".range-timeline .wavebox");
+  if (!rangeWavebox) throw new Error("Reverb demo is missing range waveform");
+  let rangeTimelineDurationSeconds = 0.1;
+  let rangeStartSeconds = 0;
+  let rangeEndSeconds = 0.1;
+  let rangeEditTarget: RangeEditTarget = "start";
+  let rangeWheelProfileIndex = 0;
+  const rangeWheelProfiles = ["1x", "5x", "15x"] as const;
+
   function formatRangeTime(seconds: number): string {
     const tenths = Math.max(0, Math.round(seconds * 10));
     const h = Math.floor(tenths / 36000);
@@ -318,31 +334,130 @@ export function runReverbDemoRuntime(
       ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`
       : `${m}:${String(s).padStart(2, "0")}.${t}`;
   }
-  function syncRangeUi(): void {
-    const end = Math.max(0.1, currentSeconds());
-    const selection = Math.min(rememberedRangeDurationSeconds, end);
-    const start = Math.max(0, end - selection);
-    const startFraction = Math.max(0, Math.min(1, start / end));
-    byId("rangeStart").textContent = formatRangeTime(start);
-    byId("rangeEnd").textContent = formatRangeTime(end);
-    byId("rangeDurationLabel").textContent = formatRangeTime(end);
+  function parseRangeTime(value: string): number | null {
+    const parts = value.trim().split(":");
+    if (
+      parts.length < 1 ||
+      parts.length > 3 ||
+      parts.some((part) => part.length === 0)
+    )
+      return null;
+    const secondsPart = Number(parts.at(-1));
+    if (
+      !Number.isFinite(secondsPart) ||
+      secondsPart < 0 ||
+      (parts.length > 1 && secondsPart >= 60)
+    )
+      return null;
+    const minuteText = parts.length >= 2 ? parts[parts.length - 2] ?? "" : "0";
+    const minutes = /^\d+$/.test(minuteText) ? Number(minuteText) : Number.NaN;
+    if (
+      !Number.isSafeInteger(minutes) ||
+      minutes < 0 ||
+      (parts.length === 3 && minutes >= 60)
+    )
+      return null;
+    const hourText = parts.length === 3 ? parts[0] ?? "" : "0";
+    const hours = /^\d+$/.test(hourText) ? Number(hourText) : Number.NaN;
+    if (!Number.isSafeInteger(hours) || hours < 0) return null;
+    const result = hours * 3600 + minutes * 60 + secondsPart;
+    return Number.isFinite(result) ? result : null;
+  }
+  const rangeSelectionSeconds = () =>
+    Math.max(0, rangeEndSeconds - rangeStartSeconds);
+  const rangeWheelStepSeconds = () =>
+    rangeWheelProfileIndex === 1 ? 5 : rangeWheelProfileIndex === 2 ? 15 : 1;
+  const splitRangeWholeSeconds = (seconds: number) => {
+    const whole = Math.max(0, Math.floor(seconds));
+    return {
+      hours: Math.floor(whole / 3600),
+      minutes: Math.floor((whole % 3600) / 60),
+      seconds: whole % 60,
+    };
+  };
+  const twoDigits = (value: number) => String(value).padStart(2, "0");
+  const rangeInputText = (input: HTMLElement) => input.textContent ?? "";
+  const setRangeInputText = (input: HTMLElement, value: string) => {
+    if (input.textContent !== value) input.textContent = value;
+  };
+
+  function renderRangeWheel(): void {
+    const selection = rangeSelectionSeconds();
+    const parts = splitRangeWholeSeconds(selection);
+    const currentFaces = [
+      ...rangeDurationWheel.querySelectorAll<HTMLElement>(
+        ".wheel-face.current:not(.wheel-profile)",
+      ),
+    ];
+    const values = [parts.hours, parts.minutes, parts.seconds];
+    currentFaces.forEach((face, index) => {
+      face.textContent = twoDigits(values[index] ?? 0);
+    });
+    const currentProfile =
+      rangeDurationWheel.querySelector<HTMLElement>(
+        ".wheel-face.current.wheel-profile",
+      );
+    if (currentProfile)
+      currentProfile.textContent =
+        rangeWheelProfiles[rangeWheelProfileIndex] ?? "1x";
+    const maximum =
+      rangeEditTarget === "start"
+        ? rangeEndSeconds
+        : Math.max(0, rangeTimelineDurationSeconds - rangeStartSeconds);
+    rangeDurationWheel.setAttribute("aria-valuemin", "0.05");
+    rangeDurationWheel.setAttribute("aria-valuemax", String(maximum));
+    rangeDurationWheel.setAttribute(
+      "aria-valuenow",
+      String(Math.round(selection * 10) / 10),
+    );
+    rangeDurationWheel.setAttribute(
+      "aria-valuetext",
+      `${parts.hours}:${twoDigits(parts.minutes)}:${twoDigits(parts.seconds)} ${
+        rangeWheelProfiles[rangeWheelProfileIndex] ?? "1x"
+      }`,
+    );
+  }
+  function renderRangeUi(): void {
+    const duration = Math.max(0.1, rangeTimelineDurationSeconds);
+    const startFraction = Math.max(
+      0,
+      Math.min(1, rangeStartSeconds / duration),
+    );
+    const endFraction = Math.max(0, Math.min(1, rangeEndSeconds / duration));
+    setRangeInputText(rangeStartInput, formatRangeTime(rangeStartSeconds));
+    setRangeInputText(rangeEndInput, formatRangeTime(rangeEndSeconds));
+    rangeStartInput.removeAttribute("aria-invalid");
+    rangeEndInput.removeAttribute("aria-invalid");
+    byId("rangeDurationLabel").textContent = formatRangeTime(duration);
 
     const timelineWidth = 375;
     const timelineInset = 12;
     const waveformWidth = timelineWidth - timelineInset * 2;
     const bubbleWidth = 100;
-    const markerX = timelineInset + waveformWidth * startFraction;
-    const bubbleLeft = Math.max(
-      0,
-      Math.min(timelineWidth - bubbleWidth, markerX - bubbleWidth / 2),
-    );
-    byId<HTMLElement>("rangeStart").style.left = `${bubbleLeft}px`;
-    byId<HTMLElement>("rangeStartBoundary").style.left =
-      `${startFraction * 100}%`;
+    const bubbleLeftFor = (fraction: number) => {
+      const markerX = timelineInset + waveformWidth * fraction;
+      return Math.max(
+        0,
+        Math.min(timelineWidth - bubbleWidth, markerX - bubbleWidth / 2),
+      );
+    };
+    rangeStartInput.style.left = `${bubbleLeftFor(startFraction)}px`;
+    rangeEndInput.style.left = `${bubbleLeftFor(endFraction)}px`;
+    rangeEndInput.style.right = "auto";
+    rangeStartBoundary.style.left = `${startFraction * 100}%`;
+    rangeEndBoundary.style.left = `${endFraction * 100}%`;
     const selectedRect = byId<SVGRectElement>("selectedWaveRect");
     const clipX = 360 * startFraction;
+    const clipEnd = 360 * endFraction;
     selectedRect.setAttribute("x", clipX.toFixed(2));
-    selectedRect.setAttribute("width", Math.max(0, 360 - clipX).toFixed(2));
+    selectedRect.setAttribute(
+      "width",
+      Math.max(0, clipEnd - clipX).toFixed(2),
+    );
+    rangeStartInput.classList.toggle("active", rangeEditTarget === "start");
+    rangeEndInput.classList.toggle("active", rangeEditTarget === "end");
+    rangeStartBoundary.classList.toggle("active", rangeEditTarget === "start");
+    rangeEndBoundary.classList.toggle("active", rangeEditTarget === "end");
 
     const loop = selectedBuffer === "loop";
     byId("rangeBufferLabel").textContent = loop ? "Looping" : "One-shot";
@@ -350,7 +465,236 @@ export function runReverbDemoRuntime(
       "href",
       loop ? "#i-loop" : "#i-one",
     );
+    renderRangeWheel();
   }
+  function resetRangeUi(): void {
+    rangeTimelineDurationSeconds = Math.max(0.1, currentSeconds());
+    const selection = Math.min(
+      rememberedRangeDurationSeconds,
+      rangeTimelineDurationSeconds,
+    );
+    rangeStartSeconds = Math.max(
+      0,
+      rangeTimelineDurationSeconds - selection,
+    );
+    rangeEndSeconds = rangeTimelineDurationSeconds;
+    rangeEditTarget = "start";
+    rangeWheelProfileIndex = 0;
+    renderRangeUi();
+  }
+  function setRangeEditTarget(target: RangeEditTarget): void {
+    rangeEditTarget = target;
+    renderRangeUi();
+  }
+  function adjustRangeTarget(
+    target: RangeEditTarget,
+    requestedSeconds: number,
+  ): void {
+    const duration = Math.max(0, rangeTimelineDurationSeconds);
+    const minimum = Math.min(0.05, duration);
+    let start = Math.max(0, Math.min(duration, rangeStartSeconds));
+    let end = Math.max(start, Math.min(duration, rangeEndSeconds));
+    if (end - start < minimum) {
+      end = Math.min(duration, start + minimum);
+      start = Math.max(0, end - minimum);
+    }
+    if (target === "start") {
+      const requested = Math.max(
+        0,
+        Math.min(Math.max(0, duration - minimum), requestedSeconds),
+      );
+      if (requested > end - minimum) {
+        start = requested;
+        end = Math.min(duration, start + minimum);
+      } else {
+        start = requested;
+      }
+    } else {
+      const requested = Math.max(
+        Math.min(minimum, duration),
+        Math.min(duration, requestedSeconds),
+      );
+      if (requested < start + minimum) {
+        end = requested;
+        start = Math.max(0, end - minimum);
+      } else {
+        end = requested;
+      }
+    }
+    rangeStartSeconds = start;
+    rangeEndSeconds = end;
+    rangeEditTarget = target;
+    renderRangeUi();
+  }
+  function resizeRangeSelection(requestedSeconds: number): void {
+    const duration = Math.max(0, rangeTimelineDurationSeconds);
+    const minimum = Math.min(0.05, duration);
+    const requested = Math.max(minimum, requestedSeconds);
+    if (rangeEditTarget === "start") {
+      rangeStartSeconds = Math.max(
+        0,
+        Math.min(
+          Math.max(0, rangeEndSeconds - minimum),
+          rangeEndSeconds - requested,
+        ),
+      );
+    } else {
+      rangeEndSeconds = Math.max(
+        Math.min(duration, rangeStartSeconds + minimum),
+        Math.min(duration, rangeStartSeconds + requested),
+      );
+    }
+    renderRangeUi();
+  }
+  function commitRangeInput(
+    input: HTMLElement,
+    target: RangeEditTarget,
+  ): boolean {
+    const parsed = parseRangeTime(rangeInputText(input));
+    if (parsed == null) {
+      input.setAttribute("aria-invalid", "true");
+      return false;
+    }
+    adjustRangeTarget(target, parsed);
+    return true;
+  }
+  (
+    [
+      [rangeStartInput, "start"],
+      [rangeEndInput, "end"],
+    ] as const
+  ).forEach(([input, target]) => {
+    input.addEventListener("focus", () => {
+      if (input.getAttribute("aria-invalid") === "true") return;
+      const other = target === "start" ? rangeEndInput : rangeStartInput;
+      if (other.getAttribute("aria-invalid") === "true") {
+        requestAnimationFrame(() => {
+          if (other.isConnected) other.focus({ preventScroll: true });
+        });
+        return;
+      }
+      setRangeEditTarget(target);
+    });
+    input.addEventListener("input", () => input.removeAttribute("aria-invalid"));
+    input.addEventListener("blur", () => {
+      const other = target === "start" ? rangeEndInput : rangeStartInput;
+      if (other.getAttribute("aria-invalid") === "true") return;
+      commitRangeInput(input, target);
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (commitRangeInput(input, target)) input.blur();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        renderRangeUi();
+        input.blur();
+      }
+    });
+  });
+
+  let rangeWavePointerId = -1;
+  rangeWavebox.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const path = event.composedPath();
+    const target: RangeEditTarget = path.includes(rangeEndBoundary)
+      ? "end"
+      : path.includes(rangeStartBoundary)
+        ? "start"
+        : rangeEditTarget;
+    rangeEditTarget = target;
+    rangeWavePointerId = event.pointerId;
+    rangeWavebox.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+    const rect = rangeWavebox.getBoundingClientRect();
+    const seconds =
+      ((event.clientX - rect.left) / Math.max(1, rect.width)) *
+      rangeTimelineDurationSeconds;
+    adjustRangeTarget(target, seconds);
+  });
+  rangeWavebox.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== rangeWavePointerId) return;
+    const rect = rangeWavebox.getBoundingClientRect();
+    const seconds =
+      ((event.clientX - rect.left) / Math.max(1, rect.width)) *
+      rangeTimelineDurationSeconds;
+    adjustRangeTarget(rangeEditTarget, seconds);
+  });
+  const endRangeWavePointer = (event: PointerEvent) => {
+    if (event.pointerId !== rangeWavePointerId) return;
+    rangeWavePointerId = -1;
+    if (rangeWavebox.hasPointerCapture?.(event.pointerId))
+      rangeWavebox.releasePointerCapture(event.pointerId);
+  };
+  rangeWavebox.addEventListener("pointerup", endRangeWavePointer);
+  rangeWavebox.addEventListener("pointercancel", endRangeWavePointer);
+
+  const adjustRangeWheel = (deltaSeconds: number) => {
+    resizeRangeSelection(rangeSelectionSeconds() + deltaSeconds);
+  };
+  const cycleRangeWheelProfile = (direction: number) => {
+    rangeWheelProfileIndex =
+      (rangeWheelProfileIndex +
+        direction +
+        rangeWheelProfiles.length) %
+      rangeWheelProfiles.length;
+    renderRangeWheel();
+  };
+  const adjustRangeWheelAt = (
+    clientX: number,
+    direction: number,
+  ) => {
+    const rect = rangeDurationWheel.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const ratio = x / Math.max(1, rect.width);
+    if (ratio >= 0.81) {
+      cycleRangeWheelProfile(direction);
+      return;
+    }
+    const profileStep = rangeWheelStepSeconds();
+    const unit =
+      ratio < 0.27 ? 3600 : ratio < 0.54 ? 60 * profileStep : profileStep;
+    adjustRangeWheel(direction * unit);
+  };
+  rangeDurationWheel.addEventListener("wheel", (event) => {
+    if (event.deltaY === 0) return;
+    event.preventDefault();
+    adjustRangeWheelAt(event.clientX, event.deltaY < 0 ? -1 : 1);
+  });
+  rangeDurationWheel.addEventListener("click", (event) => {
+    const rect = rangeDurationWheel.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+    const direction =
+      y < rect.height / 3 ? -1 : y > (rect.height * 2) / 3 ? 1 : 0;
+    if (direction !== 0) adjustRangeWheelAt(event.clientX, direction);
+  });
+  rangeDurationWheel.addEventListener("keydown", (event) => {
+    const profileStep = rangeWheelStepSeconds();
+    let delta = 0;
+    if (event.key === "ArrowUp" || event.key === "ArrowRight")
+      delta = profileStep;
+    else if (event.key === "ArrowDown" || event.key === "ArrowLeft")
+      delta = -profileStep;
+    else if (event.key === "PageUp") delta = 60 * profileStep;
+    else if (event.key === "PageDown") delta = -60 * profileStep;
+    else if (event.key === "Home") {
+      event.preventDefault();
+      resizeRangeSelection(0.05);
+      return;
+    } else if (event.key === "End") {
+      event.preventDefault();
+      resizeRangeSelection(
+        rangeEditTarget === "start"
+          ? rangeEndSeconds
+          : rangeTimelineDurationSeconds - rangeStartSeconds,
+      );
+      return;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    adjustRangeWheel(delta);
+  });
 
   const bufferSegments = [
     ...document.querySelectorAll<HTMLButtonElement>(".buffer-segment"),
@@ -420,7 +764,7 @@ export function runReverbDemoRuntime(
     showScreen("homeScreen", byId<HTMLElement>("openLibrary")),
   );
   byId("openRange").addEventListener("click", () => {
-    syncRangeUi();
+    resetRangeUi();
     showScreen("rangeScreen");
   });
   byId("rangeClose").addEventListener("click", () =>
