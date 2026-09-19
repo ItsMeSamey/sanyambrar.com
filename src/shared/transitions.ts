@@ -140,8 +140,8 @@ function animateConstructionContent(root: HTMLElement, phase: Phase, direction: 
     const shifted = `${baseTransform === 'none' ? '' : `${baseTransform} `}translate3d(0,${(entering ? sign : -sign) * CONSTRUCTED_TRANSITION.offset}px,0)`;
     return element.animate(
       entering
-        ? [{ opacity: 0, transform: shifted }, { opacity: 1, transform: baseline }]
-        : [{ opacity: 1, transform: baseline }, { opacity: 0, transform: shifted }],
+        ? [{ transform: shifted }, { transform: baseline }]
+        : [{ transform: baseline }, { transform: shifted }],
       {
         duration: CONSTRUCTED_TRANSITION.content,
         delay: (entering ? CONSTRUCTED_TRANSITION.groupGap : 0) + stagger(index),
