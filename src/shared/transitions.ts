@@ -6,8 +6,6 @@ type Phase = 'in' | 'out';
 
 /** Every routed and local view deconstructs into rules, then rebuilds before content. */
 const CONSTRUCTED_TRANSITION = {
-  out: 260,
-  in: 420,
   line: 190,
   content: 150,
   groupGap: 90,
@@ -157,7 +155,6 @@ function animateConstructionContent(root: HTMLElement, phase: Phase, direction: 
 async function animateConstructionExit(root: HTMLElement, direction: Direction) {
   const layer = makeConstructionLayer(root);
   const animations = [
-    root.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CONSTRUCTED_TRANSITION.out, easing: CONSTRUCTED_TRANSITION.leaveEasing, fill: 'both' }),
     ...animateConstructionLines(layer, 'out', direction),
     ...animateConstructionContent(root, 'out', direction),
   ];
@@ -166,15 +163,11 @@ async function animateConstructionExit(root: HTMLElement, direction: Direction) 
 }
 
 async function animateConstructionEntrance(root: HTMLElement, direction: Direction) {
-  const priorOpacity = root.style.opacity;
-  root.style.opacity = '0';
   const layer = makeConstructionLayer(root);
   const animations = [
-    root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: CONSTRUCTED_TRANSITION.in, easing: CONSTRUCTED_TRANSITION.enterEasing, fill: 'both' }),
     ...animateConstructionLines(layer, 'in', direction),
     ...animateConstructionContent(root, 'in', direction),
   ];
-  root.style.opacity = priorOpacity;
   await waitAnimations(animations);
   for (const animation of animations) animation.cancel();
   layer.remove();

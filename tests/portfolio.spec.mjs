@@ -1359,7 +1359,7 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
   await visit(page, '/', info);
   await expectContained('.home-writing-read');
   await visit(page, '/projects/reverb/', info);
-  await expectContained('.reverb-demo-store-link');
+  await expectContained('.project-source-link, .project-fdroid-link');
   await visit(page, '/blog/posts/btop-mutex', info);
   await expectContained('.article-route main button, .article-route main a[href]');
   await visit(page, '/tools/?tool=diff', info);
@@ -1511,6 +1511,34 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await page.keyboard.press('Escape');
   await expect(advanced).not.toBeVisible();
   await expect(appearance).toBeFocused();
+});
+
+test('SPA route transitions never fade the whole route to blank', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await visit(page, '/', info);
+
+  const samples = page.evaluate(() => new Promise(resolve => {
+    const result = [];
+    const started = performance.now();
+    const sample = () => {
+      const route = document.querySelector('.site-route');
+      const rect = route?.getBoundingClientRect();
+      result.push({
+        opacity: route ? Number(getComputedStyle(route).opacity) : 0,
+        area: rect ? rect.width * rect.height : 0,
+      });
+      if (performance.now() - started < 850) requestAnimationFrame(sample);
+      else resolve(result);
+    };
+    requestAnimationFrame(sample);
+  }));
+
+  await page.locator('a[href="/work/"]').first().click();
+  await expect(page).toHaveURL(/\/work\/?$/);
+  const frames = await samples;
+  expect(frames.length).toBeGreaterThan(10);
+  expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
+  expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
 });
 
 test('Advanced appearance controls keep strong keyboard focus contrast', async ({ page }, info) => {
@@ -2544,7 +2572,7 @@ test('project source links use Git branding and Reverb exposes F-Droid beside So
     const fdroid = page.locator('.project-fdroid-link');
     if (path === '/projects/reverb/') {
       await expect(fdroid).toHaveCount(1);
-      await expect(fdroid).toContainText('Available on F-Droid');
+      await expect(fdroid.locator('.project-action-label')).toHaveText('F-Droid');
       await expect(fdroid.locator('svg.project-link-icon-fdroid')).toBeVisible();
       await expect(fdroid.locator('svg.project-link-icon-fdroid path')).toHaveAttribute('d', /^M20\.472 10\.081/);
       await expect(page.locator('.project-action-links')).toHaveCSS('display', 'flex');
@@ -2553,8 +2581,7 @@ test('project source links use Git branding and Reverb exposes F-Droid beside So
       if (!sourceBox || !fdroidBox) throw new Error('Project action links have no geometry');
       expect(Math.abs(sourceBox.y - fdroidBox.y), 'F-Droid should sit beside Source when the row fits').toBeLessThan(2);
 
-      const demoFdroid = page.locator('.reverb-demo-store-link');
-      await expect(demoFdroid.locator('svg.project-link-icon-fdroid')).toBeVisible();
+      await expect(page.locator('.reverb-demo-store-link')).toHaveCount(0);
     } else {
       await expect(fdroid).toHaveCount(0);
     }
