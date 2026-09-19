@@ -544,13 +544,16 @@ export function runReverbDemoRuntime(
     };
   }
   settingsInitial = captureSettingsSnapshot();
+  const settingsDone = byId<HTMLButtonElement>("settingsDone");
   function setDirty(dirty = true): void {
     settingsDirty = dirty;
-    byId("settingsDone").classList.toggle("disabled", !dirty);
+    settingsDone.disabled = !dirty;
+    settingsDone.classList.toggle("disabled", !dirty);
     byId("settingsNavBack").style.display = dirty ? "none" : "block";
     byId("settingsNavUndo").style.display = dirty ? "block" : "none";
     byId("settingsNav").setAttribute("aria-label", dirty ? "Undo" : "Back");
   }
+  setDirty(false);
   function setRetentionMode(mode: RetentionMode, dirty = true): void {
     retentionMode = mode;
     retentionSegments.forEach((segment) =>
@@ -653,17 +656,29 @@ export function runReverbDemoRuntime(
   });
 
   let activeDropdown: HTMLElement | null = null;
-  function closeDropdown(): void {
+  dropdownMenu.setAttribute("role", "menu");
+  dropdownMenu.setAttribute("aria-hidden", "true");
+  function closeDropdown(restoreFocus = false): void {
+    const trigger = activeDropdown;
+    trigger?.setAttribute("aria-expanded", "false");
     dropdownMenu.classList.remove("show");
+    dropdownMenu.setAttribute("aria-hidden", "true");
+    dropdownMenu.removeAttribute("aria-label");
     dropdownMenu.replaceChildren();
     activeDropdown = null;
+    if (restoreFocus && trigger)
+      requestAnimationFrame(() =>
+        trigger.isConnected && trigger.focus({ preventScroll: true }),
+      );
   }
   document
     .querySelector<HTMLElement>(".settings-body")
-    ?.addEventListener("scroll", closeDropdown, { passive: true });
-  const removeResizeListener = addWindowEventListener("resize", closeDropdown, {
-    passive: true,
-  });
+    ?.addEventListener("scroll", () => closeDropdown(true), { passive: true });
+  const removeResizeListener = addWindowEventListener(
+    "resize",
+    () => closeDropdown(true),
+    { passive: true },
+  );
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -679,35 +694,114 @@ export function runReverbDemoRuntime(
   );
   document
     .querySelectorAll<HTMLElement>(".settings-card.dropdown")
-    .forEach((field) =>
+    .forEach((field) => {
+      field.setAttribute("aria-haspopup", "menu");
+      field.setAttribute("aria-controls", "dropdownMenu");
+      field.setAttribute("aria-expanded", "false");
       field.addEventListener("click", (event) => {
         event.stopPropagation();
+        if (activeDropdown === field && dropdownMenu.classList.contains("show")) {
+          closeDropdown(true);
+          return;
+        }
         closeDropdown();
         activeDropdown = field;
+        field.setAttribute("aria-expanded", "true");
         const options = (field.dataset.options ?? "")
           .split("|")
           .filter(Boolean);
         const value = field.querySelector<HTMLElement>(".value");
         if (!value) return;
+        let selectedButton: HTMLButtonElement | null = null;
         options.forEach((option) => {
           const button = document.createElement("button");
+          button.type = "button";
           button.className = "dropdown-item";
           button.textContent = option;
+          button.setAttribute("role", "menuitemradio");
+          const selected = option === value.textContent;
+          button.setAttribute("aria-checked", String(selected));
+          if (selected) selectedButton = button;
           button.addEventListener("click", () => {
             value.textContent = option;
             setDirty();
-            closeDropdown();
+            closeDropdown(true);
           });
           dropdownMenu.appendChild(button);
         });
+        const caption =
+          field.querySelector<HTMLElement>(".caption")?.textContent?.trim();
+        if (caption) dropdownMenu.setAttribute("aria-label", caption + " options");
         const rect = field.getBoundingClientRect(),
           root = phone.getBoundingClientRect();
         dropdownMenu.style.left = `${Math.max(8, rect.left - root.left)}px`;
         dropdownMenu.style.top = `${Math.min(root.height - 310, rect.bottom - root.top + 4)}px`;
         dropdownMenu.style.width = `${Math.max(160, rect.width)}px`;
         dropdownMenu.classList.add("show");
-      }),
-    );
+        dropdownMenu.setAttribute("aria-hidden", "false");
+        const initialFocus =
+          selectedButton ??
+          dropdownMenu.querySelector<HTMLButtonElement>(".dropdown-item");
+        if (initialFocus)
+          requestAnimationFrame(() =>
+            initialFocus.isConnected &&
+            initialFocus.focus({ preventScroll: true }),
+          );
+      });
+    });
+  dropdownMenu.addEventListener("keydown", (event) => {
+    if (!(event instanceof KeyboardEvent) || !activeDropdown) return;
+    const items = [
+      ...dropdownMenu.querySelectorAll<HTMLButtonElement>(
+        ".dropdown-item:not(:disabled)",
+      ),
+    ];
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeDropdown(true);
+      return;
+    }
+    if (event.key === "Tab") {
+      const trigger = activeDropdown;
+      const focusable = [
+        ...byId<HTMLElement>("settingsScreen").querySelectorAll<HTMLElement>(
+          'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter(
+        (element) =>
+          element.tabIndex >= 0 &&
+          element.getClientRects().length > 0 &&
+          !dropdownMenu.contains(element),
+      );
+      const index = focusable.indexOf(trigger);
+      const next = event.shiftKey
+        ? index <= 0
+          ? focusable[focusable.length - 1]
+          : focusable[index - 1]
+        : index < 0 || index === focusable.length - 1
+          ? focusable[0]
+          : focusable[index + 1];
+      event.preventDefault();
+      closeDropdown();
+      next?.focus({ preventScroll: true });
+      return;
+    }
+    if (!items.length) return;
+    const current =
+      event.target instanceof HTMLButtonElement ? event.target : null;
+    const index = current ? items.indexOf(current) : -1;
+    let next: HTMLButtonElement | undefined;
+    if (event.key === "ArrowDown")
+      next = items[index < 0 || index === items.length - 1 ? 0 : index + 1];
+    else if (event.key === "ArrowUp")
+      next = items[index <= 0 ? items.length - 1 : index - 1];
+    else if (event.key === "Home") next = items[0];
+    else if (event.key === "End") next = items[items.length - 1];
+    else return;
+    event.preventDefault();
+    next?.focus({ preventScroll: true });
+  });
 
   // Capture screen gestures match the app: down above the blob opens settings;
   // up below it opens the library. Library edge-drag down closes it.
