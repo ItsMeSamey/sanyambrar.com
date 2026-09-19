@@ -24,3 +24,4 @@
 - Speculative navigation prefetch must stay side-effect free: parse destination HTML into a detached inert document and warm only declared same-origin resource bytes; never execute destination scripts or adopt prefetched DOM before navigation commits.
 - Keep route-local CSS with the route that owns it and inline always-needed route CSS into generated direct-load HTML; shared `site.css` should contain only genuinely cross-route runtime styling.
 - For transformed fixed-design mocks, convert viewport rects back into local coordinates before positioning child overlays, and reserve non-overlapping space for fullscreen chrome at compact sizes.
+- Forced-colors QA must verify selected/checked/current states retain a non-background cue; custom backgrounds and shadows can collapse to the same system colors.
