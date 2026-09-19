@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-piVApH95.js";import{t}from"./_.contribution-CM272cvP.js";t({id:`go`,extensions:[`.go`],aliases:[`Go`],loader:()=>e(()=>import(`./go-C-y9NEjX.js`),[])});
