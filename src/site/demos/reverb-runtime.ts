@@ -382,11 +382,24 @@ export function runReverbDemoRuntime(
 
   const aboutSheet = byId<HTMLElement>("aboutSheet");
   let aboutReturnFocus: HTMLElement | null = null;
+  let aboutBackground:
+    | { screen: HTMLElement; inert: boolean; ariaHidden: string | null }
+    | null = null;
   const aboutFocusable = () => [...aboutSheet.querySelectorAll<HTMLElement>(
     'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
   )].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
   const openAbout = (event: Event) => {
     aboutReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    const background = screens.find((screen) => screen.classList.contains("active"));
+    if (background) {
+      aboutBackground = {
+        screen: background,
+        inert: background.inert,
+        ariaHidden: background.getAttribute("aria-hidden"),
+      };
+      background.inert = true;
+      background.setAttribute("aria-hidden", "true");
+    }
     aboutSheet.inert = false;
     aboutSheet.setAttribute("aria-hidden", "false");
     phone.classList.add("about-open");
@@ -400,6 +413,13 @@ export function runReverbDemoRuntime(
     phone.classList.remove("about-open");
     aboutSheet.inert = true;
     aboutSheet.setAttribute("aria-hidden", "true");
+    if (aboutBackground) {
+      const { screen, inert, ariaHidden } = aboutBackground;
+      screen.inert = inert;
+      if (ariaHidden == null) screen.removeAttribute("aria-hidden");
+      else screen.setAttribute("aria-hidden", ariaHidden);
+      aboutBackground = null;
+    }
     syncBufferUi();
     const target = aboutReturnFocus;
     aboutReturnFocus = null;
