@@ -36,12 +36,22 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
   .tools-page>.site-topbar .tool-context{position:static;flex:1 1 0;min-width:0;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
 }
+@media(max-width:200px){
+  [data-popper-positioner]:has(>.tool-select-content){position:fixed!important;left:8px!important;top:76px!important;width:calc(100vw - 16px)!important;min-width:0!important;max-width:calc(100vw - 16px)!important;transform:none!important;z-index:2147483500!important}
+  .tool-select-content{width:100%;min-width:0;max-width:100%;max-height:calc(100dvh - 84px);overflow:auto}
+  body:has(.tool-select-trigger:active) .tool-select-content{visibility:hidden;pointer-events:none}
+}
 @media(max-width:160px){
   .tools-page>.site-topbar .tool-switcher{flex-basis:40px}
   .tools-page>.site-topbar .tool-select-trigger{gap:2px;padding-inline:4px}
   .tools-page>.site-topbar .tool-context:has([data-diff-language]){gap:4px;overflow-x:hidden}
   .tools-page>.site-topbar .tool-context [data-diff-language]{min-width:0;flex:1 1 0;padding-inline:4px}
   .tools-page>.site-topbar .tool-context [data-diff-swap]{width:28px;flex:0 0 28px;padding:0}
+  .tools-page>.site-topbar .tool-context:has(.markdown-view-toggle){overflow-x:hidden}
+  .markdown-view-toggle{display:flex;flex:1 1 0;min-width:0;width:100%}
+  .markdown-view-toggle button{flex:1 1 0;min-width:0;width:auto;padding-inline:0;font-size:0}
+  .markdown-view-toggle [data-md-view="merged"]::after{content:"M";font:600 10px/1 var(--site-font,system-ui)}
+  .markdown-view-toggle [data-md-view="split"]::after{content:"S";font:600 10px/1 var(--site-font,system-ui)}
   .number-tool{padding-inline:6px}
   .radix-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
   .radix-choices button{padding-inline:2px}
