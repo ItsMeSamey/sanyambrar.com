@@ -1,15 +1,12 @@
 import '../styles/home.css';
-import { lazy, Show } from 'solid-js';
+import { Show } from 'solid-js';
+import type { JSX } from '@solidjs/web';
 import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { BackLink, TopBar } from '../../shared/components/TopBar.tsx';
-import { resilientImport } from '../../shared/resilientImport.ts';
 import { FDroidIcon, GitIcon } from '../components/BrandIcons.tsx';
 
-const ReverbDemo = lazy(() => resilientImport(() => import('../components/ReverbDemo.tsx')).then(module => ({ default: module.ReverbDemo })));
-const CnnDemo = lazy(() => resilientImport(() => import('../components/CnnDemo.tsx')).then(module => ({ default: module.CnnDemo })));
-
-export function ProjectPage(props:{detail:ProjectDetailData}) {
+export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) {
   const source = () => props.detail.links.find(link => link.title === 'Source') ?? props.detail.links[0];
   const fdroid = () => props.detail.links.find(link => link.title === 'F-Droid');
   return <>
@@ -36,8 +33,7 @@ export function ProjectPage(props:{detail:ProjectDetailData}) {
         </div>
         <div class="fact-strip">{props.detail.facts.map(x => <span>{x}</span>)}</div>
         <section class="project-description"><p>{props.detail.body}</p></section>
-        <Show when={props.detail.demo === 'reverb-ui'}><ReverbDemo/></Show>
-        <Show when={props.detail.demo === 'cnn-draw'}><CnnDemo/></Show>
+        {props.demo}
       </article>
     </main>
   </>;

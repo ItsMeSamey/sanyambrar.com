@@ -2247,6 +2247,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const kind = document.documentElement.dataset.siteKind;
     if (kind === "keybr") return typeof globalThis.SameyKeybrDispose === "function";
     if (kind === "wordle") return typeof globalThis.SameyWordleDispose === "function";
+    const solidRoot = document.getElementById("site-root");
+    if (solidRoot) return solidRoot.hasAttribute("data-samey-solid-mounted");
     if (document.documentElement.hasAttribute("data-static-article")) return Boolean(root?.childElementCount);
     return Boolean(root?.childElementCount);
   };
@@ -2474,7 +2476,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       void loadPage(url.href, { direction }).catch(error => console.error("SPA navigation failed", error));
     });
     addEventListener("popstate", () => {
-      if (document.documentElement.hasAttribute("data-site-spa") || location.pathname === currentPagePath) return;
+      const solidMounted = document.documentElement.hasAttribute("data-site-spa")
+        && document.getElementById("site-root")?.hasAttribute("data-samey-solid-mounted");
+      if (solidMounted || location.pathname === currentPagePath) return;
       const previousIndex = pageHistoryIndex;
       const nextIndex = readNavigationIndex();
       const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";

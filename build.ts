@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/pro
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 import { promisify } from "node:util";
+import { pathToFileURL } from "node:url";
 import { details, games, posts, projects } from "./src/site/data.ts";
 
 const runFile = promisify(execFile);
@@ -27,6 +28,7 @@ const SITE_PUBLIC = join(ROOT, "src/site/public");
 const DOCS = join(ROOT, "docs");
 const GENERATED_SITE = join(ROOT, ".build", "site");
 const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
+const GENERATED_SITE_PRERENDER = join(ROOT, ".build", "site-prerender");
 const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
@@ -63,7 +65,35 @@ async function generateSite(root: string) {
   ]);
 }
 
-async function runViteBuild(target: "wordle" | "keybr" | "site" | "blog" | "shared") {
+type SitePrerenderModule = { prerenderSiteRoute?: (href: string) => Promise<string> };
+const SITE_PRERENDER_ROUTES = [
+  ["index.html", "/"],
+  ["work/index.html", "/work/"],
+  ["blog/index.html", "/blog/"],
+  ["projects/zhtml/index.html", "/projects/zhtml/"],
+  ["projects/oneserial/index.html", "/projects/oneserial/"],
+] as const;
+
+async function injectSitePrerender() {
+  const module = await import(pathToFileURL(join(GENERATED_SITE_PRERENDER, "prerender.js")).href) as SitePrerenderModule;
+  const prerender = module.prerenderSiteRoute;
+  must(typeof prerender === "function", "site prerender bundle is missing prerenderSiteRoute");
+  for (const [file, pathname] of SITE_PRERENDER_ROUTES) {
+    const markup = await prerender(new URL(pathname, PUBLIC_ORIGIN).href);
+    must(markup.includes('id="solid-site-app"'), "site prerender root missing for " + pathname);
+    must(!markup.includes("site-fatal-shell"), "site prerender rendered the fatal shell for " + pathname);
+    must(!markup.includes("<script"), "site prerender unexpectedly emitted a script for " + pathname);
+    const path = join(GENERATED_SITE, file);
+    let source = await readFile(path, "utf8");
+    const emptyRoot = '<div id="site-root"></div>';
+    must(source.includes(emptyRoot), "site prerender target root missing in " + file);
+    source = source.replace(emptyRoot, '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
+    await writeFile(path, source);
+  }
+  log("prerendered static Solid route shells");
+}
+
+async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerender" | "blog" | "shared") {
   const { stdout, stderr } = await runFile(process.execPath, ["./node_modules/vite/bin/vite.js", "build"], {
     cwd: ROOT,
     env: { ...process.env, SAMEY_VITE_BUILD: target },
@@ -263,6 +293,12 @@ async function buildSiteRuntime() {
   log("site SPA -> .build/site-runtime");
 }
 
+async function buildSitePrerender() {
+  await runViteBuild("site-prerender");
+  must(existsSync(join(GENERATED_SITE_PRERENDER, "prerender.js")), "site prerender bundle missing");
+  log("site prerender renderer -> .build/site-prerender");
+}
+
 async function buildWordle() {
   await runViteBuild("wordle");
 
@@ -389,8 +425,10 @@ async function versionMutableShellReferences() {
     if (source.includes("data-site-spa"))
       source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
     source = source.replace(mutableRef, `$1?v=${version}$2`);
-    if (!/<meta\s+name=["']samey-build["']/i.test(source))
-      source = source.replace(/<head>/i, `<head><meta name="samey-build" content="${version}">`);
+    const buildMeta = /<meta\s+name=["']samey-build["']\s+content=["'][^"']*["']\s*\/?>/i;
+    if (buildMeta.test(source))
+      source = source.replace(buildMeta, `<meta name="samey-build" content="${version}">`);
+    else source = source.replace(/<head>/i, `<head><meta name="samey-build" content="${version}">`);
     await writeFile(file, source);
   }
   for (const file of htmlFiles) {
@@ -520,7 +558,8 @@ async function main() {
     await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
-    await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime()]);
+    await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
+    await injectSitePrerender();
   }
   await beginDocsTransaction();
   if (targets.has("site")) await publishSite();

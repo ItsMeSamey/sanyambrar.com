@@ -861,6 +861,64 @@ test('speculative prefetch keeps destination HTML inert', async ({ page }, info)
   await expect(page).toHaveURL(/\/$/);
 });
 
+test('static direct routes ship prerendered Solid markup and mount it once', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns prerendered route markup');
+
+  const port = info.project.metadata.port;
+  const staticRoutes = [
+    ['/', 'Games'],
+    ['/work/', 'Projects and demos'],
+    ['/blog/', 'Writing'],
+    ['/projects/zhtml/', 'zhtml'],
+    ['/projects/oneserial/', 'OneSerial'],
+  ];
+  for (const [route, text] of staticRoutes) {
+    const response = await page.request.get(`http://127.0.0.1:${port}${route}`);
+    expect(response.ok(), `direct HTML should load for ${route}`).toBe(true);
+    const html = await response.text();
+    expect(html, `direct HTML should contain the prerender marker for ${route}`).toContain('data-samey-prerendered');
+    expect(html, `direct HTML should contain rendered route content for ${route}`).toContain(text);
+    expect((html.match(/id="solid-site-app"/g) ?? []).length, `direct HTML should contain one app root for ${route}`).toBe(1);
+
+    await visit(page, route, info);
+    await expect(page.locator('#solid-site-app')).toHaveCount(1);
+    await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
+    await expect(page.locator('#site-root')).not.toHaveAttribute('data-samey-prerendered', '');
+  }
+
+  for (const route of ['/tools/?tool=text', '/chain/', '/projects/reverb/', '/projects/cnn/']) {
+    const response = await page.request.get(`http://127.0.0.1:${port}${route}`);
+    expect(response.ok(), `client-rendered HTML should load for ${route}`).toBe(true);
+    expect(await response.text(), `interactive route should not ship a stale prerender shell for ${route}`).not.toContain('data-samey-prerendered');
+  }
+});
+
+test('prerendered route is visible before site JS and preserves focus through mount', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns the static first-paint shell');
+
+  let releaseSiteApp;
+  const siteAppGate = new Promise(resolve => { releaseSiteApp = resolve; });
+  await page.route(/\/site-chunks\/site-app-[^/]+\.js(?:\?.*)?$/, async route => {
+    await siteAppGate;
+    await route.continue();
+  });
+
+  await page.goto(`http://127.0.0.1:${info.project.metadata.port}/work/`, { waitUntil: 'commit' });
+  const root = page.locator('#site-root');
+  const home = page.getByRole('link', { name: 'Sanyam Brar · Home' });
+  await expect(root).toHaveAttribute('data-samey-prerendered', '');
+  await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
+  await home.focus();
+  await expect(home).toBeFocused();
+
+  releaseSiteApp();
+  await page.waitForLoadState('networkidle');
+  await expect(root).toHaveAttribute('data-samey-solid-mounted', '');
+  await expect(root).not.toHaveAttribute('data-samey-prerendered', '');
+  await expect(page.locator('#solid-site-app')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Sanyam Brar · Home' })).toBeFocused();
+});
+
 test('direct site routes inline their route CSS and preload static route modules', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route inlining and preload hints');
 
@@ -870,6 +928,11 @@ test('direct site routes inline their route CSS and preload static route modules
     await expect(styles).not.toHaveCount(0);
     expect((await styles.allTextContents()).join('').length).toBeGreaterThan(500);
     await expect(page.locator('link[rel="modulepreload"][data-samey-route-module]')).not.toHaveCount(0);
+  }
+
+  for (const route of ['/projects/zhtml/', '/projects/oneserial/']) {
+    await visit(page, route, info);
+    await expect(page.locator('style[data-samey-route-style]')).toHaveCount(1);
   }
 });
 
