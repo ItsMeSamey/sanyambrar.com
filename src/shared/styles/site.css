@@ -271,4 +271,5 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 /* Shared Keybr identity mark: game card + in-game back navigation. */
 .keybr-mark{display:inline-flex;align-items:center;position:relative;gap:0;color:var(--site-muted,#787c7e);font:600 1rem/1.15 var(--site-font,system-ui);letter-spacing:-.04em;white-space:nowrap}
 .keybr-mark i{font-style:normal}.keybr-mark .keybr-hit{color:var(--site-muted,#787c7e)}.keybr-mark .keybr-miss{color:var(--site-error,#dc2626)}.keybr-mark .keybr-miss-bg{color:var(--site-error-on-fg,#fff);background:var(--site-error-fg,var(--site-error,#dc2626));padding:0 2px;margin:0 1px}.keybr-mark .keybr-cursor{width:2px;height:1.05em;margin-left:2px;background:var(--site-muted,#787c7e);animation:keybr-caret 1s steps(1,end) infinite}@keyframes keybr-caret{50%{opacity:0}}@media(prefers-reduced-motion:reduce){.keybr-mark .keybr-cursor{animation:none!important}}
+@media(forced-colors:active){.search-result.active,.samey-theme-panel button[data-selected]{outline:2px solid Highlight;outline-offset:-2px}}
 .backline .keybr-mark{font-size:.92rem;letter-spacing:-.035em}

@@ -270,6 +270,13 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-state-y { background: var(--wordle-state-y-bg); color: var(--wordle-state-y-fg); }
 .wordle-state-g { background: var(--wordle-state-g-bg); color: var(--wordle-state-g-fg); }
 .wordle-state-b { background: var(--wordle-state-b-bg); color: var(--wordle-state-b-fg); }
+@media(forced-colors:active){
+  .wordle-state-g{outline:2px solid Highlight;outline-offset:-3px}
+  .wordle-state-y{outline:2px dashed Highlight;outline-offset:-3px}
+  .wordle-state-r{outline:2px dotted Highlight;outline-offset:-3px}
+  .wordle-state-b{outline:3px double Highlight;outline-offset:-4px}
+  .wordle-date-picker-day[data-selected],.wordle-date-picker-grid button[data-selected],.active-game-card[data-current],.stats-history-row[data-selected]{outline:2px solid Highlight;outline-offset:-3px}
+}
 
 .wordle-opening { overflow-x: hidden; }
 .wordle-opening-inner,
