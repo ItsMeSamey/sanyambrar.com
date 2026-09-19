@@ -70,6 +70,10 @@
 
 .keyDetails {
   display: inline-block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .lessonKey + .keyDetails {

@@ -10,13 +10,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  inline-size: 10rem;
+  min-inline-size: 0;
+  inline-size: min(10rem, 40%);
   padding-inline-end: 1rem;
   text-align: end;
 }
 
 .value {
   display: flex;
+  min-inline-size: 0;
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
@@ -47,7 +49,7 @@
   }
 
   .keySetRow .name {
-    inline-size: 8rem;
+    inline-size: min(8rem, 40%);
     padding-inline-end: 0.5rem;
   }
 }

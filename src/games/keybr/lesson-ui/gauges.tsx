@@ -86,7 +86,8 @@ const Gauge = function Gauge(props: {
     title: string;
 }) {
     return (<span id={props.id} class={clsx(styles.gauge, props.className)} title={props.title}>
-      {props.name} {props.value} ({props.delta})
+      <span class={styles.reading}>{props.name}{props.value}</span>
+      <span class={styles.delta}>({props.delta})</span>
     </span>);
 };
 function signed(value: string, delta: number): string {

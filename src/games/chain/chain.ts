@@ -1321,18 +1321,23 @@ export function mountChain(refs: ChainRefs) {
   function positionSettings() {
     const r = settingsButton.getBoundingClientRect();
     const viewportGap = 8;
-    const width = Math.min(settingsPanel.offsetWidth || 360, innerWidth - viewportGap * 2);
-    const naturalHeight = Math.min(settingsPanel.scrollHeight || 420, innerHeight - viewportGap * 2);
+    const triggerGap = 6;
+    const width = Math.min(settingsPanel.offsetWidth || 360, Math.max(0, innerWidth - viewportGap * 2));
+    const naturalHeight = Math.min(settingsPanel.scrollHeight || 420, Math.max(0, innerHeight - viewportGap * 2));
     const left = Math.max(viewportGap, Math.min(innerWidth - width - viewportGap, r.right - width));
-    const below = r.bottom + 6;
-    const opensBelow = below + naturalHeight <= innerHeight - viewportGap || r.top < innerHeight - r.bottom;
-    const top = opensBelow ? below : Math.max(viewportGap, r.top - naturalHeight - 6);
-    const availableHeight = opensBelow ? innerHeight - top - viewportGap : r.top - viewportGap * 2;
+    const belowTop = r.bottom + triggerGap;
+    const aboveBottom = r.top - triggerGap;
+    const spaceBelow = Math.max(0, innerHeight - viewportGap - belowTop);
+    const spaceAbove = Math.max(0, aboveBottom - viewportGap);
+    const opensBelow = spaceBelow >= naturalHeight || spaceBelow >= spaceAbove;
+    const availableHeight = opensBelow ? spaceBelow : spaceAbove;
+    const renderedHeight = Math.min(naturalHeight, availableHeight);
+    const top = opensBelow ? belowTop : Math.max(viewportGap, aboveBottom - renderedHeight);
     settingsPanel.dataset.side = opensBelow ? 'bottom' : 'top';
     settingsPanel.style.transformOrigin = opensBelow ? 'top right' : 'bottom right';
     settingsPanel.style.left = `${left}px`;
     settingsPanel.style.top = `${top}px`;
-    settingsPanel.style.maxHeight = `${Math.max(120, availableHeight)}px`;
+    settingsPanel.style.maxHeight = `${availableHeight}px`;
   }
 
   function setSettingsOpen(open: boolean) {
