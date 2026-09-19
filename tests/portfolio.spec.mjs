@@ -1396,6 +1396,13 @@ test('secondary and nested overlays stay contained at 200 percent text scaling i
 
   const scaleText = async () => page.evaluate(async () => {
     document.documentElement.style.fontSize = '32px';
+    document.documentElement.style.setProperty('--site-medium', '1000ms');
+    if (!document.querySelector('#qa-overlay-motion-duration')) {
+      const style = document.createElement('style');
+      style.id = 'qa-overlay-motion-duration';
+      style.textContent = '.site-search.is-closing .site-search-panel{animation-duration:1000ms!important}';
+      document.head.append(style);
+    }
     await document.fonts?.ready;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
@@ -1540,6 +1547,123 @@ test('secondary and nested overlays stay contained at 200 percent text scaling i
     await rate.scrollIntoViewIfNeeded();
     await rate.click();
   });
+});
+
+test('animated overlays stay contained through opening frames and reduced motion removes nonessential motion', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers transient overlay animation geometry');
+  test.setTimeout(180_000);
+
+  const viewport = { width: 320, height: 240 };
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize(viewport);
+
+  const scaleText = async () => page.evaluate(async () => {
+    document.documentElement.style.fontSize = '32px';
+    await document.fonts?.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+
+  const sampleOwnAnimations = async (surface, label, expectedName) => {
+    await expect(surface, `${label} must be visible while sampling its opening animation`).toBeVisible();
+    const result = await surface.evaluate(async (element, viewport) => {
+      const ownAnimations = element.getAnimations().filter(animation => animation.effect?.target === element);
+      const names = ownAnimations.map(animation => animation.animationName ?? '').filter(Boolean);
+      const samples = [];
+      for (const animation of ownAnimations) {
+        const timing = animation.effect?.getComputedTiming();
+        const duration = typeof timing?.duration === 'number' ? timing.duration : 0;
+        if (!(duration > 0)) continue;
+        animation.pause();
+        for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
+          animation.currentTime = duration * fraction;
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          const rect = element.getBoundingClientRect();
+          samples.push({
+            fraction,
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            contained: rect.left >= -1 && rect.top >= -1 && rect.right <= viewport.width + 1 && rect.bottom <= viewport.height + 1,
+          });
+        }
+        animation.finish();
+      }
+      return { names, samples, computedName: getComputedStyle(element).animationName };
+    }, viewport);
+    expect(result.names, `${label} must expose its intended opening animation`).toContain(expectedName);
+    expect(result.samples, `${label} must produce sampled animation frames`).not.toHaveLength(0);
+    expect(result.samples.filter(sample => !sample.contained), `${label} must stay in-view throughout opening motion: ${JSON.stringify(result.samples)}`).toEqual([]);
+  };
+
+  await visit(page, '/', info);
+  await scaleText();
+  await page.keyboard.press('Control+K');
+  const searchPanel = page.locator('.site-search-panel');
+  await sampleOwnAnimations(searchPanel, 'Search', 'samey-search-grow');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.site-search')).toHaveClass(/is-closing/);
+  await sampleOwnAnimations(searchPanel, 'Search closing', 'samey-search-shrink');
+
+  await visit(page, '/', info);
+  await scaleText();
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await sampleOwnAnimations(page.locator('.samey-theme-panel'), 'Appearance menu', 'samey-surface-in');
+  await page.keyboard.press('Escape');
+
+  await visit(page, '/wordle', info);
+  await scaleText();
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await sampleOwnAnimations(page.locator('.game-settings-popover'), 'Wordle settings', 'samey-dialog-grow');
+  await page.keyboard.press('Escape');
+
+  await visit(page, '/chain/', info);
+  await scaleText();
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await sampleOwnAnimations(page.locator('#chain-settings'), 'Chain settings', 'samey-surface-in');
+  await page.keyboard.press('Escape');
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
+  await visit(page, '/chain/', info);
+  await scaleText();
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.locator('#chain-settings')).toBeVisible();
+  expect(await page.locator('#chain-settings').evaluate(element => ({
+    animationName: getComputedStyle(element).animationName,
+    animations: element.getAnimations().filter(animation => animation.effect?.target === element).length,
+  }))).toEqual({ animationName: 'none', animations: 0 });
+
+  await visit(page, '/wordle', info);
+  await scaleText();
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  const currentRow = page.locator('.wordle-row').last();
+  await currentRow.evaluate(element => element.classList.add('wordle-invalid-wiggle'));
+  await expect(currentRow).toHaveClass(/wordle-invalid-wiggle/);
+  expect(await currentRow.evaluate(element => ({
+    animationName: getComputedStyle(element).animationName,
+    animations: element.getAnimations().filter(animation => animation.effect?.target === element).length,
+  }))).toEqual({ animationName: 'none', animations: 0 });
+
+  expect(await page.evaluate(() => {
+    const text = document.createElement('div');
+    const cloak = document.createElement('div');
+    text.className = '__error_page_swinging_light_text';
+    cloak.className = '__error_page_swinging_light_cloak';
+    document.body.append(text, cloak);
+    const state = {
+      text: getComputedStyle(text).animationName,
+      textAnimations: text.getAnimations().filter(animation => animation.effect?.target === text).length,
+      cloak: getComputedStyle(cloak).animationName,
+      cloakAnimations: cloak.getAnimations().filter(animation => animation.effect?.target === cloak).length,
+    };
+    text.remove();
+    cloak.remove();
+    return state;
+  })).toEqual({ text: 'none', textAnimations: 0, cloak: 'none', cloakAnimations: 0 });
 });
 
 test('responsive topbars stay collision-free through live state transitions', async ({ page }, info) => {

@@ -34,3 +34,10 @@
   from { background-position: 0 0; }
   to { background-position: 4rem 0; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .intermediate {
+    animation: none;
+    background: var(--site-fg, var(--text-color));
+  }
+}

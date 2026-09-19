@@ -167,6 +167,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 /* Local motion primitives. Keeping these here avoids a site-wide animation plugin for two controls. */
 .wordle-invalid-wiggle{animation:wordle-invalid-wiggle 180ms cubic-bezier(.2,.8,.2,1)}
 @keyframes wordle-invalid-wiggle{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media(prefers-reduced-motion:reduce){.wordle-invalid-wiggle{animation:none!important}}
 .wordle-share-trigger{display:grid;place-items:center;width:36px;height:36px;border-radius:0;transition:transform var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease)}.wordle-share-trigger:hover{background:transparent;box-shadow:inset 0 -1px var(--color-foreground)}.wordle-share-trigger:active{transform:scale(.98)}
 
 .result-dialog { width: min(620px, calc(100vw - 24px)) !important; max-height: min(90dvh, 760px); overflow: auto; padding: 22px !important; }
@@ -492,6 +493,14 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
   transform-origin: 50% 30%;
   transform: rotate(calc(var(--swing-x) * -0.25deg));
   background: radial-gradient(40% 40% at 50% 42%, transparent, color-mix(in srgb,var(--site-fg,#121213) 82%,transparent) 35%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .__error_page_swinging_light_text,
+  .__error_page_swinging_light_text::after,
+  .__error_page_swinging_light_cloak {
+    animation: none !important;
+  }
 }
 
 .__error_page_swinging_light_cloak_wrapper {
