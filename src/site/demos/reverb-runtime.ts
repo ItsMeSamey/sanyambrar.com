@@ -184,14 +184,12 @@ export function runReverbDemoRuntime(
     }
   }
   function focusScreen(id: ScreenId, preferred?: HTMLElement | null): void {
-    requestAnimationFrame(() => {
-      const target =
-        preferred?.isConnected && preferred.getClientRects().length > 0
-          ? preferred
-          : defaultScreenFocus(id);
-      if (target.isConnected && target.getClientRects().length > 0)
-        target.focus({ preventScroll: true });
-    });
+    const target =
+      preferred?.isConnected && preferred.getClientRects().length > 0
+        ? preferred
+        : defaultScreenFocus(id);
+    if (target.isConnected && target.getClientRects().length > 0)
+      target.focus({ preventScroll: true });
   }
   function showScreen(
     id: ScreenId,
