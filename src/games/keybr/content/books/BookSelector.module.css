@@ -28,6 +28,15 @@
 }
 
 .selectionCopy strong,
+.selectionCopy > span {
+  display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.selectionCopy strong,
 .bookCopy strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -59,8 +68,12 @@
 }
 
 .chooseButton {
-  padding: 0.72rem 1rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding: 0.72rem min(1rem, 12%);
   font-weight: 700;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .chooseButton:is(:hover, :focus-visible),
@@ -192,6 +205,9 @@
 
 .bookCopy strong,
 .bookCopy span {
+  display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   white-space: nowrap;
 }
 
@@ -261,6 +277,75 @@
 
   .selectedLabel {
     grid-column: 2;
+  }
+}
+
+@media (max-width: 320px) {
+  .selection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .selection > img {
+    max-inline-size: 100%;
+  }
+
+  .chooseButton {
+    grid-column: auto;
+  }
+
+  .dialog {
+    inline-size: calc(100vw - min(1rem, 16px));
+    max-block-size: calc(100dvh - min(1rem, 16px));
+  }
+
+  .dialogShell {
+    max-block-size: calc(100dvh - min(1rem, 16px));
+  }
+
+  .dialogHeader {
+    gap: min(1rem, 12px);
+    padding: min(1.15rem, 16px) min(1.25rem, 16px);
+  }
+
+  .dialogHeader > div {
+    min-inline-size: 0;
+  }
+
+  .dialogHeader h2 {
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .closeButton {
+    inline-size: min(2.6rem, 44px);
+    block-size: min(2.6rem, 44px);
+    font-size: min(1.55rem, 24px);
+  }
+
+  .search {
+    gap: min(1rem, 12px);
+    padding: min(1rem, 16px) min(1.25rem, 16px) min(0.75rem, 12px);
+  }
+
+  .resultMeta {
+    padding-inline: min(1.25rem, 16px);
+  }
+
+  .list {
+    padding-inline: min(1.25rem, 16px);
+    padding-block-end: min(1.25rem, 16px);
+  }
+
+  .book {
+    grid-template-columns: min(3rem, 25%) minmax(0, 1fr);
+    gap: min(0.9rem, 12px);
+    padding: min(0.55rem, 8px) min(0.7rem, 10px);
+  }
+
+  .book img {
+    inline-size: min(3rem, 100%);
+    block-size: auto;
+    aspect-ratio: 3 / 4;
   }
 }
 

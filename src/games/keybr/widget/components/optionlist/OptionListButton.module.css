@@ -36,6 +36,9 @@
 
 .placeholder {
   display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
 }
 
 .placeholderName {
@@ -48,16 +51,19 @@
   vertical-align: middle;
   block-size: 2rem;
   margin: 0;
-  padding-inline: 1.5rem;
+  padding-inline: min(1.5rem, 12%);
   padding-block: 0;
   line-height: 2rem;
 }
 
 .placeholderArrow {
+  flex: 0 0 auto;
+  max-inline-size: 50%;
+  overflow: hidden;
   vertical-align: middle;
   block-size: 2rem;
   margin: 0;
-  padding-inline: 0 1.5rem;
+  padding-inline: 0 min(1.5rem, 12%);
   padding-block: 0;
   line-height: 2rem;
 }

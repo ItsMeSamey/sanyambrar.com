@@ -77,6 +77,20 @@ function ToolTabs(props:{active:ToolId}) {
   const selected = () => toolOptions.find(tool => tool.id === props.active) ?? toolOptions[0];
   const [selectOpen, setSelectOpen] = createSignal(false);
   let selectTrigger!: HTMLButtonElement;
+  const closeSelect = () => {
+    setSelectOpen(false);
+    requestAnimationFrame(() => selectTrigger.isConnected && selectTrigger.focus({ preventScroll: true }));
+  };
+  const onWindowKeyDown = (event:KeyboardEvent) => {
+    if (event.key !== 'Escape' || !selectOpen()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeSelect();
+  };
+  onSettled(() => {
+    addEventListener('keydown', onWindowKeyDown);
+    return () => removeEventListener('keydown', onWindowKeyDown);
+  });
   return <div class="tool-switcher">
     <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => { if (isToolId(value)) setToolUrl(value); }}>
       <Tabs.List class="tool-tabs" aria-label="Tools">
@@ -105,8 +119,7 @@ function ToolTabs(props:{active:ToolId}) {
           if (event.key !== 'Escape') return;
           event.preventDefault();
           event.stopPropagation();
-          setSelectOpen(false);
-          requestAnimationFrame(() => selectTrigger.isConnected && selectTrigger.focus({ preventScroll: true }));
+          closeSelect();
         }}><Select.Listbox class="tool-select-list"/></Select.Content>
       </Select.Portal>
     </Select.Root>

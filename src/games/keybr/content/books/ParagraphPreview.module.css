@@ -8,6 +8,8 @@
 
 .item {
   display: flex;
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 .item_active {
@@ -21,7 +23,7 @@
 
 .index {
   display: inline-block;
-  min-inline-size: 3rem;
+  min-inline-size: min(3rem, 28%);
   text-align: end;
 }
 
@@ -32,11 +34,14 @@
   white-space: nowrap;
 
   display: inline-block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  flex: 1 1 auto;
   font-style: italic;
 }
 
 .separator {
   display: inline-block;
-  min-inline-size: 2rem;
+  min-inline-size: min(2rem, 20%);
   text-align: center;
 }

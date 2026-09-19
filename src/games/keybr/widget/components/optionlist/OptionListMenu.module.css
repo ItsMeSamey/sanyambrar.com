@@ -6,7 +6,7 @@
   inset-block-start: 100%;
   z-index: 1;
   list-style: none;
-  max-block-size: 20rem;
+  max-block-size: min(20rem, var(--option-list-available-block, calc(100dvh - 16px)));
   margin: 0;
   padding: 0;
   overflow: auto;
@@ -17,6 +17,11 @@
   scrollbar-width: auto;
   box-shadow: var(--Popup__box-shadow);
   cursor: pointer;
+}
+
+.root[data-side="above"] {
+  inset-block-start: auto;
+  inset-block-end: 100%;
 }
 
 .item {
