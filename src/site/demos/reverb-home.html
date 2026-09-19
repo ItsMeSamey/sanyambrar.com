@@ -93,7 +93,7 @@ button,input{font:inherit}button{border:0;padding:0;color:inherit;background:non
 
 :host([data-fullscreen]) .stage{padding:0}.stage:has(.phone){background:transparent}
 :host([data-compact-scale]) .stage{padding:0}
-:host([data-compact-scale]) .phone{position:absolute;left:50%;top:50%;width:var(--screen-w);height:var(--screen-h);transform:translate(-50%,-50%) scale(var(--reverb-demo-scale,1));transform-origin:center;box-shadow:none}
+:host([data-compact-scale]) .phone{position:absolute;left:var(--reverb-demo-phone-left,50%);top:50%;width:var(--screen-w);height:var(--screen-h);transform:translate(-50%,-50%) scale(var(--reverb-demo-scale,1));transform-origin:center;box-shadow:none}
 </style>
 </head>
 <body>

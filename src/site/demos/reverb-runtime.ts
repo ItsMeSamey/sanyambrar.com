@@ -734,10 +734,27 @@ export function runReverbDemoRuntime(
         if (caption) dropdownMenu.setAttribute("aria-label", caption + " options");
         const rect = field.getBoundingClientRect(),
           root = phone.getBoundingClientRect();
-        dropdownMenu.style.left = `${Math.max(8, rect.left - root.left)}px`;
-        dropdownMenu.style.top = `${Math.min(root.height - 310, rect.bottom - root.top + 4)}px`;
-        dropdownMenu.style.width = `${Math.max(160, rect.width)}px`;
         dropdownMenu.classList.add("show");
+        const scaleX = root.width > 0 ? root.width / phone.clientWidth : 1;
+        const scaleY = root.height > 0 ? root.height / phone.clientHeight : 1;
+        const localLeft = (rect.left - root.left) / scaleX;
+        const localTop = (rect.top - root.top) / scaleY;
+        const localBottom = (rect.bottom - root.top) / scaleY;
+        const menuWidth = Math.min(
+          phone.clientWidth - 16,
+          Math.max(160, rect.width / scaleX),
+        );
+        const menuHeight = Math.min(300, dropdownMenu.scrollHeight);
+        const below = phone.clientHeight - 8 - (localBottom + 4);
+        const above = localTop - 4 - 8;
+        const preferredTop = below >= menuHeight || below >= above
+          ? localBottom + 4
+          : localTop - menuHeight - 4;
+        const maxTop = Math.max(8, phone.clientHeight - menuHeight - 8);
+        const maxLeft = Math.max(8, phone.clientWidth - menuWidth - 8);
+        dropdownMenu.style.left = `${Math.min(maxLeft, Math.max(8, localLeft))}px`;
+        dropdownMenu.style.top = `${Math.min(maxTop, Math.max(8, preferredTop))}px`;
+        dropdownMenu.style.width = `${menuWidth}px`;
         dropdownMenu.setAttribute("aria-hidden", "false");
         const initialFocus =
           selectedButton ??

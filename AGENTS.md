@@ -23,3 +23,4 @@
 - Assigning canvas width/height clears its bitmap and resets context state; reactive canvas code must order backing-store resize before paint in one effect, round DPR dimensions, and test real painted pixels after mount/resize/theme changes.
 - Speculative navigation prefetch must stay side-effect free: parse destination HTML into a detached inert document and warm only declared same-origin resource bytes; never execute destination scripts or adopt prefetched DOM before navigation commits.
 - Keep route-local CSS with the route that owns it and inline always-needed route CSS into generated direct-load HTML; shared `site.css` should contain only genuinely cross-route runtime styling.
+- For transformed fixed-design mocks, convert viewport rects back into local coordinates before positioning child overlays, and reserve non-overlapping space for fullscreen chrome at compact sizes.
