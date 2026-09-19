@@ -6,10 +6,16 @@
 }
 
 .calendar {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
   border: var(--separator-border);
 }
 
 .table {
+  min-inline-size: max-content;
   table-layout: fixed;
   border-collapse: collapse;
   cursor: default;
