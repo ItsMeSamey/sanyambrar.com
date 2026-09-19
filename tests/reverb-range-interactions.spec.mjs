@@ -318,16 +318,16 @@ test('Reverb Range waveform scrub discards drafts and pauses then resumes previe
 
   await page.mouse.move(box.x + box.width * 0.35, y, { steps: 3 });
   await page.mouse.up();
-  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  await expect(play).toHaveAttribute('aria-label', 'Play');
   expect(parseRangeTime((await start.textContent()) ?? '')).toBeGreaterThan(500);
 
   await play.click();
-  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
   await page.mouse.move(box.x + box.width * 0.4, y);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.45, y, { steps: 3 });
   await page.mouse.up();
-  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
 });
 
 test('Reverb Range boundary handles honor drag slop and preview ownership', async ({ page }, info) => {
@@ -350,7 +350,7 @@ test('Reverb Range boundary handles honor drag slop and preview ownership', asyn
 
   let box = await boundary.boundingBox();
   if (!box) throw new Error('Range start boundary has no geometry');
-  let x = box.x + box.width / 2;
+  let x = box.x + box.width / 2 + 15;
   let y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
@@ -375,4 +375,21 @@ test('Reverb Range boundary handles honor drag slop and preview ownership', asyn
 
   await expect(play).toHaveAttribute('aria-label', 'Pause');
   expect(parseRangeTime((await start.textContent()) ?? '')).toBeGreaterThan(beforeDrag + 20);
+});
+
+test('Reverb Range text focus pauses preview before boundary editing', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const play = host.locator('#rangePlay');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  await end.focus();
+  await expect(end).toBeFocused();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
 });
