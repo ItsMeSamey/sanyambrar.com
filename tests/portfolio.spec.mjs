@@ -2335,6 +2335,13 @@ test('Reverb demo mirrors the captured Android state and palette', async ({ page
   await host.locator('#incidentsBack').click();
   await expect(host.locator('#openIncidents')).not.toHaveClass(/alert/);
 
+  await host.locator('#openLibrary').click();
+  const libraryBack = host.locator('#libraryBack');
+  await expect(libraryBack).toBeVisible();
+  await expect(libraryBack).toHaveAttribute('aria-label', 'Back');
+  await libraryBack.click();
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+
   await host.locator('#openRange').click();
   await expect(host.locator('#rangeStart')).toHaveText('0:00.0');
   const rangeEndSeconds = await host.locator('#rangeEnd').evaluate(element => {

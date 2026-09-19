@@ -318,6 +318,7 @@ export function runReverbDemoRuntime(
   byId("openLibrary").addEventListener("click", () =>
     showScreen("libraryScreen"),
   );
+  byId("libraryBack").addEventListener("click", () => showScreen("homeScreen"));
   byId("openRange").addEventListener("click", () => {
     syncRangeUi();
     showScreen("rangeScreen");
