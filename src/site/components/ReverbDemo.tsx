@@ -59,8 +59,60 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
   let active = false;
   let previousBodyOverflow = '';
   let previousHtmlOverflow = '';
+  let releaseBackground = () => {};
 
   const stateIsOurs = () => Boolean(readHistoryState() && readHistoryState()[FULLSCREEN_STATE_KEY] === token);
+  const deepActiveElement = () => {
+    let activeElement: Element | null = document.activeElement;
+    while (activeElement instanceof HTMLElement && activeElement.shadowRoot?.activeElement)
+      activeElement = activeElement.shadowRoot.activeElement;
+    return activeElement instanceof HTMLElement ? activeElement : null;
+  };
+  const fullscreenFocusables = () => {
+    const result: HTMLElement[] = [];
+    const walk = (root: ParentNode) => {
+      for (const child of root.children) {
+        if (!(child instanceof HTMLElement)) continue;
+        if (
+          child.matches('a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')
+          && child.tabIndex >= 0
+          && child.getClientRects().length > 0
+          && getComputedStyle(child).visibility !== 'hidden'
+          && !child.closest('[inert],[aria-hidden="true"]')
+        ) result.push(child);
+        if (child.shadowRoot) walk(child.shadowRoot);
+        walk(child);
+      }
+    };
+    walk(frame);
+    return result;
+  };
+  const isolateBackground = () => {
+    const snapshots: { node: HTMLElement; inert: boolean; ariaHidden: string | null }[] = [];
+    let branch: HTMLElement = frame;
+    while (branch.parentElement) {
+      const parent = branch.parentElement;
+      for (const sibling of parent.children) {
+        if (!(sibling instanceof HTMLElement) || sibling === branch) continue;
+        snapshots.push({
+          node: sibling,
+          inert: sibling.inert,
+          ariaHidden: sibling.getAttribute('aria-hidden'),
+        });
+        sibling.inert = true;
+        sibling.setAttribute('aria-hidden', 'true');
+      }
+      branch = parent;
+      if (parent === document.body) break;
+    }
+    return () => {
+      for (const { node, inert, ariaHidden } of snapshots) {
+        node.inert = inert;
+        if (ariaHidden == null) node.removeAttribute('aria-hidden');
+        else node.setAttribute('aria-hidden', ariaHidden);
+      }
+    };
+  };
 
   const setFullscreen = (next: boolean) => {
     if (next === active) return;
@@ -76,12 +128,22 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
       frame.classList.add('is-fullscreen');
+      frame.setAttribute('role', 'dialog');
+      frame.setAttribute('aria-modal', 'true');
+      frame.setAttribute('aria-label', 'Reverb UI demo fullscreen');
       host.setAttribute('data-fullscreen', '');
+      releaseBackground = isolateBackground();
     } else {
       frame.classList.remove('is-fullscreen');
+      frame.removeAttribute('role');
+      frame.removeAttribute('aria-modal');
+      frame.removeAttribute('aria-label');
       host.removeAttribute('data-fullscreen');
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
+      releaseBackground();
+      releaseBackground = () => {};
+      requestAnimationFrame(() => button.isConnected && button.focus({ preventScroll: true }));
     }
     animateFrame(frame, before, reduceMotion);
   };
@@ -101,23 +163,51 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const onButtonClick = () => active ? exitFullscreen() : enterFullscreen();
   const onPopState = () => setFullscreen(stateIsOurs());
+  const onGlobalShortcut = (event: KeyboardEvent) => {
+    if (!active) return;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
   const onKeyDown = (event: KeyboardEvent) => {
-    if (active && event.key === 'Escape') exitFullscreen();
+    if (!active) return;
+    if (event.key === 'Escape') {
+      exitFullscreen();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = fullscreenFocusables();
+    if (!focusable.length) return;
+    const current = deepActiveElement();
+    const index = current ? focusable.indexOf(current) : -1;
+    const wrap = event.shiftKey
+      ? index <= 0
+      : index < 0 || index === focusable.length - 1;
+    if (!wrap) return;
+    event.preventDefault();
+    (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus({ preventScroll: true });
   };
 
   button.addEventListener('click', onButtonClick);
   window.addEventListener('popstate', onPopState);
+  window.addEventListener('keydown', onGlobalShortcut, true);
   window.addEventListener('keydown', onKeyDown);
 
   return () => {
     button.removeEventListener('click', onButtonClick);
     window.removeEventListener('popstate', onPopState);
+    window.removeEventListener('keydown', onGlobalShortcut, true);
     window.removeEventListener('keydown', onKeyDown);
     if (active) {
       frame.classList.remove('is-fullscreen');
+      frame.removeAttribute('role');
+      frame.removeAttribute('aria-modal');
+      frame.removeAttribute('aria-label');
       host.removeAttribute('data-fullscreen');
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
+      releaseBackground();
     }
   };
 }

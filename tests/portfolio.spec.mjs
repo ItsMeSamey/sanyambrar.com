@@ -3227,6 +3227,80 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['', '']);
 });
 
+test('Reverb fullscreen owns keyboard focus and restores background accessibility', async ({ page }, info) => {
+  await visit(page, '/projects/reverb/', info);
+  const frame = page.locator('.reverb-demo-frame');
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+  const topbar = page.locator('.site-topbar');
+  const projectActions = page.locator('.project-action-links');
+  const snapshot = async locator => locator.evaluate(element => ({
+    inert: element.inert,
+    ariaHidden: element.getAttribute('aria-hidden'),
+  }));
+  const topbarBefore = await snapshot(topbar);
+  const actionsBefore = await snapshot(projectActions);
+  const focusIsInsideFullscreen = () => page.evaluate(() => {
+    const frame = document.querySelector('.reverb-demo-frame.is-fullscreen');
+    if (!(frame instanceof HTMLElement)) return false;
+    let active = document.activeElement;
+    while (active instanceof HTMLElement && active.shadowRoot?.activeElement)
+      active = active.shadowRoot.activeElement;
+    if (!(active instanceof Node)) return false;
+    let node = active;
+    while (node) {
+      if (node === frame) return true;
+      const root = node.getRootNode();
+      node = root instanceof ShadowRoot ? root.host : node.parentNode;
+    }
+    return false;
+  });
+
+  await fullscreen.focus();
+  await fullscreen.click();
+  await expect(frame).toHaveAttribute('role', 'dialog');
+  await expect(frame).toHaveAttribute('aria-modal', 'true');
+  await expect(frame).toHaveAttribute('aria-label', 'Reverb UI demo fullscreen');
+  await expect.poll(() => topbar.evaluate(element => element.inert)).toBe(true);
+  await expect(topbar).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(() => projectActions.evaluate(element => element.inert)).toBe(true);
+  await expect(projectActions).toHaveAttribute('aria-hidden', 'true');
+  const search = page.locator('.site-search');
+  await expect(search).not.toBeVisible();
+  await page.keyboard.press('Control+K');
+  await expect(search).not.toBeVisible();
+  await expect.poll(focusIsInsideFullscreen, { message: 'Global search shortcut must not steal focus from Reverb fullscreen' }).toBe(true);
+  const contextMenu = page.locator('#samey-context-menu');
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await host.locator('#brandButton').click({ button: 'right' });
+  await expect(contextMenu).toBeHidden();
+  await expect.poll(focusIsInsideFullscreen, { message: 'Global context menu must not escape the Reverb fullscreen modal' }).toBe(true);
+  await host.locator('#openIncidents').click();
+  await host.locator('.incident-card').first().click({ button: 'right' });
+  await expect(contextMenu).toBeHidden();
+  await expect(host.locator('#toast')).toHaveText('Incident copied');
+  await expect(host.locator('#toast')).toHaveClass(/show/);
+  await host.locator('#incidentsBack').click();
+  await fullscreen.focus();
+
+  await page.keyboard.press('Tab');
+  await expect.poll(focusIsInsideFullscreen, { message: 'Tab must wrap into the fullscreen Reverb surface' }).toBe(true);
+  await page.keyboard.press('Shift+Tab');
+  await expect(fullscreen).toBeFocused();
+  for (let index = 0; index < 16; index += 1) {
+    await page.keyboard.press('Tab');
+    expect(await focusIsInsideFullscreen(), 'Fullscreen focus escaped after Tab ' + (index + 1)).toBe(true);
+  }
+
+  await page.keyboard.press('Escape');
+  await expect(frame).not.toHaveClass(/is-fullscreen/);
+  await expect(frame).not.toHaveAttribute('role', 'dialog');
+  await expect(frame).not.toHaveAttribute('aria-modal', 'true');
+  await expect(frame).not.toHaveAttribute('aria-label', 'Reverb UI demo fullscreen');
+  await expect(fullscreen).toBeFocused();
+  expect(await snapshot(topbar)).toEqual(topbarBefore);
+  expect(await snapshot(projectActions)).toEqual(actionsBefore);
+});
+
 test('Reverb settings dropdown closes when its geometry changes', async ({ page }, info) => {
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
