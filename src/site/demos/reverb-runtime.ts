@@ -97,6 +97,8 @@ export function runReverbDemoRuntime(
   let settingsDirty = false;
   let retentionMode: RetentionMode = "time";
   let settingsInitial: SettingsSnapshot;
+  let settingsReturnFocus: HTMLElement | null = null;
+  let incidentsReturnFocus: HTMLElement | null = null;
 
   const blobShader = makeBlobShader(byId<HTMLCanvasElement>("blobCanvas"));
   blobShader.setActive(true);
@@ -139,22 +141,66 @@ export function runReverbDemoRuntime(
     toast.classList.add("show");
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1200);
   }
-  function showScreen(id: ScreenId): void {
+  function defaultScreenFocus(id: ScreenId): HTMLElement {
+    switch (id) {
+      case "settingsScreen":
+        return byId<HTMLElement>("settingsNav");
+      case "libraryScreen":
+        return byId<HTMLElement>("libraryBack");
+      case "incidentsScreen":
+        return byId<HTMLElement>("incidentsBack");
+      case "rangeScreen":
+        return byId<HTMLElement>("rangeClose");
+      default:
+        return byId<HTMLElement>("brandButton");
+    }
+  }
+  function focusScreen(id: ScreenId, preferred?: HTMLElement | null): void {
+    requestAnimationFrame(() => {
+      const target =
+        preferred?.isConnected && preferred.getClientRects().length > 0
+          ? preferred
+          : defaultScreenFocus(id);
+      if (target.isConnected && target.getClientRects().length > 0)
+        target.focus({ preventScroll: true });
+    });
+  }
+  function showScreen(
+    id: ScreenId,
+    focusTarget?: HTMLElement | null,
+  ): void {
     currentScreen = id;
     screens.forEach((screen) =>
       screen.classList.toggle("active", screen.id === id),
     );
     blobShader.setVisible(id === "homeScreen");
     closeDropdown();
+    focusScreen(id, focusTarget);
   }
-  function openSettings(): void {
+  function openSettings(event?: Event): void {
     if (currentScreen !== "settingsScreen")
       settingsReturnScreen = currentScreen;
+    settingsReturnFocus =
+      event?.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : currentScreen === "homeScreen"
+          ? byId<HTMLElement>("openSettings")
+          : currentScreen === "rangeScreen"
+            ? byId<HTMLElement>("rangeSettings")
+            : null;
     showScreen("settingsScreen");
   }
-  function openIncidents(): void {
+  function openIncidents(event?: Event): void {
     if (currentScreen !== "incidentsScreen")
       incidentsReturnScreen = currentScreen;
+    incidentsReturnFocus =
+      event?.currentTarget instanceof HTMLElement
+        ? event.currentTarget
+        : currentScreen === "homeScreen"
+          ? byId<HTMLElement>("openIncidents")
+          : currentScreen === "rangeScreen"
+            ? byId<HTMLElement>("rangeIncidents")
+            : null;
     showScreen("incidentsScreen");
   }
   function setIncidentAlert(active: boolean): void {
@@ -306,26 +352,32 @@ export function runReverbDemoRuntime(
   byId("openSettings").addEventListener("click", openSettings);
   byId("librarySettings").addEventListener("click", () => {
     settingsReturnScreen = "homeScreen";
+    settingsReturnFocus = byId<HTMLElement>("openLibrary");
     showScreen("settingsScreen");
   });
   byId("rangeSettings").addEventListener("click", openSettings);
   byId("openIncidents").addEventListener("click", openIncidents);
   byId("libraryIncidents").addEventListener("click", () => {
     incidentsReturnScreen = "homeScreen";
+    incidentsReturnFocus = byId<HTMLElement>("openLibrary");
     showScreen("incidentsScreen");
   });
   byId("rangeIncidents").addEventListener("click", openIncidents);
   byId("openLibrary").addEventListener("click", () =>
     showScreen("libraryScreen"),
   );
-  byId("libraryBack").addEventListener("click", () => showScreen("homeScreen"));
+  byId("libraryBack").addEventListener("click", () =>
+    showScreen("homeScreen", byId<HTMLElement>("openLibrary")),
+  );
   byId("openRange").addEventListener("click", () => {
     syncRangeUi();
     showScreen("rangeScreen");
   });
-  byId("rangeClose").addEventListener("click", () => showScreen("homeScreen"));
+  byId("rangeClose").addEventListener("click", () =>
+    showScreen("homeScreen", byId<HTMLElement>("openRange")),
+  );
   byId("incidentsBack").addEventListener("click", () =>
-    showScreen(incidentsReturnScreen),
+    showScreen(incidentsReturnScreen, incidentsReturnFocus),
   );
 
   const aboutSheet = byId<HTMLElement>("aboutSheet");
@@ -645,14 +697,14 @@ export function runReverbDemoRuntime(
   }
   byId("settingsNav").addEventListener("click", () => {
     if (settingsDirty) restoreSettings();
-    else showScreen(settingsReturnScreen);
+    else showScreen(settingsReturnScreen, settingsReturnFocus);
   });
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
     applyRetentionInputs();
     settingsInitial = captureSettingsSnapshot();
     setDirty(false);
-    showScreen(settingsReturnScreen);
+    showScreen(settingsReturnScreen, settingsReturnFocus);
   });
 
   let activeDropdown: HTMLElement | null = null;
@@ -842,6 +894,7 @@ export function runReverbDemoRuntime(
   function completeGesture(mode: GestureMode, deltaY: number): boolean {
     if (mode === "settings" && deltaY >= 52) {
       settingsReturnScreen = "homeScreen";
+      settingsReturnFocus = byId<HTMLElement>("openSettings");
       showScreen("settingsScreen");
       return true;
     }
@@ -868,7 +921,7 @@ export function runReverbDemoRuntime(
   phone.addEventListener("pointermove", (event) => {
     if (libraryDragY != null && event.clientY - libraryDragY >= 64) {
       libraryDragY = null;
-      showScreen("homeScreen");
+      showScreen("homeScreen", byId<HTMLElement>("openLibrary"));
       return;
     }
     if (
