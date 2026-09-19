@@ -399,6 +399,329 @@ test('stateful surfaces stay contained through live responsive resizing', async 
   await expectResponsive('Keybr book picker');
 });
 
+test('routes remain usable with 200 percent root text scaling', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the text-scaling matrix');
+  test.setTimeout(180_000);
+
+  const viewports = [
+    { width: 1180, height: 650 },
+    { width: 768, height: 1024 },
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+  ];
+
+  const issues = () => page.evaluate(() => {
+    const visible = element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return false;
+      if (element.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const scrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    const describe = element => element.getAttribute('aria-label')
+      || element.getAttribute('title')
+      || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 70)
+      || element.tagName.toLowerCase();
+    const out = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`document overflow ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    if (document.body.scrollWidth > innerWidth + 1) out.push(`body overflow ${document.body.scrollWidth} > ${innerWidth}`);
+    const controls = [...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="radio"],[role="checkbox"],[role="slider"]')]
+      .filter(element => visible(element) && !scrollOwner(element) && getComputedStyle(element).pointerEvents !== 'none');
+    for (const control of controls) {
+      const rect = control.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) out.push(`offscreen ${describe(control)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+    }
+    for (let i = 0; i < controls.length; i += 1) {
+      const a = controls[i];
+      const aRect = a.getBoundingClientRect();
+      for (let j = i + 1; j < controls.length; j += 1) {
+        const b = controls[j];
+        if (a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) out.push(`collision ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+      }
+    }
+    return out.slice(0, 30);
+  });
+
+  for (const route of routes) {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await visit(page, route, info);
+      await page.evaluate(async () => {
+        document.documentElement.style.fontSize = '32px';
+        await document.fonts?.ready;
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+      await expect.poll(issues, {
+        message: `${route} at 200% root text size and ${viewport.width}x${viewport.height}`,
+      }).toEqual([]);
+    }
+  }
+});
+
+test('Keybr scaled-text layout stays within the viewport', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the scaled Keybr geometry');
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 320, height: 568 });
+  await visit(page, '/keybr', info);
+  await page.evaluate(async () => {
+    document.documentElement.style.fontSize = '32px';
+    await document.fonts?.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+
+  const geometry = await page.evaluate(() => {
+    const hasHorizontalClipOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (style.overflowX !== 'visible') return true;
+      }
+      return false;
+    };
+    const entries = [...document.querySelectorAll('*')].flatMap(element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return [];
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      if (style.display === 'none' || style.visibility === 'hidden' || rect.width <= 0 || rect.height <= 0) return [];
+      if (rect.right <= innerWidth + 1) return [];
+      return [{
+        tag: element.tagName.toLowerCase(),
+        cls: element.getAttribute('class') ?? '',
+        role: element.getAttribute('role'),
+        text: element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) ?? '',
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        overflowX: style.overflowX,
+        minWidth: style.minWidth,
+        widthCss: style.width,
+        clipped: hasHorizontalClipOwner(element),
+      }];
+    });
+    entries.sort((a, b) => Number(a.clipped) - Number(b.clipped) || b.right - a.right);
+    const metricsLabel = [...document.querySelectorAll('span')].find(element => element.textContent?.trim() === 'Metrics:');
+    const metricsRow = metricsLabel?.parentElement;
+    const gaugeList = metricsRow?.children[1];
+    const rect = element => {
+      if (!(element instanceof Element)) return null;
+      const box = element.getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        width: box.width,
+        clientWidth: element instanceof HTMLElement ? element.clientWidth : null,
+        scrollWidth: element instanceof HTMLElement ? element.scrollWidth : null,
+        minWidth: getComputedStyle(element).minWidth,
+        flex: getComputedStyle(element).flex,
+        whiteSpace: getComputedStyle(element).whiteSpace,
+      };
+    };
+    const rowByLabel = text => {
+      const label = [...document.querySelectorAll('span')].find(element => element.textContent?.trim() === text);
+      const row = label?.parentElement;
+      const value = row?.children[1];
+      return {
+        row: rect(row),
+        label: rect(label),
+        value: rect(value),
+        children: value ? [...value.children].map(rect) : [],
+      };
+    };
+    return {
+      viewport: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      metrics: {
+        row: rect(metricsRow),
+        label: rect(metricsLabel),
+        gaugeList: rect(gaugeList),
+        gauges: gaugeList ? [...gaugeList.children].map(rect) : [],
+      },
+      currentKey: rowByLabel('Current key:'),
+      dailyGoal: rowByLabel('Daily goal:'),
+      offenders: entries.slice(0, 20),
+    };
+  });
+
+  expect(geometry.documentWidth, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.viewport + 1);
+  expect(geometry.bodyWidth, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.viewport + 1);
+});
+
+test('Tools scaled-text header keeps selector above contextual controls', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the scaled Tools header geometry');
+  await page.setViewportSize({ width: 520, height: 800 });
+  await visit(page, '/tools/?tool=diff', info);
+  await page.evaluate(async () => {
+    document.documentElement.style.fontSize = '32px';
+    await document.fonts?.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+
+  const geometry = await page.evaluate(() => {
+    const box = selector => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+        width: rect.width, height: rect.height,
+        display: style.display,
+        alignSelf: style.alignSelf,
+        heightCss: style.height,
+      };
+    };
+    return {
+      topbar: box('.tools-page > .site-topbar'),
+      inner: box('.tools-page > .site-topbar > .site-topbar-inner'),
+      context: box('.tools-topbar-context'),
+      switcher: box('.tool-switcher'),
+      trigger: box('.tool-select-trigger'),
+      toolContext: box('.tool-context'),
+      syntax: box('[data-diff-language]'),
+      swap: box('[data-diff-swap]'),
+    };
+  });
+
+  expect(geometry.trigger, JSON.stringify(geometry)).not.toBeNull();
+  expect(geometry.syntax, JSON.stringify(geometry)).not.toBeNull();
+  expect(geometry.swap, JSON.stringify(geometry)).not.toBeNull();
+  expect(geometry.trigger.bottom, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.syntax.top);
+  expect(geometry.trigger.bottom, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.swap.top);
+});
+
+test('stateful surfaces keep controls reachable in short-height viewports', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the short-height state matrix');
+  test.setTimeout(120_000);
+
+  const shortViewports = [
+    { width: 900, height: 320 },
+    { width: 390, height: 320 },
+    { width: 240, height: 260 },
+    { width: 180, height: 220 },
+    { width: 128, height: 180 },
+  ];
+
+  const expectSurfaceReachable = async (surface, label) => {
+    for (const viewport of shortViewports) {
+      await page.setViewportSize(viewport);
+      await expect(surface, `${label} must remain open at ${viewport.width}x${viewport.height}`).toBeVisible();
+      const state = await surface.evaluate(element => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return {
+          rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+          overflowY: style.overflowY,
+          scrollHeight: element.scrollHeight,
+          clientHeight: element.clientHeight,
+        };
+      });
+      expect(state.rect.left, `${label} left edge at ${viewport.width}x${viewport.height}`).toBeGreaterThanOrEqual(-1);
+      expect(state.rect.right, `${label} right edge at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.width + 1);
+      expect(state.rect.top, `${label} top edge at ${viewport.width}x${viewport.height}`).toBeGreaterThanOrEqual(-1);
+      expect(state.rect.bottom, `${label} bottom edge at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.height + 1);
+
+      const controls = surface.locator('a[href],button,input,select,textarea,[role="button"],[role="radio"],[role="checkbox"],[role="slider"]')
+        .filter({ visible: true });
+      const count = await controls.count();
+      for (let index = 0; index < count; index += 1) {
+        const control = controls.nth(index);
+        if (!await control.isVisible()) continue;
+        if (await control.evaluate(element => Boolean(element.closest('[hidden],[aria-hidden="true"],[inert]')))) continue;
+        await control.evaluate(element => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+        const reachable = await control.evaluate(element => {
+          const rect = element.getBoundingClientRect();
+          return {
+            name: element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || element.tagName,
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height,
+          };
+        });
+        const controlLabel = `${label} control ${index} (${reachable.name}) at ${viewport.width}x${viewport.height}`;
+        expect(reachable.left, `${controlLabel} left`).toBeGreaterThanOrEqual(-1);
+        expect(reachable.right, `${controlLabel} right`).toBeLessThanOrEqual(viewport.width + 1);
+        expect(reachable.top, `${controlLabel} top`).toBeGreaterThanOrEqual(-1);
+        expect(reachable.bottom, `${controlLabel} bottom`).toBeLessThanOrEqual(viewport.height + 1);
+      }
+
+    }
+  };
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/', info);
+  await page.keyboard.press('Control+K');
+  await page.getByPlaceholder('Search games, tools, writing, work…').fill('a');
+  await expectSurfaceReachable(page.locator('.site-search-panel'), 'Search overlay');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  await appearance.click();
+  await page.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+  await expectSurfaceReachable(page.locator('.samey-theme-advanced'), 'Advanced appearance');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: /^Choose date,/ }).click();
+  await expectSurfaceReachable(page.locator('.wordle-date-picker-popover'), 'Wordle date picker');
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expectSurfaceReachable(page.locator('.game-settings-popover'), 'Wordle settings');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/projects/reverb/', info);
+  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
+  const reverbFullscreen = page.locator('.reverb-demo-frame.is-fullscreen');
+  await expectSurfaceReachable(reverbFullscreen, 'Reverb fullscreen');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.evaluate(() => {
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({
+      v: 4, id: 'qa-short-height', pl: [], r: 4, c: 4, e: 1,
+      b: encode(new Uint8Array(16)), o: encode(new Uint8Array(16)), p: encode(new Uint8Array(3)),
+      t: 1, g: false, i: true, m: [], q: true,
+    }));
+  });
+  await visit(page, '/chain/?p=game', info);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expectSurfaceReachable(page.locator('#chain-settings'), 'Chain settings');
+  await page.keyboard.press('Escape');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize({ width: 900, height: 700 });
+  await visit(page, '/keybr?p=settings', info);
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose book', exact: true }).click();
+  await expectSurfaceReachable(page.getByRole('dialog'), 'Keybr book picker');
+});
+
 test('responsive topbars stay collision-free through live state transitions', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers the live topbar transition matrix');
   test.setTimeout(120_000);
