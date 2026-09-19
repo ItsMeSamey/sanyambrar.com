@@ -393,3 +393,138 @@ test('Reverb Range text focus pauses preview before boundary editing', async ({ 
   await expect(end).toBeFocused();
   await expect(play).toHaveAttribute('aria-label', 'Play');
 });
+
+test('Reverb Range duration wheel renders native neighbor rings', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('20:00.0');
+  await page.keyboard.press('Enter');
+
+  const numberFaces = wheel.locator('.wheel-face:not(.wheel-profile)');
+  await expect.poll(() => numberFaces.evaluateAll(nodes =>
+    nodes.slice(5, 10).map(node => node.textContent?.trim()),
+  )).toEqual(['13', '14', '15', '16', '17']);
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  await page.mouse.click(box.x + box.width * 0.92, box.y + box.height * 0.84);
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
+  await expect.poll(() => numberFaces.evaluateAll(nodes =>
+    nodes.slice(5, 10).map(node => node.textContent?.trim()),
+  )).toEqual(['05', '10', '15', '20', '25']);
+  await expect.poll(() => wheel.locator('.wheel-profile').allTextContents())
+    .toEqual(['15x', '1x', '5x', '15x', '1x']);
+});
+
+test('Reverb Range enforces the native WAV export duration cap', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('.buffer-segment[data-buffer="loop"]').click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  const timelineTotal = (await host.locator('#rangeDurationLabel').textContent())?.trim();
+  if (!timelineTotal) throw new Error('Range timeline total is unavailable');
+
+  const defaultWavCapSeconds = 4_294_967_258 / 88_200;
+  expect(Number(await wheel.getAttribute('aria-valuemax'))).toBeCloseTo(defaultWavCapSeconds, 3);
+
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill(timelineTotal);
+  await page.keyboard.press('Enter');
+  expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeGreaterThan(defaultWavCapSeconds);
+  await expect(exportButton).toBeDisabled();
+
+  await start.fill('40:00:00.0');
+  await page.keyboard.press('Enter');
+  await expect(exportButton).toBeEnabled();
+});
+
+test('Reverb Range export cap follows applied audio settings', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('.buffer-segment[data-buffer="loop"]').click();
+  await host.locator('#openRange').click();
+
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const defaultCap = Number(await wheel.getAttribute('aria-valuemax'));
+  const expectedMonoCap = 4_294_967_258 / 88_200;
+  expect(defaultCap).toBeCloseTo(expectedMonoCap, 3);
+
+  await host.locator('#rangeSettings').click();
+  const channels = host.locator('.settings-card.dropdown').first();
+  await channels.click();
+  await host.getByRole('menuitemradio', { name: 'Stereo' }).click();
+  await expect(channels.locator('.value')).toHaveText('Stereo');
+  await host.locator('#settingsDone').click();
+  await expect(host.locator('#rangeScreen')).toHaveClass(/active/);
+
+  const stereoCap = Number(await wheel.getAttribute('aria-valuemax'));
+  const expectedStereoCap = 4_294_967_256 / 176_400;
+  expect(stereoCap).toBeCloseTo(expectedStereoCap, 3);
+  expect(stereoCap).toBeCloseTo(defaultCap / 2, 3);
+
+  await host.locator('#rangeSettings').click();
+  const settingsCards = host.locator('.settings-card.dropdown');
+  await settingsCards.first().click();
+  await host.getByRole('menuitemradio', { name: 'Mono' }).click();
+  await settingsCards.nth(1).click();
+  await host.getByRole('menuitemradio', { name: '8-bit integer' }).click();
+  await host.locator('#settingsDone').click();
+  await expect(host.locator('#rangeScreen')).toHaveClass(/active/);
+
+  const mono8Cap = Number(await wheel.getAttribute('aria-valuemax'));
+  const expectedMono8Cap = 4_294_967_258 / 44_100;
+  expect(mono8Cap).toBeCloseTo(expectedMono8Cap, 6);
+});
+
+test('Reverb Range wheel marks only native over-limit components', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('.buffer-segment[data-buffer="loop"]').click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('13:40:00.0');
+  await page.keyboard.press('Enter');
+
+  const currentFaces = wheel.locator('.wheel-face.current:not(.wheel-profile)');
+  await expect(currentFaces.nth(0)).not.toHaveClass(/over-limit/);
+  await expect(currentFaces.nth(1)).toHaveClass(/over-limit/);
+  await expect(currentFaces.nth(2)).toHaveClass(/over-limit/);
+
+  const numberFaces = wheel.locator('.wheel-face:not(.wheel-profile)');
+  await expect(numberFaces.nth(6)).not.toHaveClass(/over-limit/);
+  await expect(numberFaces.nth(10)).toHaveClass(/over-limit/);
+  const colons = wheel.locator('.wheel-colon');
+  await expect(colons.nth(0)).not.toHaveClass(/over-limit/);
+  await expect(colons.nth(1)).toHaveClass(/over-limit/);
+});
