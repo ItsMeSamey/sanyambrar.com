@@ -435,29 +435,142 @@ export function runReverbDemoRuntime(
     );
   };
 
+  const rangeExportLimitSeconds = () => {
+    const [channelLabel = "Mono", sampleFormatLabel = "16-bit integer", rateLabel = "44.1 kHz"] =
+      settingsInitial.dropdowns;
+    const channelCount = channelLabel === "Stereo" ? 2 : 1;
+    const bytesPerSample = sampleFormatLabel === "8-bit integer"
+      ? 1
+      : sampleFormatLabel === "32-bit float"
+        ? 4
+        : 2;
+    const wavHeaderBytes = sampleFormatLabel === "32-bit float" ? 58 : 44;
+    const rateKhz = Number.parseFloat(rateLabel);
+    const sampleRate = Number.isFinite(rateKhz) && rateKhz > 0
+      ? Math.round(rateKhz * 1000)
+      : 44_100;
+    const frameBytes = channelCount * bytesPerSample;
+    const physicalFileLimitBytes = 0xffff_ffff + 8;
+    const payloadBudget = Math.max(
+      0,
+      physicalFileLimitBytes - wavHeaderBytes - (bytesPerSample === 1 ? 1 : 0),
+    );
+    const frameAlignedPayload = payloadBudget - (payloadBudget % frameBytes);
+    return frameAlignedPayload / (sampleRate * frameBytes);
+  };
+  const rangeWheelMaximumSeconds = (
+    target: RangeEditTarget = rangeWheelPinnedTarget ?? rangeEditTarget,
+  ) => {
+    const reachable = target === "start"
+      ? rangeEndSeconds
+      : Math.max(0, rangeTimelineDurationSeconds - rangeStartSeconds);
+    return Math.min(reachable, rangeExportLimitSeconds());
+  };
+  const rangeSelectionWithinExportLimit = () =>
+    rangeSelectionSeconds() <= rangeExportLimitSeconds();
+  const rangeWheelValues = (
+    step: number,
+    maxInclusive: number,
+    currentValue: number,
+    includeMaximumBoundary = true,
+  ) => {
+    const max = Math.max(0, Math.floor(maxInclusive));
+    const current = Math.max(0, Math.floor(currentValue));
+    const values: number[] = [];
+    for (let value = 0; value <= max; value += step) values.push(value);
+    if (includeMaximumBoundary && values.at(-1) !== max) values.push(max);
+    if (!values.includes(current)) values.push(current);
+    return [...new Set(values)].sort((a, b) => a - b);
+  };
+  const rangeWheelFaces = (values: readonly number[], current: number) => {
+    const index = Math.max(0, values.indexOf(current));
+    return [-2, -1, 0, 1, 2].map((offset) => {
+      const raw = (index + offset) % values.length;
+      return values[(raw + values.length) % values.length] ?? current;
+    });
+  };
+
   function renderRangeWheel(): void {
     const selection = rangeSelectionSeconds();
-    const parts = splitRangeWholeSeconds(selection);
-    const currentFaces = [
-      ...rangeDurationWheel.querySelectorAll<HTMLElement>(
-        ".wheel-face.current:not(.wheel-profile)",
+    const maximum = rangeWheelMaximumSeconds();
+    const displaySelection = selection > maximum
+      ? Math.ceil(selection)
+      : Math.floor(selection);
+    const parts = splitRangeWholeSeconds(displaySelection);
+    const maximumParts = splitRangeWholeSeconds(maximum);
+    const profileStep = rangeWheelStepSeconds();
+    const minuteConstrained = parts.hours === maximumParts.hours;
+    const minuteMax = minuteConstrained ? maximumParts.minutes : 59;
+    const secondConstrained =
+      minuteConstrained && parts.minutes === maximumParts.minutes;
+    const secondMax = secondConstrained ? maximumParts.seconds : 59;
+    const rings = [
+      rangeWheelValues(1, maximumParts.hours, parts.hours),
+      rangeWheelValues(
+        profileStep,
+        minuteMax,
+        parts.minutes,
+        minuteConstrained,
+      ),
+      rangeWheelValues(
+        profileStep,
+        secondMax,
+        parts.seconds,
+        secondConstrained,
       ),
     ];
-    const values = [parts.hours, parts.minutes, parts.seconds];
-    currentFaces.forEach((face, index) => {
-      face.textContent = twoDigits(values[index] ?? 0);
+    const numberFaces = [
+      ...rangeDurationWheel.querySelectorAll<HTMLElement>(
+        ".wheel-face:not(.wheel-profile)",
+      ),
+    ];
+    const currentParts = [parts.hours, parts.minutes, parts.seconds];
+    const maximumWhole = Math.max(0, Math.floor(maximum));
+    const selectedError = (() => {
+      const max = splitRangeWholeSeconds(maximumWhole);
+      if (parts.hours > max.hours) return [true, true, true] as const;
+      if (parts.hours < max.hours) return [false, false, false] as const;
+      if (parts.minutes > max.minutes) return [false, true, true] as const;
+      if (parts.minutes < max.minutes) return [false, false, false] as const;
+      if (parts.seconds > max.seconds) return [false, false, true] as const;
+      return [false, false, false] as const;
+    })();
+    rings.forEach((ring, column) => {
+      const current = currentParts[column] ?? 0;
+      rangeWheelFaces(ring, current).forEach((value, faceIndex) => {
+        const face = numberFaces[column * 5 + faceIndex];
+        if (!face) return;
+        face.textContent = twoDigits(value);
+        const candidate = [...currentParts];
+        candidate[column] = value;
+        const candidateSeconds =
+          (candidate[0] ?? 0) * 3600 +
+          (candidate[1] ?? 0) * 60 +
+          (candidate[2] ?? 0);
+        const overLimit = faceIndex === 2
+          ? (selectedError[column] ?? false)
+          : candidateSeconds > maximum;
+        face.classList.toggle("over-limit", overLimit);
+      });
     });
-    const currentProfile =
-      rangeDurationWheel.querySelector<HTMLElement>(
-        ".wheel-face.current.wheel-profile",
-      );
-    if (currentProfile)
-      currentProfile.textContent =
-        rangeWheelProfiles[rangeWheelProfileIndex] ?? "1x";
-    const maximum =
-      rangeEditTarget === "start"
-        ? rangeEndSeconds
-        : Math.max(0, rangeTimelineDurationSeconds - rangeStartSeconds);
+    const colons = [
+      ...rangeDurationWheel.querySelectorAll<HTMLElement>(".wheel-colon"),
+    ];
+    colons[0]?.classList.toggle("over-limit", selectedError[0]);
+    colons[1]?.classList.toggle(
+      "over-limit",
+      selectedError[0] || selectedError[1],
+    );
+    const profileFaces = [
+      ...rangeDurationWheel.querySelectorAll<HTMLElement>(".wheel-profile"),
+    ];
+    [-2, -1, 0, 1, 2].forEach((offset, index) => {
+      const raw = (rangeWheelProfileIndex + offset) % rangeWheelProfiles.length;
+      const profile = rangeWheelProfiles[(raw + rangeWheelProfiles.length) %
+        rangeWheelProfiles.length] ?? "1x";
+      const face = profileFaces[index];
+      if (face) face.textContent = profile;
+    });
     rangeDurationWheel.setAttribute("aria-valuemin", "0.05");
     rangeDurationWheel.setAttribute("aria-valuemax", String(maximum));
     rangeDurationWheel.setAttribute(
@@ -470,6 +583,8 @@ export function runReverbDemoRuntime(
         rangeWheelProfiles[rangeWheelProfileIndex] ?? "1x"
       }`,
     );
+    rangeExportButton.disabled =
+      rangeWheelInteractionActive() || !rangeSelectionWithinExportLimit();
   }
   function renderRangeUi(): void {
     const duration = Math.max(0.1, rangeTimelineDurationSeconds);
@@ -595,7 +710,10 @@ export function runReverbDemoRuntime(
   ): void {
     const duration = Math.max(0, rangeTimelineDurationSeconds);
     const minimum = Math.min(0.05, duration);
-    const requested = Math.max(minimum, requestedSeconds);
+    const requested = Math.max(
+      minimum,
+      Math.min(rangeWheelMaximumSeconds(target), requestedSeconds),
+    );
     if (target === "start") {
       rangeStartSeconds = Math.max(
         0,
@@ -798,7 +916,7 @@ export function runReverbDemoRuntime(
   const adjustRangeWheelAt = (clientX: number, direction: number) =>
     adjustRangeWheelColumn(rangeWheelColumnAt(clientX), direction);
   const setRangeWheelInteractionUi = (active: boolean) => {
-    rangeExportButton.disabled = active;
+    rangeExportButton.disabled = active || !rangeSelectionWithinExportLimit();
     byId<HTMLButtonElement>("rangePlay").disabled = active;
     rangeDurationWheel.toggleAttribute("data-editing", active);
   };
@@ -1921,6 +2039,7 @@ export function runReverbDemoRuntime(
     settingsInitial = captureSettingsSnapshot();
     clearRetentionErrors();
     setDirty(false);
+    if (settingsReturnScreen === "rangeScreen") renderRangeUi();
     showScreen(settingsReturnScreen, settingsReturnFocus);
   });
 
