@@ -1703,6 +1703,66 @@ test('SPA route transitions never fade the whole route to blank', async ({ page 
   expect(frames.every(frame => frame.contentPainted)).toBe(true);
 });
 
+test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+  for (const target of [
+    { from: '/', previous: 'Games', path: '/projects/reverb/', chunk: 'ReverbDemo', heading: 'Reverb', demo: '.reverb-demo-section' },
+    { from: '/projects/reverb/', previous: 'Reverb', path: '/projects/cnn/', chunk: 'CnnDemo', heading: 'CNN', demo: '.cnn-demo-section' },
+  ]) {
+    let delayed = false;
+    let releaseChunk = () => {};
+    const chunkGate = new Promise(resolve => { releaseChunk = resolve; });
+    const chunkPattern = new RegExp(`${target.chunk}(?:-[^/?]+\\.js|\\.tsx)(?:\\?.*)?$`);
+    const holdChunk = async route => {
+      delayed = true;
+      await chunkGate;
+      await route.continue();
+    };
+    await page.route(chunkPattern, holdChunk);
+
+    try {
+      await visit(page, target.from, info);
+      await page.evaluate(path => {
+        const link = document.querySelector(`a[href="${path}"]`);
+        if (link instanceof HTMLAnchorElement) link.click();
+        else void globalThis.SameyNavigate?.(path);
+      }, target.path);
+      await expect.poll(() => delayed, { message: `${target.chunk} request must be deliberately delayed` }).toBe(true);
+      await page.evaluate(() => new Promise(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+      await expect(page.getByRole('heading', { name: target.previous, exact: true })).toBeVisible();
+      await expect(page.locator('.site-route-loading')).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: target.heading, exact: true })).toHaveCount(0);
+      const painted = await page.locator('.site-route').evaluate(route => {
+        const rect = route.getBoundingClientRect();
+        const contentPainted = [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
+          const style = getComputedStyle(element);
+          const bounds = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden'
+            && Number(style.opacity) >= 0.99 && bounds.width > 0 && bounds.height > 0;
+        });
+        return {
+          opacity: Number(getComputedStyle(route).opacity),
+          area: rect.width * rect.height,
+          contentPainted,
+        };
+      });
+      expect(painted.opacity).toBeGreaterThanOrEqual(0.99);
+      expect(painted.area).toBeGreaterThan(0);
+      expect(painted.contentPainted).toBe(true);
+    } finally {
+      releaseChunk();
+    }
+
+    await expect(page).toHaveURL(new RegExp(`/projects/${target.heading.toLowerCase()}/?$`));
+    await expect(page.getByRole('heading', { name: target.heading, exact: true })).toBeVisible();
+    await expect(page.locator(target.demo)).toBeVisible();
+    await page.unroute(chunkPattern, holdChunk);
+  }
+});
+
 test('Advanced appearance controls keep strong keyboard focus contrast', async ({ page }, info) => {
   await visit(page, '/', info);
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
@@ -2782,7 +2842,9 @@ test('Reverb demo preserves the 411x912 reference surface without stretching', a
     if (!phone) return false;
     const outer = element.getBoundingClientRect();
     const inner = phone.getBoundingClientRect();
-    return inner.width <= outer.width + 1 && inner.height <= outer.height + 1;
+    return inner.width <= outer.width + 1 && inner.height <= outer.height + 1
+      && Math.abs(inner.width - outer.width) <= 1
+      && Math.abs(inner.height - outer.height) <= 1;
   })).toBe(true);
 
   await fullscreen.click();
