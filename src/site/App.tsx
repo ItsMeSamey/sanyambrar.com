@@ -29,12 +29,14 @@ const loadModule = <K extends RouteKind>(kind: K): ReturnType<(typeof rawLoaders
   return task as ReturnType<(typeof rawLoaders)[K]>;
 };
 
-const Home = lazy(() => loadModule('home').then(m => ({ default: m.Home })));
-const Work = lazy(() => loadModule('work').then(m => ({ default: m.Work })));
-const Tools = lazy(() => loadModule('tools').then(m => ({ default: m.ToolsPage })));
-const Chain = lazy(() => loadModule('chain').then(m => ({ default: m.ChainPage })));
-const Project = lazy(() => loadModule('project').then(m => ({ default: m.ProjectPage })));
-const Blog = lazy(() => loadModule('blog').then(m => ({ default: m.Blog })));
+const Home = lazy(() => loadModule('home'), { export: 'Home' });
+const Work = lazy(() => loadModule('work'), { export: 'Work' });
+const Tools = lazy(() => loadModule('tools'), { export: 'ToolsPage' });
+const Chain = lazy(() => loadModule('chain'), { export: 'ChainPage' });
+const Project = lazy(() => loadModule('project'), { export: 'ProjectPage' });
+const ReverbDemo = lazy(() => resilientImport(() => import('./components/ReverbDemo.tsx')), { export: 'ReverbDemo' });
+const CnnDemo = lazy(() => resilientImport(() => import('./components/CnnDemo.tsx')), { export: 'CnnDemo' });
+const Blog = lazy(() => loadModule('blog'), { export: 'Blog' });
 
 type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationDirection = 'forward' | 'back';
@@ -68,7 +70,18 @@ const hashTarget = (url: URL) => {
   if (!url.hash) return '';
   try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); }
 };
-const preload = (route: Route) => loadModule(route.kind);
+const preload = (route: Route) => ({
+  home: Home.preload,
+  work: Work.preload,
+  tools: Tools.preload,
+  chain: Chain.preload,
+  project: Project.preload,
+  blog: Blog.preload,
+}[route.kind]());
+export const preloadSiteRoute = async (url: URL) => {
+  const route = routeFromUrl(url);
+  if (route) await preload(route);
+};
 const setLoading = (value: boolean) => {
   globalThis.SameyLoading?.(value);
   document.documentElement.toggleAttribute('data-solid-loading', value);
@@ -176,14 +189,15 @@ function RouteError(props: { error: NavigationError; onRetry: () => void; onGoBa
   </section>;
 }
 
-export function App() {
-  const initial: Route = routeFromUrl(new URL(location.href)) ?? { key: 'home', kind: 'home' };
+export function App(props: { initialUrl?: string } = {}) {
+  const initialUrl = props.initialUrl ? new URL(props.initialUrl) : new URL(location.href);
+  const initial: Route = routeFromUrl(initialUrl) ?? { key: 'home', kind: 'home' };
   const [route, setRoute] = createSignal<Route>(initial);
   const [navigationError, setNavigationError] = createSignal<NavigationError | null>(null);
   const projectDetail = () => { const slug = route().slug; return route().kind === 'project' && slug ? details[slug] : undefined; };
   let navigationId = 0;
-  let navigationIndex = readNavigationIndex() ?? 0;
-  let lastStableUrl = location.href;
+  let navigationIndex = props.initialUrl ? 0 : readNavigationIndex() ?? 0;
+  let lastStableUrl = initialUrl.href;
   let resetRouteError: (() => void) | undefined;
   const navigationFailure = (url: URL, error: unknown, fallback: string): NavigationError => ({
     url: url.href,
@@ -420,7 +434,15 @@ export function App() {
           <Match when={route().kind === 'blog'}><div class="site-route site-standard"><Blog /></div></Match>
           <Match when={route().kind === 'project'}>
             <Show when={projectDetail()} keyed>{detail =>
-              <div class="site-route site-standard"><Project detail={detail} /></div>
+              <div class="site-route site-standard">
+                <Project
+                  detail={detail}
+                  demo={<>
+                    <Show when={detail.demo === 'reverb-ui'}><ReverbDemo/></Show>
+                    <Show when={detail.demo === 'cnn-draw'}><CnnDemo/></Show>
+                  </>}
+                />
+              </div>
             }</Show>
           </Match>
         </Switch>

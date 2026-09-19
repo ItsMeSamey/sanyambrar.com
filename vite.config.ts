@@ -58,6 +58,23 @@ export default defineConfig(() => {
     },
   }
 
+  if (target === 'site-prerender') return {
+    publicDir: false,
+    plugins: [solid({ ssr: true })],
+    build: {
+      outDir: path.resolve(root, '.build/site-prerender'),
+      emptyOutDir: true,
+      target: 'es2022',
+      ssr: path.resolve(root, 'src/site/prerender.tsx'),
+      rolldownOptions: {
+        output: {
+          entryFileNames: 'prerender.js',
+          chunkFileNames: 'prerender-chunks/[name]-[hash].js',
+        },
+      },
+    },
+  }
+
   if (target === 'blog') return {
     publicDir: false,
     input: path.resolve(root, 'src/blogs/btop-mutex.html'),

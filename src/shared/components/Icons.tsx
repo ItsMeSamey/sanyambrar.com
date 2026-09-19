@@ -1,5 +1,5 @@
 import { omit } from 'solid-js';
-import type { JSX } from '@solidjs/web';
+import { Dynamic, createComponent, type JSX } from '@solidjs/web';
 import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
 
 type IconProps = JSX.SvgSVGAttributes<SVGSVGElement> & {
@@ -21,11 +21,7 @@ function icon(nodes: IconNode, name: string): LucideIcon {
     {...omit(props, 'size', 'color', 'strokeWidth', 'absoluteStrokeWidth', 'children', 'class')}
     class={['lucide', 'lucide-' + name, props.class]}
   >
-    {nodes.map(([tag, attributes]) => {
-      const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
-      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
-      return element;
-    })}
+    {nodes.map(([tag, attributes]) => createComponent(Dynamic, { component: tag, ...attributes }))}
     {props.children}
   </svg>;
 }
