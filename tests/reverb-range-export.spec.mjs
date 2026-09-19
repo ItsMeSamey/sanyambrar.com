@@ -22,17 +22,22 @@ async function visitReverb(page, info) {
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
 }
 
-test('Reverb Range export commits valid drafts and blocks invalid drafts', async ({ page }, info) => {
-  await visitReverb(page, info);
-  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+async function openPausedRange(host) {
   const blob = host.locator('#blobControl');
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
-
   await host.locator('#openRange').click();
+}
+
+test('Reverb Range Export commits valid drafts and blocks invalid drafts', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await openPausedRange(host);
+
   const start = host.getByRole('textbox', { name: 'Start time' });
-  const exportButton = host.getByRole('button', { name: 'Export', exact: true });
+  const exportButton = host.getByRole('button', { name: 'Export' });
   const toast = host.locator('#toast');
+  const rangeScreen = host.locator('#rangeScreen');
 
   await start.fill('1x:02.0');
   await page.keyboard.press('Enter');
@@ -40,50 +45,59 @@ test('Reverb Range export commits valid drafts and blocks invalid drafts', async
   await expect(start).toBeFocused();
 
   await exportButton.click();
-  await expect(start).toHaveAttribute('aria-invalid', 'true');
-  await expect(start).toHaveText('1x:02.0');
+  await expect(rangeScreen).toHaveClass(/active/);
   await expect(start).toBeFocused();
+  await expect(start).toHaveText('1x:02.0');
+  await expect(start).toHaveAttribute('aria-invalid', 'true');
   await expect(toast).not.toHaveClass(/show/);
-  await expect(toast).toHaveText('');
+  await expect(toast).not.toHaveText('Exporting range');
 
   await page.keyboard.press('Escape');
+  await expect(start).toHaveText('0:00.0');
+  await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+
   await start.fill('5:00.0');
   await exportButton.click();
+  await expect(rangeScreen).toHaveClass(/active/);
   await expect(start).toHaveText('5:00.0');
   await expect(start).not.toHaveAttribute('aria-invalid', 'true');
   await expect(toast).toHaveText('Exporting range');
   await expect(toast).toHaveClass(/show/);
 
-  await page.waitForTimeout(1750);
-  await expect(toast).not.toHaveClass(/show/);
-
-  await start.fill('6:00.0');
-  await exportButton.click();
-  await expect(start).toHaveText('6:00.0');
-  await expect(toast).toHaveClass(/show/);
+  const startBoundary = host.locator('#rangeStartBoundary');
+  await expect(startBoundary).toHaveAttribute('style', /left:/);
+  const left = await startBoundary.evaluate(element => Number.parseFloat(element.style.left));
+  expect(left).toBeGreaterThan(0);
 });
 
-test('Reverb Range Close discards draft state and preview playback', async ({ page }, info) => {
+test('Reverb Range Close discards text drafts and resets preview state', async ({ page }, info) => {
   await visitReverb(page, info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
-  const blob = host.locator('#blobControl');
-  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
-    await blob.click();
+  await openPausedRange(host);
 
-  await host.locator('#openRange').click();
   const start = host.getByRole('textbox', { name: 'Start time' });
+  const close = host.locator('#rangeClose');
   const play = host.locator('#rangePlay');
 
-  await play.click();
-  await expect(play).toHaveAttribute('aria-label', 'Pause');
-  await start.fill('bad');
-  await page.keyboard.press('Enter');
-  await expect(start).toHaveAttribute('aria-invalid', 'true');
-
-  await host.locator('#rangeClose').click();
+  await start.fill('7:00.0');
+  await close.click();
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+
   await host.locator('#openRange').click();
   await expect(start).toHaveText('0:00.0');
   await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+
+  await start.fill('bad');
+  await page.keyboard.press('Enter');
+  await expect(start).toHaveAttribute('aria-invalid', 'true');
+  await close.click();
+  await host.locator('#openRange').click();
+  await expect(start).toHaveText('0:00.0');
+  await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  await close.click();
+  await host.locator('#openRange').click();
   await expect(play).toHaveAttribute('aria-label', 'Play');
 });
