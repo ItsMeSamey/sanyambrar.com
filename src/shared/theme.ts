@@ -1802,6 +1802,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
     document.addEventListener("contextmenu", (event) => {
+      if (menu.inert) {
+        if (!(event.shiftKey && event.button === 2)) event.preventDefault();
+        return;
+      }
       if (event.shiftKey && event.button === 2) return;
       event.preventDefault();
       target = event.target; menu.replaceChildren();
