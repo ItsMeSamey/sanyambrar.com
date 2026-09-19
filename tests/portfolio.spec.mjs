@@ -1523,9 +1523,16 @@ test('SPA route transitions never fade the whole route to blank', async ({ page 
     const sample = () => {
       const route = document.querySelector('.site-route');
       const rect = route?.getBoundingClientRect();
+      const contentPainted = route ? [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden'
+          && Number(style.opacity) >= 0.99 && bounds.width > 0 && bounds.height > 0;
+      }) : false;
       result.push({
         opacity: route ? Number(getComputedStyle(route).opacity) : 0,
         area: rect ? rect.width * rect.height : 0,
+        contentPainted,
       });
       if (performance.now() - started < 850) requestAnimationFrame(sample);
       else resolve(result);
@@ -1539,6 +1546,7 @@ test('SPA route transitions never fade the whole route to blank', async ({ page 
   expect(frames.length).toBeGreaterThan(10);
   expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
   expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
+  expect(frames.every(frame => frame.contentPainted)).toBe(true);
 });
 
 test('Advanced appearance controls keep strong keyboard focus contrast', async ({ page }, info) => {
