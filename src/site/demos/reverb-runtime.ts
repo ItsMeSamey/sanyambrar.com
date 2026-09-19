@@ -176,7 +176,7 @@ export function runReverbDemoRuntime(
       case "incidentsScreen":
         return byId<HTMLElement>("incidentsBack");
       case "rangeScreen":
-        return byId<HTMLElement>("rangeClose");
+        return byId<HTMLElement>("rangeDurationWheel");
       default:
         return byId<HTMLElement>("brandButton");
     }
@@ -307,7 +307,15 @@ export function runReverbDemoRuntime(
   syncBufferUi();
   scheduleTick();
 
-  const rememberedRangeDurationSeconds = 2 * 3600 + 23 * 60 + 53.7;
+  const initialRememberedRangeDurationSeconds = 2 * 3600 + 23 * 60 + 53.7;
+  type RememberedRangeExport = {
+    selectionSeconds: number;
+    endOffsetSeconds: number;
+  };
+  const rememberedRangeExports: Record<BufferSlot, RememberedRangeExport> = {
+    one: { selectionSeconds: initialRememberedRangeDurationSeconds, endOffsetSeconds: 0 },
+    loop: { selectionSeconds: initialRememberedRangeDurationSeconds, endOffsetSeconds: 0 },
+  };
   type RangeEditTarget = "start" | "end";
   const rangeStartInput = byId<HTMLElement>("rangeStart");
   const rangeEndInput = byId<HTMLElement>("rangeEnd");
@@ -469,15 +477,23 @@ export function runReverbDemoRuntime(
   }
   function resetRangeUi(): void {
     rangeTimelineDurationSeconds = Math.max(0.1, currentSeconds());
+    const remembered = rememberedRangeExports[selectedBuffer];
     const selection = Math.min(
-      rememberedRangeDurationSeconds,
+      remembered.selectionSeconds,
       rangeTimelineDurationSeconds,
     );
-    rangeStartSeconds = Math.max(
-      0,
-      rangeTimelineDurationSeconds - selection,
-    );
-    rangeEndSeconds = rangeTimelineDurationSeconds;
+    if (remembered.selectionSeconds >= rangeTimelineDurationSeconds) {
+      rangeStartSeconds = 0;
+      rangeEndSeconds = rangeTimelineDurationSeconds;
+    } else {
+      const maxEndOffset = rangeTimelineDurationSeconds - selection;
+      const endOffset = Math.max(
+        0,
+        Math.min(maxEndOffset, remembered.endOffsetSeconds),
+      );
+      rangeEndSeconds = rangeTimelineDurationSeconds - endOffset;
+      rangeStartSeconds = Math.max(0, rangeEndSeconds - selection);
+    }
     rangeEditTarget = "start";
     rangeWheelProfileIndex = 0;
     renderRangeUi();
@@ -796,6 +812,15 @@ export function runReverbDemoRuntime(
       invalid.focus({ preventScroll: true });
       return;
     }
+    rememberedRangeExports[selectedBuffer] = {
+      selectionSeconds: rangeSelectionSeconds(),
+      endOffsetSeconds: Math.max(
+        0,
+        rangeTimelineDurationSeconds - rangeEndSeconds,
+      ),
+    };
+    setRangePlaying(false);
+    showScreen("homeScreen", byId<HTMLElement>("openRange"));
     showToast("Exporting range");
   });
   byId("incidentsBack").addEventListener("click", () =>

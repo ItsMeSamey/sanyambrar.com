@@ -58,9 +58,11 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
 
   await start.fill('5:00.0');
   await exportButton.click();
-  await expect(rangeScreen).toHaveClass(/active/);
-  await expect(start).toHaveText('5:00.0');
-  await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(rangeScreen).not.toHaveClass(/active/);
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+  await expect(host.locator('#openRange')).toBeFocused();
+  await expect(host.locator('#rangeStart')).toHaveText('5:00.0');
+  await expect(host.locator('#rangeStart')).not.toHaveAttribute('aria-invalid', 'true');
   await expect(toast).toHaveText('Exporting range');
   await expect(toast).toHaveClass(/show/);
 
@@ -100,4 +102,37 @@ test('Reverb Range Close discards text drafts and resets preview state', async (
   await close.click();
   await host.locator('#openRange').click();
   await expect(play).toHaveAttribute('aria-label', 'Play');
+});
+
+test('Reverb remembers successful Range selections per buffer', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await openPausedRange(host);
+
+  const start = host.locator('#rangeStart');
+  const end = host.locator('#rangeEnd');
+  const exportButton = host.locator('#rangeExport');
+  const close = host.locator('#rangeClose');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('20:00.0');
+  await exportButton.click();
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+
+  await host.locator('#openRange').click();
+  await expect(start).toHaveText('5:00.0');
+  await expect(end).toHaveText('20:00.0');
+
+  await close.click();
+  await host.locator('.buffer-segment[data-buffer="loop"]').click();
+  await host.locator('#openRange').click();
+  await expect(start).not.toHaveText('5:00.0');
+  await expect(end).not.toHaveText('20:00.0');
+
+  await close.click();
+  await host.locator('.buffer-segment[data-buffer="one"]').click();
+  await host.locator('#openRange').click();
+  await expect(start).toHaveText('5:00.0');
+  await expect(end).toHaveText('20:00.0');
 });
