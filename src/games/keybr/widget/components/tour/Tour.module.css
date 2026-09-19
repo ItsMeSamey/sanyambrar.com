@@ -1,8 +1,12 @@
 .root {
   display: flex;
+  box-sizing: border-box;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   flex-direction: column;
-  padding-inline: 3rem;
-  padding-block: 3rem 2rem;
+  padding-inline: min(3rem, 48px);
+  padding-block: min(3rem, 48px) min(2rem, 32px);
+  overflow-x: hidden;
 }
 
 .close {
@@ -13,12 +17,19 @@
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0.5rem;
   margin-block-start: 1rem;
 }
 
 .prev + .next {
-  margin-inline-start: 1rem;
+  margin-inline-start: 0;
+}
+
+.footer > * {
+  min-inline-size: 0;
+  max-inline-size: 100%;
 }
 
 @media (max-width: 480px) {
@@ -29,10 +40,7 @@
     padding-block: 2.4rem 1.25rem;
   }
 
-  .footer {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
+  .footer { gap: 0.5rem; }
 }
 
 .backdrop {
