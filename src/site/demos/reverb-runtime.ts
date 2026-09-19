@@ -972,9 +972,196 @@ export function runReverbDemoRuntime(
     .querySelectorAll<SVGPathElement>(".wave-outside,.wave-selection")
     .forEach((path) => path.setAttribute("d", rangeWavePath));
 
+  const rangeFineControl =
+    document.querySelector<HTMLElement>(".range-screen .fine-control");
+  if (!rangeFineControl)
+    throw new Error("Reverb demo is missing range fine-seek control");
   const rangePlay = byId<HTMLElement>("rangePlay");
   let rangePlaying = false;
-  rangePlay.addEventListener("click", () => {
+  let rangeFinePointerId = -1;
+  let rangeFineStartedOnPuck = false;
+  let rangeFineDragging = false;
+  let rangeFineSuppressClick = false;
+  let rangeFineDownX = 0;
+  let rangeFineDownY = 0;
+  let rangeFineRawVertical = 0;
+  let rangeFineHorizontalPull = 0;
+  let rangeFineLastFrame = 0;
+
+  const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
+  const rangeFineConstrainedY = (
+    rawVerticalPull: number,
+    horizontalPull: number,
+  ) => {
+    const x = Math.abs(clampUnit(horizontalPull));
+    const edgeStiffness = Math.cosh(1.65 * x);
+    const localRadius = 0.72 / Math.pow(edgeStiffness, 0.28);
+    const inputScale =
+      localRadius * 1.18 * Math.pow(edgeStiffness, 0.72);
+    return localRadius * Math.tanh(rawVerticalPull / inputScale);
+  };
+  const rangeFineSpeedScale = (verticalPull: number) => {
+    const y = clampUnit(verticalPull);
+    return y <= 0
+      ? 1 + 5 * Math.pow(-y, 1.45)
+      : 0.018 + 0.982 * Math.pow(1 - y, 3.1);
+  };
+  const rangeFineTimelineRate = (
+    horizontalVisualPull: number,
+    verticalPull: number,
+  ) => {
+    const pull = clampUnit(horizontalVisualPull / 0.62);
+    const magnitude = Math.abs(pull);
+    if (magnitude <= 0.002) return 0;
+    const normalized = Math.max(
+      0,
+      Math.min(1, (magnitude - 0.002) / 0.998),
+    );
+    const horizontalRate =
+      0.00002 +
+      0.0004 * normalized +
+      0.004 * Math.pow(normalized, 3) +
+      0.055 * Math.pow(normalized, 7);
+    return (
+      Math.sign(pull) *
+      horizontalRate *
+      rangeFineSpeedScale(verticalPull)
+    );
+  };
+  const rangeFineTravel = () => {
+    const rect = rangeFineControl.getBoundingClientRect();
+    return {
+      rect,
+      horizontal: Math.max(1, rect.width * 0.5 - 10 - 24),
+      vertical: Math.max(1, rect.height * 0.5 - 10 - 24),
+    };
+  };
+  const updateRangeFinePull = (clientX: number, clientY: number) => {
+    const travel = rangeFineTravel();
+    const centerX = travel.rect.left + travel.rect.width * 0.5;
+    rangeFineHorizontalPull = clampUnit(
+      (clientX - centerX) / travel.horizontal,
+    );
+    const verticalInputTravel = travel.vertical * 2.35;
+    rangeFineRawVertical =
+      (clientY - rangeFineDownY) / Math.max(1, verticalInputTravel);
+    const constrainedY = rangeFineConstrainedY(
+      rangeFineRawVertical,
+      rangeFineHorizontalPull,
+    );
+    rangePlay.style.transition = "none";
+    rangePlay.style.transform =
+      `translate(${(rangeFineHorizontalPull * travel.horizontal).toFixed(2)}px, ${(
+        constrainedY * travel.vertical
+      ).toFixed(2)}px)`;
+  };
+  const rangeFineFrame = (time: number) => {
+    if (!rangeFineDragging) return;
+    if (rangeFineLastFrame > 0) {
+      const dt = Math.min(0.05, Math.max(0, (time - rangeFineLastFrame) / 1000));
+      const constrainedY = rangeFineConstrainedY(
+        rangeFineRawVertical,
+        rangeFineHorizontalPull,
+      );
+      const deltaSeconds =
+        rangeFineTimelineRate(rangeFineHorizontalPull, constrainedY) *
+        Math.max(0, rangeTimelineDurationSeconds) *
+        dt;
+      if (deltaSeconds !== 0) {
+        const current =
+          rangeEditTarget === "start" ? rangeStartSeconds : rangeEndSeconds;
+        adjustRangeTarget(rangeEditTarget, current + deltaSeconds);
+      }
+    }
+    rangeFineLastFrame = time;
+    requestAnimationFrame(rangeFineFrame);
+  };
+  const startRangeFineAdjust = (clientX: number, clientY: number) => {
+    if (rangeFineDragging) return;
+    rangeStartInput.blur();
+    rangeEndInput.blur();
+    renderRangeUi();
+    rangeFineDragging = true;
+    rangeFineLastFrame = 0;
+    rangeFineControl.classList.add("is-dragging");
+    if (
+      rangeFinePointerId !== -1 &&
+      !rangeFineControl.hasPointerCapture?.(rangeFinePointerId)
+    ) {
+      rangeFineControl.setPointerCapture?.(rangeFinePointerId);
+    }
+    updateRangeFinePull(clientX, clientY);
+    requestAnimationFrame(rangeFineFrame);
+  };
+  const finishRangeFineAdjust = (cancelled = false) => {
+    if (rangeFinePointerId === -1 && !rangeFineDragging) return;
+    const pointerId = rangeFinePointerId;
+    if (!rangeFineDragging) {
+      rangeFinePointerId = -1;
+      rangeFineStartedOnPuck = false;
+      return;
+    }
+    if (rangeFineDragging && rangeFineStartedOnPuck && !cancelled) {
+      rangeFineSuppressClick = true;
+      setTimeout(() => {
+        rangeFineSuppressClick = false;
+      }, 0);
+    }
+    rangeFineDragging = false;
+    rangeFinePointerId = -1;
+    rangeFineHorizontalPull = 0;
+    rangeFineRawVertical = 0;
+    rangeFineLastFrame = 0;
+    rangeFineControl.classList.remove("is-dragging");
+    rangePlay.style.transition =
+      "transform 210ms cubic-bezier(.16,1,.3,1)";
+    rangePlay.style.transform = "translate(0px,0px)";
+    setTimeout(() => {
+      if (!rangeFineDragging) rangePlay.style.removeProperty("transition");
+    }, 220);
+    if (
+      pointerId !== -1 &&
+      rangeFineControl.hasPointerCapture?.(pointerId)
+    ) {
+      rangeFineControl.releasePointerCapture(pointerId);
+    }
+  };
+  rangeFineControl.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    rangeFinePointerId = event.pointerId;
+    rangeFineDownX = event.clientX;
+    rangeFineDownY = event.clientY;
+    rangeFineStartedOnPuck = event.composedPath().includes(rangePlay);
+    if (!rangeFineStartedOnPuck)
+      startRangeFineAdjust(event.clientX, event.clientY);
+  });
+  rangeFineControl.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== rangeFinePointerId) return;
+    if (!rangeFineDragging) {
+      const dx = event.clientX - rangeFineDownX;
+      const dy = event.clientY - rangeFineDownY;
+      if (dx * dx + dy * dy <= 64) return;
+      startRangeFineAdjust(event.clientX, event.clientY);
+    } else {
+      updateRangeFinePull(event.clientX, event.clientY);
+    }
+    event.preventDefault();
+  });
+  const endRangeFinePointer = (event: PointerEvent) => {
+    if (event.pointerId !== rangeFinePointerId) return;
+    finishRangeFineAdjust(event.type === "pointercancel");
+  };
+  rangeFineControl.addEventListener("pointerup", endRangeFinePointer);
+  rangeFineControl.addEventListener("pointercancel", endRangeFinePointer);
+  rangeFineControl.addEventListener("lostpointercapture", () => {
+    if (rangeFinePointerId !== -1) finishRangeFineAdjust(true);
+  });
+
+  rangePlay.addEventListener("click", (event) => {
+    if (rangeFineSuppressClick) {
+      event.preventDefault();
+      return;
+    }
     rangePlaying = !rangePlaying;
     const use = rangePlay.querySelector("use");
     use?.setAttribute("href", rangePlaying ? "#i-pause" : "#i-play");
@@ -1606,6 +1793,7 @@ export function runReverbDemoRuntime(
   phone.addEventListener("pointercancel", clearGesture);
   const removeBlurListener = addWindowEventListener("blur", () => {
     clearGesture();
+    finishRangeFineAdjust(true);
     blobControl.classList.remove("pressed");
     for (const timer of activeIncidentHoldTimers) clearTimeout(timer);
     activeIncidentHoldTimers.clear();
