@@ -53,7 +53,11 @@ test('Reverb screen transitions preserve logical keyboard focus', async ({ page 
   await expectScreenFocus(host, 'homeScreen', 'openIncidents');
 
   await host.locator('#openRange').click();
-  await expectScreenFocus(host, 'rangeScreen', 'rangeClose');
+  await expectScreenFocus(host, 'rangeScreen', 'rangeDurationWheel');
+  for (const focusId of ['rangeStart', 'rangeEnd', 'rangePlay', 'rangeClose', 'rangeExport']) {
+    await page.keyboard.press('Tab');
+    await expectScreenFocus(host, 'rangeScreen', focusId);
+  }
 
   await host.locator('#rangeSettings').click();
   await expectScreenFocus(host, 'settingsScreen', 'settingsNav');
@@ -106,7 +110,7 @@ test('Reverb screen transitions preserve logical keyboard focus', async ({ page 
   await fullscreen.click();
   await expect(frame).toHaveClass(/is-fullscreen/);
   await host.locator('#openRange').click();
-  await expectScreenFocus(host, 'rangeScreen', 'rangeClose');
+  await expectScreenFocus(host, 'rangeScreen', 'rangeDurationWheel');
   await host.locator('#rangeClose').click();
   await expectScreenFocus(host, 'homeScreen', 'openRange');
   await expect(frame).toHaveClass(/is-fullscreen/);
