@@ -233,6 +233,7 @@ export function runReverbDemoRuntime(
         segment.classList.toggle("selected", selected);
         segment.classList.toggle("idle", selected && !recording);
         segment.setAttribute("aria-selected", String(selected));
+        segment.tabIndex = selected ? 0 : -1;
       });
     const displayedActive = live && activeBuffer === selectedBuffer;
     const blockedByOther =
@@ -324,12 +325,34 @@ export function runReverbDemoRuntime(
     );
   }
 
-  document.querySelectorAll<HTMLElement>(".buffer-segment").forEach((segment) =>
+  const bufferSegments = [
+    ...document.querySelectorAll<HTMLButtonElement>(".buffer-segment"),
+  ];
+  const selectBufferPage = (segment: HTMLButtonElement, focus = false) => {
+    selectedBuffer = bufferSlot(segment.dataset.buffer);
+    syncBufferUi();
+    if (focus) segment.focus({ preventScroll: true });
+  };
+  bufferSegments.forEach((segment) => {
     segment.addEventListener("click", () => {
-      selectedBuffer = bufferSlot(segment.dataset.buffer);
-      syncBufferUi();
-    }),
-  );
+      selectBufferPage(segment);
+    });
+    segment.addEventListener("keydown", (event) => {
+      let target: HTMLButtonElement | undefined;
+      const index = bufferSegments.indexOf(segment);
+      if (event.key === "ArrowRight" || event.key === "ArrowDown")
+        target = bufferSegments[(index + 1) % bufferSegments.length];
+      else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+        target =
+          bufferSegments[(index - 1 + bufferSegments.length) % bufferSegments.length];
+      else if (event.key === "Home") target = bufferSegments[0];
+      else if (event.key === "End")
+        target = bufferSegments[bufferSegments.length - 1];
+      else return;
+      event.preventDefault();
+      if (target) selectBufferPage(target, true);
+    });
+  });
   blobControl.addEventListener("pointerdown", () =>
     blobControl.classList.add("pressed"),
   );
