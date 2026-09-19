@@ -761,6 +761,235 @@ test('stateful game views stay contained at 200 percent root text scaling', asyn
   }
 });
 
+test('live overlays stay contained at 200 percent root text scaling', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the scaled overlay matrix');
+  test.setTimeout(180_000);
+
+  const viewports = [
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+    { width: 240, height: 720 },
+  ];
+
+  const applyTextScale = async () => {
+    await page.evaluate(async () => {
+      document.documentElement.style.fontSize = '32px';
+      await document.fonts?.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
+  };
+
+  const issues = () => page.evaluate(() => {
+    const visible = element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return false;
+      if (element.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const horizontalScrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    const verticalScrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && node.scrollHeight > node.clientHeight + 1) return true;
+      }
+      return false;
+    };
+    const describe = element => element.getAttribute('aria-label')
+      || element.getAttribute('title')
+      || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 70)
+      || element.tagName.toLowerCase();
+    const overlayOf = element => element.closest('[role="dialog"],[role="listbox"],[role="menu"],[data-samey-overlay],.site-search-panel,.samey-theme-advanced,.reverb-demo-frame.is-fullscreen,#chain-settings');
+    const out = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`document overflow ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    if (document.body.scrollWidth > innerWidth + 1) out.push(`body overflow ${document.body.scrollWidth} > ${innerWidth}`);
+    if (document.documentElement.scrollWidth > innerWidth + 1 || document.body.scrollWidth > innerWidth + 1) {
+      const offenders = [...document.querySelectorAll('*')]
+        .filter(element => visible(element) && !horizontalScrollOwner(element))
+        .map(element => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            element,
+            rect,
+            overflow: Math.max(0, rect.right - innerWidth, -rect.left),
+            intrinsic: element instanceof HTMLElement ? element.scrollWidth - element.clientWidth : 0,
+            overflowX: style.overflowX,
+          };
+        })
+        .filter(({ overflow, intrinsic, overflowX }) => overflow > 1 || (intrinsic > 1 && overflowX === 'visible'))
+        .sort((a, b) => Math.max(b.overflow, b.intrinsic) - Math.max(a.overflow, a.intrinsic))
+        .slice(0, 8);
+      for (const { element, rect, intrinsic, overflowX } of offenders) {
+        const ancestors = [];
+        for (let node = element.parentElement, depth = 0; node && depth < 3; node = node.parentElement, depth += 1) {
+          const box = node.getBoundingClientRect();
+          ancestors.push(`${node.tagName.toLowerCase()}.${node.getAttribute('class') || ''}[${box.left.toFixed(1)},${box.right.toFixed(1)}]`);
+        }
+        out.push(`layout overflow ${element.tagName.toLowerCase()}.${element.getAttribute('class') || ''} ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}] intrinsic=+${intrinsic} overflowX=${overflowX} via ${ancestors.join(' <- ')}`);
+      }
+    }
+
+    const surfaces = [...document.querySelectorAll('[role="dialog"],[role="listbox"],[role="menu"],[data-samey-overlay],.site-search-panel,.samey-theme-advanced,.reverb-demo-frame.is-fullscreen,#chain-settings')]
+      .filter(visible);
+    for (const surface of surfaces) {
+      const rect = surface.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) {
+        out.push(`offscreen surface ${describe(surface)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+      }
+      if ((rect.top < -1 || rect.bottom > innerHeight + 1) && !verticalScrollOwner(surface)) {
+        const surfaceStyle = getComputedStyle(surface);
+        const containing = [];
+        for (let node = surface.parentElement, depth = 0; node && depth < 5; node = node.parentElement, depth += 1) {
+          const style = getComputedStyle(node);
+          if (style.transform !== 'none' || style.filter !== 'none' || style.backdropFilter !== 'none' || style.contain !== 'none') {
+            const box = node.getBoundingClientRect();
+            containing.push(`${node.tagName.toLowerCase()}.${node.getAttribute('class') || ''}[${box.top.toFixed(1)},${box.bottom.toFixed(1)}] transform=${style.transform} filter=${style.filter} backdrop=${style.backdropFilter} contain=${style.contain}`);
+          }
+        }
+        out.push(`offscreen surface vertical ${describe(surface)} [${rect.top.toFixed(1)}, ${rect.bottom.toFixed(1)}] viewport=${innerHeight} cssTop=${surfaceStyle.top} cssBottom=${surfaceStyle.bottom} max=${surfaceStyle.maxBlockSize} position=${surfaceStyle.position} offsetHeight=${surface instanceof HTMLElement ? surface.offsetHeight : -1} via ${containing.join(' <- ')}`);
+      }
+    }
+
+    const controls = [...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="radio"],[role="checkbox"],[role="slider"],[role="option"]')]
+      .filter(element => visible(element) && overlayOf(element) && !horizontalScrollOwner(element) && getComputedStyle(element).pointerEvents !== 'none');
+    for (const control of controls) {
+      const rect = control.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) out.push(`offscreen ${describe(control)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+    }
+    for (let index = 0; index < controls.length; index += 1) {
+      const a = controls[index];
+      const aSurface = overlayOf(a);
+      const aRect = a.getBoundingClientRect();
+      for (let other = index + 1; other < controls.length; other += 1) {
+        const b = controls[other];
+        if (aSurface !== overlayOf(b) || a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) out.push(`collision ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+      }
+    }
+    return out.slice(0, 30);
+  });
+
+  const expectOverlay = async label => {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(issues, {
+        message: `${label} at 200% text and ${viewport.width}x${viewport.height}`,
+        timeout: 5000,
+      }).toEqual([]);
+    }
+  };
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/', info);
+  await applyTextScale();
+  await page.keyboard.press('Control+K');
+  await page.getByPlaceholder('Search games, tools, writing, work…').fill('a');
+  await expect(page.locator('.site-search-panel')).toBeVisible();
+  await expectOverlay('Search overlay');
+  await page.keyboard.press('Escape');
+
+  const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
+  await appearance.click();
+  await page.getByRole('button', { name: /Advanced & Colorblind/ }).click();
+  await expect(page.locator('.samey-theme-advanced')).toBeVisible();
+  await expectOverlay('Advanced appearance');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/wordle', info);
+  await applyTextScale();
+  await page.getByRole('button', { name: /^Choose date,/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Choose date' })).toBeVisible();
+  await expectOverlay('Wordle date picker');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Game settings' })).toBeVisible();
+  await expectOverlay('Wordle settings');
+  await page.keyboard.press('Escape');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/keybr?p=settings', info);
+  await applyTextScale();
+  const font = page.getByRole('combobox', { name: 'Font', exact: true });
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await font.scrollIntoViewIfNeeded();
+    await font.click();
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await expect.poll(issues, {
+      message: `Keybr font menu at 200% text and ${viewport.width}x${viewport.height}`,
+      timeout: 5000,
+    }).toEqual([]);
+    await page.keyboard.press('Escape');
+  }
+  await page.setViewportSize(viewports[0]);
+  await font.scrollIntoViewIfNeeded();
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose book', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expectOverlay('Keybr book picker');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/keybr?p=practice', info);
+  await applyTextScale();
+  await page.getByTitle('Show a guided tour with help slides.').click();
+  await expect(page.getByRole('dialog', { name: 'Typing tutorial' })).toBeVisible();
+  await expectOverlay('Keybr tutorial');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/tools/?tool=number', info);
+  await applyTextScale();
+  const toolTrigger = page.getByRole('button', { name: /Tool/ });
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await toolTrigger.scrollIntoViewIfNeeded();
+    await toolTrigger.click();
+    await expect(toolTrigger, `Tools selector should open at 200% text and ${viewport.width}x${viewport.height}`).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await expect.poll(issues, {
+      message: `Tools selector at 200% text and ${viewport.width}x${viewport.height}`,
+      timeout: 5000,
+    }).toEqual([]);
+    await page.keyboard.press('Escape');
+    await expect(toolTrigger).toHaveAttribute('aria-expanded', 'false');
+  }
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/projects/reverb/', info);
+  await applyTextScale();
+  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
+  await expect(page.locator('.reverb-demo-frame.is-fullscreen')).toBeVisible();
+  await expectOverlay('Reverb fullscreen');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/chain/', info);
+  await applyTextScale();
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'false');
+  await expectOverlay('Chain settings');
+});
+
 test('stateful surfaces keep controls reachable in short-height viewports', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers the short-height state matrix');
   test.setTimeout(120_000);
@@ -792,32 +1021,35 @@ test('stateful surfaces keep controls reachable in short-height viewports', asyn
       expect(state.rect.top, `${label} top edge at ${viewport.width}x${viewport.height}`).toBeGreaterThanOrEqual(-1);
       expect(state.rect.bottom, `${label} bottom edge at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.height + 1);
 
-      const controls = surface.locator('a[href],button,input,select,textarea,[role="button"],[role="radio"],[role="checkbox"],[role="slider"]')
-        .filter({ visible: true });
-      const count = await controls.count();
-      for (let index = 0; index < count; index += 1) {
-        const control = controls.nth(index);
-        if (!await control.isVisible()) continue;
-        if (await control.evaluate(element => Boolean(element.closest('[hidden],[aria-hidden="true"],[inert]')))) continue;
-        await control.evaluate(element => element.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
-        const reachable = await control.evaluate(element => {
-          const rect = element.getBoundingClientRect();
-          return {
-            name: element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || element.tagName,
-            left: rect.left,
-            top: rect.top,
-            right: rect.right,
-            bottom: rect.bottom,
-            width: rect.width,
-            height: rect.height,
-          };
+      const unreachable = await surface.evaluate((element, viewport) => {
+        const visible = control => {
+          if (!(control instanceof HTMLElement || control instanceof SVGElement)) return false;
+          if (control.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+          const style = getComputedStyle(control);
+          const rect = control.getBoundingClientRect();
+          return style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && Number.parseFloat(style.opacity || '1') > 0.001
+            && rect.width > 0
+            && rect.height > 0;
+        };
+        const controls = [...element.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="radio"],[role="checkbox"],[role="slider"]')]
+          .filter(visible);
+        const issues = [];
+        controls.forEach((control, index) => {
+          control.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          const rect = control.getBoundingClientRect();
+          const name = control.getAttribute('aria-label')
+            || control.getAttribute('title')
+            || control.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80)
+            || control.tagName;
+          if (rect.left < -1 || rect.right > viewport.width + 1 || rect.top < -1 || rect.bottom > viewport.height + 1) {
+            issues.push({ index, name, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom });
+          }
         });
-        const controlLabel = `${label} control ${index} (${reachable.name}) at ${viewport.width}x${viewport.height}`;
-        expect(reachable.left, `${controlLabel} left`).toBeGreaterThanOrEqual(-1);
-        expect(reachable.right, `${controlLabel} right`).toBeLessThanOrEqual(viewport.width + 1);
-        expect(reachable.top, `${controlLabel} top`).toBeGreaterThanOrEqual(-1);
-        expect(reachable.bottom, `${controlLabel} bottom`).toBeLessThanOrEqual(viewport.height + 1);
-      }
+        return issues;
+      }, viewport);
+      expect(unreachable, `${label} controls must remain reachable at ${viewport.width}x${viewport.height}`).toEqual([]);
 
     }
   };

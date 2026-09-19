@@ -18,6 +18,10 @@
 }
 
 .legend {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--text-color-f1);
 }
 
