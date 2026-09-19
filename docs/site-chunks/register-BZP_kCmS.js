@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-DANEflud.js";import{t}from"./_.contribution-BSFb8z_A.js";t({id:`rust`,extensions:[`.rs`,`.rlib`],aliases:[`Rust`,`rust`],loader:()=>e(()=>import(`./rust-DdL9SqIa.js`),[])});
