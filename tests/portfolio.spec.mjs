@@ -2857,6 +2857,17 @@ test('Reverb demo preserves the 411x912 reference surface without stretching', a
     return inner.width <= outer.width + 1 && inner.height <= outer.height + 1;
   })).toBe(true);
   await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 128, height: 1000 });
+  await expectReferenceRatio(host);
+  await expect.poll(() => host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    if (!phone) return false;
+    const outer = element.getBoundingClientRect();
+    const inner = phone.getBoundingClientRect();
+    return Math.abs(inner.width - outer.width) <= 1
+      && Math.abs(inner.height - outer.height) <= 1;
+  }), { message: 'Extreme narrow wrapper must shrink with the uniformly scaled Reverb phone' }).toBe(true);
 });
 
 test('Reverb demo mirrors the captured Android state and palette', async ({ page }, info) => {
