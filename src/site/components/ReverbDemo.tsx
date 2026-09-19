@@ -113,6 +113,13 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       }
     };
   };
+  const focusOpenInnerModal = () => {
+    const shadow = host.shadowRoot;
+    const phone = shadow?.querySelector<HTMLElement>('#phone');
+    const close = shadow?.querySelector<HTMLElement>('#aboutClose');
+    if (!phone?.classList.contains('about-open') || !close) return;
+    requestAnimationFrame(() => close.isConnected && close.focus({ preventScroll: true }));
+  };
 
   const setFullscreen = (next: boolean) => {
     if (next === active) return;
@@ -133,6 +140,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       frame.setAttribute('aria-label', 'Reverb UI demo fullscreen');
       host.setAttribute('data-fullscreen', '');
       releaseBackground = isolateBackground();
+      focusOpenInnerModal();
     } else {
       frame.classList.remove('is-fullscreen');
       frame.removeAttribute('role');

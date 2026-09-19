@@ -3299,6 +3299,27 @@ test('Reverb fullscreen owns keyboard focus and restores background accessibilit
   await expect(fullscreen).toBeFocused();
   expect(await snapshot(topbar)).toEqual(topbarBefore);
   expect(await snapshot(projectActions)).toEqual(actionsBefore);
+
+  const brand = host.locator('#brandButton');
+  const about = host.locator('#aboutSheet');
+  const aboutClose = host.locator('#aboutClose');
+  const aboutRepo = host.locator('.about-repo');
+  await brand.click();
+  await expect(aboutClose).toBeFocused();
+  await fullscreen.click();
+  await expect(frame).toHaveClass(/is-fullscreen/);
+  await expect(aboutClose).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(aboutRepo).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(aboutClose).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(about).toHaveAttribute('aria-hidden', 'true');
+  await expect(frame).toHaveClass(/is-fullscreen/);
+  await expect(brand).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(frame).not.toHaveClass(/is-fullscreen/);
+  await expect(fullscreen).toBeFocused();
 });
 
 test('Reverb settings dropdown closes when its geometry changes', async ({ page }, info) => {
