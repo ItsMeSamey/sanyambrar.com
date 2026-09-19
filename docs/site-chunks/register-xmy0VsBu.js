@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-DANEflud.js";import{t}from"./_.contribution-BSFb8z_A.js";t({id:`c`,extensions:[`.c`,`.h`],aliases:[`C`,`c`],loader:()=>e(()=>import(`./cpp-C7h46wYY.js`),[])}),t({id:`cpp`,extensions:[`.cpp`,`.cc`,`.cxx`,`.hpp`,`.hh`,`.hxx`],aliases:[`C++`,`Cpp`,`cpp`],loader:()=>e(()=>import(`./cpp-C7h46wYY.js`),[])});
