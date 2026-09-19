@@ -1559,6 +1559,7 @@ test('animated overlays stay contained through opening frames and reduced motion
 
   const scaleText = async () => page.evaluate(async () => {
     document.documentElement.style.fontSize = '32px';
+    document.documentElement.style.setProperty('--site-medium', '1000ms');
     await document.fonts?.ready;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   });
@@ -1664,6 +1665,190 @@ test('animated overlays stay contained through opening frames and reduced motion
     cloak.remove();
     return state;
   })).toEqual({ text: 'none', textAnimations: 0, cloak: 'none', cloakAnimations: 0 });
+});
+
+test('forced colors preserves selection, game state and keyboard focus cues', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers forced-colors rendering');
+  test.setTimeout(120_000);
+  await page.emulateMedia({ forcedColors: 'active' });
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.addInitScript(() => {
+    const put = (length, word, mask) => localStorage.setItem(`game.wordle.advanced.${length}.6.0.0`, JSON.stringify({
+      config: { mode: 'advanced', wordLength: length, maxTries: 6, disabledLetters: 0, allowAny: false },
+      history: [[word, mask], ['', '']],
+    }));
+    put(5, 'apple', 'rrrrr');
+    put(7, 'example', 'yrrrrrr');
+  });
+
+  const styleSignature = locator => locator.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      background: style.backgroundColor,
+      color: style.color,
+      borderTop: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+      borderRight: `${style.borderRightWidth} ${style.borderRightStyle} ${style.borderRightColor}`,
+      outline: `${style.outlineWidth} ${style.outlineStyle} ${style.outlineColor}`,
+      boxShadow: style.boxShadow,
+      textDecoration: `${style.textDecorationLine} ${style.textDecorationStyle}`,
+    };
+  });
+  const expectDifferent = async (selected, peer, label) => {
+    const [activeStyle, peerStyle] = await Promise.all([styleSignature(selected), styleSignature(peer)]);
+    expect(activeStyle, `${label} must remain visually distinguishable in forced colors`).not.toEqual(peerStyle);
+  };
+  const cueSignature = locator => locator.evaluate(element => {
+    const style = getComputedStyle(element);
+    const after = getComputedStyle(element, '::after');
+    return {
+      color: style.color,
+      borderTop: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+      borderRight: `${style.borderRightWidth} ${style.borderRightStyle} ${style.borderRightColor}`,
+      outline: `${style.outlineWidth} ${style.outlineStyle} ${style.outlineColor}`,
+      textDecoration: `${style.textDecorationLine} ${style.textDecorationStyle}`,
+      after: after.content,
+    };
+  });
+  const expectNonBackgroundCue = async (selected, peer, label) => {
+    const [activeCue, peerCue] = await Promise.all([cueSignature(selected), cueSignature(peer)]);
+    expect(activeCue, `${label} must retain a non-background forced-colors cue`).not.toEqual(peerCue);
+  };
+  const expectFocusCue = async (locator, label) => {
+    await locator.focus();
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(locator, `${label} should own keyboard focus`).toBeFocused();
+    const focus = await locator.evaluate(element => {
+      const style = getComputedStyle(element);
+      return {
+        visible: element.matches(':focus-visible'),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+        borderStyle: style.borderStyle,
+        borderWidth: Number.parseFloat(style.borderWidth) || 0,
+      };
+    });
+    expect(focus.visible, `${label} must match :focus-visible`).toBe(true);
+    expect(
+      (focus.outlineStyle !== 'none' && focus.outlineWidth >= 1) || (focus.borderStyle !== 'none' && focus.borderWidth >= 1),
+      `${label} must expose a visible forced-colors focus cue`,
+    ).toBe(true);
+  };
+
+  await visit(page, '/', info);
+  expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+  await page.keyboard.press('Control+K');
+  await page.getByPlaceholder('Search games, tools, writing, work…').fill('a');
+  const activeResult = page.locator('.search-result.active');
+  const inactiveResult = page.locator('.search-result:not(.active)').first();
+  await expect(activeResult).toBeVisible();
+  await expect(inactiveResult).toBeVisible();
+  await expectDifferent(activeResult, inactiveResult, 'Search active result');
+  await expectNonBackgroundCue(activeResult, inactiveResult, 'Search active result');
+  await page.keyboard.press('Escape');
+
+  await visit(page, '/tools/?tool=text', info);
+  const selectedTool = page.locator('.tool-tab[data-selected]').first();
+  const otherTool = page.locator('.tool-tab:not([data-selected])').first();
+  await expectDifferent(selectedTool, otherTool, 'Tools selected tab');
+  await expectNonBackgroundCue(selectedTool, otherTool, 'Tools selected tab');
+  await expectFocusCue(selectedTool, 'Tools selected tab');
+
+  await visit(page, '/tools/?tool=markdown', info);
+  const activeMarkdownView = page.locator('.markdown-view-toggle button[aria-pressed="true"]');
+  const inactiveMarkdownView = page.locator('.markdown-view-toggle button[aria-pressed="false"]');
+  await expect(activeMarkdownView).toBeVisible();
+  await expect(inactiveMarkdownView).toBeVisible();
+  await expectDifferent(activeMarkdownView, inactiveMarkdownView, 'Markdown selected view');
+  await expectNonBackgroundCue(activeMarkdownView, inactiveMarkdownView, 'Markdown selected view');
+
+  await visit(page, '/tools/?tool=number', info);
+  const activeRadix = page.locator('.radix-choices button[data-active]').first();
+  const inactiveRadix = page.locator('.radix-choices button:not([data-active])').first();
+  await expect(activeRadix).toBeVisible();
+  await expect(inactiveRadix).toBeVisible();
+  await expectDifferent(activeRadix, inactiveRadix, 'Number-tool selected radix');
+  await expectNonBackgroundCue(activeRadix, inactiveRadix, 'Number-tool selected radix');
+
+  await visit(page, '/keybr?p=settings', info);
+  const segmented = page.locator('.keybr-segmented-item');
+  await expect(segmented.first()).toBeVisible();
+  const selectedSegment = page.locator('.keybr-segmented-item[data-selected]').first();
+  const otherSegment = page.locator('.keybr-segmented-item:not([data-selected])').first();
+  await expectDifferent(selectedSegment, otherSegment, 'Keybr selected segment');
+  await expectNonBackgroundCue(selectedSegment, otherSegment, 'Keybr selected segment');
+  await expectFocusCue(selectedSegment, 'Keybr selected segment');
+
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: /^Choose date,/ }).click();
+  const selectedDay = page.locator('.wordle-date-picker-day[data-selected]').first();
+  const otherDay = page.locator('.wordle-date-picker-day:not([data-selected]):not(:disabled)').first();
+  await expect(selectedDay).toBeVisible();
+  await expect(otherDay).toBeVisible();
+  await expectDifferent(selectedDay, otherDay, 'Wordle selected calendar day');
+  await expectNonBackgroundCue(selectedDay, otherDay, 'Wordle selected calendar day');
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  const cells = page.locator('.wordle-row').last().locator('.wordle-cell');
+  await cells.evaluateAll(nodes => {
+    const states = ['wordle-state-g', 'wordle-state-y', 'wordle-state-r', 'wordle-state-b', 'wordle-state-empty'];
+    nodes.slice(0, states.length).forEach((node, index) => {
+      node.classList.remove('wordle-state-g', 'wordle-state-y', 'wordle-state-r', 'wordle-state-b', 'wordle-state-empty');
+      node.classList.add(states[index]);
+    });
+  });
+  const stateSignatures = await Promise.all([0, 1, 2, 3, 4].map(index => styleSignature(cells.nth(index))));
+  expect(new Set(stateSignatures.map(value => JSON.stringify(value))).size, 'Wordle tile states must not collapse to one forced-colors appearance').toBeGreaterThan(1);
+  const stateCues = await Promise.all([0, 1, 2, 3, 4].map(index => cueSignature(cells.nth(index))));
+  expect(new Set(stateCues.map(value => JSON.stringify(value))).size, 'Wordle tile states must retain non-background forced-colors cues').toBeGreaterThan(1);
+  const enter = page.getByRole('button', { name: 'Enter', exact: true });
+  await expectFocusCue(enter, 'Wordle Enter key');
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Active Games', exact: true }).click();
+  const savedGames = page.locator('.active-game-card');
+  await expect(savedGames).toHaveCount(2);
+  await savedGames.evaluateAll(cards => {
+    cards.forEach((card, index) => card.toggleAttribute('data-current', index === 0));
+  });
+  const currentGame = savedGames.nth(0);
+  const otherGame = savedGames.nth(1);
+  await expect(currentGame).toBeVisible();
+  await expect(otherGame).toBeVisible();
+  await expectDifferent(currentGame, otherGame, 'Wordle current saved game');
+  await expectNonBackgroundCue(currentGame, otherGame, 'Wordle current saved game');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const switches = page.locator('.samey-switch-control');
+  if (await switches.count() >= 2) {
+    const first = switches.nth(0), second = switches.nth(1);
+    if (!await first.getAttribute('data-checked')) await first.click();
+    const checked = page.locator('.samey-switch-control[data-checked]').first();
+    const unchecked = page.locator('.samey-switch-control:not([data-checked])').first();
+    if (await checked.count() && await unchecked.count()) {
+      const [checkedThumb, uncheckedThumb] = await Promise.all([
+        checked.locator('.samey-switch-thumb').evaluate(element => getComputedStyle(element).transform),
+        unchecked.locator('.samey-switch-thumb').evaluate(element => getComputedStyle(element).transform),
+      ]);
+      expect(checkedThumb, 'Checked switches must retain a non-color positional state cue').not.toBe(uncheckedThumb);
+    }
+  }
+
+  await visit(page, '/projects/reverb/', info);
+  const reverbHost = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const selectedBuffer = reverbHost.locator('.buffer-segment[aria-selected="true"]');
+  const otherBuffer = reverbHost.locator('.buffer-segment[aria-selected="false"]');
+  await expect(selectedBuffer).toBeVisible();
+  await expect(otherBuffer).toBeVisible();
+  await expectNonBackgroundCue(selectedBuffer, otherBuffer, 'Reverb selected buffer');
+  await expectFocusCue(selectedBuffer, 'Reverb selected buffer');
+  await reverbHost.locator('#openSettings').click();
+  const selectedSettingSegment = reverbHost.locator('.segment[aria-checked="true"]').first();
+  const otherSettingSegment = reverbHost.locator('.segment[aria-checked="false"]').first();
+  await expect(selectedSettingSegment).toBeVisible();
+  await expect(otherSettingSegment).toBeVisible();
+  await expectNonBackgroundCue(selectedSettingSegment, otherSettingSegment, 'Reverb selected settings segment');
 });
 
 test('responsive topbars stay collision-free through live state transitions', async ({ page }, info) => {
