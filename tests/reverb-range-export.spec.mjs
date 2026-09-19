@@ -60,7 +60,8 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
   await exportButton.click();
   await expect(rangeScreen).not.toHaveClass(/active/);
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
-  await expect(host.locator('#openRange')).toBeFocused();
+  await expect(host.locator('#brandButton')).toBeFocused();
+  await expect(host.locator('#openRange')).toBeDisabled();
   await expect(host.locator('#rangeStart')).toHaveText('5:00.0');
   await expect(host.locator('#rangeStart')).not.toHaveAttribute('aria-invalid', 'true');
   await expect(toast).toHaveText('Exporting range');
@@ -119,8 +120,21 @@ test('Reverb remembers successful Range selections per buffer', async ({ page },
   await end.fill('20:00.0');
   await exportButton.click();
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+  const openRange = host.locator('#openRange');
+  await expect(openRange).toBeDisabled();
+  await expect(host.getByRole('button', { name: 'Export full' })).toBeDisabled();
+  await expect(host.getByRole('button', { name: 'Files' })).toBeDisabled();
+  await expect(host.locator('#blobControl')).toBeDisabled();
+  const loopSegment = host.locator('.buffer-segment[data-buffer="loop"]');
+  await expect(loopSegment).toHaveAttribute('aria-disabled', 'true');
+  await expect(host.locator('#brandButton')).toBeFocused();
+  await loopSegment.click({ force: true });
+  await expect(host.locator('.buffer-segment[data-buffer="one"]')).toHaveAttribute('aria-selected', 'true');
 
-  await host.locator('#openRange').click();
+  await page.waitForTimeout(1300);
+  await expect(openRange).toBeEnabled();
+  await expect(host.locator('#blobControl')).toBeEnabled();
+  await openRange.click();
   await expect(start).toHaveText('5:00.0');
   await expect(end).toHaveText('20:00.0');
 

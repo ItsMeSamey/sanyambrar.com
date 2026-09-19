@@ -75,7 +75,7 @@ export function runReverbDemoRuntime(
     "--reverb-noise-size",
     `${1024 / Math.max(devicePixelRatio || 1, 0.01)}px`,
   );
-  const blobControl = byId<HTMLElement>("blobControl");
+  const blobControl = byId<HTMLButtonElement>("blobControl");
   const blobIconUse = byId<SVGUseElement>("blobIconUse");
   const blobTime = byId<HTMLElement>("blobTime");
   const blobSummary = byId<HTMLElement>("blobSummary");
@@ -100,6 +100,8 @@ export function runReverbDemoRuntime(
   let loopLimitSeconds = loopRetentionTimeSeconds;
   let lastTick = performance.now();
   let toastTimer = 0;
+  let rangeExportPending = false;
+  let rangeExportGeneration = 0;
   let settingsDirty = false;
   let retentionMode: RetentionMode = "time";
   let settingsInitial: SettingsSnapshot;
@@ -252,7 +254,7 @@ export function runReverbDemoRuntime(
 
   function syncBufferUi(): void {
     document
-      .querySelectorAll<HTMLElement>(".buffer-segment")
+      .querySelectorAll<HTMLButtonElement>(".buffer-segment")
       .forEach((segment) => {
         const slot = bufferSlot(segment.dataset.buffer);
         const selected = slot === selectedBuffer;
@@ -260,13 +262,15 @@ export function runReverbDemoRuntime(
         segment.classList.toggle("selected", selected);
         segment.classList.toggle("idle", selected && !recording);
         segment.setAttribute("aria-selected", String(selected));
+        segment.setAttribute("aria-disabled", String(rangeExportPending));
         segment.tabIndex = selected ? 0 : -1;
       });
     const displayedActive = live && activeBuffer === selectedBuffer;
     const blockedByOther =
       live && activeBuffer != null && activeBuffer !== selectedBuffer;
     blobControl.classList.toggle("live", displayedActive);
-    blobControl.classList.toggle("dimmed", blockedByOther);
+    blobControl.classList.toggle("dimmed", blockedByOther || rangeExportPending);
+    blobControl.disabled = rangeExportPending;
     blobControl.setAttribute(
       "aria-label",
       displayedActive ? "Tap to pause capture" : "Tap to start capture",
@@ -275,7 +279,15 @@ export function runReverbDemoRuntime(
     blobTime.textContent = formatTimer(currentSeconds());
     blobSummary.textContent = formatMiB(currentSeconds());
     blobSummary.classList.toggle("hidden", !displayedActive);
-    byId<HTMLButtonElement>("clearBuffer").disabled = displayedActive;
+    const exportFull = document.querySelector<HTMLButtonElement>(
+      '.action-button[aria-label="Export full"]',
+    );
+    if (!exportFull) throw new Error("Reverb demo is missing Export full");
+    exportFull.disabled = rangeExportPending;
+    byId<HTMLButtonElement>("openRange").disabled = rangeExportPending;
+    byId<HTMLButtonElement>("clearBuffer").disabled =
+      rangeExportPending || displayedActive;
+    byId<HTMLButtonElement>("openLibrary").disabled = rangeExportPending;
     blobShader.setActive(displayedActive && !phone.classList.contains("about-open"));
   }
   function appendCapture(seconds: number): void {
@@ -716,6 +728,7 @@ export function runReverbDemoRuntime(
     ...document.querySelectorAll<HTMLButtonElement>(".buffer-segment"),
   ];
   const selectBufferPage = (segment: HTMLButtonElement, focus = false) => {
+    if (rangeExportPending) return;
     selectedBuffer = bufferSlot(segment.dataset.buffer);
     syncBufferUi();
     if (focus) segment.focus({ preventScroll: true });
@@ -812,16 +825,27 @@ export function runReverbDemoRuntime(
       invalid.focus({ preventScroll: true });
       return;
     }
-    rememberedRangeExports[selectedBuffer] = {
-      selectionSeconds: rangeSelectionSeconds(),
-      endOffsetSeconds: Math.max(
-        0,
-        rangeTimelineDurationSeconds - rangeEndSeconds,
-      ),
-    };
+    const exportGeneration = ++rangeExportGeneration;
+    const exportedBuffer = selectedBuffer;
+    const exportedSelectionSeconds = rangeSelectionSeconds();
+    const exportedEndOffsetSeconds = Math.max(
+      0,
+      rangeTimelineDurationSeconds - rangeEndSeconds,
+    );
+    rangeExportPending = true;
+    syncBufferUi();
     setRangePlaying(false);
-    showScreen("homeScreen", byId<HTMLElement>("openRange"));
+    showScreen("homeScreen", byId<HTMLElement>("brandButton"));
     showToast("Exporting range");
+    setTimeout(() => {
+      if (exportGeneration !== rangeExportGeneration) return;
+      rememberedRangeExports[exportedBuffer] = {
+        selectionSeconds: exportedSelectionSeconds,
+        endOffsetSeconds: exportedEndOffsetSeconds,
+      };
+      rangeExportPending = false;
+      syncBufferUi();
+    }, 1200);
   });
   byId("incidentsBack").addEventListener("click", () =>
     showScreen(incidentsReturnScreen, incidentsReturnFocus),
