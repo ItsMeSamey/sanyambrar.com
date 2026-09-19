@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-BJoTGBj1.js";import{t}from"./_.contribution-D51VLsFA.js";t({id:`c`,extensions:[`.c`,`.h`],aliases:[`C`,`c`],loader:()=>e(()=>import(`./cpp-C7h46wYY.js`),[])}),t({id:`cpp`,extensions:[`.cpp`,`.cc`,`.cxx`,`.hpp`,`.hh`,`.hxx`],aliases:[`C++`,`Cpp`,`cpp`],loader:()=>e(()=>import(`./cpp-C7h46wYY.js`),[])});
