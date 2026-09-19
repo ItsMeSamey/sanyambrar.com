@@ -170,6 +170,6 @@ test('Reverb fine-seek puck keeps the native 32dp hit radius', async ({ page }, 
   const puck = host.locator('#rangePlay');
   const box = await puck.boundingBox();
   if (!box) throw new Error('Fine-seek puck has no geometry');
-  await page.mouse.click(box.x + box.width / 2 + 30, box.y + box.height / 2);
+  await page.mouse.click(box.x + box.width / 2 + (box.width / 2) * (30 / 24), box.y + box.height / 2);
   await expect(puck).toHaveAttribute('aria-label', 'Pause');
 });
