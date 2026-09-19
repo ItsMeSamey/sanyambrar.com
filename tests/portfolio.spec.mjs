@@ -607,6 +607,160 @@ test('Tools scaled-text header keeps selector above contextual controls', async 
   expect(geometry.trigger.bottom, JSON.stringify(geometry)).toBeLessThanOrEqual(geometry.swap.top);
 });
 
+test('stateful game views stay contained at 200 percent root text scaling', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the scaled state-transition matrix');
+  test.setTimeout(240_000);
+
+  const viewports = [
+    { width: 520, height: 800 },
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+  ];
+
+  const applyTextScale = async () => {
+    await page.evaluate(async () => {
+      document.documentElement.style.fontSize = '32px';
+      await document.fonts?.ready;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
+  };
+
+  const issues = () => page.evaluate(() => {
+    const visible = element => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) return false;
+      if (element.closest('[hidden],[aria-hidden="true"],[inert]')) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number.parseFloat(style.opacity || '1') > 0.001
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const horizontalScrollOwner = element => {
+      for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if ((style.overflowX === 'auto' || style.overflowX === 'scroll') && node.scrollWidth > node.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    const describe = element => element.getAttribute('aria-label')
+      || element.getAttribute('title')
+      || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 70)
+      || element.tagName.toLowerCase();
+    const out = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`document overflow ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    if (document.body.scrollWidth > innerWidth + 1) out.push(`body overflow ${document.body.scrollWidth} > ${innerWidth}`);
+    if (document.documentElement.scrollWidth > innerWidth + 1 || document.body.scrollWidth > innerWidth + 1) {
+      const offenders = [...document.querySelectorAll('*')]
+        .filter(element => visible(element) && !horizontalScrollOwner(element))
+        .map(element => {
+          const rect = element.getBoundingClientRect();
+          return { element, rect, overflow: Math.max(0, rect.right - innerWidth, -rect.left) };
+        })
+        .filter(({ overflow }) => overflow > 1)
+        .sort((a, b) => b.overflow - a.overflow)
+        .slice(0, 6);
+      for (const { element, rect } of offenders) {
+        const ancestors = [];
+        for (let node = element.parentElement, depth = 0; node && depth < 3; node = node.parentElement, depth += 1) {
+          const box = node.getBoundingClientRect();
+          ancestors.push(`${node.tagName.toLowerCase()}.${node.getAttribute('class') || ''}[${box.left.toFixed(1)},${box.right.toFixed(1)}]`);
+        }
+        out.push(`layout overflow ${element.tagName.toLowerCase()}.${element.getAttribute('class') || ''} ${describe(element)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}] via ${ancestors.join(' <- ')}`);
+      }
+      const intrinsic = [...document.querySelectorAll('*')]
+        .filter(element => element instanceof HTMLElement && visible(element) && !horizontalScrollOwner(element))
+        .map(element => ({ element, excess: element.scrollWidth - element.clientWidth }))
+        .filter(({ element, excess }) => excess > 1 && getComputedStyle(element).overflowX === 'visible')
+        .sort((a, b) => b.excess - a.excess)
+        .slice(0, 6);
+      for (const { element, excess } of intrinsic) {
+        out.push(`intrinsic overflow ${element.tagName.toLowerCase()}.${element.getAttribute('class') || ''} ${describe(element)} [+${excess}]`);
+      }
+    }
+    const controls = [...document.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="tab"],[role="radio"],[role="checkbox"],[role="slider"]')]
+      .filter(element => visible(element) && !horizontalScrollOwner(element) && getComputedStyle(element).pointerEvents !== 'none');
+    for (const control of controls) {
+      const rect = control.getBoundingClientRect();
+      if (rect.left < -1 || rect.right > innerWidth + 1) out.push(`offscreen ${describe(control)} [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}]`);
+    }
+    for (let index = 0; index < controls.length; index += 1) {
+      const a = controls[index];
+      const aRect = a.getBoundingClientRect();
+      for (let other = index + 1; other < controls.length; other += 1) {
+        const b = controls[other];
+        if (a.contains(b) || b.contains(a)) continue;
+        const bRect = b.getBoundingClientRect();
+        const width = Math.max(0, Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left));
+        const height = Math.max(0, Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top));
+        if (width > 3 && height > 3) out.push(`collision ${describe(a)} <> ${describe(b)} [${width.toFixed(1)}x${height.toFixed(1)}]`);
+      }
+    }
+    return out.slice(0, 30);
+  });
+
+  const expectState = async label => {
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect.poll(issues, {
+        message: `${label} at 200% text and ${viewport.width}x${viewport.height}`,
+        timeout: 4000,
+      }).toEqual([]);
+    }
+  };
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/wordle', info);
+  await applyTextScale();
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await expect(page.locator('.wordle-board')).toBeVisible();
+  await expectState('Wordle active game');
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Statistics', exact: true })).toBeVisible();
+  await expectState('Wordle statistics');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/keybr?p=practice', info);
+  await applyTextScale();
+  await expect(page.getByText('Metrics:', { exact: true })).toBeVisible();
+  await expectState('Keybr practice');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Font', exact: true })).toBeVisible();
+  await expectState('Keybr settings');
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expectState('Keybr statistics');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/chain/', info);
+  await applyTextScale();
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeVisible();
+  await expectState('Chain active game');
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expect(page.locator('.chain-stats-view')).toBeVisible();
+  await expectState('Chain statistics');
+
+  await page.setViewportSize(viewports[0]);
+  await visit(page, '/tools/?tool=diff', info);
+  await applyTextScale();
+  await expectState('Tools Diff');
+  const toolTrigger = page.getByRole('button', { name: /Tool/ });
+  for (const option of ['Numbers', 'Markdown', 'Encode']) {
+    await toolTrigger.click();
+    await expect(toolTrigger).toHaveAttribute('aria-expanded', 'true');
+    const listbox = page.getByRole('listbox');
+    await expect(listbox).toBeVisible();
+    const choice = listbox.getByRole('option', { name: option, exact: true });
+    await choice.scrollIntoViewIfNeeded();
+    await choice.click();
+    await expect(toolTrigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(toolTrigger).toContainText(option);
+    await expectState(`Tools ${option} after live switch`);
+  }
+});
+
 test('stateful surfaces keep controls reachable in short-height viewports', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers the short-height state matrix');
   test.setTimeout(120_000);

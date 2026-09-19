@@ -4,6 +4,8 @@
 }
 
 .statisticListItem {
+  min-inline-size: 0;
+  max-inline-size: 100%;
   flex: 1 1 0;
   padding-inline: 1rem;
   padding-block: 1rem;
@@ -12,16 +14,22 @@
 
 .itemName {
   display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   color: var(--Name-color);
   font-size: 1rem;
+  overflow-wrap: anywhere;
   text-align: center;
 }
 
 .itemValue {
   display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   color: var(--Value-color);
   font-family: var(--value-font-family);
   font-size: 2rem;
+  overflow-wrap: anywhere;
   text-align: center;
 }
 @media (max-width: 600px) {

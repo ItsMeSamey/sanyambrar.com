@@ -36,7 +36,7 @@ body.site-tools-active{height:100%;overflow:hidden}.tools-page{display:flex;flex
   .tools-page>.site-topbar .tool-context{position:static;flex:1 1 0;min-width:0;width:auto;height:28px;max-width:none;justify-content:flex-start;overflow-x:auto}
   .tools-page>.site-topbar .tool-context button,.tools-page>.site-topbar .tool-context select{flex:0 0 auto}
 }
-@media(max-width:200px){
+@media(max-width:420px){
   [data-popper-positioner]:has(>.tool-select-content){position:fixed!important;left:8px!important;top:76px!important;width:calc(100vw - 16px)!important;min-width:0!important;max-width:calc(100vw - 16px)!important;transform:none!important;z-index:2147483500!important}
   .tool-select-content{width:100%;min-width:0;max-width:100%;max-height:calc(100dvh - 84px);overflow:auto}
   body:has(.tool-select-trigger:active) .tool-select-content{visibility:hidden;pointer-events:none}
