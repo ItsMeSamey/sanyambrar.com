@@ -53,6 +53,8 @@ test('Reverb Settings segmented controls expose native radio semantics', async (
   await expect(time).toHaveAttribute('tabindex', '0');
   await expect(size).toHaveAttribute('aria-checked', 'false');
   await expect(size).toHaveAttribute('tabindex', '-1');
+  await expect(host.locator('#oneRetentionUnit')).toBeHidden();
+  await expect(host.locator('#loopRetentionUnit')).toBeHidden();
   await expect(nav).toHaveAttribute('aria-label', 'Back');
   await expect(done).toBeDisabled();
 
@@ -83,8 +85,6 @@ test('Reverb Settings segmented controls expose native radio semantics', async (
   await expect(dark).toBeFocused();
   await page.keyboard.press('Home');
   await expect(auto).toBeFocused();
-
-  await nav.click();
   await expect(nav).toHaveAttribute('aria-label', 'Back');
   await expect(done).toBeDisabled();
   await expect(auto).toHaveAttribute('aria-checked', 'true');
@@ -96,7 +96,13 @@ test('Reverb Settings segmented controls expose native radio semantics', async (
   await expect(size).toHaveAttribute('aria-checked', 'true');
   await expect(size).toHaveAttribute('tabindex', '0');
   await expect(time).toHaveAttribute('aria-checked', 'false');
-  await expect(oneRetention).toHaveValue('7267');
+  await expect(oneRetention).toHaveValue('6');
+  await expect(host.locator('#loopRetention')).toHaveValue('4199');
+  await expect(host.locator('#oneRetentionUnit')).toHaveText('MiB');
+  await expect(host.locator('#oneRetentionUnit')).toBeVisible();
+  await expect(host.locator('#loopRetentionUnit')).toBeVisible();
+  await expect(host.locator('#oneEstimate')).toHaveText('≈ 1.2 min');
+  await expect(host.locator('#loopEstimate')).toHaveText('≈ 832 min');
   await expect(nav).toHaveAttribute('aria-label', 'Undo');
   await expect(done).toBeEnabled();
 
@@ -134,4 +140,98 @@ test('Reverb Settings segmented controls expose native radio semantics', async (
   await done.click();
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
   await expect(blobTime).toHaveText('12:34');
+});
+
+test('Reverb retention drafts survive mode switches and invalid Done stays in Settings', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await host.locator('#openSettings').click();
+
+  const time = host.getByRole('radio', { name: 'Time' });
+  const size = host.getByRole('radio', { name: 'Size' });
+  const one = host.locator('#oneRetention');
+  const loop = host.locator('#loopRetention');
+  const error = host.locator('#retentionError');
+  const nav = host.locator('#settingsNav');
+  const done = host.locator('#settingsDone');
+
+  await one.fill('nonsense');
+  await expect(nav).toHaveAttribute('aria-label', 'Undo');
+  await expect(done).toBeEnabled();
+  await size.click();
+  await expect(one).toHaveValue('6');
+  await expect(loop).toHaveValue('4199');
+  await time.click();
+  await expect(one).toHaveValue('nonsense');
+  await expect(loop).toHaveValue('48:00:00');
+
+  await done.click();
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText('Use H:MM:SS.');
+  await expect(one).toHaveAttribute('aria-invalid', 'true');
+  await expect(loop).not.toHaveAttribute('aria-invalid', 'true');
+
+  await one.fill('1440');
+  await expect(error).toBeHidden();
+  await expect(one).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(nav).toHaveAttribute('aria-label', 'Back');
+  await expect(done).toBeDisabled();
+
+  await one.fill('12:34');
+  await size.click();
+  await one.fill('7');
+  await time.click();
+  await expect(one).toHaveValue('12:34');
+  await size.click();
+  await expect(one).toHaveValue('7');
+
+  await one.fill('bad');
+  await time.click();
+  await expect(one).toHaveValue('12:34');
+  await size.click();
+  await expect(one).toHaveValue('bad');
+  await done.click();
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await expect(error).toHaveText('Enter a valid number.');
+  await expect(one).toHaveAttribute('aria-invalid', 'true');
+
+  await time.click();
+  await expect(error).toBeHidden();
+  await size.click();
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText('Enter a valid number.');
+  await expect(one).toHaveAttribute('aria-invalid', 'true');
+
+  await nav.click();
+  await expect(time).toHaveAttribute('aria-checked', 'true');
+  await expect(one).toHaveValue('24:00:00');
+  await expect(loop).toHaveValue('48:00:00');
+  await expect(error).toBeHidden();
+  await expect(nav).toHaveAttribute('aria-label', 'Back');
+  await expect(done).toBeDisabled();
+
+  await size.click();
+  await one.fill('0');
+  await loop.fill('0');
+  await done.click();
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await expect(error).toHaveText('Keep at least one buffer on.');
+  await expect(one).toHaveAttribute('aria-invalid', 'true');
+  await expect(loop).toHaveAttribute('aria-invalid', 'true');
+
+  await nav.click();
+  await size.click();
+  await one.fill('bad');
+  await time.click();
+  await expect(nav).toHaveAttribute('aria-label', 'Back');
+  await expect(done).toBeDisabled();
+  await nav.click();
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+
+  await host.locator('#openSettings').click();
+  await size.click();
+  await expect(one).toHaveValue('6');
+  await expect(loop).toHaveValue('4199');
+  await expect(error).toBeHidden();
 });

@@ -42,8 +42,10 @@ type Uniforms = Record<string, WebGLUniformLocation | null>;
 type SettingsSnapshot = {
   theme: string;
   retentionMode: RetentionMode;
-  oneLimitSeconds: number;
-  loopLimitSeconds: number;
+  oneTimeSeconds: number;
+  oneSizeMiB: number;
+  loopTimeSeconds: number;
+  loopSizeMiB: number;
   dropdowns: string[];
   wake: boolean;
 };
@@ -89,16 +91,26 @@ export function runReverbDemoRuntime(
   let selectedBuffer: BufferSlot = "one";
   let oneSeconds = 30 * 60;
   let loopSeconds = 47 * 3600 + 59 * 60 + 55;
-  let oneLimitSeconds = 24 * 3600;
-  let loopLimitSeconds = 48 * 3600;
   const bytesPerSecond = 44100 * 2;
+  let oneRetentionTimeSeconds = 24 * 3600;
+  let loopRetentionTimeSeconds = 48 * 3600;
+  let oneRetentionSizeMiB = 6;
+  let loopRetentionSizeMiB = 4199;
+  let oneLimitSeconds = oneRetentionTimeSeconds;
+  let loopLimitSeconds = loopRetentionTimeSeconds;
   let lastTick = performance.now();
   let toastTimer = 0;
   let settingsDirty = false;
   let retentionMode: RetentionMode = "time";
   let settingsInitial: SettingsSnapshot;
-  let settingsOneLimitSeconds = oneLimitSeconds;
-  let settingsLoopLimitSeconds = loopLimitSeconds;
+  let settingsOneTimeSeconds = oneRetentionTimeSeconds;
+  let settingsLoopTimeSeconds = loopRetentionTimeSeconds;
+  let settingsOneSizeMiB = oneRetentionSizeMiB;
+  let settingsLoopSizeMiB = loopRetentionSizeMiB;
+  let settingsOneTimeText = "";
+  let settingsLoopTimeText = "";
+  let settingsOneSizeText = "";
+  let settingsLoopSizeText = "";
   let settingsReturnFocus: HTMLElement | null = null;
   let incidentsReturnFocus: HTMLElement | null = null;
 
@@ -117,22 +129,34 @@ export function runReverbDemoRuntime(
   function formatMiB(seconds: number): string {
     return `${((seconds * bytesPerSecond) / (1024 * 1024)).toFixed(1)} MiB`;
   }
-  function parseDuration(value: string): number | null {
-    const parts = value.trim().split(":");
+  function parseRetentionTime(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!trimmed.includes(":")) {
+      const minutes = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(minutes) || minutes < 0) return null;
+      const seconds = Math.round(minutes * 60);
+      return seconds <= 0x7fffffff ? seconds : null;
+    }
+    const parts = trimmed.split(":");
     if (
-      parts.length < 1 ||
+      parts.length < 2 ||
       parts.length > 3 ||
       parts.some((part) => !/^\d+$/.test(part))
     )
       return null;
     const values = parts.map(Number);
-    if (parts.length === 3 && (values[1] >= 60 || values[2] >= 60)) return null;
-    if (parts.length === 2 && values[1] >= 60) return null;
-    return parts.length === 3
-      ? values[0] * 3600 + values[1] * 60 + values[2]
-      : parts.length === 2
-        ? values[0] * 60 + values[1]
-        : values[0];
+    if (values.slice(1).some((part) => part >= 60)) return null;
+    let seconds = 0;
+    for (const part of values) {
+      seconds = seconds * 60 + part;
+      if (seconds > 0x7fffffff) return null;
+    }
+    return seconds;
+  }
+  function parseRetentionSize(value: string): number | null {
+    const size = Number(value.trim().replace(",", "."));
+    return Number.isFinite(size) && size >= 0 ? size : null;
   }
   function currentSeconds(): number {
     return selectedBuffer === "one" ? oneSeconds : loopSeconds;
@@ -171,6 +195,7 @@ export function runReverbDemoRuntime(
     id: ScreenId,
     focusTarget?: HTMLElement | null,
   ): void {
+    if (id === "settingsScreen") prepareSettingsSession();
     currentScreen = id;
     screens.forEach((screen) =>
       screen.classList.toggle("active", screen.id === id),
@@ -639,6 +664,9 @@ export function runReverbDemoRuntime(
   };
   const oneRetention = byId<HTMLInputElement>("oneRetention");
   const loopRetention = byId<HTMLInputElement>("loopRetention");
+  const oneRetentionUnit = byId<HTMLElement>("oneRetentionUnit");
+  const loopRetentionUnit = byId<HTMLElement>("loopRetentionUnit");
+  const retentionError = byId<HTMLElement>("retentionError");
   const dropdownValues = () => [
     ...document.querySelectorAll<HTMLElement>(".settings-card.dropdown .value"),
   ];
@@ -652,15 +680,37 @@ export function runReverbDemoRuntime(
     return {
       theme: selectedTheme(),
       retentionMode,
-      oneLimitSeconds,
-      loopLimitSeconds,
+      oneTimeSeconds: oneRetentionTimeSeconds,
+      oneSizeMiB: oneRetentionSizeMiB,
+      loopTimeSeconds: loopRetentionTimeSeconds,
+      loopSizeMiB: loopRetentionSizeMiB,
       dropdowns: dropdownValues().map((value) => value.textContent ?? ""),
       wake: wakeSwitch.classList.contains("on"),
     };
   }
+  const formatRetentionTimeInput = (seconds: number) => {
+    const value = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(value / 3600);
+    const minutes = Math.floor((value % 3600) / 60);
+    const secs = value % 60;
+    return hours + ":" + String(minutes).padStart(2, "0") + ":" +
+      String(secs).padStart(2, "0");
+  };
+  const formatRetentionSizeInput = (sizeMiB: number) => String(sizeMiB);
+  const resetRetentionDrafts = (snapshot: SettingsSnapshot) => {
+    settingsOneTimeSeconds = snapshot.oneTimeSeconds;
+    settingsLoopTimeSeconds = snapshot.loopTimeSeconds;
+    settingsOneSizeMiB = snapshot.oneSizeMiB;
+    settingsLoopSizeMiB = snapshot.loopSizeMiB;
+    settingsOneTimeText = formatRetentionTimeInput(settingsOneTimeSeconds);
+    settingsLoopTimeText = formatRetentionTimeInput(settingsLoopTimeSeconds);
+    settingsOneSizeText = formatRetentionSizeInput(settingsOneSizeMiB);
+    settingsLoopSizeText = formatRetentionSizeInput(settingsLoopSizeMiB);
+  };
   settingsInitial = captureSettingsSnapshot();
+  resetRetentionDrafts(settingsInitial);
   const settingsDone = byId<HTMLButtonElement>("settingsDone");
-  function setDirty(dirty = true): void {
+  function setDirty(dirty: boolean): void {
     settingsDirty = dirty;
     settingsDone.disabled = !dirty;
     settingsDone.classList.toggle("disabled", !dirty);
@@ -669,14 +719,135 @@ export function runReverbDemoRuntime(
     byId("settingsNav").setAttribute("aria-label", dirty ? "Undo" : "Back");
   }
   setDirty(false);
+  const activeRetentionInvalid = () =>
+    retentionMode === "time"
+      ? parseRetentionTime(settingsOneTimeText) == null ||
+        parseRetentionTime(settingsLoopTimeText) == null
+      : parseRetentionSize(settingsOneSizeText) == null ||
+        parseRetentionSize(settingsLoopSizeText) == null;
+  const settingsMatchSnapshot = () => {
+    if (
+      selectedTheme() !== settingsInitial.theme ||
+      retentionMode !== settingsInitial.retentionMode ||
+      settingsOneTimeSeconds !== settingsInitial.oneTimeSeconds ||
+      settingsLoopTimeSeconds !== settingsInitial.loopTimeSeconds ||
+      settingsOneSizeMiB !== settingsInitial.oneSizeMiB ||
+      settingsLoopSizeMiB !== settingsInitial.loopSizeMiB ||
+      wakeSwitch.classList.contains("on") !== settingsInitial.wake
+    )
+      return false;
+    const dropdowns = dropdownValues();
+    return dropdowns.every(
+      (value, index) =>
+        (value.textContent ?? "") === (settingsInitial.dropdowns[index] ?? ""),
+    );
+  };
+  const recomputeDirty = () =>
+    setDirty(!settingsMatchSnapshot() || activeRetentionInvalid());
+  type RetentionErrorState = {
+    message: string;
+    oneInvalid: boolean;
+    loopInvalid: boolean;
+  };
+  let retentionTimeError: RetentionErrorState | null = null;
+  let retentionSizeError: RetentionErrorState | null = null;
+  const renderRetentionError = () => {
+    retentionError.hidden = true;
+    retentionError.textContent = "";
+    oneRetention.removeAttribute("aria-invalid");
+    loopRetention.removeAttribute("aria-invalid");
+    oneRetention.removeAttribute("aria-describedby");
+    loopRetention.removeAttribute("aria-describedby");
+    const error =
+      retentionMode === "time" ? retentionTimeError : retentionSizeError;
+    if (!error) return;
+    retentionError.textContent = error.message;
+    retentionError.hidden = false;
+    if (error.oneInvalid) {
+      oneRetention.setAttribute("aria-invalid", "true");
+      oneRetention.setAttribute("aria-describedby", "retentionError");
+    }
+    if (error.loopInvalid) {
+      loopRetention.setAttribute("aria-invalid", "true");
+      loopRetention.setAttribute("aria-describedby", "retentionError");
+    }
+  };
+  const clearRetentionErrors = () => {
+    retentionTimeError = null;
+    retentionSizeError = null;
+    renderRetentionError();
+  };
+  const clearActiveRetentionError = (slot?: BufferSlot) => {
+    const current =
+      retentionMode === "time" ? retentionTimeError : retentionSizeError;
+    if (!current) return;
+    const next = { ...current };
+    if (slot == null || slot === "one") next.oneInvalid = false;
+    if (slot == null || slot === "loop") next.loopInvalid = false;
+    const value = next.oneInvalid || next.loopInvalid ? next : null;
+    if (retentionMode === "time") retentionTimeError = value;
+    else retentionSizeError = value;
+    renderRetentionError();
+  };
+  const showRetentionError = (
+    message: string,
+    oneInvalid = true,
+    loopInvalid = true,
+  ) => {
+    const value = { message, oneInvalid, loopInvalid };
+    if (retentionMode === "time") retentionTimeError = value;
+    else retentionSizeError = value;
+    renderRetentionError();
+  };
   function setTheme(theme: string, dirty = true): void {
     if (dirty && selectedTheme() === theme) return;
     syncRadioSegments(
       themeSegments,
       (segment) => segment.dataset.theme === theme,
     );
-    if (dirty) setDirty();
+    if (dirty) recomputeDirty();
   }
+  const formatRetentionMinutesEstimate = (seconds: number) => {
+    const wholeSeconds = Math.max(0, Math.floor(seconds));
+    if (wholeSeconds <= 0) return "0";
+    return wholeSeconds % 60 === 0
+      ? String(wholeSeconds / 60)
+      : (wholeSeconds / 60).toFixed(1);
+  };
+  const renderRetentionEstimates = () => {
+    if (retentionMode === "time") {
+      byId("oneEstimate").textContent =
+        "≈ " +
+        Math.round((settingsOneTimeSeconds * bytesPerSecond) / (1024 * 1024)) +
+        " MiB";
+      byId("loopEstimate").textContent =
+        "≈ " +
+        Math.round((settingsLoopTimeSeconds * bytesPerSecond) / (1024 * 1024)) +
+        " MiB";
+    } else {
+      const oneSeconds =
+        (settingsOneSizeMiB * 1024 * 1024) / bytesPerSecond;
+      const loopSeconds =
+        (settingsLoopSizeMiB * 1024 * 1024) / bytesPerSecond;
+      byId("oneEstimate").textContent =
+        "≈ " + formatRetentionMinutesEstimate(oneSeconds) + " min";
+      byId("loopEstimate").textContent =
+        "≈ " + formatRetentionMinutesEstimate(loopSeconds) + " min";
+    }
+  };
+  const renderRetentionInputs = () => {
+    const sizeMode = retentionMode === "size";
+    oneRetentionUnit.hidden = !sizeMode;
+    loopRetentionUnit.hidden = !sizeMode;
+    if (retentionMode === "time") {
+      oneRetention.value = settingsOneTimeText;
+      loopRetention.value = settingsLoopTimeText;
+    } else {
+      oneRetention.value = settingsOneSizeText;
+      loopRetention.value = settingsLoopSizeText;
+    }
+    renderRetentionEstimates();
+  };
   function setRetentionMode(mode: RetentionMode, dirty = true): void {
     if (dirty && retentionMode === mode) return;
     retentionMode = mode;
@@ -684,45 +855,36 @@ export function runReverbDemoRuntime(
       retentionSegments,
       (segment) => segment.dataset.retentionMode === mode,
     );
-    if (mode === "time") {
-      oneRetention.value = formatTimer(settingsOneLimitSeconds);
-      loopRetention.value = formatTimer(settingsLoopLimitSeconds);
-      byId("oneEstimate").textContent =
-        `≈ ${Math.round((settingsOneLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
-      byId("loopEstimate").textContent =
-        `≈ ${Math.round((settingsLoopLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
-    } else {
-      oneRetention.value = String(
-        Math.round((settingsOneLimitSeconds * bytesPerSecond) / (1024 * 1024)),
-      );
-      loopRetention.value = String(
-        Math.round((settingsLoopLimitSeconds * bytesPerSecond) / (1024 * 1024)),
-      );
-      byId("oneEstimate").textContent =
-        `≈ ${formatTimer(settingsOneLimitSeconds)}`;
-      byId("loopEstimate").textContent =
-        `≈ ${formatTimer(settingsLoopLimitSeconds)}`;
-    }
-    if (dirty) setDirty();
+    renderRetentionError();
+    renderRetentionInputs();
+    if (dirty) recomputeDirty();
   }
   setTheme(selectedTheme(), false);
   setRetentionMode(retentionMode, false);
-  function applyRetentionInputs(): void {
+  const updateRetentionDraft = (slot: BufferSlot, value: string) => {
+    clearActiveRetentionError(slot);
     if (retentionMode === "time") {
-      const one = parseDuration(oneRetention.value),
-        loop = parseDuration(loopRetention.value);
-      if (one != null) settingsOneLimitSeconds = one;
-      if (loop != null) settingsLoopLimitSeconds = loop;
+      const parsed = parseRetentionTime(value);
+      if (slot === "one") {
+        settingsOneTimeText = value;
+        if (parsed != null) settingsOneTimeSeconds = parsed;
+      } else {
+        settingsLoopTimeText = value;
+        if (parsed != null) settingsLoopTimeSeconds = parsed;
+      }
     } else {
-      const one = Number.parseFloat(oneRetention.value),
-        loop = Number.parseFloat(loopRetention.value);
-      if (Number.isFinite(one) && one >= 0)
-        settingsOneLimitSeconds = (one * 1024 * 1024) / bytesPerSecond;
-      if (Number.isFinite(loop) && loop >= 0)
-        settingsLoopLimitSeconds = (loop * 1024 * 1024) / bytesPerSecond;
+      const parsed = parseRetentionSize(value);
+      if (slot === "one") {
+        settingsOneSizeText = value;
+        if (parsed != null) settingsOneSizeMiB = parsed;
+      } else {
+        settingsLoopSizeText = value;
+        if (parsed != null) settingsLoopSizeMiB = parsed;
+      }
     }
-    setRetentionMode(retentionMode, false);
-  }
+    renderRetentionEstimates();
+    recomputeDirty();
+  };
   const installRadioGroupKeys = (
     segments: HTMLButtonElement[],
     select: (segment: HTMLButtonElement) => void,
@@ -754,7 +916,6 @@ export function runReverbDemoRuntime(
     const mode =
       segment.dataset.retentionMode === "size" ? "size" : "time";
     if (mode === retentionMode) return;
-    applyRetentionInputs();
     setRetentionMode(mode);
   };
   retentionSegments.forEach((segment) =>
@@ -764,42 +925,104 @@ export function runReverbDemoRuntime(
     setTheme(segment.dataset.theme ?? "Auto"),
   );
   installRadioGroupKeys(retentionSegments, selectRetentionMode);
-  [oneRetention, loopRetention].forEach((input) => {
-    input.addEventListener("input", () => setDirty());
-    input.addEventListener("change", applyRetentionInputs);
-  });
+  oneRetention.addEventListener("input", () =>
+    updateRetentionDraft("one", oneRetention.value),
+  );
+  loopRetention.addEventListener("input", () =>
+    updateRetentionDraft("loop", loopRetention.value),
+  );
   wakeSwitch.addEventListener("click", () => {
     const on = !wakeSwitch.classList.contains("on");
     wakeSwitch.classList.toggle("on", on);
     wakeSwitch.setAttribute("aria-checked", String(on));
-    setDirty();
+    recomputeDirty();
   });
   function restoreSettings(): void {
+    clearRetentionErrors();
     setTheme(settingsInitial.theme, false);
     dropdownValues().forEach((value, index) => {
       value.textContent = settingsInitial.dropdowns[index] ?? "";
     });
     wakeSwitch.classList.toggle("on", settingsInitial.wake);
     wakeSwitch.setAttribute("aria-checked", String(settingsInitial.wake));
-    settingsOneLimitSeconds = settingsInitial.oneLimitSeconds;
-    settingsLoopLimitSeconds = settingsInitial.loopLimitSeconds;
+    resetRetentionDrafts(settingsInitial);
     retentionMode = settingsInitial.retentionMode;
     setRetentionMode(retentionMode, false);
     setDirty(false);
   }
+  function prepareSettingsSession(): void {
+    if (settingsDirty) return;
+    clearRetentionErrors();
+    resetRetentionDrafts(settingsInitial);
+    retentionMode = settingsInitial.retentionMode;
+    setRetentionMode(retentionMode, false);
+  }
+  const validateRetentionDrafts = () => {
+    clearRetentionErrors();
+    if (retentionMode === "time") {
+      const one = parseRetentionTime(settingsOneTimeText);
+      const loop = parseRetentionTime(settingsLoopTimeText);
+      if (one == null) {
+        showRetentionError("Use H:MM:SS.", true, false);
+        return false;
+      }
+      if (loop == null) {
+        showRetentionError("Use H:MM:SS.", false, true);
+        return false;
+      }
+      settingsOneTimeSeconds = one;
+      settingsLoopTimeSeconds = loop;
+      if (one <= 0 && loop <= 0) {
+        showRetentionError("Keep at least one buffer on.");
+        return false;
+      }
+    } else {
+      const one = parseRetentionSize(settingsOneSizeText);
+      const loop = parseRetentionSize(settingsLoopSizeText);
+      if (one == null) {
+        showRetentionError("Enter a valid number.", true, false);
+        return false;
+      }
+      if (loop == null) {
+        showRetentionError("Enter a valid number.", false, true);
+        return false;
+      }
+      settingsOneSizeMiB = one;
+      settingsLoopSizeMiB = loop;
+      if (one <= 0 && loop <= 0) {
+        showRetentionError("Keep at least one buffer on.");
+        return false;
+      }
+    }
+    return true;
+  };
   byId("settingsNav").addEventListener("click", () => {
     if (settingsDirty) restoreSettings();
     else showScreen(settingsReturnScreen, settingsReturnFocus);
   });
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
-    applyRetentionInputs();
-    oneLimitSeconds = settingsOneLimitSeconds;
-    loopLimitSeconds = settingsLoopLimitSeconds;
+    if (!validateRetentionDrafts()) {
+      recomputeDirty();
+      return;
+    }
+    oneRetentionTimeSeconds = settingsOneTimeSeconds;
+    loopRetentionTimeSeconds = settingsLoopTimeSeconds;
+    oneRetentionSizeMiB = settingsOneSizeMiB;
+    loopRetentionSizeMiB = settingsLoopSizeMiB;
+    oneLimitSeconds =
+      retentionMode === "time"
+        ? oneRetentionTimeSeconds
+        : (oneRetentionSizeMiB * 1024 * 1024) / bytesPerSecond;
+    loopLimitSeconds =
+      retentionMode === "time"
+        ? loopRetentionTimeSeconds
+        : (loopRetentionSizeMiB * 1024 * 1024) / bytesPerSecond;
     oneSeconds = Math.min(oneSeconds, oneLimitSeconds);
     loopSeconds = Math.min(loopSeconds, loopLimitSeconds);
     syncBufferUi();
     settingsInitial = captureSettingsSnapshot();
+    clearRetentionErrors();
     setDirty(false);
     showScreen(settingsReturnScreen, settingsReturnFocus);
   });
@@ -873,7 +1096,7 @@ export function runReverbDemoRuntime(
           if (selected) selectedButton = button;
           button.addEventListener("click", () => {
             value.textContent = option;
-            setDirty();
+            recomputeDirty();
             closeDropdown(true);
           });
           dropdownMenu.appendChild(button);
