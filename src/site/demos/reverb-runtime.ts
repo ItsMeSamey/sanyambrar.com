@@ -1245,6 +1245,23 @@ export function runReverbDemoRuntime(
       event.preventDefault();
       return;
     }
+    const activeDraft =
+      rangeStartInput.matches(":focus")
+        ? ([rangeStartInput, "start"] as const)
+        : rangeEndInput.matches(":focus")
+          ? ([rangeEndInput, "end"] as const)
+          : null;
+    if (activeDraft && !commitRangeInput(activeDraft[0], activeDraft[1])) {
+      rangePlay.focus({ preventScroll: true });
+      return;
+    }
+    if (
+      rangeStartInput.getAttribute("aria-invalid") === "true" ||
+      rangeEndInput.getAttribute("aria-invalid") === "true"
+    ) {
+      rangePlay.focus({ preventScroll: true });
+      return;
+    }
     setRangePlaying(!rangePlaying);
   });
 
