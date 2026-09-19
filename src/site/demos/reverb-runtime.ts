@@ -1517,6 +1517,22 @@ export function runReverbDemoRuntime(
     }
     setRangePlaying(!rangePlaying);
   });
+  document.addEventListener("keydown", (event) => {
+    if (
+      !(event instanceof KeyboardEvent) ||
+      event.key !== "Escape" ||
+      event.defaultPrevented ||
+      currentScreen !== "rangeScreen"
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cancelRangeWheelInteraction();
+    cancelRangeWaveScrub(false);
+    finishRangeFineAdjust(true, false);
+    renderRangeUi();
+    setRangePlaying(false);
+    showScreen("homeScreen", byId<HTMLElement>("openRange"));
+  });
 
   const wakeSwitch = byId<HTMLElement>("wakeSwitch");
   const themeSegments = [
