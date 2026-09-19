@@ -167,3 +167,23 @@ test('Reverb gesture screen transitions retain in-demo focus ownership', async (
   await drag('edge');
   await expectScreenFocus(host, 'homeScreen', 'openLibrary');
 });
+
+test('Reverb Range consumes Escape before fullscreen', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const frame = page.locator('.reverb-demo-frame');
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+
+  await fullscreen.click();
+  await expect(frame).toHaveClass(/is-fullscreen/);
+  await host.locator('#openRange').click();
+  await expectScreenFocus(host, 'rangeScreen', 'rangeDurationWheel');
+
+  await page.keyboard.press('Escape');
+  await expectScreenFocus(host, 'homeScreen', 'openRange');
+  await expect(frame).toHaveClass(/is-fullscreen/);
+
+  await page.keyboard.press('Escape');
+  await expect(frame).not.toHaveClass(/is-fullscreen/);
+  await expect(fullscreen).toBeFocused();
+});
