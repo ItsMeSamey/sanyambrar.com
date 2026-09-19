@@ -1383,6 +1383,165 @@ test('open overlays survive live 200 percent text scaling in short viewports', a
   await expectScaledShortSurface(page.locator('#chain-settings'), 'Chain settings');
 });
 
+test('secondary and nested overlays stay contained at 200 percent text scaling in short viewports', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the nested scaled-short overlay matrix');
+  test.setTimeout(180_000);
+
+  const viewports = [
+    { width: 520, height: 320 },
+    { width: 320, height: 240 },
+    { width: 240, height: 220 },
+    { width: 180, height: 220 },
+  ];
+
+  const scaleText = async () => page.evaluate(async () => {
+    document.documentElement.style.fontSize = '32px';
+    await document.fonts?.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+
+  const expectContained = async (surface, label, matrix = viewports, reopen) => {
+    await scaleText();
+    for (const viewport of matrix) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      if (reopen) await reopen(viewport);
+      await expect(surface, `${label} visible at ${viewport.width}x${viewport.height}`).toBeVisible();
+      const state = await surface.evaluate((element, viewport) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        const controls = [...element.querySelectorAll('a[href],button,input,select,textarea,[role="button"],[role="menuitem"],[role="menuitemradio"]')]
+          .filter(control => {
+            const box = control.getBoundingClientRect();
+            const controlStyle = getComputedStyle(control);
+            return box.width > 0 && box.height > 0 && controlStyle.display !== 'none' && controlStyle.visibility !== 'hidden';
+          })
+          .map(control => {
+            let scrollOwner = null;
+            for (let owner = control.parentElement; owner && element.contains(owner); owner = owner.parentElement) {
+              const ownerStyle = getComputedStyle(owner);
+              if ((ownerStyle.overflowY === 'auto' || ownerStyle.overflowY === 'scroll') && owner.scrollHeight > owner.clientHeight + 1) {
+                scrollOwner ??= owner;
+              }
+              if ((ownerStyle.overflowX === 'auto' || ownerStyle.overflowX === 'scroll') && owner.scrollWidth > owner.clientWidth + 1) {
+                scrollOwner ??= owner;
+              }
+            }
+            control.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            const box = control.getBoundingClientRect();
+            const ownerBox = scrollOwner?.getBoundingClientRect();
+            const clip = {
+              left: Math.max(0, ownerBox?.left ?? 0),
+              top: Math.max(0, ownerBox?.top ?? 0),
+              right: Math.min(viewport.width, ownerBox?.right ?? viewport.width),
+              bottom: Math.min(viewport.height, ownerBox?.bottom ?? viewport.height),
+            };
+            const visibleWidth = Math.max(0, Math.min(box.right, clip.right) - Math.max(box.left, clip.left));
+            const visibleHeight = Math.max(0, Math.min(box.bottom, clip.bottom) - Math.max(box.top, clip.top));
+            const fits = box.width <= clip.right - clip.left + 1 && box.height <= clip.bottom - clip.top + 1;
+            const reachable = fits
+              ? box.left >= clip.left - 1 && box.right <= clip.right + 1 && box.top >= clip.top - 1 && box.bottom <= clip.bottom + 1
+              : visibleWidth >= Math.min(32, box.width) && visibleHeight >= Math.min(32, box.height);
+            return {
+              name: control.getAttribute('aria-label') || control.textContent?.trim().replace(/\s+/g, ' ').slice(0, 60) || control.tagName,
+              left: box.left, top: box.top, right: box.right, bottom: box.bottom,
+              reachable,
+            };
+          })
+          .filter(box => !box.reachable);
+        return {
+          documentWidth: document.documentElement.scrollWidth,
+          bodyWidth: document.body.scrollWidth,
+          rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+          overflowX: style.overflowX,
+          overflowY: style.overflowY,
+          controls,
+        };
+      }, viewport);
+      expect(state.documentWidth, `${label} document width at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.width + 1);
+      expect(state.bodyWidth, `${label} body width at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.width + 1);
+      expect(state.rect.left, `${label} left edge at ${viewport.width}x${viewport.height}`).toBeGreaterThanOrEqual(-1);
+      expect(state.rect.right, `${label} right edge at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.width + 1);
+      if (state.overflowY !== 'auto' && state.overflowY !== 'scroll') {
+        expect(state.rect.top, `${label} top edge at ${viewport.width}x${viewport.height}`).toBeGreaterThanOrEqual(-1);
+        expect(state.rect.bottom, `${label} bottom edge at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(viewport.height + 1);
+      }
+      expect(state.controls, `${label} controls at ${viewport.width}x${viewport.height}`).toEqual([]);
+    }
+  };
+
+  await page.setViewportSize({ width: 520, height: 700 });
+  await visit(page, '/', info);
+  const homeLink = page.getByRole('link', { name: /Sanyam Brar.*Home/ }).first();
+  const contextMenu = page.getByRole('menu', { name: 'Context menu' });
+  await expectContained(contextMenu, 'Custom context menu', viewports, async () => {
+    if (await contextMenu.isVisible()) await page.keyboard.press('Escape');
+    await homeLink.focus();
+    await page.keyboard.press('Shift+F10');
+  });
+  await page.keyboard.press('Escape');
+
+  await page.addInitScript(() => {
+    const put = (length, word, mask) => localStorage.setItem(`game.wordle.advanced.${length}.6.0.0`, JSON.stringify({
+      config: { mode: 'advanced', wordLength: length, maxTries: 6, disabledLetters: 0, allowAny: false },
+      history: [[word, mask], ['', '']],
+    }));
+    put(5, 'apple', 'rrrrr');
+    put(7, 'example', 'yrrrrrr');
+  });
+  await page.setViewportSize({ width: 700, height: 700 });
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Active Games', exact: true }).click();
+  await expectContained(page.locator('.active-games-dialog'), 'Wordle active games');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 700, height: 700 });
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Reveal', exact: true }).click();
+  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  await expectContained(page.getByRole('dialog', { name: 'Share challenge' }), 'Wordle share challenge');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 700, height: 700 });
+  await page.getByRole('button', { name: 'Statistics', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Summary', exact: true })).toBeVisible();
+  await page.locator('.stats-history-trigger').first().click();
+  await expectContained(page.getByRole('dialog', { name: /^Game details for / }), 'Wordle game details');
+  await page.keyboard.press('Escape');
+
+  await page.addInitScript(() => {
+    const board = new Uint8Array(16), owners = new Uint8Array(16), entered = new Uint8Array([0, 1, 1]);
+    board[0] = owners[0] = 1;
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({ v: 4, id: 'qa-result-scaled', pl: [], r: 4, c: 4, e: 1, b: encode(board), o: encode(owners), p: encode(entered), t: 1, g: true, i: true, m: [], q: true }));
+  });
+  await page.setViewportSize({ width: 700, height: 700 });
+  await visit(page, '/chain/?p=game', info);
+  await expectContained(page.getByRole('dialog', { name: 'You win' }), 'Chain completed result');
+
+  await page.setViewportSize({ width: 520, height: 700 });
+  await visit(page, '/projects/reverb/', info);
+  await page.getByRole('button', { name: 'Fullscreen demo' }).click();
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await host.locator('#openSettings').click();
+  const trigger = host.locator('.settings-card.dropdown').first();
+  await expectContained(host.locator('#dropdownMenu'), 'Reverb fullscreen settings dropdown', viewports, async () => {
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+  });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 520, height: 700 });
+  const rate = host.locator('.settings-card.dropdown').nth(2);
+  await expectContained(host.locator('#dropdownMenu'), 'Reverb fullscreen rate dropdown', viewports, async () => {
+    await rate.scrollIntoViewIfNeeded();
+    await rate.click();
+  });
+});
+
 test('responsive topbars stay collision-free through live state transitions', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers the live topbar transition matrix');
   test.setTimeout(120_000);
