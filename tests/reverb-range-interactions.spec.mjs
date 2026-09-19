@@ -287,3 +287,92 @@ test('Reverb Range wheel scrolling invalidates text drafts and preview', async (
   await expect(play).toHaveAttribute('aria-label', 'Play');
   await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
 });
+
+test('Reverb Range waveform scrub discards drafts and pauses then resumes preview', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const play = host.locator('#rangePlay');
+  const wavebox = host.locator('.range-timeline .wavebox');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  await start.fill('7:00.0');
+
+  const box = await wavebox.boundingBox();
+  if (!box) throw new Error('Range waveform has no geometry');
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width * 0.3, y);
+  await page.mouse.down();
+
+  await expect(start).not.toBeFocused();
+  await expect(start).not.toHaveText('7:00.0');
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await page.mouse.move(box.x + box.width * 0.35, y, { steps: 3 });
+  await page.mouse.up();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  expect(parseRangeTime((await start.textContent()) ?? '')).toBeGreaterThan(500);
+
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await page.mouse.move(box.x + box.width * 0.4, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.45, y, { steps: 3 });
+  await page.mouse.up();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+});
+
+test('Reverb Range boundary handles honor drag slop and preview ownership', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const play = host.locator('#rangePlay');
+  const boundary = host.locator('#rangeStartBoundary');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const beforeClick = (await start.textContent()) ?? '';
+
+  let box = await boundary.boundingBox();
+  if (!box) throw new Error('Range start boundary has no geometry');
+  let x = box.x + box.width / 2;
+  let y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 3, y, { steps: 2 });
+  await page.mouse.up();
+
+  await expect(start).toHaveText(beforeClick);
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const beforeDrag = parseRangeTime((await start.textContent()) ?? '');
+  box = await boundary.boundingBox();
+  if (!box) throw new Error('Range start boundary has no geometry');
+  x = box.x + box.width / 2;
+  y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 30, y, { steps: 4 });
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await page.mouse.up();
+
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  expect(parseRangeTime((await start.textContent()) ?? '')).toBeGreaterThan(beforeDrag + 20);
+});
