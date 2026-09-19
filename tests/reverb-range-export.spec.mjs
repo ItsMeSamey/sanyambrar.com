@@ -150,3 +150,26 @@ test('Reverb remembers successful Range selections per buffer', async ({ page },
   await expect(start).toHaveText('5:00.0');
   await expect(end).toHaveText('20:00.0');
 });
+
+test('Reverb Range Play commits valid drafts and blocks invalid drafts', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await openPausedRange(host);
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const play = host.locator('#rangePlay');
+
+  await start.fill('bad');
+  await play.click();
+  await expect(start).toHaveAttribute('aria-invalid', 'true');
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await start.fill('5:00.0');
+  await play.click();
+  await expect(start).toHaveText('5:00.0');
+  await expect(start).not.toHaveAttribute('aria-invalid', 'true');
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+});
