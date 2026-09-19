@@ -117,3 +117,44 @@ test('Reverb fine-seek drag cancels and springs home on window blur', async ({ p
   await puck.click();
   await expect(puck).toHaveAttribute('aria-label', 'Pause');
 });
+
+test('Reverb fine-seek drag discards drafts and pauses then resumes preview', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+
+  await host.locator('#openRange').click();
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const puck = host.locator('#rangePlay');
+  const fine = host.locator('.fine-control');
+
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await puck.click();
+  await expect(puck).toHaveAttribute('aria-label', 'Pause');
+
+  await start.fill('7:00.0');
+  await expect(start).toBeFocused();
+  const box = await puck.boundingBox();
+  if (!box) throw new Error('Fine-seek puck has no geometry');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 12, y, { steps: 2 });
+
+  await expect(fine).toHaveClass(/is-dragging/);
+  expect(parseRangeTime((await start.textContent()) ?? '')).toBeCloseTo(300, 0);
+  await expect(puck).toHaveAttribute('aria-label', 'Play');
+
+  await page.mouse.up();
+  await expect(fine).not.toHaveClass(/is-dragging/);
+  await expect(puck).toHaveAttribute('aria-label', 'Pause');
+
+  await puck.click();
+  await expect(puck).toHaveAttribute('aria-label', 'Play');
+  await dragPuck(page, puck, 12, 0, 40);
+  await expect(puck).toHaveAttribute('aria-label', 'Play');
+});

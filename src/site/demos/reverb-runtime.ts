@@ -639,19 +639,53 @@ export function runReverbDemoRuntime(
   });
 
   let rangeWavePointerId = -1;
+  let rangeWaveTarget: RangeEditTarget | null = null;
+  let rangeWaveResumeAfterScrub = false;
+  let rangeWaveBoundaryMode = false;
+  let rangeWaveBoundaryDragging = false;
+  let rangeWaveBoundaryDownX = 0;
+  let rangeWaveBoundaryOriginSeconds = 0;
+  const cancelRangeWaveScrub = (resumePreview: boolean) => {
+    const pointerId = rangeWavePointerId;
+    if (pointerId === -1) return;
+    rangeWavePointerId = -1;
+    rangeWaveTarget = null;
+    rangeWaveBoundaryMode = false;
+    rangeWaveBoundaryDragging = false;
+    const shouldResumePreview = resumePreview && rangeWaveResumeAfterScrub;
+    rangeWaveResumeAfterScrub = false;
+    if (rangeWavebox.hasPointerCapture?.(pointerId)) rangeWavebox.releasePointerCapture(pointerId);
+    if (shouldResumePreview) setRangePlaying(true);
+  };
   rangeWavebox.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (rangeWheelInteractionActive()) return;
     const path = event.composedPath();
-    const target: RangeEditTarget = path.includes(rangeEndBoundary)
+    const boundaryTarget: RangeEditTarget | null = path.includes(rangeEndBoundary)
       ? "end"
       : path.includes(rangeStartBoundary)
         ? "start"
-        : rangeEditTarget;
+        : null;
+    const target = boundaryTarget ?? rangeEditTarget;
     rangeEditTarget = target;
+    rangeWaveTarget = target;
+    renderRangeUi();
+    rangeStartInput.blur();
+    rangeEndInput.blur();
     rangeWavePointerId = event.pointerId;
     rangeWavebox.setPointerCapture?.(event.pointerId);
     event.preventDefault();
+    if (boundaryTarget) {
+      rangeWaveBoundaryMode = true;
+      rangeWaveBoundaryDragging = false;
+      rangeWaveBoundaryDownX = event.clientX;
+      rangeWaveBoundaryOriginSeconds = target === "start" ? rangeStartSeconds : rangeEndSeconds;
+      rangeWaveResumeAfterScrub = false;
+      return;
+    }
+    rangeWaveBoundaryMode = false;
+    rangeWaveResumeAfterScrub = rangePlaying;
+    if (rangePlaying) setRangePlaying(false);
     const rect = rangeWavebox.getBoundingClientRect();
     const seconds =
       ((event.clientX - rect.left) / Math.max(1, rect.width)) *
@@ -661,16 +695,36 @@ export function runReverbDemoRuntime(
   rangeWavebox.addEventListener("pointermove", (event) => {
     if (event.pointerId !== rangeWavePointerId) return;
     const rect = rangeWavebox.getBoundingClientRect();
+    const target = rangeWaveTarget ?? rangeEditTarget;
+    if (rangeWaveBoundaryMode) {
+      const deltaX = event.clientX - rangeWaveBoundaryDownX;
+      const dragSlop = Math.max(1, rect.width * (8 / 351));
+      if (!rangeWaveBoundaryDragging && Math.abs(deltaX) > dragSlop) {
+        rangeWaveBoundaryDragging = true;
+        rangeWaveResumeAfterScrub = rangePlaying;
+        if (rangePlaying) setRangePlaying(false);
+      }
+      if (rangeWaveBoundaryDragging) {
+        const requested = rangeWaveBoundaryOriginSeconds +
+          (deltaX / Math.max(1, rect.width)) * rangeTimelineDurationSeconds;
+        adjustRangeTarget(target, requested);
+      }
+      event.preventDefault();
+      return;
+    }
     const seconds =
       ((event.clientX - rect.left) / Math.max(1, rect.width)) *
       rangeTimelineDurationSeconds;
-    adjustRangeTarget(rangeEditTarget, seconds);
+    adjustRangeTarget(target, seconds);
   });
   const endRangeWavePointer = (event: PointerEvent) => {
     if (event.pointerId !== rangeWavePointerId) return;
-    rangeWavePointerId = -1;
-    if (rangeWavebox.hasPointerCapture?.(event.pointerId))
-      rangeWavebox.releasePointerCapture(event.pointerId);
+    const boundaryClick = rangeWaveBoundaryMode && !rangeWaveBoundaryDragging;
+    if (boundaryClick) {
+      rangeWaveResumeAfterScrub = false;
+      setRangePlaying(false);
+    }
+    cancelRangeWaveScrub(!boundaryClick);
   };
   rangeWavebox.addEventListener("pointerup", endRangeWavePointer);
   rangeWavebox.addEventListener("pointercancel", endRangeWavePointer);
@@ -1213,6 +1267,10 @@ export function runReverbDemoRuntime(
   let rangePlaying = false;
   let rangeFinePointerId = -1;
   let rangeFineStartedOnPuck = false;
+  let rangeFineDownStartSeconds = 0;
+  let rangeFineDownEndSeconds = 0;
+  let rangeFineDownTarget: RangeEditTarget = "start";
+  let rangeFineResumeAfterDrag = false;
   let rangeFineDragging = false;
   let rangeFineSuppressClick = false;
   let rangeFineDownX = 0;
@@ -1311,9 +1369,15 @@ export function runReverbDemoRuntime(
   };
   const startRangeFineAdjust = (clientX: number, clientY: number) => {
     if (rangeFineDragging) return;
+    // Native drag invalidates the active text draft instead of committing it on focus loss.
+    rangeStartSeconds = rangeFineDownStartSeconds;
+    rangeEndSeconds = rangeFineDownEndSeconds;
+    rangeEditTarget = rangeFineDownTarget;
+    renderRangeUi();
     rangeStartInput.blur();
     rangeEndInput.blur();
-    renderRangeUi();
+    rangeFineResumeAfterDrag = rangePlaying;
+    if (rangePlaying) setRangePlaying(false);
     rangeFineDragging = true;
     rangeFineLastFrame = 0;
     rangeFineControl.classList.add("is-dragging");
@@ -1326,14 +1390,20 @@ export function runReverbDemoRuntime(
     updateRangeFinePull(clientX, clientY);
     requestAnimationFrame(rangeFineFrame);
   };
-  const finishRangeFineAdjust = (cancelled = false) => {
+  const finishRangeFineAdjust = (
+    cancelled = false,
+    resumePreview = true,
+  ) => {
     if (rangeFinePointerId === -1 && !rangeFineDragging) return;
     const pointerId = rangeFinePointerId;
     if (!rangeFineDragging) {
       rangeFinePointerId = -1;
       rangeFineStartedOnPuck = false;
+      rangeFineResumeAfterDrag = false;
       return;
     }
+    const shouldResumePreview = resumePreview && rangeFineResumeAfterDrag;
+    rangeFineResumeAfterDrag = false;
     if (rangeFineDragging && rangeFineStartedOnPuck && !cancelled) {
       rangeFineSuppressClick = true;
       setTimeout(() => {
@@ -1358,6 +1428,7 @@ export function runReverbDemoRuntime(
     ) {
       rangeFineControl.releasePointerCapture(pointerId);
     }
+    if (shouldResumePreview) setRangePlaying(true);
   };
   rangeFineControl.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -1365,6 +1436,9 @@ export function runReverbDemoRuntime(
     rangeFinePointerId = event.pointerId;
     rangeFineDownX = event.clientX;
     rangeFineDownY = event.clientY;
+    rangeFineDownStartSeconds = rangeStartSeconds;
+    rangeFineDownEndSeconds = rangeEndSeconds;
+    rangeFineDownTarget = rangeEditTarget;
     rangeFineStartedOnPuck = event.composedPath().includes(rangePlay);
     if (!rangeFineStartedOnPuck)
       startRangeFineAdjust(event.clientX, event.clientY);
@@ -2048,7 +2122,8 @@ export function runReverbDemoRuntime(
   const removeBlurListener = addWindowEventListener("blur", () => {
     clearGesture();
     cancelRangeWheelInteraction();
-    finishRangeFineAdjust(true);
+    cancelRangeWaveScrub(false);
+    finishRangeFineAdjust(true, false);
     blobControl.classList.remove("pressed");
     for (const timer of activeIncidentHoldTimers) clearTimeout(timer);
     activeIncidentHoldTimers.clear();
