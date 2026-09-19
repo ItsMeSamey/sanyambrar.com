@@ -10,8 +10,6 @@
 	var nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 	/** Every routed and local view deconstructs into rules, then rebuilds before content. */
 	var CONSTRUCTED_TRANSITION = {
-		out: 260,
-		in: 420,
 		line: 190,
 		content: 150,
 		groupGap: 90,
@@ -226,19 +224,7 @@
 			const baseTransform = getComputedStyle(element).transform;
 			const baseline = baseTransform === "none" ? "none" : baseTransform;
 			const shifted = `${baseTransform === "none" ? "" : `${baseTransform} `}translate3d(0,${(entering ? sign : -sign) * CONSTRUCTED_TRANSITION.offset}px,0)`;
-			return element.animate(entering ? [{
-				opacity: 0,
-				transform: shifted
-			}, {
-				opacity: 1,
-				transform: baseline
-			}] : [{
-				opacity: 1,
-				transform: baseline
-			}, {
-				opacity: 0,
-				transform: shifted
-			}], {
+			return element.animate(entering ? [{ transform: shifted }, { transform: baseline }] : [{ transform: baseline }, { transform: shifted }], {
 				duration: CONSTRUCTED_TRANSITION.content,
 				delay: (entering ? CONSTRUCTED_TRANSITION.groupGap : 0) + stagger(index),
 				easing: entering ? CONSTRUCTED_TRANSITION.enterEasing : CONSTRUCTED_TRANSITION.leaveEasing,
@@ -248,15 +234,7 @@
 	}
 	async function animateConstructionExit(root, direction) {
 		const layer = makeConstructionLayer(root);
-		const animations = [
-			root.animate([{ opacity: 1 }, { opacity: 0 }], {
-				duration: CONSTRUCTED_TRANSITION.out,
-				easing: CONSTRUCTED_TRANSITION.leaveEasing,
-				fill: "both"
-			}),
-			...animateConstructionLines(layer, "out", direction),
-			...animateConstructionContent(root, "out", direction)
-		];
+		const animations = [...animateConstructionLines(layer, "out", direction), ...animateConstructionContent(root, "out", direction)];
 		await waitAnimations(animations);
 		return {
 			layer,
@@ -264,19 +242,8 @@
 		};
 	}
 	async function animateConstructionEntrance(root, direction) {
-		const priorOpacity = root.style.opacity;
-		root.style.opacity = "0";
 		const layer = makeConstructionLayer(root);
-		const animations = [
-			root.animate([{ opacity: 0 }, { opacity: 1 }], {
-				duration: CONSTRUCTED_TRANSITION.in,
-				easing: CONSTRUCTED_TRANSITION.enterEasing,
-				fill: "both"
-			}),
-			...animateConstructionLines(layer, "in", direction),
-			...animateConstructionContent(root, "in", direction)
-		];
-		root.style.opacity = priorOpacity;
+		const animations = [...animateConstructionLines(layer, "in", direction), ...animateConstructionContent(root, "in", direction)];
 		await waitAnimations(animations);
 		for (const animation of animations) animation.cancel();
 		layer.remove();
