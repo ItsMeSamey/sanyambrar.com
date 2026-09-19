@@ -767,10 +767,11 @@ export function runReverbDemoRuntime(
     resetRangeUi();
     showScreen("rangeScreen");
   });
-  byId("rangeClose").addEventListener("click", () => {
-    rangeStartInput.blur();
-    rangeEndInput.blur();
+  const rangeClose = byId<HTMLElement>("rangeClose");
+  rangeClose.addEventListener("pointerdown", () => {
     renderRangeUi();
+  });
+  rangeClose.addEventListener("click", () => {
     setRangePlaying(false);
     showScreen("homeScreen", byId<HTMLElement>("openRange"));
   });
