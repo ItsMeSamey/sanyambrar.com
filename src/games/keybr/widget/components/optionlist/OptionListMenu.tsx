@@ -26,6 +26,13 @@ export function OptionListMenu(props: {
         const anchor = list?.parentElement;
         if (list == null || anchor == null) return;
         const margin = 8;
+        const anchorBox = anchor.getBoundingClientRect();
+        if (anchorBox.top < margin
+            || anchorBox.bottom > screenSize.height - margin
+            || anchorBox.left < margin
+            || anchorBox.right > screenSize.width - margin) {
+            anchor.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
         list.style.removeProperty("--option-list-available-block");
         list.dataset.side = "below";
         const below = Math.max(0, screenSize.height - list.getBoundingClientRect().top - margin);

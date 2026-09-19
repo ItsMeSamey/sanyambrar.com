@@ -26,36 +26,41 @@
 
 .width6 {
   
-  inline-size: 6rem !important;
-  min-inline-size: 6rem !important;
+  inline-size: min(6rem, 100%) !important;
+  min-inline-size: min(6rem, 100%) !important;
+  max-inline-size: 100% !important;
 
 }
 
 .width10 {
   
-  inline-size: 10rem !important;
-  min-inline-size: 10rem !important;
+  inline-size: min(10rem, 100%) !important;
+  min-inline-size: min(10rem, 100%) !important;
+  max-inline-size: 100% !important;
 
 }
 
 .width16 {
   
-  inline-size: 16rem !important;
-  min-inline-size: 16rem !important;
+  inline-size: min(16rem, 100%) !important;
+  min-inline-size: min(16rem, 100%) !important;
+  max-inline-size: 100% !important;
 
 }
 
 .width24 {
   
-  inline-size: 24rem !important;
-  min-inline-size: 24rem !important;
+  inline-size: min(24rem, 100%) !important;
+  min-inline-size: min(24rem, 100%) !important;
+  max-inline-size: 100% !important;
 
 }
 
 .width32 {
   
-  inline-size: 32rem !important;
-  min-inline-size: 32rem !important;
+  inline-size: min(32rem, 100%) !important;
+  min-inline-size: min(32rem, 100%) !important;
+  max-inline-size: 100% !important;
 
 }
 

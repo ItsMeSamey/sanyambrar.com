@@ -1,5 +1,6 @@
 .root {
   display: flex;
+  flex-wrap: wrap;
   min-inline-size: 0;
   max-inline-size: 100%;
   gap: 1rem;
@@ -23,6 +24,13 @@
   flex: 1 1 auto;
 }
 
+/* Keep select fields at their normal 20rem width, but let them shrink beside
+   enlarged labels before the row has to overflow. */
+.root > *:has(> [role="combobox"]) {
+  flex: 0 1 20rem;
+  inline-size: min(20rem, 100%);
+}
+
 .root:not(:first-child) {
   margin-block-start: 1rem;
 }
@@ -32,10 +40,6 @@
 }
 
 @media (max-width: 600px) {
-  .root {
-    flex-wrap: wrap;
-  }
-
   .root > * {
     min-inline-size: 0;
     max-inline-size: 100%;

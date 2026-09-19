@@ -1,16 +1,18 @@
 .root {
-  
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
 }
 
 .small {
-  min-inline-size: 20rem;
+  min-inline-size: min(20rem, calc(100vw - min(4rem, 128px)));
   max-inline-size: 30rem;
   min-block-size: 5rem;
 }
 
 .large {
-  inline-size: 36rem;
-  min-block-size: 24rem;
+  inline-size: min(36rem, calc(100vw - min(4rem, 128px)));
+  min-block-size: min(24rem, calc(100dvh - min(4rem, 128px)));
 }
 
 @media (max-width: 480px) {
