@@ -413,6 +413,27 @@ export function runReverbDemoRuntime(
   const setRangeInputText = (input: HTMLElement, value: string) => {
     if (input.textContent !== value) input.textContent = value;
   };
+  const rangeInvalidTimers = new Map<HTMLElement, number>();
+  const clearRangeInputInvalid = (input: HTMLElement) => {
+    const timer = rangeInvalidTimers.get(input);
+    if (timer != null) clearTimeout(timer);
+    rangeInvalidTimers.delete(input);
+    input.classList.remove("invalid-flash");
+    input.removeAttribute("aria-invalid");
+  };
+  const flashRangeInputInvalid = (input: HTMLElement) => {
+    const previous = rangeInvalidTimers.get(input);
+    if (previous != null) clearTimeout(previous);
+    input.setAttribute("aria-invalid", "true");
+    input.classList.add("invalid-flash");
+    rangeInvalidTimers.set(
+      input,
+      setTimeout(() => {
+        input.classList.remove("invalid-flash");
+        rangeInvalidTimers.delete(input);
+      }, 650),
+    );
+  };
 
   function renderRangeWheel(): void {
     const selection = rangeSelectionSeconds();
@@ -459,8 +480,8 @@ export function runReverbDemoRuntime(
     const endFraction = Math.max(0, Math.min(1, rangeEndSeconds / duration));
     setRangeInputText(rangeStartInput, formatRangeTime(rangeStartSeconds));
     setRangeInputText(rangeEndInput, formatRangeTime(rangeEndSeconds));
-    rangeStartInput.removeAttribute("aria-invalid");
-    rangeEndInput.removeAttribute("aria-invalid");
+    clearRangeInputInvalid(rangeStartInput);
+    clearRangeInputInvalid(rangeEndInput);
     byId("rangeDurationLabel").textContent = formatRangeTime(duration);
 
     const timelineWidth = 375;
@@ -597,7 +618,7 @@ export function runReverbDemoRuntime(
   ): boolean {
     const parsed = parseRangeTime(rangeInputText(input));
     if (parsed == null) {
-      input.setAttribute("aria-invalid", "true");
+      flashRangeInputInvalid(input);
       return false;
     }
     adjustRangeTarget(target, parsed);
@@ -619,8 +640,9 @@ export function runReverbDemoRuntime(
         return;
       }
       setRangeEditTarget(target);
+      setRangePlaying(false);
     });
-    input.addEventListener("input", () => input.removeAttribute("aria-invalid"));
+    input.addEventListener("input", () => clearRangeInputInvalid(input));
     input.addEventListener("blur", () => {
       const other = target === "start" ? rangeEndInput : rangeStartInput;
       if (other.getAttribute("aria-invalid") === "true") return;

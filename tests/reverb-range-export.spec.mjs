@@ -42,7 +42,11 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
   await start.fill('1x:02.0');
   await page.keyboard.press('Enter');
   await expect(start).toHaveAttribute('aria-invalid', 'true');
+  await expect(start).toHaveClass(/invalid-flash/);
   await expect(start).toBeFocused();
+  await page.waitForTimeout(700);
+  await expect(start).not.toHaveClass(/invalid-flash/);
+  await expect(start).toHaveAttribute('aria-invalid', 'true');
 
   await exportButton.click();
   await expect(rangeScreen).toHaveClass(/active/);
