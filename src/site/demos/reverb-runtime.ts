@@ -42,8 +42,8 @@ type Uniforms = Record<string, WebGLUniformLocation | null>;
 type SettingsSnapshot = {
   theme: string;
   retentionMode: RetentionMode;
-  oneValue: string;
-  loopValue: string;
+  oneLimitSeconds: number;
+  loopLimitSeconds: number;
   dropdowns: string[];
   wake: boolean;
 };
@@ -97,6 +97,8 @@ export function runReverbDemoRuntime(
   let settingsDirty = false;
   let retentionMode: RetentionMode = "time";
   let settingsInitial: SettingsSnapshot;
+  let settingsOneLimitSeconds = oneLimitSeconds;
+  let settingsLoopLimitSeconds = loopLimitSeconds;
   let settingsReturnFocus: HTMLElement | null = null;
   let incidentsReturnFocus: HTMLElement | null = null;
 
@@ -612,11 +614,29 @@ export function runReverbDemoRuntime(
 
   const wakeSwitch = byId<HTMLElement>("wakeSwitch");
   const themeSegments = [
-    ...document.querySelectorAll<HTMLElement>("#themeSegments .segment"),
+    ...document.querySelectorAll<HTMLButtonElement>("#themeSegments .segment"),
   ];
   const retentionSegments = [
-    ...document.querySelectorAll<HTMLElement>("#retentionSegments .segment"),
+    ...document.querySelectorAll<HTMLButtonElement>("#retentionSegments .segment"),
   ];
+  const themeGroup = byId<HTMLElement>("themeSegments");
+  const retentionGroup = byId<HTMLElement>("retentionSegments");
+  themeGroup.setAttribute("role", "radiogroup");
+  themeGroup.setAttribute("aria-label", "Theme");
+  retentionGroup.setAttribute("role", "radiogroup");
+  retentionGroup.setAttribute("aria-label", "Retention");
+  const syncRadioSegments = (
+    segments: HTMLButtonElement[],
+    selected: (segment: HTMLButtonElement) => boolean,
+  ) => {
+    segments.forEach((segment) => {
+      const checked = selected(segment);
+      segment.setAttribute("role", "radio");
+      segment.setAttribute("aria-checked", String(checked));
+      segment.tabIndex = checked ? 0 : -1;
+      segment.classList.toggle("selected", checked);
+    });
+  };
   const oneRetention = byId<HTMLInputElement>("oneRetention");
   const loopRetention = byId<HTMLInputElement>("loopRetention");
   const dropdownValues = () => [
@@ -632,8 +652,8 @@ export function runReverbDemoRuntime(
     return {
       theme: selectedTheme(),
       retentionMode,
-      oneValue: oneRetention.value,
-      loopValue: loopRetention.value,
+      oneLimitSeconds,
+      loopLimitSeconds,
       dropdowns: dropdownValues().map((value) => value.textContent ?? ""),
       wake: wakeSwitch.classList.contains("on"),
     };
@@ -649,67 +669,101 @@ export function runReverbDemoRuntime(
     byId("settingsNav").setAttribute("aria-label", dirty ? "Undo" : "Back");
   }
   setDirty(false);
+  function setTheme(theme: string, dirty = true): void {
+    if (dirty && selectedTheme() === theme) return;
+    syncRadioSegments(
+      themeSegments,
+      (segment) => segment.dataset.theme === theme,
+    );
+    if (dirty) setDirty();
+  }
   function setRetentionMode(mode: RetentionMode, dirty = true): void {
+    if (dirty && retentionMode === mode) return;
     retentionMode = mode;
-    retentionSegments.forEach((segment) =>
-      segment.classList.toggle(
-        "selected",
-        segment.dataset.retentionMode === mode,
-      ),
+    syncRadioSegments(
+      retentionSegments,
+      (segment) => segment.dataset.retentionMode === mode,
     );
     if (mode === "time") {
-      oneRetention.value = formatTimer(oneLimitSeconds);
-      loopRetention.value = formatTimer(loopLimitSeconds);
+      oneRetention.value = formatTimer(settingsOneLimitSeconds);
+      loopRetention.value = formatTimer(settingsLoopLimitSeconds);
       byId("oneEstimate").textContent =
-        `≈ ${Math.round((oneLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
+        `≈ ${Math.round((settingsOneLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
       byId("loopEstimate").textContent =
-        `≈ ${Math.round((loopLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
+        `≈ ${Math.round((settingsLoopLimitSeconds * bytesPerSecond) / (1024 * 1024))} MiB`;
     } else {
       oneRetention.value = String(
-        Math.round((oneLimitSeconds * bytesPerSecond) / (1024 * 1024)),
+        Math.round((settingsOneLimitSeconds * bytesPerSecond) / (1024 * 1024)),
       );
       loopRetention.value = String(
-        Math.round((loopLimitSeconds * bytesPerSecond) / (1024 * 1024)),
+        Math.round((settingsLoopLimitSeconds * bytesPerSecond) / (1024 * 1024)),
       );
-      byId("oneEstimate").textContent = `≈ ${formatTimer(oneLimitSeconds)}`;
-      byId("loopEstimate").textContent = `≈ ${formatTimer(loopLimitSeconds)}`;
+      byId("oneEstimate").textContent =
+        `≈ ${formatTimer(settingsOneLimitSeconds)}`;
+      byId("loopEstimate").textContent =
+        `≈ ${formatTimer(settingsLoopLimitSeconds)}`;
     }
     if (dirty) setDirty();
   }
+  setTheme(selectedTheme(), false);
+  setRetentionMode(retentionMode, false);
   function applyRetentionInputs(): void {
     if (retentionMode === "time") {
       const one = parseDuration(oneRetention.value),
         loop = parseDuration(loopRetention.value);
-      if (one != null) oneLimitSeconds = one;
-      if (loop != null) loopLimitSeconds = loop;
+      if (one != null) settingsOneLimitSeconds = one;
+      if (loop != null) settingsLoopLimitSeconds = loop;
     } else {
       const one = Number.parseFloat(oneRetention.value),
         loop = Number.parseFloat(loopRetention.value);
       if (Number.isFinite(one) && one >= 0)
-        oneLimitSeconds = (one * 1024 * 1024) / bytesPerSecond;
+        settingsOneLimitSeconds = (one * 1024 * 1024) / bytesPerSecond;
       if (Number.isFinite(loop) && loop >= 0)
-        loopLimitSeconds = (loop * 1024 * 1024) / bytesPerSecond;
+        settingsLoopLimitSeconds = (loop * 1024 * 1024) / bytesPerSecond;
     }
-    oneSeconds = Math.min(oneSeconds, oneLimitSeconds);
-    loopSeconds = Math.min(loopSeconds, loopLimitSeconds);
     setRetentionMode(retentionMode, false);
-    syncBufferUi();
   }
+  const installRadioGroupKeys = (
+    segments: HTMLButtonElement[],
+    select: (segment: HTMLButtonElement) => void,
+  ) => {
+    segments.forEach((segment) => {
+      segment.addEventListener("keydown", (event) => {
+        const index = segments.indexOf(segment);
+        let target: HTMLButtonElement | undefined;
+        if (event.key === "ArrowRight" || event.key === "ArrowDown")
+          target = segments[(index + 1) % segments.length];
+        else if (event.key === "ArrowLeft" || event.key === "ArrowUp")
+          target = segments[(index - 1 + segments.length) % segments.length];
+        else if (event.key === "Home") target = segments[0];
+        else if (event.key === "End") target = segments[segments.length - 1];
+        else return;
+        event.preventDefault();
+        if (!target) return;
+        select(target);
+        target.focus({ preventScroll: true });
+      });
+    });
+  };
   themeSegments.forEach((segment) =>
-    segment.addEventListener("click", () => {
-      themeSegments.forEach((item) =>
-        item.classList.toggle("selected", item === segment),
-      );
-      setDirty();
-    }),
-  );
-  retentionSegments.forEach((segment) =>
     segment.addEventListener("click", () =>
-      setRetentionMode(
-        segment.dataset.retentionMode === "size" ? "size" : "time",
-      ),
+      setTheme(segment.dataset.theme ?? "Auto"),
     ),
   );
+  const selectRetentionMode = (segment: HTMLButtonElement) => {
+    const mode =
+      segment.dataset.retentionMode === "size" ? "size" : "time";
+    if (mode === retentionMode) return;
+    applyRetentionInputs();
+    setRetentionMode(mode);
+  };
+  retentionSegments.forEach((segment) =>
+    segment.addEventListener("click", () => selectRetentionMode(segment)),
+  );
+  installRadioGroupKeys(themeSegments, (segment) =>
+    setTheme(segment.dataset.theme ?? "Auto"),
+  );
+  installRadioGroupKeys(retentionSegments, selectRetentionMode);
   [oneRetention, loopRetention].forEach((input) => {
     input.addEventListener("input", () => setDirty());
     input.addEventListener("change", applyRetentionInputs);
@@ -721,20 +775,15 @@ export function runReverbDemoRuntime(
     setDirty();
   });
   function restoreSettings(): void {
-    themeSegments.forEach((segment) =>
-      segment.classList.toggle(
-        "selected",
-        segment.dataset.theme === settingsInitial.theme,
-      ),
-    );
+    setTheme(settingsInitial.theme, false);
     dropdownValues().forEach((value, index) => {
       value.textContent = settingsInitial.dropdowns[index] ?? "";
     });
     wakeSwitch.classList.toggle("on", settingsInitial.wake);
     wakeSwitch.setAttribute("aria-checked", String(settingsInitial.wake));
+    settingsOneLimitSeconds = settingsInitial.oneLimitSeconds;
+    settingsLoopLimitSeconds = settingsInitial.loopLimitSeconds;
     retentionMode = settingsInitial.retentionMode;
-    oneRetention.value = settingsInitial.oneValue;
-    loopRetention.value = settingsInitial.loopValue;
     setRetentionMode(retentionMode, false);
     setDirty(false);
   }
@@ -745,6 +794,11 @@ export function runReverbDemoRuntime(
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
     applyRetentionInputs();
+    oneLimitSeconds = settingsOneLimitSeconds;
+    loopLimitSeconds = settingsLoopLimitSeconds;
+    oneSeconds = Math.min(oneSeconds, oneLimitSeconds);
+    loopSeconds = Math.min(loopSeconds, loopLimitSeconds);
+    syncBufferUi();
     settingsInitial = captureSettingsSnapshot();
     setDirty(false);
     showScreen(settingsReturnScreen, settingsReturnFocus);
