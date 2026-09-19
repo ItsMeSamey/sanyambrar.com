@@ -26,7 +26,7 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
           <Show when={fdroid()}>{link =>
             <SmartLink class="project-action-link project-fdroid-link" href={link().href} target="_blank" rel="noopener noreferrer" data-copy-label="F-Droid">
               <FDroidIcon/>
-              <span class="project-action-label">Available on F-Droid</span>
+              <span class="project-action-label">F-Droid</span>
               <span class="project-action-arrow" aria-hidden="true">↗</span>
             </SmartLink>
           }</Show>
