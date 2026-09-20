@@ -1,5 +1,6 @@
 import { readHistoryState } from '../../shared/history.ts';
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
+import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
 import type { ChainRefs } from './dom.ts';
 
 type GridConfig = { rows: number; cols: number };
@@ -1463,6 +1464,10 @@ export function mountChain(refs: ChainRefs) {
   addEventListener('resize', positionSettingsOnResize, {passive:true});
   const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
   resizeObserver.observe(stage);
+  const stopPixelRatioWatch = watchDevicePixelRatio(() => {
+    if (!gameView.hidden) layout();
+    drawReplay();
+  });
   window.addEventListener('samey-themechange', repaintTheme);
   const themeObserver = new MutationObserver(repaintTheme);
   themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
@@ -1484,6 +1489,7 @@ export function mountChain(refs: ChainRefs) {
     removeEventListener('resize', positionSettingsOnResize);
     removeEventListener('popstate', onPopState);
     resizeObserver.disconnect();
+    stopPixelRatioWatch();
     themeObserver.disconnect();
     window.removeEventListener('samey-themechange', repaintTheme);
     scheme.removeEventListener('change', repaintTheme);
