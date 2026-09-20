@@ -803,6 +803,7 @@ export function runReverbDemoRuntime(
   };
   rangeWavebox.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeWavePointerId !== -1) return;
     if (rangeWheelInteractionActive()) return;
     const path = event.composedPath();
     const boundaryTarget: RangeEditTarget | null = path.includes(rangeEndBoundary)
@@ -1002,6 +1003,7 @@ export function runReverbDemoRuntime(
   };
   rangeDurationWheel.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeWheelPointerId !== -1) return;
     const column = rangeWheelColumnAt(event.clientX);
     if (!column) return;
     if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
@@ -1599,6 +1601,7 @@ export function runReverbDemoRuntime(
   };
   rangeFineControl.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (rangeFinePointerId !== -1) return;
     if (rangeWheelInteractionActive()) return;
     rangeFinePointerId = event.pointerId;
     rangeFineDownX = event.clientX;
