@@ -18,7 +18,7 @@ function animateFrame(frame: HTMLDivElement, reduceMotion: boolean) {
   });
 }
 
-function installResponsivePhone(host: HTMLDivElement) {
+function installResponsivePhone(host: HTMLDivElement, onGeometryChange: () => void = () => {}) {
   const sync = () => {
     const width = host.clientWidth;
     const height = host.clientHeight;
@@ -48,6 +48,7 @@ function installResponsivePhone(host: HTMLDivElement) {
       host.style.removeProperty('--reverb-demo-scale');
       host.style.removeProperty('--reverb-demo-phone-left');
     }
+    onGeometryChange();
   };
   const resizeObserver = new ResizeObserver(sync);
   const fullscreenObserver = new MutationObserver(sync);
@@ -319,12 +320,31 @@ function mountReverbDemo(host: HTMLDivElement) {
     addDemoWindowEventListener,
   );
   const stopPixelRatioWatch = watchDevicePixelRatio(ratio => runtime.setDevicePixelRatio(ratio));
+  const initialRect = host.getBoundingClientRect();
+  let intersectsViewport = initialRect.bottom >= -160
+    && initialRect.top <= innerHeight + 160
+    && initialRect.right >= -160
+    && initialRect.left <= innerWidth + 160;
+  const syncRuntimeVisibility = () =>
+    runtime.setViewportVisible(intersectsViewport && !document.hidden);
+  const visibilityObserver = typeof IntersectionObserver === 'undefined'
+    ? null
+    : new IntersectionObserver(entries => {
+        intersectsViewport = entries.some(entry => entry.isIntersecting);
+        syncRuntimeVisibility();
+      }, { rootMargin: '160px' });
+  visibilityObserver?.observe(host);
+  const onDocumentVisibility = () => syncRuntimeVisibility();
+  document.addEventListener('visibilitychange', onDocumentVisibility);
+  syncRuntimeVisibility();
   const refreshTheme = () => { syncCursorMode(); runtime?.refreshTheme?.(); };
   window.addEventListener('samey-themechange', refreshTheme);
 
-  return () => {
+  const dispose = () => {
     disposed = true;
     stopPixelRatioWatch();
+    visibilityObserver?.disconnect();
+    document.removeEventListener('visibilitychange', onDocumentVisibility);
     runtime.dispose();
     window.removeEventListener('samey-themechange', refreshTheme);
     for (const id of rafs) window.cancelAnimationFrame(id);
@@ -333,6 +353,7 @@ function mountReverbDemo(host: HTMLDivElement) {
     timers.clear();
     shadow.replaceChildren();
   };
+  return { dispose, invalidateLayout: () => runtime.invalidateLayout() };
 }
 
 export function ReverbDemo() {
@@ -341,10 +362,10 @@ export function ReverbDemo() {
   let fullscreenButton!: HTMLButtonElement;
   let dispose = () => {};
   onSettled(() => {
-    const disposeDemo = mountReverbDemo(host);
-    const disposeScale = installResponsivePhone(host);
+    const demo = mountReverbDemo(host);
+    const disposeScale = installResponsivePhone(host, demo.invalidateLayout);
     const disposeFullscreen = installFullscreen(frame, host, fullscreenButton);
-    dispose = () => { disposeFullscreen(); disposeScale(); disposeDemo(); };
+    dispose = () => { disposeFullscreen(); disposeScale(); demo.dispose(); };
   });
   onCleanup(() => dispose());
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">

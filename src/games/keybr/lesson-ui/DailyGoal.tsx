@@ -48,6 +48,6 @@ const DailyGoalGauge = (props: {
     return (<div class={styles.gauge}>
       {baseWidth() > 0 && (<div class={styles.bar} style={{ "inline-size": `${baseWidth()}%`, "background-color": color(baseLap()) }}/>)}
       <div class={styles.bar} style={{ "inline-size": `${activeWidth()}%`, "background-color": color(activeLap()) }}/>
-      <div class={styles.frame}/>
+      <div class={styles.frame} data-samey-construction-line=""/>
     </div>);
 };

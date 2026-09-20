@@ -69,6 +69,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
   let pageVisible = !document.hidden;
   let animationFrame = 0;
   let timeout = 0;
+  let wakeActive: (() => void) | null = null;
   let generation = 0;
   const colorProbe = document.createElement('span');
   colorProbe.hidden = true;
@@ -113,6 +114,15 @@ function createLogoController(canvas: HTMLCanvasElement) {
 
   const isActive = () => visible && pageVisible && !stopped;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const signalActiveChange = () => {
+    const wake = wakeActive;
+    wakeActive = null;
+    wake?.();
+  };
+  const waitUntilActive = () => {
+    if (stopped || isActive() && !reducedMotion.matches) return Promise.resolve();
+    return new Promise<void>(resolve => { wakeActive = resolve; });
+  };
 
   function paintBoardLayer() {
     boardContext.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -339,7 +349,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
     let owner: 1 | 2 = 1;
     while (!stopped) {
       if (!isActive() || reducedMotion.matches) {
-        await sleep(220);
+        await waitUntilActive();
         continue;
       }
       const index = choose(owner);
@@ -366,19 +376,21 @@ function createLogoController(canvas: HTMLCanvasElement) {
   const intersectionObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
     visible = entries.some(entry => entry.isIntersecting);
     if (visible) draw();
+    signalActiveChange();
   }, { rootMargin: '80px' });
   intersectionObserver?.observe(canvas);
   const onVisibility = () => {
     pageVisible = !document.hidden;
     if (pageVisible) draw();
+    signalActiveChange();
   };
-  const onReducedMotion = () => draw();
+  const onReducedMotion = () => { draw(); signalActiveChange(); };
   document.addEventListener('visibilitychange', onVisibility);
   reducedMotion.addEventListener('change', onReducedMotion);
   const onTheme = () => { palette = readPalette(); paintBoardLayer(); draw(); };
   window.addEventListener('samey-themechange', onTheme);
   const themeObserver = new MutationObserver(onTheme);
-  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style','class']});
+  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme']});
   const scheme = matchMedia('(prefers-color-scheme: dark)');
   scheme.addEventListener('change', onTheme);
   resize();
@@ -390,6 +402,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
     generation++;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (timeout) clearTimeout(timeout);
+    signalActiveChange();
     resizeObserver.disconnect();
     stopPixelRatioWatch();
     intersectionObserver?.disconnect();

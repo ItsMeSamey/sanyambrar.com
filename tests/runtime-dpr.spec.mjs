@@ -38,6 +38,33 @@ async function backingState(locator) {
   }));
 }
 
+test('DPR watcher avoids hot polling while keeping a slow compatibility fallback', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers DPR scheduler behavior');
+  await page.addInitScript(() => {
+    globalThis.__sameyQaIntervalDelays = [];
+    globalThis.__sameyQaTimeoutDelays = [];
+    const nativeInterval = window.setInterval.bind(window);
+    const nativeTimeout = window.setTimeout.bind(window);
+    window.setInterval = (callback, delay = 0, ...args) => {
+      globalThis.__sameyQaIntervalDelays.push(delay);
+      return nativeInterval(callback, delay, ...args);
+    };
+    window.setTimeout = (callback, delay = 0, ...args) => {
+      globalThis.__sameyQaTimeoutDelays.push(delay);
+      return nativeTimeout(callback, delay, ...args);
+    };
+  });
+  await visit(page, '/projects/reverb/', info);
+  const scheduling = await page.evaluate(() => ({
+    intervals: globalThis.__sameyQaIntervalDelays ?? [],
+    timeouts: globalThis.__sameyQaTimeoutDelays ?? [],
+  }));
+  expect(scheduling.intervals.filter(delay => delay === 250),
+    'DPR tracking must not wake the page every 250ms').toEqual([]);
+  expect(scheduling.timeouts.some(delay => delay === 2000),
+    'DPR tracking keeps a slow fallback for silent deviceScaleFactor changes').toBe(true);
+});
+
 test('Keybr statistics canvases track live DPR changes', async ({ page, context }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers live DPR transitions');
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
