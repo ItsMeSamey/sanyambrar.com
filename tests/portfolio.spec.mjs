@@ -3754,6 +3754,62 @@ test('Markdown divider drag ends on window blur', async ({ page }, info) => {
   await page.mouse.up();
 });
 
+test('Markdown divider drag ends on SPA departure', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await visit(page, '/tools/?tool=markdown', info);
+  const divider = page.locator('.markdown-divider');
+  const tool = page.locator('.markdown-tool');
+  await expect(divider).toBeVisible();
+  await divider.evaluate(element => {
+    globalThis.__sameyQaMarkdownLeaveDivider = element;
+    globalThis.__sameyQaMarkdownLeaveTool = element.closest('.markdown-tool');
+    element.addEventListener('pointerdown', event => {
+      globalThis.__sameyQaMarkdownLeavePointerId = event.pointerId;
+    }, { once: true });
+  });
+  const box = await divider.boundingBox();
+  if (!box) throw new Error('Markdown divider has no geometry');
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 70, y, { steps: 4 });
+  await expect.poll(() => tool.evaluate(element => element.style.getPropertyValue('--md-split')),
+    { message: 'Markdown divider must move before SPA departure' }).not.toBe('50%');
+
+  const loaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
+  await page.evaluate(() => { void globalThis.SameyNavigate?.('/work/'); });
+  await loaded;
+  await expect(page).toHaveURL(/\/work\/$/);
+
+  const result = await page.evaluate(async () => {
+    const staleDivider = globalThis.__sameyQaMarkdownLeaveDivider;
+    const staleTool = globalThis.__sameyQaMarkdownLeaveTool;
+    const pointerId = globalThis.__sameyQaMarkdownLeavePointerId;
+    if (!(staleDivider instanceof HTMLElement) || !(staleTool instanceof HTMLElement) || typeof pointerId !== 'number') {
+      throw new Error('Markdown SPA-leave probe state missing');
+    }
+    const before = staleTool.style.getPropertyValue('--md-split');
+    staleDivider.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true,
+      pointerId,
+      clientX: 999,
+      clientY: 100,
+    }));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    return {
+      before,
+      after: staleTool.style.getPropertyValue('--md-split'),
+      connected: staleDivider.isConnected,
+      captured: staleDivider.hasPointerCapture(pointerId),
+    };
+  });
+  expect(result.connected).toBe(false);
+  expect(result.captured).toBe(false);
+  expect(result.after, 'SPA departure must terminate the detached Markdown divider drag').toBe(result.before);
+  await page.mouse.up();
+});
+
 test('Tools mobile selector dismisses and navigates by keyboard', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, '/tools/?tool=number', info);
