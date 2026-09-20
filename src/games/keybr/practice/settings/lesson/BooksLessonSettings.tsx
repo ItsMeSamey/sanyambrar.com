@@ -35,12 +35,11 @@ export function BooksLessonSettings(props: {
             id: "t_Lesson_options",
             defaultMessage: "Lesson options",
         })}>
-        <BookSelector book={book()} onChange={(book) => {
+        <BookPreview book={book()} content={content()} action={<BookSelector book={book()} onChange={(book) => {
             updateSettings(settings
                 .set(lessonProps.books.book, book)
                 .set(lessonProps.books.paragraphIndex, BooksLesson.savedParagraphIndex(book)));
-        }}/>
-        <BookPreview book={book()} content={content()}/>
+        }}/>}/>
         <ParagraphSelector paragraphs={paragraphs()} paragraphIndex={paragraphIndex()} onChange={(paragraphIndex) => {
             updateSettings(settings.set(lessonProps.books.paragraphIndex, paragraphIndex));
         }}/>
