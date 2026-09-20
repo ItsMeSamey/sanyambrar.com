@@ -1,0 +1,1 @@
+import{C as e}from"./site-app-CFh5C7px.js";import{t}from"./_.contribution-Dpi4ap8r.js";t({id:`markdown`,extensions:[`.md`,`.markdown`,`.mdown`,`.mkdn`,`.mkd`,`.mdwn`,`.mdtxt`,`.mdtext`],aliases:[`Markdown`,`markdown`],loader:()=>e(()=>import(`./markdown-Cimd5fb3.js`),[])});
