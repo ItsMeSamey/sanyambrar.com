@@ -10,7 +10,7 @@ if (!Number.isSafeInteger(requestedWorkers) || requestedWorkers < 1) throw new E
 const ports = { production: requestedPortBase, site: requestedPortBase + 1, wordle: requestedPortBase + 2, keybr: requestedPortBase + 3 };
 const parent = resolve(import.meta.dirname, '..');
 const projectRoot = basename(parent) === '.worktree' ? resolve(parent, '..') : import.meta.dirname;
-const browserTmp = resolve(projectRoot, '.tmp', `pw-${requestedPortBase}`);
+const browserTmp = resolve(projectRoot, '.tmp', `p${requestedPortBase}`);
 const outputDir = resolve(projectRoot, '.tmp', `playwright-artifacts-${requestedPortBase}`);
 const jsonReport = resolve(projectRoot, '.tmp', `playwright-results-${requestedPortBase}.json`);
 mkdirSync(browserTmp, { recursive: true });

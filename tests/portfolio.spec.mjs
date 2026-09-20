@@ -2676,9 +2676,26 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(appearance).toBeFocused();
 });
 
-test('SPA route transitions never fade the whole route to blank', async ({ page }, info) => {
+test('SPA route transitions animate construction lines only', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
+
+  await page.evaluate(() => {
+    const nativeAnimate = Element.prototype.animate;
+    const targets = [];
+    globalThis.__sameyRouteAnimationTargets = targets;
+    Element.prototype.animate = function (...args) {
+      targets.push({
+        constructionLine: this.classList.contains('samey-construction-line'),
+        routeContent: this.closest('.site-route') != null,
+      });
+      return nativeAnimate.apply(this, args);
+    };
+    globalThis.__sameyRestoreAnimate = () => {
+      Element.prototype.animate = nativeAnimate;
+      delete globalThis.__sameyRestoreAnimate;
+    };
+  });
 
   const samples = page.evaluate(() => new Promise(resolve => {
     const result = [];
@@ -2706,10 +2723,18 @@ test('SPA route transitions never fade the whole route to blank', async ({ page 
   await page.locator('a[href="/work/"]').first().click();
   await expect(page).toHaveURL(/\/work\/?$/);
   const frames = await samples;
+  const animationTargets = await page.evaluate(() => {
+    const targets = globalThis.__sameyRouteAnimationTargets ?? [];
+    globalThis.__sameyRestoreAnimate?.();
+    delete globalThis.__sameyRouteAnimationTargets;
+    return targets;
+  });
   expect(frames.length).toBeGreaterThan(10);
   expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
   expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
   expect(frames.every(frame => frame.contentPainted)).toBe(true);
+  expect(animationTargets.some(target => target.constructionLine)).toBe(true);
+  expect(animationTargets.some(target => target.routeContent)).toBe(false);
 });
 
 test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {

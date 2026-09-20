@@ -123,8 +123,8 @@ body [role=dialog]:not(.site-search-panel){
 @keyframes samey-search-blur-out{from{opacity:1}to{opacity:0}}
 @keyframes samey-search-shrink{from{opacity:1;scale:1}to{opacity:0;scale:.985}}
 
-/* Route transitions are driven from the SPA with the Web Animations API.
-   The route surface stays painted while its contents deconstruct/reconstruct. */
+/* Route transitions animate only reconstructed border/rule overlays.
+   Real page content stays fixed and fully painted throughout the swap. */
 .samey-construction-layer{position:fixed;inset:0;z-index:var(--samey-z-route);pointer-events:none;overflow:hidden;contain:strict}
 .samey-construction-line{position:absolute;display:block;margin:0;padding:0;border:0;pointer-events:none;will-change:transform}
 
