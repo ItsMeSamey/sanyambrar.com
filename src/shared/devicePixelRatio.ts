@@ -31,14 +31,12 @@ function start() {
   listening = true;
   currentRatio = readRatio();
   rebindMedia();
-  window.addEventListener('resize', onPossibleChange, { passive: true });
   timer = window.setInterval(checkRatio, 250);
 }
 
 function stop() {
   if (!listening) return;
   listening = false;
-  window.removeEventListener('resize', onPossibleChange);
   media?.removeEventListener('change', onPossibleChange);
   media = null;
   if (timer) window.clearInterval(timer);
