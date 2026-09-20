@@ -45,17 +45,9 @@ export function BookSelector(props: {
   };
 
   return <div class={styles.root}>
-    <div class={styles.selection}>
-      <img src={props.book.coverImage} alt="" aria-hidden="true" />
-      <div class={styles.selectionCopy}>
-        <span class={styles.label}>Book</span>
-        <strong>{props.book.title}</strong>
-        <span>{props.book.author}</span>
-      </div>
-      <button type="button" class={styles.chooseButton} onClick={() => setOpen(true)}>
-        Choose book
-      </button>
-    </div>
+    <button type="button" class={styles.chooseButton} onClick={() => setOpen(true)}>
+      Choose book
+    </button>
 
     <dialog
       ref={dialog}
