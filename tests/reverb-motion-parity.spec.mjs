@@ -809,3 +809,83 @@ test('Reverb Library recording collapse uses native 260ms size and 140ms fade ex
   expect(terminal.ariaHidden).toBe('true');
   expect(terminal.inert).toBe(true);
 });
+
+test('Reverb exports use the native spring save-status card lifecycle', async ({ page }, info) => {
+  const host = await visitReverb(page, info);
+  const samples = await host.evaluate(async element => {
+    const root = element.shadowRoot;
+    const exportFull = root?.querySelector('#exportFull');
+    const status = root?.querySelector('#captureSaveStatus');
+    const title = root?.querySelector('#captureSaveTitle');
+    const subtitle = root?.querySelector('#captureSaveSubtitle');
+    const cancel = root?.querySelector('#captureSaveCancel');
+    const openRange = root?.querySelector('#openRange');
+    if (!(exportFull instanceof HTMLButtonElement) || !(status instanceof HTMLElement)
+      || !(title instanceof HTMLElement) || !(subtitle instanceof HTMLElement)
+      || !(cancel instanceof HTMLButtonElement) || !(openRange instanceof HTMLButtonElement))
+      throw new Error('Reverb export status surfaces are unavailable');
+    exportFull.click();
+    const startedAt = performance.now();
+    const values = [];
+    while (performance.now() - startedAt < 3800) {
+      await new Promise(requestAnimationFrame);
+      const style = getComputedStyle(status);
+      const matrix = style.transform === 'none' ? new DOMMatrix() : new DOMMatrix(style.transform);
+      values.push({
+        elapsed: performance.now() - startedAt,
+        y: matrix.m42,
+        opacity: Number(style.opacity),
+        hidden: status.hidden,
+        state: status.className,
+        title: title.textContent ?? '',
+        subtitle: subtitle.textContent ?? '',
+        cancelHidden: cancel.hidden,
+        busy: openRange.disabled,
+      });
+      if (status.hidden && performance.now() - startedAt > 2800) break;
+    }
+    return values;
+  });
+
+  expect(samples.length).toBeGreaterThan(20);
+  const first = samples[0];
+  expect(first.hidden).toBe(false);
+  expect(first.state).toContain('saving');
+  expect(first.title).toBe('Saving');
+  expect(first.subtitle).toBe('Reverb');
+  expect(first.y).toBeGreaterThan(0);
+  expect(first.opacity).toBeLessThan(1);
+  expect(first.busy).toBe(true);
+
+  const entryMid = samples.find(sample =>
+    sample.elapsed >= 60 && sample.elapsed <= 260
+      && sample.y > 0 && sample.y < first.y - 0.1
+      && sample.opacity > first.opacity + 0.01 && sample.opacity < 1);
+  expect(entryMid).toBeTruthy();
+
+  const savingSettled = samples.find(sample =>
+    sample.elapsed >= 350 && sample.elapsed < 1100 && sample.state.includes('saving')
+      && Math.abs(sample.y) < 0.2 && sample.opacity > 0.995);
+  expect(savingSettled).toBeTruthy();
+  expect(savingSettled.cancelHidden).toBe(false);
+  expect(savingSettled.busy).toBe(true);
+
+  const saved = samples.find(sample => sample.state.includes('saved'));
+  expect(saved).toBeTruthy();
+  expect(saved.title).toMatch(/\.wav$/);
+  expect(saved.subtitle).toContain('•');
+  expect(saved.cancelHidden).toBe(true);
+  expect(saved.busy).toBe(false);
+
+  const held = samples.find(sample => sample.elapsed >= 2300 && sample.elapsed <= 2650);
+  expect(held).toBeTruthy();
+  expect(held.state).toContain('saved');
+  expect(held.hidden).toBe(false);
+
+  const exitMid = samples.find(sample =>
+    sample.elapsed > 2700 && !sample.hidden && sample.y > 1 && sample.opacity < 0.99);
+  expect(exitMid).toBeTruthy();
+  const terminal = samples.at(-1);
+  expect(terminal.hidden).toBe(true);
+  expect(terminal.opacity).toBeCloseTo(0, 2);
+});

@@ -59,6 +59,7 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
   const start = host.getByRole('textbox', { name: 'Start time' });
   const exportButton = host.getByRole('button', { name: 'Export' });
   const toast = host.locator('#toast');
+  const saveStatus = host.locator('#captureSaveStatus');
   const rangeScreen = host.locator('#rangeScreen');
 
   await start.fill('1x:02.0');
@@ -77,6 +78,7 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
   await expect(start).toHaveAttribute('aria-invalid', 'true');
   await expect(toast).not.toHaveClass(/show/);
   await expect(toast).not.toHaveText('Exporting range');
+  await expect(saveStatus).toHaveAttribute('aria-hidden', 'true');
 
   await page.keyboard.press('Escape');
   await expect(start).toHaveText('0:00.0');
@@ -90,8 +92,12 @@ test('Reverb Range Export commits valid drafts and blocks invalid drafts', async
   await expect(host.locator('#openRange')).toBeDisabled();
   await expect(host.locator('#rangeStart')).toHaveText('5:00.0');
   await expect(host.locator('#rangeStart')).not.toHaveAttribute('aria-invalid', 'true');
-  await expect(toast).toHaveText('Exporting range');
-  await expect(toast).toHaveClass(/show/);
+  await expect(toast).not.toHaveText('Exporting range');
+  await expect(toast).not.toHaveClass(/show/);
+  await expect(saveStatus).toHaveAttribute('aria-hidden', 'false');
+  await expect(saveStatus).toHaveClass(/saving/);
+  await expect(host.locator('#captureSaveTitle')).toHaveText('Saving');
+  await expect(host.locator('#captureSaveSubtitle')).toHaveText('Reverb');
 
   const startBoundary = host.locator('#rangeStartBoundary');
   await expect(startBoundary).toHaveAttribute('style', /left:/);
