@@ -857,3 +857,88 @@ test('Reverb Range fine seek keeps the first active touch pointer', async ({ pag
   await expect(fine).not.toHaveClass(/is-dragging/);
   await expect(play).toHaveAttribute('aria-label', 'Pause');
 });
+
+test('Reverb Range waveform scrub releases ownership after pointer capture loss', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const play = host.locator('#rangePlay');
+  const wavebox = host.locator('.range-timeline .wavebox');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const box = await wavebox.boundingBox();
+  if (!box) throw new Error('Range waveform has no geometry');
+  const x = box.x + box.width * 0.35;
+  const y = box.y + box.height / 2;
+  await wavebox.evaluate(element => {
+    element.addEventListener('pointerdown', event => {
+      element.dataset.testPointerId = String(event.pointerId);
+    }, { once: true });
+  });
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  const pointerId = Number(await wavebox.getAttribute('data-test-pointer-id'));
+  expect(pointerId).toBeGreaterThanOrEqual(0);
+  await wavebox.evaluate((element, id) => {
+    element.dispatchEvent(new PointerEvent('lostpointercapture', {
+      bubbles: true,
+      pointerId: id,
+      pointerType: 'mouse',
+    }));
+  }, pointerId);
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+
+  await page.mouse.up();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+});
+
+test('Reverb Range boundary capture loss pauses preview without moving the marker', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const play = host.locator('#rangePlay');
+  const wavebox = host.locator('.range-timeline .wavebox');
+  const boundary = host.locator('#rangeStartBoundary');
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const before = await start.textContent();
+  const box = await boundary.boundingBox();
+  if (!box) throw new Error('Range start boundary has no geometry');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await wavebox.evaluate(element => {
+    element.addEventListener('pointerdown', event => {
+      element.dataset.testPointerId = String(event.pointerId);
+    }, { once: true });
+  });
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const pointerId = Number(await wavebox.getAttribute('data-test-pointer-id'));
+  expect(pointerId).toBeGreaterThanOrEqual(0);
+  await wavebox.evaluate((element, id) => {
+    element.dispatchEvent(new PointerEvent('lostpointercapture', {
+      bubbles: true,
+      pointerId: id,
+      pointerType: 'mouse',
+    }));
+  }, pointerId);
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(start).toHaveText(before ?? '');
+  await page.mouse.up();
+  await expect(start).toHaveText(before ?? '');
+});

@@ -873,6 +873,9 @@ export function runReverbDemoRuntime(
   };
   rangeWavebox.addEventListener("pointerup", endRangeWavePointer);
   rangeWavebox.addEventListener("pointercancel", endRangeWavePointer);
+  rangeWavebox.addEventListener("lostpointercapture", (event) => {
+    if (event.pointerId === rangeWavePointerId) endRangeWavePointer(event);
+  });
 
   const adjustRangeWheel = (
     deltaSeconds: number,
