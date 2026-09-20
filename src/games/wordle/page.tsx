@@ -70,7 +70,7 @@ class Keyboard {
               disabled={isDisabled}
               aria-label={isDisabled ? `${key} disabled for this game` : key}
               onPointerDown={e => {
-                if (isDisabled) return
+                if (isDisabled || activePointerId != null) return
                 e.preventDefault()
                 activePointerId = e.pointerId
                 e.currentTarget.setPointerCapture?.(e.pointerId)

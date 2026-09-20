@@ -1899,9 +1899,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (current?.thumb.hasPointerCapture(current.pointerId)) current.thumb.releasePointerCapture(current.pointerId);
   };
   const beginVirtualDrag = (thumb: HTMLElement, event: PointerEvent) => {
-    cancelVirtualDrag();
+    if (virtualDrag) return false;
     thumb.setPointerCapture(event.pointerId);
     virtualDrag = { thumb, pointerId: event.pointerId };
+    return true;
   };
   const finishVirtualDrag = (thumb: HTMLElement, pointerId: number) => {
     if (virtualDrag?.thumb === thumb && virtualDrag.pointerId === pointerId) virtualDrag = null;
@@ -1951,7 +1952,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-vscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-vscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
     let startY = 0, startTop = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); beginVirtualDrag(thumb, event); startY = event.clientY; startTop = scrollMetrics(target).top; });
+    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); if (!beginVirtualDrag(thumb, event)) return; startY = event.clientY; startTop = scrollMetrics(target).top; });
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
@@ -1971,7 +1972,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-hscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-hscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
     let startX = 0, startLeft = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); beginVirtualDrag(thumb, event); startX = event.clientX; startLeft = target.scrollLeft; });
+    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); if (!beginVirtualDrag(thumb, event)) return; startX = event.clientX; startLeft = target.scrollLeft; });
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
@@ -2579,7 +2580,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.button !== 0) return;
       const parts = sliderParts(event.target);
       if (!parts || parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
-      if (active) clearRoot(active.root);
+      if (active) return;
       clearTimeout(snapTimer);
       active = { ...parts, pointerId: event.pointerId, clientX: event.clientX };
       parts.root.removeAttribute("data-samey-slider-snapping");
