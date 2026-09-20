@@ -22,11 +22,33 @@ async function visitReverb(page, info) {
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
 }
 
+
+async function waitRangeReady(host) {
+  await expect.poll(() => host.evaluate(element => {
+    const screen = element.shadowRoot?.querySelector('#rangeScreen');
+    return screen instanceof HTMLElement ? screen.dataset.rangeInteractionReady : 'missing';
+  })).toBe('true');
+}
+
+async function openRangeReady(host) {
+  await host.locator('#openRange').click();
+  await waitRangeReady(host);
+}
+
 async function openPausedRange(host) {
   const blob = host.locator('#blobControl');
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
+}
+
+async function waitBufferSettled(host) {
+  await expect.poll(() => host.evaluate(element => {
+    const face = element.shadowRoot?.querySelector('#blobFlipFace');
+    return face instanceof HTMLElement
+      ? Number(face.style.getPropertyValue('--buffer-flip-progress') || 0)
+      : -1;
+  })).toBe(0);
 }
 
 test('Reverb Range Export commits valid drafts and blocks invalid drafts', async ({ page }, info) => {
@@ -90,7 +112,7 @@ test('Reverb Range Close discards text drafts and resets preview state', async (
   await close.click();
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
 
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   await expect(start).toHaveText('0:00.0');
   await expect(start).not.toHaveAttribute('aria-invalid', 'true');
 
@@ -98,14 +120,14 @@ test('Reverb Range Close discards text drafts and resets preview state', async (
   await page.keyboard.press('Enter');
   await expect(start).toHaveAttribute('aria-invalid', 'true');
   await close.click();
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   await expect(start).toHaveText('0:00.0');
   await expect(start).not.toHaveAttribute('aria-invalid', 'true');
 
   await play.click();
   await expect(play).toHaveAttribute('aria-label', 'Pause');
   await close.click();
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   await expect(play).toHaveAttribute('aria-label', 'Play');
 });
 
@@ -139,18 +161,21 @@ test('Reverb remembers successful Range selections per buffer', async ({ page },
   await expect(openRange).toBeEnabled();
   await expect(host.locator('#blobControl')).toBeEnabled();
   await openRange.click();
+  await waitRangeReady(host);
   await expect(start).toHaveText('5:00.0');
   await expect(end).toHaveText('20:00.0');
 
   await close.click();
   await host.locator('.buffer-segment[data-buffer="loop"]').click();
-  await host.locator('#openRange').click();
+  await waitBufferSettled(host);
+  await openRangeReady(host);
   await expect(start).not.toHaveText('5:00.0');
   await expect(end).not.toHaveText('20:00.0');
 
   await close.click();
   await host.locator('.buffer-segment[data-buffer="one"]').click();
-  await host.locator('#openRange').click();
+  await waitBufferSettled(host);
+  await openRangeReady(host);
   await expect(start).toHaveText('5:00.0');
   await expect(end).toHaveText('20:00.0');
 });
