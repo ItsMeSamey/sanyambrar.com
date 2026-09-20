@@ -255,6 +255,71 @@ export function runReverbDemoRuntime(
     const omega = Math.sqrt(stiffness);
     return (1 + omega * seconds) * Math.exp(-omega * seconds);
   }
+  type CssRgba = { r: number; g: number; b: number; a: number };
+  type OklabColor = { l: number; a: number; b: number; alpha: number };
+  function parseCssRgba(value: string): CssRgba {
+    const srgb = value.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)$/);
+    if (srgb) {
+      return {
+        r: Number(srgb[1]),
+        g: Number(srgb[2]),
+        b: Number(srgb[3]),
+        a: srgb[4] == null ? 1 : Number(srgb[4]),
+      };
+    }
+    const channels = value.match(/[\d.]+/g)?.map(Number) ?? [];
+    if (channels.length < 3) return { r: 0, g: 0, b: 0, a: 0 };
+    return {
+      r: channels[0] / 255,
+      g: channels[1] / 255,
+      b: channels[2] / 255,
+      a: channels[3] == null ? 1 : channels[3],
+    };
+  }
+  const srgbToLinear = (value: number) =>
+    value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+  const linearToSrgb = (value: number) =>
+    value <= 0.0031308 ? 12.92 * value : 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
+  function rgbaToOklab(color: CssRgba): OklabColor {
+    const r = srgbToLinear(color.r);
+    const g = srgbToLinear(color.g);
+    const b = srgbToLinear(color.b);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return {
+      l: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      a: 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+      b: 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+      alpha: color.a,
+    };
+  }
+  function oklabToCss(color: OklabColor): string {
+    const l = Math.max(0, Math.min(1, color.l));
+    const a = Math.max(-0.5, Math.min(0.5, color.a));
+    const b = Math.max(-0.5, Math.min(0.5, color.b));
+    const lp = l + 0.3963377774 * a + 0.2158037573 * b;
+    const mp = l - 0.1055613458 * a - 0.0638541728 * b;
+    const sp = l - 0.0894841775 * a - 1.291485548 * b;
+    const ll = lp * lp * lp;
+    const mm = mp * mp * mp;
+    const ss = sp * sp * sp;
+    const r = linearToSrgb(4.0767416621 * ll - 3.3077115913 * mm + 0.2309699292 * ss);
+    const g = linearToSrgb(-1.2684380046 * ll + 2.6097574011 * mm - 0.3413193965 * ss);
+    const blue = linearToSrgb(-0.0041960863 * ll - 0.7034186147 * mm + 1.707614701 * ss);
+    return `rgba(${Math.round(Math.max(0, Math.min(1, r)) * 255)}, ${Math.round(Math.max(0, Math.min(1, g)) * 255)}, ${Math.round(Math.max(0, Math.min(1, blue)) * 255)}, ${Math.max(0, Math.min(1, color.alpha))})`;
+  }
+  function interpolateOklab(from: string, to: string, progress: number): string {
+    const start = rgbaToOklab(parseCssRgba(from));
+    const end = rgbaToOklab(parseCssRgba(to));
+    const p = Math.max(0, Math.min(1, progress));
+    return oklabToCss({
+      l: start.l + (end.l - start.l) * p,
+      a: start.a + (end.a - start.a) * p,
+      b: start.b + (end.b - start.b) * p,
+      alpha: start.alpha + (end.alpha - start.alpha) * p,
+    });
+  }
   function animateCaptureSaveVisibility(entering: boolean): void {
     const epoch = ++captureSaveMotionEpoch;
     const startedAt = performance.now();
@@ -3077,6 +3142,9 @@ export function runReverbDemoRuntime(
   });
 
   const wakeSwitch = byId<HTMLElement>("wakeSwitch");
+  const wakeSwitchThumbCandidate = wakeSwitch.querySelector<HTMLElement>(".switch-thumb");
+  if (!wakeSwitchThumbCandidate) throw new Error("Reverb demo is missing the settings switch thumb");
+  const wakeSwitchThumb: HTMLElement = wakeSwitchThumbCandidate;
   const themeSegments = [
     ...document.querySelectorAll<HTMLButtonElement>("#themeSegments .segment"),
   ];
@@ -3089,6 +3157,60 @@ export function runReverbDemoRuntime(
   themeGroup.setAttribute("aria-label", "Theme");
   retentionGroup.setAttribute("role", "radiogroup");
   retentionGroup.setAttribute("aria-label", "Retention");
+  const settingsSegmentMotionEpoch = new WeakMap<HTMLElement, number>();
+  function animateSettingsSegment(
+    segment: HTMLElement,
+    startBackground: string,
+    targetBackground: string,
+    startContent: string,
+    targetContent: string,
+  ): void {
+    const epoch = (settingsSegmentMotionEpoch.get(segment) ?? 0) + 1;
+    settingsSegmentMotionEpoch.set(segment, epoch);
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (settingsSegmentMotionEpoch.get(segment) !== epoch) return;
+      const progress = 1 - criticalSpringRemaining(now - startedAt, 1500);
+      segment.style.backgroundColor = interpolateOklab(
+        startBackground,
+        targetBackground,
+        progress,
+      );
+      segment.style.color = interpolateOklab(startContent, targetContent, progress);
+      if (criticalSpringRemaining(now - startedAt, 1500) > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      segment.style.removeProperty("background-color");
+      segment.style.removeProperty("color");
+    };
+    requestAnimationFrame(frame);
+  }
+  function setSettingsSegmentSelected(segment: HTMLElement, checked: boolean): void {
+    const changed = segment.classList.contains("selected") !== checked;
+    if (!changed) {
+      segment.classList.toggle("selected", checked);
+      return;
+    }
+    const before = getComputedStyle(segment);
+    const startBackground = before.backgroundColor;
+    const startContent = before.color;
+    segment.style.removeProperty("background-color");
+    segment.style.removeProperty("color");
+    segment.classList.toggle("selected", checked);
+    const after = getComputedStyle(segment);
+    const targetBackground = after.backgroundColor;
+    const targetContent = after.color;
+    segment.style.backgroundColor = startBackground;
+    segment.style.color = startContent;
+    animateSettingsSegment(
+      segment,
+      startBackground,
+      targetBackground,
+      startContent,
+      targetContent,
+    );
+  }
   const syncRadioSegments = (
     segments: HTMLButtonElement[],
     selected: (segment: HTMLButtonElement) => boolean,
@@ -3098,9 +3220,61 @@ export function runReverbDemoRuntime(
       segment.setAttribute("role", "radio");
       segment.setAttribute("aria-checked", String(checked));
       segment.tabIndex = checked ? 0 : -1;
-      segment.classList.toggle("selected", checked);
+      setSettingsSegmentSelected(segment, checked);
     });
   };
+  let wakeSwitchMotionEpoch = 0;
+  function setWakeSwitchState(on: boolean, animate = true): void {
+    const changed = wakeSwitch.classList.contains("on") !== on;
+    wakeSwitch.setAttribute("aria-checked", String(on));
+    if (!changed) {
+      wakeSwitch.classList.toggle("on", on);
+      return;
+    }
+    const startTrack = getComputedStyle(wakeSwitch).backgroundColor;
+    const startThumb = getComputedStyle(wakeSwitchThumb).backgroundColor;
+    const startTransform = getComputedStyle(wakeSwitchThumb).transform;
+    const startX = startTransform === "none" ? 0 : new DOMMatrix(startTransform).m41;
+    const epoch = ++wakeSwitchMotionEpoch;
+    wakeSwitch.style.removeProperty("background-color");
+    wakeSwitchThumb.style.removeProperty("background-color");
+    wakeSwitchThumb.style.removeProperty("transform");
+    wakeSwitch.classList.toggle("on", on);
+    const targetTrack = getComputedStyle(wakeSwitch).backgroundColor;
+    const targetThumb = getComputedStyle(wakeSwitchThumb).backgroundColor;
+    const targetTransform = getComputedStyle(wakeSwitchThumb).transform;
+    const targetX = targetTransform === "none" ? 0 : new DOMMatrix(targetTransform).m41;
+    if (!animate) return;
+    wakeSwitch.style.backgroundColor = startTrack;
+    wakeSwitchThumb.style.backgroundColor = startThumb;
+    wakeSwitchThumb.style.transform = `translateX(${startX}px)`;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (wakeSwitchMotionEpoch !== epoch) return;
+      const remaining = criticalSpringRemaining(now - startedAt, 1500);
+      const progress = 1 - remaining;
+      wakeSwitch.style.backgroundColor = interpolateOklab(
+        startTrack,
+        targetTrack,
+        progress,
+      );
+      wakeSwitchThumb.style.backgroundColor = interpolateOklab(
+        startThumb,
+        targetThumb,
+        progress,
+      );
+      wakeSwitchThumb.style.transform =
+        `translateX(${startX + (targetX - startX) * progress}px)`;
+      if (remaining > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      wakeSwitch.style.removeProperty("background-color");
+      wakeSwitchThumb.style.removeProperty("background-color");
+      wakeSwitchThumb.style.removeProperty("transform");
+    };
+    requestAnimationFrame(frame);
+  }
   const oneRetention = byId<HTMLInputElement>("oneRetention");
   const loopRetention = byId<HTMLInputElement>("loopRetention");
   const oneRetentionUnit = byId<HTMLElement>("oneRetentionUnit");
@@ -3372,8 +3546,7 @@ export function runReverbDemoRuntime(
   );
   wakeSwitch.addEventListener("click", () => {
     const on = !wakeSwitch.classList.contains("on");
-    wakeSwitch.classList.toggle("on", on);
-    wakeSwitch.setAttribute("aria-checked", String(on));
+    setWakeSwitchState(on);
     recomputeDirty();
   });
   function restoreSettings(): void {
@@ -3382,8 +3555,7 @@ export function runReverbDemoRuntime(
     dropdownValues().forEach((value, index) => {
       value.textContent = settingsInitial.dropdowns[index] ?? "";
     });
-    wakeSwitch.classList.toggle("on", settingsInitial.wake);
-    wakeSwitch.setAttribute("aria-checked", String(settingsInitial.wake));
+    setWakeSwitchState(settingsInitial.wake);
     resetRetentionDrafts(settingsInitial);
     retentionMode = settingsInitial.retentionMode;
     setRetentionMode(retentionMode, false);
@@ -3467,12 +3639,40 @@ export function runReverbDemoRuntime(
     closeSettingsPanel();
   });
 
+  const settingsDropdownMotionEpoch = new WeakMap<HTMLElement, number>();
+  function setSettingsDropdownExpanded(field: HTMLElement, expanded: boolean): void {
+    const changed = field.getAttribute("aria-expanded") !== String(expanded);
+    if (!changed) return;
+    const startBackground = getComputedStyle(field).backgroundColor;
+    const epoch = (settingsDropdownMotionEpoch.get(field) ?? 0) + 1;
+    settingsDropdownMotionEpoch.set(field, epoch);
+    field.style.removeProperty("background-color");
+    field.setAttribute("aria-expanded", String(expanded));
+    const targetBackground = getComputedStyle(field).backgroundColor;
+    field.style.backgroundColor = startBackground;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (settingsDropdownMotionEpoch.get(field) !== epoch) return;
+      const remaining = criticalSpringRemaining(now - startedAt, 1500);
+      field.style.backgroundColor = interpolateOklab(
+        startBackground,
+        targetBackground,
+        1 - remaining,
+      );
+      if (remaining > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      field.style.removeProperty("background-color");
+    };
+    requestAnimationFrame(frame);
+  }
   let activeDropdown: HTMLElement | null = null;
   dropdownMenu.setAttribute("role", "menu");
   dropdownMenu.setAttribute("aria-hidden", "true");
   function closeDropdown(restoreFocus = false): void {
     const trigger = activeDropdown;
-    trigger?.setAttribute("aria-expanded", "false");
+    if (trigger) setSettingsDropdownExpanded(trigger, false);
     dropdownMenu.classList.remove("show");
     dropdownMenu.setAttribute("aria-hidden", "true");
     dropdownMenu.removeAttribute("aria-label");
@@ -3518,7 +3718,7 @@ export function runReverbDemoRuntime(
         }
         closeDropdown();
         activeDropdown = field;
-        field.setAttribute("aria-expanded", "true");
+        setSettingsDropdownExpanded(field, true);
         const options = (field.dataset.options ?? "")
           .split("|")
           .filter(Boolean);
