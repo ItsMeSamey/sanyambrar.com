@@ -2676,7 +2676,7 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(appearance).toBeFocused();
 });
 
-test('SPA route transitions animate construction lines only', async ({ page }, info) => {
+test('SPA route transitions draw rules, preserve rounded corners, and never bob content', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
 
@@ -2685,9 +2685,13 @@ test('SPA route transitions animate construction lines only', async ({ page }, i
     const targets = [];
     globalThis.__sameyRouteAnimationTargets = targets;
     Element.prototype.animate = function (...args) {
+      const keyframes = JSON.stringify(args[0] ?? []);
       targets.push({
-        constructionLine: this.classList.contains('samey-construction-line'),
+        constructionStroke: this.classList.contains('samey-construction-stroke'),
         routeContent: this.closest('.site-route') != null,
+        transitionContent: this.hasAttribute('data-samey-construction-content'),
+        hasTransform: keyframes.includes('"transform"'),
+        hasOpacity: keyframes.includes('"opacity"'),
       });
       return nativeAnimate.apply(this, args);
     };
@@ -2703,16 +2707,35 @@ test('SPA route transitions animate construction lines only', async ({ page }, i
     const sample = () => {
       const route = document.querySelector('.site-route');
       const rect = route?.getBoundingClientRect();
-      const contentPainted = route ? [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
+      const contentVisible = route ? [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
         const style = getComputedStyle(element);
         const bounds = element.getBoundingClientRect();
         return style.display !== 'none' && style.visibility !== 'hidden'
-          && Number(style.opacity) >= 0.99 && bounds.width > 0 && bounds.height > 0;
+          && Number(style.opacity) >= 0.12 && bounds.width > 0 && bounds.height > 0;
       }) : false;
+      const strokes = [...document.querySelectorAll('.samey-construction-stroke')];
+      const roundedSources = [...document.querySelectorAll('[data-samey-construction-rounded]')];
+      const partialStroke = strokes.some(stroke => {
+        const offset = Math.abs(Number.parseFloat(getComputedStyle(stroke).strokeDashoffset));
+        return Number.isFinite(offset) && offset > 0.03 && offset < 0.97;
+      });
+      const roundedSourcesStable = roundedSources.every(element => {
+        const style = getComputedStyle(element);
+        return [
+          style.borderTopLeftRadius,
+          style.borderTopRightRadius,
+          style.borderBottomRightRadius,
+          style.borderBottomLeftRadius,
+        ].some(value => Number.parseFloat(value) > 0);
+      });
       result.push({
         opacity: route ? Number(getComputedStyle(route).opacity) : 0,
         area: rect ? rect.width * rect.height : 0,
-        contentPainted,
+        contentVisible,
+        partialStroke,
+        sourceBordersHidden: document.querySelector('[data-samey-construction-source]') != null,
+        roundedStroke: strokes.some(stroke => stroke.dataset.rounded === 'true'),
+        roundedSourcesStable,
       });
       if (performance.now() - started < 850) requestAnimationFrame(sample);
       else resolve(result);
@@ -2732,9 +2755,16 @@ test('SPA route transitions animate construction lines only', async ({ page }, i
   expect(frames.length).toBeGreaterThan(10);
   expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
   expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
-  expect(frames.every(frame => frame.contentPainted)).toBe(true);
-  expect(animationTargets.some(target => target.constructionLine)).toBe(true);
-  expect(animationTargets.some(target => target.routeContent)).toBe(false);
+  expect(frames.every(frame => frame.contentVisible)).toBe(true);
+  expect(frames.some(frame => frame.partialStroke)).toBe(true);
+  expect(frames.some(frame => frame.sourceBordersHidden)).toBe(true);
+  expect(frames.some(frame => frame.roundedStroke)).toBe(true);
+  expect(frames.every(frame => frame.roundedSourcesStable)).toBe(true);
+  expect(animationTargets.some(target => target.constructionStroke)).toBe(true);
+  expect(animationTargets.some(target => target.routeContent && target.transitionContent && target.hasOpacity)).toBe(true);
+  expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await expect(page.locator('[data-samey-construction-source]')).toHaveCount(0);
 });
 
 test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {
@@ -3416,6 +3446,47 @@ test('Wordle active games modal owns the overlay and switches saved games', asyn
   await page.getByRole('button', { name: 'Active Games', exact: true }).click();
   await page.locator('.active-game-card').filter({ hasText: '7 letters' }).click();
   await expect(page.locator('.wordle-row').first().locator('.wordle-cell')).toHaveCount(7);
+});
+
+test('Keybr Settings view constructs rules without translating content', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await visitKeybr(page, info);
+  await page.evaluate(() => {
+    const nativeAnimate = Element.prototype.animate;
+    const targets = [];
+    globalThis.__sameyKeybrAnimationTargets = targets;
+    Element.prototype.animate = function (...args) {
+      const keyframes = JSON.stringify(args[0] ?? []);
+      targets.push({
+        constructionStroke: this.classList.contains('samey-construction-stroke'),
+        appContent: this.closest('#app') != null,
+        transitionContent: this.hasAttribute('data-samey-construction-content'),
+        hasTransform: keyframes.includes('"transform"'),
+        hasOpacity: keyframes.includes('"opacity"'),
+      });
+      return nativeAnimate.apply(this, args);
+    };
+    globalThis.__sameyRestoreKeybrAnimate = () => {
+      Element.prototype.animate = nativeAnimate;
+      delete globalThis.__sameyRestoreKeybrAnimate;
+    };
+  });
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page).toHaveURL(/[?&]p=settings(?:&|$)/);
+  await expect(page.getByRole('combobox', { name: 'Font', exact: true })).toBeVisible();
+  await page.waitForTimeout(350);
+  const animationTargets = await page.evaluate(() => {
+    const targets = globalThis.__sameyKeybrAnimationTargets ?? [];
+    globalThis.__sameyRestoreKeybrAnimate?.();
+    delete globalThis.__sameyKeybrAnimationTargets;
+    return targets;
+  });
+  expect(animationTargets.some(target => target.constructionStroke)).toBe(true);
+  expect(animationTargets.some(target => target.appContent && target.transitionContent && target.hasOpacity)).toBe(true);
+  expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await expect(page.locator('[data-samey-construction-source]')).toHaveCount(0);
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
