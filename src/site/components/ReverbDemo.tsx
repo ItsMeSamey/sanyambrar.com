@@ -9,21 +9,12 @@ const REVERB_PHONE_WIDTH = 411;
 const REVERB_PHONE_HEIGHT = 912;
 const REVERB_FULLSCREEN_EXIT_GUTTER = 50;
 
-function animateFrame(frame: HTMLDivElement, before: DOMRect, reduceMotion: boolean) {
+function animateFrame(frame: HTMLDivElement, reduceMotion: boolean) {
   frame.getAnimations().forEach(animation => animation.cancel());
   if (reduceMotion) return;
-  const after = frame.getBoundingClientRect();
-  if (!before.width || !before.height || !after.width || !after.height) return;
-  const dx = before.left - after.left;
-  const dy = before.top - after.top;
-  const sx = before.width / after.width;
-  const sy = before.height / after.height;
-  frame.animate([
-    { transformOrigin: 'top left', transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})` },
-    { transformOrigin: 'top left', transform: 'translate(0,0) scale(1,1)' },
-  ], {
-    duration: 280,
-    easing: 'cubic-bezier(.2,0,0,1)',
+  frame.animate([{ opacity: 0.72 }, { opacity: 1 }], {
+    duration: 170,
+    easing: 'cubic-bezier(.16,1,.3,1)',
   });
 }
 
@@ -150,7 +141,6 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
 
   const setFullscreen = (next: boolean) => {
     if (next === active) return;
-    const before = frame.getBoundingClientRect();
     active = next;
     button.classList.toggle('is-active', next);
     button.setAttribute('aria-label', next ? 'Exit fullscreen demo' : 'Fullscreen demo');
@@ -180,7 +170,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       releaseBackground = () => {};
       requestAnimationFrame(() => button.isConnected && button.focus({ preventScroll: true }));
     }
-    animateFrame(frame, before, reducedMotion());
+    animateFrame(frame, reducedMotion());
   };
 
   const enterFullscreen = () => {

@@ -184,20 +184,17 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
     svg.append(stroke);
     return true;
   };
-  const hide = (element: HTMLElement, sides: BorderSide[], rounded = false) => {
+  const queueHide = (element: HTMLElement, sides: BorderSide[], rounded = false) => {
     let attrs = hiddenBorders.get(element);
     if (!attrs) {
       attrs = new Set<string>();
       hiddenBorders.set(element, attrs);
-      element.setAttribute('data-samey-construction-source', '');
     }
     if (rounded) {
-      element.setAttribute('data-samey-construction-rounded', '');
       attrs.add('data-samey-construction-rounded');
     }
     for (const side of sides) {
       const attr = BORDER_HIDE_ATTR[side];
-      element.setAttribute(attr, '');
       attrs.add(attr);
     }
   };
@@ -234,7 +231,7 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
         ].join(':');
         addStroke(key, rounded.paths[side], first.width, first.color, rounded.rounded);
       }
-      hide(element, visible, rounded.rounded);
+      queueHide(element, visible, rounded.rounded);
       continue;
     }
 
@@ -255,10 +252,18 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
     for (const side of visible) {
       const key = [side, paths[side], sides[side].width, sides[side].color].join(':');
       if (addStroke(key, paths[side], sides[side].width, sides[side].color))
-        hide(element, [side]);
+        queueHide(element, [side]);
     }
   }
 
+  // Do not interleave live-DOM writes with geometry/style reads above. Doing so
+  // forces the browser to repeatedly invalidate/recalculate styles while a route
+  // transition is being prepared, which shows up as a hitch before the first
+  // construction stroke.
+  for (const [element, attrs] of hiddenBorders) {
+    element.setAttribute('data-samey-construction-source', '');
+    for (const attr of attrs) element.setAttribute(attr, '');
+  }
   document.body.append(layer);
   return { layer, hiddenBorders };
 }
@@ -295,11 +300,17 @@ function contentTargets(root: HTMLElement) {
   }).slice(0, CONSTRUCTED_TRANSITION.maxContentTargets);
 }
 
-function animateConstructionContent(root: HTMLElement, phase: Phase) {
-  const entering = phase === 'in';
-  return contentTargets(root).map((element, index) => {
+function measureConstructionContent(root: HTMLElement) {
+  return contentTargets(root).map(element => {
     const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
     const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
+    return { element, baseline };
+  });
+}
+
+function animateConstructionContent(measured: ReturnType<typeof measureConstructionContent>, phase: Phase) {
+  const entering = phase === 'in';
+  return measured.map(({ element, baseline }, index) => {
     const faded = Math.max(0, baseline * CONSTRUCTED_TRANSITION.contentFloor);
     element.setAttribute('data-samey-construction-content', '');
     const animation = element.animate(
@@ -326,20 +337,22 @@ function restoreConstructionSources(construction: ConstructionLayer) {
 }
 
 async function animateConstructionExit(root: HTMLElement, direction: Direction) {
+  const content = measureConstructionContent(root);
   const construction = makeConstructionLayer(root);
   const animations = [
     ...animateConstructionLines(construction, 'out', direction),
-    ...animateConstructionContent(root, 'out'),
+    ...animateConstructionContent(content, 'out'),
   ];
   await waitAnimations(animations);
   return { ...construction, animations };
 }
 
 async function animateConstructionEntrance(root: HTMLElement, direction: Direction) {
+  const content = measureConstructionContent(root);
   const construction = makeConstructionLayer(root);
   const animations = [
     ...animateConstructionLines(construction, 'in', direction),
-    ...animateConstructionContent(root, 'in'),
+    ...animateConstructionContent(content, 'in'),
   ];
   await waitAnimations(animations);
   restoreConstructionSources(construction);

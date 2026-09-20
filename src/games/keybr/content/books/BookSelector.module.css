@@ -65,7 +65,6 @@
 
 .dialog::backdrop {
   background: color-mix(in srgb, var(--site-bg, #000) 28%, #000 58%);
-  backdrop-filter: blur(3px);
 }
 
 .dialogShell {
