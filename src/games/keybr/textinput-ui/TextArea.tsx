@@ -53,8 +53,8 @@ export function TextArea(props: {
     }}>
       <TextEvents focusRef={(focusable) => { input = focusable; }} onFocus={handleFocus} onBlur={handleBlur} onKeyDown={props.onKeyDown} onKeyUp={props.onKeyUp} onInput={props.onInput} />
       <TextLines settings={props.settings} lines={props.lines} wrap={props.wrap} size={props.size} lineTemplate={props.lineTemplate} cursor={!props.demo && focus()} focus={Boolean(props.demo) || focus()} />
-      {!props.demo && focus() && ModifierState.capsLock && <div class={styles.messageArea}><div class={styles.messageText}><FormattedMessage id="t_Caps_Lock_is_on" defaultMessage="Caps Lock is on" /></div></div>}
-      {!props.demo && !focus() && <div class={styles.messageArea}><div class={styles.messageText}><FormattedMessage id="t_Click_or_press_Enter_" defaultMessage="Click or press Enter to activate..." /></div></div>}
+      {!props.demo && focus() && ModifierState.capsLock && <div class={styles.messageArea}><div class={styles.messageText} data-samey-construction-line=""><FormattedMessage id="t_Caps_Lock_is_on" defaultMessage="Caps Lock is on" /></div></div>}
+      {!props.demo && !focus() && <div class={styles.messageArea}><div class={styles.messageText} data-samey-construction-line=""><FormattedMessage id="t_Click_or_press_Enter_" defaultMessage="Click or press Enter to activate..." /></div></div>}
     </div>
   );
 }

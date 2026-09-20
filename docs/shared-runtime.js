@@ -48,16 +48,20 @@
 		"[role=\"dialog\"]",
 		"[role=\"group\"]",
 		"[role=\"radiogroup\"]",
+		"[data-samey-construction-line]",
 		"button",
 		"input",
 		"select",
 		"textarea",
+		"kbd",
 		".site-topbar",
 		".intro",
 		".grid",
 		".grid > *",
 		".compact-list",
 		".compact-row",
+		".intro-meta span + span",
+		".chain-live-mark",
 		".project-grid",
 		".project",
 		".home-tool-matrix",
@@ -77,6 +81,9 @@
 		".cnn-demo-shell",
 		".cnn-controls-row",
 		".cnn-output-pane",
+		".cnn-unknown-key > b",
+		".markdown-divider",
+		".vditor-ir__node:is(h1,h2,h3,h4,h5,h6)",
 		".wordle-mode-card",
 		".stats-section",
 		".stats-history-row",
@@ -224,16 +231,11 @@
 		const add = (element) => {
 			if (seen.has(element) || selected.length >= CONSTRUCTED_TRANSITION.maxBorderCandidates) return;
 			seen.add(element);
-			if (element === root || element.getClientRects().length > 0) selected.push(element);
+			if (element !== root && element.closest("[hidden],[aria-hidden=\"true\"]")) return;
+			selected.push(element);
 		};
 		add(root);
 		root.querySelectorAll(CONSTRUCTION_LINE_SELECTOR).forEach(add);
-		const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-		while (selected.length < CONSTRUCTED_TRANSITION.maxBorderCandidates) {
-			const node = walker.nextNode();
-			if (!node) break;
-			if (node instanceof HTMLElement) add(node);
-		}
 		return selected;
 	}
 	function makeConstructionLayer(root) {
@@ -376,26 +378,32 @@
 			});
 		});
 	}
-	function contentTargets(root) {
-		const candidates = [...root.querySelectorAll(CONSTRUCTION_CONTENT_SELECTOR)].filter((element) => inViewport(element.getBoundingClientRect()));
-		const selected = new Set(candidates);
-		return candidates.filter((element) => {
+	function measureConstructionContent(root) {
+		const measured = [];
+		const measuredElements = /* @__PURE__ */ new Set();
+		for (const element of root.querySelectorAll(CONSTRUCTION_CONTENT_SELECTOR)) {
+			if (measured.length >= CONSTRUCTED_TRANSITION.maxContentTargets) break;
+			if (element.closest("[hidden],[aria-hidden=\"true\"]")) continue;
+			if (!inViewport(element.getBoundingClientRect())) continue;
 			let ancestor = element.parentElement;
+			let nested = false;
 			while (ancestor && ancestor !== root) {
-				if (selected.has(ancestor)) return false;
+				if (measuredElements.has(ancestor)) {
+					nested = true;
+					break;
+				}
 				ancestor = ancestor.parentElement;
 			}
-			return true;
-		}).slice(0, CONSTRUCTED_TRANSITION.maxContentTargets);
-	}
-	function measureConstructionContent(root) {
-		return contentTargets(root).map((element) => {
+			if (nested) continue;
 			const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
-			return {
+			const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
+			measured.push({
 				element,
-				baseline: Number.isFinite(parsedOpacity) ? parsedOpacity : 1
-			};
-		});
+				baseline
+			});
+			measuredElements.add(element);
+		}
+		return measured;
 	}
 	function animateConstructionContent(measured, phase) {
 		const entering = phase === "in";
@@ -3266,10 +3274,16 @@
 			}
 		};
 		const considerVirtualScroller = (el) => {
-			if (!virtualScrollerEligible(el)) return;
+			if (!el.isConnected || virtualScrollerOptOut(el)) return;
+			const overflowY = el.scrollHeight > el.clientHeight + 2;
+			const overflowX = el.scrollWidth > el.clientWidth + 2;
+			if (!overflowY && !overflowX) return;
 			const style = getComputedStyle(el);
-			if ((style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 2) addVirtualBar(el);
-			if ((style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 2) addVirtualXBar(el);
+			if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= .001 || style.pointerEvents === "none") return;
+			const rect = el.getBoundingClientRect();
+			if (rect.width < 8 || rect.height < 8) return;
+			if (overflowY && (style.overflowY === "auto" || style.overflowY === "scroll")) addVirtualBar(el);
+			if (overflowX && (style.overflowX === "auto" || style.overflowX === "scroll")) addVirtualXBar(el);
 		};
 		const scanVirtualScrollers = () => {
 			const root = document.scrollingElement;
@@ -3282,40 +3296,43 @@
 			addEventListener("blur", cancelVirtualDrag);
 			addEventListener("samey-pageleave", cancelVirtualDrag);
 			let scanRaf = 0;
-			const pending = /* @__PURE__ */ new Set();
-			const scheduleTargets = (targets) => {
-				for (const target of targets) if (target instanceof Element && !virtualScrollerOptOut(target)) pending.add(target);
+			const pending = /* @__PURE__ */ new Map();
+			const scheduleTargets = (targets, deep = false) => {
+				for (const target of targets) {
+					if (!(target instanceof Element) || virtualScrollerOptOut(target)) continue;
+					pending.set(target, deep || pending.get(target) === true);
+				}
 				if (scanRaf || !pending.size) return;
 				scanRaf = requestAnimationFrame(() => {
 					scanRaf = 0;
-					for (const target of pending) {
+					for (const [target, deep] of pending) {
 						considerVirtualScroller(target);
-						for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
+						if (deep) for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
 					}
 					pending.clear();
 					scheduleVirtualBars();
 				});
 			};
 			new MutationObserver((records) => {
-				const targets = [];
 				for (const record of records) {
-					targets.push(record.target);
-					for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
+					if (record.type === "attributes") {
+						const target = record.target instanceof Element ? record.target : null;
+						if (record.attributeName === "hidden") scheduleTargets([target], !!target && !target.hasAttribute("hidden"));
+						continue;
+					}
+					if (record.removedNodes.length) scheduleVirtualBars();
+					for (const node of record.addedNodes) scheduleTargets([node instanceof Element ? node : node.parentElement], true);
 				}
-				scheduleTargets(targets);
 			}).observe(document.body, {
 				subtree: true,
 				childList: true,
 				attributes: true,
-				attributeFilter: ["class", "hidden"]
+				attributeFilter: ["hidden"]
 			});
-			new ResizeObserver(() => {
-				scheduleVirtualBars();
-				scheduleTargets([document.body]);
-			}).observe(document.documentElement);
+			new ResizeObserver(scheduleVirtualBars).observe(document.documentElement);
 			addEventListener("resize", () => {
 				scheduleVirtualBars();
-				scheduleTargets([document.body]);
+				scheduleTargets([document.body], true);
 			});
 			addEventListener("scroll", scheduleVirtualBars, true);
 		};

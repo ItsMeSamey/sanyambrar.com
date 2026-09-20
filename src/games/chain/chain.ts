@@ -1467,7 +1467,7 @@ export function mountChain(refs: ChainRefs) {
   });
   window.addEventListener('samey-themechange', repaintTheme);
   const themeObserver = new MutationObserver(repaintTheme);
-  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme','style']});
+  themeObserver.observe(document.documentElement, {attributes:true, attributeFilter:['data-kb-theme']});
   const scheme = window.matchMedia('(prefers-color-scheme: dark)');
   scheme.addEventListener('change', repaintTheme);
   const initialPage = pageFromLocation();

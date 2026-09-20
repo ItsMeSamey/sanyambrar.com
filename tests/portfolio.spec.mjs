@@ -1775,6 +1775,30 @@ test('ordinary hover and press feedback keeps whole controls stationary', async 
   await page.mouse.up();
 });
 
+test('offscreen Chain live logo sleeps instead of polling visibility', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production desktop browser covers idle scheduling');
+  await visit(page, '/', info);
+  const canvas = page.locator('.chain-live-mark canvas').first();
+  await expect(canvas).toBeVisible();
+  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await expect.poll(() => canvas.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.bottom < -80 || rect.top > innerHeight + 80;
+  }), { message: 'Chain logo must be outside the viewport for the idle check' }).toBe(true);
+  await page.waitForTimeout(350);
+  await page.evaluate(() => {
+    globalThis.__sameyQaChainIdlePolls = 0;
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay = 0, ...args) => {
+      if (delay === 220) globalThis.__sameyQaChainIdlePolls += 1;
+      return nativeSetTimeout(callback, delay, ...args);
+    };
+  });
+  await page.waitForTimeout(700);
+  expect(await page.evaluate(() => globalThis.__sameyQaChainIdlePolls ?? 0),
+    'Offscreen Chain logo must wait for visibility events rather than a 220ms polling timer').toBe(0);
+});
+
 test('forced colors preserves selection, game state and keyboard focus cues', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers forced-colors rendering');
   test.setTimeout(120_000);
@@ -2769,6 +2793,7 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
 test('SPA route transitions draw rules, preserve rounded corners, and never bob content', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
+  await page.waitForFunction(() => typeof globalThis.SameyNavigate === 'function');
 
   await page.evaluate(() => {
     const nativeAnimate = Element.prototype.animate;
@@ -2850,7 +2875,8 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
   expect(frames.some(frame => frame.sourceBordersHidden)).toBe(true);
   expect(frames.some(frame => frame.roundedStroke)).toBe(true);
   expect(frames.every(frame => frame.roundedSourcesStable)).toBe(true);
-  expect(animationTargets.some(target => target.constructionStroke)).toBe(true);
+  expect(animationTargets.filter(target => target.constructionStroke).length,
+    'Home route transition must retain a dense construction-line pass').toBeGreaterThanOrEqual(20);
   expect(animationTargets.some(target => target.routeContent && target.transitionContent && target.hasOpacity)).toBe(true);
   expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
@@ -3064,6 +3090,9 @@ test('virtual scrollbar disappears when its fixed scroll owner is hidden', async
   await expect.poll(() => ownerBar.evaluateAll(bars => bars.length === 0 || bars.every(bar => (
     bar instanceof HTMLElement && (bar.hidden || getComputedStyle(bar).display === 'none')
   ))), { message: 'Virtual scrollbar must disappear when its owner becomes hidden' }).toBe(true);
+  await page.locator('#qa-virtual-scroll-owner').evaluate(element => { element.hidden = false; });
+  await expect.poll(markOwnerBar, { message: 'Unhidden scroll owner must be rediscovered without a full-page rescan' }).toBe(true);
+  await expect(page.locator('.samey-vscroll[data-qa-owner-bar]')).toBeVisible();
 });
 
 test('virtual scrollbar drag keeps its first pointer owner', async ({ page }, info) => {
@@ -3479,6 +3508,35 @@ test('Wordle on-screen key clears after pointer capture loss', async ({ page }, 
   await page.mouse.up();
 });
 
+test('Wordle typing does not trigger virtual-scrollbar subtree rescans', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the shared observer hot path');
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await page.evaluate(() => {
+    globalThis.__sameyQaVirtualScrollerRects = 0;
+    const nativeRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function(...args) {
+      const stack = new Error('virtual scrollbar audit').stack ?? '';
+      if (stack.includes('virtualScrollerEligible')) globalThis.__sameyQaVirtualScrollerRects += 1;
+      return nativeRect.apply(this, args);
+    };
+    globalThis.__sameyQaRestoreRect = () => {
+      Element.prototype.getBoundingClientRect = nativeRect;
+      delete globalThis.__sameyQaRestoreRect;
+    };
+  });
+  await page.keyboard.type('aapple');
+  await page.waitForTimeout(120);
+  const reads = await page.evaluate(() => {
+    const count = globalThis.__sameyQaVirtualScrollerRects ?? 0;
+    globalThis.__sameyQaRestoreRect?.();
+    delete globalThis.__sameyQaVirtualScrollerRects;
+    return count;
+  });
+  expect(reads, 'Typing class churn must not deep-scan descendant scrollbar geometry').toBeLessThanOrEqual(20);
+});
+
 test('shared slider drag keeps its first pointer owner', async ({ page }, info) => {
   await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
@@ -3641,10 +3699,28 @@ test('Keybr Settings view constructs rules without translating content', async (
   await visitKeybr(page, info);
   await page.evaluate(() => {
     const nativeAnimate = Element.prototype.animate;
+    const nativeRect = Element.prototype.getBoundingClientRect;
+    const nativeStyle = globalThis.getComputedStyle.bind(globalThis);
     const targets = [];
+    const prep = { active: false, rects: 0, styles: 0 };
     globalThis.__sameyKeybrAnimationTargets = targets;
+    globalThis.__sameyKeybrTransitionPrep = prep;
+    document.addEventListener('click', () => {
+      prep.active = true;
+      prep.rects = 0;
+      prep.styles = 0;
+    }, { capture: true, once: true });
+    Element.prototype.getBoundingClientRect = function (...args) {
+      if (prep.active) prep.rects += 1;
+      return nativeRect.apply(this, args);
+    };
+    globalThis.getComputedStyle = function (...args) {
+      if (prep.active) prep.styles += 1;
+      return nativeStyle(...args);
+    };
     Element.prototype.animate = function (...args) {
       const keyframes = JSON.stringify(args[0] ?? []);
+      if (this.classList.contains('samey-construction-stroke')) prep.active = false;
       targets.push({
         constructionStroke: this.classList.contains('samey-construction-stroke'),
         appContent: this.closest('#app') != null,
@@ -3656,6 +3732,8 @@ test('Keybr Settings view constructs rules without translating content', async (
     };
     globalThis.__sameyRestoreKeybrAnimate = () => {
       Element.prototype.animate = nativeAnimate;
+      Element.prototype.getBoundingClientRect = nativeRect;
+      globalThis.getComputedStyle = nativeStyle;
       delete globalThis.__sameyRestoreKeybrAnimate;
     };
   });
@@ -3666,13 +3744,20 @@ test('Keybr Settings view constructs rules without translating content', async (
   await page.waitForTimeout(350);
   const animationTargets = await page.evaluate(() => {
     const targets = globalThis.__sameyKeybrAnimationTargets ?? [];
+    const prep = { ...(globalThis.__sameyKeybrTransitionPrep ?? {}) };
     globalThis.__sameyRestoreKeybrAnimate?.();
     delete globalThis.__sameyKeybrAnimationTargets;
-    return targets;
+    delete globalThis.__sameyKeybrTransitionPrep;
+    return { targets, prep };
   });
-  expect(animationTargets.some(target => target.constructionStroke)).toBe(true);
-  expect(animationTargets.some(target => target.appContent && target.transitionContent && target.hasOpacity)).toBe(true);
-  expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
+  expect(animationTargets.targets.filter(target => target.constructionStroke).length,
+    'Keybr Settings transition must retain the multi-rule construction effect').toBeGreaterThanOrEqual(10);
+  expect(animationTargets.prep.rects,
+    'Keybr transition prep must stay targeted instead of scanning the whole app').toBeLessThanOrEqual(70);
+  expect(animationTargets.prep.styles,
+    'Keybr transition prep must stay targeted instead of styling the whole app').toBeLessThanOrEqual(60);
+  expect(animationTargets.targets.some(target => target.appContent && target.transitionContent && target.hasOpacity)).toBe(true);
+  expect(animationTargets.targets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
   await expect(page.locator('[data-samey-construction-source]')).toHaveCount(0);
 });
@@ -3957,7 +4042,7 @@ for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff',
 });
 
 test('accessible open search', async ({ page }, info) => {
-  await visit(page, '/', info);
+  await visit(page, '/work/', info);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Search' })).toBeVisible();
   for (const color of ['light', 'dark']) {
@@ -4904,7 +4989,23 @@ test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, 
   const timerSeconds = () => host.locator('#blobTime').evaluate(element =>
     element.textContent.split(':').map(Number).reduce((total, part) => total * 60 + part, 0));
   await expect.poll(drawCount, { message: 'Visible Reverb blob must actively render' }).toBeGreaterThan(0);
-  const initialBacking = await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]);
+  const blobCanvas = host.locator('#blobCanvas');
+  const initialBacking = await blobCanvas.evaluate(canvas => [canvas.width, canvas.height]);
+  await blobCanvas.evaluate(canvas => {
+    globalThis.__sameyQaReverbRectReads = 0;
+    const original = canvas.getBoundingClientRect.bind(canvas);
+    canvas.getBoundingClientRect = () => {
+      const stack = new Error('blob rect').stack ?? '';
+      if (!stack.includes('at visitNode (<anonymous>') && !stack.includes('at visitChild (<anonymous>'))
+        globalThis.__sameyQaReverbRectReads += 1;
+      return original();
+    };
+  });
+  const visibleDrawBaseline = await drawCount();
+  await page.waitForTimeout(350);
+  expect(await drawCount(), 'Visible Reverb blob should continue drawing').toBeGreaterThan(visibleDrawBaseline + 5);
+  expect(await page.evaluate(() => globalThis.__sameyQaReverbRectReads ?? 0),
+    'Reverb blob animation must not force a geometry read on every frame').toBeLessThanOrEqual(2);
 
   await host.locator('#openSettings').click();
   await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
@@ -4919,13 +5020,39 @@ test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, 
   }).toBeGreaterThan(hiddenTimer);
   expect(await drawCount(), 'Hidden Reverb blob must stop issuing WebGL draws').toBe(hiddenDrawCount);
   expect(await rafCount(), 'Hidden Reverb screen must not keep a frame polling loop alive').toBe(hiddenRafCount);
-  expect(await host.locator('#blobCanvas').evaluate(canvas => [canvas.width, canvas.height]),
+  expect(await blobCanvas.evaluate(canvas => [canvas.width, canvas.height]),
     'Hiding the blob must not collapse its backing store').toEqual(initialBacking);
 
   await host.locator('#settingsNav').click();
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
   await expect.poll(async () => await drawCount() > hiddenDrawCount,
     { message: 'Reverb blob rendering must resume when Home becomes visible' }).toBe(true);
+});
+
+test('Reverb blob renderer sleeps while the demo is offscreen and resumes on visibility', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 180 });
+  await page.addInitScript(() => {
+    globalThis.__sameyQaOffscreenReverbDraws = 0;
+    const originalDrawArrays = WebGLRenderingContext.prototype.drawArrays;
+    WebGLRenderingContext.prototype.drawArrays = function(...args) {
+      globalThis.__sameyQaOffscreenReverbDraws += 1;
+      return originalDrawArrays.apply(this, args);
+    };
+  });
+  await visit(page, '/projects/reverb/', info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await expect.poll(() => host.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.top > innerHeight + 160;
+  }), { message: 'Short viewport fixture must begin with the Reverb demo outside its observer margin' }).toBe(true);
+  const offscreenDraws = await page.evaluate(() => globalThis.__sameyQaOffscreenReverbDraws ?? 0);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => globalThis.__sameyQaOffscreenReverbDraws ?? 0),
+    'Offscreen Reverb demo must not keep drawing WebGL frames').toBe(offscreenDraws);
+
+  await host.scrollIntoViewIfNeeded();
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaOffscreenReverbDraws ?? 0),
+    { message: 'Reverb WebGL animation must resume after entering the viewport' }).toBeGreaterThan(offscreenDraws);
 });
 
 test('Reverb demo releases its resize listener after SPA leave', async ({ page }, info) => {
@@ -4943,7 +5070,7 @@ test('Reverb demo releases its resize listener after SPA leave', async ({ page }
       return remove.call(this, type, listener, options);
     };
   });
-  await visit(page, '/', info);
+  await visit(page, '/work/', info);
   const resizeListenerCount = () => page.evaluate(() => globalThis.__sameyQaResizeListeners?.size ?? -1);
   const baseline = await resizeListenerCount();
   const navigate = async href => {
@@ -4954,7 +5081,7 @@ test('Reverb demo releases its resize listener after SPA leave', async ({ page }
 
   await navigate('/projects/reverb/');
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
-  await expect.poll(resizeListenerCount).toBe(baseline + 1);
+  await expect.poll(resizeListenerCount).toBeGreaterThan(baseline);
 
   await navigate('/work/');
   await expect(page).toHaveURL(/\/work\/$/);

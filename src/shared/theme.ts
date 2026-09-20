@@ -2110,10 +2110,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }
   };
   const considerVirtualScroller = (el: Element) => {
-    if (!virtualScrollerEligible(el)) return;
+    if (!el.isConnected || virtualScrollerOptOut(el)) return;
+    const overflowY = el.scrollHeight > el.clientHeight + 2;
+    const overflowX = el.scrollWidth > el.clientWidth + 2;
+    if (!overflowY && !overflowX) return;
     const style = getComputedStyle(el);
-    if ((style.overflowY === "auto" || style.overflowY === "scroll") && el.scrollHeight > el.clientHeight + 2) addVirtualBar(el);
-    if ((style.overflowX === "auto" || style.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 2) addVirtualXBar(el);
+    if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= 0.001 || style.pointerEvents === "none") return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 8 || rect.height < 8) return;
+    if (overflowY && (style.overflowY === "auto" || style.overflowY === "scroll")) addVirtualBar(el);
+    if (overflowX && (style.overflowX === "auto" || style.overflowX === "scroll")) addVirtualXBar(el);
   };
   const scanVirtualScrollers = () => {
     const root = document.scrollingElement;
@@ -2126,34 +2132,49 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("blur", cancelVirtualDrag);
     addEventListener("samey-pageleave", cancelVirtualDrag);
     let scanRaf = 0;
-    const pending = new Set<Element>();
-    const scheduleTargets = (targets: Iterable<Node | null>) => {
-      for (const target of targets) if (target instanceof Element && !virtualScrollerOptOut(target)) pending.add(target);
+    const pending = new Map<Element, boolean>();
+    const scheduleTargets = (targets: Iterable<Node | null>, deep = false) => {
+      for (const target of targets) {
+        if (!(target instanceof Element) || virtualScrollerOptOut(target)) continue;
+        pending.set(target, deep || pending.get(target) === true);
+      }
       if (scanRaf || !pending.size) return;
       scanRaf = requestAnimationFrame(() => {
         scanRaf = 0;
-        for (const target of pending) {
+        for (const [target, deep] of pending) {
           considerVirtualScroller(target);
-          for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
+          if (deep)
+            for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
         }
         pending.clear();
         scheduleVirtualBars();
       });
     };
     new MutationObserver((records) => {
-      const targets: (Node | null)[] = [];
       for (const record of records) {
-        targets.push(record.target);
-        for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
+        if (record.type === "attributes") {
+          const target = record.target instanceof Element ? record.target : null;
+          // Class churn is a high-frequency interaction channel (typing,
+          // selected/pressed states, animations). Existing scroll owners are
+          // already tracked and updated by scroll/resize, while new subtrees are
+          // discovered through childList. Only hidden visibility changes need a
+          // targeted rediscovery because descendants may have been ineligible
+          // during the initial scan.
+          if (record.attributeName === "hidden")
+            scheduleTargets([target], !!target && !target.hasAttribute("hidden"));
+          continue;
+        }
+        if (record.removedNodes.length) scheduleVirtualBars();
+        for (const node of record.addedNodes)
+          scheduleTargets([node instanceof Element ? node : node.parentElement], true);
       }
-      scheduleTargets(targets);
-    // Inline style is a high-frequency animation/drag channel. Observing it here
-    // made every transform/left/top write schedule scrollbar discovery and layout
-    // reads across the changed subtree. Class/hidden changes are enough for
-    // eligibility changes; scroll/resize handle scrollbar geometry itself.
-    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "hidden"] });
-    new ResizeObserver(() => { scheduleVirtualBars(); scheduleTargets([document.body]); }).observe(document.documentElement);
-    addEventListener("resize", () => { scheduleVirtualBars(); scheduleTargets([document.body]); });
+    // Inline style and class are high-frequency interaction channels. Observing
+    // either makes typing/drag/animation state schedule unnecessary geometry
+    // reads. Child additions and hidden visibility changes are sufficient for
+    // discovery; scroll/resize keep known scrollbar geometry current.
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    new ResizeObserver(scheduleVirtualBars).observe(document.documentElement);
+    addEventListener("resize", () => { scheduleVirtualBars(); scheduleTargets([document.body], true); });
     addEventListener("scroll", scheduleVirtualBars, true);
   };
 

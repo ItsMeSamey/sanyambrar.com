@@ -37,6 +37,8 @@ type BlobRuntime = {
   setActive(active: boolean): void;
   setVisible(visible: boolean): void;
   refreshTheme(): void;
+  invalidateSize?(): void;
+  dispose?(): void;
 };
 type Uniforms = Record<string, WebGLUniformLocation | null>;
 type SettingsSnapshot = {
@@ -63,7 +65,12 @@ export function runReverbDemoRuntime(
   clearTimeout: DemoClearTimeout,
   devicePixelRatio: number,
   addWindowEventListener: DemoAddWindowEventListener,
-): Pick<BlobRuntime, "refreshTheme"> & { setDevicePixelRatio(devicePixelRatio: number): void; dispose(): void } {
+): Pick<BlobRuntime, "refreshTheme"> & {
+  setDevicePixelRatio(devicePixelRatio: number): void;
+  invalidateLayout(): void;
+  setViewportVisible(visible: boolean): void;
+  dispose(): void;
+} {
   const byId = <T extends Element = HTMLElement>(id: string): T => {
     const element = document.querySelector<T>(`#${id}`);
     if (!element) throw new Error(`Reverb demo is missing #${id}`);
@@ -120,6 +127,9 @@ export function runReverbDemoRuntime(
 
   const blobShader = makeBlobShader(byId<HTMLCanvasElement>("blobCanvas"));
   blobShader.setActive(true);
+  let runtimeVisible = true;
+  const syncBlobVisibility = () =>
+    blobShader.setVisible(runtimeVisible && currentScreen === "homeScreen");
 
   function formatTimer(seconds: number): string {
     const value = Math.max(0, Math.floor(seconds));
@@ -202,7 +212,7 @@ export function runReverbDemoRuntime(
     screens.forEach((screen) =>
       screen.classList.toggle("active", screen.id === id),
     );
-    blobShader.setVisible(id === "homeScreen");
+    syncBlobVisibility();
     closeDropdown();
     focusScreen(id, focusTarget);
   }
@@ -246,11 +256,17 @@ export function runReverbDemoRuntime(
       node.textContent = `${h}:${m}`;
     });
   }
+  let clockTimer = 0;
+  function scheduleClock(): void {
+    if (!runtimeVisible || clockTimer) return;
+    clockTimer = setTimeout(() => {
+      clockTimer = 0;
+      updateClock();
+      scheduleClock();
+    }, 30000);
+  }
   updateClock();
-  setTimeout(function clockTick() {
-    updateClock();
-    setTimeout(clockTick, 30000);
-  }, 30000);
+  scheduleClock();
 
   function syncBufferUi(): void {
     document
@@ -302,11 +318,17 @@ export function runReverbDemoRuntime(
       loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds);
     }
   }
+  let tickTimer = 0;
   function scheduleTick(): void {
+    if (!runtimeVisible || tickTimer) return;
     const elapsed = performance.now() - lastTick;
-    setTimeout(tick, Math.max(16, 1000 - (elapsed % 1000)));
+    tickTimer = setTimeout(() => {
+      tickTimer = 0;
+      tick();
+    }, Math.max(16, 1000 - (elapsed % 1000)));
   }
   function tick(): void {
+    if (!runtimeVisible) return;
     const now = performance.now();
     if (now - lastTick >= 1000) {
       const elapsed = Math.floor((now - lastTick) / 1000);
@@ -2587,8 +2609,14 @@ void main(){
       signalClock = 0,
       frameQueued = false;
     let fallback: BlobRuntime | null = null;
+    let sizeObserver: ResizeObserver | null = null;
+    let cssWidth = 0;
+    let cssHeight = 0;
+    let sizeDirty = true;
     function failOverTo2d() {
       if (fallback) return fallback;
+      sizeObserver?.disconnect();
+      sizeObserver = null;
       fallback = makeFallbackBlob(canvas);
       fallback.setActive(activeState);
       fallback.setVisible(visibleState);
@@ -2603,10 +2631,16 @@ void main(){
       { once: true },
     );
     function resize() {
+      if (!sizeDirty) return;
+      sizeDirty = false;
       const dpr = Math.min(runtimeDevicePixelRatio, 2);
-      const r = canvas.getBoundingClientRect();
-      const w = Math.max(1, Math.round(r.width * dpr)),
-        h = Math.max(1, Math.round(r.height * dpr));
+      if (cssWidth <= 0 || cssHeight <= 0) {
+        const r = canvas.getBoundingClientRect();
+        cssWidth = r.width;
+        cssHeight = r.height;
+      }
+      const w = Math.max(1, Math.round(cssWidth * dpr)),
+        h = Math.max(1, Math.round(cssHeight * dpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
@@ -2685,6 +2719,26 @@ void main(){
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       queueFrame();
     }
+    const invalidateSize = () => {
+      cssWidth = 0;
+      cssHeight = 0;
+      sizeDirty = true;
+      fallback?.invalidateSize?.();
+      queueFrame();
+    };
+    if (typeof ResizeObserver !== "undefined") {
+      let observedWidth = -1;
+      let observedHeight = -1;
+      sizeObserver = new ResizeObserver((entries) => {
+        const rect = entries[0]?.contentRect;
+        if (!rect) return;
+        if (Math.abs(rect.width - observedWidth) < 0.01 && Math.abs(rect.height - observedHeight) < 0.01) return;
+        observedWidth = rect.width;
+        observedHeight = rect.height;
+        invalidateSize();
+      });
+      sizeObserver.observe(canvas);
+    }
     queueFrame();
     return {
       setActive(v: boolean) {
@@ -2707,6 +2761,11 @@ void main(){
       refreshTheme() {
         if (fallback) fallback.refreshTheme();
         else refreshWebGLTheme();
+      },
+      invalidateSize,
+      dispose() {
+        sizeObserver?.disconnect();
+        fallback?.dispose?.();
       },
     };
   }
@@ -2741,6 +2800,8 @@ void main(){
         },
         setVisible() {},
         refreshTheme() {},
+        invalidateSize() {},
+        dispose() {},
       };
     }
     const context2d: CanvasRenderingContext2D = ctx;
@@ -2766,6 +2827,10 @@ void main(){
       last = performance.now(),
       signalClock = 0,
       frameQueued = false;
+    let sizeObserver: ResizeObserver | null = null;
+    let sizeDirty = true;
+    let renderWidth = Math.max(1, canvas.width);
+    let renderHeight = Math.max(1, canvas.height);
     const targetBands = new Float32Array(8),
       currentBands = new Float32Array(8),
       x = new Float32Array(40),
@@ -2817,17 +2882,23 @@ void main(){
         requestAnimationFrame(frame);
       }
     };
+    const resize = () => {
+      if (!sizeDirty) return;
+      sizeDirty = false;
+      const r = canvas.getBoundingClientRect();
+      const dpr = Math.min(runtimeDevicePixelRatio, 2);
+      renderWidth = Math.max(1, Math.round(r.width * dpr));
+      renderHeight = Math.max(1, Math.round(r.height * dpr));
+      if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
+        canvas.width = renderWidth;
+        canvas.height = renderHeight;
+      }
+    };
     function frame(now: number) {
       frameQueued = false;
       if (!visibleState) return;
-      const r = canvas.getBoundingClientRect(),
-        dpr = Math.min(runtimeDevicePixelRatio, 2),
-        w = Math.max(1, Math.round(r.width * dpr)),
-        h = Math.max(1, Math.round(r.height * dpr));
-      if (canvas.width !== w || canvas.height !== h) {
-        canvas.width = w;
-        canvas.height = h;
-      }
+      resize();
+      const w = renderWidth, h = renderHeight;
       const dt = Math.max(0.001, Math.min(0.1, (now - last) / 1000));
       last = now;
       syntheticSignal(now);
@@ -2870,6 +2941,23 @@ void main(){
       context2d.fill();
       queueFrame();
     }
+    const invalidateSize = () => {
+      sizeDirty = true;
+      queueFrame();
+    };
+    if (typeof ResizeObserver !== "undefined") {
+      let observedWidth = -1;
+      let observedHeight = -1;
+      sizeObserver = new ResizeObserver((entries) => {
+        const rect = entries[0]?.contentRect;
+        if (!rect) return;
+        if (Math.abs(rect.width - observedWidth) < 0.01 && Math.abs(rect.height - observedHeight) < 0.01) return;
+        observedWidth = rect.width;
+        observedHeight = rect.height;
+        invalidateSize();
+      });
+      sizeObserver.observe(canvas);
+    }
     queueFrame();
     return {
       setActive(v: boolean) {
@@ -2888,6 +2976,10 @@ void main(){
         }
       },
       refreshTheme,
+      invalidateSize,
+      dispose() {
+        sizeObserver?.disconnect();
+      },
     };
   }
   return {
@@ -2896,8 +2988,34 @@ void main(){
     },
     setDevicePixelRatio(value: number) {
       syncDevicePixelRatio(value);
+      blobShader.invalidateSize?.();
+    },
+    invalidateLayout() {
+      blobShader.invalidateSize?.();
+    },
+    setViewportVisible(visible: boolean) {
+      if (runtimeVisible === visible) return;
+      runtimeVisible = visible;
+      syncBlobVisibility();
+      if (visible) {
+        updateClock();
+        tick();
+        scheduleClock();
+      } else {
+        if (clockTimer) clearTimeout(clockTimer);
+        if (tickTimer) clearTimeout(tickTimer);
+        clockTimer = 0;
+        tickTimer = 0;
+      }
     },
     dispose() {
+      runtimeVisible = false;
+      syncBlobVisibility();
+      if (clockTimer) clearTimeout(clockTimer);
+      if (tickTimer) clearTimeout(tickTimer);
+      clockTimer = 0;
+      tickTimer = 0;
+      blobShader.dispose?.();
       removeResizeListener();
       removeBlurListener();
     },

@@ -23,12 +23,15 @@ const CONSTRUCTED_TRANSITION = {
 const CONSTRUCTION_LINE_SELECTOR = [
   'header', 'nav', 'main', 'section', 'article', 'aside', 'footer', 'form', 'figure', 'fieldset',
   'table', 'thead', 'tbody', 'tr', 'ul', 'ol', 'blockquote', 'pre', 'hr', 'details', 'summary',
-  '[role="dialog"]', '[role="group"]', '[role="radiogroup"]', 'button', 'input', 'select', 'textarea',
+  '[role="dialog"]', '[role="group"]', '[role="radiogroup"]', '[data-samey-construction-line]',
+  'button', 'input', 'select', 'textarea', 'kbd',
   '.site-topbar', '.intro', '.grid', '.grid > *', '.compact-list', '.compact-row',
+  '.intro-meta span + span', '.chain-live-mark',
   '.project-grid', '.project', '.home-tool-matrix', '.home-tool', '.home-writing-split', '.home-writing-read',
   '.home-writing-index', '.home-writing-link', '.fact-strip', '.fact-strip > *', '.detail-copy',
   '.blog-split-index', '.blog-index-nav', '.blog-index-link', '.blog-index-detail', '.blog-detail-footer',
-  '.cnn-demo-shell', '.cnn-controls-row', '.cnn-output-pane',
+  '.cnn-demo-shell', '.cnn-controls-row', '.cnn-output-pane', '.cnn-unknown-key > b',
+  '.markdown-divider', '.vditor-ir__node:is(h1,h2,h3,h4,h5,h6)',
   '.wordle-mode-card', '.stats-section', '.stats-history-row', '.active-game-card', '.samey-dialog',
   '.chain-mode-card', '.chain-stats-grid > *', '.chain-replay-stage', '.chain-replay-controls', '.chain-result',
   '.game-settings-popover', '.game-settings-actions', '.keybr-segmented', '.keybr-segmented-item',
@@ -139,16 +142,11 @@ function constructionCandidates(root: HTMLElement) {
   const add = (element: HTMLElement) => {
     if (seen.has(element) || selected.length >= CONSTRUCTED_TRANSITION.maxBorderCandidates) return;
     seen.add(element);
-    if (element === root || element.getClientRects().length > 0) selected.push(element);
+    if (element !== root && element.closest('[hidden],[aria-hidden="true"]')) return;
+    selected.push(element);
   };
   add(root);
   root.querySelectorAll<HTMLElement>(CONSTRUCTION_LINE_SELECTOR).forEach(add);
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-  while (selected.length < CONSTRUCTED_TRANSITION.maxBorderCandidates) {
-    const node = walker.nextNode();
-    if (!node) break;
-    if (node instanceof HTMLElement) add(node);
-  }
   return selected;
 }
 
@@ -286,26 +284,29 @@ function animateConstructionLines(construction: ConstructionLayer, phase: Phase,
   });
 }
 
-function contentTargets(root: HTMLElement) {
-  const candidates = [...root.querySelectorAll<HTMLElement>(CONSTRUCTION_CONTENT_SELECTOR)]
-    .filter(element => inViewport(element.getBoundingClientRect()));
-  const selected = new Set(candidates);
-  return candidates.filter(element => {
+function measureConstructionContent(root: HTMLElement) {
+  const measured: { element: HTMLElement; baseline: number }[] = [];
+  const measuredElements = new Set<HTMLElement>();
+  for (const element of root.querySelectorAll<HTMLElement>(CONSTRUCTION_CONTENT_SELECTOR)) {
+    if (measured.length >= CONSTRUCTED_TRANSITION.maxContentTargets) break;
+    if (element.closest('[hidden],[aria-hidden="true"]')) continue;
+    if (!inViewport(element.getBoundingClientRect())) continue;
     let ancestor = element.parentElement;
+    let nested = false;
     while (ancestor && ancestor !== root) {
-      if (selected.has(ancestor)) return false;
+      if (measuredElements.has(ancestor)) {
+        nested = true;
+        break;
+      }
       ancestor = ancestor.parentElement;
     }
-    return true;
-  }).slice(0, CONSTRUCTED_TRANSITION.maxContentTargets);
-}
-
-function measureConstructionContent(root: HTMLElement) {
-  return contentTargets(root).map(element => {
+    if (nested) continue;
     const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
     const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
-    return { element, baseline };
-  });
+    measured.push({ element, baseline });
+    measuredElements.add(element);
+  }
+  return measured;
 }
 
 function animateConstructionContent(measured: ReturnType<typeof measureConstructionContent>, phase: Phase) {

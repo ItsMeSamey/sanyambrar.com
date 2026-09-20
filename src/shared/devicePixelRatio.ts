@@ -5,6 +5,7 @@ let currentRatio = 1;
 let media: MediaQueryList | null = null;
 let timer = 0;
 let listening = false;
+const SAFETY_POLL_MS = 2000;
 
 const readRatio = () => window.devicePixelRatio || 1;
 
@@ -26,12 +27,34 @@ function onPossibleChange() {
   checkRatio();
 }
 
+function scheduleSafetyPoll() {
+  if (!listening || document.hidden || timer) return;
+  timer = window.setTimeout(() => {
+    timer = 0;
+    checkRatio();
+    scheduleSafetyPoll();
+  }, SAFETY_POLL_MS);
+}
+
+function onVisibilityChange() {
+  checkRatio();
+  if (document.hidden) {
+    if (timer) window.clearTimeout(timer);
+    timer = 0;
+  } else {
+    scheduleSafetyPoll();
+  }
+}
+
 function start() {
   if (listening) return;
   listening = true;
   currentRatio = readRatio();
   rebindMedia();
-  timer = window.setInterval(checkRatio, 250);
+  window.addEventListener('resize', onPossibleChange, { passive: true });
+  window.visualViewport?.addEventListener('resize', onPossibleChange, { passive: true });
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  scheduleSafetyPoll();
 }
 
 function stop() {
@@ -39,7 +62,10 @@ function stop() {
   listening = false;
   media?.removeEventListener('change', onPossibleChange);
   media = null;
-  if (timer) window.clearInterval(timer);
+  window.removeEventListener('resize', onPossibleChange);
+  window.visualViewport?.removeEventListener('resize', onPossibleChange);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  if (timer) window.clearTimeout(timer);
   timer = 0;
 }
 
