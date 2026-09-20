@@ -712,3 +712,148 @@ test('Reverb Range wheel can select an exact-boundary over-limit combination', a
   await expect(currentFaces.nth(1)).not.toHaveClass(/over-limit/);
   await expect(currentFaces.nth(2)).toHaveClass(/over-limit/);
 });
+
+test('Reverb Range duration wheel keeps the first active touch pointer', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.68;
+  const y = box.y + box.height / 2;
+
+  await wheel.evaluate((element, payload) => {
+    element.setPointerCapture = () => {};
+    element.releasePointerCapture = () => {};
+    element.hasPointerCapture = () => false;
+    const send = (type, pointerId) => element.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      pointerId,
+      pointerType: 'touch',
+      isPrimary: pointerId === 41,
+      clientX: payload.x,
+      clientY: payload.y,
+      button: 0,
+    }));
+    send('pointerdown', 41);
+    send('pointerdown', 42);
+  }, { x, y });
+  await expect(exportButton).toBeDisabled();
+
+  await wheel.evaluate((element, payload) => {
+    element.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 41,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: payload.x,
+      clientY: payload.y,
+      button: 0,
+    }));
+  }, { x, y });
+  await expect(exportButton).toBeEnabled();
+});
+
+test('Reverb Range waveform scrub keeps the first active touch pointer', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const play = host.locator('#rangePlay');
+  const wavebox = host.locator('.range-timeline .wavebox');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const box = await wavebox.boundingBox();
+  if (!box) throw new Error('Range waveform has no geometry');
+  const y = box.y + box.height / 2;
+
+  await wavebox.evaluate((element, payload) => {
+    element.setPointerCapture = () => {};
+    element.releasePointerCapture = () => {};
+    element.hasPointerCapture = () => false;
+    const send = (type, pointerId, x) => element.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      pointerId,
+      pointerType: 'touch',
+      isPrimary: pointerId === 51,
+      clientX: x,
+      clientY: payload.y,
+      button: 0,
+    }));
+    send('pointerdown', 51, payload.firstX);
+    send('pointerdown', 52, payload.secondX);
+  }, { y, firstX: box.x + box.width * 0.35, secondX: box.x + box.width * 0.65 });
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await wavebox.evaluate((element, payload) => {
+    element.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 51,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: payload.x,
+      clientY: payload.y,
+      button: 0,
+    }));
+  }, { x: box.x + box.width * 0.35, y });
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+});
+
+test('Reverb Range fine seek keeps the first active touch pointer', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const play = host.locator('#rangePlay');
+  const fine = host.locator('.fine-control');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const box = await fine.boundingBox();
+  if (!box) throw new Error('Fine seek has no geometry');
+  const y = box.y + box.height / 2;
+
+  await fine.evaluate((element, payload) => {
+    element.setPointerCapture = () => {};
+    element.releasePointerCapture = () => {};
+    element.hasPointerCapture = () => false;
+    const send = (type, pointerId, x) => element.dispatchEvent(new PointerEvent(type, {
+      bubbles: true,
+      pointerId,
+      pointerType: 'touch',
+      isPrimary: pointerId === 61,
+      clientX: x,
+      clientY: payload.y,
+      button: 0,
+    }));
+    send('pointerdown', 61, payload.firstX);
+    send('pointerdown', 62, payload.secondX);
+  }, { y, firstX: box.x + 16, secondX: box.x + box.width - 16 });
+  await expect(fine).toHaveClass(/is-dragging/);
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await fine.evaluate((element, payload) => {
+    element.dispatchEvent(new PointerEvent('pointerup', {
+      bubbles: true,
+      pointerId: 61,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: payload.x,
+      clientY: payload.y,
+      button: 0,
+    }));
+  }, { x: box.x + 16, y });
+  await expect(fine).not.toHaveClass(/is-dragging/);
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+});
