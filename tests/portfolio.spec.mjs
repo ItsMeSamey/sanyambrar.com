@@ -27,6 +27,31 @@ async function visit(page, route, info) {
   await expect(page.locator('body')).not.toContainText(/Something's Gone Horridly Wrong|Oh no, something bad|This view failed to render|Editor failed to load/);
 }
 
+async function installSyntheticPointerCapture(locator) {
+  await locator.evaluate(element => {
+    const captured = new Set();
+    element.setPointerCapture = pointerId => captured.add(pointerId);
+    element.releasePointerCapture = pointerId => captured.delete(pointerId);
+    element.hasPointerCapture = pointerId => captured.has(pointerId);
+  });
+}
+
+async function dispatchSyntheticPointer(locator, type, pointerId, clientX, clientY) {
+  await locator.evaluate((element, value) => {
+    element.dispatchEvent(new PointerEvent(value.type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: value.pointerId,
+      pointerType: 'touch',
+      isPrimary: value.pointerId === 1,
+      button: 0,
+      buttons: value.type === 'pointerup' || value.type === 'pointercancel' ? 0 : 1,
+      clientX: value.clientX,
+      clientY: value.clientY,
+    }));
+  }, { type, pointerId, clientX, clientY });
+}
+
 async function visitKeybr(page, info) {
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await visit(page, '/keybr', info);
@@ -2896,6 +2921,60 @@ test('virtual scrollbar disappears when its fixed scroll owner is hidden', async
   ))), { message: 'Virtual scrollbar must disappear when its owner becomes hidden' }).toBe(true);
 });
 
+test('virtual scrollbar drag keeps its first pointer owner', async ({ page }, info) => {
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const owner = document.createElement('div');
+    owner.id = 'qa-virtual-scroll-multipointer-owner';
+    Object.assign(owner.style, {
+      position: 'fixed', left: '24px', top: '96px', width: '180px', height: '120px', overflowY: 'auto',
+    });
+    const content = document.createElement('div');
+    content.style.height = '960px';
+    content.textContent = 'virtual scrollbar multi-pointer probe';
+    owner.append(content);
+    document.body.append(owner);
+  });
+
+  const markOwnerThumb = () => page.evaluate(() => {
+    const owner = document.querySelector('#qa-virtual-scroll-multipointer-owner');
+    if (!(owner instanceof HTMLElement)) return false;
+    const rect = owner.getBoundingClientRect();
+    const bar = [...document.querySelectorAll('.samey-vscroll')].find(candidate => {
+      if (!(candidate instanceof HTMLElement) || candidate.hidden) return false;
+      const barRect = candidate.getBoundingClientRect();
+      return Math.abs(barRect.left - (rect.right - 7)) <= 1
+        && Math.abs(barRect.top - rect.top) <= 1
+        && Math.abs(barRect.height - rect.height) <= 1;
+    });
+    const thumb = bar?.querySelector('.samey-vscroll-thumb');
+    if (!(thumb instanceof HTMLElement)) return false;
+    thumb.dataset.qaMultiPointerThumb = '';
+    return true;
+  });
+
+  await expect.poll(markOwnerThumb).toBe(true);
+  const thumb = page.locator('.samey-vscroll-thumb[data-qa-multi-pointer-thumb]');
+  await installSyntheticPointerCapture(thumb);
+  const box = await thumb.boundingBox();
+  if (!box) throw new Error('Virtual scrollbar thumb has no geometry');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const scrollTop = () => page.locator('#qa-virtual-scroll-multipointer-owner').evaluate(element => element.scrollTop);
+
+  await dispatchSyntheticPointer(thumb, 'pointerdown', 1, x, y);
+  await dispatchSyntheticPointer(thumb, 'pointermove', 1, x, y + 20);
+  await expect.poll(scrollTop).toBeGreaterThan(0);
+  await dispatchSyntheticPointer(thumb, 'pointerdown', 2, x, y + 5);
+  const beforeOwnerMove = await scrollTop();
+  await dispatchSyntheticPointer(thumb, 'pointermove', 1, x, y + 38);
+  await expect.poll(scrollTop, { message: 'The original pointer should retain virtual scrollbar drag ownership' }).not.toBe(beforeOwnerMove);
+  const afterOwnerMove = await scrollTop();
+  await dispatchSyntheticPointer(thumb, 'pointermove', 2, x, y + 55);
+  await page.waitForTimeout(30);
+  expect(await scrollTop(), 'A secondary pointer must not take over the virtual scrollbar thumb').toBe(afterOwnerMove);
+});
+
 test('virtual scrollbar drag releases pointer ownership on window blur', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.evaluate(() => {
@@ -3125,6 +3204,29 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await expect(page.getByRole('dialog', { name: /^Game details for / })).toBeVisible();
 });
 
+test('Wordle on-screen key keeps its first pointer owner', async ({ page }, info) => {
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  const key = page.getByRole('button', { name: 'A', exact: true });
+  await installSyntheticPointerCapture(key);
+  await page.evaluate(() => {
+    globalThis.__sameyQaWordleADowns = 0;
+    document.addEventListener('keydown', event => {
+      if (event.key === 'A') globalThis.__sameyQaWordleADowns += 1;
+    });
+  });
+  const box = await key.boundingBox();
+  if (!box) throw new Error('Wordle A key has no geometry');
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+
+  await dispatchSyntheticPointer(key, 'pointerdown', 1, x, y);
+  await dispatchSyntheticPointer(key, 'pointerdown', 2, x + 1, y + 1);
+  expect(await page.evaluate(() => globalThis.__sameyQaWordleADowns),
+    'A second pointer on the same on-screen key must not synthesize another keydown').toBe(1);
+  await dispatchSyntheticPointer(key, 'pointerup', 2, x + 1, y + 1);
+  await dispatchSyntheticPointer(key, 'pointerup', 1, x, y);
+});
+
 test('Wordle on-screen key clears after pointer capture loss', async ({ page }, info) => {
   await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
@@ -3147,6 +3249,34 @@ test('Wordle on-screen key clears after pointer capture loss', async ({ page }, 
   await page.mouse.move(box.x + box.width / 2 + 3, box.y + box.height / 2 + 3);
   await expect(key, 'Lost pointer capture must clear the pressed key state').not.toHaveClass(/wordle-key-pressed/);
   await page.mouse.up();
+});
+
+test('shared slider drag keeps its first pointer owner', async ({ page }, info) => {
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const slider = page.getByRole('slider', { name: 'Max guesses', exact: true });
+  const root = slider.locator('xpath=ancestor::*[contains(@class, "game-settings-slider")][1]');
+  const box = await slider.boundingBox();
+  if (!box) throw new Error('Shared slider has no geometry');
+  const y = box.y + box.height / 2;
+  const x20 = box.x + box.width * .2;
+  const x30 = box.x + box.width * .3;
+  const x80 = box.x + box.width * .8;
+  const offset = () => root.evaluate(element => element.style.getPropertyValue('--samey-slider-drag-offset'));
+
+  await dispatchSyntheticPointer(slider, 'pointerdown', 1, x20, y);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await dispatchSyntheticPointer(slider, 'pointerdown', 2, x30, y);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const beforeOwnerMove = await offset();
+  await dispatchSyntheticPointer(slider, 'pointermove', 1, x80, y);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await offset(), 'The original pointer should still drive the active shared slider drag').not.toBe(beforeOwnerMove);
+  const afterOwnerMove = await offset();
+  await dispatchSyntheticPointer(slider, 'pointermove', 2, x20, y);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await offset(), 'A secondary pointer must not take over the active shared slider drag').toBe(afterOwnerMove);
 });
 
 test('shared slider drag aborts on window blur', async ({ page }, info) => {
@@ -3694,6 +3824,38 @@ test('number conversion updates from edited input', async ({ page }, info) => {
       }),
     };
   })).toEqual({ toolContained: true, cardsContained: true, buttonsContained: true });
+});
+
+test('Markdown divider keeps its first pointer owner', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await visit(page, '/tools/?tool=markdown', info);
+  const tool = page.locator('.markdown-tool');
+  const divider = page.locator('.markdown-divider');
+  await expect(divider).toBeVisible();
+  await installSyntheticPointerCapture(divider);
+  const box = await divider.boundingBox();
+  const toolBox = await tool.boundingBox();
+  if (!box || !toolBox) throw new Error('Markdown divider has no geometry');
+  const y = box.y + box.height / 2;
+  const x50 = toolBox.x + toolBox.width * .5;
+  const x60 = toolBox.x + toolBox.width * .6;
+  const x70 = toolBox.x + toolBox.width * .7;
+  const x30 = toolBox.x + toolBox.width * .3;
+
+  await dispatchSyntheticPointer(divider, 'pointerdown', 1, x50, y);
+  await dispatchSyntheticPointer(divider, 'pointermove', 1, x60, y);
+  await expect.poll(() => tool.evaluate(element => element.style.getPropertyValue('--md-split'))).toContain('60');
+  await dispatchSyntheticPointer(divider, 'pointerdown', 2, x30, y);
+  const beforeSecondaryMove = await tool.evaluate(element => element.style.getPropertyValue('--md-split'));
+  await dispatchSyntheticPointer(divider, 'pointermove', 2, x30, y);
+  await page.waitForTimeout(30);
+  expect(await tool.evaluate(element => element.style.getPropertyValue('--md-split')),
+    'A secondary pointer must not move the active Markdown divider drag').toBe(beforeSecondaryMove);
+  await dispatchSyntheticPointer(divider, 'pointerup', 2, x30, y);
+  await dispatchSyntheticPointer(divider, 'pointermove', 1, x70, y);
+  await expect.poll(() => tool.evaluate(element => element.style.getPropertyValue('--md-split')), {
+    message: 'A secondary pointerup must not terminate the original Markdown divider owner',
+  }).not.toBe(beforeSecondaryMove);
 });
 
 test('Markdown divider drag ends after pointer capture loss', async ({ page }, info) => {

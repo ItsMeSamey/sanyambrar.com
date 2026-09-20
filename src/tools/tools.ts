@@ -831,18 +831,19 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     };
     let stopDividerDrag: (() => void) | null = null;
     divider.addEventListener('pointerdown', event => {
-      if (viewMode !== 'split') return;
-      stopDividerDrag?.();
+      if (viewMode !== 'split' || stopDividerDrag) return;
       divider.setPointerCapture(event.pointerId);
       const pointerId = event.pointerId;
       const move = (pointer: PointerEvent) => {
+        if (pointer.pointerId !== pointerId) return;
         const rect = toolRoot.getBoundingClientRect();
         const stacked = matchMedia('(max-width:700px)').matches;
         const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
         applySplit(ratio * 100);
       };
       let active = true;
-      const up = () => {
+      const up = (event?: Event) => {
+        if (event instanceof PointerEvent && event.pointerId !== pointerId) return;
         if (!active) return;
         active = false;
         if (stopDividerDrag === up) stopDividerDrag = null;
