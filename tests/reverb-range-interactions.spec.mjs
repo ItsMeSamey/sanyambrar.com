@@ -1007,14 +1007,14 @@ test('Reverb Range wheel renders fractional cylinder motion during drag', async 
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x, y - box.height * (56 / 160) * 0.5, { steps: 4 });
+  await page.mouse.move(x, y - box.height * (56 / 160) * 0.4, { steps: 4 });
 
   await expect(wheel).toHaveAttribute('aria-valuenow', '840');
   await expect(minuteCurrent).toHaveText('14');
   const liveTop = Number.parseFloat(
     await minuteCurrent.evaluate(element => getComputedStyle(element).top),
   );
-  expect(liveTop).toBeCloseTo(60.62, 1);
+  expect(liveTop).toBeCloseTo(64.22, 1);
 
   await page.mouse.up();
   await page.waitForTimeout(180);
@@ -1039,13 +1039,13 @@ test('Reverb Range profile wheel renders fractional cylinder motion during drag'
   const y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x, y - box.height * (56 / 160) * 0.5, { steps: 4 });
+  await page.mouse.move(x, y - box.height * (56 / 160) * 0.4, { steps: 4 });
 
   await expect(wheel).toHaveAttribute('aria-valuetext', / 1x$/);
   const liveTop = Number.parseFloat(
     await profileCurrent.evaluate(element => getComputedStyle(element).top),
   );
-  expect(liveTop).toBeCloseTo(60.62, 1);
+  expect(liveTop).toBeCloseTo(64.22, 1);
 
   await page.mouse.up();
   await page.waitForTimeout(180);
