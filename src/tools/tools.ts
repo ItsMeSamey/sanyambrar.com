@@ -829,8 +829,10 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       localSet('markdown', 'split', split.toFixed(2));
       scheduleLayout();
     };
+    let stopDividerDrag: (() => void) | null = null;
     divider.addEventListener('pointerdown', event => {
       if (viewMode !== 'split') return;
+      stopDividerDrag?.();
       divider.setPointerCapture(event.pointerId);
       const pointerId = event.pointerId;
       const move = (pointer: PointerEvent) => {
@@ -843,11 +845,13 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       const up = () => {
         if (!active) return;
         active = false;
+        if (stopDividerDrag === up) stopDividerDrag = null;
         divider.removeEventListener('pointermove', move);
         divider.removeEventListener('pointerup', up);
         divider.removeEventListener('pointercancel', up);
         divider.removeEventListener('lostpointercapture', up);
         removeEventListener('blur', up);
+        removeEventListener('samey-pageleave', up);
         if (divider.hasPointerCapture(pointerId)) divider.releasePointerCapture(pointerId);
       };
       divider.addEventListener('pointermove', move);
@@ -855,6 +859,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       divider.addEventListener('pointercancel', up);
       divider.addEventListener('lostpointercapture', up);
       addEventListener('blur', up);
+      addEventListener('samey-pageleave', up);
+      stopDividerDrag = up;
     });
     divider.addEventListener('keydown', event => {
       const stacked = matchMedia('(max-width:700px)').matches;
@@ -865,6 +871,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     });
 
     disposeTool = () => {
+      stopDividerDrag?.();
+      stopDividerDrag = null;
       if (richSyncFrame) cancelAnimationFrame(richSyncFrame);
       if (richLayoutFrame) cancelAnimationFrame(richLayoutFrame);
       richResize.disconnect();
