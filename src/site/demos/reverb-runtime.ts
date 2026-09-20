@@ -522,6 +522,92 @@ export function runReverbDemoRuntime(
     return { maximum, parts, maximumParts, rings };
   };
 
+  const rangeWheelModulo = (value: number, count: number) => {
+    const result = value % count;
+    return result < 0 ? result + count : result;
+  };
+  const clearRangeWheelDragVisual = () => {
+    const restingTop = [27.54, 44.46, 79.25, 114.05, 130.97];
+    rangeDurationWheel.querySelectorAll<HTMLElement>(".wheel-face").forEach((face, index) => {
+      face.style.removeProperty("transition");
+      face.style.top = `${restingTop[index % 5] ?? 79.25}px`;
+      face.style.removeProperty("opacity");
+      face.style.removeProperty("transform");
+      face.style.removeProperty("color");
+    });
+  };
+  const renderRangeWheelDragVisual = (
+    column: RangeWheelColumn,
+    rows: number,
+    settling = false,
+    target: RangeEditTarget = rangeWheelPinnedTarget ?? rangeEditTarget,
+  ) => {
+    const positionFace = (face: HTMLElement, relative: number, overLimit: boolean) => {
+      const radians = relative * 42 * Math.PI / 180;
+      const sine = Math.sin(radians);
+      const cosine = Math.cos(radians);
+      const absolute = Math.abs(relative);
+      const z = cosine * 52 - 52;
+      const projectionScale = 320 / (320 - z);
+      const scale = projectionScale * (1 - Math.min(absolute, 1.5) * 0.05);
+      const edgeFade = Math.max(0, Math.min(1, (2.34 - absolute) / 0.42));
+      const facing = Math.max(cosine, 0.18);
+      const opacity = cosine <= 0 || absolute >= 2.34
+        ? 0
+        : Math.min(1, facing * (0.55 + edgeFade * 0.45));
+      const centerMix = Math.max(0, Math.min(1, 1 - absolute / 0.85));
+      face.style.transition = settling
+        ? "top 150ms cubic-bezier(.33,1,.68,1), transform 150ms cubic-bezier(.33,1,.68,1), opacity 150ms linear"
+        : "none";
+      face.style.top = `${79.25 + sine * 52}px`;
+      face.style.opacity = String(opacity);
+      face.style.transform = `translate(-50%,-50%) scale(${scale},${scale * cosine})`;
+      face.style.color = overLimit
+        ? "var(--error)"
+        : `color-mix(in srgb, var(--on-surface-variant) ${(1 - centerMix) * 100}%, var(--on-surface) ${centerMix * 100}%)`;
+    };
+
+    if (column === "profile") {
+      const faces = [...rangeDurationWheel.querySelectorAll<HTMLElement>(".wheel-profile")];
+      const position = rangeWheelProfileIndex + rows;
+      const base = Math.floor(position);
+      faces.forEach((face, faceIndex) => {
+        const logical = base + faceIndex - 2;
+        face.textContent = rangeWheelProfiles[rangeWheelModulo(logical, rangeWheelProfiles.length)] ?? "1x";
+        positionFace(face, logical - position, false);
+      });
+      return;
+    }
+
+    const { maximum, parts, rings } = rangeWheelNumberModel(target);
+    const columnIndex = column === "hour" ? 0 : column === "minute" ? 1 : 2;
+    const values = rings[columnIndex];
+    if (values.length === 0) return;
+    const currentParts = [parts.hours, parts.minutes, parts.seconds];
+    const current = currentParts[columnIndex] ?? 0;
+    const currentIndex = Math.max(0, values.indexOf(current));
+    const position = currentIndex + rows;
+    const base = Math.floor(position);
+    const selectedLogical = Math.round(position);
+    const selectedParts = [...currentParts];
+    selectedParts[columnIndex] = values[rangeWheelModulo(selectedLogical, values.length)] ?? current;
+    const faces = [...rangeDurationWheel.querySelectorAll<HTMLElement>(
+      ".wheel-face:not(.wheel-profile)",
+    )].slice(columnIndex * 5, columnIndex * 5 + 5);
+    faces.forEach((face, faceIndex) => {
+      const logical = base + faceIndex - 2;
+      const value = values[rangeWheelModulo(logical, values.length)] ?? current;
+      face.textContent = twoDigits(value);
+      const candidate = [...selectedParts];
+      candidate[columnIndex] = value;
+      const candidateSeconds =
+        (candidate[0] ?? 0) * 3600 +
+        (candidate[1] ?? 0) * 60 +
+        (candidate[2] ?? 0);
+      positionFace(face, logical - position, candidateSeconds > maximum);
+    });
+  };
+
   function renderRangeWheel(): void {
     const selection = rangeSelectionSeconds();
     const { maximum, parts, rings } = rangeWheelNumberModel();
@@ -963,6 +1049,8 @@ export function runReverbDemoRuntime(
     }
     if (pointerId !== -1 && rangeDurationWheel.hasPointerCapture?.(pointerId))
       rangeDurationWheel.releasePointerCapture(pointerId);
+    clearRangeWheelDragVisual();
+    renderRangeWheel();
     setRangeWheelInteractionUi(false);
   };
   const finishRangeWheelInteraction = (event: PointerEvent, cancelled = false) => {
@@ -995,12 +1083,17 @@ export function runReverbDemoRuntime(
       rangeDurationWheel.releasePointerCapture(pointerId);
     const commit = () => {
       rangeWheelSettleTimer = 0;
+      clearRangeWheelDragVisual();
       if (rangeWheelCommitAllowed && column && pinnedTarget && steps !== 0)
         adjustRangeWheelColumn(column, steps, pinnedTarget);
+      else
+        renderRangeWheel();
       rangeWheelCommitAllowed = false;
       setRangeWheelInteractionUi(false);
     };
     if (needsSettle) {
+      if (column && rangeWheelPointerDragged)
+        renderRangeWheelDragVisual(column, steps, true, pinnedTarget ?? rangeEditTarget);
       rangeWheelSettleTimer = setTimeout(commit, 150);
     } else {
       commit();
@@ -1032,6 +1125,15 @@ export function runReverbDemoRuntime(
     rangeWheelPointerY = event.clientY;
     if (Math.abs(rangeWheelPointerY - rangeWheelPointerDownY) > 8)
       rangeWheelPointerDragged = true;
+    const column = rangeWheelPointerColumn;
+    if (column) {
+      const rect = rangeDurationWheel.getBoundingClientRect();
+      const rowPx = Math.max(1, rect.height * (56 / 160));
+      renderRangeWheelDragVisual(
+        column,
+        -(rangeWheelPointerY - rangeWheelPointerDownY) / rowPx,
+      );
+    }
     event.preventDefault();
   });
   rangeDurationWheel.addEventListener("pointerup", finishRangeWheelInteraction);
