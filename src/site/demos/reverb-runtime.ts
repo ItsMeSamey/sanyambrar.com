@@ -944,7 +944,7 @@ export function runReverbDemoRuntime(
       rangeDurationWheel.releasePointerCapture(pointerId);
     setRangeWheelInteractionUi(false);
   };
-  const finishRangeWheelInteraction = (event: PointerEvent) => {
+  const finishRangeWheelInteraction = (event: PointerEvent, cancelled = false) => {
     if (event.pointerId !== rangeWheelPointerId) return;
     const pointerId = rangeWheelPointerId;
     const column = rangeWheelPointerColumn;
@@ -953,11 +953,13 @@ export function runReverbDemoRuntime(
     const rowPx = Math.max(1, rect.height * (56 / 160));
     const rawSteps = rangeWheelPointerDragged
       ? -(rangeWheelPointerY - rangeWheelPointerDownY) / rowPx
-      : event.clientY - rect.top < rect.height / 3
-        ? -1
-        : event.clientY - rect.top > (rect.height * 2) / 3
-          ? 1
-          : 0;
+      : cancelled
+        ? 0
+        : event.clientY - rect.top < rect.height / 3
+          ? -1
+          : event.clientY - rect.top > (rect.height * 2) / 3
+            ? 1
+            : 0;
     const steps = Math.round(rawSteps);
     const needsSettle = Math.abs(steps - rawSteps) > 0.0001;
     rangeWheelPointerId = -1;
@@ -967,7 +969,7 @@ export function runReverbDemoRuntime(
     rangeWheelSuppressClick = true;
     setTimeout(() => {
       rangeWheelSuppressClick = false;
-    }, 0);
+    }, cancelled ? 500 : 0);
     if (rangeDurationWheel.hasPointerCapture?.(pointerId))
       rangeDurationWheel.releasePointerCapture(pointerId);
     const commit = () => {
@@ -1011,9 +1013,10 @@ export function runReverbDemoRuntime(
     event.preventDefault();
   });
   rangeDurationWheel.addEventListener("pointerup", finishRangeWheelInteraction);
-  rangeDurationWheel.addEventListener("pointercancel", finishRangeWheelInteraction);
+  rangeDurationWheel.addEventListener("pointercancel", (event) =>
+    finishRangeWheelInteraction(event, true));
   rangeDurationWheel.addEventListener("lostpointercapture", (event) => {
-    if (event.pointerId === rangeWheelPointerId) finishRangeWheelInteraction(event);
+    if (event.pointerId === rangeWheelPointerId) finishRangeWheelInteraction(event, true);
   });
   rangeDurationWheel.addEventListener("wheel", (event) => {
     if (event.deltaY === 0 || rangeWheelInteractionActive()) return;

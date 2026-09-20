@@ -585,3 +585,56 @@ test('Reverb Range wheel colon gaps do not claim a wheel column', async ({ page 
   await page.mouse.wheel(0, 120);
   await expect(wheel).toHaveAttribute('aria-valuenow', before ?? '');
 });
+
+test('Reverb Range cancelled wheel press snaps without executing a tap step', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('20:00.0');
+  await page.keyboard.press('Enter');
+  await start.focus();
+
+  const beforeStart = await start.textContent();
+  const beforeDuration = await wheel.getAttribute('aria-valuenow');
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.39;
+  const y = box.y + box.height * 0.15;
+  await wheel.evaluate(element => {
+    element.addEventListener('pointerdown', event => {
+      element.dataset.testPointerId = String(event.pointerId);
+    }, { once: true });
+  });
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(exportButton).toBeDisabled();
+  const pointerId = Number(await wheel.getAttribute('data-test-pointer-id'));
+  expect(pointerId).toBeGreaterThanOrEqual(0);
+  await wheel.evaluate((element, payload) => {
+    element.dispatchEvent(new PointerEvent('pointercancel', {
+      bubbles: true,
+      pointerId: payload.pointerId,
+      pointerType: 'mouse',
+      clientX: payload.x,
+      clientY: payload.y,
+      button: 0,
+    }));
+  }, { pointerId, x, y });
+  await expect(exportButton).toBeEnabled();
+  await page.mouse.up();
+  await page.waitForTimeout(50);
+
+  await expect(wheel).toHaveAttribute('aria-valuenow', beforeDuration ?? '');
+  await expect(start).toHaveText(beforeStart ?? '');
+});
