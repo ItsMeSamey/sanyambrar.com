@@ -2896,6 +2896,61 @@ test('virtual scrollbar disappears when its fixed scroll owner is hidden', async
   ))), { message: 'Virtual scrollbar must disappear when its owner becomes hidden' }).toBe(true);
 });
 
+test('virtual scrollbar drag releases pointer ownership on window blur', async ({ page }, info) => {
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const owner = document.createElement('div');
+    owner.id = 'qa-virtual-scroll-drag-owner';
+    Object.assign(owner.style, {
+      position: 'fixed',
+      left: '24px',
+      top: '96px',
+      width: '180px',
+      height: '120px',
+      overflowY: 'auto',
+    });
+    const content = document.createElement('div');
+    content.style.height = '960px';
+    content.textContent = 'virtual scrollbar drag lifecycle probe';
+    owner.append(content);
+    document.body.append(owner);
+  });
+
+  const markOwnerThumb = () => page.evaluate(() => {
+    const owner = document.querySelector('#qa-virtual-scroll-drag-owner');
+    if (!(owner instanceof HTMLElement)) return false;
+    const rect = owner.getBoundingClientRect();
+    const bar = [...document.querySelectorAll('.samey-vscroll')].find(candidate => {
+      if (!(candidate instanceof HTMLElement) || candidate.hidden) return false;
+      const barRect = candidate.getBoundingClientRect();
+      return Math.abs(barRect.left - (rect.right - 7)) <= 1
+        && Math.abs(barRect.top - rect.top) <= 1
+        && Math.abs(barRect.height - rect.height) <= 1;
+    });
+    const thumb = bar?.querySelector('.samey-vscroll-thumb');
+    if (!(thumb instanceof HTMLElement)) return false;
+    thumb.dataset.qaDragThumb = '';
+    return true;
+  });
+
+  await expect.poll(markOwnerThumb, { message: 'Scrollable fixed panel should expose a draggable virtual thumb' }).toBe(true);
+  const thumb = page.locator('.samey-vscroll-thumb[data-qa-drag-thumb]');
+  const box = await thumb.boundingBox();
+  if (!box) throw new Error('Virtual scrollbar thumb has no geometry');
+  const scrollTop = () => page.locator('#qa-virtual-scroll-drag-owner').evaluate(element => element.scrollTop);
+
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 24, { steps: 4 });
+  await expect.poll(scrollTop, { message: 'Dragging the virtual thumb must move its scroll owner' }).toBeGreaterThan(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  const afterBlur = await scrollTop();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 48, { steps: 4 });
+  await page.waitForTimeout(30);
+  expect(await scrollTop(), 'Window blur must cancel the virtual scrollbar drag').toBe(afterBlur);
+  await page.mouse.up();
+});
+
 test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 260 });
   await visit(page, '/blog/posts/btop-mutex', info);
@@ -3675,6 +3730,30 @@ test('Markdown divider drag ends after pointer capture loss', async ({ page }, i
     { message: 'Hovering after capture loss must not continue the old Markdown drag' }).toBe(initialSplit);
 });
 
+test('Markdown divider drag ends on window blur', async ({ page }, info) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
+  await visit(page, '/tools/?tool=markdown', info);
+  const tool = page.locator('.markdown-tool');
+  const divider = page.locator('.markdown-divider');
+  await expect(divider).toBeVisible();
+  const box = await divider.boundingBox();
+  if (!box) throw new Error('Markdown divider has no geometry');
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y, { steps: 3 });
+  await expect.poll(() => tool.evaluate(element => element.style.getPropertyValue('--md-split')),
+    { message: 'Markdown divider must move while the drag owns the pointer' }).not.toBe('50%');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  const afterBlur = await tool.evaluate(element => element.style.getPropertyValue('--md-split'));
+  await page.mouse.move(x + 140, y, { steps: 4 });
+  await page.waitForTimeout(30);
+  expect(await tool.evaluate(element => element.style.getPropertyValue('--md-split')),
+    'Window blur must terminate the active Markdown divider drag').toBe(afterBlur);
+  await page.mouse.up();
+});
+
 test('Tools mobile selector dismisses and navigates by keyboard', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, '/tools/?tool=number', info);
@@ -4336,6 +4415,33 @@ test('CNN intensity, drawing, inference and clear', async ({ page }, info) => {
       return rect.left >= -1 && rect.right <= innerWidth + 1;
     });
   }), { message: 'CNN demo controls must stay usable at 128px' }).toBe(true);
+});
+
+test('CNN drawing releases pointer ownership on window blur', async ({ page }, info) => {
+  await visit(page, '/projects/cnn/', info);
+  const canvas = page.locator('.cnn-pad');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('CNN drawing canvas has no geometry');
+
+  const ink = () => canvas.evaluate(element => {
+    const context = element.getContext('2d');
+    if (!context) throw new Error('CNN drawing context unavailable');
+    const data = context.getImageData(0, 0, element.width, element.height).data;
+    let alpha = 0;
+    for (let i = 3; i < data.length; i += 4) alpha += data[i];
+    return alpha;
+  });
+
+  await page.mouse.move(box.x + box.width * .35, box.y + box.height * .35);
+  await page.mouse.down();
+  await expect.poll(ink, { message: 'Pointer down must place initial CNN ink' }).toBeGreaterThan(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  const afterBlur = await ink();
+  await page.mouse.move(box.x + box.width * .75, box.y + box.height * .75, { steps: 8 });
+  await page.waitForTimeout(30);
+  expect(await ink(), 'Window blur must cancel the active CNN stroke before later pointer movement').toBe(afterBlur);
+  await page.mouse.up();
 });
 
 test('Keybr completed lesson updates metrics and survives reload', async ({ page }, info) => {

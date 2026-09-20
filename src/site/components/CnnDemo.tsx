@@ -190,6 +190,15 @@ export function CnnDemo() {
     queueInference();
   };
 
+  const cancelStroke = () => {
+    const pointerId = activePointerId;
+    if (!drawing && pointerId == null) return;
+    drawing = false;
+    activePointerId = null;
+    if (pointerId != null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    queueInference();
+  };
+
   const clear = () => {
     if (activePointerId != null && canvas.hasPointerCapture(activePointerId)) {
       canvas.releasePointerCapture(activePointerId);
@@ -249,6 +258,7 @@ export function CnnDemo() {
     readThemeInk();
     configureBrush();
     window.addEventListener('samey-themechange', recolorForTheme);
+    window.addEventListener('blur', cancelStroke);
     resizeObserver = new ResizeObserver(() => { canvasRect = null; });
     resizeObserver.observe(canvas);
 
@@ -320,6 +330,7 @@ export function CnnDemo() {
     resizeObserver?.disconnect();
     worker?.terminate();
     window.removeEventListener('samey-themechange', recolorForTheme);
+    window.removeEventListener('blur', cancelStroke);
   });
 
   return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">

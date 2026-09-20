@@ -1892,6 +1892,20 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
 
   const virtualBars = new Map<Element, HTMLDivElement>();
+  let virtualDrag: { thumb: HTMLElement; pointerId: number } | null = null;
+  const cancelVirtualDrag = () => {
+    const current = virtualDrag;
+    virtualDrag = null;
+    if (current?.thumb.hasPointerCapture(current.pointerId)) current.thumb.releasePointerCapture(current.pointerId);
+  };
+  const beginVirtualDrag = (thumb: HTMLElement, event: PointerEvent) => {
+    cancelVirtualDrag();
+    thumb.setPointerCapture(event.pointerId);
+    virtualDrag = { thumb, pointerId: event.pointerId };
+  };
+  const finishVirtualDrag = (thumb: HTMLElement, pointerId: number) => {
+    if (virtualDrag?.thumb === thumb && virtualDrag.pointerId === pointerId) virtualDrag = null;
+  };
   let virtualRaf = 0;
   const scrollMetrics = (target: Element) => target === document.scrollingElement
     ? { top: scrollY, size: innerHeight, total: target.scrollHeight }
@@ -1937,7 +1951,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-vscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-vscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
     let startY = 0, startTop = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); thumb.setPointerCapture(event.pointerId); startY = event.clientY; startTop = scrollMetrics(target).top; });
+    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); beginVirtualDrag(thumb, event); startY = event.clientY; startTop = scrollMetrics(target).top; });
+    thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
       const { size, total } = scrollMetrics(target); const track = bar.clientHeight, thumbH = thumb.clientHeight;
@@ -1956,7 +1971,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-hscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-hscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
     let startX = 0, startLeft = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); thumb.setPointerCapture(event.pointerId); startX = event.clientX; startLeft = target.scrollLeft; });
+    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); beginVirtualDrag(thumb, event); startX = event.clientX; startLeft = target.scrollLeft; });
+    thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
       const size = target.clientWidth, total = target.scrollWidth, track = bar.clientWidth, thumbW = thumb.clientWidth;
@@ -1994,6 +2010,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const mountVirtualScrollbars = () => {
     scanVirtualScrollers();
+    addEventListener("blur", cancelVirtualDrag);
+    addEventListener("samey-pageleave", cancelVirtualDrag);
     let scanRaf = 0;
     const pending = new Set<Element>();
     const scheduleTargets = (targets: Iterable<Node | null>) => {
