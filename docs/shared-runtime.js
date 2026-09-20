@@ -2799,12 +2799,13 @@
 			if (current?.thumb.hasPointerCapture(current.pointerId)) current.thumb.releasePointerCapture(current.pointerId);
 		};
 		const beginVirtualDrag = (thumb, event) => {
-			cancelVirtualDrag();
+			if (virtualDrag) return false;
 			thumb.setPointerCapture(event.pointerId);
 			virtualDrag = {
 				thumb,
 				pointerId: event.pointerId
 			};
+			return true;
 		};
 		const finishVirtualDrag = (thumb, pointerId) => {
 			if (virtualDrag?.thumb === thumb && virtualDrag.pointerId === pointerId) virtualDrag = null;
@@ -2885,7 +2886,7 @@
 			let startY = 0, startTop = 0;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
-				beginVirtualDrag(thumb, event);
+				if (!beginVirtualDrag(thumb, event)) return;
 				startY = event.clientY;
 				startTop = scrollMetrics(target).top;
 			});
@@ -2920,7 +2921,7 @@
 			let startX = 0, startLeft = 0;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
-				beginVirtualDrag(thumb, event);
+				if (!beginVirtualDrag(thumb, event)) return;
 				startX = event.clientX;
 				startLeft = target.scrollLeft;
 			});
@@ -3578,7 +3579,7 @@
 				if (event.button !== 0) return;
 				const parts = sliderParts(event.target);
 				if (!parts || parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
-				if (active) clearRoot(active.root);
+				if (active) return;
 				clearTimeout(snapTimer);
 				active = {
 					...parts,

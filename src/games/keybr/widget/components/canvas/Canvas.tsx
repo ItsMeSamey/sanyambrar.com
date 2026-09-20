@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onSettled, omit } from "solid-js";
+import { watchDevicePixelRatio } from "../../../../../shared/devicePixelRatio.ts";
 import { useElementSize } from "../../hooks/use-element-size.ts";
 import type { JSX } from "@solidjs/web";
 import { type Size } from "../../utils/size.ts";
@@ -21,17 +22,23 @@ export const Canvas = function Canvas(allProps: CanvasProps) {
   const [element, setElement] = createSignal<HTMLCanvasElement>();
   const size = useElementSize(element);
   const [themeRevision, setThemeRevision] = createSignal(0);
+  const [pixelRatioRevision, setPixelRatioRevision] = createSignal(0);
 
   onSettled(() => {
     const repaint = () => setThemeRevision((value) => value + 1);
+    const stopPixelRatioWatch = watchDevicePixelRatio(() => setPixelRatioRevision((value) => value + 1));
     addEventListener("samey-themechange", repaint);
-    return () => removeEventListener("samey-themechange", repaint);
+    return () => {
+      stopPixelRatioWatch();
+      removeEventListener("samey-themechange", repaint);
+    };
   });
 
   createEffect(
     () => {
       const currentSize = size();
       themeRevision();
+      pixelRatioRevision();
       if (currentSize == null || currentSize.width <= 0 || currentSize.height <= 0) return null;
       return { size: currentSize, shapes: local.paint(currentSize) };
     },
