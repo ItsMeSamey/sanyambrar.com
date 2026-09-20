@@ -889,3 +889,69 @@ test('Reverb exports use the native spring save-status card lifecycle', async ({
   expect(terminal.hidden).toBe(true);
   expect(terminal.opacity).toBeCloseTo(0, 2);
 });
+
+test('Reverb feedback uses the native spring card and 2.8s success lifetime', async ({ page }, info) => {
+  const host = await visitReverb(page, info);
+  const samples = await host.evaluate(async element => {
+    const root = element.shadowRoot;
+    const openIncidents = root?.querySelector('#openIncidents');
+    const incident = root?.querySelector('#incidentCard');
+    const toast = root?.querySelector('#toast');
+    if (!(openIncidents instanceof HTMLButtonElement) || !(incident instanceof HTMLElement)
+      || !(toast instanceof HTMLElement))
+      throw new Error('Reverb feedback surfaces are unavailable');
+    openIncidents.click();
+    incident.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    const startedAt = performance.now();
+    const values = [];
+    while (performance.now() - startedAt < 3800) {
+      await new Promise(requestAnimationFrame);
+      const style = getComputedStyle(toast);
+      const matrix = style.transform === 'none' ? new DOMMatrix() : new DOMMatrix(style.transform);
+      values.push({
+        elapsed: performance.now() - startedAt,
+        y: matrix.m42,
+        opacity: Number(style.opacity),
+        hidden: toast.hidden,
+        show: toast.classList.contains('show'),
+        text: toast.textContent ?? '',
+        tone: toast.dataset.tone ?? '',
+        background: style.backgroundColor,
+      });
+      if (toast.hidden && performance.now() - startedAt > 2900) break;
+    }
+    return values;
+  });
+
+  expect(samples.length).toBeGreaterThan(20);
+  const first = samples[0];
+  expect(first.hidden).toBe(false);
+  expect(first.show).toBe(true);
+  expect(first.text).toBe('Incident copied');
+  expect(first.tone).toBe('success');
+  expect(first.y).toBeGreaterThan(0);
+  expect(first.opacity).toBeLessThan(1);
+
+  const entryMid = samples.find(sample =>
+    sample.elapsed >= 60 && sample.elapsed <= 260
+      && sample.y > 0 && sample.y < first.y - 0.1
+      && sample.opacity > first.opacity + 0.01 && sample.opacity < 1);
+  expect(entryMid).toBeTruthy();
+  const settled = samples.find(sample =>
+    sample.elapsed >= 350 && sample.elapsed < 2500
+      && Math.abs(sample.y) < 0.2 && sample.opacity > 0.995 && sample.show);
+  expect(settled).toBeTruthy();
+
+  const held = samples.find(sample => sample.elapsed >= 2500 && sample.elapsed <= 2750);
+  expect(held).toBeTruthy();
+  expect(held.show).toBe(true);
+  expect(held.hidden).toBe(false);
+
+  const exitMid = samples.find(sample =>
+    sample.elapsed > 2800 && !sample.hidden && !sample.show
+      && sample.y > 0.5 && sample.opacity < 0.99);
+  expect(exitMid).toBeTruthy();
+  const terminal = samples.at(-1);
+  expect(terminal.hidden).toBe(true);
+  expect(terminal.opacity).toBeCloseTo(0, 2);
+});

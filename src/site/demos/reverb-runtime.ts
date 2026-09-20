@@ -129,6 +129,7 @@ export function runReverbDemoRuntime(
   let loopLimitSeconds = loopRetentionTimeSeconds;
   let lastTick = performance.now();
   let toastTimer = 0;
+  let toastMotionEpoch = 0;
   let rangeExportPending = false;
   let rangeExportGeneration = 0;
   let captureSaveMotionEpoch = 0;
@@ -200,11 +201,54 @@ export function runReverbDemoRuntime(
   function currentSeconds(buffer: BufferSlot = bufferRenderedBuffer()): number {
     return buffer === "one" ? oneSeconds : loopSeconds;
   }
-  function showToast(message: string): void {
+  type FeedbackTone = "info" | "success" | "error";
+  function animateToastVisibility(entering: boolean): void {
+    const epoch = ++toastMotionEpoch;
+    const startedAt = performance.now();
+    const height = Math.max(1, toast.getBoundingClientRect().height || 36);
+    const target = height * 0.5;
+    const frame = (now: number) => {
+      if (epoch !== toastMotionEpoch) return;
+      const remaining = criticalSpringRemaining(now - startedAt);
+      const progress = 1 - remaining;
+      toast.style.transform = `translateY(${entering ? target * remaining : target * progress}px)`;
+      toast.style.opacity = String(entering ? progress : remaining);
+      if (remaining > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      toast.style.transform = entering ? "translateY(0)" : `translateY(${target}px)`;
+      toast.style.opacity = entering ? "1" : "0";
+      if (!entering) {
+        toast.hidden = true;
+        toast.setAttribute("aria-hidden", "true");
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+  function showToast(message: string, tone: FeedbackTone = "info"): void {
     clearTimeout(toastTimer);
+    const wasHidden = toast.hidden;
     toast.textContent = message;
+    toast.dataset.tone = tone;
+    toast.style.bottom = currentScreen === "settingsScreen" ? "20px" : "104px";
+    toast.hidden = false;
+    toast.setAttribute("aria-hidden", "false");
     toast.classList.add("show");
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 1200);
+    if (wasHidden) {
+      const initialOffset = Math.max(1, toast.getBoundingClientRect().height || 36) * 0.5;
+      toast.style.opacity = "0";
+      toast.style.transform = `translateY(${initialOffset}px)`;
+      animateToastVisibility(true);
+    } else {
+      ++toastMotionEpoch;
+      toast.style.opacity = "1";
+      toast.style.transform = "translateY(0)";
+    }
+    toastTimer = setTimeout(() => {
+      toast.classList.remove("show");
+      animateToastVisibility(false);
+    }, tone === "error" ? 4500 : 2800);
   }
   function criticalSpringRemaining(elapsedMs: number, stiffness = 400): number {
     const seconds = Math.max(0, elapsedMs) / 1000;
@@ -2259,7 +2303,7 @@ export function runReverbDemoRuntime(
       void navigator.clipboard
         ?.writeText(incidentCopyText)
         .catch(() => undefined);
-      showToast("Incident copied");
+      showToast("Incident copied", "success");
     };
     const toggleIncident = () => {
       if (incidentHoldTriggered) {
