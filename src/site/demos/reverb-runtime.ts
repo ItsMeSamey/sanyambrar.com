@@ -1009,25 +1009,16 @@ export function runReverbDemoRuntime(
   rangeDurationWheel.addEventListener("wheel", (event) => {
     if (event.deltaY === 0 || rangeWheelInteractionActive()) return;
     const pinnedTarget = rangeEditTarget;
-    const column = rangeWheelColumnAt(event.clientX);
-    const direction = event.deltaY < 0 ? -1 : 1;
-    rangeWheelPinnedTarget = pinnedTarget;
-    rangeWheelCommitAllowed = true;
     renderRangeUi();
     rangeStartInput.blur();
     rangeEndInput.blur();
     setRangePlaying(false);
-    setRangeWheelInteractionUi(true);
     event.preventDefault();
-    rangeWheelSettleTimer = setTimeout(() => {
-      rangeWheelSettleTimer = 0;
-      const commitTarget = rangeWheelPinnedTarget;
-      if (rangeWheelCommitAllowed && commitTarget)
-        adjustRangeWheelColumn(column, direction, commitTarget);
-      rangeWheelPinnedTarget = null;
-      rangeWheelCommitAllowed = false;
-      setRangeWheelInteractionUi(false);
-    }, 150);
+    adjustRangeWheelColumn(
+      rangeWheelColumnAt(event.clientX),
+      event.deltaY < 0 ? -1 : 1,
+      pinnedTarget,
+    );
   });
   rangeDurationWheel.addEventListener("click", (event) => {
     if (rangeWheelSuppressClick) {
