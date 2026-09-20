@@ -7,7 +7,7 @@ import { useIntl } from "../../intl/runtime.tsx";
 import styles from "./BookPreview.module.css";
 import { type BookContent } from "./types.ts";
 import { flattenContent } from "./util.ts";
-export const BookPreview = function BookPreview(props: BookContent): JSX.Element {
+export const BookPreview = function BookPreview(props: BookContent & { readonly action?: JSX.Element }): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatNumber } = useIntlNumbers();
     const stats = createMemo(() => {
@@ -56,5 +56,6 @@ export const BookPreview = function BookPreview(props: BookContent): JSX.Element
         })} value={formatNumber(stats().avgWordLength, 2)}/>
         </p>
       </div>
+      {props.action && <div class={styles.action}>{props.action}</div>}
     </div>);
 };

@@ -1,54 +1,17 @@
 .root {
-  margin-block: 1rem;
-}
-
-.selection {
-  display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem;
   min-inline-size: 0;
-  padding: 1rem;
-  border: var(--separator-border);
-  background: var(--primary-l1);
 }
 
-.selection > img {
-  inline-size: 4.2rem;
-  block-size: 5.8rem;
-  object-fit: cover;
-  border: var(--separator-border);
-  background: var(--primary-d1);
-}
-
-.selectionCopy {
-  display: grid;
-  min-inline-size: 0;
-  gap: 0.25rem;
-}
-
-.selectionCopy strong,
-.selectionCopy > span {
-  display: block;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.selectionCopy strong,
 .bookCopy strong {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.selectionCopy > span:last-child,
 .bookCopy span,
 .resultMeta {
   color: var(--secondary-l2);
 }
 
-.label,
 .eyebrow {
   color: var(--secondary-l2);
   font-size: 0.78em;
@@ -238,17 +201,7 @@
 }
 
 @media (max-width: 700px) {
-  .selection {
-    grid-template-columns: 3.6rem minmax(0, 1fr);
-  }
-
-  .selection > img {
-    inline-size: 3.6rem;
-    block-size: 5rem;
-  }
-
   .chooseButton {
-    grid-column: 1 / -1;
     inline-size: 100%;
   }
 
@@ -281,18 +234,6 @@
 }
 
 @media (max-width: 320px) {
-  .selection {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .selection > img {
-    max-inline-size: 100%;
-  }
-
-  .chooseButton {
-    grid-column: auto;
-  }
-
   .dialog {
     inline-size: calc(100vw - min(1rem, 16px));
     max-block-size: calc(100dvh - min(1rem, 16px));
