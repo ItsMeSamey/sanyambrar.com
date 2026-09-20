@@ -881,17 +881,22 @@ export function runReverbDemoRuntime(
       rangeWheelProfiles.length;
     renderRangeWheel();
   };
-  const rangeWheelColumnAt = (clientX: number): RangeWheelColumn => {
+  const rangeWheelColumnAt = (clientX: number): RangeWheelColumn | null => {
     const rect = rangeDurationWheel.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
-    const ratio = x / Math.max(1, rect.width);
-    return ratio >= 0.81
-      ? "profile"
-      : ratio < 0.27
-        ? "hour"
-        : ratio < 0.54
-          ? "minute"
-          : "second";
+    const width = Math.max(1, rect.width);
+    const x = Math.max(0, Math.min(width, clientX - rect.left));
+    const profileStart = width * 0.81;
+    if (x >= profileStart) return "profile";
+    const separatorGap = width * (14 / 327);
+    const timeRight = Math.max(1, profileStart - separatorGap);
+    if (x > timeRight) return null;
+    const columnWidth = timeRight / 3;
+    const hitHalfWidth = columnWidth * 0.4;
+    const centers = [columnWidth * 0.5, columnWidth * 1.5, columnWidth * 2.5];
+    if (Math.abs(x - centers[0]!) <= hitHalfWidth) return "hour";
+    if (Math.abs(x - centers[1]!) <= hitHalfWidth) return "minute";
+    if (Math.abs(x - centers[2]!) <= hitHalfWidth) return "second";
+    return null;
   };
   const adjustRangeWheelColumn = (
     column: RangeWheelColumn,
@@ -911,8 +916,10 @@ export function runReverbDemoRuntime(
           : profileStep;
     adjustRangeWheel(direction * unit, target);
   };
-  const adjustRangeWheelAt = (clientX: number, direction: number) =>
-    adjustRangeWheelColumn(rangeWheelColumnAt(clientX), direction);
+  const adjustRangeWheelAt = (clientX: number, direction: number) => {
+    const column = rangeWheelColumnAt(clientX);
+    if (column) adjustRangeWheelColumn(column, direction);
+  };
   const setRangeWheelInteractionUi = (active: boolean) => {
     rangeExportButton.disabled = active || !rangeSelectionWithinExportLimit();
     byId<HTMLButtonElement>("rangePlay").disabled = active;
@@ -978,10 +985,12 @@ export function runReverbDemoRuntime(
   };
   rangeDurationWheel.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    const column = rangeWheelColumnAt(event.clientX);
+    if (!column) return;
     if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
     rangeWheelSettleTimer = 0;
     rangeWheelPointerId = event.pointerId;
-    rangeWheelPointerColumn = rangeWheelColumnAt(event.clientX);
+    rangeWheelPointerColumn = column;
     rangeWheelPinnedTarget = rangeEditTarget;
     rangeWheelPointerDownY = event.clientY;
     rangeWheelPointerY = event.clientY;
@@ -1008,6 +1017,8 @@ export function runReverbDemoRuntime(
   });
   rangeDurationWheel.addEventListener("wheel", (event) => {
     if (event.deltaY === 0 || rangeWheelInteractionActive()) return;
+    const column = rangeWheelColumnAt(event.clientX);
+    if (!column) return;
     const pinnedTarget = rangeEditTarget;
     renderRangeUi();
     rangeStartInput.blur();
@@ -1015,7 +1026,7 @@ export function runReverbDemoRuntime(
     setRangePlaying(false);
     event.preventDefault();
     adjustRangeWheelColumn(
-      rangeWheelColumnAt(event.clientX),
+      column,
       event.deltaY < 0 ? -1 : 1,
       pinnedTarget,
     );
