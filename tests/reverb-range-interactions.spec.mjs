@@ -1021,3 +1021,34 @@ test('Reverb Range wheel renders fractional cylinder motion during drag', async 
   await expect(wheel).toHaveAttribute('aria-valuenow', '900');
   await expect(minuteCurrent).toHaveCSS('top', '79.25px');
 });
+
+test('Reverb Range profile wheel renders fractional cylinder motion during drag', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const profileCurrent = wheel.locator('.wheel-profile').nth(2);
+  await expect(profileCurrent).toHaveText('1x');
+  await expect(profileCurrent).toHaveCSS('top', '79.25px');
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.92;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - box.height * (56 / 160) * 0.5, { steps: 4 });
+
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 1x$/);
+  const liveTop = Number.parseFloat(
+    await profileCurrent.evaluate(element => getComputedStyle(element).top),
+  );
+  expect(liveTop).toBeCloseTo(60.62, 1);
+
+  await page.mouse.up();
+  await page.waitForTimeout(180);
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
+  await expect(profileCurrent).toHaveCSS('top', '79.25px');
+});
