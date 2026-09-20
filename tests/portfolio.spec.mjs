@@ -2676,9 +2676,26 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect(appearance).toBeFocused();
 });
 
-test('SPA route transitions never fade the whole route to blank', async ({ page }, info) => {
+test('SPA route transitions animate construction lines only', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
+
+  await page.evaluate(() => {
+    const nativeAnimate = Element.prototype.animate;
+    const targets = [];
+    globalThis.__sameyRouteAnimationTargets = targets;
+    Element.prototype.animate = function (...args) {
+      targets.push({
+        constructionLine: this.classList.contains('samey-construction-line'),
+        routeContent: this.closest('.site-route') != null,
+      });
+      return nativeAnimate.apply(this, args);
+    };
+    globalThis.__sameyRestoreAnimate = () => {
+      Element.prototype.animate = nativeAnimate;
+      delete globalThis.__sameyRestoreAnimate;
+    };
+  });
 
   const samples = page.evaluate(() => new Promise(resolve => {
     const result = [];
@@ -2706,10 +2723,18 @@ test('SPA route transitions never fade the whole route to blank', async ({ page 
   await page.locator('a[href="/work/"]').first().click();
   await expect(page).toHaveURL(/\/work\/?$/);
   const frames = await samples;
+  const animationTargets = await page.evaluate(() => {
+    const targets = globalThis.__sameyRouteAnimationTargets ?? [];
+    globalThis.__sameyRestoreAnimate?.();
+    delete globalThis.__sameyRouteAnimationTargets;
+    return targets;
+  });
   expect(frames.length).toBeGreaterThan(10);
   expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
   expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
   expect(frames.every(frame => frame.contentPainted)).toBe(true);
+  expect(animationTargets.some(target => target.constructionLine)).toBe(true);
+  expect(animationTargets.some(target => target.routeContent)).toBe(false);
 });
 
 test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {
@@ -3436,6 +3461,38 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await expect(page.locator('body')).not.toContainText(/Oh no, something bad/);
   await page.getByRole('button', { name: 'Statistics', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Statistics', exact: true })).toBeDisabled();
+});
+
+test('Keybr Books settings shows the selected book only once', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await visit(page, '/keybr?p=settings', info);
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+
+  const cover = page.locator('img[title*=" by "]').first();
+  await expect(cover).toBeVisible();
+  const identity = await cover.getAttribute('title');
+  expect(identity).toBeTruthy();
+  const separator = identity.lastIndexOf(' by ');
+  expect(separator).toBeGreaterThan(0);
+  const title = identity.slice(0, separator);
+  const author = identity.slice(separator + 4);
+  const visibleCount = locator => locator.evaluateAll(elements => elements.filter(element => {
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  }).length);
+
+  expect(await visibleCount(page.getByText(title, { exact: true })), 'Selected book title must appear once').toBe(1);
+  expect(await visibleCount(page.getByText(author, { exact: true })), 'Selected book author must appear once').toBe(1);
+  const coverSrc = await cover.getAttribute('src');
+  expect(coverSrc).toBeTruthy();
+  expect(await page.locator('img').evaluateAll((images, src) => images.filter(image => {
+    const rect = image.getBoundingClientRect();
+    const style = getComputedStyle(image);
+    return image.getAttribute('src') === src && rect.width > 0 && rect.height > 0
+      && style.display !== 'none' && style.visibility !== 'hidden';
+  }).length, coverSrc), 'Selected book cover must appear once').toBe(1);
+  await expect(page.getByRole('button', { name: 'Choose book', exact: true })).toHaveCount(1);
 });
 
 test('Keybr zoomer drag aborts on window blur', async ({ page }, info) => {

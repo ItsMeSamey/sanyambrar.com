@@ -111,3 +111,28 @@ test('Reverb fullscreen exit is single-flight and route history stays clean', as
   await expect(page.locator('.reverb-demo-frame')).not.toHaveClass(/is-fullscreen/);
   expect((await fullscreenState(page)).state.__sameyReverbFullscreen).toBeUndefined();
 });
+
+test('Reverb fullscreen follows live reduced-motion preference changes', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await visit(page, '/projects/reverb/', info);
+  const frame = page.locator('.reverb-demo-frame');
+  const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
+  await expect(frame).toBeVisible();
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+  await fullscreen.click();
+  await expect(frame).toHaveClass(/is-fullscreen/);
+  expect(await frame.evaluate(element => element.getAnimations().filter(animation => animation.effect?.target === element).length),
+    'A live reduced-motion preference must suppress Reverb fullscreen motion').toBe(0);
+
+  await page.keyboard.press('Escape');
+  await expect(frame).not.toHaveClass(/is-fullscreen/);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect.poll(() => page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(false);
+  await fullscreen.click();
+  await expect(frame).toHaveClass(/is-fullscreen/);
+  await expect.poll(() => frame.evaluate(element => element.getAnimations().filter(animation => animation.effect?.target === element).length), {
+    message: 'Reverb fullscreen motion should resume when reduced-motion is disabled live',
+  }).toBeGreaterThan(0);
+});
