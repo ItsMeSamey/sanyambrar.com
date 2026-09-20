@@ -26,3 +26,4 @@
 - For transformed fixed-design mocks, convert viewport rects back into local coordinates before positioning child overlays, and reserve non-overlapping space for fullscreen chrome at compact sizes.
 - Forced-colors QA must verify selected/checked/current states retain a non-background cue; custom backgrounds and shadows can collapse to the same system colors.
 - Pointer-owned drags/strokes must abort on window blur as well as pointerup/cancel/capture loss; stale capture must not keep mutating state after focus leaves the page.
+- Portfolio route/local construction transitions animate border/rule overlays only; routed content stays stationary and fully painted.
