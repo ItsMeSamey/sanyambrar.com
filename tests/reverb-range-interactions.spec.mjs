@@ -1052,3 +1052,63 @@ test('Reverb Range profile wheel renders fractional cylinder motion during drag'
   await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
   await expect(profileCurrent).toHaveCSS('top', '79.25px');
 });
+
+test('Reverb Range navigation terminates hidden waveform ownership', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const play = host.locator('#rangePlay');
+  const wavebox = host.locator('.range-timeline .wavebox');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const box = await wavebox.boundingBox();
+  if (!box) throw new Error('Range waveform has no geometry');
+  const x = box.x + box.width * 0.35;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await host.locator('#rangeSettings').evaluate(element => element.click());
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await page.mouse.up();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await host.locator('#settingsNav').click();
+  await expect(host.locator('#rangeScreen')).toHaveClass(/active/);
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+});
+
+test('Reverb Range Close terminates hidden fine-seek ownership', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const play = host.locator('#rangePlay');
+  const fine = host.locator('.fine-control');
+  await play.click();
+  await expect(play).toHaveAttribute('aria-label', 'Pause');
+  const box = await play.boundingBox();
+  if (!box) throw new Error('Fine-seek puck has no geometry');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 14, y, { steps: 2 });
+  await expect(fine).toHaveClass(/is-dragging/);
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await host.locator('#rangeClose').evaluate(element => element.click());
+  await expect(host.locator('#homeScreen')).toHaveClass(/active/);
+  await page.mouse.up();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+
+  await host.locator('#openRange').click();
+  await expect(play).toHaveAttribute('aria-label', 'Play');
+  await expect(fine).not.toHaveClass(/is-dragging/);
+});

@@ -1258,7 +1258,7 @@ export function runReverbDemoRuntime(
     showScreen("settingsScreen");
   });
   byId("rangeSettings").addEventListener("click", (event) => {
-    cancelRangeWheelInteraction();
+    endRangeTransientOwnership();
     openSettings(event);
   });
   byId("openIncidents").addEventListener("click", openIncidents);
@@ -1268,7 +1268,7 @@ export function runReverbDemoRuntime(
     showScreen("incidentsScreen");
   });
   byId("rangeIncidents").addEventListener("click", (event) => {
-    cancelRangeWheelInteraction();
+    endRangeTransientOwnership();
     openIncidents(event);
   });
   byId("openLibrary").addEventListener("click", () =>
@@ -1283,11 +1283,11 @@ export function runReverbDemoRuntime(
   });
   const rangeClose = byId<HTMLElement>("rangeClose");
   rangeClose.addEventListener("pointerdown", () => {
-    cancelRangeWheelInteraction();
+    endRangeTransientOwnership();
     renderRangeUi();
   });
   rangeClose.addEventListener("click", () => {
-    setRangePlaying(false);
+    endRangeTransientOwnership();
     showScreen("homeScreen", byId<HTMLElement>("openRange"));
   });
   byId("rangeExport").addEventListener("click", () => {
@@ -1318,9 +1318,9 @@ export function runReverbDemoRuntime(
       0,
       rangeTimelineDurationSeconds - rangeEndSeconds,
     );
+    endRangeTransientOwnership();
     rangeExportPending = true;
     syncBufferUi();
-    setRangePlaying(false);
     showScreen("homeScreen", byId<HTMLElement>("brandButton"));
     showToast("Exporting range");
     setTimeout(() => {
@@ -1748,6 +1748,12 @@ export function runReverbDemoRuntime(
     use?.setAttribute("href", rangePlaying ? "#i-pause" : "#i-play");
     rangePlay.setAttribute("aria-label", rangePlaying ? "Pause" : "Play");
   }
+  function endRangeTransientOwnership(): void {
+    cancelRangeWheelInteraction();
+    cancelRangeWaveScrub(false);
+    finishRangeFineAdjust(true, false);
+    setRangePlaying(false);
+  }
   rangePlay.addEventListener("click", (event) => {
     if (rangeFineSuppressClick) {
       event.preventDefault();
@@ -1781,11 +1787,8 @@ export function runReverbDemoRuntime(
     ) return;
     event.preventDefault();
     event.stopPropagation();
-    cancelRangeWheelInteraction();
-    cancelRangeWaveScrub(false);
-    finishRangeFineAdjust(true, false);
+    endRangeTransientOwnership();
     renderRangeUi();
-    setRangePlaying(false);
     showScreen("homeScreen", byId<HTMLElement>("openRange"));
   });
 
