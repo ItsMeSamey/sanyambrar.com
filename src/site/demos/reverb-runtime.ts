@@ -456,14 +456,13 @@ export function runReverbDemoRuntime(
     const frameAlignedPayload = payloadBudget - (payloadBudget % frameBytes);
     return frameAlignedPayload / (sampleRate * frameBytes);
   };
-  const rangeWheelMaximumSeconds = (
-    target: RangeEditTarget = rangeWheelPinnedTarget ?? rangeEditTarget,
-  ) => {
-    const reachable = target === "start"
+  const rangeWheelReachableSeconds = (target: RangeEditTarget) =>
+    target === "start"
       ? rangeEndSeconds
       : Math.max(0, rangeTimelineDurationSeconds - rangeStartSeconds);
-    return Math.min(reachable, rangeExportLimitSeconds());
-  };
+  const rangeWheelMaximumSeconds = (
+    target: RangeEditTarget = rangeWheelPinnedTarget ?? rangeEditTarget,
+  ) => Math.min(rangeWheelReachableSeconds(target), rangeExportLimitSeconds());
   const rangeSelectionWithinExportLimit = () =>
     rangeSelectionSeconds() <= rangeExportLimitSeconds();
   const rangeWheelValues = (
@@ -487,10 +486,11 @@ export function runReverbDemoRuntime(
       return values[(raw + values.length) % values.length] ?? current;
     });
   };
-
-  function renderRangeWheel(): void {
+  const rangeWheelNumberModel = (
+    target: RangeEditTarget = rangeWheelPinnedTarget ?? rangeEditTarget,
+  ) => {
     const selection = rangeSelectionSeconds();
-    const maximum = rangeWheelMaximumSeconds();
+    const maximum = rangeWheelMaximumSeconds(target);
     const displaySelection = selection > maximum
       ? Math.ceil(selection)
       : Math.floor(selection);
@@ -516,7 +516,13 @@ export function runReverbDemoRuntime(
         parts.seconds,
         secondConstrained,
       ),
-    ];
+    ] as const;
+    return { maximum, parts, maximumParts, rings };
+  };
+
+  function renderRangeWheel(): void {
+    const selection = rangeSelectionSeconds();
+    const { maximum, parts, rings } = rangeWheelNumberModel();
     const numberFaces = [
       ...rangeDurationWheel.querySelectorAll<HTMLElement>(
         ".wheel-face:not(.wheel-profile)",
@@ -710,7 +716,7 @@ export function runReverbDemoRuntime(
     const minimum = Math.min(0.05, duration);
     const requested = Math.max(
       minimum,
-      Math.min(rangeWheelMaximumSeconds(target), requestedSeconds),
+      Math.min(rangeWheelReachableSeconds(target), requestedSeconds),
     );
     if (target === "start") {
       rangeStartSeconds = Math.max(
@@ -907,14 +913,23 @@ export function runReverbDemoRuntime(
       cycleRangeWheelProfile(direction);
       return;
     }
-    const profileStep = rangeWheelStepSeconds();
-    const unit =
-      column === "hour"
-        ? 3600
-        : column === "minute"
-          ? 60 * profileStep
-          : profileStep;
-    adjustRangeWheel(direction * unit, target);
+    const { parts, rings } = rangeWheelNumberModel(target);
+    const columnIndex = column === "hour" ? 0 : column === "minute" ? 1 : 2;
+    const values = rings[columnIndex];
+    const currentParts = [parts.hours, parts.minutes, parts.seconds];
+    const current = currentParts[columnIndex] ?? 0;
+    const currentIndex = Math.max(0, values.indexOf(current));
+    const count = values.length;
+    if (count === 0) return;
+    const rawIndex = (currentIndex + direction) % count;
+    const nextIndex = (rawIndex + count) % count;
+    currentParts[columnIndex] = values[nextIndex] ?? current;
+    resizeRangeSelection(
+      (currentParts[0] ?? 0) * 3600 +
+        (currentParts[1] ?? 0) * 60 +
+        (currentParts[2] ?? 0),
+      target,
+    );
   };
   const adjustRangeWheelAt = (clientX: number, direction: number) => {
     const column = rangeWheelColumnAt(clientX);

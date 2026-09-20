@@ -537,21 +537,26 @@ test('Reverb Range stable wheel scroll commits immediately and accepts consecuti
     await blob.click();
   await host.locator('#openRange').click();
 
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
   const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
   const exportButton = host.locator('#rangeExport');
-  const before = Number(await wheel.getAttribute('aria-valuenow'));
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
   const box = await wheel.boundingBox();
   if (!box) throw new Error('Range duration wheel has no geometry');
-  await page.mouse.move(box.x + box.width * 0.68, box.y + box.height * 0.5);
+  await page.mouse.move(box.x + box.width * 0.39, box.y + box.height * 0.5);
 
   await page.mouse.wheel(0, -120);
   await expect(exportButton).toBeEnabled();
   await expect(wheel).not.toHaveAttribute('data-editing', '');
-  expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeCloseTo(before - 1, 1);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '780');
 
   await page.mouse.wheel(0, -120);
   await expect(exportButton).toBeEnabled();
-  expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeCloseTo(before - 2, 1);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '720');
 });
 
 test('Reverb Range wheel colon gaps do not claim a wheel column', async ({ page }, info) => {
@@ -637,4 +642,73 @@ test('Reverb Range cancelled wheel press snaps without executing a tap step', as
 
   await expect(wheel).toHaveAttribute('aria-valuenow', beforeDuration ?? '');
   await expect(start).toHaveText(beforeStart ?? '');
+});
+
+test('Reverb Range stepped profiles follow actual off-grid wheel rows', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  await page.mouse.click(box.x + box.width * 0.92, box.y + box.height * 0.84);
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '840');
+
+  await page.mouse.move(box.x + box.width * 0.39, box.y + box.height / 2);
+  await page.mouse.wheel(0, -120);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '600');
+
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
+  await expect(wheel).toHaveAttribute('aria-valuenow', '840');
+  await page.mouse.move(box.x + box.width * 0.39, box.y + box.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '900');
+});
+
+
+test('Reverb Range wheel can select an exact-boundary over-limit combination', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('.buffer-segment[data-buffer="loop"]').click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('13:30:59.0');
+  await page.keyboard.press('Enter');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  await page.mouse.click(box.x + box.width * 0.92, box.y + box.height * 0.84);
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
+
+  await page.mouse.move(box.x + box.width * 0.39, box.y + box.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect(wheel).toHaveAttribute('aria-valuenow', String(13 * 3600 + 31 * 60 + 59));
+  await expect(end).toHaveText('13:31:59.0');
+  await expect(exportButton).toBeDisabled();
+  const currentFaces = wheel.locator('.wheel-face.current:not(.wheel-profile)');
+  await expect(currentFaces.nth(0)).not.toHaveClass(/over-limit/);
+  await expect(currentFaces.nth(1)).not.toHaveClass(/over-limit/);
+  await expect(currentFaces.nth(2)).toHaveClass(/over-limit/);
 });
