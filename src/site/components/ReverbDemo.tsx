@@ -1,4 +1,5 @@
 import { readHistoryState } from '../../shared/history.ts';
+import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
 import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
@@ -327,11 +328,13 @@ function mountReverbDemo(host: HTMLDivElement) {
     window.devicePixelRatio || 1,
     addDemoWindowEventListener,
   );
+  const stopPixelRatioWatch = watchDevicePixelRatio(ratio => runtime.setDevicePixelRatio(ratio));
   const refreshTheme = () => { syncCursorMode(); runtime?.refreshTheme?.(); };
   window.addEventListener('samey-themechange', refreshTheme);
 
   return () => {
     disposed = true;
+    stopPixelRatioWatch();
     runtime.dispose();
     window.removeEventListener('samey-themechange', refreshTheme);
     for (const id of rafs) window.cancelAnimationFrame(id);

@@ -829,25 +829,30 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       localSet('markdown', 'split', split.toFixed(2));
       scheduleLayout();
     };
+    let stopDividerDrag: (() => void) | null = null;
     divider.addEventListener('pointerdown', event => {
-      if (viewMode !== 'split') return;
+      if (viewMode !== 'split' || stopDividerDrag) return;
       divider.setPointerCapture(event.pointerId);
       const pointerId = event.pointerId;
       const move = (pointer: PointerEvent) => {
+        if (pointer.pointerId !== pointerId) return;
         const rect = toolRoot.getBoundingClientRect();
         const stacked = matchMedia('(max-width:700px)').matches;
         const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
         applySplit(ratio * 100);
       };
       let active = true;
-      const up = () => {
+      const up = (event?: Event) => {
+        if (event instanceof PointerEvent && event.pointerId !== pointerId) return;
         if (!active) return;
         active = false;
+        if (stopDividerDrag === up) stopDividerDrag = null;
         divider.removeEventListener('pointermove', move);
         divider.removeEventListener('pointerup', up);
         divider.removeEventListener('pointercancel', up);
         divider.removeEventListener('lostpointercapture', up);
         removeEventListener('blur', up);
+        removeEventListener('samey-pageleave', up);
         if (divider.hasPointerCapture(pointerId)) divider.releasePointerCapture(pointerId);
       };
       divider.addEventListener('pointermove', move);
@@ -855,6 +860,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       divider.addEventListener('pointercancel', up);
       divider.addEventListener('lostpointercapture', up);
       addEventListener('blur', up);
+      addEventListener('samey-pageleave', up);
+      stopDividerDrag = up;
     });
     divider.addEventListener('keydown', event => {
       const stacked = matchMedia('(max-width:700px)').matches;
@@ -865,6 +872,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     });
 
     disposeTool = () => {
+      stopDividerDrag?.();
+      stopDividerDrag = null;
       if (richSyncFrame) cancelAnimationFrame(richSyncFrame);
       if (richLayoutFrame) cancelAnimationFrame(richLayoutFrame);
       richResize.disconnect();

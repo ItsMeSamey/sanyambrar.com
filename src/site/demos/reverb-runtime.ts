@@ -63,18 +63,20 @@ export function runReverbDemoRuntime(
   clearTimeout: DemoClearTimeout,
   devicePixelRatio: number,
   addWindowEventListener: DemoAddWindowEventListener,
-): Pick<BlobRuntime, "refreshTheme"> & { dispose(): void } {
+): Pick<BlobRuntime, "refreshTheme"> & { setDevicePixelRatio(devicePixelRatio: number): void; dispose(): void } {
   const byId = <T extends Element = HTMLElement>(id: string): T => {
     const element = document.querySelector<T>(`#${id}`);
     if (!element) throw new Error(`Reverb demo is missing #${id}`);
     return element;
   };
   const phone = byId<HTMLElement>("phone");
+  let runtimeDevicePixelRatio = Math.max(devicePixelRatio || 1, 0.01);
+  const syncDevicePixelRatio = (value: number) => {
+    runtimeDevicePixelRatio = Math.max(value || 1, 0.01);
+    phone.style.setProperty("--reverb-noise-size", `${1024 / runtimeDevicePixelRatio}px`);
+  };
   phone.style.setProperty("--reverb-noise", `url("${NOISE_URL}")`);
-  phone.style.setProperty(
-    "--reverb-noise-size",
-    `${1024 / Math.max(devicePixelRatio || 1, 0.01)}px`,
-  );
+  syncDevicePixelRatio(runtimeDevicePixelRatio);
   const blobControl = byId<HTMLButtonElement>("blobControl");
   const blobIconUse = byId<SVGUseElement>("blobIconUse");
   const blobTime = byId<HTMLElement>("blobTime");
@@ -2477,7 +2479,7 @@ void main(){
       { once: true },
     );
     function resize() {
-      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const dpr = Math.min(runtimeDevicePixelRatio, 2);
       const r = canvas.getBoundingClientRect();
       const w = Math.max(1, Math.round(r.width * dpr)),
         h = Math.max(1, Math.round(r.height * dpr));
@@ -2695,7 +2697,7 @@ void main(){
       frameQueued = false;
       if (!visibleState) return;
       const r = canvas.getBoundingClientRect(),
-        dpr = Math.min(devicePixelRatio || 1, 2),
+        dpr = Math.min(runtimeDevicePixelRatio, 2),
         w = Math.max(1, Math.round(r.width * dpr)),
         h = Math.max(1, Math.round(r.height * dpr));
       if (canvas.width !== w || canvas.height !== h) {
@@ -2767,6 +2769,9 @@ void main(){
   return {
     refreshTheme() {
       blobShader.refreshTheme?.();
+    },
+    setDevicePixelRatio(value: number) {
+      syncDevicePixelRatio(value);
     },
     dispose() {
       removeResizeListener();

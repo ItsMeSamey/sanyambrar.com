@@ -1,4 +1,5 @@
 import { onCleanup, onSettled } from 'solid-js';
+import { watchDevicePixelRatio } from '../devicePixelRatio.ts';
 
 const DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]] as const;
 
@@ -361,6 +362,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
 
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(canvas);
+  const stopPixelRatioWatch = watchDevicePixelRatio(resize);
   const intersectionObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(entries => {
     visible = entries.some(entry => entry.isIntersecting);
     if (visible) draw();
@@ -389,6 +391,7 @@ function createLogoController(canvas: HTMLCanvasElement) {
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (timeout) clearTimeout(timeout);
     resizeObserver.disconnect();
+    stopPixelRatioWatch();
     intersectionObserver?.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
     reducedMotion.removeEventListener('change', onReducedMotion);
