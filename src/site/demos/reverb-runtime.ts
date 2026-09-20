@@ -37,6 +37,7 @@ type BlobRuntime = {
   setActive(active: boolean): void;
   setVisible(visible: boolean): void;
   refreshTheme(): void;
+  currentBaseRadiusFraction(): number;
 };
 type Uniforms = Record<string, WebGLUniformLocation | null>;
 type SettingsSnapshot = {
@@ -84,13 +85,34 @@ export function runReverbDemoRuntime(
   const toast = byId<HTMLElement>("toast");
   const dropdownMenu = byId<HTMLElement>("dropdownMenu");
   const screens = [...document.querySelectorAll<HTMLElement>(".screen")];
+  const homeScreen = byId<HTMLElement>("homeScreen");
+  const settingsScreen = byId<HTMLElement>("settingsScreen");
+  const libraryScreen = byId<HTMLElement>("libraryScreen");
+  const PANEL_SETTLE_DURATION_MS = 220;
+  const PANEL_COMMIT_PROGRESS = 0.12;
+  let settingsPanelProgress = 0;
+  let libraryPanelProgress = 0;
+  let settingsPanelOpen = false;
+  let libraryPanelOpen = false;
+  let settingsMotionEpoch = 0;
+  let libraryMotionEpoch = 0;
+  let settingsForegroundScreen = homeScreen;
 
   let currentScreen: ScreenId = "homeScreen";
   let settingsReturnScreen: ScreenId = "homeScreen";
   let incidentsReturnScreen: ScreenId = "homeScreen";
   let live = true;
   let activeBuffer: BufferSlot | null = "one";
-  let selectedBuffer: BufferSlot = "one";
+  let displayedBuffer: BufferSlot = "one";
+  let bufferTransitionTarget: BufferSlot | null = null;
+  let bufferTransitionProgress = 0;
+  let bufferDragging = false;
+  let bufferTransitionEpoch = 0;
+  let bufferSwipePointerId = -1;
+  let bufferSwipeStartX = 0;
+  let bufferSwipeStartY = 0;
+  let suppressBlobClick = false;
+  let rangeBuffer: BufferSlot = "one";
   let oneSeconds = 30 * 60;
   let loopSeconds = 47 * 3600 + 59 * 60 + 55;
   const bytesPerSecond = 44100 * 2;
@@ -162,8 +184,13 @@ export function runReverbDemoRuntime(
     const size = Number(value.trim().replace(",", "."));
     return Number.isFinite(size) && size >= 0 ? size : null;
   }
-  function currentSeconds(): number {
-    return selectedBuffer === "one" ? oneSeconds : loopSeconds;
+  function bufferRenderedBuffer(): BufferSlot {
+    return bufferTransitionTarget != null && bufferTransitionProgress >= 0.5
+      ? bufferTransitionTarget
+      : displayedBuffer;
+  }
+  function currentSeconds(buffer: BufferSlot = bufferRenderedBuffer()): number {
+    return buffer === "one" ? oneSeconds : loopSeconds;
   }
   function showToast(message: string): void {
     clearTimeout(toastTimer);
@@ -176,7 +203,7 @@ export function runReverbDemoRuntime(
       case "settingsScreen":
         return byId<HTMLElement>("settingsNav");
       case "libraryScreen":
-        return byId<HTMLElement>("libraryBack");
+        return byId<HTMLElement>("libraryBrand");
       case "incidentsScreen":
         return byId<HTMLElement>("incidentsBack");
       case "rangeScreen":
@@ -193,31 +220,181 @@ export function runReverbDemoRuntime(
     if (target.isConnected && target.getClientRects().length > 0)
       target.focus({ preventScroll: true });
   }
+  function activateScreen(id: ScreenId): void {
+    screens.forEach((screen) =>
+      screen.classList.toggle("active", screen.id === id),
+    );
+  }
+  function fastOutSlowIn(progress: number): number {
+    const x = Math.max(0, Math.min(1, progress));
+    if (x === 0 || x === 1) return x;
+    const sample = (t: number, a: number, b: number) =>
+      3 * (1 - t) * (1 - t) * t * a +
+      3 * (1 - t) * t * t * b +
+      t * t * t;
+    const slope = (t: number, a: number, b: number) =>
+      3 * (1 - t) * (1 - t) * a +
+      6 * (1 - t) * t * (b - a) +
+      3 * t * t * (1 - b);
+    let t = x;
+    for (let i = 0; i < 5; i++) {
+      const d = slope(t, 0.4, 0.2);
+      if (Math.abs(d) < 1e-6) break;
+      t = Math.max(0, Math.min(1, t - (sample(t, 0.4, 0.2) - x) / d));
+    }
+    let low = 0;
+    let high = 1;
+    for (let i = 0; i < 8; i++) {
+      const tx = sample(t, 0.4, 0.2);
+      if (Math.abs(tx - x) < 1e-6) break;
+      if (tx < x) low = t;
+      else high = t;
+      t = (low + high) * 0.5;
+    }
+    return sample(t, 0, 1);
+  }
+  function setScreenMotionVisibility(screen: HTMLElement, visible: boolean): void {
+    screen.classList.toggle("motion-visible", visible);
+  }
+  function renderSettingsPanelProgress(progress: number): void {
+    settingsPanelProgress = Math.max(0, Math.min(1, progress));
+    const visible = settingsPanelOpen || settingsPanelProgress > 0.0001;
+    setScreenMotionVisibility(settingsScreen, visible);
+    setScreenMotionVisibility(settingsForegroundScreen, visible);
+    settingsForegroundScreen.classList.toggle("motion-foreground", visible);
+    if (visible) {
+      settingsForegroundScreen.style.transform =
+        `translate3d(0,${settingsPanelProgress * 100}%,0)`;
+      settingsScreen.style.zIndex = "10";
+      settingsForegroundScreen.style.zIndex = "11";
+    } else {
+      settingsForegroundScreen.style.removeProperty("transform");
+      settingsForegroundScreen.style.removeProperty("z-index");
+      settingsScreen.style.removeProperty("z-index");
+    }
+  }
+  function renderLibraryPanelProgress(progress: number): void {
+    libraryPanelProgress = Math.max(0, Math.min(1, progress));
+    const visible = libraryPanelOpen || libraryPanelProgress > 0.0001;
+    setScreenMotionVisibility(libraryScreen, visible);
+    setScreenMotionVisibility(homeScreen, visible);
+    libraryScreen.style.setProperty("--library-progress", String(libraryPanelProgress));
+    libraryScreen.style.setProperty(
+      "--library-offset-y",
+      `${(1 - libraryPanelProgress) * phone.clientHeight}px`,
+    );
+    if (!visible) {
+      libraryScreen.style.removeProperty("--library-progress");
+      libraryScreen.style.removeProperty("--library-offset-y");
+    }
+  }
+  function settleSettingsPanel(target: 0 | 1, onDone?: () => void): void {
+    const epoch = ++settingsMotionEpoch;
+    const from = settingsPanelProgress;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== settingsMotionEpoch) return;
+      const raw = Math.min(
+        1,
+        Math.max(0, (now - startedAt) / PANEL_SETTLE_DURATION_MS),
+      );
+      renderSettingsPanelProgress(from + (target - from) * fastOutSlowIn(raw));
+      if (raw < 1) requestAnimationFrame(frame);
+      else {
+        renderSettingsPanelProgress(target);
+        onDone?.();
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+  function settleLibraryPanel(target: 0 | 1, onDone?: () => void): void {
+    const epoch = ++libraryMotionEpoch;
+    const from = libraryPanelProgress;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== libraryMotionEpoch) return;
+      const raw = Math.min(
+        1,
+        Math.max(0, (now - startedAt) / PANEL_SETTLE_DURATION_MS),
+      );
+      renderLibraryPanelProgress(from + (target - from) * fastOutSlowIn(raw));
+      if (raw < 1) requestAnimationFrame(frame);
+      else {
+        renderLibraryPanelProgress(target);
+        onDone?.();
+      }
+    };
+    requestAnimationFrame(frame);
+  }
   function showScreen(
     id: ScreenId,
     focusTarget?: HTMLElement | null,
   ): void {
-    if (id === "settingsScreen") prepareSettingsSession();
     currentScreen = id;
-    screens.forEach((screen) =>
-      screen.classList.toggle("active", screen.id === id),
+    activateScreen(id);
+    blobShader.setVisible(
+      id === "homeScreen" && !settingsPanelOpen && !libraryPanelOpen,
     );
-    blobShader.setVisible(id === "homeScreen");
     closeDropdown();
     focusScreen(id, focusTarget);
   }
   function openSettings(event?: Event): void {
-    if (currentScreen !== "settingsScreen")
-      settingsReturnScreen = currentScreen;
+    if (currentScreen === "settingsScreen" && settingsPanelOpen) return;
+    const sourceScreen = currentScreen === "libraryScreen" ? "homeScreen" : currentScreen;
+    settingsReturnScreen = sourceScreen;
     settingsReturnFocus =
       event?.currentTarget instanceof HTMLElement
         ? event.currentTarget
-        : currentScreen === "homeScreen"
+        : sourceScreen === "homeScreen"
           ? byId<HTMLElement>("openSettings")
-          : currentScreen === "rangeScreen"
+          : sourceScreen === "rangeScreen"
             ? byId<HTMLElement>("rangeSettings")
             : null;
-    showScreen("settingsScreen");
+    settingsForegroundScreen = byId<HTMLElement>(sourceScreen);
+    prepareSettingsSession();
+    settingsPanelOpen = true;
+    currentScreen = "settingsScreen";
+    activateScreen("settingsScreen");
+    renderSettingsPanelProgress(settingsPanelProgress);
+    blobShader.setVisible(false);
+    closeDropdown();
+    focusScreen("settingsScreen");
+    settleSettingsPanel(1);
+  }
+  function closeSettingsPanel(): void {
+    if (!settingsPanelOpen && settingsPanelProgress <= 0) return;
+    settingsPanelOpen = false;
+    currentScreen = settingsReturnScreen;
+    activateScreen(settingsReturnScreen);
+    blobShader.setVisible(
+      settingsReturnScreen === "homeScreen" && !libraryPanelOpen,
+    );
+    closeDropdown();
+    focusScreen(settingsReturnScreen, settingsReturnFocus);
+    settleSettingsPanel(0, () => renderSettingsPanelProgress(0));
+  }
+  function openLibraryPanel(): void {
+    if (libraryPanelOpen && currentScreen === "libraryScreen") return;
+    libraryPanelOpen = true;
+    currentScreen = "libraryScreen";
+    activateScreen("libraryScreen");
+    renderLibraryPanelProgress(libraryPanelProgress);
+    blobShader.setVisible(false);
+    closeDropdown();
+    focusScreen("libraryScreen");
+    settleLibraryPanel(1);
+  }
+  function closeLibraryPanel(
+    focusTarget: HTMLElement | null = byId<HTMLElement>("openLibrary"),
+  ): void {
+    if (!libraryPanelOpen && libraryPanelProgress <= 0) return;
+    libraryPanelOpen = false;
+    currentScreen = "homeScreen";
+    activateScreen("homeScreen");
+    blobShader.setVisible(!settingsPanelOpen);
+    closeDropdown();
+    if (focusTarget) focusScreen("homeScreen", focusTarget);
+    settleLibraryPanel(0, () => renderLibraryPanelProgress(0));
   }
   function openIncidents(event?: Event): void {
     if (currentScreen !== "incidentsScreen")
@@ -252,12 +429,100 @@ export function runReverbDemoRuntime(
     setTimeout(clockTick, 30000);
   }, 30000);
 
+  const blobFlipFace = byId<HTMLElement>("blobFlipFace");
+  const bufferFlipActionIcons = [
+    ...document.querySelectorAll<SVGElement>(
+      ".actions-row .action-button:nth-child(-n+3) svg",
+    ),
+  ];
+  const blobArea = document.querySelector<HTMLElement>(".blob-area");
+  if (!blobArea) throw new Error("Reverb demo is missing the blob gesture area");
+  const BUFFER_SWIPE_COMMIT_PROGRESS = 0.16;
+  const BUFFER_FLIP_DURATION_MS = 260;
+  const BUFFER_FLIP_MIDPOINT_SCALE = 0.94;
+  function oppositeBuffer(buffer: BufferSlot): BufferSlot {
+    return buffer === "one" ? "loop" : "one";
+  }
+  function bufferFlipDegrees(): number {
+    const target = bufferTransitionTarget;
+    if (target == null || target === displayedBuffer) return 0;
+    const p = Math.max(0, Math.min(1, bufferTransitionProgress));
+    const direction = target === "loop" ? -1 : 1;
+    return direction * (p < 0.5 ? p : p - 1) * 180;
+  }
+  function bufferDepthScale(): number {
+    if (bufferTransitionTarget == null) return 1;
+    const p = Math.max(0, Math.min(1, bufferTransitionProgress));
+    return (
+      BUFFER_FLIP_MIDPOINT_SCALE +
+      (1 - BUFFER_FLIP_MIDPOINT_SCALE) * Math.abs(p * 2 - 1)
+    );
+  }
+  function renderBufferTransition(): void {
+    const degrees = bufferFlipDegrees();
+    const depth = bufferDepthScale();
+    const transform = `perspective(24px) rotateY(${degrees}deg) scaleY(${depth})`;
+    blobFlipFace.style.transform = transform;
+    blobFlipFace.style.setProperty(
+      "--buffer-flip-progress",
+      String(bufferTransitionProgress),
+    );
+    blobFlipFace.style.setProperty("--buffer-flip-degrees", String(degrees));
+    blobFlipFace.style.setProperty("--buffer-depth-scale", String(depth));
+    bufferFlipActionIcons.forEach((icon) => {
+      icon.style.transform = transform;
+    });
+    syncBufferUi();
+  }
+  function completeBufferTransition(commit: boolean): void {
+    const target = bufferTransitionTarget;
+    if (commit && target != null) {
+      displayedBuffer = target;
+    }
+    bufferTransitionTarget = null;
+    bufferTransitionProgress = 0;
+    bufferDragging = false;
+    renderBufferTransition();
+  }
+  function settleBufferTransition(targetProgress: 0 | 1, commit: boolean): void {
+    const epoch = ++bufferTransitionEpoch;
+    const from = bufferTransitionProgress;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== bufferTransitionEpoch || bufferDragging) return;
+      const raw = Math.min(
+        1,
+        Math.max(0, (now - startedAt) / BUFFER_FLIP_DURATION_MS),
+      );
+      bufferTransitionProgress =
+        from + (targetProgress - from) * fastOutSlowIn(raw);
+      renderBufferTransition();
+      if (raw < 1) requestAnimationFrame(frame);
+      else completeBufferTransition(commit && targetProgress === 1);
+    };
+    requestAnimationFrame(frame);
+  }
+  function requestBufferNavigation(target: BufferSlot): void {
+    if (
+      rangeExportPending ||
+      bufferDragging ||
+      bufferTransitionTarget != null ||
+      target === displayedBuffer
+    )
+      return;
+    bufferTransitionTarget = target;
+    bufferTransitionProgress = 0;
+    renderBufferTransition();
+    settleBufferTransition(1, true);
+  }
+
   function syncBufferUi(): void {
+    const renderedBuffer = bufferRenderedBuffer();
     document
       .querySelectorAll<HTMLButtonElement>(".buffer-segment")
       .forEach((segment) => {
         const slot = bufferSlot(segment.dataset.buffer);
-        const selected = slot === selectedBuffer;
+        const selected = slot === renderedBuffer;
         const recording = live && activeBuffer === slot;
         segment.classList.toggle("selected", selected);
         segment.classList.toggle("idle", selected && !recording);
@@ -265,9 +530,9 @@ export function runReverbDemoRuntime(
         segment.setAttribute("aria-disabled", String(rangeExportPending));
         segment.tabIndex = selected ? 0 : -1;
       });
-    const displayedActive = live && activeBuffer === selectedBuffer;
+    const displayedActive = live && activeBuffer === renderedBuffer;
     const blockedByOther =
-      live && activeBuffer != null && activeBuffer !== selectedBuffer;
+      live && activeBuffer != null && activeBuffer !== renderedBuffer;
     blobControl.classList.toggle("live", displayedActive);
     blobControl.classList.toggle("dimmed", blockedByOther || rangeExportPending);
     blobControl.disabled = rangeExportPending;
@@ -276,8 +541,8 @@ export function runReverbDemoRuntime(
       displayedActive ? "Tap to pause capture" : "Tap to start capture",
     );
     blobIconUse.setAttribute("href", displayedActive ? PAUSE_PATH : WAVE_PATH);
-    blobTime.textContent = formatTimer(currentSeconds());
-    blobSummary.textContent = formatMiB(currentSeconds());
+    blobTime.textContent = formatTimer(currentSeconds(renderedBuffer));
+    blobSummary.textContent = formatMiB(currentSeconds(renderedBuffer));
     blobSummary.classList.toggle("hidden", !displayedActive);
     const exportFull = document.querySelector<HTMLButtonElement>(
       '.action-button[aria-label="Export full"]',
@@ -316,7 +581,7 @@ export function runReverbDemoRuntime(
     }
     scheduleTick();
   }
-  syncBufferUi();
+  renderBufferTransition();
   scheduleTick();
 
   const initialRememberedRangeDurationSeconds = 2 * 3600 + 23 * 60 + 53.7;
@@ -335,9 +600,32 @@ export function runReverbDemoRuntime(
   const rangeEndBoundary = byId<HTMLElement>("rangeEndBoundary");
   const rangeDurationWheel = byId<HTMLElement>("rangeDurationWheel");
   const rangeExportButton = byId<HTMLButtonElement>("rangeExport");
-  const rangeWavebox =
+  const rangeWaveboxCandidate =
     document.querySelector<HTMLElement>(".range-timeline .wavebox");
-  if (!rangeWavebox) throw new Error("Reverb demo is missing range waveform");
+  if (!rangeWaveboxCandidate) throw new Error("Reverb demo is missing range waveform");
+  const rangeWavebox: HTMLElement = rangeWaveboxCandidate;
+  const rangeScreen = byId<HTMLElement>("rangeScreen");
+  const rangeMainCandidate = rangeScreen.querySelector<HTMLElement>(".range-main");
+  const rangeMorphWave = byId<SVGSVGElement>("rangeMorphWave");
+  const rangeMorphOval = byId<SVGEllipseElement>("rangeMorphOval");
+  const rangeMorphPath = byId<SVGPathElement>("rangeMorphPath");
+  const rangeFinalWave = byId<SVGSVGElement>("rangeFinalWave");
+  if (!rangeMainCandidate) throw new Error("Reverb demo is missing range main content");
+  const rangeMain: HTMLElement = rangeMainCandidate;
+  const RANGE_OPEN_DURATION_MS = 760;
+  const RANGE_BLOB_MORPH_HANDOFF_PROGRESS = 0.07;
+  const RANGE_INTERACTION_READY_PROGRESS = 0.98;
+  const RANGE_WAVEFORM_BUILD_PROGRESS = 0.96;
+  const RANGE_WAVEFORM_COARSE_REVEAL_MS = 430;
+  let rangeOpeningEpoch = 0;
+  let rangeOpening = false;
+  let rangeInteractionReady = false;
+  let rangeWaveRevealStartedAt: number | null = null;
+  let rangeSourceGeometry: {
+    centerX: number;
+    centerY: number;
+    bodyDiameter: number;
+  } | null = null;
   let rangeTimelineDurationSeconds = 0.1;
   let rangeStartSeconds = 0;
   let rangeEndSeconds = 0.1;
@@ -364,6 +652,206 @@ export function runReverbDemoRuntime(
   let rangeWheelSuppressClick = false;
   const rangeWheelInteractionActive = () =>
     rangeWheelPointerId !== -1 || rangeWheelSettleTimer !== 0;
+
+  const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+  const smoothStep = (value: number) => {
+    const t = clamp01(value);
+    return t * t * (3 - 2 * t);
+  };
+  function setRangeInteractionReady(ready: boolean): void {
+    if (rangeInteractionReady === ready) return;
+    rangeInteractionReady = ready;
+    rangeMain.inert = !ready;
+    rangeDurationWheel.tabIndex = ready ? 0 : -1;
+    rangeDurationWheel.setAttribute("aria-disabled", String(!ready));
+    rangeScreen.dataset.rangeInteractionReady = String(ready);
+    if (
+      ready &&
+      currentScreen === "rangeScreen" &&
+      !phone.classList.contains("about-mounted")
+    ) {
+      rangeDurationWheel.focus({ preventScroll: true });
+    }
+  }
+  function renderRangeMorphShape(morphProgress: number, phase: number): void {
+    const morphProgressClamped = clamp01(morphProgress);
+    if (morphProgressClamped <= 0) {
+      rangeMorphOval.style.display = "";
+      rangeMorphPath.style.display = "none";
+      return;
+    }
+    rangeMorphOval.style.display = "none";
+    rangeMorphPath.style.display = "";
+    const width = 360;
+    const height = 146;
+    const center = height * 0.5;
+    const ribbonProgress = clamp01((morphProgressClamped - 0.08) / 0.92);
+    const morph = smoothStep(ribbonProgress);
+    const minimumAmplitude = height * 0.035 * morph;
+    const maxAmplitude = height * (0.5 - 0.06 * morph);
+    const pointCount = morphProgressClamped < 0.85 ? 128 : morphProgressClamped < 0.995 ? 256 : 360;
+    const amplitudes = new Array<number>(pointCount);
+    const top: string[] = [];
+    const bottom: string[] = [];
+    for (let point = 0; point < pointCount; point++) {
+      const u = point / Math.max(1, pointCount - 1);
+      const xNorm = (u - 0.5) * 2;
+      const circle = Math.sqrt(Math.max(0, 1 - xNorm * xNorm));
+      const organic = 1 + 0.018 * morph * Math.sin(u * 19 + phase * 0.7);
+      const blobEnvelope = clamp01(circle * organic);
+      const ribbonWobble = Math.max(
+        0.08,
+        Math.min(
+          0.68,
+          0.27 +
+            0.07 * Math.sin(u * 31 + phase * 2.25) +
+            0.04 * Math.sin(u * 67 - phase * 1.62) +
+            0.022 * Math.sin(u * 113 + phase * 1.08),
+        ),
+      );
+      const sample = blobEnvelope + (ribbonWobble - blobEnvelope) * morph;
+      const amplitude = minimumAmplitude + maxAmplitude * clamp01(sample);
+      amplitudes[point] = amplitude;
+      const x = (width * point) / Math.max(1, pointCount - 1);
+      top.push(`${point === 0 ? "M" : "L"}${x.toFixed(2)} ${(center - amplitude).toFixed(2)}`);
+    }
+    for (let point = pointCount - 1; point >= 0; point--) {
+      const x = (width * point) / Math.max(1, pointCount - 1);
+      bottom.push(`L${x.toFixed(2)} ${(center + (amplitudes[point] ?? 0)).toFixed(2)}`);
+    }
+    rangeMorphPath.setAttribute("d", `${top.join(" ")} ${bottom.join(" ")} Z`);
+  }
+  function renderRangeOpeningFrame(
+    visualProgress: number,
+    now: number,
+  ): void {
+    const source = rangeSourceGeometry;
+    if (!source) return;
+    const visual = clamp01(visualProgress);
+    const morph = clamp01(
+      (visual - RANGE_BLOB_MORPH_HANDOFF_PROGRESS) /
+        (1 - RANGE_BLOB_MORPH_HANDOFF_PROGRESS),
+    );
+    const chrome = clamp01((visual - 0.46) / 0.42);
+    const target = rangeWavebox.getBoundingClientRect();
+    const startScaleX = source.bodyDiameter / Math.max(1, target.width);
+    const startScaleY = source.bodyDiameter / Math.max(1, target.height);
+    const scaleX = startScaleX + (1 - startScaleX) * morph;
+    const scaleY = startScaleY + (1 - startScaleY) * morph;
+    const translationX =
+      (source.centerX - (target.left + target.width * 0.5)) * (1 - morph);
+    const translationY =
+      (source.centerY - (target.top + target.height * 0.5)) * (1 - morph);
+    rangeMorphWave.style.transform =
+      `translate3d(${translationX}px,${translationY}px,0) scale(${scaleX},${scaleY})`;
+    rangeMorphWave.style.setProperty("--range-morph-progress", String(morph));
+    rangeMorphWave.style.setProperty("--range-start-scale-x", String(startScaleX));
+    rangeMorphWave.style.setProperty("--range-start-scale-y", String(startScaleY));
+    rangeScreen.style.setProperty("--range-chrome-alpha", String(chrome));
+    rangeScreen.style.setProperty("--range-transition-progress", String(visual));
+    renderRangeMorphShape(morph, now / 1000);
+
+    if (visual >= RANGE_WAVEFORM_BUILD_PROGRESS && rangeWaveRevealStartedAt == null)
+      rangeWaveRevealStartedAt = now;
+    const reveal =
+      rangeWaveRevealStartedAt == null
+        ? 0
+        : fastOutSlowIn(
+            clamp01(
+              (now - rangeWaveRevealStartedAt) /
+                RANGE_WAVEFORM_COARSE_REVEAL_MS,
+            ),
+          );
+    const finalLayerAlpha = smoothStep((morph - 0.78) / 0.22);
+    rangeFinalWave.style.opacity = String(finalLayerAlpha);
+    rangeFinalWave.style.clipPath = `inset(0 ${(1 - reveal) * 100}% 0 0)`;
+    rangeMorphWave.style.clipPath = `inset(0 0 0 ${reveal * 100}%)`;
+    rangeScreen.style.setProperty("--range-wave-reveal", String(reveal));
+
+    if (!rangeInteractionReady && visual >= RANGE_INTERACTION_READY_PROGRESS)
+      setRangeInteractionReady(true);
+  }
+  function resetRangeOpeningPresentation(): void {
+    rangeScreen.classList.remove("range-opening");
+    rangeScreen.style.setProperty("--range-chrome-alpha", "1");
+    rangeScreen.style.removeProperty("--range-transition-progress");
+    rangeScreen.style.removeProperty("--range-wave-reveal");
+    rangeMorphWave.style.removeProperty("transform");
+    rangeMorphWave.style.removeProperty("clip-path");
+    rangeMorphWave.style.removeProperty("--range-morph-progress");
+    rangeMorphWave.style.removeProperty("--range-start-scale-x");
+    rangeMorphWave.style.removeProperty("--range-start-scale-y");
+    rangeFinalWave.style.removeProperty("opacity");
+    rangeFinalWave.style.removeProperty("clip-path");
+    rangeMorphOval.style.display = "";
+    rangeMorphPath.style.display = "none";
+    rangeMorphPath.removeAttribute("d");
+    rangeWaveRevealStartedAt = null;
+    rangeSourceGeometry = null;
+  }
+  function cancelRangeOpeningMotion(): void {
+    ++rangeOpeningEpoch;
+    rangeOpening = false;
+    setRangeInteractionReady(false);
+    rangeMain.inert = false;
+    rangeDurationWheel.tabIndex = 0;
+    rangeDurationWheel.removeAttribute("aria-disabled");
+    rangeScreen.dataset.rangeInteractionReady = "false";
+    resetRangeOpeningPresentation();
+  }
+  function startRangeOpening(): void {
+    if (rangeExportPending || rangeOpening) return;
+    const blob = blobControl.getBoundingClientRect();
+    const viewSize = Math.min(blob.width, blob.height);
+    if (viewSize <= 0) return;
+    rangeSourceGeometry = {
+      centerX: blob.left + blob.width * 0.5,
+      centerY: blob.top + blob.height * 0.5,
+      bodyDiameter:
+        viewSize * 2 * Math.max(0, blobShader.currentBaseRadiusFraction()),
+    };
+    resetRangeUi();
+    currentScreen = "rangeScreen";
+    activateScreen("rangeScreen");
+    renderRangeFineVisual();
+    closeDropdown();
+    blobShader.setVisible(false);
+    rangeOpening = true;
+    rangeScreen.classList.add("range-opening");
+    rangeWaveRevealStartedAt = null;
+    setRangeInteractionReady(false);
+    rangeMain.inert = true;
+    const epoch = ++rangeOpeningEpoch;
+    const startedAt = performance.now();
+    renderRangeOpeningFrame(0, startedAt);
+    const frame = (now: number) => {
+      if (epoch !== rangeOpeningEpoch || currentScreen !== "rangeScreen") return;
+      const raw = clamp01((now - startedAt) / RANGE_OPEN_DURATION_MS);
+      const visual = fastOutSlowIn(raw);
+      renderRangeOpeningFrame(visual, now);
+      if (raw >= 1) {
+        rangeOpening = false;
+        rangeScreen.classList.remove("range-opening");
+      }
+      const reveal = Number(
+        rangeScreen.style.getPropertyValue("--range-wave-reveal") || 0,
+      );
+      if (raw < 1 || reveal < 0.999) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  ["pointerdown", "click", "wheel", "keydown"].forEach((type) => {
+    rangeMain.addEventListener(
+      type,
+      (event) => {
+        if (rangeInteractionReady) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
+  });
 
   function formatRangeTime(seconds: number): string {
     const tenths = Math.max(0, Math.floor((Number.isFinite(seconds) ? seconds : 0) * 10));
@@ -780,7 +1268,7 @@ export function runReverbDemoRuntime(
     rangeStartBoundary.classList.toggle("active", rangeEditTarget === "start");
     rangeEndBoundary.classList.toggle("active", rangeEditTarget === "end");
 
-    const loop = selectedBuffer === "loop";
+    const loop = rangeBuffer === "loop";
     byId("rangeBufferLabel").textContent = loop ? "Looping" : "One-shot";
     byId<SVGUseElement>("rangeBufferIcon").setAttribute(
       "href",
@@ -789,8 +1277,9 @@ export function runReverbDemoRuntime(
     renderRangeWheel();
   }
   function resetRangeUi(): void {
-    rangeTimelineDurationSeconds = Math.max(0.1, currentSeconds());
-    const remembered = rememberedRangeExports[selectedBuffer];
+    rangeBuffer = bufferRenderedBuffer();
+    rangeTimelineDurationSeconds = Math.max(0.1, currentSeconds(rangeBuffer));
+    const remembered = rememberedRangeExports[rangeBuffer];
     const selection = Math.min(
       remembered.selectionSeconds,
       rangeTimelineDurationSeconds,
@@ -1207,7 +1696,11 @@ export function runReverbDemoRuntime(
     setRangePlaying(false);
     setRangeWheelInteractionUi(true);
     rangeDurationWheel.focus({ preventScroll: true });
-    rangeDurationWheel.setPointerCapture?.(event.pointerId);
+    try {
+      rangeDurationWheel.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic PointerEvents have no browser-owned pointer to capture.
+    }
     event.preventDefault();
   });
   rangeDurationWheel.addEventListener("pointermove", (event) => {
@@ -1350,14 +1843,11 @@ export function runReverbDemoRuntime(
   ];
   const selectBufferPage = (segment: HTMLButtonElement, focus = false) => {
     if (rangeExportPending) return;
-    selectedBuffer = bufferSlot(segment.dataset.buffer);
-    syncBufferUi();
+    requestBufferNavigation(bufferSlot(segment.dataset.buffer));
     if (focus) segment.focus({ preventScroll: true });
   };
   bufferSegments.forEach((segment) => {
-    segment.addEventListener("click", () => {
-      selectBufferPage(segment);
-    });
+    segment.addEventListener("click", () => selectBufferPage(segment));
     segment.addEventListener("keydown", (event) => {
       let target: HTMLButtonElement | undefined;
       const index = bufferSegments.indexOf(segment);
@@ -1383,21 +1873,86 @@ export function runReverbDemoRuntime(
     ),
   );
   blobControl.addEventListener("click", () => {
-    if (live && activeBuffer === selectedBuffer) {
+    if (suppressBlobClick) {
+      suppressBlobClick = false;
+      return;
+    }
+    const renderedBuffer = bufferRenderedBuffer();
+    if (live && activeBuffer === renderedBuffer) {
       live = false;
       activeBuffer = null;
     } else {
       live = true;
-      activeBuffer = selectedBuffer;
+      activeBuffer = renderedBuffer;
     }
     syncBufferUi();
   });
 
+  blobArea.addEventListener("pointerdown", (event) => {
+    if (
+      currentScreen !== "homeScreen" ||
+      rangeExportPending ||
+      bufferDragging ||
+      bufferTransitionTarget != null
+    )
+      return;
+    bufferSwipePointerId = event.pointerId;
+    bufferSwipeStartX = event.clientX;
+    bufferSwipeStartY = event.clientY;
+  });
+  blobArea.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== bufferSwipePointerId) return;
+    const dx = event.clientX - bufferSwipeStartX;
+    const dy = event.clientY - bufferSwipeStartY;
+    if (!bufferDragging) {
+      if (Math.abs(dx) < 8 || Math.abs(dx) <= Math.abs(dy)) return;
+      bufferDragging = true;
+      suppressBlobClick = true;
+      ++bufferTransitionEpoch;
+      bufferTransitionTarget = oppositeBuffer(displayedBuffer);
+      bufferTransitionProgress = 0;
+      blobControl.classList.remove("pressed");
+      try {
+        blobArea.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic PointerEvents have no browser-owned pointer to capture.
+      }
+    }
+    const width = Math.max(1, blobArea.getBoundingClientRect().width);
+    const forward = displayedBuffer === "one" ? -dx : dx;
+    bufferTransitionProgress = Math.max(0, Math.min(1, forward / width));
+    renderBufferTransition();
+    event.preventDefault();
+  });
+  function finishBufferSwipe(cancelled: boolean): void {
+    if (bufferSwipePointerId === -1) return;
+    const wasDragging = bufferDragging;
+    bufferSwipePointerId = -1;
+    if (!wasDragging) return;
+    bufferDragging = false;
+    const commit =
+      !cancelled && bufferTransitionProgress >= BUFFER_SWIPE_COMMIT_PROGRESS;
+    if (commit) settleBufferTransition(1, true);
+    else if (bufferTransitionProgress <= 0.001) completeBufferTransition(false);
+    else settleBufferTransition(0, false);
+    setTimeout(() => {
+      suppressBlobClick = false;
+    }, 0);
+  }
+  blobArea.addEventListener("pointerup", () => finishBufferSwipe(false));
+  blobArea.addEventListener("pointercancel", () => finishBufferSwipe(true));
+  blobArea.addEventListener("lostpointercapture", () => {
+    if (bufferDragging) finishBufferSwipe(true);
+  });
+
   byId("openSettings").addEventListener("click", openSettings);
-  byId("librarySettings").addEventListener("click", () => {
+  byId("librarySettings").addEventListener("click", (event) => {
+    closeLibraryPanel(null);
+    openSettings(event);
     settingsReturnScreen = "homeScreen";
     settingsReturnFocus = byId<HTMLElement>("openLibrary");
-    showScreen("settingsScreen");
+    settingsForegroundScreen = homeScreen;
+    renderSettingsPanelProgress(settingsPanelProgress);
   });
   byId("rangeSettings").addEventListener("click", (event) => {
     endRangeTransientOwnership();
@@ -1407,22 +1962,16 @@ export function runReverbDemoRuntime(
   byId("libraryIncidents").addEventListener("click", () => {
     incidentsReturnScreen = "homeScreen";
     incidentsReturnFocus = byId<HTMLElement>("openLibrary");
+    closeLibraryPanel(null);
     showScreen("incidentsScreen");
   });
   byId("rangeIncidents").addEventListener("click", (event) => {
     endRangeTransientOwnership();
     openIncidents(event);
   });
-  byId("openLibrary").addEventListener("click", () =>
-    showScreen("libraryScreen"),
-  );
-  byId("libraryBack").addEventListener("click", () =>
-    showScreen("homeScreen", byId<HTMLElement>("openLibrary")),
-  );
-  byId("openRange").addEventListener("click", () => {
-    resetRangeUi();
-    showScreen("rangeScreen");
-  });
+  byId("openLibrary").addEventListener("click", openLibraryPanel);
+  byId("libraryBack").addEventListener("click", () => closeLibraryPanel());
+  byId("openRange").addEventListener("click", startRangeOpening);
   const rangeClose = byId<HTMLElement>("rangeClose");
   rangeClose.addEventListener("pointerdown", () => {
     endRangeTransientOwnership();
@@ -1430,6 +1979,7 @@ export function runReverbDemoRuntime(
   });
   rangeClose.addEventListener("click", () => {
     endRangeTransientOwnership();
+    cancelRangeOpeningMotion();
     showScreen("homeScreen", byId<HTMLElement>("openRange"));
   });
   byId("rangeExport").addEventListener("click", () => {
@@ -1454,13 +2004,14 @@ export function runReverbDemoRuntime(
       return;
     }
     const exportGeneration = ++rangeExportGeneration;
-    const exportedBuffer = selectedBuffer;
+    const exportedBuffer = rangeBuffer;
     const exportedSelectionSeconds = rangeSelectionSeconds();
     const exportedEndOffsetSeconds = Math.max(
       0,
       rangeTimelineDurationSeconds - rangeEndSeconds,
     );
     endRangeTransientOwnership();
+    cancelRangeOpeningMotion();
     rangeExportPending = true;
     syncBufferUi();
     showScreen("homeScreen", byId<HTMLElement>("brandButton"));
@@ -1480,6 +2031,8 @@ export function runReverbDemoRuntime(
   );
 
   const aboutSheet = byId<HTMLElement>("aboutSheet");
+  const ABOUT_EXIT_DURATION_MS = 190;
+  let aboutMotionEpoch = 0;
   let aboutReturnFocus: HTMLElement | null = null;
   let aboutBackground:
     | { screen: HTMLElement; inert: boolean; ariaHidden: string | null }
@@ -1488,28 +2041,30 @@ export function runReverbDemoRuntime(
     'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
   )].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
   const openAbout = (event: Event) => {
-    aboutReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    const background = screens.find((screen) => screen.classList.contains("active"));
-    if (background) {
-      aboutBackground = {
-        screen: background,
-        inert: background.inert,
-        ariaHidden: background.getAttribute("aria-hidden"),
-      };
-      background.inert = true;
-      background.setAttribute("aria-hidden", "true");
+    ++aboutMotionEpoch;
+    aboutReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : aboutReturnFocus;
+    if (!aboutBackground) {
+      const background = screens.find((screen) => screen.classList.contains("active"));
+      if (background) {
+        aboutBackground = {
+          screen: background,
+          inert: background.inert,
+          ariaHidden: background.getAttribute("aria-hidden"),
+        };
+        background.inert = true;
+        background.setAttribute("aria-hidden", "true");
+      }
     }
     aboutSheet.inert = false;
     aboutSheet.setAttribute("aria-hidden", "false");
-    phone.classList.add("about-open");
-    // The Android app hides the live visualizer while the About dialog is open,
-    // which lets the blob settle back to its compact idle body under the scrim.
+    phone.classList.add("about-mounted", "about-open");
+    // Native keeps the visualizer hidden for the entire dialog lifetime, including exit.
     syncBufferUi();
     requestAnimationFrame(() => byId<HTMLElement>("aboutClose").focus({ preventScroll: true }));
   };
-  const closeAbout = () => {
-    if (!phone.classList.contains("about-open")) return;
-    phone.classList.remove("about-open");
+  const finishAboutDismiss = (epoch: number) => {
+    if (epoch !== aboutMotionEpoch || phone.classList.contains("about-open")) return;
+    phone.classList.remove("about-mounted");
     aboutSheet.inert = true;
     aboutSheet.setAttribute("aria-hidden", "true");
     if (aboutBackground) {
@@ -1524,13 +2079,19 @@ export function runReverbDemoRuntime(
     aboutReturnFocus = null;
     if (target) requestAnimationFrame(() => target.isConnected && target.focus({ preventScroll: true }));
   };
+  const closeAbout = () => {
+    if (!phone.classList.contains("about-open")) return;
+    phone.classList.remove("about-open");
+    const epoch = ++aboutMotionEpoch;
+    setTimeout(() => finishAboutDismiss(epoch), ABOUT_EXIT_DURATION_MS);
+  };
   ["brandButton", "libraryBrand", "rangeBrand"].forEach((id) =>
     byId(id).addEventListener("click", openAbout),
   );
   byId("aboutClose").addEventListener("click", () => closeAbout());
   byId("aboutScrim").addEventListener("click", () => closeAbout());
   document.addEventListener("keydown", (event) => {
-    if (!(event instanceof KeyboardEvent) || !phone.classList.contains("about-open")) return;
+    if (!(event instanceof KeyboardEvent) || !phone.classList.contains("about-mounted")) return;
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
@@ -1638,13 +2199,326 @@ export function runReverbDemoRuntime(
         showToast(element.dataset.toast ?? ""),
       ),
     );
-  document
-    .querySelectorAll<HTMLElement>(".recording-card")
-    .forEach((card) =>
-      card.addEventListener("click", () =>
-        showToast(card.dataset.recording ?? "Recording"),
-      ),
+  type RecordingPlayerState = {
+    card: HTMLElement;
+    summary: HTMLButtonElement;
+    expanded: HTMLElement;
+    player: HTMLElement;
+    waveEllipse: SVGEllipseElement;
+    wavePath: SVGPathElement;
+    waveCursor: HTMLElement;
+    positionLabel: HTMLElement;
+    durationLabel: HTMLElement;
+    fine: HTMLElement;
+    fineField: SVGSVGElement;
+    finePath: SVGPathElement;
+    fineOverlay: SVGPathElement;
+    fineCenter: SVGCircleElement;
+    fineHalo: SVGCircleElement;
+    play: HTMLButtonElement;
+    playUse: SVGUseElement;
+    durationSeconds: number;
+    positionSeconds: number;
+    playing: boolean;
+    playbackStartedAt: number;
+    playbackBaseSeconds: number;
+    playbackFrame: number | null;
+    morphEpoch: number;
+    sizeAnimation: Animation | null;
+    opacityAnimation: Animation | null;
+  };
+  let expandedRecording: RecordingPlayerState | null = null;
+  const parseRecordingDuration = (text: string): number => {
+    const hours = Number(text.match(/(\d+)h/)?.[1] ?? 0);
+    const minutes = Number(text.match(/(\d+)m/)?.[1] ?? 0);
+    const seconds = Number(text.match(/(\d+)s/)?.[1] ?? 0);
+    return Math.max(1, hours * 3600 + minutes * 60 + seconds);
+  };
+  const formatPlaybackTime = (seconds: number): string => {
+    const whole = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(whole / 3600);
+    const minutes = Math.floor((whole % 3600) / 60);
+    const secs = whole % 60;
+    return hours > 0
+      ? `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+      : `${minutes}:${String(secs).padStart(2, "0")}`;
+  };
+  function renderRecordingWaveMorph(
+    state: RecordingPlayerState,
+    morphProgress: number,
+    phase: number,
+  ): void {
+    const progress = clamp01(morphProgress);
+    state.player.style.setProperty("--recording-wave-morph", String(progress));
+    if (progress <= 0) {
+      state.waveEllipse.style.display = "";
+      state.wavePath.style.display = "none";
+      return;
+    }
+    state.waveEllipse.style.display = "none";
+    state.wavePath.style.display = "";
+    const width = 360;
+    const height = 128;
+    const center = height * 0.5;
+    const morph = smoothStep(clamp01((progress - 0.08) / 0.92));
+    const minimumAmplitude = height * 0.035 * morph;
+    const maxAmplitude = height * (0.5 - 0.06 * morph);
+    const pointCount = progress < 0.85 ? 128 : 256;
+    const amplitudes = new Array<number>(pointCount);
+    const top: string[] = [];
+    const bottom: string[] = [];
+    for (let point = 0; point < pointCount; point++) {
+      const u = point / Math.max(1, pointCount - 1);
+      const xNorm = (u - 0.5) * 2;
+      const circle = Math.sqrt(Math.max(0, 1 - xNorm * xNorm));
+      const organic = 1 + 0.018 * morph * Math.sin(u * 19 + phase * 0.7);
+      const blobEnvelope = clamp01(circle * organic);
+      const ribbonWobble = Math.max(
+        0.08,
+        Math.min(
+          0.68,
+          0.27 +
+            0.07 * Math.sin(u * 31 + phase * 2.25) +
+            0.04 * Math.sin(u * 67 - phase * 1.62) +
+            0.022 * Math.sin(u * 113 + phase * 1.08),
+        ),
+      );
+      const sample = blobEnvelope + (ribbonWobble - blobEnvelope) * morph;
+      const amplitude = minimumAmplitude + maxAmplitude * clamp01(sample);
+      amplitudes[point] = amplitude;
+      const x = (width * point) / Math.max(1, pointCount - 1);
+      top.push(
+        `${point === 0 ? "M" : "L"}${x.toFixed(2)} ${(center - amplitude).toFixed(2)}`,
+      );
+    }
+    for (let point = pointCount - 1; point >= 0; point--) {
+      const x = (width * point) / Math.max(1, pointCount - 1);
+      bottom.push(
+        `L${x.toFixed(2)} ${(center + (amplitudes[point] ?? 0)).toFixed(2)}`,
+      );
+    }
+    state.wavePath.setAttribute("d", `${top.join(" ")} ${bottom.join(" ")} Z`);
+  }
+  function renderRecordingFineField(state: RecordingPlayerState): void {
+    const rect = state.fine.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    if (width <= 0 || height <= 0) return;
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    const edgePadding = 10;
+    const puckRadius = 24;
+    const leftTipX = edgePadding;
+    const rightTipX = width - edgePadding;
+    const leftSpan = Math.max(1, centerX - puckRadius - leftTipX);
+    const rightSpan = Math.max(1, rightTipX - (centerX + puckRadius));
+    const topY = centerY - puckRadius;
+    const bottomY = centerY + puckRadius;
+    const path = [
+      `M${leftTipX} ${centerY}`,
+      `C${leftTipX + leftSpan * 0.3} ${centerY} ${Math.max(leftTipX, centerX - puckRadius - leftSpan * 0.28)} ${topY} ${centerX} ${topY}`,
+      `C${Math.min(rightTipX, centerX + puckRadius + rightSpan * 0.28)} ${topY} ${rightTipX - rightSpan * 0.3} ${centerY} ${rightTipX} ${centerY}`,
+      `C${rightTipX - rightSpan * 0.3} ${centerY} ${Math.min(rightTipX, centerX + puckRadius + rightSpan * 0.28)} ${bottomY} ${centerX} ${bottomY}`,
+      `C${Math.max(leftTipX, centerX - puckRadius - leftSpan * 0.28)} ${bottomY} ${leftTipX + leftSpan * 0.3} ${centerY} ${leftTipX} ${centerY} Z`,
+    ].join(" ");
+    state.fineField.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    state.finePath.setAttribute("d", path);
+    state.fineOverlay.setAttribute("d", path);
+    state.fineCenter.setAttribute("cx", String(centerX));
+    state.fineCenter.setAttribute("cy", String(centerY));
+    state.fineCenter.setAttribute("r", "1.6");
+    state.fineHalo.setAttribute("cx", String(centerX));
+    state.fineHalo.setAttribute("cy", String(centerY));
+    state.fineHalo.setAttribute("r", String(puckRadius * 1.28));
+  }
+  function syncRecordingPlayback(state: RecordingPlayerState): void {
+    state.positionLabel.textContent = formatPlaybackTime(state.positionSeconds);
+    state.durationLabel.textContent = formatPlaybackTime(state.durationSeconds);
+    state.waveCursor.style.left =
+      `${clamp01(state.positionSeconds / state.durationSeconds) * 100}%`;
+    state.play.setAttribute("aria-label", state.playing ? "Pause" : "Play");
+    state.playUse.setAttribute("href", state.playing ? "#i-pause" : "#i-play");
+  }
+  function stopRecordingPlaybackFrame(state: RecordingPlayerState): void {
+    if (state.playbackFrame != null) cancelAnimationFrame(state.playbackFrame);
+    state.playbackFrame = null;
+  }
+  function runRecordingPlayback(state: RecordingPlayerState): void {
+    stopRecordingPlaybackFrame(state);
+    if (!state.playing) return;
+    state.playbackStartedAt = performance.now();
+    state.playbackBaseSeconds = state.positionSeconds;
+    const frame = (now: number) => {
+      if (!state.playing || expandedRecording !== state) return;
+      state.positionSeconds = Math.min(
+        state.durationSeconds,
+        state.playbackBaseSeconds + (now - state.playbackStartedAt) / 1000,
+      );
+      if (state.positionSeconds >= state.durationSeconds) state.playing = false;
+      syncRecordingPlayback(state);
+      if (state.playing) state.playbackFrame = requestAnimationFrame(frame);
+      else state.playbackFrame = null;
+    };
+    state.playbackFrame = requestAnimationFrame(frame);
+  }
+  function setRecordingPlaying(state: RecordingPlayerState, playing: boolean): void {
+    state.playing = playing;
+    syncRecordingPlayback(state);
+    if (playing) runRecordingPlayback(state);
+    else stopRecordingPlaybackFrame(state);
+  }
+  function startRecordingWaveMorph(state: RecordingPlayerState): void {
+    const epoch = ++state.morphEpoch;
+    const startedAt = performance.now();
+    renderRecordingWaveMorph(state, 0, startedAt / 1000);
+    const frame = (now: number) => {
+      if (state.morphEpoch !== epoch || expandedRecording !== state) return;
+      const raw = clamp01((now - startedAt) / 760);
+      renderRecordingWaveMorph(state, fastOutSlowIn(raw), now / 1000);
+      if (raw < 1) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+  function cancelRecordingAnimations(state: RecordingPlayerState): void {
+    state.sizeAnimation?.cancel();
+    state.opacityAnimation?.cancel();
+    state.sizeAnimation = null;
+    state.opacityAnimation = null;
+  }
+  function collapseRecording(state: RecordingPlayerState): void {
+    if (!state.card.classList.contains("expanded")) return;
+    cancelRecordingAnimations(state);
+    ++state.morphEpoch;
+    setRecordingPlaying(state, false);
+    state.card.classList.remove("expanded");
+    state.summary.setAttribute("aria-expanded", "false");
+    const fromHeight = state.expanded.getBoundingClientRect().height;
+    const fromOpacity = Number(getComputedStyle(state.player).opacity);
+    state.expanded.style.height = `${fromHeight}px`;
+    state.opacityAnimation = state.player.animate(
+      [{ opacity: fromOpacity }, { opacity: 0 }],
+      { duration: 140, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
     );
+    state.sizeAnimation = state.expanded.animate(
+      [{ height: `${fromHeight}px` }, { height: "0px" }],
+      { duration: 260, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
+    );
+    state.sizeAnimation.onfinish = () => {
+      state.expanded.style.height = "0px";
+      state.player.style.opacity = "0";
+      state.expanded.setAttribute("aria-hidden", "true");
+      state.expanded.inert = true;
+      state.sizeAnimation?.cancel();
+      state.opacityAnimation?.cancel();
+      state.sizeAnimation = null;
+      state.opacityAnimation = null;
+    };
+    if (expandedRecording === state) expandedRecording = null;
+  }
+  function expandRecording(state: RecordingPlayerState): void {
+    if (expandedRecording === state) {
+      collapseRecording(state);
+      return;
+    }
+    if (expandedRecording) collapseRecording(expandedRecording);
+    cancelRecordingAnimations(state);
+    expandedRecording = state;
+    state.card.classList.add("expanded");
+    state.summary.setAttribute("aria-expanded", "true");
+    state.expanded.inert = false;
+    state.expanded.setAttribute("aria-hidden", "false");
+    state.expanded.style.height = "auto";
+    state.player.style.opacity = "1";
+    const targetHeight = state.expanded.scrollHeight;
+    state.expanded.style.height = "0px";
+    state.player.style.opacity = "0";
+    state.sizeAnimation = state.expanded.animate(
+      [{ height: "0px" }, { height: `${targetHeight}px` }],
+      { duration: 320, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
+    );
+    state.opacityAnimation = state.player.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      {
+        duration: 220,
+        delay: 70,
+        easing: "cubic-bezier(.4,0,.2,1)",
+        fill: "forwards",
+      },
+    );
+    state.sizeAnimation.onfinish = () => {
+      if (expandedRecording !== state) return;
+      state.expanded.style.height = "auto";
+      state.player.style.opacity = "1";
+      state.sizeAnimation?.cancel();
+      state.opacityAnimation?.cancel();
+      state.sizeAnimation = null;
+      state.opacityAnimation = null;
+    };
+    requestAnimationFrame(() => renderRecordingFineField(state));
+    startRecordingWaveMorph(state);
+    state.positionSeconds = 0;
+    setRecordingPlaying(state, true);
+  }
+  document.querySelectorAll<HTMLElement>(".recording-card").forEach((card) => {
+    const summary = card.querySelector<HTMLButtonElement>(".recording-summary");
+    const expanded = card.querySelector<HTMLElement>(".recording-expanded");
+    const player = card.querySelector<HTMLElement>(".recording-player");
+    const waveEllipse = card.querySelector<SVGEllipseElement>(".recording-wave-ellipse");
+    const wavePath = card.querySelector<SVGPathElement>(".recording-wave-shape");
+    const waveCursor = card.querySelector<HTMLElement>(".recording-wave-cursor");
+    const positionLabel = card.querySelector<HTMLElement>(".recording-player-times .position");
+    const durationLabel = card.querySelector<HTMLElement>(".recording-player-times .duration");
+    const fine = card.querySelector<HTMLElement>(".recording-fine");
+    const fineField = card.querySelector<SVGSVGElement>(".recording-fine-field");
+    const finePath = card.querySelector<SVGPathElement>(".recording-fine-path");
+    const fineOverlay = card.querySelector<SVGPathElement>(".recording-fine-overlay");
+    const fineCenter = card.querySelector<SVGCircleElement>(".recording-fine-center");
+    const fineHalo = card.querySelector<SVGCircleElement>(".recording-fine-halo");
+    const play = card.querySelector<HTMLButtonElement>(".recording-play");
+    const playUse = play?.querySelector<SVGUseElement>("use");
+    const subtitle = card.querySelector<HTMLElement>(".recording-subtitle");
+    if (
+      !summary || !expanded || !player || !waveEllipse || !wavePath ||
+      !waveCursor || !positionLabel || !durationLabel || !fine || !fineField ||
+      !finePath || !fineOverlay || !fineCenter || !fineHalo || !play || !playUse ||
+      !subtitle
+    )
+      throw new Error("Reverb recording card is missing inline-player structure");
+    const state: RecordingPlayerState = {
+      card,
+      summary,
+      expanded,
+      player,
+      waveEllipse,
+      wavePath,
+      waveCursor,
+      positionLabel,
+      durationLabel,
+      fine,
+      fineField,
+      finePath,
+      fineOverlay,
+      fineCenter,
+      fineHalo,
+      play,
+      playUse,
+      durationSeconds: parseRecordingDuration(subtitle.textContent ?? ""),
+      positionSeconds: 0,
+      playing: false,
+      playbackStartedAt: 0,
+      playbackBaseSeconds: 0,
+      playbackFrame: null,
+      morphEpoch: 0,
+      sizeAnimation: null,
+      opacityAnimation: null,
+    };
+    syncRecordingPlayback(state);
+    summary.addEventListener("click", () => expandRecording(state));
+    play.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setRecordingPlaying(state, !state.playing);
+    });
+  });
 
   function makeRangeWavePath(): string {
     const width = 360;
@@ -1682,6 +2556,14 @@ export function runReverbDemoRuntime(
   if (!rangeFineControl)
     throw new Error("Reverb demo is missing range fine-seek control");
   const rangePlay = byId<HTMLButtonElement>("rangePlay");
+  const rangeFineField = byId<SVGSVGElement>("rangeFineField");
+  const rangeFineFieldPath = byId<SVGPathElement>("rangeFineFieldPath");
+  const rangeFineFieldOverlay = byId<SVGPathElement>("rangeFineFieldOverlay");
+  const rangeFineCenterDot = byId<SVGCircleElement>("rangeFineCenterDot");
+  const rangeFineHalo = byId<SVGCircleElement>("rangeFineHalo");
+  const rangeFineEdgeStart = byId<SVGStopElement>("rangeFineEdgeStart");
+  const rangeFineCenterStop = byId<SVGStopElement>("rangeFineCenterStop");
+  const rangeFineEdgeEnd = byId<SVGStopElement>("rangeFineEdgeEnd");
   let rangePlaying = false;
   let rangeFinePointerId = -1;
   let rangeFineStartedOnPuck = false;
@@ -1695,7 +2577,9 @@ export function runReverbDemoRuntime(
   let rangeFineDownY = 0;
   let rangeFineRawVertical = 0;
   let rangeFineHorizontalPull = 0;
+  let rangeFineDragStartRawVertical = 0;
   let rangeFineLastFrame = 0;
+  let rangeFineSettleEpoch = 0;
 
   const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
   const rangeFineConstrainedY = (
@@ -1745,6 +2629,77 @@ export function runReverbDemoRuntime(
       vertical: Math.max(1, rect.height * 0.5 - 10 - 24),
     };
   };
+  const renderRangeFineVisual = () => {
+    const travel = rangeFineTravel();
+    const width = travel.rect.width;
+    const height = travel.rect.height;
+    const centerX = width * 0.5;
+    const centerY = height * 0.5;
+    const edgePadding = 10;
+    const puckRadius = 24;
+    const constrainedY = rangeFineConstrainedY(
+      rangeFineRawVertical,
+      rangeFineHorizontalPull,
+    );
+    const puckX = centerX + rangeFineHorizontalPull * travel.horizontal;
+    const puckY = centerY + constrainedY * travel.vertical;
+    const leftTipX = edgePadding;
+    const rightTipX = width - edgePadding;
+    const leftSpan = Math.max(1, puckX - puckRadius - leftTipX);
+    const rightSpan = Math.max(1, rightTipX - (puckX + puckRadius));
+    const topY = puckY - puckRadius;
+    const bottomY = puckY + puckRadius;
+    const path = [
+      `M${leftTipX} ${centerY}`,
+      `C${leftTipX + leftSpan * 0.3} ${centerY} ${Math.max(leftTipX, puckX - puckRadius - leftSpan * 0.28)} ${topY} ${puckX} ${topY}`,
+      `C${Math.min(rightTipX, puckX + puckRadius + rightSpan * 0.28)} ${topY} ${rightTipX - rightSpan * 0.3} ${centerY} ${rightTipX} ${centerY}`,
+      `C${rightTipX - rightSpan * 0.3} ${centerY} ${Math.min(rightTipX, puckX + puckRadius + rightSpan * 0.28)} ${bottomY} ${puckX} ${bottomY}`,
+      `C${Math.max(leftTipX, puckX - puckRadius - leftSpan * 0.28)} ${bottomY} ${leftTipX + leftSpan * 0.3} ${centerY} ${leftTipX} ${centerY} Z`,
+    ].join(" ");
+    rangeFineField.setAttribute("viewBox", `0 0 ${Math.max(1, width)} ${Math.max(1, height)}`);
+    rangeFineFieldPath.setAttribute("d", path);
+    rangeFineFieldOverlay.setAttribute("d", path);
+    const horizontalPower = Math.pow(Math.abs(rangeFineHorizontalPull), 0.72);
+    const yMagnitude = clamp01(Math.abs(constrainedY) / 0.72);
+    const otherColor = constrainedY < 0 ? "var(--tertiary)" : "var(--secondary)";
+    const mix = (yMagnitude * 100).toFixed(3);
+    const base = (100 - yMagnitude * 100).toFixed(3);
+    rangeFineControl.style.setProperty(
+      "--fine-field-color",
+      yMagnitude <= 0.0001
+        ? "var(--primary)"
+        : `color-mix(in srgb,var(--primary) ${base}%,${otherColor} ${mix}%)`,
+    );
+    const fieldAlpha = 0.12 + 0.13 * horizontalPower + 0.06 * yMagnitude;
+    for (const edge of [rangeFineEdgeStart, rangeFineEdgeEnd]) {
+      edge.setAttribute("stop-color", "var(--fine-field-color)");
+      edge.setAttribute("stop-opacity", "0.018");
+    }
+    rangeFineCenterStop.setAttribute("stop-color", "var(--fine-field-color)");
+    rangeFineCenterStop.setAttribute("stop-opacity", String(fieldAlpha));
+    rangeFineFieldOverlay.setAttribute("fill-opacity", String(0.035 + 0.045 * yMagnitude));
+    rangeFineCenterDot.setAttribute("cx", String(centerX));
+    rangeFineCenterDot.setAttribute("cy", String(centerY));
+    rangeFineCenterDot.setAttribute("r", "1.6");
+    rangeFineCenterDot.setAttribute("fill-opacity", rangeFineDragging ? "0.20" : "0.13");
+    rangeFineHalo.setAttribute("cx", String(puckX));
+    rangeFineHalo.setAttribute("cy", String(puckY));
+    rangeFineHalo.setAttribute("r", String(puckRadius * 1.28));
+    rangeFineHalo.setAttribute(
+      "fill-opacity",
+      rangeFineDragging ? String(0.055 + 0.055 * horizontalPower) : "0",
+    );
+    rangePlay.style.transform =
+      `translate(${(rangeFineHorizontalPull * travel.horizontal).toFixed(2)}px, ${(constrainedY * travel.vertical).toFixed(2)}px)`;
+    rangeFineControl.style.setProperty(
+      "--range-fine-horizontal-pull",
+      String(rangeFineHorizontalPull),
+    );
+    rangeFineControl.style.setProperty(
+      "--range-fine-raw-vertical-pull",
+      String(rangeFineRawVertical),
+    );
+  };
   const updateRangeFinePull = (clientX: number, clientY: number) => {
     const travel = rangeFineTravel();
     const centerX = travel.rect.left + travel.rect.width * 0.5;
@@ -1753,16 +2708,45 @@ export function runReverbDemoRuntime(
     );
     const verticalInputTravel = travel.vertical * 2.35;
     rangeFineRawVertical =
+      rangeFineDragStartRawVertical +
       (clientY - rangeFineDownY) / Math.max(1, verticalInputTravel);
-    const constrainedY = rangeFineConstrainedY(
-      rangeFineRawVertical,
-      rangeFineHorizontalPull,
-    );
-    rangePlay.style.transition = "none";
-    rangePlay.style.transform =
-      `translate(${(rangeFineHorizontalPull * travel.horizontal).toFixed(2)}px, ${(
-        constrainedY * travel.vertical
-      ).toFixed(2)}px)`;
+    renderRangeFineVisual();
+  };
+  const settleRangeFinePull = () => {
+    const startX = rangeFineHorizontalPull;
+    const startY = rangeFineRawVertical;
+    if (Math.abs(startX) < 0.0001 && Math.abs(startY) < 0.0001) {
+      rangeFineHorizontalPull = 0;
+      rangeFineRawVertical = 0;
+      renderRangeFineVisual();
+      return;
+    }
+    const epoch = ++rangeFineSettleEpoch;
+    let startedAt: number | null = null;
+    const duration = 210;
+    const strength = 3.4;
+    const denominator = Math.cosh(strength) - 1;
+    const frame = (now: number) => {
+      if (epoch !== rangeFineSettleEpoch || rangeFineDragging) return;
+      if (startedAt == null) {
+        startedAt = now;
+        requestAnimationFrame(frame);
+        return;
+      }
+      const t = clamp01((now - startedAt) / duration);
+      const remaining =
+        (Math.cosh(strength * (1 - t)) - 1) / denominator;
+      rangeFineHorizontalPull = startX * remaining;
+      rangeFineRawVertical = startY * remaining;
+      renderRangeFineVisual();
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        rangeFineHorizontalPull = 0;
+        rangeFineRawVertical = 0;
+        renderRangeFineVisual();
+      }
+    };
+    requestAnimationFrame(frame);
   };
   const rangeFineFrame = (time: number) => {
     if (!rangeFineDragging) return;
@@ -1787,6 +2771,8 @@ export function runReverbDemoRuntime(
   };
   const startRangeFineAdjust = (clientX: number, clientY: number) => {
     if (rangeFineDragging) return;
+    ++rangeFineSettleEpoch;
+    rangeFineDragStartRawVertical = rangeFineRawVertical;
     // Native drag invalidates the active text draft instead of committing it on focus loss.
     rangeStartSeconds = rangeFineDownStartSeconds;
     rangeEndSeconds = rangeFineDownEndSeconds;
@@ -1799,11 +2785,16 @@ export function runReverbDemoRuntime(
     rangeFineDragging = true;
     rangeFineLastFrame = 0;
     rangeFineControl.classList.add("is-dragging");
+    renderRangeFineVisual();
     if (
       rangeFinePointerId !== -1 &&
       !rangeFineControl.hasPointerCapture?.(rangeFinePointerId)
     ) {
-      rangeFineControl.setPointerCapture?.(rangeFinePointerId);
+      try {
+        rangeFineControl.setPointerCapture?.(rangeFinePointerId);
+      } catch {
+        // Synthetic PointerEvents have no browser-owned pointer to capture.
+      }
     }
     updateRangeFinePull(clientX, clientY);
     requestAnimationFrame(rangeFineFrame);
@@ -1830,16 +2821,10 @@ export function runReverbDemoRuntime(
     }
     rangeFineDragging = false;
     rangeFinePointerId = -1;
-    rangeFineHorizontalPull = 0;
-    rangeFineRawVertical = 0;
     rangeFineLastFrame = 0;
     rangeFineControl.classList.remove("is-dragging");
-    rangePlay.style.transition =
-      "transform 210ms cubic-bezier(.16,1,.3,1)";
-    rangePlay.style.transform = "translate(0px,0px)";
-    setTimeout(() => {
-      if (!rangeFineDragging) rangePlay.style.removeProperty("transition");
-    }, 220);
+    renderRangeFineVisual();
+    settleRangeFinePull();
     if (
       pointerId !== -1 &&
       rangeFineControl.hasPointerCapture?.(pointerId)
@@ -1883,6 +2868,8 @@ export function runReverbDemoRuntime(
   rangeFineControl.addEventListener("lostpointercapture", () => {
     if (rangeFinePointerId !== -1) finishRangeFineAdjust(true);
   });
+
+  renderRangeFineVisual();
 
   function setRangePlaying(playing: boolean): void {
     rangePlaying = playing;
@@ -1931,6 +2918,7 @@ export function runReverbDemoRuntime(
     event.stopPropagation();
     endRangeTransientOwnership();
     renderRangeUi();
+    cancelRangeOpeningMotion();
     showScreen("homeScreen", byId<HTMLElement>("openRange"));
   });
 
@@ -2295,7 +3283,7 @@ export function runReverbDemoRuntime(
   };
   byId("settingsNav").addEventListener("click", () => {
     if (settingsDirty) restoreSettings();
-    else showScreen(settingsReturnScreen, settingsReturnFocus);
+    else closeSettingsPanel();
   });
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
@@ -2322,7 +3310,7 @@ export function runReverbDemoRuntime(
     clearRetentionErrors();
     setDirty(false);
     if (settingsReturnScreen === "rangeScreen") renderRangeUi();
-    showScreen(settingsReturnScreen, settingsReturnFocus);
+    closeSettingsPanel();
   });
 
   let activeDropdown: HTMLElement | null = null;
@@ -2490,8 +3478,8 @@ export function runReverbDemoRuntime(
     next?.focus({ preventScroll: true });
   });
 
-  // Capture screen gestures match the app: down above the blob opens settings;
-  // up below it opens the library. Library edge-drag down closes it.
+  // Main panel reveals follow the native gesture continuously. Release only
+  // chooses whether the 220 ms FastOutSlowIn settle finishes or returns.
   const interactive =
     'button,input,a,[role="button"],[role="switch"],.settings-card';
   function gestureMode(
@@ -2504,62 +3492,134 @@ export function runReverbDemoRuntime(
     )
       return null;
     if (target instanceof Element && target.closest(interactive)) return null;
-    const rect = blobControl.getBoundingClientRect();
-    if (clientY < rect.top) return "settings";
-    if (clientY > rect.bottom) return "library";
+    const rect = phone.getBoundingClientRect();
+    const y = clientY - rect.top;
+    if (y <= rect.height * 0.48) return "settings";
+    if (y >= rect.height * 0.52) return "library";
     return null;
   }
-  function completeGesture(mode: GestureMode, deltaY: number): boolean {
-    if (mode === "settings" && deltaY >= 52) {
-      settingsReturnScreen = "homeScreen";
-      settingsReturnFocus = byId<HTMLElement>("openSettings");
-      showScreen("settingsScreen");
-      return true;
-    }
-    if (mode === "library" && deltaY <= -52) {
-      showScreen("libraryScreen");
-      return true;
-    }
-    return false;
-  }
-  let dragStartY: number | null = null,
-    dragMode: GestureMode | null = null,
-    libraryDragY: number | null = null;
+  let dragStartY: number | null = null;
+  let dragMode: GestureMode | null = null;
+  let dragPointerId = -1;
+  let libraryDragY: number | null = null;
+  let libraryDragPointerId = -1;
   phone.addEventListener("pointerdown", (event) => {
     if (currentScreen === "libraryScreen") {
+      if (!(event.target instanceof Element) || !event.target.closest(".library-list"))
+        return;
       const rect = phone.getBoundingClientRect();
       const edge = rect.width * 0.13;
       const x = event.clientX - rect.left;
-      if (x <= edge || x >= rect.width - edge) libraryDragY = event.clientY;
+      if (x <= edge || x >= rect.width - edge) {
+        libraryDragY = event.clientY;
+        libraryDragPointerId = event.pointerId;
+        try {
+          phone.setPointerCapture?.(event.pointerId);
+        } catch {
+          // Synthetic PointerEvents have no browser-owned pointer to capture.
+        }
+      }
       return;
     }
     dragMode = gestureMode(event.clientY, event.target);
     dragStartY = dragMode ? event.clientY : null;
+    if (dragMode) {
+      dragPointerId = event.pointerId;
+      ++settingsMotionEpoch;
+      ++libraryMotionEpoch;
+      try {
+        phone.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic PointerEvents have no browser-owned pointer to capture.
+      }
+    }
   });
   phone.addEventListener("pointermove", (event) => {
-    if (libraryDragY != null && event.clientY - libraryDragY >= 64) {
-      libraryDragY = null;
-      showScreen("homeScreen", byId<HTMLElement>("openLibrary"));
+    if (libraryDragY != null && event.pointerId === libraryDragPointerId) {
+      const rect = phone.getBoundingClientRect();
+      const scale = rect.height / Math.max(1, phone.clientHeight);
+      if (event.clientY - libraryDragY >= 64 * scale) {
+        libraryDragY = null;
+        libraryDragPointerId = -1;
+        closeLibraryPanel();
+      }
       return;
     }
-    if (
-      dragStartY != null &&
-      dragMode &&
-      completeGesture(dragMode, event.clientY - dragStartY)
-    ) {
-      dragStartY = null;
-      dragMode = null;
+    if (dragStartY == null || !dragMode || event.pointerId !== dragPointerId) return;
+    const rect = phone.getBoundingClientRect();
+    const deltaY = event.clientY - dragStartY;
+    const progress =
+      dragMode === "settings"
+        ? Math.max(0, deltaY / rect.height)
+        : Math.max(0, -deltaY / rect.height);
+    if (dragMode === "settings") {
+      settingsForegroundScreen = homeScreen;
+      renderSettingsPanelProgress(progress);
+    } else {
+      renderLibraryPanelProgress(progress);
     }
   });
-  const clearGesture = () => {
+  function finishMainPanelGesture(cancelled = false): void {
+    if (dragStartY != null && dragMode) {
+      if (dragMode === "settings") {
+        const commit =
+          !cancelled && settingsPanelProgress >= PANEL_COMMIT_PROGRESS;
+        if (commit) {
+          settingsReturnScreen = "homeScreen";
+          settingsReturnFocus = byId<HTMLElement>("openSettings");
+          settingsForegroundScreen = homeScreen;
+          prepareSettingsSession();
+          settingsPanelOpen = true;
+          currentScreen = "settingsScreen";
+          activateScreen("settingsScreen");
+          blobShader.setVisible(false);
+          focusScreen("settingsScreen");
+          settleSettingsPanel(1);
+        } else {
+          settingsPanelOpen = false;
+          settleSettingsPanel(0, () => renderSettingsPanelProgress(0));
+        }
+      } else {
+        const commit =
+          !cancelled && libraryPanelProgress >= PANEL_COMMIT_PROGRESS;
+        if (commit) {
+          libraryPanelOpen = true;
+          currentScreen = "libraryScreen";
+          activateScreen("libraryScreen");
+          blobShader.setVisible(false);
+          focusScreen("libraryScreen");
+          settleLibraryPanel(1);
+        } else {
+          libraryPanelOpen = false;
+          settleLibraryPanel(0, () => renderLibraryPanelProgress(0));
+        }
+      }
+    }
     dragStartY = null;
     dragMode = null;
+    dragPointerId = -1;
+  }
+  const clearGesture = (cancelled = false) => {
+    finishMainPanelGesture(cancelled);
     libraryDragY = null;
+    libraryDragPointerId = -1;
   };
-  phone.addEventListener("pointerup", clearGesture);
-  phone.addEventListener("pointercancel", clearGesture);
+  phone.addEventListener("pointerup", (event) => {
+    if (event.pointerId === dragPointerId) finishMainPanelGesture(false);
+    if (event.pointerId === libraryDragPointerId) {
+      libraryDragY = null;
+      libraryDragPointerId = -1;
+    }
+  });
+  phone.addEventListener("pointercancel", (event) => {
+    if (event.pointerId === dragPointerId) finishMainPanelGesture(true);
+    if (event.pointerId === libraryDragPointerId) {
+      libraryDragY = null;
+      libraryDragPointerId = -1;
+    }
+  });
   const removeBlurListener = addWindowEventListener("blur", () => {
-    clearGesture();
+    clearGesture(true);
     cancelRangeWheelInteraction();
     cancelRangeWaveScrub(false);
     finishRangeFineAdjust(true, false);
@@ -2831,6 +3891,10 @@ void main(){
         if (fallback) fallback.refreshTheme();
         else refreshWebGLTheme();
       },
+      currentBaseRadiusFraction() {
+        return fallback?.currentBaseRadiusFraction() ??
+          0.095 + currentLife * (0.235 + currentActivity * 0.018);
+      },
     };
   }
   function makeBlobShader(canvas: HTMLCanvasElement): BlobRuntime {
@@ -2858,12 +3922,17 @@ void main(){
     if (!ctx) {
       canvas.style.background =
         "radial-gradient(circle at 45% 42%,color-mix(in srgb,var(--blob-primary) 90%,transparent) 0 13%,color-mix(in srgb,var(--blob-tertiary) 45%,transparent) 22%,transparent 42%)";
+      let active = true;
       return {
         setActive(v: boolean) {
+          active = v;
           canvas.style.opacity = v ? "1" : ".56";
         },
         setVisible() {},
         refreshTheme() {},
+        currentBaseRadiusFraction() {
+          return active ? 0.334 : 0.1843;
+        },
       };
     }
     const context2d: CanvasRenderingContext2D = ctx;
@@ -3011,6 +4080,9 @@ void main(){
         }
       },
       refreshTheme,
+      currentBaseRadiusFraction() {
+        return 0.095 + currentLife * (0.235 + currentActivity * 0.018);
+      },
     };
   }
   return {

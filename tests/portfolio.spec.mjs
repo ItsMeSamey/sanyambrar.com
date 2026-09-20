@@ -4330,10 +4330,29 @@ test('Reverb demo mirrors the captured Android state and palette', async ({ page
   await expect(host.locator('#openIncidents')).not.toHaveClass(/alert/);
 
   await host.locator('#openLibrary').click();
-  const libraryBack = host.locator('#libraryBack');
-  await expect(libraryBack).toBeVisible();
-  await expect(libraryBack).toHaveAttribute('aria-label', 'Back');
-  await libraryBack.click();
+  await expect(host.locator('#libraryBrand')).toBeVisible();
+  await expect(host.locator('#libraryBack')).toBeHidden();
+  await host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    const library = element.shadowRoot?.querySelector('.library-list');
+    if (!(phone instanceof HTMLElement) || !(library instanceof HTMLElement))
+      throw new Error('Reverb phone/library is unavailable');
+    const rect = phone.getBoundingClientRect();
+    const x = rect.left + 4;
+    const startY = rect.top + rect.height / 2;
+    const endY = startY + Math.max(80, rect.height * 0.12);
+    const pointer = (type, y) => new PointerEvent(type, {
+      bubbles: true,
+      pointerId: 31,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: x,
+      clientY: y,
+    });
+    library.dispatchEvent(pointer('pointerdown', startY));
+    library.dispatchEvent(pointer('pointermove', endY));
+    library.dispatchEvent(pointer('pointerup', endY));
+  });
   await expect(host.locator('#homeScreen')).toHaveClass(/active/);
 
   await host.locator('#openRange').click();
