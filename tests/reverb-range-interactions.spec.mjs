@@ -553,3 +553,35 @@ test('Reverb Range stable wheel scroll commits immediately and accepts consecuti
   await expect(exportButton).toBeEnabled();
   expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeCloseTo(before - 2, 1);
 });
+
+test('Reverb Range wheel colon gaps do not claim a wheel column', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
+    await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  await start.fill('5:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('20:00.0');
+  await page.keyboard.press('Enter');
+
+  const before = await wheel.getAttribute('aria-valuenow');
+  const wheelBox = await wheel.boundingBox();
+  const colonBox = await wheel.locator('.wheel-colon').first().boundingBox();
+  if (!wheelBox || !colonBox) throw new Error('Range wheel geometry is unavailable');
+  const x = colonBox.x + colonBox.width / 2;
+  const y = wheelBox.y + wheelBox.height * 0.15;
+
+  await page.mouse.click(x, y);
+  await expect(wheel).toHaveAttribute('aria-valuenow', before ?? '');
+  await expect(wheel).not.toHaveAttribute('data-editing', '');
+
+  await page.mouse.move(x, wheelBox.y + wheelBox.height / 2);
+  await page.mouse.wheel(0, 120);
+  await expect(wheel).toHaveAttribute('aria-valuenow', before ?? '');
+});
