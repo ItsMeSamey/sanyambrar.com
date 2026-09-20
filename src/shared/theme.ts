@@ -1141,6 +1141,61 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let overlayRefreshFrame = 0;
     let fillOcclusionRects: FillRect[] = [];
     let fillOcclusionKey = "";
+    const cssRadiusPx = (value: string, dimension: number) => {
+      const parsed = Number.parseFloat(value);
+      if (!Number.isFinite(parsed)) return 0;
+      return value.trim().endsWith("%") ? dimension * parsed / 100 : parsed;
+    };
+    const cornerRadius = (value: string, width: number, height: number) => {
+      const [x = "0", y = x] = value.trim().split(/\\s+/);
+      return { x: cssRadiusPx(x, width), y: cssRadiusPx(y, height) };
+    };
+    const roundedOverlayRects = (overlay: HTMLElement): FillRect[] => {
+      const rect = overlay.getBoundingClientRect();
+      const style = getComputedStyle(overlay);
+      const corners = [
+        cornerRadius(style.borderTopLeftRadius, rect.width, rect.height),
+        cornerRadius(style.borderTopRightRadius, rect.width, rect.height),
+        cornerRadius(style.borderBottomRightRadius, rect.width, rect.height),
+        cornerRadius(style.borderBottomLeftRadius, rect.width, rect.height),
+      ];
+      const rx = Math.min(rect.width / 2, Math.max(...corners.map(radius => radius.x)));
+      const ry = Math.min(rect.height / 2, Math.max(...corners.map(radius => radius.y)));
+      if (rx < 1 || ry < 1) {
+        return [{ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
+      }
+
+      const bands = 6;
+      const bandHeight = ry / bands;
+      const pieces: FillRect[] = [];
+      const bandInset = (index: number) => {
+        const y = Math.min(ry, (index + .5) * bandHeight);
+        const normalized = (y - ry) / ry;
+        return rx - rx * Math.sqrt(Math.max(0, 1 - normalized * normalized));
+      };
+      for (let index = 0; index < bands; index++) {
+        const inset = bandInset(index);
+        pieces.push({
+          left: rect.left + inset,
+          top: rect.top + index * bandHeight,
+          right: rect.right - inset,
+          bottom: rect.top + Math.min(ry, (index + 1) * bandHeight),
+        });
+      }
+      if (rect.height > ry * 2) {
+        pieces.push({ left: rect.left, top: rect.top + ry, right: rect.right, bottom: rect.bottom - ry });
+      }
+      for (let index = bands - 1; index >= 0; index--) {
+        const inset = bandInset(index);
+        pieces.push({
+          left: rect.left + inset,
+          top: rect.bottom - Math.min(ry, (index + 1) * bandHeight),
+          right: rect.right - inset,
+          bottom: rect.bottom - index * bandHeight,
+        });
+      }
+      return pieces;
+    };
     const overlayIsVisible = (el: Element): el is HTMLElement => {
       if (!(el instanceof HTMLElement) || !el.isConnected || el.hidden || el.getAttribute("aria-hidden") === "true" || el.dataset.open === "false") return false;
       const style = getComputedStyle(el);
@@ -1154,12 +1209,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const fillZ = target ? fillLayerFor(target) : fillLayer;
       const holes = visibleOverlays
         .filter((overlay) => zIndexOf(overlay) > fillZ)
-        .map((overlay) => overlay.getBoundingClientRect())
+        .flatMap(roundedOverlayRects)
         .map((rect) => ({
-          left: Math.max(0, Math.floor(rect.left - 1)),
-          top: Math.max(0, Math.floor(rect.top - 1)),
-          right: Math.min(width, Math.ceil(rect.right + 1)),
-          bottom: Math.min(height, Math.ceil(rect.bottom + 1)),
+          left: Math.max(0, Math.floor(rect.left)),
+          top: Math.max(0, Math.floor(rect.top)),
+          right: Math.min(width, Math.ceil(rect.right)),
+          bottom: Math.min(height, Math.ceil(rect.bottom)),
         }))
         .filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
       const key = `${width}x${height}@${fillZ}:` + holes.map(({ left, top, right, bottom }) => `${left},${top},${right},${bottom}`).join(";");
@@ -1286,6 +1341,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let fillX = 0, fillY = 0, fillW = fillDot, fillH = fillDot;
     let wantedFillX = 0, wantedFillY = 0, wantedFillW = fillDot, wantedFillH = fillDot;
     let fillCollapseStart = 0, fillCollapseFromX = 0, fillCollapseFromY = 0, fillCollapseFromW = fillDot, fillCollapseFromH = fillDot;
+    let fillRadiusX = fillDot / 2, fillRadiusY = fillDot / 2;
+    let wantedFillRadiusX = fillDot / 2, wantedFillRadiusY = fillDot / 2;
+    let fillCollapseFromRadiusX = fillDot / 2, fillCollapseFromRadiusY = fillDot / 2;
     const fillCollapseDuration = 132;
     // Finite S curve: unlike exponential decay it reaches the cursor on time,
     // and keeps non-zero endpoint velocity so the last few pixels never crawl.
@@ -1304,12 +1362,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     function renderFillSlices() {
       if (!fillVisible) return;
-      let pieces = [{
+      const bounds = {
         left: fillX - fillW / 2,
         top: fillY - fillH / 2,
         right: fillX + fillW / 2,
         bottom: fillY + fillH / 2,
-      }];
+      };
+      let pieces = [bounds];
       for (const hole of fillOcclusionRects) {
         pieces = pieces.flatMap((piece) => subtractRect(piece, hole));
         if (pieces.length === 0) break;
@@ -1321,6 +1380,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         slice.hidden = width <= 0 || height <= 0;
         slice.style.zIndex = String(fillLayer);
         slice.style.transform = `translate3d(${piece.left}px,${piece.top}px,0) scale3d(${width / fillDot},${height / fillDot},1)`;
+        const scaleX = Math.max(.001, width / fillDot);
+        const scaleY = Math.max(.001, height / fillDot);
+        const radiusX = Math.min(fillRadiusX, width / 2) / scaleX;
+        const radiusY = Math.min(fillRadiusY, height / 2) / scaleY;
+        const touchesLeft = Math.abs(piece.left - bounds.left) < .75;
+        const touchesRight = Math.abs(piece.right - bounds.right) < .75;
+        const touchesTop = Math.abs(piece.top - bounds.top) < .75;
+        const touchesBottom = Math.abs(piece.bottom - bounds.bottom) < .75;
+        slice.style.borderTopLeftRadius = touchesLeft && touchesTop ? `${radiusX}px ${radiusY}px` : "0";
+        slice.style.borderTopRightRadius = touchesRight && touchesTop ? `${radiusX}px ${radiusY}px` : "0";
+        slice.style.borderBottomRightRadius = touchesRight && touchesBottom ? `${radiusX}px ${radiusY}px` : "0";
+        slice.style.borderBottomLeftRadius = touchesLeft && touchesBottom ? `${radiusX}px ${radiusY}px` : "0";
       }
       for (let i = pieces.length; i < fillSlices.length; i++) fillSlices[i].hidden = true;
     }
@@ -1347,6 +1418,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       wantedFillH = Math.max(fillDot, rect.height - insetY * 2);
       wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
       wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
+      const style = getComputedStyle(fillTarget);
+      const radii = [
+        cornerRadius(style.borderTopLeftRadius, rect.width, rect.height),
+        cornerRadius(style.borderTopRightRadius, rect.width, rect.height),
+        cornerRadius(style.borderBottomRightRadius, rect.width, rect.height),
+        cornerRadius(style.borderBottomLeftRadius, rect.width, rect.height),
+      ];
+      const sourceRadiusX = Math.max(...radii.map(radius => radius.x));
+      const sourceRadiusY = Math.max(...radii.map(radius => radius.y));
+      wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, sourceRadiusX - insetX));
+      wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, sourceRadiusY - insetY));
     };
     const renderFill = (time: number) => {
       fillFrame = 0;
@@ -1359,9 +1441,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         fillY = fillCollapseFromY + (wantedFillY - fillCollapseFromY) * t;
         fillW = fillCollapseFromW + (wantedFillW - fillCollapseFromW) * t;
         fillH = fillCollapseFromH + (wantedFillH - fillCollapseFromH) * t;
+        fillRadiusX = fillCollapseFromRadiusX + (wantedFillRadiusX - fillCollapseFromRadiusX) * t;
+        fillRadiusY = fillCollapseFromRadiusY + (wantedFillRadiusY - fillCollapseFromRadiusY) * t;
         renderFillSlices();
         if (raw >= 1) {
           fillX = wantedFillX; fillY = wantedFillY; fillW = wantedFillW; fillH = wantedFillH;
+          fillRadiusX = wantedFillRadiusX; fillRadiusY = wantedFillRadiusY;
           fillVisible = fillCollapsing = false;
           fillCollapseStart = fillLastTime = 0;
           linkFill.hidden = true;
@@ -1377,12 +1462,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       fillY += (wantedFillY - fillY) * posEase;
       fillW += (wantedFillW - fillW) * sizeEase;
       fillH += (wantedFillH - fillH) * sizeEase;
+      fillRadiusX += (wantedFillRadiusX - fillRadiusX) * sizeEase;
+      fillRadiusY += (wantedFillRadiusY - fillRadiusY) * sizeEase;
       // Split the animated rectangle around higher overlays. Each fragment is
       // itself the blend element; unlike CSS masks, this preserves `difference`
       // blending in Chromium while keeping translucent overlays untouched.
       renderFillSlices();
       const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35
-        && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35;
+        && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35
+        && Math.abs(fillRadiusX - wantedFillRadiusX) < .35 && Math.abs(fillRadiusY - wantedFillRadiusY) < .35;
       if (!done) fillFrame = requestAnimationFrame(renderFill);
       else fillLastTime = 0;
     };
@@ -1458,13 +1546,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
           fillCollapsing = true;
           fillCollapseStart = 0;
           fillCollapseFromX = fillX; fillCollapseFromY = fillY; fillCollapseFromW = fillW; fillCollapseFromH = fillH;
+          fillCollapseFromRadiusX = fillRadiusX; fillCollapseFromRadiusY = fillRadiusY;
         }
         wantedFillX = pendingX; wantedFillY = pendingY; wantedFillW = wantedFillH = fillDot;
+        wantedFillRadiusX = wantedFillRadiusY = fillDot / 2;
         ensureFillFrame();
         return;
       }
       if (!fillVisible) {
         fillX = wantedFillX = pendingX; fillY = wantedFillY = pendingY; fillW = fillH = fillDot;
+        fillRadiusX = wantedFillRadiusX = fillDot / 2;
+        fillRadiusY = wantedFillRadiusY = fillDot / 2;
         fillVisible = true; linkFill.hidden = false;
       }
       if (fillTarget !== link) refreshLinkGeometry(link);
@@ -1800,7 +1892,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
       button.addEventListener("click", async () => { close(); try { await action(); } catch (error) { console.error("Context menu action failed", error); } }); menu.append(button);
     };
-    const sep = () => { const hr = document.createElement("hr"); menu.append(hr); };
+    const sep = () => {
+      const gap = document.createElement("div");
+      gap.className = "samey-context-menu-separator";
+      gap.setAttribute("role", "separator");
+      menu.append(gap);
+    };
     document.addEventListener("contextmenu", (event) => {
       if (menu.inert) {
         if (!(event.shiftKey && event.button === 2)) event.preventDefault();

@@ -1421,6 +1421,7 @@ test('secondary and nested overlays stay contained at 200 percent text scaling i
 
   const scaleText = async () => page.evaluate(async () => {
     document.documentElement.style.fontSize = '32px';
+    document.documentElement.style.setProperty('--site-fast', '1000ms');
     document.documentElement.style.setProperty('--site-medium', '1000ms');
     if (!document.querySelector('#qa-overlay-motion-duration')) {
       const style = document.createElement('style');
@@ -1615,11 +1616,43 @@ test('animated overlays stay contained through opening frames and reduced motion
         }
         animation.finish();
       }
-      return { names, samples, computedName: getComputedStyle(element).animationName };
+      const style = getComputedStyle(element);
+      const motionKeyframes = ownAnimations.flatMap(animation =>
+        animation.effect?.getKeyframes?.().map(frame => ({
+          transform: frame.transform ?? null,
+          scale: frame.scale ?? null,
+          translate: frame.translate ?? null,
+        })) ?? []);
+      return {
+        names,
+        samples,
+        motionKeyframes,
+        computedName: style.animationName,
+        borderRadius: style.borderRadius,
+        overflowX: style.overflowX,
+        backgroundColor: style.backgroundColor,
+        backdropFilter: style.backdropFilter,
+      };
     }, viewport);
     expect(result.names, `${label} must expose its intended opening animation`).toContain(expectedName);
     expect(result.samples, `${label} must produce sampled animation frames`).not.toHaveLength(0);
     expect(result.samples.filter(sample => !sample.contained), `${label} must stay in-view throughout opening motion: ${JSON.stringify(result.samples)}`).toEqual([]);
+    const first = result.samples[0];
+    expect(result.samples.every(sample =>
+      Math.abs(sample.left - first.left) < .5
+      && Math.abs(sample.top - first.top) < .5
+      && Math.abs(sample.right - first.right) < .5
+      && Math.abs(sample.bottom - first.bottom) < .5
+    ), `${label} surface geometry must not translate or scale while opening: ${JSON.stringify(result.samples)}`).toBe(true);
+    expect(result.motionKeyframes.every(frame =>
+      (frame.transform == null || frame.transform === 'none')
+      && (frame.scale == null || frame.scale === 'none')
+      && (frame.translate == null || frame.translate === 'none'),
+    ), `${label} opening animation must be opacity-only`).toBe(true);
+    expect(Number.parseFloat(result.borderRadius), `${label} must keep a real rounded surface`).toBeGreaterThanOrEqual(6);
+    expect(result.overflowX, `${label} must clip horizontal paint at its rounded edge`).toBe('hidden');
+    expect(result.backgroundColor, `${label} surface must be opaque rather than expose content below`).not.toBe('rgba(0, 0, 0, 0)');
+    expect(result.backdropFilter, `${label} surface must not blur content through its own rounded edge`).toBe('none');
   };
 
   await visit(page, '/', info);
@@ -3154,10 +3187,69 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await page.setViewportSize({ width: 128, height: 1000 });
   await visit(page, '/', info);
   const link = page.getByRole('link', { name: /Sanyam Brar.*Home/ }).first();
+  if (info.project.name === 'production-desktop') {
+    const linkBox = await link.boundingBox();
+    if (!linkBox) throw new Error('Home link has no geometry for cursor-fill QA');
+    await page.mouse.move(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
+    await expect.poll(() => page.locator('.samey-cursor-link-fill-slice:not([hidden])').count()).toBeGreaterThan(0);
+    expect(await page.locator('.samey-cursor-link-fill-slice:not([hidden])').first().evaluate(element => {
+      const style = getComputedStyle(element);
+      return [
+        style.borderTopLeftRadius,
+        style.borderTopRightRadius,
+        style.borderBottomRightRadius,
+        style.borderBottomLeftRadius,
+      ].some(value => Number.parseFloat(value) > 0);
+    }), 'Cursor link fill must preserve rounded target geometry').toBe(true);
+  }
   await link.focus();
   await link.evaluate(element => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 126, clientY: 998 })));
   const menu = page.getByRole('menu', { name: 'Context menu' });
   await expect(menu).toBeVisible();
+  expect(await menu.locator('hr').count(), 'Context menu must not manufacture visible separator rules').toBe(0);
+  const menuSurface = await menu.evaluate(element => {
+    const style = getComputedStyle(element);
+    const separators = [...element.querySelectorAll('[role="separator"]')].map(separator => {
+      const separatorStyle = getComputedStyle(separator);
+      return {
+        tag: separator.tagName,
+        borderTop: separatorStyle.borderTopWidth,
+        borderBottom: separatorStyle.borderBottomWidth,
+        background: separatorStyle.backgroundColor,
+      };
+    });
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      background: style.backgroundColor,
+      backdrop: style.backdropFilter,
+      separators,
+    };
+  });
+  expect(Number.parseFloat(menuSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(menuSurface.overflowX).toBe('hidden');
+  expect(menuSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(menuSurface.backdrop).toBe('none');
+  expect(menuSurface.separators.length).toBeGreaterThan(0);
+  expect(menuSurface.separators.every(separator =>
+    separator.tag === 'DIV'
+    && separator.borderTop === '0px'
+    && separator.borderBottom === '0px'
+    && separator.background === 'rgba(0, 0, 0, 0)'
+  )).toBe(true);
+  const openingRects = [];
+  for (let frame = 0; frame < 6; frame++) {
+    const box = await menu.boundingBox();
+    if (box) openingRects.push(box);
+    await page.waitForTimeout(12);
+  }
+  const firstRect = openingRects[0];
+  expect(openingRects.every(rect =>
+    Math.abs(rect.x - firstRect.x) < .5
+    && Math.abs(rect.y - firstRect.y) < .5
+    && Math.abs(rect.width - firstRect.width) < .5
+    && Math.abs(rect.height - firstRect.height) < .5
+  ), 'Context menu must not translate or scale while opening').toBe(true);
   await expect.poll(async () => {
     const box = await menu.boundingBox(), viewport = page.viewportSize();
     return !!box && box.x >= 7 && box.y >= 7 && box.x + box.width <= viewport.width - 7 && box.y + box.height <= viewport.height - 7;
@@ -3238,6 +3330,30 @@ test('Wordle typing, persistence, settings, reveal and statistics', async ({ pag
   await page.getByRole('button', { name: 'Reveal', exact: true }).click();
   const resultDialog = page.locator('.result-dialog');
   await expect(page.getByText('The answer has been revealed.', { exact: true })).toBeVisible();
+  const resultSurface = await resultDialog.evaluate(element => {
+    const style = getComputedStyle(element);
+    const ownAnimations = element.getAnimations().filter(animation => animation.effect?.target === element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+      movingKeyframes: ownAnimations.flatMap(animation => animation.effect?.getKeyframes?.().map(frame => ({
+        transform: frame.transform ?? null,
+        scale: frame.scale ?? null,
+        translate: frame.translate ?? null,
+      })) ?? []),
+    };
+  });
+  expect(Number.parseFloat(resultSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(resultSurface.overflowX).toBe('hidden');
+  expect(resultSurface.overflowY).toBe('auto');
+  expect(resultSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(resultSurface.movingKeyframes.every(frame =>
+    (frame.transform == null || frame.transform === 'none')
+    && (frame.scale == null || frame.scale === 'none')
+    && (frame.translate == null || frame.translate === 'none')
+  ), 'Wordle result dialog must not scale or translate while opening').toBe(true);
   const shareTrigger = page.getByRole('button', { name: 'Share', exact: true });
   await shareTrigger.click();
   const shareDialog = page.getByRole('dialog', { name: 'Share challenge' });
@@ -3374,6 +3490,21 @@ test('Wordle date picker and daily start', async ({ page }, info) => {
   await page.getByRole('button', { name: /^Choose date,/ }).click();
   const picker = page.getByRole('dialog', { name: 'Choose date' });
   await expect(picker).toBeVisible();
+  const pickerSurface = await picker.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+      backdrop: style.backdropFilter,
+    };
+  });
+  expect(Number.parseFloat(pickerSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(pickerSurface.overflowX).toBe('hidden');
+  expect(pickerSurface.overflowY).toBe('auto');
+  expect(pickerSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(pickerSurface.backdrop).toBe('none');
   await page.setViewportSize({ width: 320, height: 180 });
   await expect.poll(async () => {
     const box = await picker.boundingBox(), viewport = page.viewportSize();
@@ -3503,6 +3634,21 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   expect(listboxId).toBeTruthy();
   const listbox = page.locator(`#${listboxId}`);
   await expect(listbox).toHaveAttribute('role', 'listbox');
+  const listboxSurface = await listbox.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+      borderWidth: style.borderTopWidth,
+    };
+  });
+  expect(Number.parseFloat(listboxSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(listboxSurface.overflowX).toBe('hidden');
+  expect(listboxSurface.overflowY).toBe('auto');
+  expect(listboxSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(Number.parseFloat(listboxSurface.borderWidth)).toBeGreaterThan(0);
   const activeBefore = await speedUnit.getAttribute('aria-activedescendant');
   expect(activeBefore).toBeTruthy();
   await expect(page.locator(`#${activeBefore}`)).toHaveAttribute('aria-selected', 'true');
@@ -3563,7 +3709,26 @@ test('Keybr Books settings shows the selected book only once', async ({ page }, 
     return image.getAttribute('src') === src && rect.width > 0 && rect.height > 0
       && style.display !== 'none' && style.visibility !== 'hidden';
   }).length, coverSrc), 'Selected book cover must appear once').toBe(1);
-  await expect(page.getByRole('button', { name: 'Choose book', exact: true })).toHaveCount(1);
+  const chooseBook = page.getByRole('button', { name: 'Choose book', exact: true });
+  await expect(chooseBook).toHaveCount(1);
+  await chooseBook.click();
+  const library = page.getByRole('dialog', { name: 'Choose a book', exact: true });
+  await expect(library).toBeVisible();
+  const librarySurface = await library.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+    };
+  });
+  expect(Number.parseFloat(librarySurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(librarySurface.overflowX).toBe('hidden');
+  expect(librarySurface.overflowY).toBe('hidden');
+  expect(librarySurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  await page.keyboard.press('Escape');
+  await expect(library).not.toBeVisible();
 });
 
 test('Keybr zoomer drag aborts on window blur', async ({ page }, info) => {
@@ -4110,6 +4275,21 @@ test('Tools mobile selector dismisses and navigates by keyboard', async ({ page 
   await page.keyboard.press('Enter');
   const listbox = page.getByRole('listbox');
   await expect(listbox).toBeVisible();
+  const toolSurface = page.locator('.tool-select-content');
+  await expect(toolSurface).toBeVisible();
+  const toolSurfaceStyle = await toolSurface.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+    };
+  });
+  expect(Number.parseFloat(toolSurfaceStyle.radius)).toBeGreaterThanOrEqual(6);
+  expect(toolSurfaceStyle.overflowX).toBe('hidden');
+  expect(toolSurfaceStyle.overflowY).toBe('auto');
+  expect(toolSurfaceStyle.background).not.toBe('rgba(0, 0, 0, 0)');
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await expect(listbox.getByRole('option', { name: 'Numbers', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Escape');
@@ -4179,6 +4359,19 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   const gameMenu = page.getByRole('button', { name: 'Game menu', exact: true });
   await expect(result).toBeVisible();
   await expect(result).toHaveAttribute('aria-modal', 'true');
+  const resultSurface = await result.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      overflowY: style.overflowY,
+      background: style.backgroundColor,
+    };
+  });
+  expect(Number.parseFloat(resultSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(resultSurface.overflowX).toBe('hidden');
+  expect(resultSurface.overflowY).toBe('auto');
+  expect(resultSurface.background).not.toBe('rgba(0, 0, 0, 0)');
   await expect(playAgain).toBeFocused();
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].filter(child => !child.classList.contains('chain-result')).every(child => child.inert))).toBe(true);
   await page.keyboard.press('Shift+Tab');
@@ -5055,6 +5248,17 @@ test('Keybr tutorial advances through its content and closes cleanly', async ({ 
   const closeTutorial = portal.getByRole('link', { name: 'Close tutorial' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  const tutorialSurface = await dialog.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      radius: style.borderRadius,
+      overflowX: style.overflowX,
+      background: style.backgroundColor,
+    };
+  });
+  expect(Number.parseFloat(tutorialSurface.radius)).toBeGreaterThanOrEqual(6);
+  expect(tutorialSurface.overflowX).toBe('hidden');
+  expect(tutorialSurface.background).not.toBe('rgba(0, 0, 0, 0)');
   await expect(closeTutorial).toBeFocused();
   expect(await page.locator('#keybr-root').evaluate(root => [...root.children].filter(child => child.id !== 'keybr-portal').every(child => child.inert))).toBe(true);
   await page.keyboard.press('Shift+Tab');

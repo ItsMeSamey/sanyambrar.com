@@ -21,6 +21,6 @@ export function KeyDetailsChartDemo(): JSX.Element {
     });
     const learningRate = LearningRate.example(target);
     return (<div class={styles.root}>
-      <KeyDetailsChart lessonKey={lessonKey} learningRate={learningRate} width="36rem" height="15rem"/>
+      <KeyDetailsChart lessonKey={lessonKey} learningRate={learningRate} width="100%" height="15rem"/>
     </div>);
 }

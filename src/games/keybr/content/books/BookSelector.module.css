@@ -55,9 +55,12 @@
   padding: 0;
   overflow: hidden;
   border: var(--separator-border);
+  border-radius: var(--site-radius, 8px);
   color: var(--secondary);
   background: var(--background-color);
+  background-clip: padding-box;
   box-shadow: var(--Popup__box-shadow);
+  isolation: isolate;
 }
 
 .dialog::backdrop {
@@ -110,6 +113,7 @@
   min-inline-size: 0;
   padding: 0.72rem 0.85rem;
   border: 1px solid var(--TextField__border-color);
+  border-radius: var(--site-radius-small, 5px);
   color: var(--TextField__color);
   background: var(--TextField__background-color);
   font: inherit;
@@ -149,6 +153,7 @@
   min-inline-size: 0;
   min-block-size: 5rem;
   padding: 0.55rem 0.7rem;
+  border-radius: var(--site-radius-small, 5px);
   text-align: start;
 }
 
@@ -157,6 +162,7 @@
   block-size: 4.35rem;
   object-fit: cover;
   border: var(--separator-border);
+  border-radius: var(--site-radius-small, 5px);
   background: var(--primary-d1);
 }
 

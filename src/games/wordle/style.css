@@ -153,12 +153,12 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .result-dialog {
   width: min(560px, calc(100vw - 24px)) !important;
   padding: 18px 20px !important;
-  border-radius: 6px;
+  border-radius: var(--site-radius, 8px);
   animation: result-pop .04s ease-out;
 }
 .result-dialog h2 { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; margin: 0; font-size: clamp(1.55rem, 6vw, 2.2rem); line-height: 1.1; letter-spacing: .08em; overflow-wrap: anywhere; }
 .result-dialog p { margin: 9px 0 0; font-size: clamp(1rem, 4vw, 1.3rem); line-height: 1.35; }
-@keyframes result-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.985); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes result-pop { from { opacity: 0; } to { opacity: 1; } }
 .stats-guess-board { border: 0; padding: 0; }
 @media (max-width:520px) { .result-dialog { width: calc(100vw - 16px) !important; padding: 14px !important; } }
 
@@ -170,7 +170,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 @media(prefers-reduced-motion:reduce){.wordle-invalid-wiggle{animation:none!important}}
 .wordle-share-trigger{display:grid;place-items:center;width:36px;height:36px;border-radius:0;transition:transform var(--site-fast,110ms) var(--site-ease-out,ease),box-shadow var(--site-fast,110ms) var(--site-ease-out,ease)}.wordle-share-trigger:hover{background:transparent;box-shadow:inset 0 -1px var(--color-foreground)}.wordle-share-trigger:active{transform:scale(.98)}
 
-.result-dialog { width: min(620px, calc(100vw - 24px)) !important; max-height: min(90dvh, 760px); overflow: auto; padding: 22px !important; }
+.result-dialog { width: min(620px, calc(100vw - 24px)) !important; max-height: min(90dvh, 760px); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 22px !important; }
 .result-kicker { display: block; color: var(--color-muted-foreground); font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .result-dialog .result-word { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: clamp(1.8rem, 8vw, 3.4rem); letter-spacing: .1em; }
 .result-copy { margin-top: 8px !important; color: var(--color-muted-foreground); font-size: .96rem !important; }
@@ -351,14 +351,14 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 
 /* Semantic Kobalte primitives. These replace retired Tailwind utilities. */
 .samey-dialog-overlay { position: fixed; inset: 0; z-index: 50; background: var(--site-shadow-9); }
-.samey-dialog { position: fixed; left: 50%; top: 50%; z-index: 51; width: min(100%, 32rem); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); transform: translate(-50%, -50%); overflow: auto; border: 1px solid var(--color-border); background: var(--color-background); color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); }
-.samey-popover { z-index: 50; padding: 1rem; border: 1px solid var(--color-border); border-radius: .375rem; background: var(--color-popover); color: var(--color-popover-foreground); box-shadow: 0 8px 22px var(--site-shadow-3); }
+.samey-dialog { position: fixed; left: 50%; top: 50%; z-index: 51; width: min(100%, 32rem); max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); transform: translate(-50%, -50%); overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--color-border); border-radius: var(--site-radius, 8px); background: var(--color-background); background-clip: padding-box; color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); isolation: isolate; }
+.samey-popover { z-index: 50; padding: 1rem; border: 1px solid var(--color-border); border-radius: var(--site-radius, 8px); background: var(--color-popover); background-clip: padding-box; color: var(--color-popover-foreground); box-shadow: 0 8px 22px var(--site-shadow-3); isolation: isolate; }
 .samey-tooltip { z-index: 60; padding: .375rem .625rem; border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent); border-radius: .375rem; background: var(--color-foreground); color: var(--site-on-fg, #fff); box-shadow: 0 8px 22px var(--site-shadow-4); font-size: .75rem; }
 .samey-slider-track { position: relative; width: 100%; height: 1rem; flex-grow: 1; overflow: visible; border-radius: 999px; background: var(--color-secondary); }
 .samey-slider-fill { position: absolute; z-index: 1; height: 100%; border-radius: 999px 0 0 999px; background: var(--color-primary); }
 .samey-slider-thumb { z-index: 2; display: block; width: 1rem; height: 1rem; border: 2px solid var(--color-primary); border-radius: 50%; outline: none; background: var(--color-background); box-shadow: none; }
 .samey-toaster { position: fixed; right: .75rem; top: .75rem; z-index: 100; display: flex; width: min(360px, calc(100vw - 24px)); flex-direction: column; gap: .5rem; }
-.samey-toast { padding: .75rem; border: 1px solid var(--color-border); border-radius: .5rem; background: linear-gradient(var(--site-blur-tint-layer), var(--site-blur-tint-layer)), color-mix(in srgb, var(--color-background) 95%, transparent); color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); backdrop-filter: blur(12px); }
+.samey-toast { padding: .75rem; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--site-radius, 8px); background: var(--color-background); background-clip: padding-box; color: var(--color-foreground); box-shadow: 0 10px 25px var(--site-shadow-4); isolation: isolate; }
 .samey-toast[data-variant="error"] { border-color: color-mix(in srgb, var(--color-error-foreground) 60%, var(--color-border)); }
 .samey-toast[data-variant="error"] .samey-toast-title { color: var(--color-error-foreground); }
 .samey-toast-title { font-size: .875rem; }
@@ -397,7 +397,7 @@ body { font-family: var(--site-font, Arial, Helvetica, sans-serif); align-items:
 .wordle-date-control{display:grid;gap:6px;width:100%;min-width:0;margin:0 0 10px;color:var(--color-muted-foreground);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em}
 .wordle-date-picker-trigger{min-height:38px;display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--color-border);border-radius:0;color:var(--color-foreground);background:var(--color-background);font:650 .88rem/1.2 var(--site-font,system-ui,sans-serif);text-align:left;text-transform:none;transition:border-color var(--site-fast,110ms) var(--site-ease-out,ease),background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
 .wordle-date-picker-trigger:hover{background:var(--color-background);border-color:var(--color-foreground)}.wordle-date-picker-trigger:focus-visible{outline:1.5px solid var(--color-ring);outline-offset:2px}.wordle-date-picker-trigger svg{width:16px;height:16px;flex:none;color:var(--color-muted-foreground)}
-.wordle-date-picker-popover{--wordle-date-muted:color-mix(in srgb,var(--color-foreground) 18%,var(--color-muted-foreground));box-sizing:border-box;width:min(310px,calc(100vw - 20px));max-height:calc(100dvh - 16px);padding:11px!important;overflow:auto;border-radius:6px!important;background:color-mix(in srgb,var(--color-popover) 96%,var(--site-blur-tint,#000) 4%)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.wordle-date-picker-popover{--wordle-date-muted:color-mix(in srgb,var(--color-foreground) 18%,var(--color-muted-foreground));box-sizing:border-box;width:min(310px,calc(100vw - 20px));max-height:calc(100dvh - 16px);padding:11px!important;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;border-radius:var(--site-radius,8px)!important;background:var(--color-popover)!important;background-clip:padding-box!important;isolation:isolate}
 .wordle-date-picker-nav{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;align-items:center;gap:5px;margin-bottom:7px}.wordle-date-picker-nav-button,.wordle-date-picker-view-trigger,.wordle-date-picker-grid button,.wordle-date-picker-footer button{border:1px solid transparent;border-radius:0;color:var(--color-foreground);background:transparent;font:650 .78rem/1.1 var(--site-font,system-ui,sans-serif)}
 .wordle-date-picker-nav-button{width:30px;height:30px;display:grid;place-items:center;padding:0}.wordle-date-picker-nav-button svg{width:15px;height:15px}.wordle-date-picker-view-trigger{min-width:0;height:30px;padding:0 6px}.wordle-date-picker-nav-button:hover,.wordle-date-picker-view-trigger:hover,.wordle-date-picker-grid button:hover:not(:disabled),.wordle-date-picker-footer button:hover{background:transparent;box-shadow:inset 0 0 0 1px var(--color-border)}
 .wordle-date-picker-table{width:100%;border-collapse:collapse;table-layout:fixed}.wordle-date-picker-table th{height:25px;padding:0;color:var(--wordle-date-muted);font-size:.66rem;font-weight:650;text-align:center;text-transform:none;letter-spacing:0}.wordle-date-picker-table td{padding:1px;text-align:center}.wordle-date-picker-day{position:relative;width:100%;min-height:32px;aspect-ratio:1;border:0;border-radius:0;color:var(--color-foreground);background:transparent;font:600 .78rem/1 var(--site-font,system-ui,sans-serif)}

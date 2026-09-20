@@ -29,6 +29,20 @@ let active = 0
 let visible: Entry[] = []
 let closeTimer = 0
 
+function finishClose(target: HTMLElement | null, restoreFocus: boolean) {
+  // Keep the terminal opacity frame painted for a frame before removing the
+  // surface. Hiding on the exact animation boundary collapses its geometry and
+  // produces the square/zero-size flash seen at the end of Search dismissal.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!box?.classList.contains('is-closing')) return
+    clearTimeout(closeTimer)
+    closeTimer = 0
+    box.hidden = true
+    box.classList.remove('is-closing')
+    if (restoreFocus && target) target.isConnected && target.focus()
+  }))
+}
+
 const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K'
 const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
 syncShortcutLabels()
@@ -107,13 +121,19 @@ function close(restoreFocus = true) {
   }
   box.classList.add('is-closing')
   clearTimeout(closeTimer)
-  closeTimer = window.setTimeout(() => {
-    closeTimer = 0
-    if (!box) return
-    box.hidden = true
-    box.classList.remove('is-closing')
-    if (restoreFocus && target) target.isConnected && target.focus()
-  }, 180)
+  const closingBox = box
+  requestAnimationFrame(() => {
+    if (box !== closingBox || !closingBox.classList.contains('is-closing')) return
+    const animations = closingBox.getAnimations({ subtree: true })
+    if (!animations.length) { finishClose(target, restoreFocus); return }
+    void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+      if (box === closingBox) finishClose(target, restoreFocus)
+    })
+  })
+  // Defensive fallback for a browser that drops animation completion events.
+  // It is intentionally longer than the visual close so paused animations and
+  // DevTools inspection cannot make the surface vanish mid-frame.
+  closeTimer = window.setTimeout(() => finishClose(target, restoreFocus), 1000)
 }
 
 function ensure() {

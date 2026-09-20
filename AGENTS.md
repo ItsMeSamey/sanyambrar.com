@@ -27,3 +27,4 @@
 - Forced-colors QA must verify selected/checked/current states retain a non-background cue; custom backgrounds and shadows can collapse to the same system colors.
 - Pointer-owned drags/strokes must abort on window blur as well as pointerup/cancel/capture loss; stale capture must not keep mutating state after focus leaves the page.
 - Portfolio route/local construction transitions must visibly draw/erase border and rule geometry, preserve rounded corners with geometry-accurate overlay strokes, never translate routed content, and limit text motion to lightweight opacity fades.
+- Floating menus, popovers, dialogs, selectors and toasts must keep fixed geometry while opening/closing, use real rounded opaque/clipped surfaces, and avoid transform/scale animation that can expose square compositor edges. Cursor link-fill/overlay occlusion must preserve the same corner geometry; decorative menu separation must not manufacture stray rules.

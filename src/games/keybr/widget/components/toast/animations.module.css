@@ -6,7 +6,6 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale3d(0.3, 0.3, 0.3);
   }
   to {
     opacity: 1;

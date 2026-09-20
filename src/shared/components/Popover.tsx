@@ -57,7 +57,7 @@ export function PopoverContent(props: ComponentProps<'div'>) {
   });
   return <div {...omit(props, 'class', 'style', 'ref')} ref={element} id={state.id} popover='auto' role='dialog' tabindex={-1}
     data-samey-overlay='' data-expanded={state.open() ? '' : undefined} class={['samey-popover', props.class].filter(Boolean).join(' ')}
-    style={{ position: 'fixed', inset: 'auto', margin: '0', 'max-width': 'calc(100vw - 16px)', 'max-height': 'calc(100dvh - 16px)', overflow: 'auto' }}
+    style={{ position: 'fixed', inset: 'auto', margin: '0', 'max-width': 'calc(100vw - 16px)', 'max-height': 'calc(100dvh - 16px)', 'overflow-x': 'hidden', 'overflow-y': 'auto' }}
     onBeforeToggle={event => {
       const next = event.newState === 'open';
       if (next !== state.open()) state.setOpen(next);
