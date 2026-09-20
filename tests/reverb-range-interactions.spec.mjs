@@ -1112,3 +1112,41 @@ test('Reverb Range Close terminates hidden fine-seek ownership', async ({ page }
   await expect(play).toHaveAttribute('aria-label', 'Play');
   await expect(fine).not.toHaveClass(/is-dragging/);
 });
+
+test('Reverb Range wheel scroll interrupts an in-flight snap', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.39;
+  const y = box.y + box.height / 2;
+  const rowPx = box.height * (56 / 160);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - rowPx * 0.8, { steps: 4 });
+  await page.mouse.up();
+  await expect(exportButton).toBeDisabled();
+
+  await page.waitForTimeout(45);
+  await page.mouse.move(x, y);
+  await page.mouse.wheel(0, -120);
+  await expect(exportButton).toBeDisabled();
+  await page.waitForTimeout(180);
+
+  await expect(exportButton).toBeEnabled();
+  await expect(wheel).toHaveAttribute('aria-valuenow', '840');
+  await expect(end).toHaveText('14:00.0');
+});

@@ -353,6 +353,13 @@ export function runReverbDemoRuntime(
   let rangeWheelPointerDragged = false;
   let rangeWheelCommitAllowed = false;
   let rangeWheelSettleTimer = 0;
+  let rangeWheelSettle: {
+    column: RangeWheelColumn;
+    target: RangeEditTarget;
+    startRows: number;
+    targetRows: number;
+    startedAt: number;
+  } | null = null;
   let rangeWheelSuppressClick = false;
   const rangeWheelInteractionActive = () =>
     rangeWheelPointerId !== -1 || rangeWheelSettleTimer !== 0;
@@ -1036,6 +1043,7 @@ export function runReverbDemoRuntime(
     if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
     const pointerId = rangeWheelPointerId;
     rangeWheelSettleTimer = 0;
+    rangeWheelSettle = null;
     rangeWheelPointerId = -1;
     rangeWheelPointerColumn = null;
     rangeWheelPinnedTarget = null;
@@ -1083,6 +1091,7 @@ export function runReverbDemoRuntime(
       rangeDurationWheel.releasePointerCapture(pointerId);
     const commit = () => {
       rangeWheelSettleTimer = 0;
+      rangeWheelSettle = null;
       clearRangeWheelDragVisual();
       if (rangeWheelCommitAllowed && column && pinnedTarget && steps !== 0)
         adjustRangeWheelColumn(column, steps, pinnedTarget);
@@ -1094,6 +1103,15 @@ export function runReverbDemoRuntime(
     if (needsSettle) {
       if (column && rangeWheelPointerDragged)
         renderRangeWheelDragVisual(column, steps, true, pinnedTarget ?? rangeEditTarget);
+      if (column && pinnedTarget) {
+        rangeWheelSettle = {
+          column,
+          target: pinnedTarget,
+          startRows: rawSteps,
+          targetRows: steps,
+          startedAt: performance.now(),
+        };
+      }
       rangeWheelSettleTimer = setTimeout(commit, 150);
     } else {
       commit();
@@ -1143,20 +1161,74 @@ export function runReverbDemoRuntime(
     if (event.pointerId === rangeWheelPointerId) finishRangeWheelInteraction(event, true);
   });
   rangeDurationWheel.addEventListener("wheel", (event) => {
-    if (event.deltaY === 0 || rangeWheelInteractionActive()) return;
+    if (event.deltaY === 0 || rangeWheelPointerId !== -1) return;
     const column = rangeWheelColumnAt(event.clientX);
     if (!column) return;
+    const direction = event.deltaY < 0 ? -1 : 1;
+    const settling = rangeWheelSettle;
+    if (rangeWheelSettleTimer !== 0 && settling) {
+      if (settling.column !== column) return;
+      const elapsed = Math.max(0, Math.min(1, (performance.now() - settling.startedAt) / 150));
+      const eased = 1 - (1 - elapsed) ** 3;
+      const currentRows = settling.startRows +
+        (settling.targetRows - settling.startRows) * eased;
+      clearTimeout(rangeWheelSettleTimer);
+      rangeWheelSettleTimer = 0;
+      rangeWheelSettle = null;
+      clearRangeWheelDragVisual();
+
+      const pinnedTarget = rangeEditTarget;
+      rangeWheelCommitAllowed = true;
+      renderRangeUi();
+      rangeStartInput.blur();
+      rangeEndInput.blur();
+      setRangePlaying(false);
+      setRangeWheelInteractionUi(true);
+      event.preventDefault();
+
+      const startRows = currentRows + direction;
+      const targetRows = Math.round(startRows);
+      renderRangeWheelDragVisual(column, startRows, false, pinnedTarget);
+      if (Math.abs(targetRows - startRows) < 0.0001) {
+        clearRangeWheelDragVisual();
+        if (targetRows !== 0) adjustRangeWheelColumn(column, targetRows, pinnedTarget);
+        else renderRangeWheel();
+        rangeWheelCommitAllowed = false;
+        setRangeWheelInteractionUi(false);
+        return;
+      }
+
+      void rangeDurationWheel.offsetHeight;
+      renderRangeWheelDragVisual(column, targetRows, true, pinnedTarget);
+      rangeWheelSettle = {
+        column,
+        target: pinnedTarget,
+        startRows,
+        targetRows,
+        startedAt: performance.now(),
+      };
+      rangeWheelSettleTimer = setTimeout(() => {
+        rangeWheelSettleTimer = 0;
+        rangeWheelSettle = null;
+        clearRangeWheelDragVisual();
+        if (rangeWheelCommitAllowed && targetRows !== 0)
+          adjustRangeWheelColumn(column, targetRows, pinnedTarget);
+        else
+          renderRangeWheel();
+        rangeWheelCommitAllowed = false;
+        setRangeWheelInteractionUi(false);
+      }, 150);
+      return;
+    }
+
+    if (rangeWheelInteractionActive()) return;
     const pinnedTarget = rangeEditTarget;
     renderRangeUi();
     rangeStartInput.blur();
     rangeEndInput.blur();
     setRangePlaying(false);
     event.preventDefault();
-    adjustRangeWheelColumn(
-      column,
-      event.deltaY < 0 ? -1 : 1,
-      pinnedTarget,
-    );
+    adjustRangeWheelColumn(column, direction, pinnedTarget);
   });
   rangeDurationWheel.addEventListener("click", (event) => {
     if (rangeWheelSuppressClick) {
