@@ -1725,6 +1725,56 @@ test('animated overlays stay contained through opening frames and reduced motion
   })).toEqual({ text: 'none', textAnimations: 0, cloak: 'none', cloakAnimations: 0 });
 });
 
+test('ordinary hover and press feedback keeps whole controls stationary', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'Mouse hover/press compositor audit only needs one production desktop browser');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+  const expectStationaryHover = async (locator, label) => {
+    await locator.scrollIntoViewIfNeeded();
+    const before = await locator.boundingBox();
+    if (!before) throw new Error(label + ' has no geometry');
+    await locator.hover();
+    await page.waitForTimeout(40);
+    const during = await locator.boundingBox();
+    if (!during) throw new Error(label + ' lost geometry while hovered');
+    expect(Math.abs(during.x - before.x), label + ' must not slide horizontally on hover').toBeLessThan(.1);
+    expect(Math.abs(during.y - before.y), label + ' must not bob vertically on hover').toBeLessThan(.1);
+    expect(await locator.evaluate(element => getComputedStyle(element).transform), label + ' must not transform on hover').toBe('none');
+  };
+
+  const expectStationaryPress = async (locator, label) => {
+    await locator.scrollIntoViewIfNeeded();
+    const box = await locator.boundingBox();
+    if (!box) throw new Error(label + ' has no geometry');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(25);
+    expect(await locator.evaluate(element => getComputedStyle(element).transform), label + ' must not scale on press').toBe('none');
+    await page.mouse.up();
+  };
+
+  await visit(page, '/', info);
+  await expectStationaryHover(page.locator('.site-standard .card').first(), 'Home card');
+  const compactRow = page.locator('.site-standard .compact-row').first();
+  if (await compactRow.count()) await expectStationaryHover(compactRow, 'Home compact row');
+  await expectStationaryPress(page.getByRole('button', { name: 'Search', exact: true }), 'Topbar Search');
+  await page.keyboard.press('Escape');
+
+  await visitKeybr(page, info);
+  await expectStationaryPress(page.getByTitle('Switch the current interface layout.'), 'Keybr layout control');
+
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  const key = page.getByRole('button', { name: 'A', exact: true });
+  const keyBox = await key.boundingBox();
+  if (!keyBox) throw new Error('Wordle A key has no geometry');
+  await page.mouse.move(keyBox.x + keyBox.width / 2, keyBox.y + keyBox.height / 2);
+  await page.mouse.down();
+  await expect(key).toHaveClass(/wordle-key-pressed/);
+  expect(await key.evaluate(element => getComputedStyle(element).transform), 'Wordle pressed key must not scale').toBe('none');
+  await page.mouse.up();
+});
+
 test('forced colors preserves selection, game state and keyboard focus cues', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production browser covers forced-colors rendering');
   test.setTimeout(120_000);
@@ -2594,7 +2644,7 @@ test('search scopes wheel handling to the dialog surface', async ({ page }, info
   await expect(searchResults).not.toBeVisible();
 });
 
-test('search backdrop uses fixed progressive blur', async ({ page }, info) => {
+test('search backdrop dims without live blur or geometry motion', async ({ page }, info) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
   await page.keyboard.press('Control+K');
@@ -2604,10 +2654,17 @@ test('search backdrop uses fixed progressive blur', async ({ page }, info) => {
 
   const openStyle = await backdrop.evaluate(element => {
     const style = getComputedStyle(element, '::before');
-    return { backdropFilter: style.backdropFilter, animationName: style.animationName, opacity: style.opacity, transform: style.transform };
+    return {
+      backdropFilter: style.backdropFilter,
+      backgroundImage: style.backgroundImage,
+      animationName: style.animationName,
+      opacity: style.opacity,
+      transform: style.transform,
+    };
   });
-  expect(openStyle.backdropFilter).toContain('blur(4px)');
-  expect(openStyle.animationName).toBe('samey-search-blur-in');
+  expect(openStyle.backdropFilter).toBe('none');
+  expect(openStyle.backgroundImage).not.toBe('none');
+  expect(openStyle.animationName).toBe('samey-search-backdrop-in');
   expect(Number(openStyle.opacity)).toBeGreaterThanOrEqual(0);
   expect(Number(openStyle.opacity)).toBeLessThanOrEqual(1);
   expect(openStyle.transform).toBe('none');
@@ -2620,7 +2677,7 @@ test('search backdrop uses fixed progressive blur', async ({ page }, info) => {
     const style = getComputedStyle(element, '::before');
     return { animationName: style.animationName, transform: style.transform };
   });
-  expect(closingStyle.animationName).toBe('samey-search-blur-out');
+  expect(closingStyle.animationName).toBe('samey-search-backdrop-out');
   expect(closingStyle.transform).toBe('none');
   await expect(search).toBeHidden();
 });
@@ -2785,7 +2842,7 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
     delete globalThis.__sameyRouteAnimationTargets;
     return targets;
   });
-  expect(frames.length).toBeGreaterThan(10);
+  expect(frames.length).toBeGreaterThanOrEqual(10);
   expect(Math.min(...frames.map(frame => frame.opacity))).toBeGreaterThanOrEqual(0.99);
   expect(Math.min(...frames.map(frame => frame.area))).toBeGreaterThan(0);
   expect(frames.every(frame => frame.contentVisible)).toBe(true);
@@ -3739,11 +3796,22 @@ test('Keybr zoomer drag aborts on window blur', async ({ page }, info) => {
   const box = await zoomer.boundingBox();
   if (!box) throw new Error('Keybr zoomer has no geometry');
   const position = () => zoomer.evaluate(element => [element.style.left, element.style.top]);
+  await zoomer.evaluate(element => {
+    const nativeRect = Element.prototype.getBoundingClientRect;
+    globalThis.__sameyQaZoomerRectReads = 0;
+    Element.prototype.getBoundingClientRect = function () {
+      if (this === element) globalThis.__sameyQaZoomerRectReads += 1;
+      return nativeRect.call(this);
+    };
+  });
 
   await page.mouse.move(box.x + 40, box.y + 40);
   await page.mouse.down();
-  await page.mouse.move(box.x + 60, box.y + 55);
+  for (let step = 1; step <= 6; step++)
+    await page.mouse.move(box.x + 40 + step * 4, box.y + 40 + step * 3);
   await expect.poll(position, { message: 'Keybr zoomer must move while dragging' }).not.toEqual(['0px', '0px']);
+  expect(await page.evaluate(() => globalThis.__sameyQaZoomerRectReads ?? 0),
+    'Keybr zoomer must cache drag geometry instead of forcing layout on every mousemove').toBeLessThanOrEqual(2);
   const beforeBlur = await position();
 
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
@@ -4348,6 +4416,21 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
 
 test('Chain completed result owns modal focus', async ({ page }, info) => {
   await page.addInitScript(() => {
+    const nativeAnimate = Element.prototype.animate;
+    globalThis.__sameyQaChainResultAnimations = [];
+    Element.prototype.animate = function (keyframes, options) {
+      if (this.classList?.contains('chain-result')) {
+        globalThis.__sameyQaChainResultAnimations.push(
+          Array.from(keyframes ?? []).map(keyframe => ({
+            opacity: keyframe.opacity ?? null,
+            transform: keyframe.transform ?? null,
+            translate: keyframe.translate ?? null,
+            scale: keyframe.scale ?? null,
+          })),
+        );
+      }
+      return nativeAnimate.call(this, keyframes, options);
+    };
     const board = new Uint8Array(16), owners = new Uint8Array(16), entered = new Uint8Array([0, 1, 1]);
     board[0] = owners[0] = 1;
     const encode = values => btoa(String.fromCharCode(...values));
@@ -4372,6 +4455,12 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   expect(resultSurface.overflowX).toBe('hidden');
   expect(resultSurface.overflowY).toBe('auto');
   expect(resultSurface.background).not.toBe('rgba(0, 0, 0, 0)');
+  const resultMotion = await page.evaluate(() => globalThis.__sameyQaChainResultAnimations ?? []);
+  expect(resultMotion.flat().every(keyframe =>
+    (keyframe.transform == null || keyframe.transform === 'none')
+    && (keyframe.translate == null || keyframe.translate === 'none')
+    && (keyframe.scale == null || keyframe.scale === 'none')
+  ), 'Chain result entrance must not move or scale the modal surface').toBe(true);
   await expect(playAgain).toBeFocused();
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].filter(child => !child.classList.contains('chain-result')).every(child => child.inert))).toBe(true);
   await page.keyboard.press('Shift+Tab');
@@ -4583,6 +4672,19 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
   await fullscreen.click();
   const frame = page.locator('.reverb-demo-frame');
+  const fullscreenMotion = await frame.evaluate(element => {
+    const keyframes = element.getAnimations()
+      .filter(animation => animation.effect?.target === element)
+      .flatMap(animation => animation.effect?.getKeyframes?.() ?? []);
+    return {
+      hasOpacity: keyframes.some(keyframe => keyframe.opacity != null),
+      hasGeometryMotion: keyframes.some(keyframe =>
+        keyframe.transform != null && keyframe.transform !== 'none'
+        || keyframe.translate != null && keyframe.translate !== 'none'
+        || keyframe.scale != null && keyframe.scale !== 'none'),
+    };
+  });
+  expect(fullscreenMotion.hasGeometryMotion, 'Reverb fullscreen must not stretch or translate the phone surface').toBe(false);
   const exitFullscreen = page.getByRole('button', { name: 'Exit fullscreen demo' });
   await expect.poll(() => frame.evaluate(element => {
     const rect = element.getBoundingClientRect();

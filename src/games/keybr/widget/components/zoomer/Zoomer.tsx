@@ -15,32 +15,81 @@ const savedPositions = new Map<string, ZoomablePosition>();
 
 export function Zoomer(props: ZoomerProps): JSX.Element {
   let root!: HTMLDivElement;
+  let dragBounds: {
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  } | null = null;
+  let dragPosition: ZoomablePosition | null = null;
   const [hover, setHover] = createSignal(false);
   const [moving, setMoving] = createSignal(false);
   const [position, setPosition] = createSignal<ZoomablePosition>(() => (props.id && savedPositions.get(props.id)) || { x: 0, y: 0, zoom: 1 });
 
   useDocumentEvent("mousedown", (ev) => {
     if (!moving() && contains(root, ev.target)) {
+      const p = position();
+      const rect = root.getBoundingClientRect();
+      dragBounds = {
+        x: p.x,
+        y: p.y,
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+      };
+      dragPosition = { ...p };
       setMoving(true); setHover(false); globalMoving.current = root; ev.preventDefault();
     }
   });
   useDocumentEvent("mouseup", (ev) => {
-    if (moving()) { setMoving(false); setHover(true); globalMoving.current = null; ev.preventDefault(); }
+    if (moving()) {
+      const next = dragPosition;
+      dragBounds = null;
+      dragPosition = null;
+      if (next) setPosition(next);
+      setMoving(false); setHover(true); globalMoving.current = null; ev.preventDefault();
+    }
   });
   useDocumentEvent("mousemove", (ev) => {
     if (!moving()) return;
-    setPosition((p) => ({ x: p.x + ev.movementX, y: p.y + ev.movementY, zoom: p.zoom }));
+    const current = dragPosition ?? position();
+    let x = current.x + ev.movementX;
+    let y = current.y + ev.movementY;
+    const bounds = dragBounds;
+    if (bounds) {
+      const dx = x - bounds.x;
+      const dy = y - bounds.y;
+      const left = bounds.left + dx;
+      const right = bounds.right + dx;
+      const top = bounds.top + dy;
+      const bottom = bounds.bottom + dy;
+      if (left < 0) x -= left;
+      else if (right > innerWidth) x -= right - innerWidth;
+      if (top < 0) y -= top;
+      else if (bottom > innerHeight) y -= bottom - innerHeight;
+    }
+    dragPosition = { x: Math.floor(x), y: Math.floor(y), zoom: current.zoom };
+    root.style.left = String(dragPosition.x) + "px";
+    root.style.top = String(dragPosition.y) + "px";
     ev.preventDefault();
   });
   useWindowEvent("blur", () => {
     if (!moving()) return;
+    const next = dragPosition;
+    dragBounds = null;
+    dragPosition = null;
+    if (next) setPosition(next);
     setMoving(false);
     setHover(false);
     if (globalMoving.current === root) globalMoving.current = null;
   });
   useWindowEvent("resize", () => setPosition((p) => place(root).fitToScreen(p)));
 
-  createEffect(position, p => {
+  createEffect(() => ({ position: position(), moving: moving() }), ({ position: p, moving: active }) => {
+    if (active) return;
     const next = place(root).fitToScreen(p);
     if (next.x !== p.x || next.y !== p.y || next.zoom !== p.zoom) setPosition(next);
   });

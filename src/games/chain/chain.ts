@@ -690,7 +690,7 @@ export function mountChain(refs: ChainRefs) {
     const bots = entry.p.filter(player => player.kind === 'bot').map(player => `${player.name} (${player.bot?.name || 'Bot'})`).join(', ');
     replayCopy.textContent = `${entry.r} × ${entry.c} board · ${entry.m.length} ${entry.m.length===1?'move':'moves'} · ${bots}`;
     replayPanel.hidden = false;
-    requestAnimationFrame(() => { drawReplay(); replayPanel.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}); });
+    requestAnimationFrame(() => { drawReplay(); replayPanel.scrollIntoView({block:'nearest',behavior:'auto'}); });
   }
 
   function closeReplay() {
@@ -1306,10 +1306,7 @@ export function mountChain(refs: ChainRefs) {
     setResultOpen(true);
     if (wasHidden) requestAnimationFrame(() => !resultPanel.hidden && playAgainButton.focus({preventScroll:true}));
     if (wasHidden && resultPanel.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      resultPanel.animate(
-        [{opacity:0, transform:'translate(-50%,-48%) scale(.97)'},{opacity:1, transform:'translate(-50%,-50%) scale(1)'}],
-        {duration:180, easing:'cubic-bezier(.22,1,.36,1)'}
-      );
+      resultPanel.animate([{opacity:0},{opacity:1}], {duration:180, easing:'cubic-bezier(.22,1,.36,1)'});
     }
   }
 

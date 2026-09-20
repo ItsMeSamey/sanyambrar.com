@@ -352,6 +352,7 @@ export function runReverbDemoRuntime(
   let rangeWheelPointerY = 0;
   let rangeWheelPointerDragged = false;
   let rangeWheelCommitAllowed = false;
+  let rangeWheelPointerRect: DOMRect | null = null;
   let rangeWheelSettleTimer = 0;
   let rangeWheelSuppressClick = false;
   const rangeWheelInteractionActive = () =>
@@ -877,6 +878,7 @@ export function runReverbDemoRuntime(
   let rangeWaveBoundaryDragging = false;
   let rangeWaveBoundaryDownX = 0;
   let rangeWaveBoundaryOriginSeconds = 0;
+  let rangeWaveRect: DOMRect | null = null;
   const cancelRangeWaveScrub = (resumePreview: boolean) => {
     const pointerId = rangeWavePointerId;
     if (pointerId === -1) return;
@@ -884,6 +886,7 @@ export function runReverbDemoRuntime(
     rangeWaveTarget = null;
     rangeWaveBoundaryMode = false;
     rangeWaveBoundaryDragging = false;
+    rangeWaveRect = null;
     const shouldResumePreview = resumePreview && rangeWaveResumeAfterScrub;
     rangeWaveResumeAfterScrub = false;
     if (rangeWavebox.hasPointerCapture?.(pointerId)) rangeWavebox.releasePointerCapture(pointerId);
@@ -906,6 +909,7 @@ export function runReverbDemoRuntime(
     rangeStartInput.blur();
     rangeEndInput.blur();
     rangeWavePointerId = event.pointerId;
+    rangeWaveRect = rangeWavebox.getBoundingClientRect();
     rangeWavebox.setPointerCapture?.(event.pointerId);
     event.preventDefault();
     if (boundaryTarget) {
@@ -919,7 +923,7 @@ export function runReverbDemoRuntime(
     rangeWaveBoundaryMode = false;
     rangeWaveResumeAfterScrub = rangePlaying;
     if (rangePlaying) setRangePlaying(false);
-    const rect = rangeWavebox.getBoundingClientRect();
+    const rect = rangeWaveRect ?? rangeWavebox.getBoundingClientRect();
     const seconds =
       ((event.clientX - rect.left) / Math.max(1, rect.width)) *
       rangeTimelineDurationSeconds;
@@ -927,7 +931,7 @@ export function runReverbDemoRuntime(
   });
   rangeWavebox.addEventListener("pointermove", (event) => {
     if (event.pointerId !== rangeWavePointerId) return;
-    const rect = rangeWavebox.getBoundingClientRect();
+    const rect = rangeWaveRect ?? rangeWavebox.getBoundingClientRect();
     const target = rangeWaveTarget ?? rangeEditTarget;
     if (rangeWaveBoundaryMode) {
       const deltaX = event.clientX - rangeWaveBoundaryDownX;
@@ -979,8 +983,10 @@ export function runReverbDemoRuntime(
       rangeWheelProfiles.length;
     renderRangeWheel();
   };
-  const rangeWheelColumnAt = (clientX: number): RangeWheelColumn | null => {
-    const rect = rangeDurationWheel.getBoundingClientRect();
+  const rangeWheelColumnAt = (
+    clientX: number,
+    rect = rangeDurationWheel.getBoundingClientRect(),
+  ): RangeWheelColumn | null => {
     const width = Math.max(1, rect.width);
     const x = Math.max(0, Math.min(width, clientX - rect.left));
     const profileStart = width * 0.81;
@@ -1041,6 +1047,7 @@ export function runReverbDemoRuntime(
     rangeWheelPinnedTarget = null;
     rangeWheelPointerDragged = false;
     rangeWheelCommitAllowed = false;
+    rangeWheelPointerRect = null;
     if (pointerId !== -1) {
       rangeWheelSuppressClick = true;
       setTimeout(() => {
@@ -1058,7 +1065,7 @@ export function runReverbDemoRuntime(
     const pointerId = rangeWheelPointerId;
     const column = rangeWheelPointerColumn;
     const pinnedTarget = rangeWheelPinnedTarget;
-    const rect = rangeDurationWheel.getBoundingClientRect();
+    const rect = rangeWheelPointerRect ?? rangeDurationWheel.getBoundingClientRect();
     const rowPx = Math.max(1, rect.height * (56 / 160));
     const rawSteps = rangeWheelPointerDragged
       ? -(rangeWheelPointerY - rangeWheelPointerDownY) / rowPx
@@ -1075,6 +1082,7 @@ export function runReverbDemoRuntime(
     rangeWheelPointerColumn = null;
     rangeWheelPinnedTarget = null;
     rangeWheelPointerDragged = false;
+    rangeWheelPointerRect = null;
     rangeWheelSuppressClick = true;
     setTimeout(() => {
       rangeWheelSuppressClick = false;
@@ -1102,7 +1110,8 @@ export function runReverbDemoRuntime(
   rangeDurationWheel.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (rangeWheelPointerId !== -1) return;
-    const column = rangeWheelColumnAt(event.clientX);
+    const rect = rangeDurationWheel.getBoundingClientRect();
+    const column = rangeWheelColumnAt(event.clientX, rect);
     if (!column) return;
     if (rangeWheelSettleTimer !== 0) clearTimeout(rangeWheelSettleTimer);
     rangeWheelSettleTimer = 0;
@@ -1113,6 +1122,7 @@ export function runReverbDemoRuntime(
     rangeWheelPointerY = event.clientY;
     rangeWheelPointerDragged = false;
     rangeWheelCommitAllowed = true;
+    rangeWheelPointerRect = rect;
     renderRangeUi();
     setRangePlaying(false);
     setRangeWheelInteractionUi(true);
@@ -1127,7 +1137,7 @@ export function runReverbDemoRuntime(
       rangeWheelPointerDragged = true;
     const column = rangeWheelPointerColumn;
     if (column) {
-      const rect = rangeDurationWheel.getBoundingClientRect();
+      const rect = rangeWheelPointerRect ?? rangeDurationWheel.getBoundingClientRect();
       const rowPx = Math.max(1, rect.height * (56 / 160));
       renderRangeWheelDragVisual(
         column,
@@ -1554,6 +1564,11 @@ export function runReverbDemoRuntime(
   let rangeFineRawVertical = 0;
   let rangeFineHorizontalPull = 0;
   let rangeFineLastFrame = 0;
+  let rangeFineTravelCache: {
+    rect: DOMRect;
+    horizontal: number;
+    vertical: number;
+  } | null = null;
 
   const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
   const rangeFineConstrainedY = (
@@ -1595,7 +1610,7 @@ export function runReverbDemoRuntime(
       rangeFineSpeedScale(verticalPull)
     );
   };
-  const rangeFineTravel = () => {
+  const measureRangeFineTravel = () => {
     const rect = rangeFineControl.getBoundingClientRect();
     return {
       rect,
@@ -1603,6 +1618,8 @@ export function runReverbDemoRuntime(
       vertical: Math.max(1, rect.height * 0.5 - 10 - 24),
     };
   };
+  const rangeFineTravel = () =>
+    rangeFineTravelCache ?? (rangeFineTravelCache = measureRangeFineTravel());
   const updateRangeFinePull = (clientX: number, clientY: number) => {
     const travel = rangeFineTravel();
     const centerX = travel.rect.left + travel.rect.width * 0.5;
@@ -1656,6 +1673,7 @@ export function runReverbDemoRuntime(
     if (rangePlaying) setRangePlaying(false);
     rangeFineDragging = true;
     rangeFineLastFrame = 0;
+    rangeFineTravelCache = measureRangeFineTravel();
     rangeFineControl.classList.add("is-dragging");
     if (
       rangeFinePointerId !== -1 &&
@@ -1691,6 +1709,7 @@ export function runReverbDemoRuntime(
     rangeFineHorizontalPull = 0;
     rangeFineRawVertical = 0;
     rangeFineLastFrame = 0;
+    rangeFineTravelCache = null;
     rangeFineControl.classList.remove("is-dragging");
     rangePlay.style.transition =
       "transform 210ms cubic-bezier(.16,1,.3,1)";

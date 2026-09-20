@@ -834,10 +834,10 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       if (viewMode !== 'split' || stopDividerDrag) return;
       divider.setPointerCapture(event.pointerId);
       const pointerId = event.pointerId;
+      const rect = toolRoot.getBoundingClientRect();
+      const stacked = matchMedia('(max-width:700px)').matches;
       const move = (pointer: PointerEvent) => {
         if (pointer.pointerId !== pointerId) return;
-        const rect = toolRoot.getBoundingClientRect();
-        const stacked = matchMedia('(max-width:700px)').matches;
         const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
         applySplit(ratio * 100);
       };

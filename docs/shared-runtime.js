@@ -272,20 +272,15 @@
 			svg.append(stroke);
 			return true;
 		};
-		const hide = (element, sides, rounded = false) => {
+		const queueHide = (element, sides, rounded = false) => {
 			let attrs = hiddenBorders.get(element);
 			if (!attrs) {
 				attrs = /* @__PURE__ */ new Set();
 				hiddenBorders.set(element, attrs);
-				element.setAttribute("data-samey-construction-source", "");
 			}
-			if (rounded) {
-				element.setAttribute("data-samey-construction-rounded", "");
-				attrs.add("data-samey-construction-rounded");
-			}
+			if (rounded) attrs.add("data-samey-construction-rounded");
 			for (const side of sides) {
 				const attr = BORDER_HIDE_ATTR[side];
-				element.setAttribute(attr, "");
 				attrs.add(attr);
 			}
 		};
@@ -327,7 +322,7 @@
 					first.color,
 					rounded.paths[side]
 				].join(":"), rounded.paths[side], first.width, first.color, rounded.rounded);
-				hide(element, visible, rounded.rounded);
+				queueHide(element, visible, rounded.rounded);
 				continue;
 			}
 			const tl = parseRadius(style.borderTopLeftRadius, rect.width, rect.height);
@@ -345,7 +340,11 @@
 				paths[side],
 				sides[side].width,
 				sides[side].color
-			].join(":"), paths[side], sides[side].width, sides[side].color)) hide(element, [side]);
+			].join(":"), paths[side], sides[side].width, sides[side].color)) queueHide(element, [side]);
+		}
+		for (const [element, attrs] of hiddenBorders) {
+			element.setAttribute("data-samey-construction-source", "");
+			for (const attr of attrs) element.setAttribute(attr, "");
 		}
 		document.body.append(layer);
 		return {
@@ -389,11 +388,18 @@
 			return true;
 		}).slice(0, CONSTRUCTED_TRANSITION.maxContentTargets);
 	}
-	function animateConstructionContent(root, phase) {
-		const entering = phase === "in";
-		return contentTargets(root).map((element, index) => {
+	function measureConstructionContent(root) {
+		return contentTargets(root).map((element) => {
 			const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
-			const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
+			return {
+				element,
+				baseline: Number.isFinite(parsedOpacity) ? parsedOpacity : 1
+			};
+		});
+	}
+	function animateConstructionContent(measured, phase) {
+		const entering = phase === "in";
+		return measured.map(({ element, baseline }, index) => {
 			const faded = Math.max(0, baseline * CONSTRUCTED_TRANSITION.contentFloor);
 			element.setAttribute("data-samey-construction-content", "");
 			const animation = element.animate(entering ? [{ opacity: faded }, { opacity: baseline }] : [{ opacity: baseline }, { opacity: faded }], {
@@ -413,8 +419,9 @@
 		}
 	}
 	async function animateConstructionExit(root, direction) {
+		const content = measureConstructionContent(root);
 		const construction = makeConstructionLayer(root);
-		const animations = [...animateConstructionLines(construction, "out", direction), ...animateConstructionContent(root, "out")];
+		const animations = [...animateConstructionLines(construction, "out", direction), ...animateConstructionContent(content, "out")];
 		await waitAnimations(animations);
 		return {
 			...construction,
@@ -422,8 +429,9 @@
 		};
 	}
 	async function animateConstructionEntrance(root, direction) {
+		const content = measureConstructionContent(root);
 		const construction = makeConstructionLayer(root);
-		const animations = [...animateConstructionLines(construction, "in", direction), ...animateConstructionContent(root, "in")];
+		const animations = [...animateConstructionLines(construction, "in", direction), ...animateConstructionContent(content, "in")];
 		await waitAnimations(animations);
 		restoreConstructionSources(construction);
 		for (const animation of animations) animation.cancel();
@@ -2273,6 +2281,7 @@
 			const fillCollapseDuration = 132;
 			const fillCollapseCurve = (t) => t - Math.sin(Math.PI * 2 * t) * .1;
 			let geometryLink = null, geometryRects = [], geometryBounds = null;
+			let geometryRadiusX = 0, geometryRadiusY = 0;
 			const subtractRect = (rect, hole) => {
 				const left = Math.max(rect.left, hole.left), top = Math.max(rect.top, hole.top);
 				const right = Math.min(rect.right, hole.right), bottom = Math.min(rect.bottom, hole.bottom);
@@ -2343,6 +2352,18 @@
 				geometryLink = link;
 				geometryRects = link ? [...link.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0) : [];
 				geometryBounds = link ? link.getBoundingClientRect() : null;
+				geometryRadiusX = geometryRadiusY = 0;
+				if (link && geometryBounds) {
+					const style = getComputedStyle(link);
+					const radii = [
+						cornerRadius(style.borderTopLeftRadius, geometryBounds.width, geometryBounds.height),
+						cornerRadius(style.borderTopRightRadius, geometryBounds.width, geometryBounds.height),
+						cornerRadius(style.borderBottomRightRadius, geometryBounds.width, geometryBounds.height),
+						cornerRadius(style.borderBottomLeftRadius, geometryBounds.width, geometryBounds.height)
+					];
+					geometryRadiusX = Math.max(...radii.map((radius) => radius.x));
+					geometryRadiusY = Math.max(...radii.map((radius) => radius.y));
+				}
 			};
 			const linkRect = (link, force = false) => {
 				if (force || geometryLink !== link || !geometryBounds) refreshLinkGeometry(link);
@@ -2360,17 +2381,8 @@
 				wantedFillH = Math.max(fillDot, rect.height - insetY * 2);
 				wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
 				wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
-				const style = getComputedStyle(fillTarget);
-				const radii = [
-					cornerRadius(style.borderTopLeftRadius, rect.width, rect.height),
-					cornerRadius(style.borderTopRightRadius, rect.width, rect.height),
-					cornerRadius(style.borderBottomRightRadius, rect.width, rect.height),
-					cornerRadius(style.borderBottomLeftRadius, rect.width, rect.height)
-				];
-				const sourceRadiusX = Math.max(...radii.map((radius) => radius.x));
-				const sourceRadiusY = Math.max(...radii.map((radius) => radius.y));
-				wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, sourceRadiusX - insetX));
-				wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, sourceRadiusY - insetY));
+				wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, geometryRadiusX - insetX));
+				wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, geometryRadiusY - insetY));
 			};
 			const renderFill = (time) => {
 				fillFrame = 0;
@@ -2425,6 +2437,7 @@
 				geometryLink = null;
 				geometryRects = [];
 				geometryBounds = null;
+				geometryRadiusX = geometryRadiusY = 0;
 				setFillLayer(null);
 				fillVisible = fillCollapsing = false;
 				fillCollapseStart = fillLastTime = 0;
@@ -3167,19 +3180,19 @@
 			thumb.dataset.grabCursor = "";
 			bar.append(thumb);
 			document.body.append(bar);
-			let startY = 0, startTop = 0;
+			let startY = 0, startTop = 0, dragScale = 1;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
 				if (!beginVirtualDrag(thumb, event)) return;
 				startY = event.clientY;
-				startTop = scrollMetrics(target).top;
+				const { top, size, total } = scrollMetrics(target);
+				startTop = top;
+				dragScale = Math.max(1, total - size) / Math.max(1, bar.clientHeight - thumb.clientHeight);
 			});
 			thumb.addEventListener("lostpointercapture", (event) => finishVirtualDrag(thumb, event.pointerId));
 			thumb.addEventListener("pointermove", (event) => {
 				if (!thumb.hasPointerCapture(event.pointerId)) return;
-				const { size, total } = scrollMetrics(target);
-				const track = bar.clientHeight, thumbH = thumb.clientHeight;
-				setScroll(target, startTop + (event.clientY - startY) * Math.max(1, total - size) / Math.max(1, track - thumbH));
+				setScroll(target, startTop + (event.clientY - startY) * dragScale);
 				scheduleVirtualBars();
 			});
 			bar.addEventListener("pointerdown", (event) => {
@@ -3202,18 +3215,18 @@
 			thumb.dataset.grabCursor = "";
 			bar.append(thumb);
 			document.body.append(bar);
-			let startX = 0, startLeft = 0;
+			let startX = 0, startLeft = 0, dragScale = 1;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
 				if (!beginVirtualDrag(thumb, event)) return;
 				startX = event.clientX;
 				startLeft = target.scrollLeft;
+				dragScale = Math.max(1, target.scrollWidth - target.clientWidth) / Math.max(1, bar.clientWidth - thumb.clientWidth);
 			});
 			thumb.addEventListener("lostpointercapture", (event) => finishVirtualDrag(thumb, event.pointerId));
 			thumb.addEventListener("pointermove", (event) => {
 				if (!thumb.hasPointerCapture(event.pointerId)) return;
-				const size = target.clientWidth, total = target.scrollWidth, track = bar.clientWidth, thumbW = thumb.clientWidth;
-				target.scrollLeft = startLeft + (event.clientX - startX) * Math.max(1, total - size) / Math.max(1, track - thumbW);
+				target.scrollLeft = startLeft + (event.clientX - startX) * dragScale;
 				scheduleVirtualBars();
 			});
 			bar.addEventListener("pointerdown", (event) => {
@@ -3294,11 +3307,7 @@
 				subtree: true,
 				childList: true,
 				attributes: true,
-				attributeFilter: [
-					"class",
-					"hidden",
-					"style"
-				]
+				attributeFilter: ["class", "hidden"]
 			});
 			new ResizeObserver(() => {
 				scheduleVirtualBars();

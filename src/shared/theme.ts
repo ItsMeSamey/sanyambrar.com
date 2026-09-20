@@ -1349,6 +1349,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     // and keeps non-zero endpoint velocity so the last few pixels never crawl.
     const fillCollapseCurve = (t: number) => t - Math.sin(Math.PI * 2 * t) * .1;
     let geometryLink: LinkElement | null = null, geometryRects: DOMRect[] = [], geometryBounds: DOMRect | null = null;
+    let geometryRadiusX = 0, geometryRadiusY = 0;
     const subtractRect = (rect: FillRect, hole: FillRect): FillRect[] => {
       const left = Math.max(rect.left, hole.left), top = Math.max(rect.top, hole.top);
       const right = Math.min(rect.right, hole.right), bottom = Math.min(rect.bottom, hole.bottom);
@@ -1399,6 +1400,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       geometryLink = link;
       geometryRects = link ? [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0) : [];
       geometryBounds = link ? link.getBoundingClientRect() : null;
+      geometryRadiusX = geometryRadiusY = 0;
+      if (link && geometryBounds) {
+        const style = getComputedStyle(link);
+        const radii = [
+          cornerRadius(style.borderTopLeftRadius, geometryBounds.width, geometryBounds.height),
+          cornerRadius(style.borderTopRightRadius, geometryBounds.width, geometryBounds.height),
+          cornerRadius(style.borderBottomRightRadius, geometryBounds.width, geometryBounds.height),
+          cornerRadius(style.borderBottomLeftRadius, geometryBounds.width, geometryBounds.height),
+        ];
+        geometryRadiusX = Math.max(...radii.map(radius => radius.x));
+        geometryRadiusY = Math.max(...radii.map(radius => radius.y));
+      }
     };
     const linkRect = (link: LinkElement, force = false) => {
       if (force || geometryLink !== link || !geometryBounds) refreshLinkGeometry(link);
@@ -1418,17 +1431,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       wantedFillH = Math.max(fillDot, rect.height - insetY * 2);
       wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
       wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
-      const style = getComputedStyle(fillTarget);
-      const radii = [
-        cornerRadius(style.borderTopLeftRadius, rect.width, rect.height),
-        cornerRadius(style.borderTopRightRadius, rect.width, rect.height),
-        cornerRadius(style.borderBottomRightRadius, rect.width, rect.height),
-        cornerRadius(style.borderBottomLeftRadius, rect.width, rect.height),
-      ];
-      const sourceRadiusX = Math.max(...radii.map(radius => radius.x));
-      const sourceRadiusY = Math.max(...radii.map(radius => radius.y));
-      wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, sourceRadiusX - insetX));
-      wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, sourceRadiusY - insetY));
+      wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, geometryRadiusX - insetX));
+      wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, geometryRadiusY - insetY));
     };
     const renderFill = (time: number) => {
       fillFrame = 0;
@@ -1477,7 +1481,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const ensureFillFrame = () => { if (!fillFrame) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
     const hideFillImmediate = () => {
       fillTarget = null;
-      geometryLink = null; geometryRects = []; geometryBounds = null;
+      geometryLink = null; geometryRects = []; geometryBounds = null; geometryRadiusX = geometryRadiusY = 0;
       setFillLayer(null);
       fillVisible = fillCollapsing = false; fillCollapseStart = fillLastTime = 0;
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
@@ -2048,13 +2052,19 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (virtualBars.has(target)) return;
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-vscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-vscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
-    let startY = 0, startTop = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); if (!beginVirtualDrag(thumb, event)) return; startY = event.clientY; startTop = scrollMetrics(target).top; });
+    let startY = 0, startTop = 0, dragScale = 1;
+    thumb.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      if (!beginVirtualDrag(thumb, event)) return;
+      startY = event.clientY;
+      const { top, size, total } = scrollMetrics(target);
+      startTop = top;
+      dragScale = Math.max(1, total - size) / Math.max(1, bar.clientHeight - thumb.clientHeight);
+    });
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
-      const { size, total } = scrollMetrics(target); const track = bar.clientHeight, thumbH = thumb.clientHeight;
-      setScroll(target, startTop + (event.clientY - startY) * Math.max(1, total - size) / Math.max(1, track - thumbH)); scheduleVirtualBars();
+      setScroll(target, startTop + (event.clientY - startY) * dragScale); scheduleVirtualBars();
     });
     bar.addEventListener("pointerdown", (event) => {
       if (event.target === thumb) return;
@@ -2068,13 +2078,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (virtualXBars.has(target)) return;
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-hscroll";
     const thumb = document.createElement("div"); thumb.className = "samey-hscroll-thumb"; thumb.dataset.grabCursor = ""; bar.append(thumb); document.body.append(bar);
-    let startX = 0, startLeft = 0;
-    thumb.addEventListener("pointerdown", (event) => { event.preventDefault(); if (!beginVirtualDrag(thumb, event)) return; startX = event.clientX; startLeft = target.scrollLeft; });
+    let startX = 0, startLeft = 0, dragScale = 1;
+    thumb.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      if (!beginVirtualDrag(thumb, event)) return;
+      startX = event.clientX;
+      startLeft = target.scrollLeft;
+      dragScale = Math.max(1, target.scrollWidth - target.clientWidth) / Math.max(1, bar.clientWidth - thumb.clientWidth);
+    });
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
-      const size = target.clientWidth, total = target.scrollWidth, track = bar.clientWidth, thumbW = thumb.clientWidth;
-      target.scrollLeft = startLeft + (event.clientX - startX) * Math.max(1, total - size) / Math.max(1, track - thumbW); scheduleVirtualBars();
+      target.scrollLeft = startLeft + (event.clientX - startX) * dragScale; scheduleVirtualBars();
     });
     bar.addEventListener("pointerdown", (event) => {
       if (event.target === thumb) return;
@@ -2132,7 +2147,11 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         for (const node of record.addedNodes) targets.push(node instanceof Element ? node : node.parentElement);
       }
       scheduleTargets(targets);
-    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "hidden", "style"] });
+    // Inline style is a high-frequency animation/drag channel. Observing it here
+    // made every transform/left/top write schedule scrollbar discovery and layout
+    // reads across the changed subtree. Class/hidden changes are enough for
+    // eligibility changes; scroll/resize handle scrollbar geometry itself.
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "hidden"] });
     new ResizeObserver(() => { scheduleVirtualBars(); scheduleTargets([document.body]); }).observe(document.documentElement);
     addEventListener("resize", () => { scheduleVirtualBars(); scheduleTargets([document.body]); });
     addEventListener("scroll", scheduleVirtualBars, true);
