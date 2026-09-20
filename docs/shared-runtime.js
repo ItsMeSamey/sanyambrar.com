@@ -2792,6 +2792,23 @@
 			});
 		};
 		const virtualBars = /* @__PURE__ */ new Map();
+		let virtualDrag = null;
+		const cancelVirtualDrag = () => {
+			const current = virtualDrag;
+			virtualDrag = null;
+			if (current?.thumb.hasPointerCapture(current.pointerId)) current.thumb.releasePointerCapture(current.pointerId);
+		};
+		const beginVirtualDrag = (thumb, event) => {
+			cancelVirtualDrag();
+			thumb.setPointerCapture(event.pointerId);
+			virtualDrag = {
+				thumb,
+				pointerId: event.pointerId
+			};
+		};
+		const finishVirtualDrag = (thumb, pointerId) => {
+			if (virtualDrag?.thumb === thumb && virtualDrag.pointerId === pointerId) virtualDrag = null;
+		};
 		let virtualRaf = 0;
 		const scrollMetrics = (target) => target === document.scrollingElement ? {
 			top: scrollY,
@@ -2868,10 +2885,11 @@
 			let startY = 0, startTop = 0;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
-				thumb.setPointerCapture(event.pointerId);
+				beginVirtualDrag(thumb, event);
 				startY = event.clientY;
 				startTop = scrollMetrics(target).top;
 			});
+			thumb.addEventListener("lostpointercapture", (event) => finishVirtualDrag(thumb, event.pointerId));
 			thumb.addEventListener("pointermove", (event) => {
 				if (!thumb.hasPointerCapture(event.pointerId)) return;
 				const { size, total } = scrollMetrics(target);
@@ -2902,10 +2920,11 @@
 			let startX = 0, startLeft = 0;
 			thumb.addEventListener("pointerdown", (event) => {
 				event.preventDefault();
-				thumb.setPointerCapture(event.pointerId);
+				beginVirtualDrag(thumb, event);
 				startX = event.clientX;
 				startLeft = target.scrollLeft;
 			});
+			thumb.addEventListener("lostpointercapture", (event) => finishVirtualDrag(thumb, event.pointerId));
 			thumb.addEventListener("pointermove", (event) => {
 				if (!thumb.hasPointerCapture(event.pointerId)) return;
 				const size = target.clientWidth, total = target.scrollWidth, track = bar.clientWidth, thumbW = thumb.clientWidth;
@@ -2962,6 +2981,8 @@
 		};
 		const mountVirtualScrollbars = () => {
 			scanVirtualScrollers();
+			addEventListener("blur", cancelVirtualDrag);
+			addEventListener("samey-pageleave", cancelVirtualDrag);
 			let scanRaf = 0;
 			const pending = /* @__PURE__ */ new Set();
 			const scheduleTargets = (targets) => {
