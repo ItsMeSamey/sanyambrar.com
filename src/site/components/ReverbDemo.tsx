@@ -74,7 +74,7 @@ function installResponsivePhone(host: HTMLDivElement) {
 
 function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: HTMLButtonElement) {
   const token = `reverb-${Math.random().toString(36).slice(2)}`;
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let active = false;
   let previousBodyOverflow = '';
   let previousHtmlOverflow = '';
@@ -180,7 +180,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       releaseBackground = () => {};
       requestAnimationFrame(() => button.isConnected && button.focus({ preventScroll: true }));
     }
-    animateFrame(frame, before, reduceMotion);
+    animateFrame(frame, before, reducedMotion());
   };
 
   const enterFullscreen = () => {

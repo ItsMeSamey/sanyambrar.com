@@ -4,14 +4,11 @@ const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() =>
 type Direction = 'forward' | 'back';
 type Phase = 'in' | 'out';
 
-/** Every routed and local view deconstructs into rules, then rebuilds before content. */
+/** Every routed and local view deconstructs/rebuilds through its visible rules only. */
 const CONSTRUCTED_TRANSITION = {
   line: 190,
-  content: 150,
-  groupGap: 90,
   stagger: 3,
   maxStagger: 70,
-  offset: 5,
   enterEasing: 'cubic-bezier(.16,1,.3,1)',
   leaveEasing: 'cubic-bezier(.4,0,1,1)',
 } as const;
@@ -27,23 +24,6 @@ const CONSTRUCTION_LINE_SELECTOR = [
   '.wordle-mode-card', '.stats-section', '.stats-history-row', '.active-game-card', '.samey-dialog',
   '.chain-mode-card', '.chain-stats-grid > *', '.chain-replay-stage', '.chain-replay-controls', '.chain-result',
   '.game-settings-popover', '.game-settings-actions', '.keybr-segmented', '.keybr-segmented-item',
-].join(',');
-
-const CONSTRUCTION_CONTENT_SELECTOR = [
-  'h1', 'h2', 'h3', 'p', 'figcaption', 'legend', 'label', 'dt', 'dd', 'li', 'time', 'output',
-  'button', 'a', 'input', 'select', 'textarea', 'canvas', '[role="status"]', '[role="grid"]',
-  '.site-topbar-start > *', '.site-topbar-context > *', '.site-topbar-nav > *',
-  '.intro-meta > *', '.intro-links > *', '.section-head > *', '.card-top > *', '.card-copy',
-  '.compact-row > *', '.project-head > *', '.project > p', '.home-tool-index', '.home-tool-top > *',
-  '.home-tool-desc', '.home-writing-link > *', '.home-writing-kicker', '.home-writing-detail time',
-  '.home-writing-detail h2', '.home-writing-dek', '.home-writing-read', '.home-writing-summary', '.home-writing-detail li',
-  '.page-intro > *', '.project-detail > .eyebrow',
-  '.project-detail > h1', '.project-source-link', '.fact-strip > *', '.project-description > *',
-  '.blog-index-eyebrow', '.blog-index-intro h1', '.blog-index-intro p', '.blog-index-link > *',
-  '.blog-detail-kicker', '.blog-detail-date', '.blog-index-detail h2', '.blog-detail-dek',
-  '.blog-detail-summary', '.blog-detail-points li', '.blog-detail-footer > *',
-  '.chain-mode-eyebrow', '.chain-mode-spec', '.chain-turn', '.chain-stats-grid > *', '.chain-stat-row',
-  '.game-settings-section-title', '.game-settings-slider-head', '.keybr-segmented-item',
 ].join(',');
 
 const stagger = (index: number) => Math.min(index * CONSTRUCTED_TRANSITION.stagger, CONSTRUCTED_TRANSITION.maxStagger);
@@ -121,53 +101,16 @@ function animateConstructionLines(layer: HTMLElement, phase: Phase, direction: D
   });
 }
 
-function contentTargets(root: HTMLElement) {
-  const candidates = [...root.querySelectorAll<HTMLElement>(CONSTRUCTION_CONTENT_SELECTOR)]
-    .filter(element => inViewport(element.getBoundingClientRect()));
-  const selected = new Set(candidates);
-  return candidates.filter(element => {
-    const interactiveAncestor = element.parentElement?.closest<HTMLElement>('button,a');
-    return interactiveAncestor == null || !selected.has(interactiveAncestor);
-  });
-}
-
-function animateConstructionContent(root: HTMLElement, phase: Phase, direction: Direction) {
-  const entering = phase === 'in';
-  const sign = direction === 'forward' ? 1 : -1;
-  return contentTargets(root).map((element, index) => {
-    const baseTransform = getComputedStyle(element).transform;
-    const baseline = baseTransform === 'none' ? 'none' : baseTransform;
-    const shifted = `${baseTransform === 'none' ? '' : `${baseTransform} `}translate3d(0,${(entering ? sign : -sign) * CONSTRUCTED_TRANSITION.offset}px,0)`;
-    return element.animate(
-      entering
-        ? [{ transform: shifted }, { transform: baseline }]
-        : [{ transform: baseline }, { transform: shifted }],
-      {
-        duration: CONSTRUCTED_TRANSITION.content,
-        delay: (entering ? CONSTRUCTED_TRANSITION.groupGap : 0) + stagger(index),
-        easing: entering ? CONSTRUCTED_TRANSITION.enterEasing : CONSTRUCTED_TRANSITION.leaveEasing,
-        fill: 'both',
-      },
-    );
-  });
-}
-
 async function animateConstructionExit(root: HTMLElement, direction: Direction) {
   const layer = makeConstructionLayer(root);
-  const animations = [
-    ...animateConstructionLines(layer, 'out', direction),
-    ...animateConstructionContent(root, 'out', direction),
-  ];
+  const animations = animateConstructionLines(layer, 'out', direction);
   await waitAnimations(animations);
   return { layer, animations };
 }
 
 async function animateConstructionEntrance(root: HTMLElement, direction: Direction) {
   const layer = makeConstructionLayer(root);
-  const animations = [
-    ...animateConstructionLines(layer, 'in', direction),
-    ...animateConstructionContent(root, 'in', direction),
-  ];
+  const animations = animateConstructionLines(layer, 'in', direction);
   await waitAnimations(animations);
   for (const animation of animations) animation.cancel();
   layer.remove();
