@@ -529,7 +529,7 @@ test('Reverb Range wheel marks only native over-limit components', async ({ page
   await expect(colons.nth(1)).toHaveClass(/over-limit/);
 });
 
-test('Reverb Range wheel scrolling owns the native snap interval', async ({ page }, info) => {
+test('Reverb Range stable wheel scroll commits immediately and accepts consecutive ticks', async ({ page }, info) => {
   await visitReverb(page, info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
   const blob = host.locator('#blobControl');
@@ -539,15 +539,17 @@ test('Reverb Range wheel scrolling owns the native snap interval', async ({ page
 
   const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
   const exportButton = host.locator('#rangeExport');
-  const before = await wheel.getAttribute('aria-valuetext');
+  const before = Number(await wheel.getAttribute('aria-valuenow'));
   const box = await wheel.boundingBox();
   if (!box) throw new Error('Range duration wheel has no geometry');
   await page.mouse.move(box.x + box.width * 0.68, box.y + box.height * 0.5);
-  await page.mouse.wheel(0, -120);
 
-  await expect(exportButton).toBeDisabled();
-  await expect(wheel).toHaveAttribute('aria-valuetext', before ?? '');
-  await page.waitForTimeout(180);
+  await page.mouse.wheel(0, -120);
   await expect(exportButton).toBeEnabled();
-  await expect(wheel).not.toHaveAttribute('aria-valuetext', before ?? '');
+  await expect(wheel).not.toHaveAttribute('data-editing', '');
+  expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeCloseTo(before - 1, 1);
+
+  await page.mouse.wheel(0, -120);
+  await expect(exportButton).toBeEnabled();
+  expect(Number(await wheel.getAttribute('aria-valuenow'))).toBeCloseTo(before - 2, 1);
 });
