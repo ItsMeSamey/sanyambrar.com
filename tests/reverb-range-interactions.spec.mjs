@@ -1018,7 +1018,7 @@ test('Reverb Range wheel renders fractional cylinder motion during drag', async 
 
   await page.mouse.up();
   await page.waitForTimeout(180);
-  await expect(wheel).toHaveAttribute('aria-valuenow', '900');
+  await expect(wheel).toHaveAttribute('aria-valuenow', '840');
   await expect(minuteCurrent).toHaveCSS('top', '79.25px');
 });
 
@@ -1049,7 +1049,7 @@ test('Reverb Range profile wheel renders fractional cylinder motion during drag'
 
   await page.mouse.up();
   await page.waitForTimeout(180);
-  await expect(wheel).toHaveAttribute('aria-valuetext', / 5x$/);
+  await expect(wheel).toHaveAttribute('aria-valuetext', / 1x$/);
   await expect(profileCurrent).toHaveCSS('top', '79.25px');
 });
 
@@ -1149,4 +1149,118 @@ test('Reverb Range wheel scroll interrupts an in-flight snap', async ({ page }, 
   await expect(exportButton).toBeEnabled();
   await expect(wheel).toHaveAttribute('aria-valuenow', '840');
   await expect(end).toHaveText('14:00.0');
+});
+
+test('Reverb Range pointer press interrupts an in-flight snap from its live position', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  const exportButton = host.locator('#rangeExport');
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
+
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.39;
+  const y = box.y + box.height / 2;
+  const rowPx = box.height * (56 / 160);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y - rowPx * 0.8, { steps: 4 });
+  await page.mouse.up();
+  await expect(exportButton).toBeDisabled();
+
+  await page.waitForTimeout(45);
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(exportButton).toBeDisabled();
+  await page.mouse.up();
+  await page.waitForTimeout(180);
+
+  await expect(exportButton).toBeEnabled();
+  await expect(wheel).toHaveAttribute('aria-valuenow', '900');
+  await expect(end).toHaveText('15:00.0');
+});
+
+test('Reverb Range time pills floor tenths like the native formatter', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  await start.fill('0');
+  await page.keyboard.press('Enter');
+  await end.fill('0:12.56');
+  await page.keyboard.press('Enter');
+
+  await expect(end).toHaveText('0:12.5');
+  await expect(wheel).toHaveAttribute('aria-valuenow', '12.6');
+});
+
+test('Reverb Range half-row snaps use native ties-to-even row rounding', async ({ page }, info) => {
+  await visitReverb(page, info);
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  const blob = host.locator('#blobControl');
+  if (await blob.getAttribute('aria-label') === 'Tap to pause capture') await blob.click();
+  await host.locator('#openRange').click();
+
+  const start = host.getByRole('textbox', { name: 'Start time' });
+  const end = host.getByRole('textbox', { name: 'End time' });
+  const wheel = host.getByRole('spinbutton', { name: 'Range duration' });
+  await start.fill('0:00.0');
+  await page.keyboard.press('Enter');
+  const box = await wheel.boundingBox();
+  if (!box) throw new Error('Range duration wheel has no geometry');
+  const x = box.x + box.width * 0.39;
+  const y = box.y + box.height / 2;
+  const halfRow = box.height * (56 / 160) * 0.5;
+
+  await wheel.evaluate(element => {
+    element.setPointerCapture = () => {};
+    element.releasePointerCapture = () => {};
+    element.hasPointerCapture = () => false;
+  });
+  const dragHalfRowUp = async pointerId => {
+    await wheel.evaluate((element, payload) => {
+      const send = (type, clientY, buttons) => element.dispatchEvent(new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: payload.pointerId,
+        pointerType: 'touch',
+        isPrimary: true,
+        button: 0,
+        buttons,
+        clientX: payload.x,
+        clientY,
+      }));
+      send('pointerdown', payload.y, 1);
+      send('pointermove', payload.y - payload.halfRow, 1);
+      send('pointerup', payload.y - payload.halfRow, 0);
+    }, { pointerId, x, y, halfRow });
+    await page.waitForTimeout(180);
+  };
+
+  await end.fill('14:00.0');
+  await page.keyboard.press('Enter');
+  await dragHalfRowUp(71);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '840');
+  await expect(end).toHaveText('14:00.0');
+
+  await end.fill('15:00.0');
+  await page.keyboard.press('Enter');
+  await dragHalfRowUp(72);
+  await expect(wheel).toHaveAttribute('aria-valuenow', '960');
+  await expect(end).toHaveText('16:00.0');
 });
