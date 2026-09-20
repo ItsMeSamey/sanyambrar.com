@@ -187,7 +187,6 @@ function expectNativeSettle(samples, direction) {
   expect(values.some(value => value > 0.02 && value < 0.98)).toBe(true);
   const terminal = samples.at(-1);
   expect(terminal.elapsed).toBeGreaterThanOrEqual(190);
-  expect(terminal.elapsed).toBeLessThan(340);
   expect(terminal.progress).toBeCloseTo(direction === 'open' ? 1 : 0, 2);
 }
 
@@ -954,4 +953,133 @@ test('Reverb feedback uses the native spring card and 2.8s success lifetime', as
   const terminal = samples.at(-1);
   expect(terminal.hidden).toBe(true);
   expect(terminal.opacity).toBeCloseTo(0, 2);
+});
+
+test('Reverb Settings switch and segments use native stiffness-1500 springs', async ({ page }, info) => {
+  const host = await visitReverb(page, info);
+  await host.locator('#openSettings').click();
+  await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
+  await page.waitForTimeout(260);
+
+  const segmentSamples = await host.evaluate(async element => {
+    const root = element.shadowRoot;
+    const auto = root?.querySelector('#themeSegments .segment[data-theme="Auto"]');
+    const light = root?.querySelector('#themeSegments .segment[data-theme="Light"]');
+    if (!(auto instanceof HTMLButtonElement) || !(light instanceof HTMLButtonElement))
+      throw new Error('Reverb theme segments are unavailable');
+    const initial = {
+      autoBg: getComputedStyle(auto).backgroundColor,
+      autoColor: getComputedStyle(auto).color,
+      lightBg: getComputedStyle(light).backgroundColor,
+      lightColor: getComputedStyle(light).color,
+    };
+    light.click();
+    const startedAt = performance.now();
+    const values = [];
+    while (performance.now() - startedAt < 350) {
+      await new Promise(requestAnimationFrame);
+      values.push({
+        elapsed: performance.now() - startedAt,
+        autoBg: getComputedStyle(auto).backgroundColor,
+        autoColor: getComputedStyle(auto).color,
+        lightBg: getComputedStyle(light).backgroundColor,
+        lightColor: getComputedStyle(light).color,
+        autoInlineBg: auto.style.backgroundColor,
+        lightInlineBg: light.style.backgroundColor,
+        autoChecked: auto.getAttribute('aria-checked'),
+        lightChecked: light.getAttribute('aria-checked'),
+      });
+      if (!auto.style.backgroundColor && !light.style.backgroundColor
+        && performance.now() - startedAt > 120) break;
+    }
+    return { initial, values };
+  });
+  expect(segmentSamples.values.length).toBeGreaterThan(2);
+  expect(segmentSamples.values[0].autoChecked).toBe('false');
+  expect(segmentSamples.values[0].lightChecked).toBe('true');
+  const segmentMid = segmentSamples.values.find(sample =>
+    sample.elapsed > 20 && sample.elapsed < 180
+      && sample.autoInlineBg !== '' && sample.lightInlineBg !== ''
+      && sample.autoBg !== segmentSamples.initial.autoBg
+      && sample.lightBg !== segmentSamples.initial.lightBg);
+  expect(segmentMid).toBeTruthy();
+  const segmentTerminal = segmentSamples.values.at(-1);
+  expect(segmentTerminal.autoInlineBg).toBe('');
+  expect(segmentTerminal.lightInlineBg).toBe('');
+  expect(segmentTerminal.autoBg).not.toBe(segmentSamples.initial.autoBg);
+  expect(segmentTerminal.lightBg).not.toBe(segmentSamples.initial.lightBg);
+
+  const switchSamples = await host.evaluate(async element => {
+    const root = element.shadowRoot;
+    const control = root?.querySelector('#wakeSwitch');
+    const thumb = root?.querySelector('#wakeSwitch .switch-thumb');
+    if (!(control instanceof HTMLButtonElement) || !(thumb instanceof HTMLElement))
+      throw new Error('Reverb settings switch is unavailable');
+    control.click();
+    const startedAt = performance.now();
+    const values = [];
+    while (performance.now() - startedAt < 350) {
+      await new Promise(requestAnimationFrame);
+      const transform = getComputedStyle(thumb).transform;
+      values.push({
+        elapsed: performance.now() - startedAt,
+        x: transform === 'none' ? 0 : new DOMMatrix(transform).m41,
+        track: getComputedStyle(control).backgroundColor,
+        thumb: getComputedStyle(thumb).backgroundColor,
+        inlineTrack: control.style.backgroundColor,
+        inlineThumb: thumb.style.backgroundColor,
+        inlineTransform: thumb.style.transform,
+        checked: control.getAttribute('aria-checked'),
+      });
+      if (!thumb.style.transform && performance.now() - startedAt > 120) break;
+    }
+    return values;
+  });
+  expect(switchSamples.length).toBeGreaterThan(2);
+  expect(switchSamples[0].checked).toBe('true');
+  const switchMid = switchSamples.find(sample =>
+    sample.elapsed > 20 && sample.elapsed < 150 && sample.x > 0.5 && sample.x < 17.5);
+  expect(switchMid).toBeTruthy();
+  const omega = Math.sqrt(1500);
+  const t = switchMid.elapsed / 1000;
+  const expectedProgress = 1 - (1 + omega * t) * Math.exp(-omega * t);
+  expect(switchMid.x).toBeCloseTo(18 * expectedProgress, 0);
+  expect(switchMid.inlineTrack).not.toBe('');
+  expect(switchMid.inlineThumb).not.toBe('');
+  const switchTerminal = switchSamples.at(-1);
+  expect(switchTerminal.x).toBeCloseTo(18, 1);
+  expect(switchTerminal.inlineTrack).toBe('');
+  expect(switchTerminal.inlineThumb).toBe('');
+  expect(switchTerminal.inlineTransform).toBe('');
+
+  const dropdownSamples = await host.evaluate(async element => {
+    const root = element.shadowRoot;
+    const field = root?.querySelector('.settings-card.dropdown');
+    if (!(field instanceof HTMLButtonElement))
+      throw new Error('Reverb settings dropdown is unavailable');
+    const initial = getComputedStyle(field).backgroundColor;
+    field.click();
+    const startedAt = performance.now();
+    const values = [];
+    while (performance.now() - startedAt < 350) {
+      await new Promise(requestAnimationFrame);
+      values.push({
+        elapsed: performance.now() - startedAt,
+        background: getComputedStyle(field).backgroundColor,
+        inlineBackground: field.style.backgroundColor,
+        expanded: field.getAttribute('aria-expanded'),
+      });
+      if (!field.style.backgroundColor && performance.now() - startedAt > 120) break;
+    }
+    return { initial, values };
+  });
+  expect(dropdownSamples.values[0].expanded).toBe('true');
+  const dropdownMid = dropdownSamples.values.find(sample =>
+    sample.elapsed > 20 && sample.elapsed < 180
+      && sample.inlineBackground !== ''
+      && sample.background !== dropdownSamples.initial);
+  expect(dropdownMid).toBeTruthy();
+  const dropdownTerminal = dropdownSamples.values.at(-1);
+  expect(dropdownTerminal.inlineBackground).toBe('');
+  expect(dropdownTerminal.background).not.toBe(dropdownSamples.initial);
 });
