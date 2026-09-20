@@ -832,22 +832,29 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     divider.addEventListener('pointerdown', event => {
       if (viewMode !== 'split') return;
       divider.setPointerCapture(event.pointerId);
+      const pointerId = event.pointerId;
       const move = (pointer: PointerEvent) => {
         const rect = toolRoot.getBoundingClientRect();
         const stacked = matchMedia('(max-width:700px)').matches;
         const ratio = stacked ? (pointer.clientY - rect.top) / rect.height : (pointer.clientX - rect.left) / rect.width;
         applySplit(ratio * 100);
       };
+      let active = true;
       const up = () => {
+        if (!active) return;
+        active = false;
         divider.removeEventListener('pointermove', move);
         divider.removeEventListener('pointerup', up);
         divider.removeEventListener('pointercancel', up);
         divider.removeEventListener('lostpointercapture', up);
+        removeEventListener('blur', up);
+        if (divider.hasPointerCapture(pointerId)) divider.releasePointerCapture(pointerId);
       };
       divider.addEventListener('pointermove', move);
       divider.addEventListener('pointerup', up);
       divider.addEventListener('pointercancel', up);
       divider.addEventListener('lostpointercapture', up);
+      addEventListener('blur', up);
     });
     divider.addEventListener('keydown', event => {
       const stacked = matchMedia('(max-width:700px)').matches;
