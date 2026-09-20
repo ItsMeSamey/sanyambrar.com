@@ -6,14 +6,14 @@ type Phase = 'in' | 'out';
 
 /** Routed/local views deconstruct into visible rules, then rebuild without moving layout. */
 const CONSTRUCTED_TRANSITION = {
-  line: 210,
-  content: 125,
-  contentGap: 38,
-  stagger: 3,
-  maxStagger: 70,
-  contentStagger: 2,
-  maxContentStagger: 44,
-  contentFloor: 0.16,
+  line: 190,
+  content: 110,
+  contentGap: 18,
+  stagger: 2,
+  maxStagger: 48,
+  contentStagger: 1.5,
+  maxContentStagger: 30,
+  contentFloor: 0.72,
   maxBorderCandidates: 260,
   maxContentTargets: 96,
   enterEasing: 'cubic-bezier(.16,1,.3,1)',
@@ -92,7 +92,7 @@ function parseRadius(value: string, width: number, height: number): Radius {
   return { x: radiusComponent(x, width), y: radiusComponent(y, height) };
 }
 
-function roundedRectPath(rect: DOMRect, borderWidth: number, style: CSSStyleDeclaration) {
+function roundedRectPaths(rect: DOMRect, borderWidth: number, style: CSSStyleDeclaration) {
   const inset = borderWidth / 2;
   const x = rect.left + inset;
   const y = rect.top + inset;
@@ -115,18 +115,20 @@ function roundedRectPath(rect: DOMRect, borderWidth: number, style: CSSStyleDecl
       ? 'A' + radius.x + ',' + radius.y + ' 0 0 1 ' + endX + ',' + endY
       : 'L' + endX + ',' + endY;
   return {
-    path: [
-      'M' + (x + tl.x) + ',' + y,
-      'L' + (right - tr.x) + ',' + y,
-      arc(tr, right, y + tr.y),
-      'L' + right + ',' + (bottom - br.y),
-      arc(br, right - br.x, bottom),
-      'L' + (x + bl.x) + ',' + bottom,
-      arc(bl, x, bottom - bl.y),
-      'L' + x + ',' + (y + tl.y),
-      arc(tl, x + tl.x, y),
-      'Z',
-    ].join(''),
+    paths: {
+      top: 'M' + (x + tl.x) + ',' + y
+        + 'L' + (right - tr.x) + ',' + y
+        + arc(tr, right, y + tr.y),
+      right: 'M' + right + ',' + (y + tr.y)
+        + 'L' + right + ',' + (bottom - br.y)
+        + arc(br, right - br.x, bottom),
+      bottom: 'M' + (right - br.x) + ',' + bottom
+        + 'L' + (x + bl.x) + ',' + bottom
+        + arc(bl, x, bottom - bl.y),
+      left: 'M' + x + ',' + (bottom - bl.y)
+        + 'L' + x + ',' + (y + tl.y)
+        + arc(tl, x + tl.x, y),
+    } satisfies Record<BorderSide, string>,
     rounded: radii.some(radius => radius.x > 0 || radius.y > 0),
   };
 }
@@ -176,7 +178,7 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
     stroke.setAttribute('stroke', color);
     stroke.setAttribute('stroke-width', String(thickness));
     stroke.setAttribute('stroke-linejoin', 'round');
-    stroke.setAttribute('stroke-linecap', 'square');
+    stroke.setAttribute('stroke-linecap', 'butt');
     stroke.setAttribute('pathLength', '1');
     stroke.setAttribute('stroke-dasharray', '1');
     svg.append(stroke);
@@ -217,19 +219,22 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
     const uniformBox = visible.length === 4 && visible.every(side =>
       sides[side].color === first.color && Math.abs(sides[side].width - first.width) < 0.01);
     if (uniformBox) {
-      const rounded = roundedRectPath(rect, first.width, style);
-      const key = [
-        'box',
-        Math.round(rect.left * 2),
-        Math.round(rect.top * 2),
-        Math.round(rect.width * 2),
-        Math.round(rect.height * 2),
-        first.width,
-        first.color,
-        rounded.path,
-      ].join(':');
-      if (addStroke(key, rounded.path, first.width, first.color, rounded.rounded))
-        hide(element, visible, rounded.rounded);
+      const rounded = roundedRectPaths(rect, first.width, style);
+      for (const side of visible) {
+        const key = [
+          'box-side',
+          side,
+          Math.round(rect.left * 2),
+          Math.round(rect.top * 2),
+          Math.round(rect.width * 2),
+          Math.round(rect.height * 2),
+          first.width,
+          first.color,
+          rounded.paths[side],
+        ].join(':');
+        addStroke(key, rounded.paths[side], first.width, first.color, rounded.rounded);
+      }
+      hide(element, visible, rounded.rounded);
       continue;
     }
 
@@ -264,8 +269,8 @@ function animateConstructionLines(construction: ConstructionLayer, phase: Phase,
     const hidden = direction === 'forward' ? '1' : '-1';
     return stroke.animate(
       entering
-        ? [{ strokeDashoffset: hidden, opacity: 0.18 }, { strokeDashoffset: '0', opacity: 1 }]
-        : [{ strokeDashoffset: '0', opacity: 1 }, { strokeDashoffset: hidden, opacity: 0.18 }],
+        ? [{ strokeDashoffset: hidden, opacity: 0.42 }, { strokeDashoffset: '0', opacity: 1 }]
+        : [{ strokeDashoffset: '0', opacity: 1 }, { strokeDashoffset: hidden, opacity: 0.42 }],
       {
         duration: CONSTRUCTED_TRANSITION.line,
         delay: stagger(index),

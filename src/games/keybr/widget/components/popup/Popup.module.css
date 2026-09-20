@@ -2,10 +2,24 @@
   box-sizing: border-box;
   max-inline-size: calc(100vw - 16px);
   max-block-size: calc(100dvh - 16px);
-  overflow: auto;
+  overflow: visible;
+  border-radius: var(--site-radius, 8px);
   color: var(--Popup__color);
   background-color: var(--Popup__background-color);
+  background-clip: padding-box;
   box-shadow: var(--Popup__box-shadow);
+  isolation: isolate;
+}
+
+.root > :not(.arrow) {
+  box-sizing: border-box;
+  max-block-size: inherit;
+  border-radius: inherit;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: inherit;
+  background-clip: padding-box;
 }
 
 .arrow {

@@ -1,4 +1,5 @@
 .root {
+  box-sizing: border-box;
   display: block;
   position: absolute;
   inset-inline-start: 0;
@@ -9,13 +10,19 @@
   max-block-size: min(20rem, var(--option-list-available-block, calc(100dvh - 16px)));
   margin: 0;
   padding: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   scroll-behavior: smooth;
   overscroll-behavior: contain;
+  border: var(--separator-border);
+  border-radius: var(--site-radius, 8px);
+  background: var(--MenuItem__background-color);
+  background-clip: padding-box;
   scrollbar-color: var(--MenuItem--selected__background-color)
     var(--MenuItem__background-color);
   scrollbar-width: auto;
   box-shadow: var(--Popup__box-shadow);
+  isolation: isolate;
   cursor: pointer;
 }
 

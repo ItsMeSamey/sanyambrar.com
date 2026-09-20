@@ -23,8 +23,12 @@
 .message {
   max-inline-size: 50rem;
   padding: 1rem;
+  overflow: hidden;
+  border: var(--separator-border);
+  border-radius: var(--site-radius, 8px);
   color: var(--Popup__color);
   background-color: var(--Popup__background-color);
+  background-clip: padding-box;
   box-shadow: var(--Popup__box-shadow);
 }
 
