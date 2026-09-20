@@ -83,6 +83,11 @@ export function runReverbDemoRuntime(
   const blobTime = byId<HTMLElement>("blobTime");
   const blobSummary = byId<HTMLElement>("blobSummary");
   const toast = byId<HTMLElement>("toast");
+  const captureSaveStatus = byId<HTMLElement>("captureSaveStatus");
+  const captureSaveTitle = byId<HTMLElement>("captureSaveTitle");
+  const captureSaveSubtitle = byId<HTMLElement>("captureSaveSubtitle");
+  const captureSaveTrailing = byId<HTMLElement>("captureSaveTrailing");
+  const captureSaveCancel = byId<HTMLButtonElement>("captureSaveCancel");
   const dropdownMenu = byId<HTMLElement>("dropdownMenu");
   const screens = [...document.querySelectorAll<HTMLElement>(".screen")];
   const homeScreen = byId<HTMLElement>("homeScreen");
@@ -126,6 +131,9 @@ export function runReverbDemoRuntime(
   let toastTimer = 0;
   let rangeExportPending = false;
   let rangeExportGeneration = 0;
+  let captureSaveMotionEpoch = 0;
+  let captureExportCompletionTimer = 0;
+  let captureSaveDismissTimer = 0;
   let settingsDirty = false;
   let retentionMode: RetentionMode = "time";
   let settingsInitial: SettingsSnapshot;
@@ -197,6 +205,99 @@ export function runReverbDemoRuntime(
     toast.textContent = message;
     toast.classList.add("show");
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1200);
+  }
+  function criticalSpringRemaining(elapsedMs: number, stiffness = 400): number {
+    const seconds = Math.max(0, elapsedMs) / 1000;
+    const omega = Math.sqrt(stiffness);
+    return (1 + omega * seconds) * Math.exp(-omega * seconds);
+  }
+  function animateCaptureSaveVisibility(entering: boolean): void {
+    const epoch = ++captureSaveMotionEpoch;
+    const startedAt = performance.now();
+    const height = Math.max(1, captureSaveStatus.getBoundingClientRect().height || 68);
+    const startOffset = entering ? height * 0.5 : 0;
+    const targetOffset = entering ? 0 : height;
+    const frame = (now: number) => {
+      if (epoch !== captureSaveMotionEpoch) return;
+      const remaining = criticalSpringRemaining(now - startedAt);
+      const progress = 1 - remaining;
+      const y = startOffset + (targetOffset - startOffset) * progress;
+      captureSaveStatus.style.transform = `translateY(${y}px)`;
+      captureSaveStatus.style.opacity = String(entering ? progress : remaining);
+      if (remaining > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      captureSaveStatus.style.transform = entering ? "translateY(0)" : `translateY(${height}px)`;
+      captureSaveStatus.style.opacity = entering ? "1" : "0";
+      if (!entering) {
+        captureSaveStatus.hidden = true;
+        captureSaveStatus.classList.remove("visible", "saving", "saved");
+        captureSaveStatus.setAttribute("aria-hidden", "true");
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+  function formatSavedRecordingDuration(seconds: number): string {
+    const whole = Math.max(0, Math.round(seconds));
+    const hours = Math.floor(whole / 3600);
+    const minutes = Math.floor((whole % 3600) / 60);
+    const secs = whole % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m ${secs}s`;
+  }
+  function formatSavedRecordingTime(date = new Date()): string {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase();
+  }
+  function showCaptureSavingStatus(): void {
+    clearTimeout(captureSaveDismissTimer);
+    const wasHidden = captureSaveStatus.hidden;
+    captureSaveStatus.hidden = false;
+    captureSaveStatus.classList.add("visible", "saving");
+    captureSaveStatus.classList.remove("saved");
+    captureSaveStatus.setAttribute("aria-hidden", "false");
+    captureSaveTitle.textContent = "Saving";
+    captureSaveSubtitle.textContent = "Reverb";
+    captureSaveTrailing.textContent = "";
+    captureSaveCancel.hidden = false;
+    captureSaveCancel.disabled = false;
+    if (wasHidden) {
+      captureSaveStatus.style.opacity = "0";
+      captureSaveStatus.style.transform = "translateY(34px)";
+      animateCaptureSaveVisibility(true);
+    }
+  }
+  function showCaptureSavedStatus(durationSeconds: number): void {
+    captureSaveStatus.hidden = false;
+    captureSaveStatus.classList.add("visible", "saved");
+    captureSaveStatus.classList.remove("saving");
+    captureSaveStatus.setAttribute("aria-hidden", "false");
+    captureSaveTitle.textContent = `${Date.now()}.wav`;
+    captureSaveSubtitle.textContent = `${formatSavedRecordingDuration(durationSeconds)} • ${formatMiB(durationSeconds)}`;
+    captureSaveTrailing.textContent = formatSavedRecordingTime();
+    captureSaveCancel.hidden = true;
+    clearTimeout(captureSaveDismissTimer);
+    captureSaveDismissTimer = setTimeout(() => {
+      animateCaptureSaveVisibility(false);
+    }, 1500);
+  }
+  function beginCaptureExport(
+    durationSeconds: number,
+    onSaved?: () => void,
+  ): void {
+    const generation = ++rangeExportGeneration;
+    clearTimeout(captureExportCompletionTimer);
+    clearTimeout(captureSaveDismissTimer);
+    rangeExportPending = true;
+    syncBufferUi();
+    showCaptureSavingStatus();
+    captureExportCompletionTimer = setTimeout(() => {
+      if (generation !== rangeExportGeneration) return;
+      onSaved?.();
+      rangeExportPending = false;
+      syncBufferUi();
+      showCaptureSavedStatus(durationSeconds);
+    }, 1200);
   }
   function defaultScreenFocus(id: ScreenId): HTMLElement {
     switch (id) {
@@ -1887,6 +1988,22 @@ export function runReverbDemoRuntime(
     }
     syncBufferUi();
   });
+  byId<HTMLButtonElement>("exportFull").addEventListener("click", () => {
+    if (rangeExportPending) return;
+    beginCaptureExport(currentSeconds(displayedBuffer));
+  });
+  captureSaveCancel.addEventListener("click", () => {
+    if (!rangeExportPending) return;
+    const generation = ++rangeExportGeneration;
+    clearTimeout(captureExportCompletionTimer);
+    captureSaveCancel.disabled = true;
+    setTimeout(() => {
+      if (generation !== rangeExportGeneration) return;
+      rangeExportPending = false;
+      syncBufferUi();
+      animateCaptureSaveVisibility(false);
+    }, 120);
+  });
 
   blobArea.addEventListener("pointerdown", (event) => {
     if (
@@ -2003,7 +2120,6 @@ export function runReverbDemoRuntime(
       invalid.focus({ preventScroll: true });
       return;
     }
-    const exportGeneration = ++rangeExportGeneration;
     const exportedBuffer = rangeBuffer;
     const exportedSelectionSeconds = rangeSelectionSeconds();
     const exportedEndOffsetSeconds = Math.max(
@@ -2012,19 +2128,13 @@ export function runReverbDemoRuntime(
     );
     endRangeTransientOwnership();
     cancelRangeOpeningMotion();
-    rangeExportPending = true;
-    syncBufferUi();
     showScreen("homeScreen", byId<HTMLElement>("brandButton"));
-    showToast("Exporting range");
-    setTimeout(() => {
-      if (exportGeneration !== rangeExportGeneration) return;
+    beginCaptureExport(exportedSelectionSeconds, () => {
       rememberedRangeExports[exportedBuffer] = {
         selectionSeconds: exportedSelectionSeconds,
         endOffsetSeconds: exportedEndOffsetSeconds,
       };
-      rangeExportPending = false;
-      syncBufferUi();
-    }, 1200);
+    });
   });
   byId("incidentsBack").addEventListener("click", () =>
     showScreen(incidentsReturnScreen, incidentsReturnFocus),
