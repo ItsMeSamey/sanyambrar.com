@@ -3,7 +3,6 @@ import { render } from '@solidjs/web'
 import { Errored, Match, Switch, type Accessor } from 'solid-js';
 import StatsPage from './page_stats'
 
-import '../../shared/styles/game-settings.css'
 import './style.css'
 
 import { mountPageNavigation, Page, selectP, setPageRoot } from './navigation'
@@ -11,6 +10,8 @@ import Wordle from './page'
 import { Button } from '../../shared/components/Button.tsx'
 import { Toaster } from '../../shared/components/Toast.tsx'
 import { formatThrownError, renderFatalError } from '../../shared/error.ts'
+import { onSharedRuntimeReady } from '../../shared/runtimeReady.ts'
+import { afterVisualTransition } from '../../shared/afterVisualTransition.ts'
 
 function ErrorPage(error: Accessor<unknown>, reset: () => void) {
   const value = error()
@@ -38,6 +39,7 @@ function main(): void {
   const disposePageNavigation = mountPageNavigation()
   const mount = document.getElementById('wordle-app-mount')
   if (!mount) throw new Error('Wordle mount node is missing')
+  mount.replaceChildren()
 
   const disposeWordle = render(function() {
     return <>
@@ -67,9 +69,13 @@ function main(): void {
   }
 }
 
-try {
-  main()
-} catch (error) {
-  renderFatalError(document.getElementById('wordle-app-mount') ?? document.body, 'Wordle failed to start', error)
-  throw error
-}
+onSharedRuntimeReady(() => {
+  afterVisualTransition(() => {
+    try {
+      main()
+    } catch (error) {
+      renderFatalError(document.getElementById('wordle-app-mount') ?? document.body, 'Wordle failed to start', error)
+      throw error
+    }
+  })
+})

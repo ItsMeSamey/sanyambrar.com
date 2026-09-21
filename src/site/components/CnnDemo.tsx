@@ -1,7 +1,31 @@
-import '../../shared/styles/game-settings.css';
 import { createSignal, For, Show, onCleanup, onSettled } from 'solid-js';
 import { formatThrownError } from '../../shared/error.ts';
+import { afterVisualTransition } from '../../shared/afterVisualTransition.ts';
 import CnnWorker from '../workers/cnn-worker.ts?worker';
+
+let warmWorkerTask: Promise<void> | undefined;
+export function preloadCnnDemoAssets(): Promise<void> {
+  if (warmWorkerTask) return warmWorkerTask;
+  if (typeof Worker === 'undefined') return Promise.resolve();
+  warmWorkerTask = new Promise<void>(resolve => {
+    const worker = new CnnWorker();
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      worker.terminate();
+      resolve();
+    };
+    const timeout = setTimeout(done, 5000);
+    worker.addEventListener('message', event => {
+      const message = event.data as { type?: unknown };
+      if (message?.type === 'ready' || message?.type === 'error') done();
+    });
+    worker.addEventListener('error', done, { once: true });
+  });
+  return warmWorkerTask;
+}
 
 const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
@@ -58,6 +82,7 @@ export function CnnDemo() {
   let contentEpoch = 0;
   let activeRequestEpoch = 0;
   let disposed = false;
+  let cancelSetup = () => {};
 
   const [scores, setScores] = createSignal<Array<number | null>>(emptyScores());
   const [predictedClass, setPredictedClass] = createSignal<number | null>(null);
@@ -241,29 +266,32 @@ export function CnnDemo() {
   };
 
   onSettled(() => {
-    canvas.width = DRAW_SIZE;
-    canvas.height = DRAW_SIZE;
-    // The visible canvas is draw-only. Keeping willReadFrequently off lets
-    // Chromium retain its accelerated Android path; only the tiny 28x28
-    // sampling canvas needs frequent CPU reads.
-    const visibleContext = canvas.getContext('2d', { desynchronized: true });
-    if (!visibleContext) throw new Error('CNN drawing canvas is unavailable');
-    drawContext = visibleContext;
-    sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = INPUT_SIZE;
-    sampleCanvas.height = INPUT_SIZE;
-    const samplingContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
-    if (!samplingContext) throw new Error('CNN sampling canvas is unavailable');
-    sampleContext = samplingContext;
-    readThemeInk();
-    configureBrush();
-    window.addEventListener('samey-themechange', recolorForTheme);
-    window.addEventListener('blur', cancelStroke);
-    resizeObserver = new ResizeObserver(() => { canvasRect = null; });
-    resizeObserver.observe(canvas);
+    cancelSetup = afterVisualTransition(() => {
+      if (disposed || !canvas.isConnected) return;
+      canvas.width = DRAW_SIZE;
+      canvas.height = DRAW_SIZE;
+      // The visible canvas is draw-only. Keeping willReadFrequently off lets
+      // Chromium retain its accelerated Android path; only the tiny 28x28
+      // sampling canvas needs frequent CPU reads.
+      const visibleContext = canvas.getContext('2d', { desynchronized: true });
+      if (!visibleContext) throw new Error('CNN drawing canvas is unavailable');
+      drawContext = visibleContext;
+      sampleCanvas = document.createElement('canvas');
+      sampleCanvas.width = INPUT_SIZE;
+      sampleCanvas.height = INPUT_SIZE;
+      const samplingContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+      if (!samplingContext) throw new Error('CNN sampling canvas is unavailable');
+      sampleContext = samplingContext;
+      readThemeInk();
+      configureBrush();
+      window.addEventListener('samey-themechange', recolorForTheme);
+      window.addEventListener('blur', cancelStroke);
+      resizeObserver = new ResizeObserver(() => { canvasRect = null; });
+      resizeObserver.observe(canvas);
 
-    worker = new CnnWorker();
-    worker.addEventListener('message', event => {
+      worker = new CnnWorker();
+      canvas.toggleAttribute('data-cnn-runtime-ready', true);
+      worker.addEventListener('message', event => {
       if (disposed) return;
       const message: unknown = event.data;
       if (!isWorkerMessage(message)) {
@@ -307,8 +335,8 @@ export function CnnDemo() {
       setWorkerFailure(message.detail);
       console.error('CNN worker failed', message.detail);
       if (inferenceDirty && inkPresent) queueInference();
-    });
-    worker.addEventListener('error', error => {
+      });
+      worker.addEventListener('error', error => {
       if (disposed) return;
       workerReady = false;
       inferenceBusy = false;
@@ -318,19 +346,24 @@ export function CnnDemo() {
       const failure: unknown = rawError ?? new Error(`CNN worker crashed: ${error.message || 'unknown worker error'}`);
       const detail = formatThrownError(failure);
       setWorkerFailure(detail);
-      console.error('CNN worker crashed', detail);
+        console.error('CNN worker crashed', detail);
+      });
     });
   });
 
   onCleanup(() => {
     disposed = true;
+    cancelSetup();
+    canvas?.removeAttribute('data-cnn-runtime-ready');
     contentEpoch++;
     inferenceDirty = false;
-    if (inferenceFrame) cancelAnimationFrame(inferenceFrame);
+    if (inferenceFrame && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(inferenceFrame);
     resizeObserver?.disconnect();
     worker?.terminate();
-    window.removeEventListener('samey-themechange', recolorForTheme);
-    window.removeEventListener('blur', cancelStroke);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('samey-themechange', recolorForTheme);
+      window.removeEventListener('blur', cancelStroke);
+    }
   });
 
   return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">

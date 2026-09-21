@@ -42,6 +42,9 @@ test('Reverb fullscreen exit is single-flight and route history stays clean', as
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
   const frame = page.locator('.reverb-demo-frame');
   await expect(host).toBeVisible();
+  await expect(host).toHaveAttribute('data-reverb-runtime-ready', '');
+  const routeNavIndex = (await fullscreenState(page)).state?.__sameyNavIndex;
+  expect(Number.isSafeInteger(routeNavIndex)).toBe(true);
 
   const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
   await fullscreen.click();
@@ -55,7 +58,7 @@ test('Reverb fullscreen exit is single-flight and route history stays clean', as
   await expect.poll(() => new URL(page.url()).pathname).toBe('/projects/reverb/');
   await expect.poll(() => fullscreenState(page)).toMatchObject({
     path: '/projects/reverb/',
-    state: { __sameyNavIndex: 1 },
+    state: { __sameyNavIndex: routeNavIndex },
     bodyOverflow: '',
     htmlOverflow: '',
     fullscreen: false,
@@ -97,7 +100,7 @@ test('Reverb fullscreen exit is single-flight and route history stays clean', as
   await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
   await expect.poll(() => fullscreenState(page)).toMatchObject({
     path: '/work/',
-    state: { __sameyNavIndex: 2 },
+    state: { __sameyNavIndex: routeNavIndex + 1 },
     bodyOverflow: '',
     htmlOverflow: '',
     fullscreen: false,

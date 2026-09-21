@@ -2,7 +2,7 @@
 <html lang="en" dir="ltr" data-site-kind="keybr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>keybr local</title>
   <script>
@@ -23,7 +23,27 @@
   </script>
 </head>
 <body>
-  <div id="app" data-samey-native-scrollbars></div>
+  <div id="app" data-samey-native-scrollbars>
+    <div id="keybr-boot-shell" class="keybr-boot-shell" aria-hidden="true">
+      <header class="site-topbar">
+        <div class="site-topbar-inner site-topbar-inner-contained">
+          <div class="site-topbar-start"><a class="brand home-brand-link" href="/" aria-label="Sanyam Brar · Home"><span class="home-brand-name">Sanyam Brar</span></a></div>
+          <div class="site-topbar-context"></div>
+          <nav class="top-nav site-topbar-nav game-topbar-nav" aria-label="Keybr"><span class="keybr-boot-nav">Statistics</span><span class="keybr-boot-nav">Settings</span></nav>
+        </div>
+      </header>
+      <main class="keybr-boot-main">
+        <section class="keybr-boot-practice">
+          <div class="keybr-boot-wordmark" aria-label="Keybr">Keybr</div>
+          <div class="keybr-boot-rule"></div>
+          <p class="keybr-boot-copy">Touch typing practice</p>
+          <div class="keybr-boot-keyboard">
+            <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
   <script type="module" src="/main.tsx"></script>
 </body>
 </html>

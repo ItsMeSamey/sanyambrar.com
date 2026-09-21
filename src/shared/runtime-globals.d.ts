@@ -14,7 +14,9 @@ declare global {
   var SameyLoadingBegin: (() => () => void) | undefined;
   var SameyLoadingBeginAfterDelay: ((delay?: number) => () => void) | undefined;
   var SameyNavigate: ((href: string, options?: NavigationOptions) => Promise<void> | void) | undefined;
+  var SameyDocumentNavigate: ((href: string, replace?: boolean) => void) | undefined;
   var SameyPreloadPage: ((href: string) => void) | undefined;
+  var SameySolidPreload: ((href: string) => boolean) | undefined;
   var SameyMountSolid: (() => void) | undefined;
   var SameySolidDispose: (() => void) | undefined;
   var SameyWordleDispose: (() => void) | undefined;

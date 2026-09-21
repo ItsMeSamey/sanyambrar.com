@@ -1,5 +1,6 @@
 import { readHistoryState } from '../../shared/history.ts';
 import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
+import { afterVisualTransition } from '../../shared/afterVisualTransition.ts';
 import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
@@ -8,6 +9,37 @@ const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
 const REVERB_PHONE_WIDTH = 411;
 const REVERB_PHONE_HEIGHT = 912;
 const REVERB_FULLSCREEN_EXIT_GUTTER = 50;
+const REVERB_NOISE_URL = new URL('../demos/reverb-noise.png', import.meta.url).href;
+
+type PreparedReverbTemplate = { styleText: string; body: DocumentFragment };
+let preparedTemplate: PreparedReverbTemplate | undefined;
+let preloadTask: Promise<void> | undefined;
+let warmNoiseImage: HTMLImageElement | undefined;
+const prepareReverbTemplate = () => {
+  if (preparedTemplate) return preparedTemplate;
+  const parsed = new DOMParser().parseFromString(demoHtml, 'text/html');
+  const body = document.createDocumentFragment();
+  for (const node of Array.from(parsed.body.childNodes)) {
+    if (node instanceof HTMLScriptElement) continue;
+    body.append(node.cloneNode(true));
+  }
+  preparedTemplate = {
+    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host'),
+    body,
+  };
+  return preparedTemplate;
+};
+
+export function preloadReverbDemoAssets(): Promise<void> {
+  if (preloadTask) return preloadTask;
+  if (typeof document === 'undefined') return Promise.resolve();
+  preloadTask = Promise.resolve().then(() => {
+    prepareReverbTemplate();
+    warmNoiseImage ??= new Image();
+    if (!warmNoiseImage.src) warmNoiseImage.src = REVERB_NOISE_URL;
+  });
+  return preloadTask;
+}
 
 function installResponsivePhone(host: HTMLDivElement, onGeometryChange: () => void = () => {}) {
   const sync = () => {
@@ -256,21 +288,18 @@ function installFullscreen(
   };
 }
 
-function mountReverbDemo(host: HTMLDivElement) {
-  const parsed = new DOMParser().parseFromString(demoHtml, 'text/html');
-  const sourceStyle = parsed.querySelector('style')?.textContent ?? '';
+function mountReverbMarkup(host: HTMLDivElement) {
+  const prepared = prepareReverbTemplate();
   const shadow = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
-  style.textContent = sourceStyle
-    .split(':root').join(':host')
-    .split('html,body').join(':host');
+  style.textContent = prepared.styleText;
   shadow.append(style);
+  shadow.append(prepared.body.cloneNode(true));
+  return shadow;
+}
 
-  for (const node of Array.from(parsed.body.childNodes)) {
-    if (node instanceof HTMLScriptElement) continue;
-    shadow.append(node.cloneNode(true));
-  }
+function mountReverbDemo(host: HTMLDivElement, shadow: ShadowRoot) {
 
   let disposed = false;
   const rafs = new Set<number>();
@@ -372,13 +401,38 @@ export function ReverbDemo() {
   let host!: HTMLDivElement;
   let fullscreenButton!: HTMLButtonElement;
   let dispose = () => {};
+  let mountFrame = 0;
+  let cancelBoot = () => {};
   onSettled(() => {
-    const demo = mountReverbDemo(host);
-    const scale = installResponsivePhone(host, demo.invalidateLayout);
-    const disposeFullscreen = installFullscreen(frame, host, fullscreenButton, scale.sync);
-    dispose = () => { disposeFullscreen(); scale.dispose(); demo.dispose(); };
+    // Mount the prepared static UI immediately so the destination snapshot is
+    // complete, but defer runtime boot until route animation has finished. The
+    // runtime is intentionally heavy and must never block the transition frames.
+    const shadow = mountReverbMarkup(host);
+    const boot = () => {
+      mountFrame = requestAnimationFrame(() => {
+        mountFrame = 0;
+        if (!host.isConnected) return;
+        const demo = mountReverbDemo(host, shadow);
+        const scale = installResponsivePhone(host, demo.invalidateLayout);
+        const disposeFullscreen = installFullscreen(frame, host, fullscreenButton, scale.sync);
+        fullscreenButton.disabled = false;
+        host.toggleAttribute('data-reverb-runtime-ready', true);
+        dispose = () => {
+          host.removeAttribute('data-reverb-runtime-ready');
+          fullscreenButton.disabled = true;
+          disposeFullscreen();
+          scale.dispose();
+          demo.dispose();
+        };
+      });
+    };
+    cancelBoot = afterVisualTransition(boot);
   });
-  onCleanup(() => dispose());
+  onCleanup(() => {
+    if (mountFrame) cancelAnimationFrame(mountFrame);
+    cancelBoot();
+    dispose();
+  });
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
     <div class="reverb-demo-head">
       <h2 id="reverb-ui-demo-title">UI demo</h2>
@@ -386,7 +440,7 @@ export function ReverbDemo() {
     <div class="reverb-demo-frame-shell">
       <div ref={frame} class="reverb-demo-frame">
         <div ref={host} class="reverb-demo-host" role="group" aria-label="Interactive Reverb UI demo" />
-        <button ref={fullscreenButton} class="reverb-demo-fullscreen-button" type="button" aria-label="Fullscreen demo" aria-pressed="false">
+        <button ref={fullscreenButton} class="reverb-demo-fullscreen-button" type="button" aria-label="Fullscreen demo" aria-pressed="false" disabled>
           <svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 3v-3h2v5h-5v-2h3z"/></svg>
           <svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4V7h3V4h2zm6 0h2v3h3v2h-5V4zM4 15h5v5H7v-3H4v-2zm11 0h5v2h-3v3h-2v-5z"/></svg>
         </button>

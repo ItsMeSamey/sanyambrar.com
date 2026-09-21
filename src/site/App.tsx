@@ -1,5 +1,6 @@
 import { navigationState, readNavigationIndex } from '../shared/history.ts';
-import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
+import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled, type Component } from 'solid-js';
+import { Dynamic } from '@solidjs/web';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
 import { formatThrownError } from '../shared/error.ts';
@@ -34,13 +35,54 @@ const Work = lazy(() => loadModule('work'), { export: 'Work' });
 const Tools = lazy(() => loadModule('tools'), { export: 'ToolsPage' });
 const Chain = lazy(() => loadModule('chain'), { export: 'ChainPage' });
 const Project = lazy(() => loadModule('project'), { export: 'ProjectPage' });
-const ReverbDemo = lazy(() => resilientImport(() => import('./components/ReverbDemo.tsx')), { export: 'ReverbDemo' });
-const CnnDemo = lazy(() => resilientImport(() => import('./components/CnnDemo.tsx')), { export: 'CnnDemo' });
+let reverbDemoTask: Promise<typeof import('./components/ReverbDemo.tsx')> | undefined;
+let reverbDemoComponent: Component | undefined;
+const loadReverbDemo = () => {
+  reverbDemoTask ??= resilientImport(() => import('./components/ReverbDemo.tsx')).catch(error => {
+    reverbDemoTask = undefined;
+    throw error;
+  }).then(module => {
+    reverbDemoComponent = module.ReverbDemo;
+    return module;
+  });
+  return reverbDemoTask;
+};
+let cnnDemoTask: Promise<typeof import('./components/CnnDemo.tsx')> | undefined;
+let cnnDemoComponent: Component | undefined;
+const loadCnnDemo = () => {
+  cnnDemoTask ??= resilientImport(() => import('./components/CnnDemo.tsx')).catch(error => {
+    cnnDemoTask = undefined;
+    throw error;
+  }).then(module => {
+    cnnDemoComponent = module.CnnDemo;
+    return module;
+  });
+  return cnnDemoTask;
+};
+const ReverbDemoLazy = lazy(loadReverbDemo, { export: 'ReverbDemo' });
+const CnnDemoLazy = lazy(loadCnnDemo, { export: 'CnnDemo' });
+const ReverbDemo = () => reverbDemoComponent
+  ? <Dynamic component={reverbDemoComponent}/>
+  : <ReverbDemoLazy/>;
+const CnnDemo = () => cnnDemoComponent
+  ? <Dynamic component={cnnDemoComponent}/>
+  : <CnnDemoLazy/>;
 const Blog = lazy(() => loadModule('blog'), { export: 'Blog' });
+
+const preloadLazyRoute = (kind: RouteKind) => ({
+  home: Home.preload,
+  work: Work.preload,
+  tools: Tools.preload,
+  chain: Chain.preload,
+  project: Project.preload,
+  blog: Blog.preload,
+}[kind]());
 
 type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationDirection = 'forward' | 'back';
 type NavigationError = { url: string; returnUrl: string; message: string; detail: string };
+type RouteAssetMap = Partial<Record<RouteKind, string[]>>;
+type PreparedRouteStyles = { desired: Set<string>; links: HTMLLinkElement[] };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
@@ -55,27 +97,86 @@ function routeFromUrl(url: URL): Route | null {
 }
 
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
+const usesDocumentNavigation = (route: Route) => route.kind === 'project'
+  && !!route.slug
+  && (details[route.slug]?.demo === 'reverb-ui' || details[route.slug]?.demo === 'cnn-draw');
 const hashTarget = (url: URL) => {
   if (!url.hash) return '';
   try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); }
 };
-const preload = (route: Route) => ({
-  home: Home.preload,
-  work: Work.preload,
-  tools: Tools.preload,
-  chain: Chain.preload,
-  project: Project.preload,
-  blog: Blog.preload,
-}[route.kind]());
+let routeAssetsTask: Promise<RouteAssetMap> | undefined;
+const routeAssets = () => {
+  if (routeAssetsTask) return routeAssetsTask;
+  if (typeof document === 'undefined') return Promise.resolve({} as RouteAssetMap);
+  const source = document.querySelector<HTMLMetaElement>('meta[name="samey-route-assets"]')?.content;
+  if (!source) return Promise.resolve({} as RouteAssetMap);
+  routeAssetsTask = fetch(new URL(source, location.href), { credentials: 'same-origin', cache: 'force-cache' })
+    .then(async response => {
+      if (!response.ok) throw new Error(`Route asset manifest failed: HTTP ${response.status}`);
+      const value: unknown = await response.json();
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Route asset manifest is malformed');
+      return value as RouteAssetMap;
+    })
+    .catch(error => {
+      routeAssetsTask = undefined;
+      throw error;
+    });
+  return routeAssetsTask;
+};
+const routeStyleLinks = () => [...document.querySelectorAll<HTMLLinkElement>('link[data-samey-route-style][href]')];
+const loadStyleLink = (href: string, owner: RouteKind) => {
+  const absolute = new URL(href, location.href).href;
+  const existing = routeStyleLinks().find(link => link.href === absolute);
+  if (existing) return { link: existing, ready: Promise.resolve() };
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = absolute;
+  link.media = 'not all';
+  link.dataset.sameyRouteStyle = '';
+  link.dataset.sameyRouteOwner = owner;
+  const ready = new Promise<void>((resolve, reject) => {
+    link.addEventListener('load', () => resolve(), { once: true });
+    link.addEventListener('error', () => reject(new Error(`Route stylesheet failed: ${absolute}`)), { once: true });
+  });
+  document.head.append(link);
+  return { link, ready };
+};
+const prepareRouteStyles = async (route: Route): Promise<PreparedRouteStyles> => {
+  if (typeof document === 'undefined') return { desired: new Set(), links: [] };
+  const manifest = await routeAssets();
+  const desired = new Set((manifest[route.kind] ?? []).map(href => new URL(href, location.href).href));
+  const loaded = [...desired].map(href => loadStyleLink(href, route.kind));
+  await Promise.all(loaded.map(entry => entry.ready));
+  return { desired, links: loaded.map(entry => entry.link) };
+};
+const settleRouteStyles = (prepared: PreparedRouteStyles) => {
+  for (const link of routeStyleLinks()) link.media = prepared.desired.has(link.href) ? 'all' : 'not all';
+};
+
+const preloadRouteDependencies = async (route: Route) => {
+  const [module] = await Promise.all([
+    loadModule(route.kind),
+    preloadLazyRoute(route.kind),
+  ]) as [{ preloadChainEngine?: () => Promise<unknown> }, unknown];
+  if (route.kind === 'chain') await module.preloadChainEngine?.();
+  if (route.kind !== 'project' || !route.slug) return;
+  const demo = details[route.slug]?.demo;
+  if (demo === 'reverb-ui') {
+    const reverb = await loadReverbDemo();
+    await reverb.preloadReverbDemoAssets?.();
+  } else if (demo === 'cnn-draw') {
+    const cnn = await loadCnnDemo();
+    await cnn.preloadCnnDemoAssets?.();
+  }
+};
+const prepareSiteRoute = async (route: Route) => {
+  const styles = prepareRouteStyles(route);
+  await Promise.all([styles, preloadRouteDependencies(route)]);
+  return styles;
+};
 export const preloadSiteRoute = async (url: URL) => {
   const route = routeFromUrl(url);
-  if (route) await preload(route);
-};
-const preloadSiteHref = (href: string) => {
-  try {
-    const route = routeFromUrl(new URL(href, location.href));
-    if (route) void preload(route);
-  } catch {}
+  if (route) await prepareSiteRoute(route);
 };
 const setLoading = (value: boolean) => {
   globalThis.SameyLoading?.(value);
@@ -234,11 +335,14 @@ export function App(props: { initialUrl?: string } = {}) {
     });
   };
 
-  const finishNavigation = async (next: Route, url: URL, replace: boolean, requestedDirection?: NavigationDirection) => {
+  const finishNavigation = async (next: Route, url: URL, replace: boolean, preparedStyles: PreparedRouteStyles, requestedDirection?: NavigationDirection) => {
     const direction: NavigationDirection = requestedDirection ?? (next.kind === 'home' ? 'back' : 'forward');
     document.documentElement.dataset.navDirection = direction;
     try {
-      await animateRouteSwap(() => commitNavigation(next, url, replace), direction);
+      await animateRouteSwap(() => {
+        settleRouteStyles(preparedStyles);
+        commitNavigation(next, url, replace);
+      }, direction);
     } finally {
       delete document.documentElement.dataset.navDirection;
     }
@@ -261,7 +365,15 @@ export function App(props: { initialUrl?: string } = {}) {
     const next = routeFromUrl(url);
     if (!next) {
       setLoading(false);
-      if (replace) location.replace(url.href);
+      if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate(url.href, replace);
+      else if (replace) location.replace(url.href);
+      else location.assign(url.href);
+      return;
+    }
+    if (usesDocumentNavigation(next)) {
+      setLoading(false);
+      if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate(url.href, replace);
+      else if (replace) location.replace(url.href);
       else location.assign(url.href);
       return;
     }
@@ -276,11 +388,12 @@ export function App(props: { initialUrl?: string } = {}) {
     }
     setLoading(true);
     try {
-      await preload(next);
+      const preparedStyles = await prepareSiteRoute(next);
       if (id !== navigationId) return;
-      await finishNavigation(next, url, replace, direction);
+      await finishNavigation(next, url, replace, preparedStyles, direction);
     } catch (error) {
       if (id === navigationId) {
+        try { settleRouteStyles(await prepareRouteStyles(route())); } catch {}
         setNavigationError(navigationFailure(url, error, 'The page module could not be loaded.'));
       }
     } finally {
@@ -309,6 +422,19 @@ export function App(props: { initialUrl?: string } = {}) {
   onSettled(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
+    void routeAssets().catch(error => console.debug('Route asset manifest warmup failed', error));
+    const sharedPreloadPage = globalThis.SameyPreloadPage;
+    const preloadSiteHref = (href: string) => {
+      try {
+        const url = new URL(href, location.href);
+        const next = routeFromUrl(url);
+        if (next) {
+          void prepareSiteRoute(next).catch(error => console.debug('Route warmup failed', url.href, error));
+          if (usesDocumentNavigation(next)) sharedPreloadPage?.(url.href);
+        }
+        else sharedPreloadPage?.(url.href);
+      } catch {}
+    };
     globalThis.SameyPreloadPage = preloadSiteHref;
     globalThis.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
     const click = (event: MouseEvent) => {
@@ -319,6 +445,8 @@ export function App(props: { initialUrl?: string } = {}) {
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
       if (sameDocumentHash(url)) return;
+      const next = routeFromUrl(url);
+      if (!next || usesDocumentNavigation(next)) return;
       event.preventDefault();
       const direction = anchor.dataset.navDirection === 'back' ? 'back' : undefined;
       void navigate(url.href, false, direction);
@@ -348,11 +476,12 @@ export function App(props: { initialUrl?: string } = {}) {
         return;
       }
       setLoading(true);
-      void preload(next).then(async () => {
+      void prepareSiteRoute(next).then(async preparedStyles => {
         if (id !== navigationId) return;
         document.documentElement.dataset.navDirection = direction;
         try {
           await animateRouteSwap(() => {
+            settleRouteStyles(preparedStyles);
             dispatchEvent(new Event('samey-pageleave'));
             setRoute(next);
             syncDocument(next);
@@ -366,6 +495,7 @@ export function App(props: { initialUrl?: string } = {}) {
       }).catch((error: unknown) => {
         if (id === navigationId) {
           setLoading(false);
+          void prepareRouteStyles(route()).then(settleRouteStyles).catch(() => {});
           setNavigationError(navigationFailure(url, error, 'The page could not be restored.'));
         }
       });
@@ -376,7 +506,7 @@ export function App(props: { initialUrl?: string } = {}) {
     return () => {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
-      if (globalThis.SameyPreloadPage === preloadSiteHref) globalThis.SameyPreloadPage = undefined;
+      if (globalThis.SameyPreloadPage === preloadSiteHref) globalThis.SameyPreloadPage = sharedPreloadPage;
       globalThis.SameyNavigate = undefined;
     };
   });

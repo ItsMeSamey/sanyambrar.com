@@ -18,9 +18,9 @@ const query = <T extends Element>(root: ParentNode, selector: string): T => {
 let sharedMonacoPromise: Promise<MonacoModule> | undefined;
 let sharedVditorPromise: Promise<VditorModule> | undefined;
 
-function loadMonacoModule() {
+function loadMonacoModule(showLoading = true) {
   if (sharedMonacoPromise) return sharedMonacoPromise;
-  const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
+  const releaseLoading = showLoading ? (globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {})) : (() => {});
   sharedMonacoPromise = resilientImport(() => import('../site/monaco.ts')).catch(error => {
     sharedMonacoPromise = undefined;
     throw error;
@@ -28,9 +28,9 @@ function loadMonacoModule() {
   return sharedMonacoPromise;
 }
 
-function loadVditorModule() {
+function loadVditorModule(showLoading = true) {
   if (sharedVditorPromise) return sharedVditorPromise;
-  const releaseLoading = globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {});
+  const releaseLoading = showLoading ? (globalThis.SameyLoadingBeginAfterDelay?.() ?? (() => {})) : (() => {});
   sharedVditorPromise = Promise.all([
     resilientImport(() => import('vditor')),
     import('vditor/dist/index.css'),
@@ -40,6 +40,16 @@ function loadVditorModule() {
   }).finally(releaseLoading);
   return sharedVditorPromise;
 }
+
+export async function preloadToolDependencies(toolId: ToolId): Promise<void> {
+  if (toolId === 'number') return;
+  if (toolId === 'markdown') {
+    await Promise.all([loadMonacoModule(false), loadVditorModule(false)]);
+    return;
+  }
+  await loadMonacoModule(false);
+}
+
 export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDivElement) {
   'use strict';
 

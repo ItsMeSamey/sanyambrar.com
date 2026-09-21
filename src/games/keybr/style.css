@@ -182,6 +182,16 @@ body {
   flex-direction: column;
 }
 #app { inline-size: 100%; min-inline-size: 0; max-inline-size: 100%; min-block-size: 100dvh; overflow-x: clip; }
+.keybr-boot-shell{min-block-size:100dvh;display:flex;flex-direction:column;background:var(--background-color);color:var(--text-color)}
+.keybr-boot-main{flex:1;display:grid;place-items:center;padding:clamp(24px,6vw,72px)}
+.keybr-boot-practice{inline-size:min(920px,100%);display:grid;gap:18px}
+.keybr-boot-wordmark{font:700 clamp(3rem,9vw,7rem)/.9 var(--header-font-family);letter-spacing:-.06em}
+.keybr-boot-rule{block-size:1px;background:var(--secondary-l2)}
+.keybr-boot-copy{margin:0!important;color:var(--secondary);font:600 1.2rem/1.2 var(--default-font-family);text-align:start!important}
+.keybr-boot-keyboard{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin-top:10px}
+.keybr-boot-keyboard>div{aspect-ratio:1.35;border:1px solid var(--secondary-l2);background:var(--primary-l1)}
+.keybr-boot-nav{display:inline-flex;align-items:center;min-height:32px;padding-inline:7px;color:var(--secondary);font-weight:600}
+@media(max-width:520px){.keybr-boot-keyboard{gap:3px}.keybr-boot-main{padding-inline:14px}}
 textarea { resize: block; }
 img, picture, video, canvas, svg { display: block; max-inline-size: 100%; }
 input, button, textarea, select { font: inherit; }
@@ -213,3 +223,5 @@ text { text-rendering: optimizeLegibility; }
 
 /* Keybr buttons use straight edges; filled widget buttons remain filled at rest. */
 #app button{border-radius:0!important}
+
+.keybr-lesson-settings-body{contain:layout paint style}

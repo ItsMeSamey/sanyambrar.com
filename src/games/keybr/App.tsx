@@ -16,6 +16,7 @@ import { ModifierState } from "./textinput-events/modifiers.ts";
 export function main(): void {
   const element = document.getElementById("app");
   if (element == null) throw new Error("Missing #app root element");
+  element.replaceChildren();
   const dispose = render(() => <ThemeProvider><ErrorHandler><Bootstrap /></ErrorHandler></ThemeProvider>, element);
   globalThis.SameyKeybrDispose = () => {
     dispose();
