@@ -26,50 +26,48 @@
 
 .width6 {
   
-  inline-size: min(6rem, 100%) !important;
-  min-inline-size: min(6rem, 100%) !important;
+  inline-size: 6rem !important;
+  min-inline-size: 0 !important;
   max-inline-size: 100% !important;
 
 }
 
 .width10 {
   
-  inline-size: min(10rem, 100%) !important;
-  min-inline-size: min(10rem, 100%) !important;
+  inline-size: 10rem !important;
+  min-inline-size: 0 !important;
   max-inline-size: 100% !important;
 
 }
 
 .width16 {
   
-  inline-size: min(16rem, 100%) !important;
-  min-inline-size: min(16rem, 100%) !important;
+  inline-size: 16rem !important;
+  min-inline-size: 0 !important;
   max-inline-size: 100% !important;
 
 }
 
 .width24 {
   
-  inline-size: min(24rem, 100%) !important;
-  min-inline-size: min(24rem, 100%) !important;
+  inline-size: 24rem !important;
+  min-inline-size: 0 !important;
   max-inline-size: 100% !important;
 
 }
 
 .width32 {
   
-  inline-size: min(32rem, 100%) !important;
-  min-inline-size: min(32rem, 100%) !important;
+  inline-size: 32rem !important;
+  min-inline-size: 0 !important;
   max-inline-size: 100% !important;
 
 }
 
 @media (max-width: 720px) {
   .width6, .width10, .width16, .width24, .width32 {
-    inline-size: auto !important;
     min-inline-size: 0 !important;
     max-inline-size: 100% !important;
-    flex: 1 1 auto;
   }
   .size-full {
     min-inline-size: 0 !important;

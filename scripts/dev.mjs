@@ -17,6 +17,7 @@ const docs = resolve(root, 'docs');
 const sharedRuntimeUrl = target === 'keybr'
   ? '/@fs' + resolve(root, 'src/shared/runtime.ts')
   : '/src/shared/runtime.ts';
+const transitionBridgeUrl = target === 'keybr' ? '/@fs' + resolve(root, 'src/shared/transition-bridge.js') : '/src/shared/transition-bridge.js';
 const siteRuntimeUrl = target === 'site' ? '/src/site/main.tsx' : '/@fs' + resolve(root, 'src/site/main.tsx');
 const siteSourcePages = new Map([
   ['/wordle', 'src/games/wordle/index.html'],
@@ -57,12 +58,12 @@ const routeCssFor = (path, htmlFile) => {
   if (key === '/chain') return [linkedCss.chain];
   return [linkedCss.home];
 };
-const hrefForSourceCss = file => '/' + file;
+const hrefForSourceCss = file => target === 'keybr' ? '/@fs' + resolve(root, file) : '/' + file;
 const devStyleLinks = (path, htmlFile) => {
   const kind = routeKindFor(path, htmlFile);
   const links = [
     '<style data-samey-dev-view-transition>@view-transition{navigation:auto}</style>',
-    '<script data-samey-transition-bridge src="/src/shared/transition-bridge.js"></script>',
+    `<script data-samey-transition-bridge src="${transitionBridgeUrl}"></script>`,
     ...sharedCss.map(file => `<link rel="stylesheet" data-samey-shared data-samey-dev-style="${file}" href="${hrefForSourceCss(file)}">`),
     ...routeCssFor(path, htmlFile).map(file => `<link rel="stylesheet" data-samey-route-style data-samey-route-owner="${kind}" data-samey-dev-style="${file}" href="${hrefForSourceCss(file)}">`),
   ];
