@@ -15,29 +15,33 @@ export function SegmentedControl<T>(props: {
   readonly comfortable?: boolean;
   readonly onChange?: (value: T) => void;
 }): JSX.Element {
-  const select = (index: number) => {
+  let root!: HTMLDivElement;
+  const currentIndex = () => Math.max(0, props.options.findIndex((item) => Object.is(item.value, props.value)));
+  const select = (index: number, moveFocus = false) => {
     if (props.disabled || props.options.length === 0) return;
     const normalized = (index + props.options.length) % props.options.length;
-    props.onChange?.(props.options[normalized].value);
+    if (moveFocus) root.querySelectorAll<HTMLButtonElement>(":scope > .keybr-segmented-item")[normalized]?.focus();
+    const value = props.options[normalized].value;
+    if (!Object.is(value, props.value)) props.onChange?.(value);
   };
-  const currentIndex = () => Math.max(0, props.options.findIndex((item) => Object.is(item.value, props.value)));
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      select(currentIndex() - 1);
+      select(currentIndex() - 1, true);
     } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
-      select(currentIndex() + 1);
+      select(currentIndex() + 1, true);
     } else if (event.key === "Home") {
       event.preventDefault();
-      select(0);
+      select(0, true);
     } else if (event.key === "End") {
       event.preventDefault();
-      select(props.options.length - 1);
+      select(props.options.length - 1, true);
     }
   };
   return (
     <div
+      ref={root}
       class="keybr-segmented"
       data-comfortable={props.comfortable ? "" : undefined}
       role="radiogroup"
@@ -56,7 +60,7 @@ export function SegmentedControl<T>(props: {
             disabled={props.disabled}
             tabindex={selected() || (currentIndex() === index() && props.options.every((entry) => !Object.is(entry.value, props.value))) ? 0 : -1}
             title={item.title}
-            onClick={() => props.onChange?.(item.value)}
+            onClick={() => select(index())}
           >
             <span>{item.label}</span>
           </button>

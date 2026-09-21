@@ -376,7 +376,8 @@ html,body,#site-root,#solid-site-app{min-width:0;min-height:100%}
 }
 
 @media (max-width: 720px) {
-  .game-settings-slider[class] {
+  .game-settings-popover .game-settings-slider[class],
+  .cnn-ink-control.game-settings-slider[class] {
     inline-size: 100% !important;
     min-inline-size: 0 !important;
     max-inline-size: 100% !important;

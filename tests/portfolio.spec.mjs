@@ -4572,6 +4572,33 @@ test('Keybr owns internal scrollbars without shared geometry rescans', async ({ 
   expect(count, 'Keybr subtree updates must not enter the shared virtual-scrollbar geometry path').toBe(0);
 });
 
+test('Keybr segmented controls move radio focus with keyboard selection', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await visit(page, '/keybr?p=settings', info);
+
+  const group = page.getByRole('radiogroup', { name: 'Lesson type' });
+  const guided = group.getByRole('radio', { name: 'Guided lessons', exact: true });
+  const common = group.getByRole('radio', { name: 'Common words', exact: true });
+  const numbers = group.getByRole('radio', { name: 'Numbers', exact: true });
+
+  await guided.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(common).toBeFocused();
+  await expect(common).toBeChecked();
+  await expect(common).toHaveAttribute('tabindex', '0');
+  await expect(guided).toHaveAttribute('tabindex', '-1');
+
+  await page.keyboard.press('End');
+  await expect(numbers).toBeFocused();
+  await expect(numbers).toBeChecked();
+  await page.keyboard.press('Home');
+  await expect(guided).toBeFocused();
+  await expect(guided).toBeChecked();
+  await page.keyboard.press('ArrowLeft');
+  await expect(numbers).toBeFocused();
+  await expect(numbers).toBeChecked();
+});
+
 test('Keybr lesson selection is immediate, interruptible, and never owned by construction animation', async ({ page }, info) => {
   await visitKeybr(page, info);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -4696,6 +4723,20 @@ test('Keybr settings persist and typing is live', async ({ page }, info) => {
   await page.keyboard.press('Enter');
   await expect(speedUnit).toHaveAttribute('aria-expanded', 'false');
   await expect(speedUnit).not.toHaveText(beforeUnit ?? '');
+  const keybrRanges = page.locator('input[type="range"]');
+  const activeRangeIndex = await keybrRanges.evaluateAll(inputs => inputs.findIndex(input => {
+    const rect = input.getBoundingClientRect();
+    const style = getComputedStyle(input);
+    return rect.width >= 40 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+  }));
+  expect(activeRangeIndex, 'Keybr settings should expose a usable range input').toBeGreaterThanOrEqual(0);
+  const keybrRange = keybrRanges.nth(activeRangeIndex);
+  const rangeBefore = Number(await keybrRange.inputValue());
+  await keybrRange.evaluate(element => element.focus());
+  await expect(keybrRange).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => Number(await keybrRange.inputValue())).toBeGreaterThan(rangeBefore);
+
   const stop = page.getByRole('switch', { name: 'Stop cursor on error' });
   await expect(stop).toBeChecked();
   await stop.focus();
@@ -5307,6 +5348,33 @@ test('Markdown divider drag ends on SPA departure', async ({ page }, info) => {
   await page.mouse.up();
 });
 
+test('Tools native codec controls stay interactive at extreme width', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await visit(page, '/tools/?tool=base', info);
+
+  const mode = page.getByRole('combobox', { name: 'Mode', exact: true });
+  const format = page.getByRole('combobox', { name: 'Format', exact: true });
+  const perLine = page.getByRole('switch', { name: 'Per line', exact: true });
+  await mode.selectOption('encode');
+  await expect(mode).toHaveValue('encode');
+  await format.selectOption('hex');
+  await expect(format).toHaveValue('hex');
+  await expect(perLine).toHaveAttribute('aria-checked', 'false');
+  await perLine.click();
+  await expect(perLine).toHaveAttribute('aria-checked', 'true');
+
+  await page.setViewportSize({ width: 128, height: 700 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  for (const control of [mode, format, perLine]) {
+    const box = await control.boundingBox();
+    expect(box, 'Codec control should keep geometry at 128px').not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width).toBeLessThanOrEqual(129);
+  }
+  await perLine.click();
+  await expect(perLine).toHaveAttribute('aria-checked', 'false');
+});
+
 test('Tools mobile selector dismisses and navigates by keyboard', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await visit(page, '/tools/?tool=number', info);
@@ -5396,7 +5464,11 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
   })).toEqual({ parent: 'qa-match', fork: 2, moves: 2 });
   const settings = page.getByRole('button', { name: 'Settings', exact: true });
   await settings.click();
-  await page.locator('#chain-settings input[type="range"]').first().focus();
+  const rowsSlider = page.locator('#chain-settings input[type="range"]').first();
+  const rowsBefore = Number(await rowsSlider.inputValue());
+  await rowsSlider.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => Number(await rowsSlider.inputValue())).toBe(rowsBefore + 1);
   await page.keyboard.press('Escape');
   await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'true');
   await expect(settings).toHaveAttribute('aria-expanded', 'false');
