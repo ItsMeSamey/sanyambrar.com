@@ -248,6 +248,7 @@ export function App(props: { initialUrl?: string } = {}) {
     cancelSharedPageSwap();
     setNavigationError(null);
     if (url.href === location.href) { retryRenderedRoute(); setLoading(false); return; }
+    dispatchEvent(new Event('samey-navigationstart'));
     if (isStandaloneApp(url)) {
       const pageSwap = pageSwapNavigate();
       setLoading(true);
@@ -347,6 +348,7 @@ export function App(props: { initialUrl?: string } = {}) {
         : targetIndex < previousIndex ? 'back' : 'forward';
       if (targetIndex != null) navigationIndex = targetIndex;
       setNavigationError(null);
+      dispatchEvent(new Event('samey-navigationstart'));
       if (!next) {
         const pageSwap = pageSwapNavigate();
         if (!pageSwap) { location.reload(); return; }

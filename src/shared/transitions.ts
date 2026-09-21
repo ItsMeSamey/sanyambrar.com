@@ -392,6 +392,7 @@ export async function animateRootSwap(
   next: () => HTMLElement | null,
   direction: Direction = 'forward',
 ) {
+  dispatchEvent(new Event('samey-transitionstart'));
   if (!current || reducedMotion() || !current.animate) { await commit(); return; }
 
   const outgoing = await animateConstructionExit(current, direction);
@@ -408,6 +409,7 @@ export async function animateRootSwap(
 }
 
 export async function animateMountedViewSwap(from: HTMLElement, to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
+  dispatchEvent(new Event('samey-transitionstart'));
   if (reducedMotion() || !from.animate || !to.animate) { commit(); from.hidden = true; to.hidden = false; return; }
   const outgoing = await animateConstructionExit(from, direction);
   from.hidden = true;

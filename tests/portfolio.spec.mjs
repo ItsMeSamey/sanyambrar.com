@@ -2539,6 +2539,24 @@ test('direct site routes inline their route CSS and preload static route modules
   }
 });
 
+test('development site routes never load generated deployment chunks or route CSS', async ({ page }, info) => {
+  test.skip(!info.project.metadata.development, 'Source-only route contract belongs to development');
+  const deploymentChunkRequests = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname.includes('/site-chunks/')) deploymentChunkRequests.push(url.pathname);
+  });
+
+  for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
+    await visit(page, route, info);
+    await expect(page.locator('style[data-samey-route-style]')).toHaveCount(0);
+    await expect(page.locator('link[data-samey-route-module]')).toHaveCount(0);
+    await expect(page.locator('script[src*="/site-chunks/"]')).toHaveCount(0);
+    await expect(page.locator('script[src*="/src/site/main.tsx"]')).toHaveCount(1);
+  }
+  expect(deploymentChunkRequests, 'Source dev must not crawl deployment module graphs').toEqual([]);
+});
+
 test('Keybr inlines page CSS and declares startup data preloads', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns the inlined CSS contract');
 
@@ -3334,7 +3352,7 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await page.setViewportSize({ width: 128, height: 1000 });
   await visit(page, '/', info);
   const link = page.getByRole('link', { name: /Sanyam Brar.*Home/ }).first();
-  if (info.project.name === 'production-desktop') {
+  if (info.project.name !== 'production-mobile') {
     const linkBox = await link.boundingBox();
     if (!linkBox) throw new Error('Home link has no geometry for cursor-fill QA');
     await page.mouse.move(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
@@ -3353,6 +3371,15 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await link.evaluate(element => element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 126, clientY: 998 })));
   const menu = page.getByRole('menu', { name: 'Context menu' });
   await expect(menu).toBeVisible();
+  if (info.project.name !== 'production-mobile') {
+    await expect(page.locator('.samey-cursor-link-fill')).toHaveAttribute('hidden', '');
+    expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+      elements.every(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width === 0 && rect.height === 0;
+      }),
+    ), 'Opening the context menu must immediately kill the underlying page-link fill').toBe(true);
+  }
   expect(await menu.locator('hr').count(), 'Context menu must not manufacture visible separator rules').toBe(0);
   const menuSurface = await menu.evaluate(element => {
     const style = getComputedStyle(element);
@@ -3443,6 +3470,387 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await page.keyboard.press('Escape');
   await expect(menu).not.toBeVisible();
   await expect(link).toBeFocused();
+});
+
+test('blocking overlays cannot leave a page-card link fill composited underneath', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await visit(page, '/', info);
+  const chain = page.locator('a[href="/chain/"]').first();
+  const box = await chain.boundingBox();
+  if (!box) throw new Error('Chain card has no geometry');
+  const x = box.x + box.width * .65;
+  const y = box.y + box.height * .45;
+  await page.mouse.move(x, y);
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 100 && rect.height > 40;
+    }),
+  ), { message: 'Chain card must establish a large link-fill before the blocker test' }).toBe(true);
+
+  await page.mouse.click(x, y, { button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Context menu' });
+  await expect(menu).toBeVisible();
+  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
+    message: 'Blocking context menu must take paint ownership from the page link immediately',
+  }).toBe(true);
+  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.every(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width === 0 && rect.height === 0;
+    }),
+  )).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toBeVisible();
+  await page.mouse.move(x, y);
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 100 && rect.height > 40;
+    }),
+  )).toBe(true);
+
+  await page.evaluate(() => {
+    const overlay = document.createElement('div');
+    overlay.id = 'qa-overlay-owner';
+    overlay.dataset.sameyOverlay = '';
+    overlay.style.cssText = 'position:fixed;left:8px;top:80px;width:140px;height:90px;background:var(--site-bg);z-index:2147483400';
+    document.body.append(overlay);
+  });
+  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
+    message: 'Any visible floating overlay must revoke an underlying page-link fill',
+  }).toBe(true);
+  await page.locator('#qa-overlay-owner').evaluate(element => element.remove());
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 100 && rect.height > 40;
+    }),
+  ), { message: 'Page link fill should reacquire after overlay ownership ends' }).toBe(true);
+
+  await page.evaluate(() => {
+    const lower = document.createElement('div');
+    lower.id = 'qa-lower-overlay';
+    lower.dataset.sameyOverlay = '';
+    lower.style.cssText = 'position:fixed;left:32px;top:96px;width:240px;height:120px;background:var(--site-bg);z-index:2147483644';
+    const link = document.createElement('a');
+    link.href = '/work/';
+    link.textContent = 'Overlay link';
+    link.style.cssText = 'display:block;width:180px;height:64px;margin:24px;border:1px solid var(--site-line)';
+    lower.append(link);
+    document.body.append(lower);
+  });
+  const overlayLink = page.locator('#qa-lower-overlay a');
+  const overlayLinkBox = await overlayLink.boundingBox();
+  if (!overlayLinkBox) throw new Error('Synthetic overlay link has no geometry');
+  await page.mouse.move(overlayLinkBox.x + overlayLinkBox.width / 2, overlayLinkBox.y + overlayLinkBox.height / 2);
+  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
+    message: 'Links inside floating UI must not reactivate the global difference-blend fill',
+  }).toBe(true);
+  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements => elements.every(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.width === 0 && rect.height === 0;
+  })), 'Floating UI must have zero global blend-fill pixels, including over links inside it').toBe(true);
+  await page.locator('#qa-lower-overlay').evaluate(element => element.remove());
+});
+
+test('card link fill never bleeds outside its target geometry', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await visit(page, '/', info);
+  const chain = page.locator('a[href="/chain/"]').first();
+  const box = await chain.boundingBox();
+  if (!box) throw new Error('Chain card has no geometry');
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2);
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 100 && rect.height > 40;
+    }),
+  )).toBe(true);
+  const geometry = await page.evaluate(() => {
+    const target = document.querySelector('a[href="/chain/"]');
+    if (!(target instanceof HTMLElement)) throw new Error('Chain card missing');
+    const targetRect = target.getBoundingClientRect();
+    const slices = [...document.querySelectorAll('.samey-cursor-link-fill-slice')].flatMap(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 ? [{
+        left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      }] : [];
+    });
+    return {
+      target: { left: targetRect.left, top: targetRect.top, right: targetRect.right, bottom: targetRect.bottom },
+      slices,
+    };
+  });
+  expect(geometry.slices.length).toBeGreaterThan(0);
+  expect(geometry.slices.every(slice =>
+    slice.left >= geometry.target.left - .5
+    && slice.top >= geometry.target.top - .5
+    && slice.right <= geometry.target.right + .5
+    && slice.bottom <= geometry.target.bottom + .5
+  ), 'Pointer-biased link fill must remain clipped inside the card bounds').toBe(true);
+});
+
+test('stationary pointer retargets link fill after scrolling', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await visit(page, '/', info);
+  const chain = page.locator('a[href="/chain/"]').first();
+  await chain.scrollIntoViewIfNeeded();
+  const chainBox = await chain.boundingBox();
+  if (!chainBox) throw new Error('Chain card has no geometry');
+  const x = chainBox.x + chainBox.width / 2;
+  const y = chainBox.y + chainBox.height / 2;
+  await page.mouse.move(x, y);
+  await expect.poll(() => page.evaluate(({ x, y }) =>
+    document.elementFromPoint(x, y)?.closest('a[href]')?.getAttribute('href') ?? null, { x, y }),
+  ).toBe('/chain/');
+
+  await page.evaluate(() => scrollBy(0, 250));
+  await expect.poll(() => page.evaluate(({ x, y }) =>
+    document.elementFromPoint(x, y)?.closest('a[href]')?.getAttribute('href') ?? null, { x, y }),
+  ).toBe('/projects/cnn/');
+  const geometry = await page.evaluate(({ x, y }) => {
+    const target = document.elementFromPoint(x, y)?.closest('a[href]');
+    if (!(target instanceof HTMLElement)) throw new Error('Scrolled pointer has no link target');
+    const targetRect = target.getBoundingClientRect();
+    const slices = [...document.querySelectorAll('.samey-cursor-link-fill-slice')].flatMap(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 ? [{
+        left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      }] : [];
+    });
+    return {
+      href: target.getAttribute('href'),
+      target: { left: targetRect.left, top: targetRect.top, right: targetRect.right, bottom: targetRect.bottom },
+      slices,
+    };
+  }, { x, y });
+  expect(geometry.href).toBe('/projects/cnn/');
+  expect(geometry.slices.length).toBeGreaterThan(0);
+  expect(geometry.slices.every(slice =>
+    slice.left >= geometry.target.left - .5
+    && slice.top >= geometry.target.top - .5
+    && slice.right <= geometry.target.right + .5
+    && slice.bottom <= geometry.target.bottom + .5
+  ), 'Scroll-induced retargeting must move the fill to the link actually under the stationary pointer').toBe(true);
+});
+
+test('native popover ownership revokes an underlying link fill before positioning completes', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await visit(page, '/wordle', info);
+  await page.getByRole('button', { name: 'Configure', exact: true }).click();
+  await page.evaluate(() => {
+    const link = document.createElement('a');
+    link.id = 'qa-native-popover-link';
+    link.href = '/work/';
+    link.textContent = 'QA link';
+    link.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:1;display:block;width:120px;height:40px;padding:8px;background:var(--site-bg);color:var(--site-fg);';
+    document.body.append(link);
+  });
+  const home = page.locator('#qa-native-popover-link');
+  const box = await home.boundingBox();
+  if (!box) throw new Error('Wordle QA link has no geometry');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 20 && rect.height > 10;
+    }),
+  )).toBe(true);
+
+  // Programmatic activation deliberately leaves the pointer on Home. The
+  // popover lifecycle, not incidental pointer movement, must take paint
+  // ownership before Floating UI exposes its positioned surface.
+  await page.getByRole('button', { name: 'Settings', exact: true }).evaluate(element => element.click());
+  const settings = page.locator('.game-settings-popover');
+  await expect(settings).toBeVisible();
+  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
+    message: 'Expanded native popover must revoke the old page-link fill',
+  }).toBe(true);
+  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.every(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width === 0 && rect.height === 0;
+    }),
+  )).toBe(true);
+});
+
+test('SPA navigation revokes link fill before preload and construction begin', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await visit(page, '/', info);
+  await page.waitForFunction(() => typeof globalThis.SameyNavigate === 'function');
+  const work = page.locator('a[href="/work/"]').first();
+  const box = await work.boundingBox();
+  if (!box) throw new Error('Work link has no geometry');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.some(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width * rect.height > 1000;
+    }),
+  )).toBe(true);
+
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  expect(await page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden),
+    'Navigation intent must hide the old page-link fill before preload/transition work').toBe(true);
+  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+    elements.every(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width === 0 && rect.height === 0;
+    }),
+  )).toBe(true);
+});
+
+test('real blocking overlays revoke an underlying page-link fill without pointer movement', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1180, height: 760 });
+
+  const establishFill = async (locator, label) => {
+    await locator.scrollIntoViewIfNeeded();
+    const box = await locator.boundingBox();
+    if (!box) throw new Error(label + ' has no geometry');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+      elements.some(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 20 && rect.height > 12;
+      }),
+    ), { message: label + ' must establish a link fill before overlay ownership changes' }).toBe(true);
+  };
+  const expectRevoked = async label => {
+    await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
+      message: label + ' must revoke the underlying page-link fill',
+    }).toBe(true);
+    expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
+      elements.every(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width === 0 && rect.height === 0;
+      }),
+    ), label + ' must not leave any composited fill fragment').toBe(true);
+  };
+  const programmaticClick = locator => locator.evaluate(element => element.click());
+  const qaPageLink = async label => {
+    await page.evaluate(text => {
+      document.getElementById('qa-overlay-fill-link')?.remove();
+      const link = document.createElement('a');
+      link.id = 'qa-overlay-fill-link';
+      link.href = '/work/';
+      link.textContent = text;
+      link.style.cssText = 'position:fixed;left:18px;bottom:18px;z-index:1;display:block;width:120px;height:40px;padding:8px;background:var(--site-bg);color:var(--site-fg);';
+      document.body.append(link);
+    }, label);
+    return page.locator('#qa-overlay-fill-link');
+  };
+
+  await visit(page, '/', info);
+  const homeCard = page.locator('a[href="/chain/"]').first();
+  await establishFill(homeCard, 'Home Chain card');
+  await programmaticClick(page.getByRole('button', { name: 'Search', exact: true }));
+  await expect(page.locator('.site-search')).toBeVisible();
+  await expectRevoked('Search');
+  await page.keyboard.press('Escape');
+
+  await establishFill(homeCard, 'Home Chain card');
+  await programmaticClick(page.getByRole('button', { name: 'Appearance', exact: true }));
+  await expect(page.locator('.samey-theme-panel')).toBeVisible();
+  await expectRevoked('Appearance');
+  await page.keyboard.press('Escape');
+
+  await visit(page, '/wordle', info);
+  let wordleLink = await qaPageLink('Wordle QA link');
+  await establishFill(wordleLink, 'Wordle QA link');
+  await programmaticClick(page.getByRole('button', { name: /^Choose date,/ }));
+  await expect(page.getByRole('dialog', { name: 'Choose date' })).toBeVisible();
+  await expectRevoked('Wordle date picker');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Configure', exact: true }).evaluate(element => element.click());
+  wordleLink = await qaPageLink('Wordle game QA link');
+  await establishFill(wordleLink, 'Wordle game QA link');
+  await programmaticClick(page.getByRole('button', { name: 'Settings', exact: true }));
+  await expect(page.getByRole('dialog', { name: 'Game settings' })).toBeVisible();
+  await expectRevoked('Wordle Settings');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 600, height: 760 });
+  await visit(page, '/tools/?tool=number', info);
+  const toolsLink = await qaPageLink('Tools QA link');
+  await establishFill(toolsLink, 'Tools QA link');
+  const toolTrigger = page.getByRole('button', { name: /Tool/ });
+  await toolTrigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(toolTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expectRevoked('Tools selector');
+  await page.keyboard.press('Escape');
+
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.evaluate(() => {
+    const board = new Uint8Array(16);
+    const owners = new Uint8Array(16);
+    const entered = new Uint8Array(3);
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({
+      v: 4, id: 'qa-overlay-fill', pl: [], r: 4, c: 4, e: 1,
+      b: encode(board), o: encode(owners), p: encode(entered),
+      t: 1, g: false, i: true, m: [], q: true,
+    }));
+  });
+  await visit(page, '/chain/?p=game', info);
+  const chainLink = await qaPageLink('Chain QA link');
+  await establishFill(chainLink, 'Chain QA link');
+  await programmaticClick(page.getByRole('button', { name: 'Settings', exact: true }));
+  await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'false');
+  await expectRevoked('Chain Settings');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => {
+    const board = new Uint8Array(16), owners = new Uint8Array(16), entered = new Uint8Array([0, 1, 1]);
+    board[0] = owners[0] = 1;
+    const encode = values => btoa(String.fromCharCode(...values));
+    localStorage.setItem('samey.chain.game.v4', JSON.stringify({
+      v: 4, id: 'qa-overlay-result', pl: [], r: 4, c: 4, e: 1,
+      b: encode(board), o: encode(owners), p: encode(entered),
+      t: 1, g: true, i: true, m: [], q: true,
+    }));
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('dialog', { name: 'You win' })).toBeVisible();
+  const chainResultLink = await qaPageLink('Chain result QA link');
+  const chainResultBox = await chainResultLink.boundingBox();
+  if (!chainResultBox) throw new Error('Chain result QA link has no geometry');
+  await page.mouse.move(chainResultBox.x + chainResultBox.width / 2, chainResultBox.y + chainResultBox.height / 2);
+  await expectRevoked('Chain result');
+
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await visit(page, '/keybr?p=settings', info);
+  await page.getByRole('radio', { name: 'Books', exact: true }).evaluate(element => element.click());
+  const keybrSettingsLink = await qaPageLink('Keybr settings QA link');
+  await establishFill(keybrSettingsLink, 'Keybr settings QA link');
+  const keybrFont = page.getByRole('combobox', { name: 'Font', exact: true });
+  await keybrFont.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await expectRevoked('Keybr settings font menu');
+  await page.keyboard.press('Escape');
+  const keybrLink = await qaPageLink('Keybr QA link');
+  await establishFill(keybrLink, 'Keybr QA link');
+  await programmaticClick(page.getByRole('button', { name: 'Choose book', exact: true }));
+  await expect(page.getByRole('dialog', { name: 'Choose a book', exact: true })).toBeVisible();
+  await expectRevoked('Keybr book library');
+  await page.keyboard.press('Escape');
+
+  await visit(page, '/keybr', info);
+  const keybrTourLink = await qaPageLink('Keybr tour QA link');
+  await establishFill(keybrTourLink, 'Keybr tour QA link');
+  await programmaticClick(page.getByTitle('Show a guided tour with help slides.'));
+  await expect(page.locator('[data-samey-overlay-backdrop]')).toBeVisible();
+  await expectRevoked('Keybr guided tour');
 });
 
 test('Wordle typing, persistence, settings, reveal and statistics', async ({ page }, info) => {
