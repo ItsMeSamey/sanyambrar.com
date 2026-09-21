@@ -22,6 +22,7 @@ type ViteManifest = Record<string, ViteManifestEntry>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
 let siteManifest: ViteManifest = {};
 let keybrManifest: ViteManifest = {};
+let appearanceBootstrapConfig: UnknownRecord | null = null;
 
 const ROOT = import.meta.dirname;
 const SITE_PUBLIC = join(ROOT, "src/site/public");
@@ -116,7 +117,7 @@ async function injectSitePrerender() {
     let source = await readFile(path, "utf8");
     const emptyRoot = '<div id="site-root"></div>';
     must(source.includes(emptyRoot), "site prerender target root missing in " + route.file);
-    source = source.replace(emptyRoot, '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
+    source = source.replace(emptyRoot, () => '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
     await writeFile(path, source);
   }
   log("prerendered static Solid route shells");
@@ -135,6 +136,7 @@ async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerende
 async function generateAppearance() {
   const appearancePath = join(ROOT, "src/shared/appearance.json");
   const config = requireRecord(JSON.parse(await readFile(appearancePath, "utf8")), `${relative(ROOT, appearancePath)} must contain a JSON object`);
+  appearanceBootstrapConfig = config;
   const colors = requireRecord(config.colors, "appearance: colors must be an object");
   const fonts = requireRecord(config.fonts, "appearance: fonts must be an object");
   const hex = /^#[0-9a-f]{6}$/i;
@@ -206,6 +208,43 @@ function manifestStaticResources(manifest: ViteManifest, sourceSuffix: string): 
 
 const htmlAttr = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
+const escapeInlineScript = (source: string) => source.replaceAll("</script", "<\\/script");
+const inlineModuleSpecifier = /\b(from\s*|import\s*(?:\(\s*)?)(["'`])(\.{1,2}\/[^"'`]+)\2/g;
+const resolvedModuleFile = (file: string, specifier: string) =>
+  new URL(specifier, new URL("/" + file, PUBLIC_ORIGIN)).pathname.replace(/^\//, "");
+const embeddedAssetUrl = /new URL\(\s*(["'`])([^"'`$]+)\1\s*,\s*(?:``\s*\+\s*)?import\.meta\.url\s*\)/g;
+const rewriteEmbeddedModuleSource = (source: string, file: string) => {
+  const importsRewritten = source.replace(
+    inlineModuleSpecifier,
+    (_match, prefix: string, _quote: string, specifier: string) => {
+      const target = resolvedModuleFile(file, specifier);
+      const dynamic = prefix.trim().startsWith("import") && prefix.includes("(");
+      must(dynamic, `embedded module ${file} has unexpected static dependency: ${target}`);
+      return 'import(new URL(' + JSON.stringify('/' + target) + ',location.origin).href';
+    },
+  );
+  return importsRewritten.replace(embeddedAssetUrl, (_match, _quote: string, specifier: string) => {
+    const target = specifier.startsWith('/') ? specifier : '/' + resolvedModuleFile(file, specifier);
+    return 'new URL(' + JSON.stringify(target) + ',location.origin)';
+  });
+};
+const inlineThemeBootstrapTag = /<script\b[^>]*data-samey-theme-bootstrap[^>]*>[\s\S]*?<\/script>/i;
+
+function earlyThemeBootstrap() {
+  const config = appearanceBootstrapConfig;
+  must(config, "appearance bootstrap config is unavailable");
+  const colors = requireRecord(config.colors, "appearance bootstrap colors are unavailable");
+  const palette: Record<string, { tone: string; background: string; text: string }> = {};
+  for (const [id, value] of Object.entries(colors)) {
+    if (!isRecord(value)) continue;
+    const tone = value.tone === "dark" ? "dark" : "light";
+    const background = typeof value.background === "string" ? value.background : tone === "dark" ? "#121213" : "#ffffff";
+    const text = typeof value.text === "string" ? value.text : tone === "dark" ? "#f8f8f8" : "#121213";
+    palette[id] = { tone, background, text };
+  }
+  const script = `(function(){try{var p=${jsonForHtml(palette)},r=JSON.parse(localStorage.getItem("keybr.theme")||"null")||{},v=r.color||"system";if(v==="light-contrast"||v==="clear-light"||["gray","yellow","garden","coffee","honey"].includes(v))v="light";else if(v==="dark-contrast")v="clear-dark";else if(v==="chocolate")v="dark";var t;if(v==="custom")t=r.custom;else if(typeof v==="string"&&v.indexOf("saved:")===0&&Array.isArray(r.savedThemes)){var id=v.slice(6);t=r.savedThemes.find(function(x){return x&&x.id===id})}else if(v==="system")t=p[matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"];else t=p[v];if(!t)t=p[matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"]||p.light;var hex=function(x){return typeof x==="string"&&/^#[0-9a-f]{6}$/i.test(x)},tone=t&&t.tone==="dark"?"dark":"light",bg=hex(t&&t.background)?t.background:(tone==="dark"?"#121213":"#ffffff"),fg=hex(t&&t.text)?t.text:(tone==="dark"?"#f8f8f8":"#121213"),e=document.documentElement;e.dataset.siteTheme=v;e.dataset.kbTheme=tone;e.dataset.color=v;e.classList.toggle("dark",tone==="dark");e.style.colorScheme=tone;e.style.setProperty("--site-bg",bg);e.style.setProperty("--site-fg",fg);e.style.backgroundColor=bg;e.style.color=fg}catch(e){}})();`;
+  return '<script data-samey-theme-bootstrap>' + escapeInlineScript(script) + '</script>';
+}
 
 async function injectSitePreloadHints() {
   const siteEntryResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
@@ -327,11 +366,28 @@ async function buildWordle() {
   // into a private directory, then publish the single HTML artifact ourselves.
   const html = await walk(GENERATED_WORDLE, (_path, name) => name.endsWith(".html"));
   must(html.length === 1, `Wordle build emitted ${html.length} HTML files`);
+  let source = await readFile(html[0], "utf8");
+  const routeStyleRe = /<style\b[^>]*>[\s\S]*?<\/style>/gi;
+  const routeStyles = [...source.matchAll(routeStyleRe)].map(match => match[0]);
+  must(routeStyles.length > 0, "Wordle build emitted no route stylesheet");
+  source = source.replace(routeStyleRe, "");
+  const taggedRouteStyles = routeStyles
+    .map(style => style.replace(/^<style\b/i, '<style data-wordle-page-css'))
+    .join("");
+
+  const moduleScriptRe = /<script\b(?=[^>]*\btype=["']module["'])[^>]*>[\s\S]*?<\/script>/i;
+  const moduleScript = source.match(moduleScriptRe)?.[0];
+  must(moduleScript, "Wordle build emitted no application module script");
+  source = source.replace(moduleScriptRe, "");
+  source = source.replace("</head>", () => taggedRouteStyles + "</head>");
+  source = source.replace("</body>", () => moduleScript + "</body>");
+  source = source.replace(/[ \t]+$/gm, "");
+
   await mkdir(DOCS, { recursive: true });
   await rm(join(DOCS, "wordle.html"), { force: true });
-  await rename(html[0], join(DOCS, "wordle.html"));
+  await writeFile(join(DOCS, "wordle.html"), source);
   must(existsSync(join(DOCS, "wordle.html")), "Wordle publish did not emit docs/wordle.html");
-  log("wordle -> docs/wordle.html");
+  log("wordle -> docs/wordle.html with route CSS before the static shell and deferred app module at body end");
 }
 
 
@@ -348,10 +404,16 @@ async function buildKeybr() {
   must(entryScriptMatch?.[1], "Keybr HTML is missing its module entry script");
   const entryScriptHref = entryScriptMatch[1].replace(/^\.\//, "");
   must(/^keybr-assets\/index-[A-Za-z0-9_-]+\.js$/.test(entryScriptHref), "unexpected Keybr entry script: " + entryScriptHref);
-  const entryScript = (await readFile(join(GENERATED_KEYBR, entryScriptHref), "utf8"))
-    .replace(/(from\s*["']|import\s*["']|import\(\s*["'])\.\//g, "$1./keybr-assets/")
-    .replaceAll("</script", "<\\/script");
-  source = source.replace(entryScriptRe, '<script type="module" crossorigin data-keybr-entry>' + entryScript + "</script>");
+  const startupResources = manifestStaticResources(keybrManifest, "index.html");
+  const startupModules = new Set(startupResources.scripts);
+  must(startupModules.size === 1 && startupModules.has(entryScriptHref),
+    "Keybr startup JS must be one consolidated entry bundle");
+  const entryScript = escapeInlineScript(rewriteEmbeddedModuleSource(
+    await readFile(join(GENERATED_KEYBR, entryScriptHref), "utf8"),
+    entryScriptHref,
+  ));
+  source = source.replace(entryScriptRe, () => '<script type="module" data-keybr-entry>' + entryScript + "</script>");
+  source = source.replace(/<link\b[^>]*\brel=["']modulepreload["'][^>]*>/gi, "");
 
   const stylesheetRe = /<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
   const cssHrefs = [...source.matchAll(stylesheetRe)].map(match => match[1]).filter((href): href is string => typeof href === "string");
@@ -383,7 +445,7 @@ async function buildKeybr() {
   const prefetchData = '<script type="application/json" data-samey-prefetch-assets>' + jsonForHtml(prefetchAssets) + "</script>";
   const directPreload = '<script data-samey-keybr-preload>(function(){try{var n=document.querySelector("[data-samey-prefetch-assets]");if(!n)return;var m=JSON.parse(n.textContent||"{}"),s=JSON.parse(localStorage.getItem("settings")||"{}"),l=typeof s["keyboard.language"]==="string"?s["keyboard.language"]:"en",t=typeof s["lesson.type"]==="string"?s["lesson.type"]:"guided",u=[m.models&&m.models[l]];if(t==="guided"||t==="wordlist")u.push(m.words&&m.words[l]);else if(t==="books"){var b=typeof s["lesson.books.book"]==="string"?s["lesson.books.book"]:"en-alice-wonderland";u.push(m.books&&m.books[b])}for(var i=0;i<u.length;i++)if(u[i]){var a=document.createElement("link");a.rel="preload";a.as="fetch";a.href=u[i];a.crossOrigin="anonymous";document.head.append(a)}}catch(e){}})();</script>';
   const shared = '<link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
-  source = source.replace("</head>", criticalCss + prefetchData + directPreload + shared + "</head>");
+  source = source.replace("</head>", () => criticalCss + prefetchData + directPreload + shared + "</head>");
 
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);
@@ -391,9 +453,9 @@ async function buildKeybr() {
   must(existsSync(assets), "Keybr build did not emit split assets");
   await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
   await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
-  await rm(join(DOCS, entryScriptHref), { force: true });
+  for (const file of startupModules) await rm(join(DOCS, file), { force: true });
   for (const href of cssHrefs) await rm(join(DOCS, href.replace(/^\.\//, "")), { force: true });
-  log("keybr -> docs/keybr.html with inline entry/CSS + split dependency/data assets");
+  log("keybr -> docs/keybr.html with one inline startup bundle/CSS + lazy data/media assets");
 }
 
 const PUBLIC_ORIGIN = "https://sanyambrar.com";
@@ -465,9 +527,13 @@ async function finalizeShellAssets() {
   const version = hash.digest("hex").slice(0, 16);
   const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
   const sharedStyleTag = /<link\b[^>]*\bdata-samey-shared\b[^>]*>/i;
-  const sharedRuntimeTag = /<script\b[^>]*\bsrc=["']([^"']*shared-runtime\.js(?:\?[^"']*)?)["'][^>]*><\/script>/i;
+  const sharedRuntimeTag = /<script\b(?:[^>]*\bdata-samey-shared-runtime\b[^>]*|[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*)><\/script>/i;
+  const transitionBridgeTag = /<script\b[^>]*\bdata-samey-transition-bridge\b[^>]*><\/script>/i;
+  const themeBootstrap = earlyThemeBootstrap();
   for (const file of htmlFiles) {
     let source = await readFile(file, "utf8");
+    if (inlineThemeBootstrapTag.test(source)) source = source.replace(inlineThemeBootstrapTag, () => themeBootstrap);
+    else source = source.replace(/<head>/i, () => "<head>" + themeBootstrap);
     if (!source.includes('data-samey-view-transition'))
       source = source.replace('</head>', '<style data-samey-view-transition>@view-transition{navigation:auto}</style></head>');
     const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
@@ -480,8 +546,9 @@ async function finalizeShellAssets() {
       source = source.replace(sharedStyleTag, () => `<link rel="stylesheet" data-samey-shared href="/shared/${sharedCssName}">`);
       source = source.replace(sharedRuntimeTag, () => `<script defer data-samey-shared-runtime data-samey-runtime-root="/" data-samey-build="${version}" src="/shared/${sharedRuntimeName}"></script>`);
     }
-    if (!source.includes('data-samey-transition-bridge'))
-      source = source.replace('</head>', `<script data-samey-transition-bridge src="/shared/${transitionBridgeName}"></script></head>`);
+    const transitionBridge = `<script data-samey-transition-bridge src="/shared/${transitionBridgeName}"></script>`;
+    if (transitionBridgeTag.test(source)) source = source.replace(transitionBridgeTag, () => transitionBridge);
+    else source = source.replace('</head>', () => transitionBridge + '</head>');
     if (spaShell)
       source = source.replace(/<meta\s+name=["']samey-route-assets["']\s+content=["'][^"']*["']\s*\/?>/i, `<meta name="samey-route-assets" content="/shared/${routeManifestName}">`);
     const buildMeta = /<meta\s+name=["']samey-build["']\s+content=["'][^"']*["']\s*\/?>/i;
@@ -631,9 +698,9 @@ self.addEventListener('fetch', event => {
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, site, or all)`);
+  await generateAppearance();
   const sharedBuild = buildSharedRuntime();
   if (targets.has("site")) {
-    await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
     await Promise.all([sharedBuild, buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);

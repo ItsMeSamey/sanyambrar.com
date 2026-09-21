@@ -2720,6 +2720,35 @@ test('production pages reuse one hashed shared CSS/runtime pair instead of embed
   }
 });
 
+test('saved appearance owns first paint before the deferred shared runtime starts', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns the parser-time theme bootstrap');
+  await page.addInitScript(() => localStorage.setItem('keybr.theme', JSON.stringify({
+    color: 'custom',
+    custom: {
+      tone: 'dark',
+      background: '#101820',
+      text: '#f2f7f9',
+    },
+  })));
+  await page.route(/\/shared\/runtime-[0-9a-f]{16}\.js$/, route =>
+    route.fulfill({ status: 200, contentType: 'text/javascript', body: '' }));
+
+  await page.goto(`http://127.0.0.1:${info.project.metadata.port}/work/`, { waitUntil: 'domcontentloaded' });
+  const firstPaint = await page.evaluate(() => ({
+    theme: document.documentElement.dataset.siteTheme,
+    background: getComputedStyle(document.documentElement).backgroundColor,
+    bodyBackground: getComputedStyle(document.body).backgroundColor,
+    siteBackground: document.documentElement.style.getPropertyValue('--site-bg'),
+  }));
+  expect(firstPaint).toEqual({
+    theme: 'custom',
+    background: 'rgb(16, 24, 32)',
+    bodyBackground: 'rgb(16, 24, 32)',
+    siteBackground: '#101820',
+  });
+  await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
+});
+
 test('development first paint stays styled when source JavaScript is unavailable', async ({ page }, info) => {
   test.skip(!info.project.metadata.development, 'Source-only first-paint contract belongs to development');
   await page.route('**/*', async route => {
@@ -4541,6 +4570,85 @@ test('Keybr owns internal scrollbars without shared geometry rescans', async ({ 
     return value;
   });
   expect(count, 'Keybr subtree updates must not enter the shared virtual-scrollbar geometry path').toBe(0);
+});
+
+test('Keybr lesson selection is immediate, interruptible, and never owned by construction animation', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Lesson type' })).toBeVisible();
+
+  await page.evaluate(() => {
+    const original = globalThis.SameyAnimateLocalSwap;
+    globalThis.__sameyLessonSwapCalls = 0;
+    globalThis.SameyAnimateLocalSwap = (...args) => {
+      globalThis.__sameyLessonSwapCalls += 1;
+      return original?.(...args) ?? Promise.resolve();
+    };
+    globalThis.__sameyRestoreLessonSwap = () => {
+      globalThis.SameyAnimateLocalSwap = original;
+      delete globalThis.__sameyRestoreLessonSwap;
+    };
+  });
+
+  await page.evaluate(() => {
+    const click = label => {
+      const control = [...document.querySelectorAll('[role="radio"]')]
+        .find(element => element.textContent?.trim() === label);
+      if (!(control instanceof HTMLButtonElement)) throw new Error(`Missing lesson option: ${label}`);
+      control.click();
+    };
+    click('Books');
+    click('Guided lessons');
+    click('Source code');
+  });
+
+  const sourceCode = page.getByRole('radio', { name: 'Source code', exact: true });
+  await expect(sourceCode).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-keybr-lesson-type="code"]')).toBeVisible();
+  await page.waitForTimeout(350);
+  await expect(sourceCode).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-keybr-lesson-type="code"]')).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__sameyLessonSwapCalls ?? -1)).toBe(0);
+  await page.evaluate(() => {
+    globalThis.__sameyRestoreLessonSwap?.();
+    delete globalThis.__sameyLessonSwapCalls;
+  });
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+});
+
+test('Keybr common lesson pacing controls stay mounted across compatible modes', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+
+  const targetSpeed = page.getByText('Target typing speed:', { exact: true });
+  const lessonLength = page.getByText('Add words to lessons:', { exact: true });
+  await expect(targetSpeed).toHaveCount(1);
+  await expect(lessonLength).toHaveCount(1);
+
+  await page.evaluate(() => {
+    const rowFor = label => [...document.querySelectorAll('*')]
+      .find(element => element.textContent?.trim() === label)?.parentElement;
+    const speed = rowFor('Target typing speed:');
+    const length = rowFor('Add words to lessons:');
+    if (!(speed instanceof HTMLElement) || !(length instanceof HTMLElement))
+      throw new Error('Common pacing controls are unavailable');
+    speed.dataset.qaPacingSpeed = 'stable';
+    length.dataset.qaPacingLength = 'stable';
+  });
+
+  for (const mode of ['Common words', 'Books', 'Custom text']) {
+    await page.getByRole('radio', { name: mode, exact: true }).click();
+    await expect(page.locator('[data-qa-pacing-speed="stable"]')).toHaveCount(1);
+    await expect(page.locator('[data-qa-pacing-length="stable"]')).toHaveCount(1);
+    await expect(targetSpeed).toHaveCount(1);
+    await expect(lessonLength).toHaveCount(1);
+  }
+
+  for (const mode of ['Source code', 'Numbers']) {
+    await page.getByRole('radio', { name: mode, exact: true }).click();
+    await expect(targetSpeed).toHaveCount(0);
+    await expect(lessonLength).toHaveCount(0);
+  }
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {

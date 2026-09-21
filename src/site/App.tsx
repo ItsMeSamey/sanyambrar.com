@@ -96,6 +96,8 @@ function routeFromUrl(url: URL): Route | null {
   return null;
 }
 
+export const ownsSiteRoute = (url: URL) => routeFromUrl(url) != null;
+
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
 const usesDocumentNavigation = (route: Route) => route.kind === 'project'
   && !!route.slug

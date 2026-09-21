@@ -12,6 +12,28 @@ const loadSiteRuntime = () => runtimeTask ??= Promise.all([
   import('./App'),
 ]).then(([web, site]) => ({ web, site }));
 
+const looksLikeSolidRoute = (url: URL) => {
+  const path = url.pathname.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
+  return path === '/' || path === '/work' || path === '/tools' || path === '/chain' || path === '/blog'
+    || /^\/projects\/[^/]+$/.test(path);
+};
+
+const preloadSolidRoute = (href: string): boolean => {
+  let url: URL;
+  try { url = new URL(href, location.href); }
+  catch (error) {
+    console.debug('Solid route preload URL was invalid', error);
+    return false;
+  }
+  if (url.origin !== location.origin
+    || !document.documentElement.hasAttribute('data-site-spa')
+    || !looksLikeSolidRoute(url)) return false;
+  void loadSiteRuntime().then(({ site }) => {
+    if (site.ownsSiteRoute(url)) return site.preloadSiteRoute(url);
+  }).catch(error => console.debug('Solid route preload failed', error));
+  return true;
+};
+
 let disposeCurrent: (() => void) | undefined;
 let pendingMount: Promise<void> | undefined;
 let cancelPendingMount = () => {};
@@ -26,6 +48,7 @@ const focusedIndex = (root: HTMLElement) => {
 };
 
 function mountSolidSite() {
+  globalThis.SameySolidPreload = preloadSolidRoute;
   if (disposeCurrent || pendingMount) return;
   const root = siteRoot();
   if (!root) throw new Error('Site mount node #site-root is missing');
@@ -59,6 +82,7 @@ function mountSolidSite() {
 
 function disposeSolidSite() {
   mountGeneration += 1;
+  if (globalThis.SameySolidPreload === preloadSolidRoute) globalThis.SameySolidPreload = undefined;
   cancelPendingMount();
   cancelPendingMount = () => {};
   pendingMount = undefined;
