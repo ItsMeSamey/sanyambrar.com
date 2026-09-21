@@ -14,10 +14,21 @@ const WORDS_BY_PATH = import.meta.glob<string>("./assets/words/words-*.json", {
   query: "?url",
 });
 
+const jsonCache = new Map<string, Promise<unknown>>();
+
 async function loadJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Cannot load JSON: ${response.status}`);
-  return (await response.json()) as T;
+  let task = jsonCache.get(url) as Promise<T> | undefined;
+  if (task == null) {
+    task = fetch(url).then(async (response) => {
+      if (!response.ok) throw new Error(`Cannot load JSON: ${response.status}`);
+      return (await response.json()) as T;
+    }).catch((error) => {
+      jsonCache.delete(url);
+      throw error;
+    });
+    jsonCache.set(url, task);
+  }
+  return task;
 }
 
 export async function loadContent(book: Book): Promise<Content> {

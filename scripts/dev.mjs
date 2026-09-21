@@ -23,7 +23,7 @@ const siteSourcePages = new Map([
   ['/keybr', 'src/games/keybr/index.html'],
   ['/blog/posts/btop-mutex', 'src/blogs/btop-mutex.html'],
 ]);
-const inlineCss = {
+const linkedCss = {
   shared: 'src/shared/styles/site.css',
   home: 'src/site/styles/home.css',
   tools: 'src/tools/style.css',
@@ -33,25 +33,50 @@ const inlineCss = {
   keybr: 'src/games/keybr/style.css',
   article: 'src/blogs/btop-mutex.css',
 };
-const inlineCssFiles = new Set(Object.values(inlineCss).map(file => resolve(root, file)));
+const sharedCss = [linkedCss.shared, linkedCss.settings];
+const linkedCssFiles = new Set(Object.values(linkedCss).map(file => resolve(root, file)));
+const routeKindFor = (path, htmlFile) => {
+  if (htmlFile.endsWith('/src/games/wordle/index.html')) return 'wordle';
+  if (htmlFile.endsWith('/src/games/keybr/index.html')) return 'keybr';
+  if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return 'article';
+  const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
+  if (key === '/') return 'home';
+  if (key === '/work') return 'work';
+  if (key === '/tools') return 'tools';
+  if (key === '/chain') return 'chain';
+  if (key === '/blog') return 'blog';
+  if (key.startsWith('/projects/')) return 'project';
+  return 'home';
+};
 const routeCssFor = (path, htmlFile) => {
   const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
-  if (htmlFile.endsWith('/src/games/wordle/index.html')) return [inlineCss.settings, inlineCss.wordle];
-  if (htmlFile.endsWith('/src/games/keybr/index.html')) return [inlineCss.settings, inlineCss.keybr];
-  if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return [inlineCss.article];
-  if (key === '/tools') return [inlineCss.tools];
-  if (key === '/chain') return [inlineCss.settings, inlineCss.chain];
-  if (key === '/projects/cnn') return [inlineCss.home, inlineCss.settings];
-  return [inlineCss.home];
+  if (htmlFile.endsWith('/src/games/wordle/index.html')) return [linkedCss.wordle];
+  if (htmlFile.endsWith('/src/games/keybr/index.html')) return [linkedCss.keybr];
+  if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return [linkedCss.article];
+  if (key === '/tools') return [linkedCss.tools];
+  if (key === '/chain') return [linkedCss.chain];
+  return [linkedCss.home];
 };
-const cssText = async file => (await readFile(resolve(root, file), 'utf8'))
-  .replace(/^\s*@import\s+["'][^"']+["'];?\s*$/gm, '')
-  .replaceAll('</style', '<\\/style');
-const inlineDevStyles = async (path, htmlFile) => {
-  const files = [inlineCss.shared, ...routeCssFor(path, htmlFile)];
-  const styles = await Promise.all(files.map(async file =>
-    `<style${file === inlineCss.shared ? ' data-samey-shared' : ''} data-samey-dev-style="${file}">${await cssText(file)}</style>`));
-  return styles.join('');
+const hrefForSourceCss = file => '/' + file;
+const devStyleLinks = (path, htmlFile) => {
+  const kind = routeKindFor(path, htmlFile);
+  const links = [
+    '<style data-samey-dev-view-transition>@view-transition{navigation:auto}</style>',
+    '<script data-samey-transition-bridge src="/src/shared/transition-bridge.js"></script>',
+    ...sharedCss.map(file => `<link rel="stylesheet" data-samey-shared data-samey-dev-style="${file}" href="${hrefForSourceCss(file)}">`),
+    ...routeCssFor(path, htmlFile).map(file => `<link rel="stylesheet" data-samey-route-style data-samey-route-owner="${kind}" data-samey-dev-style="${file}" href="${hrefForSourceCss(file)}">`),
+  ];
+  if (target === 'site' && ['home','work','tools','chain','blog','project'].includes(kind))
+    links.push('<meta name="samey-route-assets" content="/@samey-route-assets.json">');
+  return links.join('');
+};
+const devRouteAssets = {
+  home: [hrefForSourceCss(linkedCss.home)],
+  work: [hrefForSourceCss(linkedCss.home)],
+  tools: [hrefForSourceCss(linkedCss.tools)],
+  chain: [hrefForSourceCss(linkedCss.chain)],
+  blog: [hrefForSourceCss(linkedCss.home)],
+  project: [hrefForSourceCss(linkedCss.home)],
 };
 process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
@@ -95,12 +120,11 @@ const server = await createServer({
     enforce: 'pre',
     transform(code, id) {
       const file = id.split('?', 1)[0];
-      if (inlineCssFiles.has(file)) return { code: '', map: null };
       if (!/\.[cm]?[jt]sx?$/.test(file)) return;
       let changed = false;
       const next = code.replace(/^\s*import\s+["']([^"']+\.css)["'];?\s*$/gm, (statement, specifier) => {
         const target = resolve(dirname(file), specifier);
-        if (!inlineCssFiles.has(target)) return statement;
+        if (!linkedCssFiles.has(target)) return statement;
         changed = true;
         return '';
       });
@@ -108,7 +132,7 @@ const server = await createServer({
     },
     configureServer(server) {
       server.watcher.on('change', file => {
-        if (inlineCssFiles.has(file)) server.ws.send({ type: 'full-reload', path: '*' });
+        if (linkedCssFiles.has(file)) server.ws.send({ type: 'full-reload', path: '*' });
       });
     },
   }, {
@@ -117,6 +141,11 @@ const server = await createServer({
       server.middlewares.use(async (request, response, next) => {
         try {
           const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+          if (target === 'site' && path === '/@samey-route-assets.json') {
+            response.setHeader('Content-Type', 'application/json');
+            response.end(JSON.stringify(devRouteAssets));
+            return;
+          }
           const file = resolve(docs, '.' + path);
           if (file !== docs && !file.startsWith(docs + sep)) return next();
           const htmlFile = await htmlFileFor(path);
@@ -125,15 +154,25 @@ const server = await createServer({
             html = html.replace(/<html(?=\s|>)/i, '<html data-samey-dev');
             html = html
               .replace(/<link\b[^>]*\bdata-samey-shared\b[^>]*>\s*/gi, '')
-              .replace(/<style\b[^>]*\bdata-samey-shared\b[^>]*>[\s\S]*?<\/style>\s*/gi, '')
+              .replace(/<style\b[^>]*\bdata-samey-(?:shared|inline-shell)\b[^>]*>[\s\S]*?<\/style>\s*/gi, '')
               .replace(/<script\b[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*><\/script>\s*/gi, '')
-              .replace(/<script\b[^>]*\bdata-samey-shared-runtime\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-(?:shared-runtime|inline-runtime)\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-inline-asset-guard\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-inline-importmap\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-site-entry\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
               .replace(/<link\b[^>]*\bdata-samey-route-module\b[^>]*>\s*/gi, '')
+              .replace(/<link\b[^>]*\bdata-samey-route-style\b[^>]*>\s*/gi, '')
+              .replace(/<meta\b[^>]*\bname=["']samey-route-assets["'][^>]*>\s*/gi, '')
               .replace(/<style\b[^>]*\bdata-samey-route-style\b[^>]*>[\s\S]*?<\/style>\s*/gi, '');
-            html = html.replace('</head>', `${await inlineDevStyles(path, htmlFile)}</head>`);
+            html = html.replace('</head>', `${devStyleLinks(path, htmlFile)}</head>`);
             if (!html.includes(sharedRuntimeUrl))
               html = html.replace('</head>', `<script type="module" data-samey-shared-runtime src="${sharedRuntimeUrl}"></script></head>`);
-            html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, `src="${siteRuntimeUrl}"`);
+            if (target === 'site' && html.includes('id="site-root"') && !html.includes(siteRuntimeUrl)) {
+              const rewritten = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, `src="${siteRuntimeUrl}"`);
+              html = rewritten.includes(siteRuntimeUrl)
+                ? rewritten
+                : rewritten.replace('</head>', `<script type="module" src="${siteRuntimeUrl}"></script></head>`);
+            }
             if (target === 'site' && htmlFile.endsWith('/src/games/keybr/index.html'))
               html = html.replace('src="/main.tsx"', 'src="/src/games/keybr/main.tsx"');
             if (target === 'site' && htmlFile.endsWith('/src/blogs/btop-mutex.html'))

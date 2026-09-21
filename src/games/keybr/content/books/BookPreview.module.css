@@ -14,7 +14,9 @@
 }
 
 .coverImage {
+  inline-size: 5.5rem;
   block-size: 8rem;
+  object-fit: contain;
 }
 
 .details {

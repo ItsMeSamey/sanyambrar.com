@@ -1,0 +1,1 @@
+import{t as e}from"./site-app-8I9euOx8.js";import{t}from"./_.contribution-Co-neAaV.js";t({id:`sql`,extensions:[`.sql`],aliases:[`SQL`],loader:()=>e(()=>import(`./sql-NEE52Syq.js`),[])});

@@ -71,7 +71,14 @@ export default defineConfig(() => {
       // useful for anything that grows beyond that known split editor chunk.
       chunkSizeWarningLimit: 3000,
       rolldownOptions: {
+        preserveEntrySignatures: 'allow-extension',
         output: {
+          strictExecutionOrder: true,
+          codeSplitting: {
+            groups: [
+              { name: 'site-startup', tags: ['$initial'], includeDependenciesRecursively: true, priority: 100 },
+            ],
+          },
           entryFileNames: 'site-chunks/site-app-[hash].js',
           chunkFileNames: 'site-chunks/[name]-[hash].js',
           assetFileNames: 'site-chunks/[name]-[hash][extname]',
@@ -152,6 +159,7 @@ export default defineConfig(() => {
           strictExecutionOrder: true,
           codeSplitting: {
             groups: [
+              { name: 'keybr-startup', tags: ['$initial'], includeDependenciesRecursively: true, priority: 100 },
               { name: 'vendor', test: /node_modules/, minSize: 20_000, maxSize: 180_000, priority: 10 },
               { name: 'keybr', test: /src[\\/][^\\/]+[\\/]/, minSize: 40_000, maxSize: 180_000, includeDependenciesRecursively: false, priority: 5 },
             ],

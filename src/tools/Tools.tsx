@@ -34,6 +34,7 @@ function ToolSurface(props:{tool:ToolId}) {
   let root!: HTMLDivElement;
   let dispose = () => {};
   let cancelled = false;
+  const info = () => TOOLS.find(tool => tool.id === props.tool) ?? TOOLS[0];
   onSettled(() => {
     void loadToolsModule().then(module => {
       if (cancelled) return;
@@ -52,13 +53,20 @@ function ToolSurface(props:{tool:ToolId}) {
     });
   });
   onCleanup(() => { cancelled = true; dispose(); });
-  return <div ref={root} class="tools-view" data-tool-view={props.tool} aria-live="polite"/>;
+  return <div ref={root} class="tools-view" data-tool-view={props.tool} aria-live="polite">
+    <section class="tool-prerender" data-tool-prerender>
+      <span>{info().label}</span>
+      <h1>{info().title}</h1>
+      <p>{info().note}</p>
+    </section>
+  </div>;
 }
 
 const validTools = new Set<string>(TOOLS.map(tool => tool.id));
 const toolOptions = [...TOOLS];
 const isToolId = (value: unknown): value is ToolId => typeof value === 'string' && validTools.has(value);
 const selectedTool = ():ToolId => {
+  if (typeof location === 'undefined') return 'text';
   const value = new URLSearchParams(location.search).get('tool');
   return isToolId(value) ? value : 'text';
 };
@@ -72,7 +80,7 @@ const setToolUrl = (tool:ToolId) => {
   dispatchEvent(new Event('samey-solid-routechange'));
 };
 
-function ToolTabs(props:{active:ToolId}) {
+function ToolTabs(props:{active:ToolId; onChange:(tool:ToolId)=>void; onPreload:(tool:ToolId)=>void}) {
   const selected = () => toolOptions.find(tool => tool.id === props.active) ?? toolOptions[0];
   const [selectOpen, setSelectOpen] = createSignal(false);
   let selectTrigger!: HTMLButtonElement;
@@ -91,9 +99,10 @@ function ToolTabs(props:{active:ToolId}) {
     return () => removeEventListener('keydown', onWindowKeyDown);
   });
   return <div class="tool-switcher">
-    <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => { if (isToolId(value)) setToolUrl(value); }}>
+    <Tabs.Root class="tool-tabs-root" value={props.active} onChange={value => { if (isToolId(value)) props.onChange(value); }}>
       <Tabs.List class="tool-tabs" aria-label="Tools">
-        {TOOLS.map(tool => <Tabs.Trigger class="tool-tab" value={tool.id}>{tool.label}</Tabs.Trigger>)}
+        {TOOLS.map(tool => <Tabs.Trigger class="tool-tab" value={tool.id}
+          onPointerEnter={() => props.onPreload(tool.id)} onFocus={() => props.onPreload(tool.id)}>{tool.label}</Tabs.Trigger>)}
       </Tabs.List>
     </Tabs.Root>
     <Select.Root
@@ -103,7 +112,7 @@ function ToolTabs(props:{active:ToolId}) {
       value={selected()}
       open={selectOpen()}
       onOpenChange={setSelectOpen}
-      onChange={tool => tool && setToolUrl(tool.id)}
+      onChange={tool => tool && props.onChange(tool.id)}
       itemComponent={props => <Select.Item class="tool-select-item" item={props.item}>
         <Select.ItemLabel>{props.item.rawValue.label}</Select.ItemLabel>
         <Select.ItemIndicator class="tool-select-check"><Check aria-hidden="true"/></Select.ItemIndicator>
@@ -128,17 +137,35 @@ function ToolTabs(props:{active:ToolId}) {
 export function ToolsPage() {
   let context: HTMLDivElement | undefined;
   const [active, setActive] = createSignal<ToolId>(selectedTool());
-  const sync = () => setActive(selectedTool());
+  const preloadTool = (tool:ToolId) => {
+    void loadToolsModule().then(module => module.preloadToolDependencies(tool)).catch(error =>
+      console.debug('Tool dependency warmup failed', tool, error));
+  };
+  const directionFor = (from:ToolId, to:ToolId) => toolOptions.findIndex(tool => tool.id === to) < toolOptions.findIndex(tool => tool.id === from) ? 'back' : 'forward';
+  const swapTool = (next:ToolId, syncUrl = true, requestedDirection?:'forward'|'back') => {
+    const current = active();
+    if (next === current) return;
+    const commit = () => {
+      setActive(next);
+      if (syncUrl) setToolUrl(next);
+    };
+    const root = document.querySelector<HTMLElement>('.tools-app');
+    const animate = globalThis.SameyAnimateLocalSwap;
+    if (root && animate) void animate(root, commit, requestedDirection ?? directionFor(current, next));
+    else commit();
+  };
+  const sync = () => swapTool(selectedTool(), false);
   onSettled(() => {
     addEventListener('popstate', sync);
     addEventListener('samey-solid-routechange', sync);
   });
   onCleanup(() => {
+    if (typeof removeEventListener === 'undefined') return;
     removeEventListener('popstate', sync);
     removeEventListener('samey-solid-routechange', sync);
   });
   return <ToolContext value={() => context}>
-    <TopBar contextClass="tools-topbar-context" context={<><ToolTabs active={active()}/><div ref={el => context = el} class="tool-context" aria-live="polite"/></>}/>
+    <TopBar contextClass="tools-topbar-context" context={<><ToolTabs active={active()} onChange={tool => swapTool(tool)} onPreload={preloadTool}/><div ref={el => context = el} class="tool-context" aria-live="polite"/></>}/>
     <main class="tools-app">
       <Show keyed when={active()}>{tool => <ToolSurface tool={tool}/>}</Show>
     </main>

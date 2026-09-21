@@ -3,6 +3,13 @@ import { clsx } from "clsx";
 
 import { createMemo, For } from 'solid-js';
 import styles from "./ParagraphPreview.module.css";
+
+const MAX_PREVIEW_CHARACTERS = 256;
+const previewText = (paragraph: string) =>
+    paragraph.length > MAX_PREVIEW_CHARACTERS
+        ? paragraph.slice(0, MAX_PREVIEW_CHARACTERS - 1).trimEnd() + "…"
+        : paragraph;
+
 export const ParagraphPreview = function ParagraphPreview(props: {
     readonly paragraphs: readonly string[];
     readonly paragraphIndex: number;
@@ -37,5 +44,5 @@ export function ParagraphIndex(props: {
 function ParagraphContent(props: {
     readonly paragraph: string;
 }) {
-    return <span class={styles.content}>{props.paragraph}</span>;
+    return <span class={styles.content} title={props.paragraph}>{previewText(props.paragraph)}</span>;
 }

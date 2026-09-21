@@ -38,9 +38,21 @@ html.samey-hardware-cursor[data-site-loading],html.samey-hardware-cursor[data-si
   --site-fast:110ms;
   --site-medium:190ms;
   --site-slow:280ms;
-  --samey-dialog-origin-x:50vw;
-  --samey-dialog-origin-y:50vh;
 }
+
+/* Every same-origin document boundary participates in a native view transition.
+   Destination documents are warmed on hover/focus by the shared runtime, so the
+   new snapshot is normally ready before the browser commits navigation. */
+@view-transition { navigation: auto; }
+::view-transition-old(root),::view-transition-new(root){
+  animation-duration:var(--site-medium,190ms);
+  animation-timing-function:var(--site-ease-out,cubic-bezier(.16,1,.3,1));
+  mix-blend-mode:normal;
+}
+::view-transition-old(root){animation-name:samey-document-out}
+::view-transition-new(root){animation-name:samey-document-in}
+@keyframes samey-document-out{from{opacity:1}to{opacity:.82}}
+@keyframes samey-document-in{from{opacity:.7}to{opacity:1}}
 button,[role=button],.game-settings-action,.top-nav a,.compact-row,.card,.project{
   -webkit-tap-highlight-color:transparent;
 }

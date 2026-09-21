@@ -1,4 +1,3 @@
-import '../../shared/styles/game-settings.css';
 import './style.css';
 import { Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { GameTopBarActions, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
@@ -8,6 +7,15 @@ import { ChartNoAxesColumn as BarChart3 } from '../../shared/components/Icons.ts
 import { createChainRefs } from './dom.ts';
 import { resilientImport } from '../../shared/resilientImport.ts';
 import { errorWithCause, formatThrownError } from '../../shared/error.ts';
+
+let engineModuleTask: Promise<typeof import('./chain.ts')> | undefined;
+export const preloadChainEngine = () => {
+  engineModuleTask ??= resilientImport(() => import('./chain.ts')).catch(error => {
+    engineModuleTask = undefined;
+    throw error;
+  });
+  return engineModuleTask;
+};
 
 function Slider(props:{label:string;min:number;max:number;inputRef:(el:HTMLInputElement)=>void;outputRef:(el:HTMLOutputElement)=>void}) {
   return <label class="game-settings-slider">
@@ -38,7 +46,7 @@ export function ChainPage() {
     }
     disposeEngine = () => {};
     try {
-      const module = await resilientImport(() => import('./chain.ts'));
+      const module = await preloadChainEngine();
       if (disposed || id !== generation) return;
       disposeEngine = module.mountChain(refs) || (() => {});
       setEngineLoading(false);

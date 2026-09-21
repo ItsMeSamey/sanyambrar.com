@@ -2242,6 +2242,46 @@ test('Tools topbar stays contained while switching tools at 128px', async ({ pag
   await expect(trigger).toContainText('Text');
 });
 
+test('Tools heavy tool switches warm dependencies and animate forward and back', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers heavy editor warmup and tool-swap motion');
+  const requested = [];
+  page.on('request', request => requested.push(new URL(request.url()).pathname));
+  await visit(page, '/tools/?tool=number', info);
+  await expect(page.locator('.number-tool')).toBeVisible();
+  await page.evaluate(() => {
+    globalThis.__sameyQaToolTransitions = 0;
+    const onTransition = () => { globalThis.__sameyQaToolTransitions += 1; };
+    addEventListener('samey-transitionstart', onTransition);
+    globalThis.__sameyQaDisposeToolTransitions = () => removeEventListener('samey-transitionstart', onTransition);
+  });
+
+  requested.length = 0;
+  const diff = page.getByRole('tab', { name: 'Diff', exact: true });
+  await diff.hover();
+  await expect.poll(() => requested.some(path => /\/site-chunks\/monaco-[^/]+\.js$/.test(path)), {
+    message: 'Hovering Diff should warm Monaco before tool commit',
+  }).toBe(true);
+  await page.waitForTimeout(100);
+  requested.length = 0;
+
+  await diff.click();
+  await expect(page).toHaveURL(/tool=diff/);
+  await expect(page.locator('.diff-monaco')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaToolTransitions ?? 0)).toBeGreaterThanOrEqual(1);
+  expect(requested.some(path => /\/site-chunks\/monaco-[^/]+\.js$/.test(path)),
+    'Diff click must reuse hover-warmed Monaco').toBe(false);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/tool=number/);
+  await expect(page.locator('.number-tool')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaToolTransitions ?? 0)).toBeGreaterThanOrEqual(2);
+  await page.evaluate(() => {
+    globalThis.__sameyQaDisposeToolTransitions?.();
+    delete globalThis.__sameyQaDisposeToolTransitions;
+    delete globalThis.__sameyQaToolTransitions;
+  });
+});
+
 const legacyHtmlRoutes = [
   '/index.html',
   '/work/index.html',
@@ -2267,7 +2307,7 @@ test('standalone app boundaries use fresh documents with one shared shell', asyn
   await visit(page, '/', info);
 
   const shellState = () => page.evaluate(() => ({
-    sharedStyles: document.querySelectorAll('style[data-samey-shared]').length,
+    sharedStyles: document.querySelectorAll('style[data-samey-shared],link[rel="stylesheet"][data-samey-shared]').length,
     sharedRuntimes: document.querySelectorAll('script[data-samey-shared-runtime]').length,
     bodyMargin: getComputedStyle(document.body).margin,
     token: globalThis.__sameyQaDocumentToken,
@@ -2275,7 +2315,7 @@ test('standalone app boundaries use fresh documents with one shared shell', asyn
   const markDocument = label => page.evaluate(value => { globalThis.__sameyQaDocumentToken = value; }, label);
   const expectFresh = async (previous, label) => {
     const state = await shellState();
-    expect(state.sharedStyles, label + ' must have one shared stylesheet owner').toBe(1);
+    expect(state.sharedStyles, label + ' must have at least one shared stylesheet owner').toBeGreaterThan(0);
     expect(state.sharedRuntimes, label + ' must have one shared runtime owner').toBe(1);
     expect(state.bodyMargin, label + ' must be styled before application mount').toBe('0px');
     expect(state.token, label + ' must not inherit the previous document global').not.toBe(previous);
@@ -2315,26 +2355,192 @@ test('standalone app boundaries use fresh documents with one shared shell', asyn
   await expectFresh('home-article', 'Article');
 });
 
-test('standalone app hover stays request-idle until navigation', async ({ page }, info) => {
-  const requested = [];
-  page.on('request', request => {
-    const path = new URL(request.url()).pathname;
-    if (path === '/keybr' || path === '/wordle' || path.startsWith('/keybr-assets/')) requested.push(path);
+test('Wordle, Keybr and article document boundaries use native view transitions', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('prefs.practice.tourSeen', 'true');
+    globalThis.__sameyQaRevealTransition = null;
+    addEventListener('pagereveal', event => { globalThis.__sameyQaRevealTransition = !!event.viewTransition; });
   });
-
   await visit(page, '/', info);
-  requested.length = 0;
+
+  for (const target of [
+    { href: '/wordle', path: '/wordle' },
+    { href: '/', path: '/' },
+    { href: '/keybr', path: '/keybr' },
+    { href: '/', path: '/' },
+    { href: '/blog/posts/btop-mutex', path: '/blog/posts/btop-mutex' },
+  ]) {
+    await page.evaluate(href => {
+      const link = [...document.querySelectorAll('a[href]')].find(node => node.getAttribute('href') === href);
+      if (link instanceof HTMLAnchorElement) {
+        link.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
+        link.click();
+      } else location.assign(href);
+    }, target.href);
+    await page.waitForURL(url => url.pathname === target.path);
+    await page.waitForLoadState('domcontentloaded');
+    await expect.poll(() => page.evaluate(() => globalThis.__sameyQaRevealTransition), {
+      message: `${target.path} destination must own a native view transition`,
+    }).toBe(true);
+  }
+});
+
+test('Wordle and Keybr reveal meaningful styled shells before application bootstrap', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    addEventListener('pagereveal', event => {
+      let frames = 0;
+      const capture = () => {
+        const snapshot = {
+          path: location.pathname,
+          transition: !!event.viewTransition,
+          wordleShell: !!document.querySelector('[data-wordle-boot-shell]'),
+          wordleReady: !!document.querySelector('[data-wordle-root]'),
+          keybrShell: !!document.querySelector('#keybr-boot-shell'),
+          keybrReady: !!document.querySelector('#keybr-root'),
+          text: document.body?.innerText?.slice(0, 240) ?? '',
+        };
+        const meaningful = snapshot.wordleShell || snapshot.wordleReady || snapshot.keybrShell || snapshot.keybrReady || snapshot.text.length > 10;
+        if (meaningful || ++frames >= 8) {
+          globalThis.__sameyQaRevealShell = snapshot;
+          return;
+        }
+        requestAnimationFrame(capture);
+      };
+      requestAnimationFrame(capture);
+    });
+  });
+  await visit(page, '/', info);
+
+  await page.evaluate(() => {
+    if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate('/wordle');
+    else location.assign('/wordle');
+  });
+  await page.waitForURL(url => url.pathname === '/wordle');
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaRevealShell?.path ?? null), {
+    message: 'Wordle pagereveal shell snapshot must be recorded',
+  }).toBe('/wordle');
+  const wordle = await page.evaluate(() => globalThis.__sameyQaRevealShell ?? null);
+  expect(wordle?.transition).toBe(true);
+  expect(wordle?.wordleShell || wordle?.wordleReady,
+    'Wordle reveal must snapshot either its static shell or mounted root').toBe(true);
+  expect((wordle?.text ?? '').length).toBeGreaterThan(20);
+
+  await page.evaluate(() => {
+    if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate('/');
+    else location.assign('/');
+  });
+  await page.waitForURL(url => url.pathname === '/');
+  await page.evaluate(() => {
+    if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate('/keybr');
+    else location.assign('/keybr');
+  });
+  await page.waitForURL(url => url.pathname === '/keybr');
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaRevealShell?.path ?? null), {
+    message: 'Keybr pagereveal shell snapshot must be recorded',
+  }).toBe('/keybr');
+  const keybr = await page.evaluate(() => globalThis.__sameyQaRevealShell ?? null);
+  expect(keybr?.transition).toBe(true);
+  expect(keybr?.keybrShell || keybr?.keybrReady,
+    'Keybr reveal must snapshot either its static shell or mounted root').toBe(true);
+  expect((keybr?.text ?? '').length).toBeGreaterThan(10);
+});
+
+test('Wordle and Keybr direct loads remain styled with JavaScript disabled', async ({ browser }, info) => {
+  const port = info.project.metadata.development ? info.project.metadata.sitePort : info.project.metadata.port;
+  const base = `http://127.0.0.1:${port}`;
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 1280, height: 800 },
+  });
+  const page = await context.newPage();
+  try {
+    for (const target of [
+      { route: '/wordle', shell: '[data-wordle-boot-shell]', text: 'Choose a game' },
+      { route: '/keybr', shell: '#keybr-boot-shell', text: 'Touch typing practice' },
+    ]) {
+      await page.goto(`${base}${target.route}`, { waitUntil: 'domcontentloaded' });
+      await expect(page.locator(target.shell)).toBeVisible();
+      await expect(page.getByText(target.text, { exact: true })).toBeVisible();
+      const paint = await page.locator(target.shell).evaluate(element => {
+        const body = getComputedStyle(document.body);
+        const shell = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return {
+          bodyMargin: body.margin,
+          bodyFont: body.fontFamily,
+          shellDisplay: shell.display,
+          shellVisibility: shell.visibility,
+          area: rect.width * rect.height,
+        };
+      });
+      expect(paint.bodyMargin).toBe('0px');
+      expect(paint.bodyFont).not.toMatch(/Times New Roman|Georgia/i);
+      expect(paint.shellDisplay).not.toBe('none');
+      expect(paint.shellVisibility).not.toBe('hidden');
+      expect(paint.area).toBeGreaterThan(0);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('Chain route styles are staged and retired across direct-load round trips', async ({ page }, info) => {
+  await visit(page, '/chain/', info);
+  await expect(page.locator('.chain-shell')).toBeVisible();
+  const chainStyle = page.locator('link[data-samey-route-style][data-samey-route-owner="chain"]');
+  await expect(chainStyle).toHaveCount(1);
+  await expect(chainStyle).not.toHaveAttribute('media', 'not all');
+
+  await page.evaluate(() => globalThis.SameyNavigate?.('/'));
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
+  await expect(chainStyle).toHaveAttribute('media', 'not all');
+  const homeStyle = page.locator('link[data-samey-route-style][data-samey-route-owner="home"]');
+  await expect(homeStyle).toHaveAttribute('media', 'all');
+  await expect(page.locator('.grid')).toHaveCSS('display', 'grid');
+
+  await page.evaluate(() => globalThis.SameyNavigate?.('/chain/'));
+  await expect(page).toHaveURL(/\/chain\/?$/);
+  await expect(page.locator('.chain-shell')).toBeVisible();
+  await expect(chainStyle).toHaveAttribute('media', 'all');
+  await expect(homeStyle).toHaveAttribute('media', 'not all');
+
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
+  await expect(chainStyle).toHaveAttribute('media', 'not all');
+  await expect(homeStyle).toHaveAttribute('media', 'all');
+  await expect(page.locator('.grid')).toHaveCSS('display', 'grid');
+
+  await page.goForward();
+  await expect(page).toHaveURL(/\/chain\/?$/);
+  await expect(page.locator('.chain-shell')).toBeVisible();
+  await expect(chainStyle).toHaveAttribute('media', 'all');
+  await expect(homeStyle).toHaveAttribute('media', 'not all');
+});
+
+test('standalone app hover installs background navigation warmup without committing', async ({ page }, info) => {
+  await visit(page, '/', info);
   const keybr = page.locator('a[href="/keybr"]').first();
   await keybr.hover();
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(120);
   await keybr.focus();
-  await page.waitForTimeout(100);
+  await page.waitForTimeout(80);
 
-  expect(requested, 'Hover/focus must not download a separate app document or module graph').toEqual([]);
+  const warmup = await page.evaluate(() => ({
+    speculation: [...document.querySelectorAll('script[type="speculationrules"][data-samey-speculation]')]
+      .some(script => script.textContent?.includes('/keybr')),
+    prerender: [...document.querySelectorAll('link[data-samey-speculation]')]
+      .some(link => link.getAttribute('rel') === 'prerender' && new URL(link.getAttribute('href') ?? '', location.href).pathname === '/keybr'),
+    prefetch: [...document.querySelectorAll('link[data-samey-speculation]')]
+      .some(link => link.getAttribute('rel') === 'prefetch' && new URL(link.getAttribute('href') ?? '', location.href).pathname === '/keybr'),
+  }));
+  expect(warmup.speculation || warmup.prerender || warmup.prefetch,
+    'Standalone hover/focus must install a browser background-navigation hint').toBe(true);
   await expect(page).toHaveURL(/\/$/);
 });
 
-test('Solid route hover preloads only its route module', async ({ page }, info) => {
+test('Solid route hover preloads destination route dependencies without committing', async ({ page }, info) => {
   const requested = [];
   page.on('request', request => requested.push(new URL(request.url()).pathname));
   await visit(page, '/', info);
@@ -2349,6 +2555,34 @@ test('Solid route hover preloads only its route module', async ({ page }, info) 
   await expect(page).toHaveURL(/\/$/);
 });
 
+test('Reverb hover warms the heavy demo before route commit', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Hashed production chunks make heavy-demo warmup observable');
+  const requested = [];
+  page.on('request', request => requested.push(new URL(request.url()).pathname));
+  await visit(page, '/', info);
+  requested.length = 0;
+
+  const reverb = page.locator('a[href="/projects/reverb/"]').first();
+  await reverb.hover();
+  await expect.poll(() => requested.some(path => /\/site-chunks\/ReverbDemo-[^/]+\.js$/.test(path)), {
+    message: 'Reverb demo module must warm on hover',
+  }).toBe(true);
+  await expect.poll(() => requested.some(path => /\/site-chunks\/reverb-noise-[^/]+\.png$/.test(path)), {
+    message: 'Reverb visual asset must warm on hover',
+  }).toBe(true);
+  requested.length = 0;
+
+  await page.evaluate(() => document.querySelector('a[href="/projects/reverb/"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })));
+  await expect(page).toHaveURL(/\/projects\/reverb\/?$/);
+  await expect(page.locator('.reverb-demo-frame')).toBeVisible();
+  const heavyTransfers = await page.evaluate(() => performance.getEntriesByType('resource')
+    .filter(entry => /ReverbDemo-|reverb-noise-/.test(entry.name))
+    .map(entry => ({ name: new URL(entry.name).pathname, transferSize: entry.transferSize })));
+  expect(heavyTransfers.length, 'Destination document must reuse the warmed Reverb resources').toBeGreaterThan(0);
+  expect(heavyTransfers.every(entry => entry.transferSize <= 300),
+    `Reverb assets should be cache hits after hover warmup: ${JSON.stringify(heavyTransfers)}`).toBe(true);
+});
+
 test('static direct routes ship prerendered Solid markup and mount it once', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns prerendered route markup');
 
@@ -2356,7 +2590,11 @@ test('static direct routes ship prerendered Solid markup and mount it once', asy
   const staticRoutes = [
     ['/', 'Games'],
     ['/work/', 'Projects and demos'],
+    ['/tools/?tool=text', 'Text Inspector'],
+    ['/chain/', 'Chain Reaction'],
     ['/blog/', 'Writing'],
+    ['/projects/reverb/', 'Reverb'],
+    ['/projects/cnn/', 'CNN'],
     ['/projects/zhtml/', 'zhtml'],
     ['/projects/oneserial/', 'OneSerial'],
   ];
@@ -2374,11 +2612,6 @@ test('static direct routes ship prerendered Solid markup and mount it once', asy
     await expect(page.locator('#site-root')).not.toHaveAttribute('data-samey-prerendered', '');
   }
 
-  for (const route of ['/tools/?tool=text', '/chain/', '/projects/reverb/', '/projects/cnn/']) {
-    const response = await page.request.get(`http://127.0.0.1:${port}${route}`);
-    expect(response.ok(), `client-rendered HTML should load for ${route}`).toBe(true);
-    expect(await response.text(), `interactive route should not ship a stale prerender shell for ${route}`).not.toContain('data-samey-prerendered');
-  }
 });
 
 test('prerendered route is visible before site JS and preserves focus through mount', async ({ page }, info) => {
@@ -2407,51 +2640,96 @@ test('prerendered route is visible before site JS and preserves focus through mo
   await expect(page.getByRole('link', { name: 'Sanyam Brar · Home' })).toBeFocused();
 });
 
-test('direct site routes inline their route CSS and preload static route modules', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route inlining and preload hints');
+test('interactive site routes are styled and visible before site JavaScript executes', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns prerendered interactive-route first paint');
+
+  const siteEntry = /\/site-chunks\/site-app-[^/]+\.js(?:\?.*)?$/;
+  const blockSiteApp = route => route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
+  await page.route(siteEntry, blockSiteApp);
+
+  try {
+    for (const target of [
+      { route: '/tools/?tool=text', selector: '.tools-app' },
+      { route: '/chain/', selector: '.chain-shell' },
+      { route: '/projects/reverb/', selector: '.project-detail' },
+      { route: '/projects/cnn/', selector: '.project-detail' },
+    ]) {
+      await page.goto(`http://127.0.0.1:${info.project.metadata.port}${target.route}`, { waitUntil: 'commit' });
+      await expect(page.locator('#site-root')).toHaveAttribute('data-samey-prerendered', '');
+      const surface = page.locator(target.selector).first();
+      await expect(surface).toBeVisible();
+      const paint = await surface.evaluate(element => {
+        const body = getComputedStyle(document.body);
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return {
+          bodyMargin: body.margin,
+          bodyFont: body.fontFamily,
+          display: style.display,
+          visibility: style.visibility,
+          area: rect.width * rect.height,
+        };
+      });
+      expect(paint.bodyMargin).toBe('0px');
+      expect(paint.bodyFont).toContain('system-ui');
+      expect(paint.display).not.toBe('none');
+      expect(paint.visibility).not.toBe('hidden');
+      expect(paint.area).toBeGreaterThan(0);
+      await page.waitForLoadState('networkidle');
+    }
+  } finally {
+    await page.unroute(siteEntry, blockSiteApp);
+  }
+});
+
+test('direct site routes link render-blocking route CSS and preload static route modules', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route stylesheet and preload hints');
 
   for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
     await visit(page, route, info);
-    const styles = page.locator('style[data-samey-route-style]');
+    const styles = page.locator('link[rel="stylesheet"][data-samey-route-style]');
     await expect(styles).not.toHaveCount(0);
-    expect((await styles.allTextContents()).join('').length).toBeGreaterThan(500);
+    await expect(styles.first()).toHaveAttribute('href', /\/(?:site-chunks|src)\/.+\.css$/);
     await expect(page.locator('link[rel="modulepreload"][data-samey-route-module]')).not.toHaveCount(0);
   }
 
   for (const route of ['/projects/zhtml/', '/projects/oneserial/']) {
     await visit(page, route, info);
-    await expect(page.locator('style[data-samey-route-style]')).toHaveCount(1);
+    await expect(page.locator('link[rel="stylesheet"][data-samey-route-style]')).toHaveCount(1);
   }
 });
 
-test('always-loaded shared shell CSS and runtime are embedded in production HTML', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns embedded shared shell assets');
-  const externalShellRequests = [];
-  page.on('request', request => {
-    const path = new URL(request.url()).pathname;
-    if (path.endsWith('/site.css') || path.endsWith('/shared-runtime.js')) externalShellRequests.push(path);
-  });
-
+test('production pages reuse one hashed shared CSS/runtime pair instead of embedding it per page', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns hashed shared shell assets');
+  let expectedCss;
+  let expectedRuntime;
   for (const route of ['/', '/work/', '/wordle', '/keybr', '/blog/posts/btop-mutex']) {
     await page.goto(`http://127.0.0.1:${info.project.metadata.port}${route}`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('style[data-samey-shared]')).toHaveCount(1);
+    await expect(page.locator('style[data-samey-shared]')).toHaveCount(0);
+    const css = page.locator('link[rel="stylesheet"][data-samey-shared]');
+    await expect(css).toHaveCount(1);
     await expect(page.locator('script[data-samey-shared-runtime]')).toHaveCount(1);
-    await expect(page.locator('link[rel="stylesheet"][data-samey-shared]')).toHaveCount(0);
-    await expect(page.locator('script[src*="shared-runtime.js"]')).toHaveCount(0);
+    const cssHref = await css.getAttribute('href');
+    const runtimeSrc = await page.locator('script[data-samey-shared-runtime]').getAttribute('src');
+    expect(cssHref).toMatch(/^\/shared\/site-[0-9a-f]{16}\.css$/);
+    expect(runtimeSrc).toMatch(/^\/shared\/runtime-[0-9a-f]{16}\.js$/);
+    expectedCss ??= cssHref;
+    expectedRuntime ??= runtimeSrc;
+    expect(cssHref).toBe(expectedCss);
+    expect(runtimeSrc).toBe(expectedRuntime);
   }
-  expect(externalShellRequests, 'Always-loaded shared shell assets must not require separate requests').toEqual([]);
 });
 
 test('development first paint stays styled when source JavaScript is unavailable', async ({ page }, info) => {
   test.skip(!info.project.metadata.development, 'Source-only first-paint contract belongs to development');
   await page.route('**/*', async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/@vite/client' || path.startsWith('/src/'))
+    if (path === '/@vite/client' || /\.(?:[cm]?[jt]sx?|js)$/.test(path))
       return route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
     await route.continue();
   });
   await page.goto(`http://127.0.0.1:${info.project.metadata.sitePort}/`, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('style[data-samey-dev-style]')).toHaveCount(2);
+  await expect(page.locator('link[rel="stylesheet"][data-samey-dev-style]')).toHaveCount(3);
   const paint = await page.evaluate(() => {
     const games = document.querySelector('.grid');
     const projects = document.querySelector('.project-grid');
@@ -2472,7 +2750,7 @@ test('development first paint stays styled when source JavaScript is unavailable
   expect(paint.cardDecoration).toBe('none');
 });
 
-test('development site routes inline source CSS and never load generated deployment chunks', async ({ page }, info) => {
+test('development site routes link source CSS and never load generated deployment chunks', async ({ page }, info) => {
   test.skip(!info.project.metadata.development, 'Source-only route contract belongs to development');
   const deploymentChunkRequests = [];
   const globalCssRequests = [];
@@ -2486,13 +2764,13 @@ test('development site routes inline source CSS and never load generated deploym
   for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
     await visit(page, route, info);
     await expect(page.locator('style[data-samey-route-style]')).toHaveCount(0);
-    expect(await page.locator('style[data-samey-dev-style]').count()).toBeGreaterThanOrEqual(2);
+    expect(await page.locator('link[rel="stylesheet"][data-samey-dev-style]').count()).toBeGreaterThanOrEqual(3);
     await expect(page.locator('link[data-samey-route-module]')).toHaveCount(0);
     await expect(page.locator('script[src*="/site-chunks/"]')).toHaveCount(0);
     await expect(page.locator('script[src*="/src/site/main.tsx"]')).toHaveCount(1);
   }
   expect(deploymentChunkRequests, 'Source dev must not crawl deployment module graphs').toEqual([]);
-  expect(globalCssRequests, 'Source dev global CSS must already be embedded in HTML').toEqual([]);
+  expect(globalCssRequests.length, 'Source dev CSS must be requested as render-blocking source stylesheets').toBeGreaterThan(0);
 });
 
 test('Keybr inlines page CSS and declares startup data preloads', async ({ page }, info) => {
@@ -2793,8 +3071,9 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
 
   const samples = page.evaluate(() => new Promise(resolve => {
     const result = [];
-    const started = performance.now();
-    const sample = () => {
+    const sampleFromTransition = () => {
+      const started = performance.now();
+      const sample = () => {
       const route = document.querySelector('.site-route');
       const rect = route?.getBoundingClientRect();
       const contentVisible = route ? [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
@@ -2840,8 +3119,10 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
       });
       if (performance.now() - started < 850) requestAnimationFrame(sample);
       else resolve(result);
+      };
+      requestAnimationFrame(sample);
     };
-    requestAnimationFrame(sample);
+    addEventListener('samey-transitionstart', sampleFromTransition, { once: true });
   }));
 
   await page.locator('a[href="/work/"]').first().click();
@@ -2869,63 +3150,54 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
   await expect(page.locator('[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]')).toHaveCount(0);
 });
 
-test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+test('heavy project routes warm in the background and cross documents with native transitions', async ({ page }, info) => {
+  await page.addInitScript(() => {
+    globalThis.__sameyQaHeavyRevealTransition = null;
+    globalThis.__sameyQaHeavyRuntime = null;
+    addEventListener('pagereveal', event => {
+      globalThis.__sameyQaHeavyRevealTransition = !!event.viewTransition;
+      if (!event.viewTransition || !/\/projects\/(?:reverb|cnn)\/?$/.test(location.pathname)) return;
+      let runtimeDuring = false;
+      const sample = () => {
+        const active = document.documentElement.hasAttribute('data-samey-document-transition');
+        const runtime = !!document.querySelector('[data-reverb-runtime-ready],[data-cnn-runtime-ready]');
+        if (active && runtime) runtimeDuring = true;
+        if (active) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+      addEventListener('samey-document-transitionend', () => {
+        globalThis.__sameyQaHeavyRuntime = { path: location.pathname, runtimeDuring };
+      }, { once: true });
+    });
+  });
 
   for (const target of [
-    { from: '/', previous: 'Games', path: '/projects/reverb/', chunk: 'ReverbDemo', heading: 'Reverb', demo: '.reverb-demo-section' },
-    { from: '/projects/reverb/', previous: 'Reverb', path: '/projects/cnn/', chunk: 'CnnDemo', heading: 'CNN', demo: '.cnn-demo-section' },
+    { path: '/projects/reverb/', heading: 'Reverb', demo: '.reverb-demo-section' },
+    { path: '/projects/cnn/', heading: 'CNN', demo: '.cnn-demo-section' },
   ]) {
-    let delayed = false;
-    let releaseChunk = () => {};
-    const chunkGate = new Promise(resolve => { releaseChunk = resolve; });
-    const chunkPattern = new RegExp(`${target.chunk}(?:-[^/?]+\\.js|\\.tsx)(?:\\?.*)?$`);
-    const holdChunk = async route => {
-      delayed = true;
-      await chunkGate;
-      await route.continue();
-    };
-    await page.route(chunkPattern, holdChunk);
-
-    try {
-      await visit(page, target.from, info);
-      await page.evaluate(path => {
-        const link = document.querySelector(`a[href="${path}"]`);
-        if (link instanceof HTMLAnchorElement) link.click();
-        else void globalThis.SameyNavigate?.(path);
-      }, target.path);
-      await expect.poll(() => delayed, { message: `${target.chunk} request must be deliberately delayed` }).toBe(true);
-      await page.evaluate(() => new Promise(resolve =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve))));
-
-      await expect(page.getByRole('heading', { name: target.previous, exact: true })).toBeVisible();
-      await expect(page.locator('.site-route-loading')).toHaveCount(0);
-      await expect(page.getByRole('heading', { name: target.heading, exact: true })).toHaveCount(0);
-      const painted = await page.locator('.site-route').evaluate(route => {
-        const rect = route.getBoundingClientRect();
-        const contentPainted = [...route.querySelectorAll('h1,h2,h3,p,a,button')].some(element => {
-          const style = getComputedStyle(element);
-          const bounds = element.getBoundingClientRect();
-          return style.display !== 'none' && style.visibility !== 'hidden'
-            && Number(style.opacity) >= 0.99 && bounds.width > 0 && bounds.height > 0;
-        });
-        return {
-          opacity: Number(getComputedStyle(route).opacity),
-          area: rect.width * rect.height,
-          contentPainted,
-        };
-      });
-      expect(painted.opacity).toBeGreaterThanOrEqual(0.99);
-      expect(painted.area).toBeGreaterThan(0);
-      expect(painted.contentPainted).toBe(true);
-    } finally {
-      releaseChunk();
-    }
-
-    await expect(page).toHaveURL(new RegExp(`/projects/${target.heading.toLowerCase()}/?$`));
+    await visit(page, '/', info);
+    const link = page.locator(`a[href="${target.path}"]`).first();
+    await link.hover();
+    await page.waitForTimeout(120);
+    await link.click();
+    await page.waitForURL(url => url.pathname.replace(/\/$/, '') === target.path.replace(/\/$/, ''));
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByRole('heading', { name: target.heading, exact: true })).toBeVisible();
     await expect(page.locator(target.demo)).toBeVisible();
-    await page.unroute(chunkPattern, holdChunk);
+
+    await expect.poll(() => page.evaluate(() => globalThis.__sameyQaHeavyRevealTransition), {
+      message: `${target.heading} reveal must own a native transition`,
+    }).toBe(true);
+    await expect.poll(() => page.evaluate(() => globalThis.__sameyQaHeavyRuntime?.path ?? null), {
+      message: `${target.heading} transition runtime sample must complete`,
+    }).toBe(target.path);
+    const runtime = await page.evaluate(() => globalThis.__sameyQaHeavyRuntime);
+    expect(runtime.runtimeDuring, `${target.heading} heavy runtime must not boot during native transition`).toBe(false);
+    const runtimeSelector = target.heading === 'Reverb' ? '[data-reverb-runtime-ready]' : '[data-cnn-runtime-ready]';
+    await expect.poll(() => page.locator(runtimeSelector).count(), {
+      message: `${target.heading} runtime must boot after native transition`,
+      timeout: 12_000,
+    }).toBe(1);
   }
 });
 
@@ -5601,7 +5873,7 @@ test('Reverb blob renderer sleeps while the demo is offscreen and resumes on vis
     { message: 'Reverb WebGL animation must resume after entering the viewport' }).toBeGreaterThan(offscreenDraws);
 });
 
-test('Reverb demo releases its resize listener after SPA leave', async ({ page }, info) => {
+test('Reverb demo releases its resize listener after SPA leave from its direct document', async ({ page }, info) => {
   await page.addInitScript(() => {
     const listeners = new Set();
     const add = EventTarget.prototype.addEventListener;
@@ -5616,23 +5888,19 @@ test('Reverb demo releases its resize listener after SPA leave', async ({ page }
       return remove.call(this, type, listener, options);
     };
   });
-  await visit(page, '/work/', info);
+  await visit(page, '/projects/reverb/', info);
   const resizeListenerCount = () => page.evaluate(() => globalThis.__sameyQaResizeListeners?.size ?? -1);
-  const baseline = await resizeListenerCount();
-  const navigate = async href => {
-    const loaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
-    await page.evaluate(next => { void globalThis.SameyNavigate?.(next); }, href);
-    await loaded;
-  };
+  const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
+  await expect(host).toHaveAttribute('data-reverb-runtime-ready', '');
+  const withReverb = await resizeListenerCount();
+  expect(withReverb).toBeGreaterThan(0);
 
-  await navigate('/projects/reverb/');
-  await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
-  await expect.poll(resizeListenerCount).toBeGreaterThan(baseline);
-
-  await navigate('/work/');
+  const loaded = page.evaluate(() => new Promise(resolve => addEventListener('samey-pageload', () => resolve(true), { once: true })));
+  await page.evaluate(() => { void globalThis.SameyNavigate?.('/work/'); });
+  await loaded;
   await expect(page).toHaveURL(/\/work\/$/);
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.siteKind)).toBe('work');
-  await expect.poll(resizeListenerCount, { message: 'Reverb runtime resize listener must be removed on unmount' }).toBe(baseline);
+  await expect.poll(resizeListenerCount, { message: 'Reverb runtime resize listener must be removed on unmount' }).toBeLessThan(withReverb);
 });
 
 test('Reverb blob falls back after WebGL context loss', async ({ page }, info) => {

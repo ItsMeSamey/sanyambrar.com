@@ -181,6 +181,7 @@ function ensure() {
       close(false)
       if (targetUrl.origin !== location.origin) window.open(targetUrl.href, '_blank', 'noopener,noreferrer')
       else if (globalThis.SameyNavigate) void globalThis.SameyNavigate(targetUrl.href)
+      else if (globalThis.SameyDocumentNavigate) globalThis.SameyDocumentNavigate(targetUrl.href)
       else location.assign(targetUrl.href)
     }
   })

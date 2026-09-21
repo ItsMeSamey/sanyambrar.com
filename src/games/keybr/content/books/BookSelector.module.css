@@ -141,6 +141,14 @@
   margin-block-start: 0.45rem;
 }
 
+.more {
+  min-block-size: 2.5rem;
+  display: grid;
+  place-items: center;
+  color: var(--secondary-l2);
+  font-size: 0.78em;
+}
+
 .book {
   position: relative;
   display: grid;

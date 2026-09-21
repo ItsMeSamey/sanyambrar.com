@@ -81,15 +81,15 @@ const PROJECT_DEMO_SOURCES = {
 const SITE_ROUTES: SiteRoute[] = [
   siteRoute("", "Sanyam Brar", "home", ["src/site/pages/Home.tsx"], true),
   siteRoute("work", "Work · Sanyam Brar", "work", ["src/site/pages/Work.tsx"], true),
-  siteRoute("tools", "Tools · Sanyam Brar", "tools", ["src/tools/Tools.tsx"]),
-  siteRoute("chain", "Chain Reaction", "chain", ["src/games/chain/Chain.tsx"]),
+  siteRoute("tools", "Tools · Sanyam Brar", "tools", ["src/tools/Tools.tsx"], true),
+  siteRoute("chain", "Chain Reaction", "chain", ["src/games/chain/Chain.tsx"], true),
   siteRoute("blog", "Writing · Sanyam Brar", "blog", ["src/blogs/Blog.tsx"], true),
   ...Object.entries(details).map(([slug, detail]) => siteRoute(
     `projects/${slug}`,
     `${detail.title} · Sanyam Brar`,
     "project",
     ["src/site/pages/Project.tsx", ...(detail.demo ? [PROJECT_DEMO_SOURCES[detail.demo]] : [])],
-    !detail.demo,
+    true,
   )),
 ];
 
@@ -210,6 +210,7 @@ const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\
 async function injectSitePreloadHints() {
   const siteEntryResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
   const siteEntryScripts = new Set(siteEntryResources.scripts);
+  const routeStyles = new Map<string, Set<string>>();
   for (const route of SITE_ROUTES) {
     const scripts = new Set<string>();
     const styles = new Set<string>();
@@ -218,14 +219,13 @@ async function injectSitePreloadHints() {
       resources.scripts.forEach(item => { if (!siteEntryScripts.has(item)) scripts.add(item); });
       resources.styles.forEach(item => styles.add(item));
     }
-    const inlinedStyles = await Promise.all([...styles].map(async file => {
-      const css = (await readFile(join(DOCS, file), "utf8"))
-        .replace(/[ \t]+$/gm, "")
-        .replaceAll("</style", "<\\/style");
-      return '<style data-samey-route-style data-samey-style-src="' + htmlAttr(route.assetRoot + file) + '">' + css + "</style>";
-    }));
+    const styleUrls = [...styles].map(file => "/" + file);
+    const sharedKindStyles = routeStyles.get(route.kind) ?? new Set<string>();
+    styleUrls.forEach(file => sharedKindStyles.add(file));
+    routeStyles.set(route.kind, sharedKindStyles);
     const preload = [
-      ...inlinedStyles,
+      ...styleUrls.map(file => '<link rel="stylesheet" data-samey-route-style data-samey-route-owner="' + htmlAttr(route.kind) + '" href="' + htmlAttr(file) + '">'),
+      '<meta name="samey-route-assets" content="/shared/site-routes.json">',
       ...[...scripts].map(file => '<link rel="modulepreload" crossorigin data-samey-route-module href="' + htmlAttr(route.assetRoot + file) + '">'),
     ].join("");
     const path = join(DOCS, route.file);
@@ -233,7 +233,9 @@ async function injectSitePreloadHints() {
     source = source.replace("</head>", preload + "</head>");
     await writeFile(path, source);
   }
-  log("embedded route dependency hints in HTML");
+  await mkdir(join(DOCS, "shared"), { recursive: true });
+  await writeFile(join(DOCS, "shared", "site-routes.json"), JSON.stringify(Object.fromEntries([...routeStyles].map(([kind, files]) => [kind, [...files]]))));
+  log("linked route styles and emitted shared route asset manifest");
 }
 
 async function beginDocsTransaction() {
@@ -419,7 +421,7 @@ async function validateExtensionlessPublicLinks() {
 }
 
 async function deployAssets() {
-  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
+  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|json|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
     // Optional runtimes and Keybr chunks are cached on demand rather than
     // downloaded by every service-worker install. Their filenames are immutable.
@@ -432,18 +434,42 @@ async function finalizeShellAssets() {
   const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
   const sharedCss = await readFile(join(GENERATED_SHARED_RUNTIME, "site.css"), "utf8");
   const sharedRuntime = await readFile(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js"), "utf8");
+  const transitionBridge = await readFile(join(ROOT, "src/shared/transition-bridge.js"), "utf8");
+  const digest = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex").slice(0, 16);
+  const cssHash = digest(sharedCss);
+  const runtimeHash = digest(sharedRuntime);
+  const sharedDir = join(DOCS, "shared");
+  await mkdir(sharedDir, { recursive: true });
+  const sharedCssName = `site-${cssHash}.css`;
+  const sharedRuntimeName = `runtime-${runtimeHash}.js`;
+  const transitionBridgeName = `transition-bridge-${digest(transitionBridge)}.js`;
+  await writeFile(join(sharedDir, sharedCssName), sharedCss);
+  await writeFile(join(sharedDir, sharedRuntimeName), sharedRuntime);
+  await writeFile(join(sharedDir, transitionBridgeName), transitionBridge);
+
+  const mutableRouteManifest = join(sharedDir, "site-routes.json");
+  let routeManifestName = "";
+  if (existsSync(mutableRouteManifest)) {
+    const routeManifest = await readFile(mutableRouteManifest, "utf8");
+    routeManifestName = `site-routes-${digest(routeManifest)}.json`;
+    await writeFile(join(sharedDir, routeManifestName), routeManifest);
+    await rm(mutableRouteManifest, { force: true });
+  } else {
+    const existing = await walk(sharedDir, (_path, name) => /^site-routes-[0-9a-f]{16}\.json$/.test(name));
+    must(existing.length === 1, `deployment: expected one hashed route asset manifest, found ${existing.length}`);
+    routeManifestName = relative(sharedDir, existing[0]).replaceAll("\\", "/");
+  }
+
   const hash = createHash("sha256");
-  hash.update(siteEntry).update("\0");
-  hash.update("site.css").update("\0").update(sharedCss).update("\0");
-  hash.update("shared-runtime.js").update("\0").update(sharedRuntime).update("\0");
+  hash.update(siteEntry).update("\0").update(sharedCssName).update("\0").update(sharedRuntimeName).update("\0").update(transitionBridgeName).update("\0").update(routeManifestName);
   const version = hash.digest("hex").slice(0, 16);
   const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
   const sharedStyleTag = /<link\b[^>]*\bdata-samey-shared\b[^>]*>/i;
   const sharedRuntimeTag = /<script\b[^>]*\bsrc=["']([^"']*shared-runtime\.js(?:\?[^"']*)?)["'][^>]*><\/script>/i;
-  const safeSharedCss = sharedCss.replaceAll("</style", "<\\/style");
-  const safeSharedRuntime = sharedRuntime.replaceAll("</script", "<\\/script");
   for (const file of htmlFiles) {
     let source = await readFile(file, "utf8");
+    if (!source.includes('data-samey-view-transition'))
+      source = source.replace('</head>', '<style data-samey-view-transition>@view-transition{navigation:auto}</style></head>');
     const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
     if (spaShell)
       source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
@@ -451,13 +477,13 @@ async function finalizeShellAssets() {
     const runtimeMatch = sharedRuntimeTag.exec(source);
     must(!!styleMatch === !!runtimeMatch, `deployment: incomplete shared shell assets in ${relative(DOCS, file)}`);
     if (styleMatch && runtimeMatch) {
-      const runtimeRef = runtimeMatch[1].replace(/[?#].*$/, "");
-      const suffix = "shared-runtime.js";
-      must(runtimeRef.endsWith(suffix), `deployment: malformed shared runtime reference in ${relative(DOCS, file)}`);
-      const runtimeRoot = runtimeRef.slice(0, -suffix.length) || "./";
-      source = source.replace(sharedStyleTag, () => `<style data-samey-shared>${safeSharedCss}</style>`);
-      source = source.replace(sharedRuntimeTag, () => `<script data-samey-shared-runtime data-samey-runtime-root="${htmlAttr(runtimeRoot)}" data-samey-build="${version}">${safeSharedRuntime}</script>`);
+      source = source.replace(sharedStyleTag, () => `<link rel="stylesheet" data-samey-shared href="/shared/${sharedCssName}">`);
+      source = source.replace(sharedRuntimeTag, () => `<script defer data-samey-shared-runtime data-samey-runtime-root="/" data-samey-build="${version}" src="/shared/${sharedRuntimeName}"></script>`);
     }
+    if (!source.includes('data-samey-transition-bridge'))
+      source = source.replace('</head>', `<script data-samey-transition-bridge src="/shared/${transitionBridgeName}"></script></head>`);
+    if (spaShell)
+      source = source.replace(/<meta\s+name=["']samey-route-assets["']\s+content=["'][^"']*["']\s*\/?>/i, `<meta name="samey-route-assets" content="/shared/${routeManifestName}">`);
     const buildMeta = /<meta\s+name=["']samey-build["']\s+content=["'][^"']*["']\s*\/?>/i;
     if (buildMeta.test(source))
       source = source.replace(buildMeta, `<meta name="samey-build" content="${version}">`);
@@ -468,24 +494,31 @@ async function finalizeShellAssets() {
     const source = await readFile(file, "utf8");
     const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
     const siteKindShell = /<html\b[^>]*\bdata-site-kind\s*=/i.test(source);
-    const refs = [...source.matchAll(/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/g)].map(match => match[0]);
-    must(refs.length === 0, `deployment: external always-loaded shell asset remains in ${relative(DOCS, file)}`);
+    must(source.includes(`href="/shared/${sharedCssName}"`), `deployment: hashed shared CSS missing in ${relative(DOCS, file)}`);
+    must(source.includes(`src="/shared/${sharedRuntimeName}"`), `deployment: hashed shared runtime missing in ${relative(DOCS, file)}`);
+    must(source.includes(`src="/shared/${transitionBridgeName}"`), `deployment: hashed transition bridge missing in ${relative(DOCS, file)}`);
     must(!source.includes("site-app.js"), `deployment: mutable site-app reference remains in ${relative(DOCS, file)}`);
     if (spaShell)
       must(source.includes(siteEntry), `deployment: hashed site entry missing in ${relative(DOCS, file)}`);
     if (siteKindShell) {
-      must(source.includes("data-samey-shared>"), `deployment: inline shared CSS missing in ${relative(DOCS, file)}`);
       must(source.includes("data-samey-shared-runtime"), `deployment: inline shared runtime missing in ${relative(DOCS, file)}`);
     }
+    if (spaShell)
+      must(source.includes(`/shared/${routeManifestName}`), `deployment: hashed route manifest missing in ${relative(DOCS, file)}`);
     must(source.includes(`<meta name="samey-build" content="${version}">`), `deployment: missing build version in ${relative(DOCS, file)}`);
+  }
+  for (const file of await readdir(sharedDir)) {
+    if (file === sharedCssName || file === sharedRuntimeName || file === transitionBridgeName || file === routeManifestName) continue;
+    if (/^(?:site-[0-9a-f]{16}\.css|runtime-[0-9a-f]{16}\.js|transition-bridge-[0-9a-f]{16}\.js|site-routes-[0-9a-f]{16}\.json)$/.test(file))
+      await rm(join(sharedDir, file), { force: true });
   }
   await Promise.all([
     rm(join(DOCS, "site.css"), { force: true }),
     rm(join(DOCS, "shared-runtime.js"), { force: true }),
   ]);
   must(!existsSync(join(DOCS, "site-app.js")), "deployment: mutable site-app.js must not be emitted");
-  must(!existsSync(join(DOCS, "site.css")) && !existsSync(join(DOCS, "shared-runtime.js")), "deployment: always-loaded shared shell assets must be embedded");
-  log(`embedded shared shell CSS/runtime -> ${version}; site entry -> ${siteEntry}`);
+  must(existsSync(join(sharedDir, sharedCssName)) && existsSync(join(sharedDir, sharedRuntimeName)), "deployment: hashed shared shell assets are missing");
+  log(`linked hashed shared shell assets -> ${version}; site entry -> ${siteEntry}`);
   return version;
 }
 
@@ -506,7 +539,7 @@ const relativePath = request => {
 };
 const immutableAsset = request => {
   const path = relativePath(request);
-  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/');
+  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/') || path.startsWith('shared/');
 };
 const cacheKey = request => {
   const url = new URL(request.url);

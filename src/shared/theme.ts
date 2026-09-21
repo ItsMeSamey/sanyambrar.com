@@ -1,4 +1,5 @@
 import { animateRootSwap } from './transitions.ts';
+import { afterVisualTransition } from './afterVisualTransition.ts';
 import { contrastText } from './contrast.ts';
 import { writeClipboardText } from './clipboard.ts';
 import { shortcutKey } from './platform.ts';
@@ -1164,10 +1165,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     queueOverlayRefresh();
 
     const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
+    const ordinaryControlSelector = "button,select,option,summary,[role=button],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-cursor-round]";
     const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
     const wantsGrab = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
       if (target.closest(grabSelector)) return true;
+      if (target.closest(ordinaryControlSelector)) return false;
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
@@ -1645,9 +1648,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-transitionstart", hideFillImmediate);
     addEventListener("samey-pageleave", hideFillImmediate);
     document.addEventListener("pointerdown", (event) => {
-      document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
-      document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
-      const actual = elementAt(event);
+      const actual = event.target instanceof Element ? event.target : elementAt(event);
       const pressedLink = linkTarget(actual);
       const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
       pressedPointerId = event.pointerId;
@@ -2162,7 +2163,39 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
   if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
-  globalThis.SameyPreloadPage = undefined;
+  const speculativePages = new Set<string>();
+  const preloadDocument = (href: string) => {
+    let url: URL;
+    try { url = extensionlessPageUrl(new URL(href, location.href)); }
+    catch { return; }
+    if (url.origin !== location.origin) return;
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    url.hash = "";
+    if (speculativePages.has(url.href) || speculativePages.size >= 6) return;
+    speculativePages.add(url.href);
+    const scriptSupport = HTMLScriptElement.supports?.("speculationrules") === true;
+    if (scriptSupport) {
+      const rule = document.createElement("script");
+      rule.type = "speculationrules";
+      rule.dataset.sameySpeculation = "";
+      rule.textContent = JSON.stringify({ prerender: [{ source: "list", urls: [url.href], eagerness: "moderate" }] });
+      document.head.append(rule);
+      return;
+    }
+    const hint = (rel: "prerender" | "prefetch") => {
+      const link = document.createElement("link");
+      link.rel = rel;
+      link.href = url.href;
+      link.dataset.sameySpeculation = "";
+      document.head.append(link);
+    };
+    // Chromium-family browsers that disable Speculation Rules may still honor
+    // legacy prerender. Pair it with prefetch because some privacy/headless
+    // configurations advertise prerender but intentionally do not start it.
+    if (document.createElement("link").relList.supports?.("prerender")) hint("prerender");
+    hint("prefetch");
+  };
+  globalThis.SameyPreloadPage = preloadDocument;
   globalThis.SameyAnimateLocalSwap = (root, commit, direction = "forward") => animateRootSwap(root, commit, () => root, direction);
 
   addEventListener("storage", (event) => { if (event.key === KEY || event.key === FONT_KEY) apply(); });
@@ -2277,8 +2310,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const mountRuntime = () => {
     normalizeExternalLinks(); observeLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSmoothSliderMotion();
   };
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
-  else mountRuntime();
+  const scheduleRuntimeMount = () => { afterVisualTransition(mountRuntime); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", scheduleRuntimeMount, { once: true });
+  else scheduleRuntimeMount();
   const developmentShell = document.documentElement.hasAttribute("data-samey-dev");
   if ("serviceWorker" in navigator && developmentShell) {
     void navigator.serviceWorker.getRegistrations().then(registrations => {

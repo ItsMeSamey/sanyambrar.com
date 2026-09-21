@@ -8,6 +8,7 @@ function prefetch(href: unknown) {
   try {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) return;
+    if (document.documentElement.hasAttribute('data-site-spa') && globalThis.SameySolidPreload?.(url.href)) return;
     globalThis.SameyPreloadPage?.(url.href);
   } catch (error) {
     console.warn('Could not prefetch navigation target', href, error);
