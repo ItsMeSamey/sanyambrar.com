@@ -22,6 +22,19 @@ async function visitReverb(page, info) {
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
 }
 
+
+async function waitRangeReady(host) {
+  await expect.poll(() => host.evaluate(element => {
+    const screen = element.shadowRoot?.querySelector('#rangeScreen');
+    return screen instanceof HTMLElement ? screen.dataset.rangeInteractionReady : 'missing';
+  })).toBe('true');
+}
+
+async function openRangeReady(host) {
+  await host.locator('#openRange').click();
+  await waitRangeReady(host);
+}
+
 const parseRangeTime = value => {
   const parts = value.trim().split(':');
   const seconds = Number(parts.at(-1));
@@ -49,7 +62,7 @@ test('Reverb fine-seek puck distinguishes playback clicks from boundary drags', 
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
 
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   const start = host.getByRole('textbox', { name: 'Start time' });
   const end = host.getByRole('textbox', { name: 'End time' });
   const puck = host.locator('#rangePlay');
@@ -90,7 +103,7 @@ test('Reverb fine-seek drag cancels and springs home on window blur', async ({ p
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
 
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   const puck = host.locator('#rangePlay');
   const fine = host.locator('.fine-control');
   const box = await puck.boundingBox();
@@ -125,7 +138,7 @@ test('Reverb fine-seek drag discards drafts and pauses then resumes preview', as
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
 
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
   const start = host.getByRole('textbox', { name: 'Start time' });
   const puck = host.locator('#rangePlay');
   const fine = host.locator('.fine-control');
@@ -165,7 +178,7 @@ test('Reverb fine-seek puck keeps the native 32dp hit radius', async ({ page }, 
   const blob = host.locator('#blobControl');
   if (await blob.getAttribute('aria-label') === 'Tap to pause capture')
     await blob.click();
-  await host.locator('#openRange').click();
+  await openRangeReady(host);
 
   const puck = host.locator('#rangePlay');
   const box = await puck.boundingBox();

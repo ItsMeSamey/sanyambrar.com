@@ -33,6 +33,30 @@ async function expectScreenFocus(host, screenId, focusId) {
     .toEqual({ id: focusId, visible: true });
 }
 
+async function dragLibraryEdgeClose(host) {
+  await host.evaluate(element => {
+    const phone = element.shadowRoot?.querySelector('#phone');
+    const library = element.shadowRoot?.querySelector('.library-list');
+    if (!(phone instanceof HTMLElement) || !(library instanceof HTMLElement))
+      throw new Error('Reverb phone/library is unavailable');
+    const rect = phone.getBoundingClientRect();
+    const x = rect.left + 4;
+    const startY = rect.top + rect.height / 2;
+    const endY = startY + Math.max(80, rect.height * 0.12);
+    const pointer = (type, y) => new PointerEvent(type, {
+      bubbles: true,
+      pointerId: 23,
+      pointerType: 'touch',
+      isPrimary: true,
+      clientX: x,
+      clientY: y,
+    });
+    library.dispatchEvent(pointer('pointerdown', startY));
+    library.dispatchEvent(pointer('pointermove', endY));
+    library.dispatchEvent(pointer('pointerup', endY));
+  });
+}
+
 test('Reverb screen transitions preserve logical keyboard focus', async ({ page }, info) => {
   await visitReverb(page, info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
@@ -43,8 +67,8 @@ test('Reverb screen transitions preserve logical keyboard focus', async ({ page 
   await expectScreenFocus(host, 'homeScreen', 'openSettings');
 
   await host.locator('#openLibrary').click();
-  await expectScreenFocus(host, 'libraryScreen', 'libraryBack');
-  await host.locator('#libraryBack').click();
+  await expectScreenFocus(host, 'libraryScreen', 'libraryBrand');
+  await dragLibraryEdgeClose(host);
   await expectScreenFocus(host, 'homeScreen', 'openLibrary');
 
   await host.locator('#openIncidents').click();
@@ -126,8 +150,10 @@ test('Reverb gesture screen transitions retain in-demo focus ownership', async (
     const root = element.shadowRoot;
     const phone = root?.querySelector('#phone');
     const blob = root?.querySelector('#blobControl');
-    if (!(phone instanceof HTMLElement) || !(blob instanceof HTMLElement))
-      throw new Error('Reverb phone/blob is unavailable');
+    const library = root?.querySelector('.library-list');
+    if (!(phone instanceof HTMLElement) || !(blob instanceof HTMLElement)
+      || !(library instanceof HTMLElement))
+      throw new Error('Reverb phone/blob/library is unavailable');
     const phoneRect = phone.getBoundingClientRect();
     const blobRect = blob.getBoundingClientRect();
     let x = phoneRect.left + phoneRect.width / 2;
@@ -135,10 +161,10 @@ test('Reverb gesture screen transitions retain in-demo focus ownership', async (
     let endY;
     if (mode === 'settings') {
       startY = blobRect.top - 20;
-      endY = startY + 70;
+      endY = startY + phoneRect.height * 0.18;
     } else if (mode === 'library') {
       startY = blobRect.bottom + 20;
-      endY = startY - 70;
+      endY = startY - phoneRect.height * 0.18;
     } else {
       x = phoneRect.left + 4;
       startY = phoneRect.top + phoneRect.height / 2;
@@ -152,9 +178,10 @@ test('Reverb gesture screen transitions retain in-demo focus ownership', async (
       clientX: x,
       clientY: y,
     });
-    phone.dispatchEvent(event('pointerdown', startY));
-    phone.dispatchEvent(event('pointermove', endY));
-    phone.dispatchEvent(event('pointerup', endY));
+    const target = mode === 'edge' ? library : phone;
+    target.dispatchEvent(event('pointerdown', startY));
+    target.dispatchEvent(event('pointermove', endY));
+    target.dispatchEvent(event('pointerup', endY));
   }, mode);
 
   await drag('settings');
@@ -163,7 +190,7 @@ test('Reverb gesture screen transitions retain in-demo focus ownership', async (
   await expectScreenFocus(host, 'homeScreen', 'openSettings');
 
   await drag('library');
-  await expectScreenFocus(host, 'libraryScreen', 'libraryBack');
+  await expectScreenFocus(host, 'libraryScreen', 'libraryBrand');
   await drag('edge');
   await expectScreenFocus(host, 'homeScreen', 'openLibrary');
 });
@@ -203,5 +230,21 @@ test('Reverb screen focus handoff cannot steal a later external focus', async ({
   await fullscreen.focus();
   await expect(fullscreen).toBeFocused();
   await page.evaluate(() => new Promise(requestAnimationFrame));
+  await expect(fullscreen).toBeFocused();
+
+  // Range readiness is delayed until the native opening motion reaches 98%. A later
+  // external focus handoff must win instead of being stolen when that readiness fires.
+  await host.evaluate(element => {
+    const openRange = element.shadowRoot?.querySelector('#openRange');
+    if (!(openRange instanceof HTMLElement)) throw new Error('Range opener is unavailable');
+    openRange.click();
+  });
+  await fullscreen.focus();
+  await expect(fullscreen).toBeFocused();
+  await expect.poll(() => host.evaluate(element =>
+    element.shadowRoot?.querySelector('#rangeScreen')?.getAttribute('data-range-interaction-ready')
+      ?? element.shadowRoot?.querySelector('#rangeScreen')?.dataset.rangeInteractionReady
+      ?? 'false'
+  )).toBe('true');
   await expect(fullscreen).toBeFocused();
 });
