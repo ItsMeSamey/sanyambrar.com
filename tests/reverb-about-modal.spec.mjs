@@ -22,6 +22,13 @@ async function visitReverb(page, info) {
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
 }
 
+async function waitRangeReady(host) {
+  await expect.poll(() => host.evaluate(element => {
+    const screen = element.shadowRoot?.querySelector('#rangeScreen');
+    return screen instanceof HTMLElement ? screen.dataset.rangeInteractionReady : 'missing';
+  })).toBe('true');
+}
+
 async function snapshot(locator) {
   return locator.evaluate(element => ({
     inert: element.inert,
@@ -46,14 +53,17 @@ test('Reverb About isolates and restores its active screen', async ({ page }, in
     {
       screen: '#libraryScreen',
       opener: '#libraryBrand',
-      backgroundFocus: '#libraryBack',
+      backgroundFocus: '#libraryBrand',
       enter: async () => host.locator('#openLibrary').click(),
     },
     {
       screen: '#rangeScreen',
       opener: '#rangeBrand',
       backgroundFocus: '#rangeClose',
-      enter: async () => host.locator('#openRange').click(),
+      enter: async () => {
+        await host.locator('#openRange').click();
+        await waitRangeReady(host);
+      },
     },
   ];
 
@@ -86,9 +96,29 @@ test('Reverb About isolates and restores its active screen', async ({ page }, in
     expect(await snapshot(screen)).toEqual(before);
     await expect(opener).toBeFocused();
 
-    if (entry.screen === '#libraryScreen')
-      await host.locator('#libraryBack').click();
-    else if (entry.screen === '#rangeScreen')
+    if (entry.screen === '#libraryScreen') {
+      await host.evaluate(element => {
+        const phone = element.shadowRoot?.querySelector('#phone');
+        const library = element.shadowRoot?.querySelector('.library-list');
+        if (!(phone instanceof HTMLElement) || !(library instanceof HTMLElement))
+          throw new Error('Reverb phone/library is unavailable');
+        const rect = phone.getBoundingClientRect();
+        const x = rect.left + 4;
+        const startY = rect.top + rect.height / 2;
+        const endY = startY + Math.max(80, rect.height * 0.12);
+        const pointer = (type, y) => new PointerEvent(type, {
+          bubbles: true,
+          pointerId: 29,
+          pointerType: 'touch',
+          isPrimary: true,
+          clientX: x,
+          clientY: y,
+        });
+        library.dispatchEvent(pointer('pointerdown', startY));
+        library.dispatchEvent(pointer('pointermove', endY));
+        library.dispatchEvent(pointer('pointerup', endY));
+      });
+    } else if (entry.screen === '#rangeScreen')
       await host.locator('#rangeClose').click();
   }
 });

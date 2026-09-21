@@ -22,6 +22,15 @@ async function visitReverb(page, info) {
   await expect(page.getByRole('group', { name: 'Interactive Reverb UI demo' })).toBeVisible();
 }
 
+async function waitBufferSettled(host) {
+  await expect.poll(() => host.evaluate(element => {
+    const face = element.shadowRoot?.querySelector('#blobFlipFace');
+    return face instanceof HTMLElement
+      ? Number(face.style.getPropertyValue('--buffer-flip-progress') || 0)
+      : -1;
+  })).toBe(0);
+}
+
 test('Reverb buffer tabs use roving keyboard focus without switching capture', async ({ page }, info) => {
   await visitReverb(page, info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
@@ -47,25 +56,30 @@ test('Reverb buffer tabs use roving keyboard focus without switching capture', a
   await expect(blob).toHaveAttribute('aria-label', 'Tap to start capture');
   await expect(blob).toHaveClass(/dimmed/);
   await expect(blob).not.toHaveClass(/live/);
+  await waitBufferSettled(host);
 
   await page.keyboard.press('ArrowRight');
   await expect(one).toBeFocused();
   await expect(one).toHaveAttribute('aria-selected', 'true');
   await expect(blob).toHaveAttribute('aria-label', 'Tap to pause capture');
   await expect(blob).toHaveClass(/live/);
+  await waitBufferSettled(host);
 
   await page.keyboard.press('ArrowLeft');
   await expect(loop).toBeFocused();
   await expect(loop).toHaveAttribute('aria-selected', 'true');
+  await waitBufferSettled(host);
 
   await page.keyboard.press('Home');
   await expect(one).toBeFocused();
   await expect(one).toHaveAttribute('aria-selected', 'true');
+  await waitBufferSettled(host);
 
   await page.keyboard.press('End');
   await expect(loop).toBeFocused();
   await expect(loop).toHaveAttribute('aria-selected', 'true');
   await expect(blob).toHaveClass(/dimmed/);
+  await waitBufferSettled(host);
 
   await page.keyboard.press('Tab');
   await expect(exportFull).toBeFocused();
