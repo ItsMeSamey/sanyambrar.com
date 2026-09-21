@@ -1384,7 +1384,11 @@ export function runReverbDemoRuntime(
   function renderBufferTransition(): void {
     const degrees = bufferFlipDegrees();
     const depth = bufferDepthScale();
-    const transform = `perspective(24px) rotateY(${degrees}deg) scaleY(${depth})`;
+    // Compose's graphics-layer camera distance is not CSS perspective distance. A literal
+    // perspective(24px) places the camera inside this ~372px surface and makes the web
+    // face explode/skew as it approaches 90 degrees. Keep the native centered depth flip
+    // while using a stable CSS camera distance for the equivalent projection.
+    const transform = `perspective(1000px) rotateY(${degrees}deg) scaleY(${depth})`;
     blobFlipFace.style.transform = transform;
     blobFlipFace.style.setProperty(
       "--buffer-flip-progress",
@@ -1539,6 +1543,7 @@ export function runReverbDemoRuntime(
   const rangeMorphWave = byId<SVGSVGElement>("rangeMorphWave");
   const rangeMorphOval = byId<SVGEllipseElement>("rangeMorphOval");
   const rangeMorphPath = byId<SVGPathElement>("rangeMorphPath");
+  const rangeCoarseWave = byId<SVGSVGElement>("rangeCoarseWave");
   const rangeFinalWave = byId<SVGSVGElement>("rangeFinalWave");
   const rangeDetailFront = byId<HTMLElement>("rangeDetailFront");
   if (!rangeMainCandidate) throw new Error("Reverb demo is missing range main content");
@@ -1711,15 +1716,12 @@ export function runReverbDemoRuntime(
             ),
           );
     const finalLayerAlpha = smoothStep((morph - 0.78) / 0.22);
-    rangeFinalWave.style.opacity = String(finalLayerAlpha);
-    rangeFinalWave.style.clipPath = `inset(0 ${(1 - reveal) * 100}% 0 0)`;
-    rangeMorphWave.style.clipPath = `inset(0 0 0 ${reveal * 100}%)`;
-    rangeScreen.style.setProperty("--range-wave-reveal", String(reveal));
-
     const detailStartedAt =
       rangeWaveRevealStartedAt == null
         ? null
-        : rangeWaveRevealStartedAt + RANGE_WAVEFORM_DETAIL_DELAY_MS;
+        : rangeWaveRevealStartedAt +
+          RANGE_WAVEFORM_COARSE_REVEAL_MS +
+          RANGE_WAVEFORM_DETAIL_DELAY_MS;
     const detail =
       detailStartedAt == null || now < detailStartedAt
         ? 0
@@ -1727,11 +1729,20 @@ export function runReverbDemoRuntime(
             clamp01((now - detailStartedAt) / RANGE_WAVEFORM_DETAIL_REVEAL_MS),
           );
     const effectiveDetail = Math.min(detail, reveal);
-    const detailFrontVisible =
-      reveal > 0.95 && effectiveDetail > 0.002 && effectiveDetail < 0.998;
-    rangeDetailFront.style.left = `${effectiveDetail * 100}%`;
-    rangeDetailFront.style.opacity = detailFrontVisible ? "1" : "0";
+
+    // The native progressive waveform is three mutually exclusive materials: unresolved
+    // zero-pass, coarse buckets, then detail buckets replacing coarse left-to-right. Do not
+    // reveal a pre-rendered detailed waveform and fake refinement with a moving marker.
+    rangeCoarseWave.style.opacity = String(finalLayerAlpha);
+    rangeCoarseWave.style.clipPath =
+      `inset(0 ${(1 - reveal) * 100}% 0 ${effectiveDetail * 100}%)`;
+    rangeFinalWave.style.opacity = String(finalLayerAlpha);
+    rangeFinalWave.style.clipPath = `inset(0 ${(1 - effectiveDetail) * 100}% 0 0)`;
+    rangeMorphWave.style.clipPath = `inset(0 0 0 ${reveal * 100}%)`;
+    rangeScreen.style.setProperty("--range-wave-reveal", String(reveal));
     rangeScreen.style.setProperty("--range-wave-detail-reveal", String(effectiveDetail));
+    rangeDetailFront.style.left = `${effectiveDetail * 100}%`;
+    rangeDetailFront.style.opacity = "0";
 
     if (
       allowInteractionReady &&
@@ -1753,6 +1764,8 @@ export function runReverbDemoRuntime(
     rangeMorphWave.style.removeProperty("--range-morph-progress");
     rangeMorphWave.style.removeProperty("--range-start-scale-x");
     rangeMorphWave.style.removeProperty("--range-start-scale-y");
+    rangeCoarseWave.style.removeProperty("opacity");
+    rangeCoarseWave.style.removeProperty("clip-path");
     rangeFinalWave.style.removeProperty("opacity");
     rangeFinalWave.style.removeProperty("clip-path");
     rangeMorphOval.style.display = "";
@@ -2231,14 +2244,19 @@ export function runReverbDemoRuntime(
     rangeEndInput.style.right = "auto";
     rangeStartBoundary.style.left = `${startFraction * 100}%`;
     rangeEndBoundary.style.left = `${endFraction * 100}%`;
-    const selectedRect = byId<SVGRectElement>("selectedWaveRect");
+    const selectedRects = [
+      byId<SVGRectElement>("selectedWaveCoarseRect"),
+      byId<SVGRectElement>("selectedWaveRect"),
+    ];
     const clipX = 360 * startFraction;
     const clipEnd = 360 * endFraction;
-    selectedRect.setAttribute("x", clipX.toFixed(2));
-    selectedRect.setAttribute(
-      "width",
-      Math.max(0, clipEnd - clipX).toFixed(2),
-    );
+    for (const selectedRect of selectedRects) {
+      selectedRect.setAttribute("x", clipX.toFixed(2));
+      selectedRect.setAttribute(
+        "width",
+        Math.max(0, clipEnd - clipX).toFixed(2),
+      );
+    }
     rangeStartInput.classList.toggle("active", rangeEditTarget === "start");
     rangeEndInput.classList.toggle("active", rangeEditTarget === "end");
     rangeStartBoundary.classList.toggle("active", rangeEditTarget === "start");
@@ -4759,17 +4777,16 @@ export function runReverbDemoRuntime(
     next?.focus({ preventScroll: true });
   });
 
-  function makeRangeWavePath(): string {
+  type RangeWaveSample = { x: number; amplitude: number };
+  function makeRangeWaveSamples(): RangeWaveSample[] {
     const width = 360;
-    const center = 41;
     const samples = 181;
     let seed = 0x5eed1234;
     const random = () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       return seed / 0xffffffff;
     };
-    const top: string[] = [];
-    const bottom: string[] = [];
+    const result: RangeWaveSample[] = [];
     for (let index = 0; index < samples; index++) {
       const x = (index / (samples - 1)) * width;
       const phase = index / (samples - 1);
@@ -4779,16 +4796,56 @@ export function runReverbDemoRuntime(
       let amplitude = 9 + 16 * Math.min(1, slow + texture + noise);
       if (index === 33 || index === 34 || index === 153) amplitude += 8;
       if (index === 118 || index === 160) amplitude += 5;
-      amplitude = Math.min(34, amplitude);
-      top.push(`${x.toFixed(1)} ${(center - amplitude * 0.52).toFixed(1)}`);
-      bottom.push(`${x.toFixed(1)} ${(center + amplitude * 0.52).toFixed(1)}`);
+      result.push({ x, amplitude: Math.min(34, amplitude) });
     }
-    return `M${top.join(" L")} L${bottom.reverse().join(" L")} Z`;
+    return result;
   }
-  const rangeWavePath = makeRangeWavePath();
-  document
+  function coarseRangeWaveSamples(
+    detail: readonly RangeWaveSample[],
+  ): RangeWaveSample[] {
+    const coarseBuckets = 37;
+    const result: RangeWaveSample[] = [];
+    for (let bucket = 0; bucket < coarseBuckets; bucket++) {
+      const centerIndex =
+        (bucket / Math.max(1, coarseBuckets - 1)) * (detail.length - 1);
+      const first = Math.max(0, Math.floor(centerIndex - 2));
+      const last = Math.min(detail.length - 1, Math.ceil(centerIndex + 2));
+      let amplitude = 0;
+      let count = 0;
+      for (let index = first; index <= last; index++) {
+        amplitude += detail[index]?.amplitude ?? 0;
+        count++;
+      }
+      result.push({
+        x: (bucket / Math.max(1, coarseBuckets - 1)) * 360,
+        amplitude: count > 0 ? amplitude / count : 0,
+      });
+    }
+    return result;
+  }
+  function makeRangeWavePath(samples: readonly RangeWaveSample[]): string {
+    const center = 41;
+    const top = samples.map(
+      ({ x, amplitude }) =>
+        `${x.toFixed(1)} ${(center - amplitude * 0.52).toFixed(1)}`,
+    );
+    const bottom = [...samples].reverse().map(
+      ({ x, amplitude }) =>
+        `${x.toFixed(1)} ${(center + amplitude * 0.52).toFixed(1)}`,
+    );
+    return `M${top.join(" L")} L${bottom.join(" L")} Z`;
+  }
+  const rangeWaveSamples = makeRangeWaveSamples();
+  const rangeDetailWavePath = makeRangeWavePath(rangeWaveSamples);
+  const rangeCoarseWavePath = makeRangeWavePath(
+    coarseRangeWaveSamples(rangeWaveSamples),
+  );
+  rangeCoarseWave
     .querySelectorAll<SVGPathElement>(".wave-outside,.wave-selection")
-    .forEach((path) => path.setAttribute("d", rangeWavePath));
+    .forEach((path) => path.setAttribute("d", rangeCoarseWavePath));
+  rangeFinalWave
+    .querySelectorAll<SVGPathElement>(".wave-outside,.wave-selection")
+    .forEach((path) => path.setAttribute("d", rangeDetailWavePath));
 
   const rangeFineControl =
     document.querySelector<HTMLElement>(".range-screen .fine-control");
@@ -5142,7 +5199,9 @@ export function runReverbDemoRuntime(
     const coarseGate = smoothStep(clamp01((morph - 0.56) / 0.16));
     const detailGate = smoothStep(clamp01((morph - 0.86) / 0.12));
     const detail = Math.min(detailGate, coarseGate);
-    rangeFinalWave.style.clipPath = `inset(0 ${(1 - coarseGate) * 100}% 0 0)`;
+    rangeCoarseWave.style.clipPath =
+      `inset(0 ${(1 - coarseGate) * 100}% 0 ${detail * 100}%)`;
+    rangeFinalWave.style.clipPath = `inset(0 ${(1 - detail) * 100}% 0 0)`;
     rangeMorphWave.style.clipPath = `inset(0 0 0 ${coarseGate * 100}%)`;
     rangeScreen.style.setProperty("--range-wave-reveal", String(coarseGate));
     rangeScreen.style.setProperty("--range-wave-detail-reveal", String(detail));
