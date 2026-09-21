@@ -285,6 +285,26 @@ test('Reverb Library rises under a fixed app bar and edge close settles instead 
   expect(closed.libraryProgress).toBe(0);
 });
 
+test('Reverb Library app bar exposes the native Back control and returns home', async ({ page }, info) => {
+  const host = await visitReverb(page, info);
+  await host.locator('#openLibrary').click();
+  await expect(host.locator('#libraryScreen')).toHaveClass(/active/);
+  await expect.poll(() => panelState(host).then(state => state.libraryProgress)).toBeCloseTo(1, 2);
+  const back = host.locator('#libraryBack');
+  await expect(back).toBeVisible();
+  const geometry = await back.evaluate(element => ({
+    width: element.offsetWidth,
+    height: element.offsetHeight,
+  }));
+  expect(geometry.width).toBeCloseTo(46, 0);
+  expect(geometry.height).toBeCloseTo(46, 0);
+  await back.click();
+  await expect.poll(() => panelState(host).then(state => state.libraryProgress)).toBeCloseTo(0, 2);
+  const closed = await panelState(host);
+  expect(closed.homeActive).toBe(true);
+  expect(closed.libraryActive).toBe(false);
+});
+
 async function collectBufferClickFlip(host, targetBuffer) {
   return host.evaluate(async (element, targetBuffer) => {
     const root = element.shadowRoot;
@@ -343,12 +363,21 @@ async function probeBufferFace(host, fraction) {
     });
     area.dispatchEvent(pointer('pointerdown', startX));
     area.dispatchEvent(pointer('pointermove', endX));
+    const faceRect = face.getBoundingClientRect();
     const snapshot = {
       progress: Number(face.style.getPropertyValue('--buffer-flip-progress') || 0),
       degrees: Number(face.style.getPropertyValue('--buffer-flip-degrees') || 0),
       depth: Number(face.style.getPropertyValue('--buffer-depth-scale') || 1),
       oneSelected: one.getAttribute('aria-selected') === 'true',
       loopSelected: loop.getAttribute('aria-selected') === 'true',
+      transform: face.style.transform,
+      projection: {
+        areaWidth: rect.width,
+        faceWidth: faceRect.width,
+        centerDelta: Math.abs(
+          (faceRect.left + faceRect.width / 2) - (rect.left + rect.width / 2),
+        ),
+      },
     };
     area.dispatchEvent(pointer('pointercancel', endX));
     const startedAt = performance.now();
@@ -390,6 +419,12 @@ async function dragBuffer(host, fraction, release = true) {
 
 test('Reverb buffer selector uses the native 260ms depth flip and swaps faces at 50%', async ({ page }, info) => {
   const host = await visitReverb(page, info);
+  const projection = await probeBufferFace(host, 0.25);
+  expect(projection.transform).toContain('perspective(1000px)');
+  expect(projection.projection.faceWidth / projection.projection.areaWidth).toBeGreaterThan(0.6);
+  expect(projection.projection.faceWidth / projection.projection.areaWidth).toBeLessThan(0.9);
+  expect(projection.projection.centerDelta / projection.projection.areaWidth).toBeLessThan(0.08);
+
   const outgoing = await probeBufferFace(host, 0.49);
   const incoming = await probeBufferFace(host, 0.51);
   expect(outgoing.progress).toBeCloseTo(0.49, 2);
@@ -527,13 +562,15 @@ async function collectRangeOpening(host) {
     const main = root?.querySelector('.range-main');
     const wavebox = root?.querySelector('.range-timeline .wavebox');
     const morph = root?.querySelector('#rangeMorphWave');
+    const coarseWave = root?.querySelector('#rangeCoarseWave');
     const finalWave = root?.querySelector('#rangeFinalWave');
     const detailFront = root?.querySelector('#rangeDetailFront');
     const play = root?.querySelector('#rangePlay');
     if (!(open instanceof HTMLElement) || !(blob instanceof HTMLElement)
       || !(screen instanceof HTMLElement) || !(main instanceof HTMLElement)
       || !(wavebox instanceof HTMLElement) || !(morph instanceof SVGElement)
-      || !(finalWave instanceof SVGElement) || !(detailFront instanceof HTMLElement)
+      || !(coarseWave instanceof SVGElement) || !(finalWave instanceof SVGElement)
+      || !(detailFront instanceof HTMLElement)
       || !(play instanceof HTMLButtonElement))
       throw new Error('Reverb Range motion surfaces are unavailable');
     const blobRect = blob.getBoundingClientRect();
@@ -570,7 +607,12 @@ async function collectRangeOpening(host) {
           e: transform.e,
           f: transform.f,
         },
+        coarseClip: getComputedStyle(coarseWave).clipPath,
+        detailClip: getComputedStyle(finalWave).clipPath,
+        coarseOpacity: Number(getComputedStyle(coarseWave).opacity),
         finalOpacity: Number(getComputedStyle(finalWave).opacity),
+        coarseSegments: (coarseWave.querySelector('.wave-outside')?.getAttribute('d')?.match(/ L/g) ?? []).length,
+        detailSegments: (finalWave.querySelector('.wave-outside')?.getAttribute('d')?.match(/ L/g) ?? []).length,
         playLabel: play.getAttribute('aria-label'),
       };
     };
@@ -581,7 +623,7 @@ async function collectRangeOpening(host) {
     // startRangeOpening renders frame 0 synchronously. Preserve that exact geometry before
     // an overloaded browser can skip directly into later animation frames.
     samples.push(readSample());
-    while (performance.now() - startedAt < 1500) {
+    while (performance.now() - startedAt < 2200) {
       await new Promise(requestAnimationFrame);
       const sample = readSample();
       samples.push(sample);
@@ -622,39 +664,34 @@ test('Reverb Range opens with the native 760ms blob-to-waveform morph and delaye
   expect(firstReveal.transition).toBeGreaterThanOrEqual(0.95);
   const firstDetail = samples.find(sample => sample.detail > 0.001);
   expect(firstDetail).toBeTruthy();
-  const revealDetailOverlap = samples.find(sample =>
-    sample.detail > 0.001 && sample.detail < sample.reveal && sample.reveal < 0.999
-  );
-  if (revealDetailOverlap) {
-    // Both values were produced by one runtime RAF. Their inferred ages therefore share the
-    // same `now`, so observer scheduling disappears from the native 280 ms delay check.
-    const coarseAge = invertFastOutSlowIn(revealDetailOverlap.reveal) * 430;
-    const detailAge = invertFastOutSlowIn(revealDetailOverlap.detail) * 330;
-    expect(coarseAge - detailAge).toBeCloseTo(280, -1);
+  expect(firstDetail.reveal).toBeGreaterThan(0.995);
+  expect(firstDetail.detailFrontOpacity).toBeCloseTo(0, 2);
+
+  const revealProbe = samples.find(sample => sample.reveal > 0.02 && sample.reveal < 0.98);
+  const detailProbe = samples.find(sample => sample.detail > 0.02 && sample.detail < 0.98);
+  if (revealProbe && detailProbe) {
+    const revealStartedAt = revealProbe.elapsed - invertFastOutSlowIn(revealProbe.reveal) * 430;
+    const detailStartedAt = detailProbe.elapsed - invertFastOutSlowIn(detailProbe.detail) * 330;
+    // Native detail construction waits until the coarse pass is complete, then waits another
+    // 280 ms before publishing detail buckets: 430 ms coarse reveal + 280 ms delay.
+    expect(detailStartedAt - revealStartedAt).toBeCloseTo(710, -1);
   } else {
-    const skippedOverlap = samples.some((sample, index) => {
-      const previous = samples[index - 1];
-      if (!previous) return false;
-      return previous.detail <= 0.001 && sample.reveal >= 0.999 && sample.detail > 0.001
-        && sample.elapsed - previous.elapsed >= 120;
-    });
-    expect(skippedOverlap).toBe(true);
+    const lastCoarseOnly = [...samples].reverse().find(sample => sample.reveal >= 0.995 && sample.detail <= 0.001);
+    expect(lastCoarseOnly).toBeTruthy();
+    expect(firstDetail.elapsed - lastCoarseOnly.elapsed).toBeGreaterThanOrEqual(180);
   }
+
+  const coarseOnly = samples.find(sample => sample.reveal > 0.5 && sample.detail < 0.001);
+  expect(coarseOnly).toBeTruthy();
+  expect(coarseOnly.coarseSegments).toBeGreaterThan(40);
+  expect(coarseOnly.detailSegments).toBeGreaterThan(coarseOnly.coarseSegments * 3);
+  expect(coarseOnly.coarseClip).not.toBe(coarseOnly.detailClip);
   const polishing = samples.find(sample =>
-    sample.reveal > 0.95 && sample.detail > 0.01 && sample.detail < 0.98
+    sample.reveal > 0.995 && sample.detail > 0.05 && sample.detail < 0.95
   );
   if (polishing) {
-    expect(polishing.detailFrontOpacity).toBeCloseTo(1, 2);
-  } else {
-    // Under a heavily loaded renderer there may be no painted frame inside the ~330 ms
-    // detail pass. Accept only a measured RAF gap that jumps across that entire visible phase.
-    const skippedPolishingFrame = samples.some((sample, index) => {
-      const previous = samples[index - 1];
-      if (!previous) return false;
-      return previous.detail <= 0.01 && sample.detail >= 0.98
-        && sample.elapsed - previous.elapsed >= 180;
-    });
-    expect(skippedPolishingFrame).toBe(true);
+    expect(polishing.coarseClip).not.toBe(polishing.detailClip);
+    expect(polishing.detailFrontOpacity).toBeCloseTo(0, 2);
   }
   expect(samples.filter(sample => sample.transition < 0.98).every(sample => !sample.ready)).toBe(true);
   const firstReady = samples.find(sample => sample.ready);
@@ -679,7 +716,9 @@ test('Reverb Range opens with the native 760ms blob-to-waveform morph and delaye
   expect(revealTerminal.reveal).toBeCloseTo(1, 2);
   expect(revealTerminal.detail).toBeCloseTo(1, 2);
   expect(revealTerminal.detailFrontOpacity).toBeCloseTo(0, 2);
+  expect(revealTerminal.coarseOpacity).toBeCloseTo(1, 2);
   expect(revealTerminal.finalOpacity).toBeCloseTo(1, 2);
+  expect(revealTerminal.coarseClip).not.toBe(revealTerminal.detailClip);
 });
 
 async function openRangeReady(host) {

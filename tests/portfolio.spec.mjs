@@ -4810,7 +4810,7 @@ test('Reverb demo mirrors the captured Android state and palette', async ({ page
 
   await host.locator('#openLibrary').click();
   await expect(host.locator('#libraryBrand')).toBeVisible();
-  await expect(host.locator('#libraryBack')).toBeHidden();
+  await expect(host.locator('#libraryBack')).toBeVisible();
   await host.evaluate(element => {
     const phone = element.shadowRoot?.querySelector('#phone');
     const library = element.shadowRoot?.querySelector('.library-list');

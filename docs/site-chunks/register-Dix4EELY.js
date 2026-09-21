@@ -1,1 +1,0 @@
-import{C as e}from"./site-app-CoV6tCVm.js";import{t}from"./_.contribution-UpGappDp.js";t({id:`sql`,extensions:[`.sql`],aliases:[`SQL`],loader:()=>e(()=>import(`./sql-NEE52Syq.js`),[])});
