@@ -1,6 +1,8 @@
 // Interactive Reverb demo runtime. The geometry and state mirror the Android
 // Compose surfaces in the Reverb repository; the demo remains browser-only.
-export type ReverbDemoDocument = Pick<Document, "createElement"> & {
+export type ReverbDemoDocument = Pick<Document, "createElement" | "createElementNS"> & {
+  readonly activeElement: Element | null;
+  readonly externalFocusActive: boolean;
   querySelector<E extends Element = Element>(selectors: string): E | null;
   querySelectorAll<E extends Element = Element>(
     selectors: string,
@@ -89,10 +91,37 @@ export function runReverbDemoRuntime(
   const captureSaveTrailing = byId<HTMLElement>("captureSaveTrailing");
   const captureSaveCancel = byId<HTMLButtonElement>("captureSaveCancel");
   const dropdownMenu = byId<HTMLElement>("dropdownMenu");
+  const recordingMenu = byId<HTMLElement>("recordingMenu");
+  const actionSheetScrim = byId<HTMLElement>("actionSheetScrim");
+  const actionSheet = byId<HTMLElement>("actionSheet");
+  const actionSheetTitle = byId<HTMLElement>("actionSheetTitle");
+  const actionSheetMessage = byId<HTMLElement>("actionSheetMessage");
+  const actionSheetCustom = byId<HTMLElement>("actionSheetCustom");
+  const actionSheetClose = byId<HTMLButtonElement>("actionSheetClose");
+  const actionSheetCancel = byId<HTMLButtonElement>("actionSheetCancel");
+  const actionSheetConfirm = byId<HTMLButtonElement>("actionSheetConfirm");
+  const actionSheetConfirmIcon = byId<SVGElement>("actionSheetConfirmIcon");
+  const actionSheetConfirmIconUse = byId<SVGUseElement>("actionSheetConfirmIconUse");
+  const actionSheetConfirmLabel = byId<HTMLElement>("actionSheetConfirmLabel");
+  const actionSheetProgress = byId<HTMLElement>("actionSheetProgress");
+  const actionSheetProgressBar = byId<HTMLElement>("actionSheetProgressBar");
+  const actionSheetProgressDetail = byId<HTMLElement>("actionSheetProgressDetail");
+  const actionSheetConfirmActions = byId<HTMLElement>("actionSheetConfirmActions");
+  const actionSheetProgressActions = byId<HTMLElement>("actionSheetProgressActions");
+  const actionSheetProgressCancel = byId<HTMLButtonElement>("actionSheetProgressCancel");
   const screens = [...document.querySelectorAll<HTMLElement>(".screen")];
   const homeScreen = byId<HTMLElement>("homeScreen");
   const settingsScreen = byId<HTMLElement>("settingsScreen");
   const libraryScreen = byId<HTMLElement>("libraryScreen");
+  const librarySelectionBar = byId<HTMLElement>("librarySelectionBar");
+  const librarySelectionClose = byId<HTMLButtonElement>("librarySelectionClose");
+  const librarySelectionTitle = byId<HTMLElement>("librarySelectionTitle");
+  const librarySelectionShare = byId<HTMLButtonElement>("librarySelectionShare");
+  const librarySelectionDelete = byId<HTMLButtonElement>("librarySelectionDelete");
+  const libraryNotice = byId<HTMLElement>("libraryNotice");
+  const libraryNoticeMessage = byId<HTMLElement>("libraryNoticeMessage");
+  const libraryNoticeUndo = byId<HTMLButtonElement>("libraryNoticeUndo");
+  const incidentsScreen = byId<HTMLElement>("incidentsScreen");
   const PANEL_SETTLE_DURATION_MS = 220;
   const PANEL_COMMIT_PROGRESS = 0.12;
   let settingsPanelProgress = 0;
@@ -255,6 +284,578 @@ export function runReverbDemoRuntime(
     const omega = Math.sqrt(stiffness);
     return (1 + omega * seconds) * Math.exp(-omega * seconds);
   }
+  type SpringScalarState = { value: number; velocity: number };
+  function springScalarStateAt(
+    startValue: number,
+    startVelocity: number,
+    target: number,
+    elapsedMs: number,
+    stiffness: number,
+    dampingRatio: number,
+  ): SpringScalarState {
+    const seconds = Math.max(0, elapsedMs) / 1000;
+    const omega = Math.sqrt(stiffness);
+    const displacement = startValue - target;
+    if (dampingRatio === 1) {
+      const coefficient = startVelocity + omega * displacement;
+      const decay = Math.exp(-omega * seconds);
+      return {
+        value: target + (displacement + coefficient * seconds) * decay,
+        velocity: (startVelocity - omega * coefficient * seconds) * decay,
+      };
+    }
+    const dampedOmega = omega * Math.sqrt(1 - dampingRatio * dampingRatio);
+    const decayRate = dampingRatio * omega;
+    const sineCoefficient =
+      (startVelocity + decayRate * displacement) / dampedOmega;
+    const phase = dampedOmega * seconds;
+    const cosine = Math.cos(phase);
+    const sine = Math.sin(phase);
+    const oscillation = displacement * cosine + sineCoefficient * sine;
+    const decay = Math.exp(-decayRate * seconds);
+    return {
+      value: target + oscillation * decay,
+      velocity:
+        decay *
+        (-decayRate * oscillation - displacement * dampedOmega * sine +
+          sineCoefficient * dampedOmega * cosine),
+    };
+  }
+  function springSettleDurationMs(
+    startValue: number,
+    startVelocity: number,
+    target: number,
+    stiffness: number,
+    dampingRatio: number,
+    threshold = 0.01,
+  ): number {
+    const displacement = startValue - target;
+    if (Math.abs(displacement) <= threshold && Math.abs(startVelocity) <= threshold)
+      return 0;
+    if (dampingRatio < 1) {
+      const omega = Math.sqrt(stiffness);
+      const realRoot = -dampingRatio * omega;
+      const imaginaryRoot = omega * Math.sqrt(1 - dampingRatio * dampingRatio);
+      const sineCoefficient =
+        (startVelocity - realRoot * displacement) / imaginaryRoot;
+      const envelope = Math.hypot(displacement, sineCoefficient);
+      if (envelope <= threshold) return 0;
+      return Math.max(0, (Math.log(threshold / envelope) / realRoot) * 1000);
+    }
+    let lastOutside = 0;
+    for (let elapsed = 0; elapsed <= 1000; elapsed += 1) {
+      const state = springScalarStateAt(
+        startValue,
+        startVelocity,
+        target,
+        elapsed,
+        stiffness,
+        dampingRatio,
+      );
+      if (Math.abs(state.value - target) > threshold) lastOutside = elapsed;
+    }
+    return Math.min(1000, lastOutside + 1);
+  }
+  const DROPDOWN_SCALE_STIFFNESS = 1400;
+  const DROPDOWN_SCALE_DAMPING = 0.9;
+  const DROPDOWN_ALPHA_STIFFNESS = 3800;
+  const DROPDOWN_ALPHA_DAMPING = 1;
+  const DROPDOWN_CLOSED_SCALE = 0.8;
+  type ActionSheetMode = "clear-confirm" | "clear-progress" | "export-limit" | "recording-rename" | "recording-info";
+  const ACTION_SHEET_STIFFNESS = 700;
+  const ACTION_SHEET_DAMPING = 0.9;
+  const ACTION_SHEET_SCRIM_STIFFNESS = 3800;
+  const ACTION_SHEET_SCRIM_ALPHA = 0.32;
+  let actionSheetMode: ActionSheetMode | null = null;
+  let actionSheetTargetBuffer: BufferSlot | null = null;
+  let actionSheetReturnFocus: HTMLElement | null = null;
+  let actionSheetBackground:
+    | { screen: HTMLElement; inert: boolean; ariaHidden: string | null }
+    | null = null;
+  let actionSheetMotionEpoch = 0;
+  let actionSheetOffsetPx = 0;
+  let actionSheetVelocityPx = 0;
+  let actionSheetScrimProgress = 0;
+  let actionSheetScrimVelocity = 0;
+  let clearProgressTimer = 0;
+  let clearInitialSeconds = 0;
+  let clearProgressFraction = 0;
+  let clearCancelRequested = false;
+  let exportLimitClampedSeconds = 0;
+  type RecordingActionData = {
+    card: HTMLElement;
+    summary: HTMLButtonElement;
+    title: HTMLElement;
+    subtitle: HTMLElement;
+    time: HTMLElement;
+    dateLabel: string;
+  };
+  let recordingActionData: RecordingActionData | null = null;
+  let recordingRenameInput: HTMLInputElement | null = null;
+
+  function setActionSheetBackgroundOwnership(owned: boolean): void {
+    if (owned) {
+      if (actionSheetBackground) return;
+      const background = screens.find((screen) => screen.classList.contains("active"));
+      if (!background) return;
+      actionSheetBackground = {
+        screen: background,
+        inert: background.inert,
+        ariaHidden: background.getAttribute("aria-hidden"),
+      };
+      background.inert = true;
+      background.setAttribute("aria-hidden", "true");
+      return;
+    }
+    if (!actionSheetBackground) return;
+    const { screen, inert, ariaHidden } = actionSheetBackground;
+    screen.inert = inert;
+    if (ariaHidden == null) screen.removeAttribute("aria-hidden");
+    else screen.setAttribute("aria-hidden", ariaHidden);
+    actionSheetBackground = null;
+  }
+  function renderActionSheetMotion(): void {
+    actionSheet.style.transform = `translateY(${actionSheetOffsetPx}px)`;
+    actionSheetScrim.style.opacity = String(
+      Math.max(0, Math.min(1, actionSheetScrimProgress)) * ACTION_SHEET_SCRIM_ALPHA,
+    );
+  }
+  function actionSheetHeight(): number {
+    return Math.max(1, actionSheet.offsetHeight);
+  }
+  function configureRecordingRenameSheet(data: RecordingActionData): void {
+    actionSheetCustom.replaceChildren();
+    const input = document.createElement("input");
+    input.className = "recording-rename-field";
+    input.type = "text";
+    input.setAttribute("aria-label", "Recording name");
+    input.value = data.title.textContent?.replace(/\.wav$/i, "") ?? "";
+    recordingRenameInput = input;
+    input.addEventListener("input", () => {
+      input.removeAttribute("aria-invalid");
+      actionSheetConfirm.disabled = input.value.trim().length === 0;
+    });
+    actionSheetCustom.appendChild(input);
+  }
+  function configureRecordingInfoSheet(data: RecordingActionData): void {
+    actionSheetCustom.replaceChildren();
+    const name = document.createElement("div");
+    name.className = "recording-info-name";
+    name.textContent = data.title.textContent ?? "";
+    actionSheetCustom.appendChild(name);
+    const rows = document.createElement("div");
+    rows.className = "recording-info-rows";
+    actionSheetCustom.appendChild(rows);
+    const appendToRows = (label: string, value: string) => {
+      const row = document.createElement("div");
+      row.className = "recording-info-row";
+      const labelNode = document.createElement("div");
+      labelNode.className = "recording-info-label";
+      labelNode.textContent = label;
+      const valueNode = document.createElement("div");
+      valueNode.className = "recording-info-value";
+      valueNode.textContent = value;
+      row.append(labelNode, valueNode);
+      rows.appendChild(row);
+    };
+    const [duration = "", size = ""] = (data.subtitle.textContent ?? "").split(" • ");
+    appendToRows("Started", `${data.dateLabel} ${data.time.textContent ?? ""}`.trim());
+    appendToRows("Duration", duration);
+    appendToRows("Size", size);
+    appendToRows("Codec", "WAV · PCM 16-bit · Mono · 44.1 kHz");
+    appendToRows("MIME", "audio/wav");
+    appendToRows("Storage", "FILE");
+    appendToRows("Location", `Music/Reverb/${data.title.textContent ?? ""}`);
+  }
+  function configureActionSheet(mode: ActionSheetMode): void {
+    const target = actionSheetTargetBuffer ?? bufferRenderedBuffer();
+    const oneShot = target === "one";
+    actionSheet.dataset.mode = mode;
+    actionSheet.setAttribute("aria-busy", String(mode === "clear-progress"));
+    actionSheetMessage.hidden = true;
+    actionSheetCustom.hidden = true;
+    actionSheetCustom.replaceChildren();
+    actionSheetProgress.hidden = true;
+    actionSheetConfirmActions.hidden = true;
+    actionSheetProgressActions.hidden = true;
+    actionSheetCancel.hidden = false;
+    actionSheetCancel.textContent = "Cancel";
+    actionSheetConfirm.hidden = false;
+    actionSheetConfirm.disabled = false;
+    actionSheetConfirm.classList.remove("danger", "primary");
+    actionSheetConfirmIcon.style.display = "none";
+    actionSheetProgressCancel.disabled = false;
+    actionSheetProgressCancel.textContent = "Cancel";
+    recordingRenameInput = null;
+
+    if (mode === "clear-confirm") {
+      actionSheetTitle.textContent = oneShot ? "Discard one-shot?" : "Discard loop?";
+      actionSheetMessage.textContent = "This permanently removes the buffered audio.";
+      actionSheetMessage.hidden = false;
+      actionSheetConfirmActions.hidden = false;
+      actionSheetConfirm.classList.add("danger");
+      actionSheetConfirmIcon.style.display = "";
+      actionSheetConfirmIconUse.setAttribute("href", "#i-delete");
+      actionSheetConfirmLabel.textContent = "Clear";
+      return;
+    }
+    if (mode === "export-limit") {
+      actionSheetTitle.textContent = "Export limit";
+      actionSheetMessage.textContent = `Current length is too large. Only exporting last ${formatTimer(exportLimitClampedSeconds)}.`;
+      actionSheetMessage.hidden = false;
+      actionSheetConfirmActions.hidden = false;
+      actionSheetConfirm.classList.add("primary");
+      actionSheetConfirmLabel.textContent = "Export";
+      return;
+    }
+    if (mode === "recording-rename") {
+      const data = recordingActionData;
+      if (!data) throw new Error("Reverb rename sheet is missing recording data");
+      actionSheetTitle.textContent = "Rename";
+      actionSheetCustom.hidden = false;
+      actionSheetConfirmActions.hidden = false;
+      actionSheetConfirm.classList.add("primary");
+      actionSheetConfirmLabel.textContent = "Rename";
+      configureRecordingRenameSheet(data);
+      actionSheetConfirm.disabled = !actionSheetCustom.querySelector<HTMLInputElement>(".recording-rename-field")?.value.trim();
+      return;
+    }
+    if (mode === "recording-info") {
+      const data = recordingActionData;
+      if (!data) throw new Error("Reverb info sheet is missing recording data");
+      actionSheetTitle.textContent = "Info";
+      actionSheetCustom.hidden = false;
+      actionSheetConfirmActions.hidden = false;
+      actionSheetCancel.hidden = true;
+      actionSheetConfirm.classList.add("primary");
+      actionSheetConfirmLabel.textContent = "Close";
+      configureRecordingInfoSheet(data);
+      return;
+    }
+
+    actionSheetTitle.textContent = oneShot ? "Clearing one-shot…" : "Clearing loop…";
+    actionSheetProgress.hidden = false;
+    actionSheetProgressActions.hidden = false;
+  }
+  function animateActionSheetTo(
+    opening: boolean,
+    onDone?: () => void,
+  ): void {
+    const epoch = ++actionSheetMotionEpoch;
+    const height = actionSheetHeight();
+    const targetOffset = opening ? 0 : height;
+    const targetScrim = opening ? 1 : 0;
+    const startOffset = actionSheetOffsetPx;
+    const startVelocity = actionSheetVelocityPx;
+    const startScrim = actionSheetScrimProgress;
+    const startScrimVelocity = actionSheetScrimVelocity;
+    const sheetDuration = springSettleDurationMs(
+      startOffset,
+      startVelocity,
+      targetOffset,
+      ACTION_SHEET_STIFFNESS,
+      ACTION_SHEET_DAMPING,
+      0.01,
+    );
+    const scrimDuration = springSettleDurationMs(
+      startScrim,
+      startScrimVelocity,
+      targetScrim,
+      ACTION_SHEET_SCRIM_STIFFNESS,
+      1,
+      0.01,
+    );
+    const duration = Math.max(sheetDuration, scrimDuration);
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== actionSheetMotionEpoch) return;
+      const elapsed = Math.max(0, now - startedAt);
+      if (elapsed >= sheetDuration) {
+        actionSheetOffsetPx = targetOffset;
+        actionSheetVelocityPx = 0;
+      } else {
+        const state = springScalarStateAt(
+          startOffset,
+          startVelocity,
+          targetOffset,
+          elapsed,
+          ACTION_SHEET_STIFFNESS,
+          ACTION_SHEET_DAMPING,
+        );
+        actionSheetOffsetPx = state.value;
+        actionSheetVelocityPx = state.velocity;
+      }
+      if (elapsed >= scrimDuration) {
+        actionSheetScrimProgress = targetScrim;
+        actionSheetScrimVelocity = 0;
+      } else {
+        const state = springScalarStateAt(
+          startScrim,
+          startScrimVelocity,
+          targetScrim,
+          elapsed,
+          ACTION_SHEET_SCRIM_STIFFNESS,
+          1,
+        );
+        actionSheetScrimProgress = state.value;
+        actionSheetScrimVelocity = state.velocity;
+      }
+      renderActionSheetMotion();
+      if (elapsed < duration) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      actionSheetOffsetPx = targetOffset;
+      actionSheetVelocityPx = 0;
+      actionSheetScrimProgress = targetScrim;
+      actionSheetScrimVelocity = 0;
+      renderActionSheetMotion();
+      onDone?.();
+    };
+    if (duration <= 0) frame(startedAt);
+    else requestAnimationFrame(frame);
+  }
+  function restoreActionSheetFocus(): void {
+    const target = actionSheetReturnFocus;
+    actionSheetReturnFocus = null;
+    if (target?.isConnected && !target.hasAttribute("disabled"))
+      target.focus({ preventScroll: true });
+  }
+  function unmountActionSheetImmediate(
+    restoreBackground = true,
+    restoreFocus = true,
+  ): void {
+    ++actionSheetMotionEpoch;
+    actionSheetMode = null;
+    actionSheet.inert = true;
+    actionSheet.hidden = true;
+    actionSheet.setAttribute("aria-hidden", "true");
+    actionSheetScrim.hidden = true;
+    actionSheetScrim.classList.remove("mounted");
+    actionSheetOffsetPx = 0;
+    actionSheetVelocityPx = 0;
+    actionSheetScrimProgress = 0;
+    actionSheetScrimVelocity = 0;
+    actionSheet.style.removeProperty("transform");
+    actionSheetScrim.style.removeProperty("opacity");
+    if (restoreBackground) setActionSheetBackgroundOwnership(false);
+    if (restoreFocus) restoreActionSheetFocus();
+  }
+  function mountActionSheet(
+    mode: ActionSheetMode,
+    returnFocus?: HTMLElement | null,
+    retainBackground = false,
+  ): void {
+    ++actionSheetMotionEpoch;
+    if (!retainBackground) {
+      actionSheetReturnFocus = returnFocus ?? actionSheetReturnFocus;
+      setActionSheetBackgroundOwnership(true);
+    }
+    actionSheetMode = mode;
+    configureActionSheet(mode);
+    actionSheet.hidden = false;
+    actionSheet.inert = false;
+    actionSheet.setAttribute("aria-hidden", "false");
+    actionSheetScrim.hidden = false;
+    actionSheetScrim.classList.add("mounted");
+    actionSheetOffsetPx = actionSheetHeight();
+    actionSheetVelocityPx = 0;
+    actionSheetScrimProgress = 0;
+    actionSheetScrimVelocity = 0;
+    renderActionSheetMotion();
+    requestAnimationFrame(() => {
+      if (actionSheetMode !== mode) return;
+      actionSheetClose.focus({ preventScroll: true });
+      animateActionSheetTo(true);
+    });
+  }
+  function clearActionSheetPendingState(mode: ActionSheetMode | null): void {
+    if (mode === "clear-confirm") actionSheetTargetBuffer = null;
+    if (mode === "export-limit") exportLimitClampedSeconds = 0;
+    if (mode === "recording-rename" || mode === "recording-info") {
+      recordingActionData = null;
+      recordingRenameInput = null;
+    }
+  }
+  function dismissActionSheetAnimated(): void {
+    const mode = actionSheetMode;
+    if (!mode) return;
+    animateActionSheetTo(false, () => {
+      if (actionSheetOffsetPx < actionSheetHeight() - 0.1) return;
+      unmountActionSheetImmediate();
+      clearActionSheetPendingState(mode);
+    });
+  }
+  function openClearConfirmation(target: BufferSlot, returnFocus: HTMLElement): void {
+    if (actionSheetMode || rangeExportPending) return;
+    actionSheetTargetBuffer = target;
+    mountActionSheet("clear-confirm", returnFocus);
+  }
+  function openExportLimitSheet(
+    clampedSeconds: number,
+    returnFocus: HTMLElement,
+  ): void {
+    if (actionSheetMode || rangeExportPending) return;
+    exportLimitClampedSeconds = Math.max(0, clampedSeconds);
+    mountActionSheet("export-limit", returnFocus);
+  }
+  function openRecordingActionSheet(
+    mode: "recording-rename" | "recording-info",
+    data: RecordingActionData,
+  ): void {
+    if (actionSheetMode || rangeExportPending) return;
+    recordingActionData = data;
+    mountActionSheet(mode, data.summary);
+  }
+  function updateClearProgressVisual(): void {
+    const remainingSeconds = Math.max(
+      0,
+      clearInitialSeconds * (1 - clearProgressFraction),
+    );
+    actionSheetProgressBar.style.width = `${clearProgressFraction * 100}%`;
+    actionSheetProgressDetail.textContent = clearProgressFraction <= 0
+      ? "Preparing…"
+      : `${Math.min(100, Math.round(clearProgressFraction * 100))}% · ${formatMiB(remainingSeconds)} remaining`;
+  }
+  function applyPartialClear(secondsRemaining: number): void {
+    if (actionSheetTargetBuffer === "one") oneSeconds = Math.max(0, secondsRemaining);
+    else if (actionSheetTargetBuffer === "loop") loopSeconds = Math.max(0, secondsRemaining);
+    syncBufferUi();
+  }
+  function finishMockClear(cancelled: boolean): void {
+    clearProgressTimer = 0;
+    const remaining = cancelled
+      ? clearInitialSeconds * (1 - clearProgressFraction)
+      : 0;
+    applyPartialClear(remaining);
+    unmountActionSheetImmediate();
+    if (cancelled) showToast("Clear cancelled.", "info");
+    actionSheetTargetBuffer = null;
+    clearInitialSeconds = 0;
+    clearProgressFraction = 0;
+    clearCancelRequested = false;
+  }
+  function scheduleMockClearStep(): void {
+    clearTimeout(clearProgressTimer);
+    clearProgressTimer = setTimeout(() => {
+      if (actionSheetMode !== "clear-progress") return;
+      clearProgressFraction = Math.min(1, clearProgressFraction + 0.125);
+      updateClearProgressVisual();
+      if (clearCancelRequested) {
+        finishMockClear(true);
+        return;
+      }
+      if (clearProgressFraction >= 1) {
+        finishMockClear(false);
+        return;
+      }
+      scheduleMockClearStep();
+    }, 120);
+  }
+  function beginMockClearProgress(): void {
+    if (actionSheetMode !== "clear-confirm" || !actionSheetTargetBuffer) return;
+    clearInitialSeconds = currentSeconds(actionSheetTargetBuffer);
+    clearProgressFraction = 0;
+    clearCancelRequested = false;
+    // Native replaces the accepted confirmation with a fresh progress-sheet lifetime.
+    unmountActionSheetImmediate(false, false);
+    mountActionSheet("clear-progress", null, true);
+    updateClearProgressVisual();
+    scheduleMockClearStep();
+  }
+  function requestMockClearCancel(): void {
+    if (actionSheetMode !== "clear-progress" || clearCancelRequested) return;
+    clearCancelRequested = true;
+    actionSheetProgressCancel.disabled = true;
+    actionSheetProgressCancel.textContent = "Cancelling…";
+  }
+  function cancelConfirmationSheetImmediate(): void {
+    const mode = actionSheetMode;
+    const dismissible = mode === "clear-confirm" || mode === "export-limit" || mode === "recording-rename" || mode === "recording-info";
+    if (!dismissible) return;
+    unmountActionSheetImmediate();
+    clearActionSheetPendingState(mode);
+  }
+  function confirmActionSheet(): void {
+    const mode = actionSheetMode;
+    if (mode === "clear-confirm") {
+      beginMockClearProgress();
+      return;
+    }
+    if (mode === "export-limit") {
+      if (exportLimitClampedSeconds <= 0) return;
+      const duration = exportLimitClampedSeconds;
+      unmountActionSheetImmediate();
+      exportLimitClampedSeconds = 0;
+      beginCaptureExport(duration);
+      return;
+    }
+    if (mode === "recording-info") {
+      cancelConfirmationSheetImmediate();
+      return;
+    }
+    if (mode !== "recording-rename") return;
+    const data = recordingActionData;
+    const input = recordingRenameInput;
+    if (!data || !input) return;
+    const name = input.value.trim();
+    const illegalFilenameChars = '\\/*?"<>|';
+    if (!name || [...name].some((character) => illegalFilenameChars.includes(character))) {
+      input.setAttribute("aria-invalid", "true");
+      input.focus({ preventScroll: true });
+      return;
+    }
+    const displayName = `${name}.wav`;
+    data.title.textContent = displayName;
+    data.card.dataset.recording = displayName;
+    unmountActionSheetImmediate();
+    clearActionSheetPendingState(mode);
+    showToast(`Rename: ${displayName}`, "success");
+  }
+  const clearBufferButton = byId<HTMLButtonElement>("clearBuffer");
+  clearBufferButton.addEventListener("click", () => {
+    if (clearBufferButton.disabled) return;
+    openClearConfirmation(bufferRenderedBuffer(), clearBufferButton);
+  });
+  actionSheetCancel.addEventListener("click", cancelConfirmationSheetImmediate);
+  actionSheetConfirm.addEventListener("click", confirmActionSheet);
+  actionSheetProgressCancel.addEventListener("click", requestMockClearCancel);
+  actionSheetClose.addEventListener("click", () => {
+    const mode = actionSheetMode;
+    if (mode === "clear-confirm" || mode === "export-limit" || mode === "recording-rename" || mode === "recording-info")
+      cancelConfirmationSheetImmediate();
+    // Native progress sheets pass an empty onDismiss callback; the close affordance is retained
+    // but cannot revoke accepted clear ownership.
+  });
+  actionSheetScrim.addEventListener("click", () => {
+    const mode = actionSheetMode;
+    if (mode === "clear-confirm" || mode === "export-limit" || mode === "recording-rename" || mode === "recording-info")
+      dismissActionSheetAnimated();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!(event instanceof KeyboardEvent) || !actionSheetMode) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const mode = actionSheetMode;
+      if (mode === "clear-confirm" || mode === "export-limit" || mode === "recording-rename" || mode === "recording-info")
+        dismissActionSheetAnimated();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...actionSheet.querySelectorAll<HTMLElement>(
+      'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
+    )].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
+    if (!focusable.length) return;
+    const current = actionSheet.querySelector<HTMLElement>(":focus");
+    const index = current ? focusable.indexOf(current) : -1;
+    const next = event.shiftKey
+      ? index <= 0 ? focusable[focusable.length - 1] : focusable[index - 1]
+      : index < 0 || index === focusable.length - 1 ? focusable[0] : focusable[index + 1];
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    next?.focus({ preventScroll: true });
+  });
   type CssRgba = { r: number; g: number; b: number; a: number };
   type OklabColor = { l: number; a: number; b: number; alpha: number };
   function parseCssRgba(value: string): CssRgba {
@@ -435,6 +1036,7 @@ export function runReverbDemoRuntime(
       screen.classList.toggle("active", screen.id === id),
     );
   }
+  const PREDICTIVE_BACK_COMMIT_MAX_DURATION_MS = 220;
   function fastOutSlowIn(progress: number): number {
     const x = Math.max(0, Math.min(1, progress));
     if (x === 0 || x === 1) return x;
@@ -462,6 +1064,29 @@ export function runReverbDemoRuntime(
       t = (low + high) * 0.5;
     }
     return sample(t, 0, 1);
+  }
+  function animatePredictiveBackCommit(
+    onProgress: (progress: number, now: number) => void,
+    onDone: () => void,
+    startProgress = 0,
+  ): void {
+    const from = Math.max(0, Math.min(1, startProgress));
+    const duration = Math.max(
+      0,
+      Math.round(PREDICTIVE_BACK_COMMIT_MAX_DURATION_MS * (1 - from)),
+    );
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      const raw = duration <= 0
+        ? 1
+        : Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const progress = from + (1 - from) * fastOutSlowIn(raw);
+      onProgress(progress, now);
+      if (raw < 1) requestAnimationFrame(frame);
+      else onDone();
+    };
+    if (duration <= 0) frame(startedAt);
+    else requestAnimationFrame(frame);
   }
   function setScreenMotionVisibility(screen: HTMLElement, visible: boolean): void {
     screen.classList.toggle("motion-visible", visible);
@@ -583,6 +1208,28 @@ export function runReverbDemoRuntime(
     focusScreen(settingsReturnScreen, settingsReturnFocus);
     settleSettingsPanel(0, () => renderSettingsPanelProgress(0));
   }
+  let settingsPredictiveBackRunning = false;
+  function predictiveCloseSettingsPanel(): void {
+    if (settingsPredictiveBackRunning || !settingsPanelOpen) return;
+    settingsPredictiveBackRunning = true;
+    ++settingsMotionEpoch;
+    closeDropdown();
+    const startOpenProgress = settingsPanelProgress;
+    animatePredictiveBackCommit(
+      (progress) => renderSettingsPanelProgress(startOpenProgress * (1 - progress)),
+      () => {
+        settingsPredictiveBackRunning = false;
+        settingsPanelOpen = false;
+        currentScreen = settingsReturnScreen;
+        activateScreen(settingsReturnScreen);
+        renderSettingsPanelProgress(0);
+        blobShader.setVisible(
+          settingsReturnScreen === "homeScreen" && !libraryPanelOpen,
+        );
+        focusScreen(settingsReturnScreen, settingsReturnFocus);
+      },
+    );
+  }
   function openLibraryPanel(): void {
     if (libraryPanelOpen && currentScreen === "libraryScreen") return;
     libraryPanelOpen = true;
@@ -598,6 +1245,9 @@ export function runReverbDemoRuntime(
     focusTarget: HTMLElement | null = byId<HTMLElement>("openLibrary"),
   ): void {
     if (!libraryPanelOpen && libraryPanelProgress <= 0) return;
+    closeRecordingMenu(false);
+    if (librarySelectionActive()) clearLibrarySelection();
+    if (pendingLibraryDeletions.length) commitPendingLibraryDeletions();
     libraryPanelOpen = false;
     currentScreen = "homeScreen";
     activateScreen("homeScreen");
@@ -605,6 +1255,28 @@ export function runReverbDemoRuntime(
     closeDropdown();
     if (focusTarget) focusScreen("homeScreen", focusTarget);
     settleLibraryPanel(0, () => renderLibraryPanelProgress(0));
+  }
+  let libraryPredictiveBackRunning = false;
+  function predictiveCloseLibraryPanel(): void {
+    if (libraryPredictiveBackRunning || !libraryPanelOpen) return;
+    libraryPredictiveBackRunning = true;
+    ++libraryMotionEpoch;
+    const startOpenProgress = libraryPanelProgress;
+    animatePredictiveBackCommit(
+      (progress) => renderLibraryPanelProgress(startOpenProgress * (1 - progress)),
+      () => {
+        libraryPredictiveBackRunning = false;
+        closeRecordingMenu(false);
+        if (librarySelectionActive()) clearLibrarySelection();
+        if (pendingLibraryDeletions.length) commitPendingLibraryDeletions();
+        libraryPanelOpen = false;
+        currentScreen = "homeScreen";
+        activateScreen("homeScreen");
+        renderLibraryPanelProgress(0);
+        blobShader.setVisible(!settingsPanelOpen);
+        focusScreen("homeScreen", byId<HTMLElement>("openLibrary"));
+      },
+    );
   }
   function openIncidents(event?: Event): void {
     if (currentScreen !== "incidentsScreen")
@@ -618,6 +1290,32 @@ export function runReverbDemoRuntime(
             ? byId<HTMLElement>("rangeIncidents")
             : null;
     showScreen("incidentsScreen");
+  }
+  let incidentsPredictiveBackRunning = false;
+  function renderIncidentsPredictiveBack(progress: number): void {
+    const p = Math.max(0, Math.min(1, progress));
+    incidentsScreen.style.transform = `translate3d(${p * 8}%,0,0)`;
+    incidentsScreen.style.opacity = String(1 - 0.18 * p);
+  }
+  function predictiveCloseIncidents(): void {
+    if (incidentsPredictiveBackRunning || currentScreen !== "incidentsScreen") return;
+    incidentsPredictiveBackRunning = true;
+    const background = byId<HTMLElement>(incidentsReturnScreen);
+    setScreenMotionVisibility(background, true);
+    background.style.zIndex = "11";
+    incidentsScreen.style.zIndex = "12";
+    animatePredictiveBackCommit(
+      (progress) => renderIncidentsPredictiveBack(progress),
+      () => {
+        incidentsPredictiveBackRunning = false;
+        incidentsScreen.style.removeProperty("transform");
+        incidentsScreen.style.removeProperty("opacity");
+        incidentsScreen.style.removeProperty("z-index");
+        background.style.removeProperty("z-index");
+        setScreenMotionVisibility(background, false);
+        showScreen(incidentsReturnScreen, incidentsReturnFocus);
+      },
+    );
   }
   function setIncidentAlert(active: boolean): void {
     document
@@ -741,6 +1439,7 @@ export function runReverbDemoRuntime(
         segment.tabIndex = selected ? 0 : -1;
       });
     const displayedActive = live && activeBuffer === renderedBuffer;
+    const hasHistory = currentSeconds(renderedBuffer) > 0;
     const blockedByOther =
       live && activeBuffer != null && activeBuffer !== renderedBuffer;
     blobControl.classList.toggle("live", displayedActive);
@@ -758,10 +1457,10 @@ export function runReverbDemoRuntime(
       '.action-button[aria-label="Export full"]',
     );
     if (!exportFull) throw new Error("Reverb demo is missing Export full");
-    exportFull.disabled = rangeExportPending;
-    byId<HTMLButtonElement>("openRange").disabled = rangeExportPending;
+    exportFull.disabled = rangeExportPending || !hasHistory;
+    byId<HTMLButtonElement>("openRange").disabled = rangeExportPending || !hasHistory;
     byId<HTMLButtonElement>("clearBuffer").disabled =
-      rangeExportPending || displayedActive;
+      rangeExportPending || !hasHistory || displayedActive;
     byId<HTMLButtonElement>("openLibrary").disabled = rangeExportPending;
     blobShader.setActive(displayedActive && !phone.classList.contains("about-open"));
   }
@@ -820,6 +1519,7 @@ export function runReverbDemoRuntime(
   const rangeMorphOval = byId<SVGEllipseElement>("rangeMorphOval");
   const rangeMorphPath = byId<SVGPathElement>("rangeMorphPath");
   const rangeFinalWave = byId<SVGSVGElement>("rangeFinalWave");
+  const rangeDetailFront = byId<HTMLElement>("rangeDetailFront");
   if (!rangeMainCandidate) throw new Error("Reverb demo is missing range main content");
   const rangeMain: HTMLElement = rangeMainCandidate;
   const RANGE_OPEN_DURATION_MS = 760;
@@ -827,9 +1527,12 @@ export function runReverbDemoRuntime(
   const RANGE_INTERACTION_READY_PROGRESS = 0.98;
   const RANGE_WAVEFORM_BUILD_PROGRESS = 0.96;
   const RANGE_WAVEFORM_COARSE_REVEAL_MS = 430;
+  const RANGE_WAVEFORM_DETAIL_DELAY_MS = 280;
+  const RANGE_WAVEFORM_DETAIL_REVEAL_MS = 330;
   let rangeOpeningEpoch = 0;
   let rangeOpening = false;
   let rangeInteractionReady = false;
+  let rangeReadyFocusAllowed = true;
   let rangeWaveRevealStartedAt: number | null = null;
   let rangeSourceGeometry: {
     centerX: number;
@@ -877,12 +1580,16 @@ export function runReverbDemoRuntime(
     rangeScreen.dataset.rangeInteractionReady = String(ready);
     if (
       ready &&
+      rangeReadyFocusAllowed &&
       currentScreen === "rangeScreen" &&
       !phone.classList.contains("about-mounted")
     ) {
       rangeDurationWheel.focus({ preventScroll: true });
     }
   }
+  const removeRangeFocusHandoffListener = addWindowEventListener("focusin", () => {
+    if (rangeOpening && document.externalFocusActive) rangeReadyFocusAllowed = false;
+  });
   function renderRangeMorphShape(morphProgress: number, phase: number): void {
     const morphProgressClamped = clamp01(morphProgress);
     if (morphProgressClamped <= 0) {
@@ -934,6 +1641,7 @@ export function runReverbDemoRuntime(
   function renderRangeOpeningFrame(
     visualProgress: number,
     now: number,
+    allowInteractionReady = true,
   ): void {
     const source = rangeSourceGeometry;
     if (!source) return;
@@ -944,14 +1652,22 @@ export function runReverbDemoRuntime(
     );
     const chrome = clamp01((visual - 0.46) / 0.42);
     const target = rangeWavebox.getBoundingClientRect();
+    const phoneRect = phone.getBoundingClientRect();
+    const phoneScaleX = phone.clientWidth > 0 ? phoneRect.width / phone.clientWidth : 1;
+    const phoneScaleY = phone.clientHeight > 0 ? phoneRect.height / phone.clientHeight : 1;
     const startScaleX = source.bodyDiameter / Math.max(1, target.width);
     const startScaleY = source.bodyDiameter / Math.max(1, target.height);
     const scaleX = startScaleX + (1 - startScaleX) * morph;
     const scaleY = startScaleY + (1 - startScaleY) * morph;
+    // getBoundingClientRect() is in viewport pixels, while this transform is authored in
+    // the phone's local CSS coordinate space. Undo the outer fixed-surface scale here or
+    // compact/mobile layouts scale the translation twice and miss the blob center.
     const translationX =
-      (source.centerX - (target.left + target.width * 0.5)) * (1 - morph);
+      ((source.centerX - (target.left + target.width * 0.5)) / Math.max(0.0001, phoneScaleX)) *
+      (1 - morph);
     const translationY =
-      (source.centerY - (target.top + target.height * 0.5)) * (1 - morph);
+      ((source.centerY - (target.top + target.height * 0.5)) / Math.max(0.0001, phoneScaleY)) *
+      (1 - morph);
     rangeMorphWave.style.transform =
       `translate3d(${translationX}px,${translationY}px,0) scale(${scaleX},${scaleY})`;
     rangeMorphWave.style.setProperty("--range-morph-progress", String(morph));
@@ -978,7 +1694,28 @@ export function runReverbDemoRuntime(
     rangeMorphWave.style.clipPath = `inset(0 0 0 ${reveal * 100}%)`;
     rangeScreen.style.setProperty("--range-wave-reveal", String(reveal));
 
-    if (!rangeInteractionReady && visual >= RANGE_INTERACTION_READY_PROGRESS)
+    const detailStartedAt =
+      rangeWaveRevealStartedAt == null
+        ? null
+        : rangeWaveRevealStartedAt + RANGE_WAVEFORM_DETAIL_DELAY_MS;
+    const detail =
+      detailStartedAt == null || now < detailStartedAt
+        ? 0
+        : fastOutSlowIn(
+            clamp01((now - detailStartedAt) / RANGE_WAVEFORM_DETAIL_REVEAL_MS),
+          );
+    const effectiveDetail = Math.min(detail, reveal);
+    const detailFrontVisible =
+      reveal > 0.95 && effectiveDetail > 0.002 && effectiveDetail < 0.998;
+    rangeDetailFront.style.left = `${effectiveDetail * 100}%`;
+    rangeDetailFront.style.opacity = detailFrontVisible ? "1" : "0";
+    rangeScreen.style.setProperty("--range-wave-detail-reveal", String(effectiveDetail));
+
+    if (
+      allowInteractionReady &&
+      !rangeInteractionReady &&
+      visual >= RANGE_INTERACTION_READY_PROGRESS
+    )
       setRangeInteractionReady(true);
   }
   function resetRangeOpeningPresentation(): void {
@@ -986,6 +1723,9 @@ export function runReverbDemoRuntime(
     rangeScreen.style.setProperty("--range-chrome-alpha", "1");
     rangeScreen.style.removeProperty("--range-transition-progress");
     rangeScreen.style.removeProperty("--range-wave-reveal");
+    rangeScreen.style.removeProperty("--range-wave-detail-reveal");
+    rangeDetailFront.style.removeProperty("left");
+    rangeDetailFront.style.opacity = "0";
     rangeMorphWave.style.removeProperty("transform");
     rangeMorphWave.style.removeProperty("clip-path");
     rangeMorphWave.style.removeProperty("--range-morph-progress");
@@ -1011,6 +1751,7 @@ export function runReverbDemoRuntime(
   }
   function startRangeOpening(): void {
     if (rangeExportPending || rangeOpening) return;
+    rangeReadyFocusAllowed = !document.externalFocusActive;
     const blob = blobControl.getBoundingClientRect();
     const viewSize = Math.min(blob.width, blob.height);
     if (viewSize <= 0) return;
@@ -1046,7 +1787,10 @@ export function runReverbDemoRuntime(
       const reveal = Number(
         rangeScreen.style.getPropertyValue("--range-wave-reveal") || 0,
       );
-      if (raw < 1 || reveal < 0.999) requestAnimationFrame(frame);
+      const detail = Number(
+        rangeScreen.style.getPropertyValue("--range-wave-detail-reveal") || 0,
+      );
+      if (raw < 1 || reveal < 0.999 || detail < 0.999) requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
   }
@@ -2097,9 +2841,17 @@ export function runReverbDemoRuntime(
     }
     syncBufferUi();
   });
-  byId<HTMLButtonElement>("exportFull").addEventListener("click", () => {
-    if (rangeExportPending) return;
-    beginCaptureExport(currentSeconds(displayedBuffer));
+  const exportFullButton = byId<HTMLButtonElement>("exportFull");
+  exportFullButton.addEventListener("click", () => {
+    if (rangeExportPending || actionSheetMode) return;
+    const buffer = bufferRenderedBuffer();
+    const duration = currentSeconds(buffer);
+    const limit = rangeExportLimitSeconds();
+    if (duration > limit) {
+      openExportLimitSheet(limit, exportFullButton);
+      return;
+    }
+    beginCaptureExport(duration);
   });
   captureSaveCancel.addEventListener("click", () => {
     if (!rangeExportPending) return;
@@ -2252,6 +3004,7 @@ export function runReverbDemoRuntime(
   const aboutSheet = byId<HTMLElement>("aboutSheet");
   const ABOUT_EXIT_DURATION_MS = 190;
   let aboutMotionEpoch = 0;
+  let aboutPredictiveBackRunning = false;
   let aboutReturnFocus: HTMLElement | null = null;
   let aboutBackground:
     | { screen: HTMLElement; inert: boolean; ariaHidden: string | null }
@@ -2261,6 +3014,10 @@ export function runReverbDemoRuntime(
   )].filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
   const openAbout = (event: Event) => {
     ++aboutMotionEpoch;
+    aboutPredictiveBackRunning = false;
+    aboutSheet.style.removeProperty("transition");
+    aboutSheet.style.removeProperty("transform");
+    aboutSheet.style.removeProperty("opacity");
     aboutReturnFocus = event.currentTarget instanceof HTMLElement ? event.currentTarget : aboutReturnFocus;
     if (!aboutBackground) {
       const background = screens.find((screen) => screen.classList.contains("active"));
@@ -2296,13 +3053,33 @@ export function runReverbDemoRuntime(
     syncBufferUi();
     const target = aboutReturnFocus;
     aboutReturnFocus = null;
-    if (target) requestAnimationFrame(() => target.isConnected && target.focus({ preventScroll: true }));
+    if (target?.isConnected) target.focus({ preventScroll: true });
   };
   const closeAbout = () => {
     if (!phone.classList.contains("about-open")) return;
     phone.classList.remove("about-open");
     const epoch = ++aboutMotionEpoch;
     setTimeout(() => finishAboutDismiss(epoch), ABOUT_EXIT_DURATION_MS);
+  };
+  const predictiveCloseAbout = () => {
+    if (aboutPredictiveBackRunning || !phone.classList.contains("about-open")) return;
+    aboutPredictiveBackRunning = true;
+    const epoch = ++aboutMotionEpoch;
+    aboutSheet.style.transition = "none";
+    animatePredictiveBackCommit(
+      (progress) => {
+        aboutSheet.style.transform = `translate3d(0,${-progress * 100}%,0)`;
+        aboutSheet.style.opacity = String(1 - 0.22 * progress);
+      },
+      () => {
+        aboutPredictiveBackRunning = false;
+        phone.classList.remove("about-open");
+        aboutSheet.style.removeProperty("transition");
+        aboutSheet.style.removeProperty("transform");
+        aboutSheet.style.removeProperty("opacity");
+        finishAboutDismiss(epoch);
+      },
+    );
   };
   ["brandButton", "libraryBrand", "rangeBrand"].forEach((id) =>
     byId(id).addEventListener("click", openAbout),
@@ -2314,7 +3091,7 @@ export function runReverbDemoRuntime(
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      closeAbout();
+      predictiveCloseAbout();
       return;
     }
     if (event.key !== "Tab") return;
@@ -2418,6 +3195,7 @@ export function runReverbDemoRuntime(
         showToast(element.dataset.toast ?? ""),
       ),
     );
+  type RecordingFineTarget = "playhead" | "trim-start" | "trim-end";
   type RecordingPlayerState = {
     card: HTMLElement;
     summary: HTMLButtonElement;
@@ -2426,6 +3204,7 @@ export function runReverbDemoRuntime(
     waveEllipse: SVGEllipseElement;
     wavePath: SVGPathElement;
     waveCursor: HTMLElement;
+    waveContainer: HTMLElement;
     positionLabel: HTMLElement;
     durationLabel: HTMLElement;
     fine: HTMLElement;
@@ -2434,8 +3213,19 @@ export function runReverbDemoRuntime(
     fineOverlay: SVGPathElement;
     fineCenter: SVGCircleElement;
     fineHalo: SVGCircleElement;
+    fineEdgeStart: SVGStopElement;
+    fineCenterStop: SVGStopElement;
+    fineEdgeEnd: SVGStopElement;
     play: HTMLButtonElement;
     playUse: SVGUseElement;
+    trimHeader: HTMLElement;
+    trimDuration: HTMLElement;
+    trimStartBoundary: HTMLElement;
+    trimEndBoundary: HTMLElement;
+    trimActions: HTMLElement;
+    trimCancel: HTMLButtonElement;
+    trimSave: HTMLButtonElement;
+    trimSaveLabel: HTMLElement;
     durationSeconds: number;
     positionSeconds: number;
     playing: boolean;
@@ -2445,8 +3235,459 @@ export function runReverbDemoRuntime(
     morphEpoch: number;
     sizeAnimation: Animation | null;
     opacityAnimation: Animation | null;
+    trimMode: boolean;
+    trimStartSeconds: number;
+    trimEndSeconds: number;
+    trimBackRunning: boolean;
+    trimSaveTimer: number;
+    fineTarget: RecordingFineTarget;
+    fineHorizontalPull: number;
+    fineRawVerticalPull: number;
+    fineDragging: boolean;
+    finePointerId: number;
+    fineStartedOnPuck: boolean;
+    fineDownX: number;
+    fineDownY: number;
+    fineDragStartRawVertical: number;
+    fineLastFrame: number;
+    fineSettleEpoch: number;
+    fineResumeAfterDrag: boolean;
+    fineSuppressClick: boolean;
+    fineCommitDeltaSeconds: number;
+    fineCommitElapsedMs: number;
+    wavePointerId: number;
+    waveTarget: RecordingFineTarget;
+    waveResumeAfterScrub: boolean;
   };
+  const recordingPlayerStates: RecordingPlayerState[] = [];
   let expandedRecording: RecordingPlayerState | null = null;
+  let recordingPredictiveBackRunning = false;
+  let recordingMenuTarget: RecordingPlayerState | null = null;
+  let recordingMenuReturnFocus: HTMLElement | null = null;
+  let recordingMenuMotionEpoch = 0;
+  let recordingMenuTargetOpen = false;
+  let recordingMenuScale = DROPDOWN_CLOSED_SCALE;
+  let recordingMenuScaleVelocity = 0;
+  let recordingMenuAlpha = 0;
+  let recordingMenuAlphaVelocity = 0;
+  let recordingMenuHoldTimer = 0;
+  let recordingMenuSuppressClick: RecordingPlayerState | null = null;
+  let recordingMenuSuppressTimer = 0;
+  const selectedRecordingStates = new Set<RecordingPlayerState>();
+  let librarySelectionBackRunning = false;
+  type PendingLibraryDeletion = {
+    state: RecordingPlayerState;
+    parent: HTMLElement;
+    index: number;
+  };
+  let pendingLibraryDeletions: PendingLibraryDeletion[] = [];
+  let libraryDeleteTimer = 0;
+  let libraryNoticeMotionEpoch = 0;
+
+  function syncLibraryDateHeaders(): void {
+    document.querySelectorAll<HTMLElement>(".library-list .date-header").forEach((header) => {
+      let cursor = header.nextElementSibling;
+      let hasRecording = false;
+      while (cursor && !cursor.classList.contains("date-header")) {
+        if (cursor.classList.contains("recording-card")) {
+          hasRecording = true;
+          break;
+        }
+        cursor = cursor.nextElementSibling;
+      }
+      header.hidden = !hasRecording;
+    });
+  }
+  function animateLibraryNoticeVisibility(entering: boolean, onDone?: () => void): void {
+    const epoch = ++libraryNoticeMotionEpoch;
+    const height = Math.max(1, libraryNotice.getBoundingClientRect().height || 52);
+    const distance = height * 0.5;
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== libraryNoticeMotionEpoch) return;
+      const remaining = criticalSpringRemaining(now - startedAt);
+      const progress = 1 - remaining;
+      libraryNotice.style.transform = `translateY(${entering ? distance * remaining : distance * progress}px)`;
+      libraryNotice.style.opacity = String(entering ? progress : remaining);
+      if (remaining > 0.001) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      libraryNotice.style.transform = entering ? "translateY(0)" : `translateY(${distance}px)`;
+      libraryNotice.style.opacity = entering ? "1" : "0";
+      if (!entering) {
+        libraryNotice.hidden = true;
+        libraryNotice.setAttribute("aria-hidden", "true");
+      }
+      onDone?.();
+    };
+    requestAnimationFrame(frame);
+  }
+  function showLibraryDeleteNotice(count: number): void {
+    ++libraryNoticeMotionEpoch;
+    libraryNoticeMessage.textContent = count === 1
+      ? "Recording deleted."
+      : `${count} recordings deleted.`;
+    libraryNotice.hidden = false;
+    libraryNotice.setAttribute("aria-hidden", "false");
+    libraryNotice.style.opacity = "0";
+    libraryNotice.style.transform = "translateY(26px)";
+    animateLibraryNoticeVisibility(true);
+  }
+  function commitPendingLibraryDeletions(): void {
+    clearTimeout(libraryDeleteTimer);
+    pendingLibraryDeletions = [];
+    libraryDeleteTimer = 0;
+    if (!libraryNotice.hidden) animateLibraryNoticeVisibility(false);
+  }
+  function deleteLibraryRecordings(targets: readonly RecordingPlayerState[]): void {
+    if (pendingLibraryDeletions.length || targets.length === 0) return;
+    const unique = [...new Set(targets)].filter((state) => state.card.isConnected);
+    if (!unique.length) return;
+    pendingLibraryDeletions = unique.map((state) => {
+      const parent = state.card.parentElement;
+      if (!(parent instanceof HTMLElement))
+        throw new Error("Reverb recording card is missing its Library owner");
+      return {
+        state,
+        parent,
+        index: [...parent.children].indexOf(state.card),
+      };
+    });
+    for (const { state } of pendingLibraryDeletions) {
+      if (expandedRecording === state) collapseRecording(state);
+      setRecordingPlaying(state, false);
+      selectedRecordingStates.delete(state);
+      state.card.remove();
+    }
+    if (recordingMenuTarget) closeRecordingMenu(false);
+    syncLibrarySelectionUi();
+    syncLibraryDateHeaders();
+    showLibraryDeleteNotice(pendingLibraryDeletions.length);
+    clearTimeout(libraryDeleteTimer);
+    libraryDeleteTimer = setTimeout(commitPendingLibraryDeletions, 4500);
+  }
+  function undoLibraryDelete(): void {
+    if (!pendingLibraryDeletions.length) return;
+    const restoring = [...pendingLibraryDeletions].sort((a, b) => a.index - b.index);
+    pendingLibraryDeletions = [];
+    clearTimeout(libraryDeleteTimer);
+    libraryDeleteTimer = 0;
+    for (const entry of restoring) {
+      const before = entry.parent.children.item(entry.index);
+      entry.parent.insertBefore(entry.state.card, before);
+    }
+    syncLibraryDateHeaders();
+    animateLibraryNoticeVisibility(false);
+    restoring[0]?.state.summary.focus({ preventScroll: true });
+  }
+  libraryNoticeUndo.addEventListener("click", undoLibraryDelete);
+  function shareLibraryRecordings(targets: readonly RecordingPlayerState[]): void {
+    if (!targets.length) return;
+    const names = targets.map((state) =>
+      state.card.querySelector<HTMLElement>(".recording-title")?.textContent?.trim() ?? "Recording"
+    );
+    if (typeof navigator.share === "function") {
+      void navigator.share({
+        title: targets.length === 1 ? "Share recording" : "Share recordings",
+        text: names.join("\n"),
+      }).catch(() => undefined);
+    }
+  }
+  librarySelectionShare.addEventListener("click", () => {
+    shareLibraryRecordings([...selectedRecordingStates]);
+  });
+  librarySelectionDelete.addEventListener("click", () => {
+    deleteLibraryRecordings([...selectedRecordingStates]);
+  });
+
+  function librarySelectionActive(): boolean {
+    return selectedRecordingStates.size > 0;
+  }
+  function syncLibrarySelectionUi(): void {
+    const active = librarySelectionActive();
+    libraryScreen.classList.toggle("selection-active", active);
+    librarySelectionBar.hidden = !active;
+    librarySelectionBar.inert = !active;
+    librarySelectionBar.setAttribute("aria-hidden", String(!active));
+    librarySelectionTitle.textContent = `${selectedRecordingStates.size} selected`;
+    librarySelectionShare.disabled = !active;
+    librarySelectionDelete.disabled = !active;
+    document.querySelectorAll<HTMLButtonElement>(".recording-summary").forEach((summary) => {
+      const card = summary.closest<HTMLElement>(".recording-card");
+      const selected = card != null && [...selectedRecordingStates].some((state) => state.card === card);
+      card?.classList.toggle("selected", selected);
+      if (active) summary.setAttribute("aria-pressed", String(selected));
+      else summary.removeAttribute("aria-pressed");
+    });
+  }
+
+  function toggleLibrarySelection(state: RecordingPlayerState): void {
+    if (selectedRecordingStates.has(state)) selectedRecordingStates.delete(state);
+    else selectedRecordingStates.add(state);
+    if (expandedRecording === state) collapseRecording(state);
+    syncLibrarySelectionUi();
+    if (!librarySelectionActive()) state.summary.focus({ preventScroll: true });
+  }
+  function enterLibrarySelection(state: RecordingPlayerState): void {
+    if (expandedRecording === state) collapseRecording(state);
+    selectedRecordingStates.add(state);
+    syncLibrarySelectionUi();
+    librarySelectionClose.focus({ preventScroll: true });
+  }
+  function clearLibrarySelection(restoreFocus: HTMLElement | null = null): void {
+    selectedRecordingStates.clear();
+    syncLibrarySelectionUi();
+    if (restoreFocus?.isConnected) restoreFocus.focus({ preventScroll: true });
+  }
+
+  function renderLibrarySelectionPredictiveBack(progress: number): void {
+    const p = Math.max(0, Math.min(1, progress));
+    libraryScreen.classList.toggle("selection-back-active", p > 0);
+    librarySelectionBar.style.transform = `translate3d(${p * 100}%,0,0) scale(${1 - 0.015 * p})`;
+    librarySelectionBar.style.opacity = String(1 - 0.18 * p);
+  }
+
+  function predictiveClearLibrarySelection(): void {
+    if (librarySelectionBackRunning || !librarySelectionActive()) return;
+    librarySelectionBackRunning = true;
+    animatePredictiveBackCommit(
+      (progress) => renderLibrarySelectionPredictiveBack(progress),
+      () => {
+        librarySelectionBackRunning = false;
+        const first = [...selectedRecordingStates][0] ?? null;
+        clearLibrarySelection(first?.summary ?? null);
+        libraryScreen.classList.remove("selection-back-active");
+        librarySelectionBar.style.removeProperty("transform");
+        librarySelectionBar.style.removeProperty("opacity");
+      },
+    );
+  }
+
+  librarySelectionClose.addEventListener("click", () => {
+    const first = [...selectedRecordingStates][0] ?? null;
+    clearLibrarySelection(first?.summary ?? null);
+  });
+
+  function applyRecordingMenuMotionVisual(): void {
+    recordingMenu.style.transform = `scale(${recordingMenuScale})`;
+    recordingMenu.style.opacity = String(Math.max(0, Math.min(1, recordingMenuAlpha)));
+  }
+  function animateRecordingMenuVisibility(opening: boolean, onDone?: () => void): void {
+    recordingMenuTargetOpen = opening;
+    const epoch = ++recordingMenuMotionEpoch;
+    const targetScale = opening ? 1 : DROPDOWN_CLOSED_SCALE;
+    const targetAlpha = opening ? 1 : 0;
+    const startScale = recordingMenuScale;
+    const startScaleVelocity = recordingMenuScaleVelocity;
+    const startAlpha = recordingMenuAlpha;
+    const startAlphaVelocity = recordingMenuAlphaVelocity;
+    const scaleDuration = springSettleDurationMs(
+      startScale,
+      startScaleVelocity,
+      targetScale,
+      DROPDOWN_SCALE_STIFFNESS,
+      DROPDOWN_SCALE_DAMPING,
+    );
+    const alphaDuration = springSettleDurationMs(
+      startAlpha,
+      startAlphaVelocity,
+      targetAlpha,
+      DROPDOWN_ALPHA_STIFFNESS,
+      DROPDOWN_ALPHA_DAMPING,
+    );
+    const duration = Math.max(scaleDuration, alphaDuration);
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== recordingMenuMotionEpoch) return;
+      const elapsed = Math.max(0, now - startedAt);
+      if (elapsed >= scaleDuration) {
+        recordingMenuScale = targetScale;
+        recordingMenuScaleVelocity = 0;
+      } else {
+        const state = springScalarStateAt(
+          startScale,
+          startScaleVelocity,
+          targetScale,
+          elapsed,
+          DROPDOWN_SCALE_STIFFNESS,
+          DROPDOWN_SCALE_DAMPING,
+        );
+        recordingMenuScale = state.value;
+        recordingMenuScaleVelocity = state.velocity;
+      }
+      if (elapsed >= alphaDuration) {
+        recordingMenuAlpha = targetAlpha;
+        recordingMenuAlphaVelocity = 0;
+      } else {
+        const state = springScalarStateAt(
+          startAlpha,
+          startAlphaVelocity,
+          targetAlpha,
+          elapsed,
+          DROPDOWN_ALPHA_STIFFNESS,
+          DROPDOWN_ALPHA_DAMPING,
+        );
+        recordingMenuAlpha = state.value;
+        recordingMenuAlphaVelocity = state.velocity;
+      }
+      applyRecordingMenuMotionVisual();
+      if (elapsed < duration) requestAnimationFrame(frame);
+      else onDone?.();
+    };
+    if (duration <= 0) frame(startedAt);
+    else requestAnimationFrame(frame);
+  }
+  function closeRecordingMenu(restoreFocus = false): void {
+    const returnFocus = recordingMenuReturnFocus;
+    recordingMenuTarget = null;
+    recordingMenuReturnFocus = null;
+    recordingMenu.style.pointerEvents = "none";
+    animateRecordingMenuVisibility(false, () => {
+      if (recordingMenuTargetOpen || recordingMenuTarget) return;
+      recordingMenu.classList.remove("show");
+      recordingMenu.setAttribute("aria-hidden", "true");
+      recordingMenu.replaceChildren();
+    });
+    if (restoreFocus && returnFocus)
+      requestAnimationFrame(() => {
+        if (!recordingMenuTargetOpen && !recordingMenuTarget && returnFocus.isConnected)
+          returnFocus.focus({ preventScroll: true });
+      });
+  }
+  function recordingMenuItem(
+    label: string,
+    icon: string,
+    action: string,
+    destructive = false,
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `dropdown-item recording-menu-item${destructive ? " delete" : ""}`;
+    button.dataset.action = action;
+    button.setAttribute("role", "menuitem");
+    const iconSlot = document.createElement("span");
+    iconSlot.className = "recording-menu-icon";
+    iconSlot.innerHTML = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="${icon}"/></svg>`;
+    const span = document.createElement("span");
+    span.textContent = label;
+    button.append(iconSlot, span);
+    return button;
+  }
+  function positionRecordingMenu(state: RecordingPlayerState): void {
+    const anchor = state.card.getBoundingClientRect();
+    const root = phone.getBoundingClientRect();
+    const scaleX = root.width > 0 ? root.width / phone.clientWidth : 1;
+    const scaleY = root.height > 0 ? root.height / phone.clientHeight : 1;
+    const anchorLeft = (anchor.left - root.left) / scaleX;
+    const anchorRight = (anchor.right - root.left) / scaleX;
+    const anchorTop = (anchor.top - root.top) / scaleY;
+    const anchorBottom = (anchor.bottom - root.top) / scaleY;
+    const menuWidth = Math.min(220, Math.max(190, recordingMenu.scrollWidth));
+    const menuHeight = Math.min(340, recordingMenu.scrollHeight);
+    const menuLeft = Math.min(
+      Math.max(8, phone.clientWidth - menuWidth - 8),
+      Math.max(8, anchorRight - menuWidth),
+    );
+    const menuTop = Math.min(
+      Math.max(8, phone.clientHeight - menuHeight - 8),
+      Math.max(8, anchorTop),
+    );
+    recordingMenu.style.left = `${menuLeft}px`;
+    recordingMenu.style.top = `${menuTop}px`;
+    recordingMenu.style.width = `${menuWidth}px`;
+    recordingMenu.style.transformOrigin = dropdownTransformOrigin(
+      anchorLeft,
+      anchorTop,
+      anchorRight,
+      anchorBottom,
+      menuLeft,
+      menuTop,
+      menuWidth,
+      menuHeight,
+    );
+  }
+  function openRecordingMenu(state: RecordingPlayerState): void {
+    clearTimeout(recordingMenuHoldTimer);
+    recordingMenuHoldTimer = 0;
+    if (recordingMenuTarget === state && recordingMenuTargetOpen) return;
+    if (recordingMenuTarget && recordingMenuTarget !== state) closeRecordingMenu();
+    recordingMenuTarget = state;
+    recordingMenuReturnFocus = state.summary;
+    recordingMenu.replaceChildren();
+    const specs = [
+      ["Rename", "#i-edit", "rename", false],
+      ["Info", "#i-info", "info", false],
+      ["Share", "#i-share", "share", false],
+      ["Trim", "#i-range", "trim", false],
+      ["Delete", "#i-delete", "delete", true],
+      ["Multi-select", "#i-multiselect", "multi-select", false],
+    ] as const;
+    for (const [label, icon, action, destructive] of specs)
+      recordingMenu.appendChild(recordingMenuItem(label, icon, action, destructive));
+    recordingMenu.classList.add("show");
+    recordingMenu.style.pointerEvents = "auto";
+    recordingMenu.setAttribute("aria-hidden", "false");
+    positionRecordingMenu(state);
+    animateRecordingMenuVisibility(true);
+    requestAnimationFrame(() => {
+      if (recordingMenuTarget !== state) return;
+      recordingMenu.querySelector<HTMLButtonElement>(".recording-menu-item")
+        ?.focus({ preventScroll: true });
+    });
+  }
+  function recordingActionDataFor(state: RecordingPlayerState): RecordingActionData {
+    const title = state.card.querySelector<HTMLElement>(".recording-title");
+    const subtitle = state.card.querySelector<HTMLElement>(".recording-subtitle");
+    const time = state.card.querySelector<HTMLElement>(".recording-time");
+    if (!title || !subtitle || !time)
+      throw new Error("Reverb recording card is missing metadata");
+    let sibling: Element | null = state.card.previousElementSibling;
+    while (sibling && !sibling.classList.contains("date-header"))
+      sibling = sibling.previousElementSibling;
+    return {
+      card: state.card,
+      summary: state.summary,
+      title,
+      subtitle,
+      time,
+      dateLabel: sibling?.textContent?.trim() ?? "",
+    };
+  }
+  recordingMenu.addEventListener("click", (event) => {
+    const button = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>(".recording-menu-item")
+      : null;
+    const state = recordingMenuTarget;
+    const action = button?.dataset.action;
+    if (!button || !state || !action) return;
+    if (action === "share") {
+      closeRecordingMenu(false);
+      shareLibraryRecordings([state]);
+      return;
+    }
+    if (action === "delete") {
+      closeRecordingMenu(false);
+      deleteLibraryRecordings([state]);
+      return;
+    }
+    if (action === "trim") {
+      closeRecordingMenu(false);
+      enterRecordingTrim(state);
+      return;
+    }
+    if (action === "multi-select") {
+      closeRecordingMenu(false);
+      enterLibrarySelection(state);
+      return;
+    }
+    if (action !== "rename" && action !== "info") return;
+    const data = recordingActionDataFor(state);
+    closeRecordingMenu(false);
+    if (expandedRecording === state) collapseRecording(state);
+    openRecordingActionSheet(action === "rename" ? "recording-rename" : "recording-info", data);
+  });
+
   const parseRecordingDuration = (text: string): number => {
     const hours = Number(text.match(/(\d+)h/)?.[1] ?? 0);
     const minutes = Number(text.match(/(\d+)m/)?.[1] ?? 0);
@@ -2518,45 +3759,469 @@ export function runReverbDemoRuntime(
     }
     state.wavePath.setAttribute("d", `${top.join(" ")} ${bottom.join(" ")} Z`);
   }
-  function renderRecordingFineField(state: RecordingPlayerState): void {
+  const recordingFineConstrainedY = (rawVerticalPull: number, horizontalPull: number) => {
+    const x = Math.abs(Math.max(-1, Math.min(1, horizontalPull)));
+    const edgeStiffness = Math.cosh(1.65 * x);
+    const localRadius = 0.72 / Math.pow(edgeStiffness, 0.28);
+    const inputScale = localRadius * 1.18 * Math.pow(edgeStiffness, 0.72);
+    return localRadius * Math.tanh(rawVerticalPull / inputScale);
+  };
+  const recordingFineSpeedScale = (verticalPull: number) => {
+    const y = Math.max(-1, Math.min(1, verticalPull));
+    return y <= 0
+      ? 1 + 5 * Math.pow(-y, 1.45)
+      : 0.018 + 0.982 * Math.pow(1 - y, 3.1);
+  };
+  const recordingFineTimelineRate = (horizontalVisualPull: number, verticalPull: number) => {
+    const pull = Math.max(-1, Math.min(1, horizontalVisualPull / 0.62));
+    const magnitude = Math.abs(pull);
+    if (magnitude <= 0.002) return 0;
+    const normalized = Math.max(0, Math.min(1, (magnitude - 0.002) / 0.998));
+    const horizontalRate =
+      0.00002 +
+      0.0004 * normalized +
+      0.004 * Math.pow(normalized, 3) +
+      0.055 * Math.pow(normalized, 7);
+    return Math.sign(pull) * horizontalRate * recordingFineSpeedScale(verticalPull);
+  };
+  function recordingFineTargetSeconds(
+    state: RecordingPlayerState,
+    target = state.trimMode ? state.fineTarget : "playhead" as RecordingFineTarget,
+  ): number {
+    if (target === "trim-start") return state.trimStartSeconds;
+    if (target === "trim-end") return state.trimEndSeconds;
+    return state.positionSeconds;
+  }
+  function adjustRecordingTrimTarget(
+    state: RecordingPlayerState,
+    target: Exclude<RecordingFineTarget, "playhead">,
+    requestedSeconds: number,
+  ): void {
+    const duration = Math.max(0.001, state.durationSeconds);
+    const minimumRange = Math.min(0.05, duration);
+    let startSeconds = Math.max(0, Math.min(duration, state.trimStartSeconds));
+    let endSeconds = Math.max(startSeconds, Math.min(duration, state.trimEndSeconds));
+    if (endSeconds - startSeconds < minimumRange) {
+      endSeconds = Math.min(duration, startSeconds + minimumRange);
+      startSeconds = Math.max(0, endSeconds - minimumRange);
+    }
+    if (target === "trim-start") {
+      const requested = Math.max(0, Math.min(Math.max(0, duration - minimumRange), requestedSeconds));
+      startSeconds = requested;
+      if (requested > endSeconds - minimumRange) endSeconds = Math.min(duration, requested + minimumRange);
+    } else {
+      const requested = Math.max(Math.min(minimumRange, duration), Math.min(duration, requestedSeconds));
+      endSeconds = requested;
+      if (requested < startSeconds + minimumRange) startSeconds = Math.max(0, requested - minimumRange);
+    }
+    state.trimStartSeconds = startSeconds;
+    state.trimEndSeconds = endSeconds;
+    state.positionSeconds = target === "trim-start" ? startSeconds : endSeconds;
+  }
+  function applyRecordingFineDelta(state: RecordingPlayerState, deltaSeconds: number): void {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0) return;
+    const target = state.trimMode ? state.fineTarget : "playhead";
+    if (target === "playhead") {
+      state.positionSeconds = Math.max(
+        0,
+        Math.min(state.durationSeconds, state.positionSeconds + deltaSeconds),
+      );
+    } else {
+      adjustRecordingTrimTarget(
+        state,
+        target,
+        recordingFineTargetSeconds(state, target) + deltaSeconds,
+      );
+    }
+    syncRecordingPlayback(state);
+  }
+  function recordingFineTravel(state: RecordingPlayerState) {
     const rect = state.fine.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
+    const phoneRect = phone.getBoundingClientRect();
+    const scaleX = phone.clientWidth > 0 ? phoneRect.width / phone.clientWidth : 1;
+    const scaleY = phone.clientHeight > 0 ? phoneRect.height / phone.clientHeight : 1;
+    return {
+      rect,
+      scaleX,
+      scaleY,
+      horizontal: Math.max(1, rect.width * 0.5 - 34 * scaleX),
+      vertical: Math.max(1, rect.height * 0.5 - 34 * scaleY),
+    };
+  }
+  function recordingFinePuckContains(
+    state: RecordingPlayerState,
+    clientX: number,
+    clientY: number,
+  ): boolean {
+    const travel = recordingFineTravel(state);
+    const constrainedY = recordingFineConstrainedY(
+      state.fineRawVerticalPull,
+      state.fineHorizontalPull,
+    );
+    const puckX = travel.rect.left + travel.rect.width * 0.5 +
+      state.fineHorizontalPull * travel.horizontal;
+    const puckY = travel.rect.top + travel.rect.height * 0.5 + constrainedY * travel.vertical;
+    const radius = 32 * Math.max(0.0001, (travel.scaleX + travel.scaleY) * 0.5);
+    const dx = clientX - puckX;
+    const dy = clientY - puckY;
+    return dx * dx + dy * dy <= radius * radius;
+  }
+  function updateRecordingFinePull(
+    state: RecordingPlayerState,
+    clientX: number,
+    clientY: number,
+  ): void {
+    const travel = recordingFineTravel(state);
+    const centerX = travel.rect.left + travel.rect.width * 0.5;
+    state.fineHorizontalPull = Math.max(
+      -1,
+      Math.min(1, (clientX - centerX) / travel.horizontal),
+    );
+    const verticalInputTravel = travel.vertical * 2.35;
+    state.fineRawVerticalPull =
+      state.fineDragStartRawVertical +
+      (clientY - state.fineDownY) / Math.max(1, verticalInputTravel);
+    renderRecordingFineField(state);
+  }
+  function settleRecordingFinePull(state: RecordingPlayerState): void {
+    const startX = state.fineHorizontalPull;
+    const startY = state.fineRawVerticalPull;
+    if (Math.abs(startX) < 0.0001 && Math.abs(startY) < 0.0001) {
+      state.fineHorizontalPull = 0;
+      state.fineRawVerticalPull = 0;
+      renderRecordingFineField(state);
+      return;
+    }
+    const epoch = ++state.fineSettleEpoch;
+    let startedAt: number | null = null;
+    const duration = 210;
+    const strength = 3.4;
+    const denominator = Math.cosh(strength) - 1;
+    const frame = (now: number) => {
+      if (epoch !== state.fineSettleEpoch || state.fineDragging) return;
+      if (startedAt == null) {
+        startedAt = now;
+        requestAnimationFrame(frame);
+        return;
+      }
+      const t = clamp01((now - startedAt) / duration);
+      const remaining = (Math.cosh(strength * (1 - t)) - 1) / denominator;
+      state.fineHorizontalPull = startX * remaining;
+      state.fineRawVerticalPull = startY * remaining;
+      renderRecordingFineField(state);
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        state.fineHorizontalPull = 0;
+        state.fineRawVerticalPull = 0;
+        renderRecordingFineField(state);
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+  function recordingFineFrame(state: RecordingPlayerState, time: number): void {
+    if (!state.fineDragging || expandedRecording !== state) return;
+    if (state.fineLastFrame > 0) {
+      const elapsedMs = Math.min(50, Math.max(0, time - state.fineLastFrame));
+      const constrainedY = recordingFineConstrainedY(
+        state.fineRawVerticalPull,
+        state.fineHorizontalPull,
+      );
+      state.fineCommitDeltaSeconds +=
+        recordingFineTimelineRate(state.fineHorizontalPull, constrainedY) *
+        Math.max(0, state.durationSeconds) * (elapsedMs / 1000);
+      state.fineCommitElapsedMs += elapsedMs;
+      if (state.fineCommitElapsedMs >= 40) {
+        const delta = state.fineCommitDeltaSeconds;
+        state.fineCommitDeltaSeconds = 0;
+        state.fineCommitElapsedMs = 0;
+        applyRecordingFineDelta(state, delta);
+      }
+    }
+    state.fineLastFrame = time;
+    requestAnimationFrame((now) => recordingFineFrame(state, now));
+  }
+  function startRecordingFineAdjust(
+    state: RecordingPlayerState,
+    clientX: number,
+    clientY: number,
+  ): void {
+    if (state.fineDragging || expandedRecording !== state || state.trimSaveTimer) return;
+    ++state.fineSettleEpoch;
+    if (!state.trimMode) state.fineTarget = "playhead";
+    state.fineDragStartRawVertical = state.fineRawVerticalPull;
+    state.fineResumeAfterDrag = state.playing;
+    if (state.playing) stopRecordingPlaybackFrame(state);
+    state.fineDragging = true;
+    state.fineLastFrame = 0;
+    state.fineCommitDeltaSeconds = 0;
+    state.fineCommitElapsedMs = 0;
+    renderRecordingFineField(state);
+    if (
+      state.finePointerId !== -1 &&
+      !state.fine.hasPointerCapture?.(state.finePointerId)
+    ) {
+      try {
+        state.fine.setPointerCapture?.(state.finePointerId);
+      } catch {
+        // Synthetic PointerEvents have no browser-owned pointer to capture.
+      }
+    }
+    updateRecordingFinePull(state, clientX, clientY);
+    requestAnimationFrame((now) => recordingFineFrame(state, now));
+  }
+  function finishRecordingFineAdjust(
+    state: RecordingPlayerState,
+    cancelled = false,
+    resumePlayback = true,
+  ): void {
+    if (state.finePointerId === -1 && !state.fineDragging) return;
+    const pointerId = state.finePointerId;
+    if (!state.fineDragging) {
+      state.finePointerId = -1;
+      state.fineStartedOnPuck = false;
+      state.fineResumeAfterDrag = false;
+      return;
+    }
+    if (state.fineCommitDeltaSeconds !== 0)
+      applyRecordingFineDelta(state, state.fineCommitDeltaSeconds);
+    state.fineCommitDeltaSeconds = 0;
+    state.fineCommitElapsedMs = 0;
+    const wasPlaying = state.fineResumeAfterDrag;
+    const shouldResume = resumePlayback && wasPlaying;
+    state.fineResumeAfterDrag = false;
+    if (state.fineStartedOnPuck && !cancelled) {
+      state.fineSuppressClick = true;
+      setTimeout(() => { state.fineSuppressClick = false; }, 0);
+    }
+    state.fineDragging = false;
+    state.finePointerId = -1;
+    state.fineLastFrame = 0;
+    renderRecordingFineField(state);
+    settleRecordingFinePull(state);
+    if (pointerId !== -1 && state.fine.hasPointerCapture?.(pointerId))
+      state.fine.releasePointerCapture(pointerId);
+    if (state.trimMode) state.positionSeconds = recordingFineTargetSeconds(state);
+    if (wasPlaying) {
+      state.playing = shouldResume;
+      syncRecordingPlayback(state);
+      if (shouldResume) runRecordingPlayback(state);
+    } else {
+      syncRecordingPlayback(state);
+    }
+  }
+  function finishRecordingWaveScrub(
+    state: RecordingPlayerState,
+    resumePlayback = true,
+  ): void {
+    if (state.wavePointerId === -1) return;
+    const pointerId = state.wavePointerId;
+    state.wavePointerId = -1;
+    const shouldResume = resumePlayback && state.waveResumeAfterScrub;
+    state.waveResumeAfterScrub = false;
+    if (state.trimMode) state.positionSeconds = recordingFineTargetSeconds(state);
+    syncRecordingPlayback(state);
+    if (pointerId !== -1 && state.waveContainer.hasPointerCapture?.(pointerId))
+      state.waveContainer.releasePointerCapture(pointerId);
+    if (shouldResume) setRecordingPlaying(state, true);
+  }
+  function renderRecordingFineField(state: RecordingPlayerState): void {
+    const width = state.fine.clientWidth;
+    const height = state.fine.clientHeight;
     if (width <= 0 || height <= 0) return;
     const centerX = width * 0.5;
     const centerY = height * 0.5;
     const edgePadding = 10;
     const puckRadius = 24;
+    const horizontalTravel = Math.max(1, centerX - edgePadding - puckRadius);
+    const verticalTravel = Math.max(1, centerY - edgePadding - puckRadius);
+    const constrainedY = recordingFineConstrainedY(
+      state.fineRawVerticalPull,
+      state.fineHorizontalPull,
+    );
+    const puckX = centerX + state.fineHorizontalPull * horizontalTravel;
+    const puckY = centerY + constrainedY * verticalTravel;
     const leftTipX = edgePadding;
     const rightTipX = width - edgePadding;
-    const leftSpan = Math.max(1, centerX - puckRadius - leftTipX);
-    const rightSpan = Math.max(1, rightTipX - (centerX + puckRadius));
-    const topY = centerY - puckRadius;
-    const bottomY = centerY + puckRadius;
+    const leftSpan = Math.max(1, puckX - puckRadius - leftTipX);
+    const rightSpan = Math.max(1, rightTipX - (puckX + puckRadius));
+    const topY = puckY - puckRadius;
+    const bottomY = puckY + puckRadius;
     const path = [
       `M${leftTipX} ${centerY}`,
-      `C${leftTipX + leftSpan * 0.3} ${centerY} ${Math.max(leftTipX, centerX - puckRadius - leftSpan * 0.28)} ${topY} ${centerX} ${topY}`,
-      `C${Math.min(rightTipX, centerX + puckRadius + rightSpan * 0.28)} ${topY} ${rightTipX - rightSpan * 0.3} ${centerY} ${rightTipX} ${centerY}`,
-      `C${rightTipX - rightSpan * 0.3} ${centerY} ${Math.min(rightTipX, centerX + puckRadius + rightSpan * 0.28)} ${bottomY} ${centerX} ${bottomY}`,
-      `C${Math.max(leftTipX, centerX - puckRadius - leftSpan * 0.28)} ${bottomY} ${leftTipX + leftSpan * 0.3} ${centerY} ${leftTipX} ${centerY} Z`,
+      `C${leftTipX + leftSpan * 0.3} ${centerY} ${Math.max(leftTipX, puckX - puckRadius - leftSpan * 0.28)} ${topY} ${puckX} ${topY}`,
+      `C${Math.min(rightTipX, puckX + puckRadius + rightSpan * 0.28)} ${topY} ${rightTipX - rightSpan * 0.3} ${centerY} ${rightTipX} ${centerY}`,
+      `C${rightTipX - rightSpan * 0.3} ${centerY} ${Math.min(rightTipX, puckX + puckRadius + rightSpan * 0.28)} ${bottomY} ${puckX} ${bottomY}`,
+      `C${Math.max(leftTipX, puckX - puckRadius - leftSpan * 0.28)} ${bottomY} ${leftTipX + leftSpan * 0.3} ${centerY} ${leftTipX} ${centerY} Z`,
     ].join(" ");
     state.fineField.setAttribute("viewBox", `0 0 ${width} ${height}`);
     state.finePath.setAttribute("d", path);
     state.fineOverlay.setAttribute("d", path);
+    const horizontalPower = Math.pow(Math.abs(state.fineHorizontalPull), 0.72);
+    const yMagnitude = clamp01(Math.abs(constrainedY) / 0.72);
+    const otherColor = constrainedY < 0 ? "var(--tertiary)" : "var(--secondary)";
+    const base = ((1 - yMagnitude) * 100).toFixed(3);
+    const mix = (yMagnitude * 100).toFixed(3);
+    const fieldColor = yMagnitude <= 0.0001
+      ? "var(--primary)"
+      : `color-mix(in srgb,var(--primary) ${base}%,${otherColor} ${mix}%)`;
+    state.fine.style.setProperty("--recording-fine-color", fieldColor);
+    for (const edge of [state.fineEdgeStart, state.fineEdgeEnd]) {
+      edge.setAttribute("stop-color", fieldColor);
+      edge.setAttribute("stop-opacity", "0.018");
+    }
+    state.fineCenterStop.setAttribute("stop-color", fieldColor);
+    state.fineCenterStop.setAttribute(
+      "stop-opacity",
+      String(0.12 + 0.13 * horizontalPower + 0.06 * yMagnitude),
+    );
+    state.fineOverlay.style.fill = fieldColor;
+    state.fineOverlay.style.fillOpacity = String(0.035 + 0.045 * yMagnitude);
     state.fineCenter.setAttribute("cx", String(centerX));
     state.fineCenter.setAttribute("cy", String(centerY));
     state.fineCenter.setAttribute("r", "1.6");
-    state.fineHalo.setAttribute("cx", String(centerX));
-    state.fineHalo.setAttribute("cy", String(centerY));
+    state.fineCenter.style.fillOpacity = state.fineDragging ? "0.20" : "0.13";
+    state.fineHalo.setAttribute("cx", String(puckX));
+    state.fineHalo.setAttribute("cy", String(puckY));
     state.fineHalo.setAttribute("r", String(puckRadius * 1.28));
+    state.fineHalo.style.fill = fieldColor;
+    state.fineHalo.style.fillOpacity = state.fineDragging
+      ? String(0.055 + 0.055 * horizontalPower)
+      : "0";
+    state.play.style.transform =
+      `translate(${(state.fineHorizontalPull * horizontalTravel).toFixed(2)}px, ${(constrainedY * verticalTravel).toFixed(2)}px)`;
+    state.fine.classList.toggle("is-dragging", state.fineDragging);
+    state.fine.style.setProperty("--recording-fine-horizontal-pull", String(state.fineHorizontalPull));
+    state.fine.style.setProperty("--recording-fine-raw-vertical-pull", String(state.fineRawVerticalPull));
+  }
+  function syncRecordingTrimTargetVisual(state: RecordingPlayerState): void {
+    const startActive = state.trimMode && state.fineTarget === "trim-start";
+    const endActive = state.trimMode && state.fineTarget === "trim-end";
+    state.trimStartBoundary.classList.toggle("active", startActive);
+    state.trimEndBoundary.classList.toggle("active", endActive);
+    state.positionLabel.style.color = startActive ? "var(--primary)" : "";
+    state.durationLabel.style.color = endActive ? "var(--primary)" : "";
+  }
+  function renderRecordingTrimVisual(state: RecordingPlayerState, backProgress = 0): void {
+    const p = clamp01(backProgress);
+    state.player.classList.toggle("trim-mode", state.trimMode);
+    if (!state.trimMode) {
+      state.player.style.removeProperty("transform");
+      state.trimHeader.style.removeProperty("transform");
+      state.trimHeader.style.removeProperty("opacity");
+      state.fine.style.removeProperty("opacity");
+      state.trimActions.style.removeProperty("opacity");
+      state.trimStartBoundary.style.removeProperty("opacity");
+      state.trimEndBoundary.style.removeProperty("opacity");
+      syncRecordingTrimTargetVisual(state);
+      return;
+    }
+    const duration = Math.max(0.001, state.durationSeconds);
+    const playheadFraction = clamp01(state.positionSeconds / duration);
+    const startFraction = clamp01(state.trimStartSeconds / duration) * (1 - p);
+    const rawEndFraction = clamp01(state.trimEndSeconds / duration);
+    const endFraction = rawEndFraction + (playheadFraction - rawEndFraction) * p;
+    state.trimStartBoundary.style.left = `${startFraction * 100}%`;
+    state.trimEndBoundary.style.left = `${clamp01(endFraction) * 100}%`;
+    state.trimDuration.textContent = formatRangeTime(
+      Math.max(0, state.trimEndSeconds - state.trimStartSeconds),
+    );
+    state.player.style.transform = p > 0 ? `translateX(${p * 8}%)` : "";
+    state.trimHeader.style.transform = p > 0 ? `translateX(${p * 8}%)` : "";
+    state.trimHeader.style.opacity = String(1 - p);
+    state.fine.style.opacity = String(1 - p);
+    state.trimStartBoundary.style.opacity = String(1 - p);
+    state.trimEndBoundary.style.opacity = String(1 - p);
+    syncRecordingTrimTargetVisual(state);
   }
   function syncRecordingPlayback(state: RecordingPlayerState): void {
-    state.positionLabel.textContent = formatPlaybackTime(state.positionSeconds);
-    state.durationLabel.textContent = formatPlaybackTime(state.durationSeconds);
-    state.waveCursor.style.left =
-      `${clamp01(state.positionSeconds / state.durationSeconds) * 100}%`;
+    if (state.trimMode) {
+      state.positionLabel.textContent = formatRangeTime(state.trimStartSeconds);
+      state.durationLabel.textContent = formatRangeTime(state.trimEndSeconds);
+      renderRecordingTrimVisual(state);
+    } else {
+      state.positionLabel.textContent = formatPlaybackTime(state.positionSeconds);
+      state.durationLabel.textContent = formatPlaybackTime(state.durationSeconds);
+      state.waveCursor.style.left =
+        `${clamp01(state.positionSeconds / state.durationSeconds) * 100}%`;
+    }
     state.play.setAttribute("aria-label", state.playing ? "Pause" : "Play");
     state.playUse.setAttribute("href", state.playing ? "#i-pause" : "#i-play");
+  }
+  function animateRecordingContentResize(
+    state: RecordingPlayerState,
+    mutate: () => void,
+  ): void {
+    if (expandedRecording !== state || !state.card.classList.contains("expanded")) {
+      mutate();
+      return;
+    }
+    state.sizeAnimation?.cancel();
+    const fromHeight = state.expanded.offsetHeight;
+    state.expanded.style.height = `${fromHeight}px`;
+    mutate();
+    const targetHeight = state.expanded.scrollHeight;
+    state.sizeAnimation = state.expanded.animate(
+      [{ height: `${fromHeight}px` }, { height: `${targetHeight}px` }],
+      { duration: 320, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
+    );
+    state.sizeAnimation.onfinish = () => {
+      if (expandedRecording === state) state.expanded.style.height = "auto";
+      state.sizeAnimation?.cancel();
+      state.sizeAnimation = null;
+      requestAnimationFrame(() => renderRecordingFineField(state));
+    };
+  }
+  function enterRecordingTrim(state: RecordingPlayerState): void {
+    if (state.trimMode) return;
+    setRecordingPlaying(state, false);
+    state.positionSeconds = 0;
+    state.trimStartSeconds = 0;
+    state.trimEndSeconds = state.durationSeconds;
+    state.fineTarget = "trim-start";
+    state.fineHorizontalPull = 0;
+    state.fineRawVerticalPull = 0;
+    const apply = () => {
+      state.trimMode = true;
+      syncRecordingPlayback(state);
+      requestAnimationFrame(() => renderRecordingFineField(state));
+    };
+    if (expandedRecording === state) animateRecordingContentResize(state, apply);
+    else {
+      apply();
+      expandRecording(state);
+    }
+  }
+  function exitRecordingTrim(state: RecordingPlayerState, restoreFocus = true): void {
+    if (!state.trimMode) return;
+    finishRecordingFineAdjust(state, true, false);
+    finishRecordingWaveScrub(state, false);
+    clearTimeout(state.trimSaveTimer);
+    state.trimSaveTimer = 0;
+    state.trimSave.disabled = false;
+    state.trimCancel.disabled = false;
+    state.trimSave.classList.remove("saving");
+    state.trimSaveLabel.textContent = "Save copy";
+    state.fineTarget = "playhead";
+    animateRecordingContentResize(state, () => {
+      state.trimMode = false;
+      renderRecordingTrimVisual(state);
+      syncRecordingPlayback(state);
+      requestAnimationFrame(() => renderRecordingFineField(state));
+    });
+    if (restoreFocus) requestAnimationFrame(() => state.play.focus({ preventScroll: true }));
+  }
+  function predictiveExitRecordingTrim(state: RecordingPlayerState): void {
+    if (state.trimBackRunning || !state.trimMode || expandedRecording !== state) return;
+    state.trimBackRunning = true;
+    setRecordingPlaying(state, false);
+    animatePredictiveBackCommit(
+      (progress) => renderRecordingTrimVisual(state, progress),
+      () => {
+        state.trimBackRunning = false;
+        exitRecordingTrim(state, false);
+        state.play.focus({ preventScroll: true });
+      },
+    );
   }
   function stopRecordingPlaybackFrame(state: RecordingPlayerState): void {
     if (state.playbackFrame != null) cancelAnimationFrame(state.playbackFrame);
@@ -2606,12 +4271,14 @@ export function runReverbDemoRuntime(
   }
   function collapseRecording(state: RecordingPlayerState): void {
     if (!state.card.classList.contains("expanded")) return;
+    finishRecordingFineAdjust(state, true, false);
+    finishRecordingWaveScrub(state, false);
     cancelRecordingAnimations(state);
     ++state.morphEpoch;
     setRecordingPlaying(state, false);
     state.card.classList.remove("expanded");
     state.summary.setAttribute("aria-expanded", "false");
-    const fromHeight = state.expanded.getBoundingClientRect().height;
+    const fromHeight = state.expanded.offsetHeight;
     const fromOpacity = Number(getComputedStyle(state.player).opacity);
     state.expanded.style.height = `${fromHeight}px`;
     state.opacityAnimation = state.player.animate(
@@ -2627,12 +4294,49 @@ export function runReverbDemoRuntime(
       state.player.style.opacity = "0";
       state.expanded.setAttribute("aria-hidden", "true");
       state.expanded.inert = true;
+      state.trimMode = false;
+      renderRecordingTrimVisual(state);
       state.sizeAnimation?.cancel();
       state.opacityAnimation?.cancel();
       state.sizeAnimation = null;
       state.opacityAnimation = null;
     };
     if (expandedRecording === state) expandedRecording = null;
+  }
+  function predictiveCollapseRecording(state: RecordingPlayerState): void {
+    if (recordingPredictiveBackRunning || expandedRecording !== state) return;
+    finishRecordingFineAdjust(state, true, false);
+    finishRecordingWaveScrub(state, false);
+    recordingPredictiveBackRunning = true;
+    cancelRecordingAnimations(state);
+    ++state.morphEpoch;
+    setRecordingPlaying(state, false);
+    const startHeight = state.expanded.offsetHeight;
+    const startOpacity = Number(getComputedStyle(state.player).opacity);
+    state.expanded.style.height = `${startHeight}px`;
+    state.player.style.transformOrigin = "50% 0";
+    animatePredictiveBackCommit(
+      (progress) => {
+        state.expanded.style.height = `${startHeight * (1 - progress)}px`;
+        state.player.style.opacity = String(startOpacity * (1 - progress));
+        state.player.style.transform = `scaleY(${1 - 0.04 * progress})`;
+      },
+      () => {
+        recordingPredictiveBackRunning = false;
+        state.card.classList.remove("expanded");
+        state.summary.setAttribute("aria-expanded", "false");
+        state.expanded.style.height = "0px";
+        state.player.style.opacity = "0";
+        state.player.style.removeProperty("transform");
+        state.player.style.removeProperty("transform-origin");
+        state.expanded.setAttribute("aria-hidden", "true");
+        state.expanded.inert = true;
+        state.trimMode = false;
+        renderRecordingTrimVisual(state);
+        if (expandedRecording === state) expandedRecording = null;
+        state.summary.focus({ preventScroll: true });
+      },
+    );
   }
   function expandRecording(state: RecordingPlayerState): void {
     if (expandedRecording === state) {
@@ -2676,15 +4380,16 @@ export function runReverbDemoRuntime(
     requestAnimationFrame(() => renderRecordingFineField(state));
     startRecordingWaveMorph(state);
     state.positionSeconds = 0;
-    setRecordingPlaying(state, true);
+    setRecordingPlaying(state, !state.trimMode);
   }
-  document.querySelectorAll<HTMLElement>(".recording-card").forEach((card) => {
+  document.querySelectorAll<HTMLElement>(".recording-card").forEach((card, cardIndex) => {
     const summary = card.querySelector<HTMLButtonElement>(".recording-summary");
     const expanded = card.querySelector<HTMLElement>(".recording-expanded");
     const player = card.querySelector<HTMLElement>(".recording-player");
     const waveEllipse = card.querySelector<SVGEllipseElement>(".recording-wave-ellipse");
     const wavePath = card.querySelector<SVGPathElement>(".recording-wave-shape");
     const waveCursor = card.querySelector<HTMLElement>(".recording-wave-cursor");
+    const waveContainer = card.querySelector<HTMLElement>(".recording-player-wave");
     const positionLabel = card.querySelector<HTMLElement>(".recording-player-times .position");
     const durationLabel = card.querySelector<HTMLElement>(".recording-player-times .duration");
     const fine = card.querySelector<HTMLElement>(".recording-fine");
@@ -2698,11 +4403,57 @@ export function runReverbDemoRuntime(
     const subtitle = card.querySelector<HTMLElement>(".recording-subtitle");
     if (
       !summary || !expanded || !player || !waveEllipse || !wavePath ||
-      !waveCursor || !positionLabel || !durationLabel || !fine || !fineField ||
+      !waveCursor || !waveContainer || !positionLabel || !durationLabel || !fine || !fineField ||
       !finePath || !fineOverlay || !fineCenter || !fineHalo || !play || !playUse ||
       !subtitle
     )
       throw new Error("Reverb recording card is missing inline-player structure");
+    const svgNs = "http://www.w3.org/2000/svg";
+    const fineDefs = document.createElementNS(svgNs, "defs");
+    const fineGradient = document.createElementNS(svgNs, "linearGradient");
+    fineGradient.id = `recording-fine-gradient-${cardIndex}`;
+    fineGradient.setAttribute("x1", "0");
+    fineGradient.setAttribute("y1", "0");
+    fineGradient.setAttribute("x2", "1");
+    fineGradient.setAttribute("y2", "0");
+    const fineEdgeStart = document.createElementNS(svgNs, "stop");
+    const fineCenterStop = document.createElementNS(svgNs, "stop");
+    const fineEdgeEnd = document.createElementNS(svgNs, "stop");
+    fineEdgeStart.setAttribute("offset", "0");
+    fineCenterStop.setAttribute("offset", ".5");
+    fineEdgeEnd.setAttribute("offset", "1");
+    fineGradient.append(fineEdgeStart, fineCenterStop, fineEdgeEnd);
+    fineDefs.appendChild(fineGradient);
+    fineField.prepend(fineDefs);
+    finePath.style.fill = `url(#${fineGradient.id})`;
+
+    const trimHeader = document.createElement("div");
+    trimHeader.className = "recording-trim-head";
+    trimHeader.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-range"/></svg><span>Trim</span>';
+    const trimDuration = document.createElement("span");
+    trimDuration.className = "recording-trim-duration";
+    trimHeader.appendChild(trimDuration);
+    player.insertBefore(trimHeader, player.firstChild);
+    const trimStartBoundary = document.createElement("div");
+    trimStartBoundary.className = "recording-trim-boundary start";
+    const trimEndBoundary = document.createElement("div");
+    trimEndBoundary.className = "recording-trim-boundary end";
+    waveContainer.append(trimStartBoundary, trimEndBoundary);
+    const trimActions = document.createElement("div");
+    trimActions.className = "recording-trim-actions";
+    const trimCancel = document.createElement("button");
+    trimCancel.type = "button";
+    trimCancel.className = "recording-trim-action cancel";
+    trimCancel.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-close"/></svg><span>Cancel</span>';
+    const trimSave = document.createElement("button");
+    trimSave.type = "button";
+    trimSave.className = "recording-trim-action save";
+    trimSave.innerHTML = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg><span class="recording-trim-spinner" aria-hidden="true"></span>';
+    const trimSaveLabel = document.createElement("span");
+    trimSaveLabel.textContent = "Save copy";
+    trimSave.appendChild(trimSaveLabel);
+    trimActions.append(trimCancel, trimSave);
+    player.appendChild(trimActions);
     const state: RecordingPlayerState = {
       card,
       summary,
@@ -2711,6 +4462,7 @@ export function runReverbDemoRuntime(
       waveEllipse,
       wavePath,
       waveCursor,
+      waveContainer,
       positionLabel,
       durationLabel,
       fine,
@@ -2719,8 +4471,19 @@ export function runReverbDemoRuntime(
       fineOverlay,
       fineCenter,
       fineHalo,
+      fineEdgeStart,
+      fineCenterStop,
+      fineEdgeEnd,
       play,
       playUse,
+      trimHeader,
+      trimDuration,
+      trimStartBoundary,
+      trimEndBoundary,
+      trimActions,
+      trimCancel,
+      trimSave,
+      trimSaveLabel,
       durationSeconds: parseRecordingDuration(subtitle.textContent ?? ""),
       positionSeconds: 0,
       playing: false,
@@ -2730,13 +4493,239 @@ export function runReverbDemoRuntime(
       morphEpoch: 0,
       sizeAnimation: null,
       opacityAnimation: null,
+      trimMode: false,
+      trimStartSeconds: 0,
+      trimEndSeconds: 0,
+      trimBackRunning: false,
+      trimSaveTimer: 0,
+      fineTarget: "playhead",
+      fineHorizontalPull: 0,
+      fineRawVerticalPull: 0,
+      fineDragging: false,
+      finePointerId: -1,
+      fineStartedOnPuck: false,
+      fineDownX: 0,
+      fineDownY: 0,
+      fineDragStartRawVertical: 0,
+      fineLastFrame: 0,
+      fineSettleEpoch: 0,
+      fineResumeAfterDrag: false,
+      fineSuppressClick: false,
+      fineCommitDeltaSeconds: 0,
+      fineCommitElapsedMs: 0,
+      wavePointerId: -1,
+      waveTarget: "playhead",
+      waveResumeAfterScrub: false,
     };
+    recordingPlayerStates.push(state);
     syncRecordingPlayback(state);
-    summary.addEventListener("click", () => expandRecording(state));
+    trimCancel.addEventListener("click", () => exitRecordingTrim(state));
+    trimSave.addEventListener("click", () => {
+      if (!state.trimMode || state.trimSaveTimer) return;
+      state.trimSave.disabled = true;
+      state.trimCancel.disabled = true;
+      state.trimSaveLabel.textContent = "Saving trim…";
+      state.trimSaveTimer = setTimeout(() => {
+        state.trimSaveTimer = 0;
+        exitRecordingTrim(state, false);
+        state.play.focus({ preventScroll: true });
+      }, 650);
+    });
+    fine.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (state.finePointerId !== -1 || state.trimSaveTimer) return;
+      state.finePointerId = event.pointerId;
+      state.fineDownX = event.clientX;
+      state.fineDownY = event.clientY;
+      state.fineStartedOnPuck = recordingFinePuckContains(
+        state,
+        event.clientX,
+        event.clientY,
+      );
+      if (!state.fineStartedOnPuck) {
+        startRecordingFineAdjust(state, event.clientX, event.clientY);
+        event.preventDefault();
+      }
+    });
+    fine.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== state.finePointerId) return;
+      if (!state.fineDragging) {
+        const dx = event.clientX - state.fineDownX;
+        const dy = event.clientY - state.fineDownY;
+        const travel = recordingFineTravel(state);
+        const scale = Math.max(0.0001, (travel.scaleX + travel.scaleY) * 0.5);
+        const touchSlop = 8 * scale;
+        if (dx * dx + dy * dy <= touchSlop * touchSlop) return;
+        startRecordingFineAdjust(state, event.clientX, event.clientY);
+      } else {
+        updateRecordingFinePull(state, event.clientX, event.clientY);
+      }
+      event.preventDefault();
+    });
+    const endRecordingFinePointer = (event: PointerEvent) => {
+      if (event.pointerId !== state.finePointerId) return;
+      finishRecordingFineAdjust(state, event.type === "pointercancel");
+    };
+    fine.addEventListener("pointerup", endRecordingFinePointer);
+    fine.addEventListener("pointercancel", endRecordingFinePointer);
+    fine.addEventListener("lostpointercapture", () => {
+      if (state.finePointerId !== -1) finishRecordingFineAdjust(state, true);
+    });
+
+    summary.addEventListener("click", () => {
+      if (recordingMenuSuppressClick === state) {
+        recordingMenuSuppressClick = null;
+        clearTimeout(recordingMenuSuppressTimer);
+        recordingMenuSuppressTimer = 0;
+        return;
+      }
+      if (recordingMenuTarget) closeRecordingMenu();
+      if (librarySelectionActive()) {
+        toggleLibrarySelection(state);
+        return;
+      }
+      expandRecording(state);
+    });
+    const clearRecordingMenuHold = () => {
+      if (!recordingMenuHoldTimer) return;
+      clearTimeout(recordingMenuHoldTimer);
+      recordingMenuHoldTimer = 0;
+    };
+    summary.addEventListener("pointerdown", () => {
+      clearRecordingMenuHold();
+      recordingMenuHoldTimer = setTimeout(() => {
+        recordingMenuHoldTimer = 0;
+        recordingMenuSuppressClick = state;
+        clearTimeout(recordingMenuSuppressTimer);
+        recordingMenuSuppressTimer = setTimeout(() => {
+          if (recordingMenuSuppressClick === state) recordingMenuSuppressClick = null;
+          recordingMenuSuppressTimer = 0;
+        }, 800);
+        if (librarySelectionActive()) toggleLibrarySelection(state);
+        else openRecordingMenu(state);
+      }, 520);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((type) =>
+      summary.addEventListener(type, clearRecordingMenuHold),
+    );
+    summary.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      clearRecordingMenuHold();
+      if (librarySelectionActive()) toggleLibrarySelection(state);
+      else openRecordingMenu(state);
+    });
+    summary.addEventListener("keydown", (event) => {
+      if (event.key !== "ContextMenu" && !(event.key === "F10" && event.shiftKey)) return;
+      event.preventDefault();
+      if (librarySelectionActive()) toggleLibrarySelection(state);
+      else openRecordingMenu(state);
+    });
+    const updateRecordingWaveFromX = (clientX: number) => {
+      const rect = waveContainer.getBoundingClientRect();
+      const seconds = clamp01((clientX - rect.left) / Math.max(1, rect.width)) *
+        state.durationSeconds;
+      if (!state.trimMode || state.waveTarget === "playhead") {
+        state.positionSeconds = seconds;
+      } else {
+        adjustRecordingTrimTarget(state, state.waveTarget, seconds);
+      }
+      syncRecordingPlayback(state);
+    };
+    waveContainer.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (state.wavePointerId !== -1 || state.finePointerId !== -1 || state.trimSaveTimer) return;
+      const rect = waveContainer.getBoundingClientRect();
+      const seconds = clamp01((event.clientX - rect.left) / Math.max(1, rect.width)) *
+        state.durationSeconds;
+      let target: RecordingFineTarget = "playhead";
+      if (state.trimMode) {
+        const phoneRect = phone.getBoundingClientRect();
+        const scaleX = phone.clientWidth > 0 ? phoneRect.width / phone.clientWidth : 1;
+        const thresholdSeconds = state.durationSeconds *
+          (24 * scaleX) / Math.max(1, rect.width);
+        const startDistance = Math.abs(seconds - state.trimStartSeconds);
+        const endDistance = Math.abs(seconds - state.trimEndSeconds);
+        target = startDistance <= thresholdSeconds && startDistance <= endDistance
+          ? "trim-start"
+          : endDistance <= thresholdSeconds
+            ? "trim-end"
+            : state.fineTarget === "playhead" ? "trim-start" : state.fineTarget;
+      }
+      state.waveTarget = target;
+      state.fineTarget = target;
+      state.wavePointerId = event.pointerId;
+      state.waveResumeAfterScrub = state.playing;
+      if (state.playing) setRecordingPlaying(state, false);
+      try { waveContainer.setPointerCapture?.(event.pointerId); } catch { /* synthetic pointer */ }
+      updateRecordingWaveFromX(event.clientX);
+      event.preventDefault();
+    });
+    waveContainer.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== state.wavePointerId) return;
+      updateRecordingWaveFromX(event.clientX);
+      event.preventDefault();
+    });
+    const endRecordingWavePointer = (event: PointerEvent) => {
+      if (event.pointerId !== state.wavePointerId) return;
+      finishRecordingWaveScrub(state);
+    };
+    waveContainer.addEventListener("pointerup", endRecordingWavePointer);
+    waveContainer.addEventListener("pointercancel", endRecordingWavePointer);
+    waveContainer.addEventListener("lostpointercapture", () => {
+      if (state.wavePointerId !== -1) finishRecordingWaveScrub(state);
+    });
+
     play.addEventListener("click", (event) => {
       event.stopPropagation();
+      if (state.fineSuppressClick) {
+        event.preventDefault();
+        return;
+      }
       setRecordingPlaying(state, !state.playing);
     });
+  });
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (
+        recordingMenuTarget &&
+        event.target instanceof Node &&
+        !recordingMenu.contains(event.target)
+      )
+        closeRecordingMenu();
+    },
+    true,
+  );
+  recordingMenu.addEventListener("keydown", (event) => {
+    if (!(event instanceof KeyboardEvent) || !recordingMenuTarget) return;
+    const items = [
+      ...recordingMenu.querySelectorAll<HTMLButtonElement>(".recording-menu-item"),
+    ];
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeRecordingMenu(true);
+      return;
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      closeRecordingMenu(true);
+      return;
+    }
+    if (!items.length) return;
+    const current = event.target instanceof HTMLButtonElement ? event.target : null;
+    const index = current ? items.indexOf(current) : -1;
+    let next: HTMLButtonElement | undefined;
+    if (event.key === "ArrowDown")
+      next = items[index < 0 || index === items.length - 1 ? 0 : index + 1];
+    else if (event.key === "ArrowUp")
+      next = items[index <= 0 ? items.length - 1 : index - 1];
+    else if (event.key === "Home") next = items[0];
+    else if (event.key === "End") next = items[items.length - 1];
+    else return;
+    event.preventDefault();
+    next?.focus({ preventScroll: true });
   });
 
   function makeRangeWavePath(): string {
@@ -3102,6 +5091,47 @@ export function runReverbDemoRuntime(
     finishRangeFineAdjust(true, false);
     setRangePlaying(false);
   }
+  let rangePredictiveBackRunning = false;
+  function renderRangePredictiveBack(openProgress: number, now: number): void {
+    const visual = clamp01(openProgress);
+    renderRangeOpeningFrame(visual, now, false);
+    const morph = clamp01(
+      (visual - RANGE_BLOB_MORPH_HANDOFF_PROGRESS) /
+        (1 - RANGE_BLOB_MORPH_HANDOFF_PROGRESS),
+    );
+    const coarseGate = smoothStep(clamp01((morph - 0.56) / 0.16));
+    const detailGate = smoothStep(clamp01((morph - 0.86) / 0.12));
+    const detail = Math.min(detailGate, coarseGate);
+    rangeFinalWave.style.clipPath = `inset(0 ${(1 - coarseGate) * 100}% 0 0)`;
+    rangeMorphWave.style.clipPath = `inset(0 0 0 ${coarseGate * 100}%)`;
+    rangeScreen.style.setProperty("--range-wave-reveal", String(coarseGate));
+    rangeScreen.style.setProperty("--range-wave-detail-reveal", String(detail));
+    rangeDetailFront.style.left = `${detail * 100}%`;
+    rangeDetailFront.style.opacity = "0";
+  }
+  function predictiveCloseRange(): void {
+    if (rangePredictiveBackRunning || currentScreen !== "rangeScreen") return;
+    rangePredictiveBackRunning = true;
+    endRangeTransientOwnership();
+    renderRangeUi();
+    ++rangeOpeningEpoch;
+    rangeOpening = false;
+    setRangeInteractionReady(false);
+    rangeMain.inert = true;
+    setScreenMotionVisibility(homeScreen, true);
+    const startVisual = clamp01(
+      Number(rangeScreen.style.getPropertyValue("--range-transition-progress") || 1),
+    );
+    animatePredictiveBackCommit(
+      (progress, now) => renderRangePredictiveBack(startVisual * (1 - progress), now),
+      () => {
+        rangePredictiveBackRunning = false;
+        cancelRangeOpeningMotion();
+        setScreenMotionVisibility(homeScreen, false);
+        showScreen("homeScreen", byId<HTMLElement>("openRange"));
+      },
+    );
+  }
   rangePlay.addEventListener("click", (event) => {
     if (rangeFineSuppressClick) {
       event.preventDefault();
@@ -3135,10 +5165,7 @@ export function runReverbDemoRuntime(
     ) return;
     event.preventDefault();
     event.stopPropagation();
-    endRangeTransientOwnership();
-    renderRangeUi();
-    cancelRangeOpeningMotion();
-    showScreen("homeScreen", byId<HTMLElement>("openRange"));
+    predictiveCloseRange();
   });
 
   const wakeSwitch = byId<HTMLElement>("wakeSwitch");
@@ -3668,20 +5695,141 @@ export function runReverbDemoRuntime(
     requestAnimationFrame(frame);
   }
   let activeDropdown: HTMLElement | null = null;
+  let dropdownMotionEpoch = 0;
+  let dropdownMotionTargetOpen = false;
+  let dropdownScale = DROPDOWN_CLOSED_SCALE;
+  let dropdownScaleVelocity = 0;
+  let dropdownAlpha = 0;
+  let dropdownAlphaVelocity = 0;
   dropdownMenu.setAttribute("role", "menu");
   dropdownMenu.setAttribute("aria-hidden", "true");
+  function applyDropdownMotionVisual(): void {
+    dropdownMenu.style.transform = `scale(${dropdownScale})`;
+    dropdownMenu.style.opacity = String(Math.max(0, Math.min(1, dropdownAlpha)));
+  }
+  function dropdownTransformOrigin(
+    anchorLeft: number,
+    anchorTop: number,
+    anchorRight: number,
+    anchorBottom: number,
+    menuLeft: number,
+    menuTop: number,
+    menuWidth: number,
+    menuHeight: number,
+  ): string {
+    const menuRight = menuLeft + menuWidth;
+    const menuBottom = menuTop + menuHeight;
+    const pivotX =
+      menuLeft >= anchorRight
+        ? 0
+        : menuRight <= anchorLeft
+          ? 1
+          : menuWidth <= 0
+            ? 0
+            : ((Math.max(anchorLeft, menuLeft) + Math.min(anchorRight, menuRight)) / 2 - menuLeft) / menuWidth;
+    const pivotY =
+      menuTop >= anchorBottom
+        ? 0
+        : menuBottom <= anchorTop
+          ? 1
+          : menuHeight <= 0
+            ? 0
+            : ((Math.max(anchorTop, menuTop) + Math.min(anchorBottom, menuBottom)) / 2 - menuTop) / menuHeight;
+    return `${pivotX * 100}% ${pivotY * 100}%`;
+  }
+  function animateDropdownVisibility(opening: boolean, onDone?: () => void): void {
+    dropdownMotionTargetOpen = opening;
+    const epoch = ++dropdownMotionEpoch;
+    const targetScale = opening ? 1 : DROPDOWN_CLOSED_SCALE;
+    const targetAlpha = opening ? 1 : 0;
+    const startScale = dropdownScale;
+    const startScaleVelocity = dropdownScaleVelocity;
+    const startAlpha = dropdownAlpha;
+    const startAlphaVelocity = dropdownAlphaVelocity;
+    const scaleDuration = springSettleDurationMs(
+      startScale,
+      startScaleVelocity,
+      targetScale,
+      DROPDOWN_SCALE_STIFFNESS,
+      DROPDOWN_SCALE_DAMPING,
+    );
+    const alphaDuration = springSettleDurationMs(
+      startAlpha,
+      startAlphaVelocity,
+      targetAlpha,
+      DROPDOWN_ALPHA_STIFFNESS,
+      DROPDOWN_ALPHA_DAMPING,
+    );
+    const duration = Math.max(scaleDuration, alphaDuration);
+    const startedAt = performance.now();
+    const frame = (now: number) => {
+      if (epoch !== dropdownMotionEpoch) return;
+      const elapsed = Math.max(0, now - startedAt);
+      if (elapsed >= scaleDuration) {
+        dropdownScale = targetScale;
+        dropdownScaleVelocity = 0;
+      } else {
+        const state = springScalarStateAt(
+          startScale,
+          startScaleVelocity,
+          targetScale,
+          elapsed,
+          DROPDOWN_SCALE_STIFFNESS,
+          DROPDOWN_SCALE_DAMPING,
+        );
+        dropdownScale = state.value;
+        dropdownScaleVelocity = state.velocity;
+      }
+      if (elapsed >= alphaDuration) {
+        dropdownAlpha = targetAlpha;
+        dropdownAlphaVelocity = 0;
+      } else {
+        const state = springScalarStateAt(
+          startAlpha,
+          startAlphaVelocity,
+          targetAlpha,
+          elapsed,
+          DROPDOWN_ALPHA_STIFFNESS,
+          DROPDOWN_ALPHA_DAMPING,
+        );
+        dropdownAlpha = state.value;
+        dropdownAlphaVelocity = state.velocity;
+      }
+      applyDropdownMotionVisual();
+      if (elapsed < duration) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      dropdownScale = targetScale;
+      dropdownScaleVelocity = 0;
+      dropdownAlpha = targetAlpha;
+      dropdownAlphaVelocity = 0;
+      applyDropdownMotionVisual();
+      onDone?.();
+    };
+    if (duration <= 0) frame(startedAt);
+    else requestAnimationFrame(frame);
+  }
   function closeDropdown(restoreFocus = false): void {
     const trigger = activeDropdown;
+    if (!trigger && !dropdownMotionTargetOpen) return;
     if (trigger) setSettingsDropdownExpanded(trigger, false);
-    dropdownMenu.classList.remove("show");
-    dropdownMenu.setAttribute("aria-hidden", "true");
-    dropdownMenu.removeAttribute("aria-label");
-    dropdownMenu.replaceChildren();
     activeDropdown = null;
+    // Retain the popup pixels for Material3 exit motion, but release pointer ownership
+    // immediately so a rapid choice-to-choice handoff can target the next field.
+    dropdownMenu.style.pointerEvents = "none";
+    animateDropdownVisibility(false, () => {
+      if (dropdownMotionTargetOpen || activeDropdown) return;
+      dropdownMenu.classList.remove("show");
+      dropdownMenu.setAttribute("aria-hidden", "true");
+      dropdownMenu.removeAttribute("aria-label");
+      dropdownMenu.replaceChildren();
+    });
     if (restoreFocus && trigger)
-      requestAnimationFrame(() =>
-        trigger.isConnected && trigger.focus({ preventScroll: true }),
-      );
+      requestAnimationFrame(() => {
+        if (!activeDropdown && !dropdownMotionTargetOpen && trigger.isConnected)
+          trigger.focus({ preventScroll: true });
+      });
   }
   document
     .querySelector<HTMLElement>(".settings-body")
@@ -3719,6 +5867,7 @@ export function runReverbDemoRuntime(
         closeDropdown();
         activeDropdown = field;
         setSettingsDropdownExpanded(field, true);
+        dropdownMenu.replaceChildren();
         const options = (field.dataset.options ?? "")
           .split("|")
           .filter(Boolean);
@@ -3747,9 +5896,11 @@ export function runReverbDemoRuntime(
         const rect = field.getBoundingClientRect(),
           root = phone.getBoundingClientRect();
         dropdownMenu.classList.add("show");
+        dropdownMenu.style.pointerEvents = "auto";
         const scaleX = root.width > 0 ? root.width / phone.clientWidth : 1;
         const scaleY = root.height > 0 ? root.height / phone.clientHeight : 1;
         const localLeft = (rect.left - root.left) / scaleX;
+        const localRight = (rect.right - root.left) / scaleX;
         const localTop = (rect.top - root.top) / scaleY;
         const localBottom = (rect.bottom - root.top) / scaleY;
         const menuWidth = Math.min(
@@ -3764,10 +5915,23 @@ export function runReverbDemoRuntime(
           : localTop - menuHeight - 4;
         const maxTop = Math.max(8, phone.clientHeight - menuHeight - 8);
         const maxLeft = Math.max(8, phone.clientWidth - menuWidth - 8);
-        dropdownMenu.style.left = `${Math.min(maxLeft, Math.max(8, localLeft))}px`;
-        dropdownMenu.style.top = `${Math.min(maxTop, Math.max(8, preferredTop))}px`;
+        const menuLeft = Math.min(maxLeft, Math.max(8, localLeft));
+        const menuTop = Math.min(maxTop, Math.max(8, preferredTop));
+        dropdownMenu.style.left = `${menuLeft}px`;
+        dropdownMenu.style.top = `${menuTop}px`;
         dropdownMenu.style.width = `${menuWidth}px`;
+        dropdownMenu.style.transformOrigin = dropdownTransformOrigin(
+          localLeft,
+          localTop,
+          localRight,
+          localBottom,
+          menuLeft,
+          menuTop,
+          menuWidth,
+          menuHeight,
+        );
         dropdownMenu.setAttribute("aria-hidden", "false");
+        animateDropdownVisibility(true);
         const initialFocus =
           selectedButton ??
           dropdownMenu.querySelector<HTMLButtonElement>(".dropdown-item");
@@ -3830,6 +5994,37 @@ export function runReverbDemoRuntime(
     else return;
     event.preventDefault();
     next?.focus({ preventScroll: true });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (
+      !(event instanceof KeyboardEvent) ||
+      event.key !== "Escape" ||
+      event.defaultPrevented ||
+      phone.classList.contains("about-mounted") ||
+      currentScreen === "rangeScreen"
+    )
+      return;
+    if (currentScreen === "settingsScreen") {
+      event.preventDefault();
+      event.stopPropagation();
+      predictiveCloseSettingsPanel();
+      return;
+    }
+    if (currentScreen === "incidentsScreen") {
+      event.preventDefault();
+      event.stopPropagation();
+      predictiveCloseIncidents();
+      return;
+    }
+    if (currentScreen === "libraryScreen") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (librarySelectionActive()) predictiveClearLibrarySelection();
+      else if (expandedRecording?.trimMode) predictiveExitRecordingTrim(expandedRecording);
+      else if (expandedRecording) predictiveCollapseRecording(expandedRecording);
+      else predictiveCloseLibraryPanel();
+    }
   });
 
   // Main panel reveals follow the native gesture continuously. Release only
@@ -3980,6 +6175,16 @@ export function runReverbDemoRuntime(
     blobControl.classList.remove("pressed");
     for (const timer of activeIncidentHoldTimers) clearTimeout(timer);
     activeIncidentHoldTimers.clear();
+    clearTimeout(recordingMenuHoldTimer);
+    recordingMenuHoldTimer = 0;
+    clearTimeout(recordingMenuSuppressTimer);
+    recordingMenuSuppressTimer = 0;
+    recordingMenuSuppressClick = null;
+    for (const state of recordingPlayerStates) {
+      finishRecordingFineAdjust(state, true, false);
+      finishRecordingWaveScrub(state, false);
+      state.fineSuppressClick = false;
+    }
   });
 
   // WebGL port of AudioBlobView's RuntimeShader. Formula/constants are kept source-equivalent.
@@ -4449,6 +6654,7 @@ void main(){
     dispose() {
       removeResizeListener();
       removeBlurListener();
+      removeRangeFocusHandoffListener();
     },
   };
 }
