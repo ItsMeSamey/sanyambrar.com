@@ -17,6 +17,7 @@ const docs = resolve(root, 'docs');
 const sharedRuntimeUrl = target === 'keybr'
   ? '/@fs' + resolve(root, 'src/shared/runtime.ts')
   : '/src/shared/runtime.ts';
+const siteRuntimeUrl = target === 'site' ? '/src/site/main.tsx' : '/@fs' + resolve(root, 'src/site/main.tsx');
 const siteSourcePages = new Map([
   ['/wordle', 'src/games/wordle/index.html'],
   ['/keybr', 'src/games/keybr/index.html'],
@@ -53,7 +54,12 @@ const htmlFileFor = async path => {
 const server = await createServer({
   configFile: resolve(root, 'vite.config.ts'),
   cacheDir: resolve(root, `.tmp/vite-${target}-${requestedPort}`),
-  server: { host: '127.0.0.1', port: requestedPort, strictPort: true },
+  server: {
+    host: '127.0.0.1',
+    port: requestedPort,
+    strictPort: true,
+    watch: { ignored: ['**/.tmp/**', '**/docs/**', '**/.build/**'] },
+  },
   plugins: [{
     name: 'samey-development-pages',
     configureServer(server) {
@@ -68,10 +74,12 @@ const server = await createServer({
             html = html.replace(/<html(?=\s|>)/i, '<html data-samey-dev');
             html = html
               .replace(/<link\b[^>]*\bdata-samey-shared\b[^>]*>\s*/gi, '')
-              .replace(/<script\b[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*><\/script>\s*/gi, '');
+              .replace(/<script\b[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*><\/script>\s*/gi, '')
+              .replace(/<link\b[^>]*\bdata-samey-route-module\b[^>]*>\s*/gi, '')
+              .replace(/<style\b[^>]*\bdata-samey-route-style\b[^>]*>[\s\S]*?<\/style>\s*/gi, '');
             if (!html.includes(sharedRuntimeUrl))
               html = html.replace('</head>', `<script type="module" src="${sharedRuntimeUrl}"></script></head>`);
-            if (target === 'site') html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, 'src="/src/site/main.tsx"');
+            html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, `src="${siteRuntimeUrl}"`);
             if (target === 'site' && htmlFile.endsWith('/src/games/keybr/index.html'))
               html = html.replace('src="/main.tsx"', 'src="/src/games/keybr/main.tsx"');
             if (target === 'site' && htmlFile.endsWith('/src/blogs/btop-mutex.html'))

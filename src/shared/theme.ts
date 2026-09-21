@@ -60,7 +60,6 @@ type AppearanceConfig = { colors: Record<string, { label: string }>; fonts: Reco
 type CursorBitmap = { url: string; x: number; y: number; width: number; height: number } | null;
 type CursorBitmaps = { dot: CursorBitmap; text: CursorBitmap; grab: CursorBitmap; loading: CursorBitmap };
 type ThemePatch = UnknownRecord & { font?: string; color?: string; cursorMode?: CursorMode; custom?: Theme; savedThemes?: SavedTheme[]; menuThemes?: string[] };
-type FillRect = { left: number; top: number; right: number; bottom: number };
 type ParsedRgb = { r: number; g: number; b: number; a: number };
 type LinkElement = HTMLAnchorElement | HTMLAreaElement | HTMLElement;
 type EditableElement = HTMLInputElement | HTMLTextAreaElement | HTMLElement;
@@ -1019,17 +1018,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const linkFill = runtimeNode(document.createElement("div"));
     linkFill.className = "samey-cursor-link-fill";
     linkFill.hidden = true;
-    const fillSlices: HTMLSpanElement[] = [];
-    const ensureFillSlice = (index: number) => {
-      while (fillSlices.length <= index) {
-        const slice = document.createElement("span");
-        slice.className = "samey-cursor-link-fill-slice";
-        slice.hidden = true;
-        linkFill.append(slice);
-        fillSlices.push(slice);
-      }
-      return fillSlices[index];
-    };
+    const fillSlice = document.createElement("span");
+    fillSlice.className = "samey-cursor-link-fill-slice";
+    fillSlice.hidden = true;
+    linkFill.append(fillSlice);
     const dragPreview = runtimeNode(document.createElement("div"));
     dragPreview.className = "samey-drag-preview";
     dragPreview.hidden = true;
@@ -1065,6 +1057,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       cursor.toggleAttribute("data-loading", cursorLoading);
       if (loading) {
         clearCursorIdle();
+        hideFillImmediate();
         cursor.removeAttribute("data-grab");
         cursor.removeAttribute("data-text");
         if (cursorMode === "invert") setCursorVisible(true);
@@ -1119,28 +1112,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       linkFill.style.setProperty("--samey-cursor-blend", source);
       cursor.dataset.blendSource = lightBackdrop ? "light" : "dark";
     };
-    const zIndexOf = (el: Element) => {
-      const z = Number.parseInt(getComputedStyle(el).zIndex, 10);
-      return Number.isFinite(z) ? z : 0;
-    };
-    const containingOverlay = (target: EventTarget | null) => target instanceof Element ? target.closest<HTMLElement>("[data-samey-overlay]") : null;
-    const cssFillLayer = Number.parseInt(getComputedStyle(document.documentElement).getPropertyValue("--samey-z-link-fill"), 10);
-    const baseFillLayer = Number.isFinite(cssFillLayer) ? cssFillLayer : 2147483000;
-    let fillLayer = baseFillLayer;
-    const fillLayerFor = (target: EventTarget | null) => {
-      const overlay = containingOverlay(target);
-      return overlay ? Math.min(2147483645, zIndexOf(overlay) + 1) : baseFillLayer;
-    };
-    const setFillLayer = (target: EventTarget | null) => {
-      fillLayer = fillLayerFor(target);
-      for (const slice of fillSlices) slice.style.zIndex = String(fillLayer);
-      refreshFillOcclusionRects(target);
-    };
     const overlaySelector = "[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]";
     let visibleOverlays: HTMLElement[] = [];
+    let overlayOwnsInteraction = false;
     let overlayRefreshFrame = 0;
-    let fillOcclusionRects: FillRect[] = [];
-    let fillOcclusionKey = "";
     const cssRadiusPx = (value: string, dimension: number) => {
       const parsed = Number.parseFloat(value);
       if (!Number.isFinite(parsed)) return 0;
@@ -1150,86 +1125,25 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const [x = "0", y = x] = value.trim().split(/\\s+/);
       return { x: cssRadiusPx(x, width), y: cssRadiusPx(y, height) };
     };
-    const roundedOverlayRects = (overlay: HTMLElement): FillRect[] => {
-      const rect = overlay.getBoundingClientRect();
-      const style = getComputedStyle(overlay);
-      const corners = [
-        cornerRadius(style.borderTopLeftRadius, rect.width, rect.height),
-        cornerRadius(style.borderTopRightRadius, rect.width, rect.height),
-        cornerRadius(style.borderBottomRightRadius, rect.width, rect.height),
-        cornerRadius(style.borderBottomLeftRadius, rect.width, rect.height),
-      ];
-      const rx = Math.min(rect.width / 2, Math.max(...corners.map(radius => radius.x)));
-      const ry = Math.min(rect.height / 2, Math.max(...corners.map(radius => radius.y)));
-      if (rx < 1 || ry < 1) {
-        return [{ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }];
-      }
-
-      const bands = 6;
-      const bandHeight = ry / bands;
-      const pieces: FillRect[] = [];
-      const bandInset = (index: number) => {
-        const y = Math.min(ry, (index + .5) * bandHeight);
-        const normalized = (y - ry) / ry;
-        return rx - rx * Math.sqrt(Math.max(0, 1 - normalized * normalized));
-      };
-      for (let index = 0; index < bands; index++) {
-        const inset = bandInset(index);
-        pieces.push({
-          left: rect.left + inset,
-          top: rect.top + index * bandHeight,
-          right: rect.right - inset,
-          bottom: rect.top + Math.min(ry, (index + 1) * bandHeight),
-        });
-      }
-      if (rect.height > ry * 2) {
-        pieces.push({ left: rect.left, top: rect.top + ry, right: rect.right, bottom: rect.bottom - ry });
-      }
-      for (let index = bands - 1; index >= 0; index--) {
-        const inset = bandInset(index);
-        pieces.push({
-          left: rect.left + inset,
-          top: rect.bottom - Math.min(ry, (index + 1) * bandHeight),
-          right: rect.right - inset,
-          bottom: rect.bottom - index * bandHeight,
-        });
-      }
-      return pieces;
-    };
     const overlayIsVisible = (el: Element): el is HTMLElement => {
       if (!(el instanceof HTMLElement) || !el.isConnected || el.hidden || el.getAttribute("aria-hidden") === "true" || el.dataset.open === "false") return false;
       const style = getComputedStyle(el);
-      if (style.display === "none" || style.visibility === "hidden") return false;
+      if (style.display === "none") return false;
+      // Native popovers intentionally spend a brief positioning phase at
+      // visibility:hidden after their open state flips. They already own
+      // interaction during that phase, so do not let the underlying page-link
+      // fill survive just because Floating UI has not exposed the surface yet.
+      if (style.visibility === "hidden" && !el.hasAttribute("data-expanded")) return false;
       const rect = el.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0;
     };
-    function refreshFillOcclusionRects(target: EventTarget | null = fillTarget) {
-      const width = Math.max(1, innerWidth);
-      const height = Math.max(1, innerHeight);
-      const fillZ = target ? fillLayerFor(target) : fillLayer;
-      const holes = visibleOverlays
-        .filter((overlay) => zIndexOf(overlay) > fillZ)
-        .flatMap(roundedOverlayRects)
-        .map((rect) => ({
-          left: Math.max(0, Math.floor(rect.left)),
-          top: Math.max(0, Math.floor(rect.top)),
-          right: Math.min(width, Math.ceil(rect.right)),
-          bottom: Math.min(height, Math.ceil(rect.bottom)),
-        }))
-        .filter((rect) => rect.right > rect.left && rect.bottom > rect.top);
-      const key = `${width}x${height}@${fillZ}:` + holes.map(({ left, top, right, bottom }) => `${left},${top},${right},${bottom}`).join(";");
-      if (key === fillOcclusionKey) return;
-      fillOcclusionKey = key;
-      fillOcclusionRects = holes;
-      if (fillVisible) renderFillSlices();
-    }
     const refreshOverlayState = () => {
       overlayRefreshFrame = 0;
       visibleOverlays = [...document.querySelectorAll<HTMLElement>(overlaySelector)].filter(overlayIsVisible);
-      refreshFillOcclusionRects();
-      // Re-hit-test the current pointer whenever an overlay opens/closes. The
-      // target fill remains active, while higher overlays are subtracted from
-      // the blend geometry so translucent/blurred pixels never sample it.
+      overlayOwnsInteraction = visibleOverlays.length > 0;
+      // Difference-blend link fill and floating UI must never share a composed
+      // frame. Floating UI owns pointer presentation completely until it closes.
+      if (overlayOwnsInteraction) hideFillImmediate();
       refreshCursorMode();
     };
     const queueOverlayRefresh = () => {
@@ -1245,9 +1159,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       return [...record.addedNodes, ...record.removedNodes].some(nodeContainsOverlay);
     };
     new MutationObserver((records) => {
-      if (records.some(overlayMutationMatters)) queueOverlayRefresh();
+      if (records.some(overlayMutationMatters)) refreshOverlayState();
     }).observe(document.documentElement, {
-      subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "aria-hidden", "data-open"],
+      subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "aria-hidden", "data-open", "data-expanded"],
     });
     addEventListener("resize", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true });
     addEventListener("scroll", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true, capture: true });
@@ -1361,51 +1275,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const fillCollapseCurve = (t: number) => t - Math.sin(Math.PI * 2 * t) * .1;
     let geometryLink: LinkElement | null = null, geometryRects: DOMRect[] = [], geometryBounds: DOMRect | null = null;
     let geometryRadiusX = 0, geometryRadiusY = 0;
-    const subtractRect = (rect: FillRect, hole: FillRect): FillRect[] => {
-      const left = Math.max(rect.left, hole.left), top = Math.max(rect.top, hole.top);
-      const right = Math.min(rect.right, hole.right), bottom = Math.min(rect.bottom, hole.bottom);
-      if (right <= left || bottom <= top) return [rect];
-      const pieces: FillRect[] = [];
-      if (rect.top < top) pieces.push({ left: rect.left, top: rect.top, right: rect.right, bottom: top });
-      if (bottom < rect.bottom) pieces.push({ left: rect.left, top: bottom, right: rect.right, bottom: rect.bottom });
-      if (rect.left < left) pieces.push({ left: rect.left, top, right: left, bottom });
-      if (right < rect.right) pieces.push({ left: right, top, right: rect.right, bottom });
-      return pieces;
-    };
+    let activeFillRect: DOMRect | null = null;
     function renderFillSlices() {
       if (!fillVisible) return;
-      const bounds = {
-        left: fillX - fillW / 2,
-        top: fillY - fillH / 2,
-        right: fillX + fillW / 2,
-        bottom: fillY + fillH / 2,
-      };
-      let pieces = [bounds];
-      for (const hole of fillOcclusionRects) {
-        pieces = pieces.flatMap((piece) => subtractRect(piece, hole));
-        if (pieces.length === 0) break;
-      }
-      for (let i = 0; i < pieces.length; i++) {
-        const piece = pieces[i];
-        const width = piece.right - piece.left, height = piece.bottom - piece.top;
-        const slice = ensureFillSlice(i);
-        slice.hidden = width <= 0 || height <= 0;
-        slice.style.zIndex = String(fillLayer);
-        slice.style.transform = `translate3d(${piece.left}px,${piece.top}px,0) scale3d(${width / fillDot},${height / fillDot},1)`;
-        const scaleX = Math.max(.001, width / fillDot);
-        const scaleY = Math.max(.001, height / fillDot);
-        const radiusX = Math.min(fillRadiusX, width / 2) / scaleX;
-        const radiusY = Math.min(fillRadiusY, height / 2) / scaleY;
-        const touchesLeft = Math.abs(piece.left - bounds.left) < .75;
-        const touchesRight = Math.abs(piece.right - bounds.right) < .75;
-        const touchesTop = Math.abs(piece.top - bounds.top) < .75;
-        const touchesBottom = Math.abs(piece.bottom - bounds.bottom) < .75;
-        slice.style.borderTopLeftRadius = touchesLeft && touchesTop ? `${radiusX}px ${radiusY}px` : "0";
-        slice.style.borderTopRightRadius = touchesRight && touchesTop ? `${radiusX}px ${radiusY}px` : "0";
-        slice.style.borderBottomRightRadius = touchesRight && touchesBottom ? `${radiusX}px ${radiusY}px` : "0";
-        slice.style.borderBottomLeftRadius = touchesLeft && touchesBottom ? `${radiusX}px ${radiusY}px` : "0";
-      }
-      for (let i = pieces.length; i < fillSlices.length; i++) fillSlices[i].hidden = true;
+      const width = fillW, height = fillH;
+      const left = fillX - width / 2, top = fillY - height / 2;
+      fillSlice.hidden = width <= 0 || height <= 0;
+      fillSlice.style.transform = `translate3d(${left}px,${top}px,0) scale3d(${width / fillDot},${height / fillDot},1)`;
+      const scaleX = Math.max(.001, width / fillDot);
+      const scaleY = Math.max(.001, height / fillDot);
+      const radiusX = Math.min(fillRadiusX, width / 2) / scaleX;
+      const radiusY = Math.min(fillRadiusY, height / 2) / scaleY;
+      fillSlice.style.borderRadius = `${radiusX}px / ${radiusY}px`;
     }
     const refreshLinkGeometry = (link: LinkElement | null) => {
       geometryLink = link;
@@ -1430,23 +1311,41 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         ?? geometryBounds
         ?? link.getBoundingClientRect();
     };
-    const updateFillGoal = (forceGeometry = false) => {
-      if (!fillTarget?.isConnected) return setFillTarget(null);
+    const dotInside = (rect: DOMRect) => {
+      const width = Math.min(fillDot, rect.width), height = Math.min(fillDot, rect.height);
+      const halfW = width / 2, halfH = height / 2;
+      return {
+        width,
+        height,
+        x: Math.max(rect.left + halfW, Math.min(rect.right - halfW, pendingX)),
+        y: Math.max(rect.top + halfH, Math.min(rect.bottom - halfH, pendingY)),
+      };
+    };
+    const updateFillGoal = (forceGeometry = false): DOMRect | null => {
+      if (!fillTarget?.isConnected) { setFillTarget(null); return null; }
       const rect = linkRect(fillTarget, forceGeometry);
+      activeFillRect = rect;
       const insetX = Math.min(8, Math.max(2, rect.width * .04));
       const insetY = Math.min(6, Math.max(1, rect.height * .12));
       const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
       const nx = Math.max(-1, Math.min(1, (pendingX - cx) / Math.max(1, rect.width / 2)));
       const ny = Math.max(-1, Math.min(1, (pendingY - cy) / Math.max(1, rect.height / 2)));
-      wantedFillW = Math.max(fillDot, rect.width - insetX * 2);
-      wantedFillH = Math.max(fillDot, rect.height - insetY * 2);
-      wantedFillX = cx + nx * Math.min(12, wantedFillW * .08);
-      wantedFillY = cy + ny * Math.min(8, wantedFillH * .08);
+      // The fill may lean toward the pointer, but it must never escape the
+      // geometry of the link/card it represents. The old fixed 12px/8px bias
+      // could exceed the 8px/6px inset and visibly bleed past rounded borders.
+      wantedFillW = Math.min(rect.width, Math.max(fillDot, rect.width - insetX * 2));
+      wantedFillH = Math.min(rect.height, Math.max(fillDot, rect.height - insetY * 2));
+      const maxShiftX = Math.max(0, (rect.width - wantedFillW) / 2);
+      const maxShiftY = Math.max(0, (rect.height - wantedFillH) / 2);
+      wantedFillX = cx + nx * Math.min(12, wantedFillW * .08, maxShiftX);
+      wantedFillY = cy + ny * Math.min(8, wantedFillH * .08, maxShiftY);
       wantedFillRadiusX = Math.min(wantedFillW / 2, Math.max(4, geometryRadiusX - insetX));
       wantedFillRadiusY = Math.min(wantedFillH / 2, Math.max(4, geometryRadiusY - insetY));
+      return rect;
     };
     const renderFill = (time: number) => {
       fillFrame = 0;
+      if (overlayOwnsInteraction) { hideFillImmediate(); return; }
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       if (fillCollapsing) {
         if (!fillCollapseStart) fillCollapseStart = time;
@@ -1463,7 +1362,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
           fillX = wantedFillX; fillY = wantedFillY; fillW = wantedFillW; fillH = wantedFillH;
           fillRadiusX = wantedFillRadiusX; fillRadiusY = wantedFillRadiusY;
           fillVisible = fillCollapsing = false;
+          activeFillRect = null;
           fillCollapseStart = fillLastTime = 0;
+          fillSlice.hidden = true;
           linkFill.hidden = true;
         } else fillFrame = requestAnimationFrame(renderFill);
         return;
@@ -1479,9 +1380,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       fillH += (wantedFillH - fillH) * sizeEase;
       fillRadiusX += (wantedFillRadiusX - fillRadiusX) * sizeEase;
       fillRadiusY += (wantedFillRadiusY - fillRadiusY) * sizeEase;
-      // Split the animated rectangle around higher overlays. Each fragment is
-      // itself the blend element; unlike CSS masks, this preserves `difference`
-      // blending in Chromium while keeping translucent overlays untouched.
       renderFillSlices();
       const done = Math.abs(fillX - wantedFillX) < .35 && Math.abs(fillY - wantedFillY) < .35
         && Math.abs(fillW - wantedFillW) < .35 && Math.abs(fillH - wantedFillH) < .35
@@ -1490,14 +1388,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       else fillLastTime = 0;
     };
     const ensureFillFrame = () => { if (!fillFrame) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
-    const hideFillImmediate = () => {
+    function hideFillImmediate() {
       fillTarget = null;
-      geometryLink = null; geometryRects = []; geometryBounds = null; geometryRadiusX = geometryRadiusY = 0;
-      setFillLayer(null);
+      geometryLink = null; geometryRects = []; geometryBounds = activeFillRect = null; geometryRadiusX = geometryRadiusY = 0;
       fillVisible = fillCollapsing = false; fillCollapseStart = fillLastTime = 0;
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
+      fillSlice.hidden = true;
       linkFill.hidden = true;
-    };
+    }
     const cursorIdleMs = 2200;
     const cursorIdleHidingEnabled = () => {
       if (cursorMode !== "invert") return false;
@@ -1553,9 +1451,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-pageload", syncCursorIdlePolicy);
     addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link: LinkElement | null) {
+      if (overlayOwnsInteraction) { hideFillImmediate(); return; }
       if (!link) {
+        const oldRect = activeFillRect;
         fillTarget = null;
-        setFillLayer(null);
         if (!fillVisible) return;
         if (!fillCollapsing) {
           fillCollapsing = true;
@@ -1563,20 +1462,28 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
           fillCollapseFromX = fillX; fillCollapseFromY = fillY; fillCollapseFromW = fillW; fillCollapseFromH = fillH;
           fillCollapseFromRadiusX = fillRadiusX; fillCollapseFromRadiusY = fillRadiusY;
         }
-        wantedFillX = pendingX; wantedFillY = pendingY; wantedFillW = wantedFillH = fillDot;
-        wantedFillRadiusX = wantedFillRadiusY = fillDot / 2;
+        if (oldRect) {
+          const dot = dotInside(oldRect);
+          wantedFillX = dot.x; wantedFillY = dot.y; wantedFillW = dot.width; wantedFillH = dot.height;
+          wantedFillRadiusX = dot.width / 2; wantedFillRadiusY = dot.height / 2;
+        } else {
+          wantedFillX = pendingX; wantedFillY = pendingY; wantedFillW = wantedFillH = fillDot;
+          wantedFillRadiusX = wantedFillRadiusY = fillDot / 2;
+        }
         ensureFillFrame();
         return;
       }
-      if (!fillVisible) {
-        fillX = wantedFillX = pendingX; fillY = wantedFillY = pendingY; fillW = fillH = fillDot;
-        fillRadiusX = wantedFillRadiusX = fillDot / 2;
-        fillRadiusY = wantedFillRadiusY = fillDot / 2;
-        fillVisible = true; linkFill.hidden = false;
-      }
-      if (fillTarget !== link) refreshLinkGeometry(link);
+      const changed = fillTarget !== link;
+      if (changed) refreshLinkGeometry(link);
       fillTarget = link; fillCollapsing = false; fillCollapseStart = 0; linkFill.hidden = false;
-      updateFillGoal();
+      const rect = updateFillGoal();
+      if (!rect) return;
+      if (!fillVisible || changed) {
+        const dot = dotInside(rect);
+        fillX = dot.x; fillY = dot.y; fillW = dot.width; fillH = dot.height;
+        fillRadiusX = dot.width / 2; fillRadiusY = dot.height / 2;
+        fillVisible = true;
+      }
       ensureFillFrame();
     }
     const textInput = (target: EventTarget | null) => target instanceof HTMLTextAreaElement
@@ -1613,7 +1520,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const setMode = (target: EventTarget | null) => {
       const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
-      const link = grab || selectingText ? null : linkTarget(target);
+      const candidateLink = grab || selectingText ? null : linkTarget(target);
+      const link = overlayOwnsInteraction ? null : candidateLink;
       const text = !grab && (selectingText || !link && wantsText(target));
       if (cursorMode !== "invert") {
         if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
@@ -1622,12 +1530,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         // Wordle tile or Keybr's red `r`) would otherwise recolor the entire
         // card highlight as the pointer crossed the wordmark.
         updateBlendSource(link ?? target);
-        setFillLayer(link);
         setFillTarget(link);
         return;
       }
       updateBlendSource(link ?? target);
-      setFillLayer(link);
       setGrabState(grab);
       setTextState(text);
       setFillTarget(link);
@@ -1657,6 +1563,20 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       : cursorVisible
         ? setMode(document.elementFromPoint(pendingX, pendingY))
         : setFillTarget(null);
+    let pointerGeometryFrame = 0;
+    const queuePointerGeometryRefresh = () => {
+      if (!hasPointerPosition || pointerGeometryFrame) return;
+      pointerGeometryFrame = requestAnimationFrame(() => {
+        pointerGeometryFrame = 0;
+        const actual = document.elementFromPoint(pendingX, pendingY);
+        const actualLink = linkTarget(actual);
+        if (fillTarget && actualLink !== fillTarget) hideFillImmediate();
+        else if (fillTarget && actualLink === fillTarget) refreshLinkGeometry(fillTarget);
+        pointTextTarget = null;
+        textModeNeedsPointRefresh(actual);
+        setMode(actual);
+      });
+    };
     const syncCursorPresentation = (theme: ThemeState = read()) => {
       cursorMode = theme.cursorMode;
       document.documentElement.dataset.cursorMode = cursorMode;
@@ -1722,9 +1642,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, { capture: true, passive: true });
     document.addEventListener("pointermove", moveCursorFallback, { capture: true, passive: true });
     document.addEventListener("pointerover", refreshPointerTarget, { capture: true, passive: true });
-    addEventListener("scroll", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true, capture: true });
-    addEventListener("resize", () => { if (fillTarget) { updateFillGoal(true); ensureFillFrame(); } }, { passive: true });
-    addEventListener("samey-pageleave", () => setFillTarget(null));
+    document.addEventListener("contextmenu", hideFillImmediate, { capture: true });
+    addEventListener("scroll", queuePointerGeometryRefresh, { passive: true, capture: true });
+    addEventListener("resize", queuePointerGeometryRefresh, { passive: true });
+    addEventListener("samey-navigationstart", hideFillImmediate);
+    addEventListener("samey-transitionstart", hideFillImmediate);
+    addEventListener("samey-pageleave", hideFillImmediate);
     document.addEventListener("pointerdown", (event) => {
       document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
       document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
@@ -2634,6 +2557,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (url.origin !== location.origin) { location.href = url.href; return; }
     dismissLoadError();
     if (!force && url.href === location.href) { setLoading(false); return; }
+    dispatchEvent(new Event("samey-navigationstart"));
     setLoading(true);
     try {
       const { doc, baseUrl, ready } = await fetchPage(url);
