@@ -14,8 +14,6 @@ import { FieldSet } from "../../../widget/components/form/Form.tsx";
 import { Spacer } from "../../../widget/components/text/Spacer.tsx";
 
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
-import { LessonLengthProp } from "./LessonLengthProp.tsx";
-import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 export function BooksLessonSettings(props: {
     readonly lesson: BooksLesson;
 }): JSX.Element {
@@ -23,7 +21,7 @@ export function BooksLessonSettings(props: {
     const { settings, updateSettings } = useSettings();
     const book = () => props.lesson.book;
     const content = () => props.lesson.content;
-    const paragraphs = () => props.lesson.paragraphs;
+    const paragraphs = () => props.lesson.rawParagraphs;
     const paragraphIndex = () => props.lesson.paragraphIndex;
     return (<>
       <Explainer>
@@ -35,7 +33,7 @@ export function BooksLessonSettings(props: {
             id: "t_Lesson_options",
             defaultMessage: "Lesson options",
         })}>
-        <BookPreview book={book()} content={content()} action={<BookSelector book={book()} onChange={(book) => {
+        <BookPreview book={book()} content={content()} paragraphs={paragraphs()} action={<BookSelector book={book()} onChange={(book) => {
             updateSettings(settings
                 .set(lessonProps.books.book, book)
                 .set(lessonProps.books.paragraphIndex, BooksLesson.savedParagraphIndex(book)));
@@ -43,11 +41,9 @@ export function BooksLessonSettings(props: {
         <ParagraphSelector paragraphs={paragraphs()} paragraphIndex={paragraphIndex()} onChange={(paragraphIndex) => {
             updateSettings(settings.set(lessonProps.books.paragraphIndex, paragraphIndex));
         }}/>
-        <ParagraphPreview paragraphs={paragraphs()} paragraphIndex={paragraphIndex()}/>
+        <ParagraphPreview paragraphs={paragraphs()} paragraphIndex={paragraphIndex()} around={0}/>
         <Spacer size={3}/>
         <BookTextProcessing />
-        <TargetSpeedProp />
-        <LessonLengthProp />
       </FieldSet>
     </>);
 }

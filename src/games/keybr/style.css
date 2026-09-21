@@ -213,3 +213,5 @@ text { text-rendering: optimizeLegibility; }
 
 /* Keybr buttons use straight edges; filled widget buttons remain filled at rest. */
 #app button{border-radius:0!important}
+
+.keybr-lesson-settings-body{contain:layout paint style}

@@ -1,9 +1,21 @@
 import { createComponent, render } from '@solidjs/web';
-import { App, preloadSiteRoute } from './App';
+import { App, ownsSiteRoute, preloadSiteRoute } from './App';
 
 let disposeCurrent: (() => void) | undefined;
 let pendingMount: Promise<void> | undefined;
 let mountGeneration = 0;
+const preloadSolidRoute = (href: string): boolean => {
+  try {
+    const url = new URL(href, location.href);
+    if (url.origin !== location.origin || !ownsSiteRoute(url)) return false;
+    void preloadSiteRoute(url).catch(error => console.debug('Solid route preload failed', error));
+    return true;
+  } catch (error) {
+    console.debug('Solid route preload URL was invalid', error);
+    return false;
+  }
+};
+
 const siteRoot = () => document.getElementById('site-root');
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 const focusedIndex = (root: HTMLElement) => {
@@ -14,6 +26,7 @@ const focusedIndex = (root: HTMLElement) => {
 };
 
 function mountSolidSite() {
+  globalThis.SameySolidPreload = preloadSolidRoute;
   if (disposeCurrent || pendingMount) return;
   const root = siteRoot();
   if (!root) throw new Error('Site mount node #site-root is missing');
@@ -39,6 +52,7 @@ function mountSolidSite() {
 
 function disposeSolidSite() {
   mountGeneration += 1;
+  if (globalThis.SameySolidPreload === preloadSolidRoute) globalThis.SameySolidPreload = undefined;
   pendingMount = undefined;
   disposeCurrent?.();
   disposeCurrent = undefined;

@@ -6,16 +6,16 @@ type Phase = 'in' | 'out';
 
 /** Routed/local views deconstruct into visible rules, then rebuild without moving layout. */
 const CONSTRUCTED_TRANSITION = {
-  line: 190,
-  content: 110,
-  contentGap: 18,
-  stagger: 2,
-  maxStagger: 48,
-  contentStagger: 1.5,
-  maxContentStagger: 30,
-  contentFloor: 0.72,
-  maxBorderCandidates: 260,
-  maxContentTargets: 96,
+  line: 96,
+  content: 72,
+  contentGap: 4,
+  stagger: 0.75,
+  maxStagger: 14,
+  contentStagger: 0.5,
+  maxContentStagger: 8,
+  contentFloor: 0.86,
+  maxBorderCandidates: 96,
+  maxContentTargets: 48,
   enterEasing: 'cubic-bezier(.16,1,.3,1)',
   leaveEasing: 'cubic-bezier(.4,0,1,1)',
 } as const;
@@ -56,7 +56,7 @@ const CONSTRUCTION_CONTENT_SELECTOR = [
 ].join(',');
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const CONTENT_MEASURE_BATCH = 16;
+const EXIT_COMMIT_DELAY_MS = 48;
 const BORDER_HIDE_ATTR = {
   top: 'data-samey-construction-hide-top',
   right: 'data-samey-construction-hide-right',
@@ -284,30 +284,23 @@ function animateConstructionLines(construction: ConstructionLayer, phase: Phase,
 
 type MeasuredContent = { element: HTMLElement; baseline: number };
 
-async function measureConstructionContent(root: HTMLElement) {
+function measureConstructionContent(root: HTMLElement) {
   const measured: MeasuredContent[] = [];
   const coveredElements = new Set<HTMLElement>();
-  let inspected = 0;
   for (const element of root.querySelectorAll<HTMLElement>(CONSTRUCTION_CONTENT_SELECTOR)) {
     if (measured.length >= CONSTRUCTED_TRANSITION.maxContentTargets) break;
     if (element.closest('[hidden],[aria-hidden="true"]')) continue;
     let ancestor = element.parentElement;
     let nested = false;
     while (ancestor && ancestor !== root) {
-      if (coveredElements.has(ancestor)) {
-        nested = true;
-        break;
-      }
+      if (coveredElements.has(ancestor)) { nested = true; break; }
       ancestor = ancestor.parentElement;
     }
     if (nested) continue;
     coveredElements.add(element);
-    if (inspected > 0 && inspected % CONTENT_MEASURE_BATCH === 0) await nextFrame();
-    inspected++;
     if (!inViewport(element.getBoundingClientRect())) continue;
     const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
-    const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
-    measured.push({ element, baseline });
+    measured.push({ element, baseline: Number.isFinite(parsedOpacity) ? parsedOpacity : 1 });
   }
   return measured;
 }
@@ -339,39 +332,25 @@ function restoreConstructionSources(construction: ConstructionLayer) {
   }
 }
 
-async function animateConstructionExit(root: HTMLElement, direction: Direction) {
+function startConstruction(
+  root: HTMLElement,
+  phase: Phase,
+  direction: Direction,
+  includeContent = true,
+): ConstructionRun {
   const construction = makeConstructionLayer(root);
-  const lineAnimations = animateConstructionLines(construction, 'out', direction);
-  const content = await measureConstructionContent(root);
-  const animations = [
-    ...lineAnimations,
-    ...animateConstructionContent(content, 'out'),
-  ];
-  await waitAnimations(animations);
+  const animations = animateConstructionLines(construction, phase, direction);
+  if (includeContent) animations.push(...animateConstructionContent(measureConstructionContent(root), phase));
   return { ...construction, animations };
 }
 
-async function animateConstructionEntrance(root: HTMLElement, direction: Direction) {
-  const construction = makeConstructionLayer(root);
-  const lineAnimations = animateConstructionLines(construction, 'in', direction);
-  const content = await measureConstructionContent(root);
-  const animations = [
-    ...lineAnimations,
-    ...animateConstructionContent(content, 'in'),
-  ];
-  await waitAnimations(animations);
-  restoreConstructionSources(construction);
-  for (const animation of animations) animation.cancel();
-  construction.layer.remove();
+function cleanupConstruction(run: ConstructionRun) {
+  restoreConstructionSources(run);
+  run.layer.remove();
+  for (const animation of run.animations) animation.cancel();
 }
 
 async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElement | null) {
-  // Solid commits the incoming tree synchronously. Move construction geometry
-  // prep into the next animation-frame task so route rendering and measurement
-  // cannot combine into one long main-thread task. The continuation runs from
-  // the rAF callback before that frame paints, so the real incoming borders do
-  // not flash before the construction overlay takes ownership.
-  await nextFrame();
   let incoming = next();
   if (!incoming || incoming === current || !incoming.isConnected) {
     await nextFrame();
@@ -380,10 +359,15 @@ async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElem
   return incoming;
 }
 
-function cleanupConstruction(run: ConstructionRun) {
-  restoreConstructionSources(run);
-  run.layer.remove();
-  for (const animation of run.animations) animation.cancel();
+const waitMs = (duration: number) => new Promise<void>(resolve => setTimeout(resolve, duration));
+let swapGeneration = 0;
+let activeSwapCleanup: (() => void) | undefined;
+
+function claimSwap() {
+  const cleanup = activeSwapCleanup;
+  activeSwapCleanup = undefined;
+  cleanup?.();
+  return ++swapGeneration;
 }
 
 export async function animateRootSwap(
@@ -393,31 +377,74 @@ export async function animateRootSwap(
   direction: Direction = 'forward',
 ) {
   dispatchEvent(new Event('samey-transitionstart'));
-  if (!current || reducedMotion() || !current.animate) { await commit(); return; }
+  const generation = claimSwap();
+  if (!current || reducedMotion() || !current.animate) {
+    await commit();
+    return;
+  }
 
-  const outgoing = await animateConstructionExit(current, direction);
+  const outgoing = startConstruction(current, 'out', direction, false);
+  let outgoingLive = true;
+  const cleanupOutgoing = () => {
+    if (!outgoingLive) return;
+    outgoingLive = false;
+    cleanupConstruction(outgoing);
+  };
+  activeSwapCleanup = cleanupOutgoing;
+
+  // Give the line erasure one perceptible beat, but never make the decorative
+  // animation own navigation state. A newer swap can cancel this wait entirely.
+  await waitMs(EXIT_COMMIT_DELAY_MS);
+  if (generation !== swapGeneration) { cleanupOutgoing(); return; }
+
   try {
     await commit();
   } catch (error) {
-    cleanupConstruction(outgoing);
+    cleanupOutgoing();
+    if (generation === swapGeneration) activeSwapCleanup = undefined;
     throw error;
   }
-  cleanupConstruction(outgoing);
+  cleanupOutgoing();
+  if (generation !== swapGeneration) return;
 
   const incoming = await resolveIncoming(next, current);
-  if (incoming?.isConnected) await animateConstructionEntrance(incoming, direction);
+  if (generation !== swapGeneration || !incoming?.isConnected) {
+    if (generation === swapGeneration) activeSwapCleanup = undefined;
+    return;
+  }
+
+  const entrance = startConstruction(incoming, 'in', direction);
+  let entranceLive = true;
+  const cleanupEntrance = () => {
+    if (!entranceLive) return;
+    entranceLive = false;
+    cleanupConstruction(entrance);
+  };
+  activeSwapCleanup = cleanupEntrance;
+  await waitAnimations(entrance.animations);
+  cleanupEntrance();
+  if (generation === swapGeneration) activeSwapCleanup = undefined;
 }
 
 export async function animateMountedViewSwap(from: HTMLElement, to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
   dispatchEvent(new Event('samey-transitionstart'));
+  const generation = claimSwap();
   if (reducedMotion() || !from.animate || !to.animate) { commit(); from.hidden = true; to.hidden = false; return; }
-  const outgoing = await animateConstructionExit(from, direction);
+
+  const outgoing = startConstruction(from, 'out', direction, false);
+  activeSwapCleanup = () => cleanupConstruction(outgoing);
+  await waitMs(EXIT_COMMIT_DELAY_MS);
+  if (generation !== swapGeneration) return;
+
   from.hidden = true;
   cleanupConstruction(outgoing);
   to.hidden = false;
   to.style.pointerEvents = 'none';
   commit();
-  await nextFrame();
-  await animateConstructionEntrance(to, direction);
+  const entrance = startConstruction(to, 'in', direction);
+  activeSwapCleanup = () => cleanupConstruction(entrance);
+  await waitAnimations(entrance.animations);
+  cleanupConstruction(entrance);
   to.style.pointerEvents = '';
+  if (generation === swapGeneration) activeSwapCleanup = undefined;
 }

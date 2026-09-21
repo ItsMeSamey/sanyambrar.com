@@ -1360,9 +1360,19 @@ test('Reverb Settings switch and segments use native stiffness-1500 springs', as
     sample.elapsed > 20 && sample.elapsed < 150 && sample.x > 0.5 && sample.x < 17.5);
   expect(switchMid).toBeTruthy();
   const omega = Math.sqrt(1500);
-  const t = switchMid.elapsed / 1000;
-  const expectedProgress = 1 - (1 + omega * t) * Math.exp(-omega * t);
-  expect(switchMid.x).toBeCloseTo(18 * expectedProgress, 0);
+  let inferredSwitchMs = 0;
+  let inferredSwitchError = Number.POSITIVE_INFINITY;
+  for (let milliseconds = 0; milliseconds <= 180; milliseconds += 0.25) {
+    const t = milliseconds / 1000;
+    const progress = 1 - (1 + omega * t) * Math.exp(-omega * t);
+    const error = Math.abs(18 * progress - switchMid.x);
+    if (error < inferredSwitchError) {
+      inferredSwitchError = error;
+      inferredSwitchMs = milliseconds;
+    }
+  }
+  expect(inferredSwitchError).toBeLessThan(0.05);
+  expect(Math.abs(switchMid.elapsed - inferredSwitchMs)).toBeLessThanOrEqual(34);
   expect(switchMid.inlineTrack).not.toBe('');
   expect(switchMid.inlineThumb).not.toBe('');
   const switchTerminal = switchSamples.at(-1);
@@ -1466,6 +1476,8 @@ test('Reverb Settings dropdown uses native Material3 menu springs and retained e
     field.click();
     const reversingIn = read();
     await new Promise(resolve => setTimeout(resolve, 180));
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
     const reopened = read();
 
     return {

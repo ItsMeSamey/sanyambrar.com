@@ -2384,11 +2384,20 @@ test('static direct routes ship prerendered Solid markup and mount it once', asy
 test('prerendered route is visible before site JS and preserves focus through mount', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns the static first-paint shell');
 
-  let releaseSiteApp;
-  const siteAppGate = new Promise(resolve => { releaseSiteApp = resolve; });
-  await page.route(/\/site-chunks\/site-app-[^/]+\.js(?:\?.*)?$/, async route => {
-    await siteAppGate;
-    await route.continue();
+  const workHtml = /\/work\/(?:index\.html)?(?:\?.*)?$/;
+  await page.route(workHtml, async route => {
+    const response = await route.fetch();
+    const html = await response.text();
+    const injected = html.replace(
+      /<script\b[^>]*data-samey-site-entry[^>]*>\s*import\s+(["'])([^"']+)\1;?\s*<\/script>/i,
+      (_all, _quote, specifier) => `<script type="module" data-samey-site-entry>
++globalThis.__sameyQaSiteGateReady = true;
++await new Promise(resolve => addEventListener('samey-qa-release-site', resolve, { once: true }));
++await import(${JSON.stringify(specifier)});
++</script>`.replace(/^\+/gm, ''),
+    );
+    if (injected === html) throw new Error('Could not gate inline site entry');
+    await route.fulfill({ response, body: injected });
   });
 
   await page.goto(`http://127.0.0.1:${info.project.metadata.port}/work/`, { waitUntil: 'commit' });
@@ -2398,8 +2407,9 @@ test('prerendered route is visible before site JS and preserves focus through mo
   await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
   await home.focus();
   await expect(home).toBeFocused();
+  await expect.poll(() => page.evaluate(() => globalThis.__sameyQaSiteGateReady === true)).toBe(true);
 
-  releaseSiteApp();
+  await page.evaluate(() => dispatchEvent(new Event('samey-qa-release-site')));
   await page.waitForLoadState('networkidle');
   await expect(root).toHaveAttribute('data-samey-solid-mounted', '');
   await expect(root).not.toHaveAttribute('data-samey-prerendered', '');
@@ -2407,15 +2417,18 @@ test('prerendered route is visible before site JS and preserves focus through mo
   await expect(page.getByRole('link', { name: 'Sanyam Brar · Home' })).toBeFocused();
 });
 
-test('direct site routes inline their route CSS and preload static route modules', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route inlining and preload hints');
+test('direct site routes inline their route CSS and startup modules', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route inlining');
 
   for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
     await visit(page, route, info);
     const styles = page.locator('style[data-samey-route-style]');
     await expect(styles).not.toHaveCount(0);
     expect((await styles.allTextContents()).join('').length).toBeGreaterThan(500);
-    await expect(page.locator('link[rel="modulepreload"][data-samey-route-module]')).not.toHaveCount(0);
+    await expect(page.locator('script[data-samey-inline-importmap]')).toHaveCount(1);
+    const entry = page.locator('script[type="module"][data-samey-site-entry]');
+    await expect(entry).toHaveCount(1);
+    await expect(entry).not.toHaveAttribute('src');
   }
 
   for (const route of ['/projects/zhtml/', '/projects/oneserial/']) {
@@ -4269,6 +4282,85 @@ test('Keybr owns internal scrollbars without shared geometry rescans', async ({ 
     return value;
   });
   expect(count, 'Keybr subtree updates must not enter the shared virtual-scrollbar geometry path').toBe(0);
+});
+
+test('Keybr lesson selection is immediate, interruptible, and never owned by construction animation', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Lesson type' })).toBeVisible();
+
+  await page.evaluate(() => {
+    const original = globalThis.SameyAnimateLocalSwap;
+    globalThis.__sameyLessonSwapCalls = 0;
+    globalThis.SameyAnimateLocalSwap = (...args) => {
+      globalThis.__sameyLessonSwapCalls += 1;
+      return original?.(...args) ?? Promise.resolve();
+    };
+    globalThis.__sameyRestoreLessonSwap = () => {
+      globalThis.SameyAnimateLocalSwap = original;
+      delete globalThis.__sameyRestoreLessonSwap;
+    };
+  });
+
+  await page.evaluate(() => {
+    const click = label => {
+      const control = [...document.querySelectorAll('[role="radio"]')]
+        .find(element => element.textContent?.trim() === label);
+      if (!(control instanceof HTMLButtonElement)) throw new Error(`Missing lesson option: ${label}`);
+      control.click();
+    };
+    click('Books');
+    click('Guided lessons');
+    click('Source code');
+  });
+
+  const sourceCode = page.getByRole('radio', { name: 'Source code', exact: true });
+  await expect(sourceCode).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-keybr-lesson-type="code"]')).toBeVisible();
+  await page.waitForTimeout(350);
+  await expect(sourceCode).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('[data-keybr-lesson-type="code"]')).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__sameyLessonSwapCalls ?? -1)).toBe(0);
+  await page.evaluate(() => {
+    globalThis.__sameyRestoreLessonSwap?.();
+    delete globalThis.__sameyLessonSwapCalls;
+  });
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+});
+
+test('Keybr common lesson pacing controls stay mounted across compatible modes', async ({ page }, info) => {
+  await visitKeybr(page, info);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+
+  const targetSpeed = page.getByText('Target typing speed:', { exact: true });
+  const lessonLength = page.getByText('Add words to lessons:', { exact: true });
+  await expect(targetSpeed).toHaveCount(1);
+  await expect(lessonLength).toHaveCount(1);
+
+  await page.evaluate(() => {
+    const rowFor = label => [...document.querySelectorAll('*')]
+      .find(element => element.textContent?.trim() === label)?.parentElement;
+    const speed = rowFor('Target typing speed:');
+    const length = rowFor('Add words to lessons:');
+    if (!(speed instanceof HTMLElement) || !(length instanceof HTMLElement))
+      throw new Error('Common pacing controls are unavailable');
+    speed.dataset.qaPacingSpeed = 'stable';
+    length.dataset.qaPacingLength = 'stable';
+  });
+
+  for (const mode of ['Common words', 'Books', 'Custom text']) {
+    await page.getByRole('radio', { name: mode, exact: true }).click();
+    await expect(page.locator('[data-qa-pacing-speed="stable"]')).toHaveCount(1);
+    await expect(page.locator('[data-qa-pacing-length="stable"]')).toHaveCount(1);
+    await expect(targetSpeed).toHaveCount(1);
+    await expect(lessonLength).toHaveCount(1);
+  }
+
+  for (const mode of ['Source code', 'Numbers']) {
+    await page.getByRole('radio', { name: mode, exact: true }).click();
+    await expect(targetSpeed).toHaveCount(0);
+    await expect(lessonLength).toHaveCount(0);
+  }
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {

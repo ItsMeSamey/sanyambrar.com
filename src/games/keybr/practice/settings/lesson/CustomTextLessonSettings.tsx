@@ -17,8 +17,6 @@ import { TextField } from "../../../widget/components/textfield/TextField.tsx";
 import { createMemo } from "solid-js";
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 import { exampleTexts } from "./example-texts.ts";
-import { LessonLengthProp } from "./LessonLengthProp.tsx";
-import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 export function CustomTextLessonSettings(props: {
     readonly lesson: CustomTextLesson;
 }): JSX.Element {
@@ -38,8 +36,6 @@ export function CustomTextLessonSettings(props: {
         <CustomTextInput />
         <CustomTextStats language={props.lesson.model.language} customText={settings.get(lessonProps.customText.content)}/>
         <CustomTextProcessing />
-        <TargetSpeedProp />
-        <LessonLengthProp />
       </FieldSet>
     </>);
 }

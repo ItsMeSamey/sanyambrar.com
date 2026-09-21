@@ -10,11 +10,21 @@ import { Range } from "../../../widget/components/range/Range.tsx";
 import { Value } from "../../../widget/components/text/NameValue.tsx";
 
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
-export function DailyGoalSettings(): JSX.Element {
+import { Show } from "solid-js";
+import { LessonLengthProp } from "./LessonLengthProp.tsx";
+import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
+
+export function DailyGoalSettings(props: {
+    readonly showLessonPacing: boolean;
+}): JSX.Element {
     const { formatMessage } = useIntl();
     const { formatDuration } = useIntlDurations();
     const { settings, updateSettings } = useSettings();
     return (<FieldSet>
+      <Show when={props.showLessonPacing}>
+        <TargetSpeedProp />
+        <LessonLengthProp />
+      </Show>
       <FieldList>
         <Field>
           <FormattedMessage id="t_Daily_goal:" defaultMessage="Daily goal:"/>

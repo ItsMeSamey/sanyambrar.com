@@ -1164,10 +1164,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     queueOverlayRefresh();
 
     const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
+    const ordinaryControlSelector = "button,select,option,summary,[role=button],[role=checkbox],[role=switch],[role=radio],[role=radiogroup],[role=menu],[role=menuitem],[data-cursor-round]";
     const pressedGrabSelector = `${grabSelector},[data-grab-cursor-on-drag]`;
     const wantsGrab = (target: EventTarget | null) => {
       if (!(target instanceof Element)) return false;
       if (target.closest(grabSelector)) return true;
+      if (target.closest(ordinaryControlSelector)) return false;
       const value = getComputedStyle(target).cursor;
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
@@ -1645,9 +1647,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-transitionstart", hideFillImmediate);
     addEventListener("samey-pageleave", hideFillImmediate);
     document.addEventListener("pointerdown", (event) => {
-      document.documentElement.style.setProperty("--samey-dialog-origin-x", `${event.clientX}px`);
-      document.documentElement.style.setProperty("--samey-dialog-origin-y", `${event.clientY}px`);
-      const actual = elementAt(event);
+      const actual = event.target instanceof Element ? event.target : elementAt(event);
       const pressedLink = linkTarget(actual);
       const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
       pressedPointerId = event.pointerId;

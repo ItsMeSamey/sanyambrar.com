@@ -67,6 +67,7 @@ const preload = (route: Route) => ({
   project: Project.preload,
   blog: Blog.preload,
 }[route.kind]());
+export const ownsSiteRoute = (url: URL) => routeFromUrl(url) != null;
 export const preloadSiteRoute = async (url: URL) => {
   const route = routeFromUrl(url);
   if (route) await preload(route);

@@ -125,15 +125,23 @@ const server = await createServer({
             html = html.replace(/<html(?=\s|>)/i, '<html data-samey-dev');
             html = html
               .replace(/<link\b[^>]*\bdata-samey-shared\b[^>]*>\s*/gi, '')
-              .replace(/<style\b[^>]*\bdata-samey-shared\b[^>]*>[\s\S]*?<\/style>\s*/gi, '')
+              .replace(/<style\b[^>]*\bdata-samey-(?:shared|inline-shell)\b[^>]*>[\s\S]*?<\/style>\s*/gi, '')
               .replace(/<script\b[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*><\/script>\s*/gi, '')
-              .replace(/<script\b[^>]*\bdata-samey-shared-runtime\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-(?:shared-runtime|inline-runtime)\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-inline-asset-guard\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-inline-importmap\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
+              .replace(/<script\b[^>]*\bdata-samey-site-entry\b[^>]*>[\s\S]*?<\/script>\s*/gi, '')
               .replace(/<link\b[^>]*\bdata-samey-route-module\b[^>]*>\s*/gi, '')
               .replace(/<style\b[^>]*\bdata-samey-route-style\b[^>]*>[\s\S]*?<\/style>\s*/gi, '');
             html = html.replace('</head>', `${await inlineDevStyles(path, htmlFile)}</head>`);
             if (!html.includes(sharedRuntimeUrl))
               html = html.replace('</head>', `<script type="module" data-samey-shared-runtime src="${sharedRuntimeUrl}"></script></head>`);
-            html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, `src="${siteRuntimeUrl}"`);
+            if (target === 'site' && html.includes('id="site-root"') && !html.includes(siteRuntimeUrl)) {
+              const rewritten = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, `src="${siteRuntimeUrl}"`);
+              html = rewritten.includes(siteRuntimeUrl)
+                ? rewritten
+                : rewritten.replace('</head>', `<script type="module" src="${siteRuntimeUrl}"></script></head>`);
+            }
             if (target === 'site' && htmlFile.endsWith('/src/games/keybr/index.html'))
               html = html.replace('src="/main.tsx"', 'src="/src/games/keybr/main.tsx"');
             if (target === 'site' && htmlFile.endsWith('/src/blogs/btop-mutex.html'))

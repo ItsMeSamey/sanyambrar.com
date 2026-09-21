@@ -10,15 +10,21 @@ export type TextStats = {
   readonly wordCount: readonly WordCount[];
 };
 
-type WordCount = {
+ type WordCount = {
   readonly word: string;
   readonly count: number;
 };
 
-function createTextStats(locale: string | Intl.Locale) {
-  if (typeof locale === "string") {
-    locale = new Intl.Locale(locale);
-  }
+type TextStatsAccumulator = {
+  append(text: string): void;
+  finish(): TextStats;
+};
+
+const makeTextStatsAccumulator = (
+  locale: string | Intl.Locale,
+  includeWordCount = true,
+): TextStatsAccumulator => {
+  if (typeof locale === "string") locale = new Intl.Locale(locale);
   const words = new Intl.Segmenter(locale, { granularity: "word" });
   const graphemes = new Intl.Segmenter(locale, { granularity: "grapheme" });
   const collator = new Intl.Collator(locale);
@@ -33,9 +39,7 @@ function createTextStats(locale: string | Intl.Locale) {
     let length = lengths.get(word);
     if (length == null) {
       length = 0;
-      for (const _grapheme of graphemes.segment(word)) {
-        length += 1;
-      }
+      for (const _grapheme of graphemes.segment(word)) length += 1;
       lengths.set(word, length);
     }
     return length;
@@ -50,17 +54,12 @@ function createTextStats(locale: string | Intl.Locale) {
         const length = wordLength(word);
         lenWords += length;
         numCharacters += length;
+      } else if (segment === " ") {
+        numWhitespace += 1;
       } else {
-        if (segment === " ") {
-          numWhitespace += 1;
-        } else {
-          for (const codePoint of toCodePoints(segment)) {
-            if (isWhitespace(codePoint)) {
-              numWhitespace += 1;
-            } else {
-              numCharacters += 1;
-            }
-          }
+        for (const codePoint of toCodePoints(segment)) {
+          if (isWhitespace(codePoint)) numWhitespace += 1;
+          else numCharacters += 1;
         }
       }
     }
@@ -72,18 +71,20 @@ function createTextStats(locale: string | Intl.Locale) {
     numWords,
     numUniqueWords: counts.size,
     avgWordLength: numWords > 0 ? lenWords / numWords : 0,
-    wordCount: Array.from(counts.entries())
-      .map(([word, count]) => ({ word, count }))
-      .sort((a, b) => b.count - a.count || collator.compare(a.word, b.word)),
+    wordCount: includeWordCount
+      ? Array.from(counts.entries())
+          .map(([word, count]) => ({ word, count }))
+          .sort((a, b) => b.count - a.count || collator.compare(a.word, b.word))
+      : [],
   });
   return { append, finish };
-}
+};
 
 export const textStatsOf = (
   locale: string | Intl.Locale,
   text: string | readonly string[],
 ): TextStats => {
-  const stats = createTextStats(locale);
+  const stats = makeTextStatsAccumulator(locale);
   if (Array.isArray(text)) {
     for (const item of text) stats.append(item as string);
   } else {
@@ -92,25 +93,28 @@ export const textStatsOf = (
   return stats.finish();
 };
 
-const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const yieldToMain = () => new Promise<void>((resolve) => {
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => resolve());
+  else setTimeout(resolve, 0);
+});
 
-/**
- * Computes the same statistics as textStatsOf without monopolizing the main
- * thread for large books. Paragraph boundaries are already semantic token
- * boundaries, so yielding between them preserves exact results.
- */
-export async function textStatsOfAsync(
+/** Full-corpus variant that cooperatively yields before it can monopolize a frame. */
+export const textStatsOfAsync = async (
   locale: string | Intl.Locale,
   text: readonly string[],
-  budgetMs = 8,
-): Promise<TextStats> {
-  const stats = createTextStats(locale);
+  frameBudgetMs = 4,
+  includeWordCount = true,
+): Promise<TextStats> => {
+  // Never spend the first analysis slice in the interaction/render task that mounted the preview.
+  await yieldToMain();
+  const stats = makeTextStatsAccumulator(locale, includeWordCount);
   let sliceStarted = performance.now();
   for (const item of text) {
     stats.append(item);
-    if (performance.now() - sliceStarted < budgetMs) continue;
-    await yieldToMain();
-    sliceStarted = performance.now();
+    if (performance.now() - sliceStarted >= frameBudgetMs) {
+      await yieldToMain();
+      sliceStarted = performance.now();
+    }
   }
   return stats.finish();
-}
+};
