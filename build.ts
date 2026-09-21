@@ -269,7 +269,6 @@ async function publishSite() {
   await cp(SITE_PUBLIC, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE, DOCS, { recursive: true, force: true });
   await cp(GENERATED_SITE_RUNTIME, DOCS, { recursive: true, force: true });
-  await cp(GENERATED_SHARED_RUNTIME, DOCS, { recursive: true, force: true });
   const vditorDist = join(ROOT, "node_modules/vditor/dist");
   const deployedVditor = join(DOCS, "vditor/dist");
   await mkdir(deployedVditor, { recursive: true });
@@ -427,22 +426,38 @@ async function deployAssets() {
     .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/"));
 }
 
-async function versionMutableShellReferences() {
+async function finalizeShellAssets() {
   const siteEntries = await walk(join(DOCS, "site-chunks"), (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
   must(siteEntries.length === 1, `deployment: expected one hashed site entry, found ${siteEntries.length}`);
   const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
-  const mutableAssets = ["site.css", "shared-runtime.js"];
+  const sharedCss = await readFile(join(GENERATED_SHARED_RUNTIME, "site.css"), "utf8");
+  const sharedRuntime = await readFile(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js"), "utf8");
   const hash = createHash("sha256");
   hash.update(siteEntry).update("\0");
-  for (const name of mutableAssets) hash.update(name).update("\0").update(await readFile(join(DOCS, name))).update("\0");
+  hash.update("site.css").update("\0").update(sharedCss).update("\0");
+  hash.update("shared-runtime.js").update("\0").update(sharedRuntime).update("\0");
   const version = hash.digest("hex").slice(0, 16);
   const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
-  const mutableRef = /((?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js))(?:\?v=[^"']*)?(["'])/g;
+  const sharedStyleTag = /<link\b[^>]*\bdata-samey-shared\b[^>]*>/i;
+  const sharedRuntimeTag = /<script\b[^>]*\bsrc=["']([^"']*shared-runtime\.js(?:\?[^"']*)?)["'][^>]*><\/script>/i;
+  const safeSharedCss = sharedCss.replaceAll("</style", "<\\/style");
+  const safeSharedRuntime = sharedRuntime.replaceAll("</script", "<\\/script");
   for (const file of htmlFiles) {
     let source = await readFile(file, "utf8");
-    if (source.includes("data-site-spa"))
+    const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
+    if (spaShell)
       source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
-    source = source.replace(mutableRef, `$1?v=${version}$2`);
+    const styleMatch = sharedStyleTag.exec(source);
+    const runtimeMatch = sharedRuntimeTag.exec(source);
+    must(!!styleMatch === !!runtimeMatch, `deployment: incomplete shared shell assets in ${relative(DOCS, file)}`);
+    if (styleMatch && runtimeMatch) {
+      const runtimeRef = runtimeMatch[1].replace(/[?#].*$/, "");
+      const suffix = "shared-runtime.js";
+      must(runtimeRef.endsWith(suffix), `deployment: malformed shared runtime reference in ${relative(DOCS, file)}`);
+      const runtimeRoot = runtimeRef.slice(0, -suffix.length) || "./";
+      source = source.replace(sharedStyleTag, () => `<style data-samey-shared>${safeSharedCss}</style>`);
+      source = source.replace(sharedRuntimeTag, () => `<script data-samey-shared-runtime data-samey-runtime-root="${htmlAttr(runtimeRoot)}" data-samey-build="${version}">${safeSharedRuntime}</script>`);
+    }
     const buildMeta = /<meta\s+name=["']samey-build["']\s+content=["'][^"']*["']\s*\/?>/i;
     if (buildMeta.test(source))
       source = source.replace(buildMeta, `<meta name="samey-build" content="${version}">`);
@@ -451,15 +466,26 @@ async function versionMutableShellReferences() {
   }
   for (const file of htmlFiles) {
     const source = await readFile(file, "utf8");
+    const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
+    const siteKindShell = /<html\b[^>]*\bdata-site-kind\s*=/i.test(source);
     const refs = [...source.matchAll(/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/g)].map(match => match[0]);
-    must(refs.every(ref => ref.includes(`?v=${version}`)), `deployment: stale mutable shell reference remains in ${relative(DOCS, file)}`);
+    must(refs.length === 0, `deployment: external always-loaded shell asset remains in ${relative(DOCS, file)}`);
     must(!source.includes("site-app.js"), `deployment: mutable site-app reference remains in ${relative(DOCS, file)}`);
-    if (source.includes("data-site-spa"))
+    if (spaShell)
       must(source.includes(siteEntry), `deployment: hashed site entry missing in ${relative(DOCS, file)}`);
+    if (siteKindShell) {
+      must(source.includes("data-samey-shared>"), `deployment: inline shared CSS missing in ${relative(DOCS, file)}`);
+      must(source.includes("data-samey-shared-runtime"), `deployment: inline shared runtime missing in ${relative(DOCS, file)}`);
+    }
     must(source.includes(`<meta name="samey-build" content="${version}">`), `deployment: missing build version in ${relative(DOCS, file)}`);
   }
+  await Promise.all([
+    rm(join(DOCS, "site.css"), { force: true }),
+    rm(join(DOCS, "shared-runtime.js"), { force: true }),
+  ]);
   must(!existsSync(join(DOCS, "site-app.js")), "deployment: mutable site-app.js must not be emitted");
-  log(`versioned mutable shell references -> ${version}; site entry -> ${siteEntry}`);
+  must(!existsSync(join(DOCS, "site.css")) && !existsSync(join(DOCS, "shared-runtime.js")), "deployment: always-loaded shared shell assets must be embedded");
+  log(`embedded shared shell CSS/runtime -> ${version}; site entry -> ${siteEntry}`);
   return version;
 }
 
@@ -572,20 +598,21 @@ self.addEventListener('fetch', event => {
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, site, or all)`);
+  const sharedBuild = buildSharedRuntime();
   if (targets.has("site")) {
     await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
-    await Promise.all([buildSharedRuntime(), buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
+    await Promise.all([sharedBuild, buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
     await injectSitePrerender();
-  }
+  } else await sharedBuild;
   await beginDocsTransaction();
   if (targets.has("site")) await publishSite();
   const jobs: Promise<void>[] = [];
   if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
-  await versionMutableShellReferences();
+  await finalizeShellAssets();
   await validateExtensionlessPublicLinks();
   await generateServiceWorker();
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");

@@ -95,6 +95,7 @@ export function mountChain(refs: ChainRefs) {
   let replayParticles: Particle[] = [];
   let replayFrame = 0;
   let replayGeom: ReplayGeometry | null = null;
+  let replayStageContentWidth = 0;
   let currentMatchId = '';
   let gamePlayers: Player[] = [];
   const replayContext = replayCanvas.getContext('2d', { alpha: false });
@@ -602,8 +603,15 @@ export function mountChain(refs: ChainRefs) {
   function replayGeometry(entry: Match): ReplayGeometry {
     if (replayGeom && replayGeom.cfg.rows === entry.r && replayGeom.cfg.cols === entry.c) return replayGeom;
     const cfg = {rows:entry.r,cols:entry.c};
-    const rect = replayCanvas.parentElement?.getBoundingClientRect() ?? replayCanvas.getBoundingClientRect();
-    const maxW = Math.max(180, Math.min(680, rect.width - 24));
+    if (!(replayStageContentWidth > 0)) {
+      const replayStage = replayCanvas.parentElement;
+      if (replayStage) {
+        const style = getComputedStyle(replayStage);
+        replayStageContentWidth = Math.max(1,
+          replayStage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight));
+      } else replayStageContentWidth = Math.max(1, replayCanvas.clientWidth);
+    }
+    const maxW = Math.max(180, Math.min(680, replayStageContentWidth));
     const maxH = Math.max(180, Math.min(innerHeight * .44, 520));
     const cellSize = Math.max(4, Math.floor(Math.min(maxW / cfg.cols, maxH / cfg.rows)));
     const w = cfg.cols * cellSize + 2, h = cfg.rows * cellSize + 2;
@@ -1357,11 +1365,17 @@ export function mountChain(refs: ChainRefs) {
     const availableHeight = opensBelow ? spaceBelow : spaceAbove;
     const renderedHeight = Math.min(naturalHeight, availableHeight);
     const top = opensBelow ? belowTop : Math.max(viewportGap, aboveBottom - renderedHeight);
+    // Keep containment true even in the frame between a viewport resize and
+    // the resize handler. The pixel anchors describe the preferred placement;
+    // CSS viewport units clamp that placement immediately as 100vw/100dvh
+    // change, so a stale previous-viewport top/left cannot hang off-screen.
+    const leftCss = `max(${viewportGap}px, min(${left}px, calc(100vw - ${width}px - ${viewportGap}px)))`;
+    const topCss = `max(${viewportGap}px, min(${top}px, calc(100dvh - ${viewportGap}px)))`;
     settingsPanel.dataset.side = opensBelow ? 'bottom' : 'top';
     settingsPanel.style.transformOrigin = opensBelow ? 'top right' : 'bottom right';
-    settingsPanel.style.left = `${left}px`;
-    settingsPanel.style.top = `${top}px`;
-    settingsPanel.style.maxHeight = `${availableHeight}px`;
+    settingsPanel.style.left = leftCss;
+    settingsPanel.style.top = topCss;
+    settingsPanel.style.maxHeight = `max(0px, min(${availableHeight}px, calc(100dvh - ${topCss} - ${viewportGap}px)))`;
   }
 
   function setSettingsOpen(open: boolean) {
@@ -1497,8 +1511,10 @@ export function mountChain(refs: ChainRefs) {
   addEventListener('resize', positionSettingsOnResize, {passive:true});
   const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
   resizeObserver.observe(stage);
-  const replayResizeObserver = new ResizeObserver(() => {
+  const replayResizeObserver = new ResizeObserver((entries) => {
     if (replayPanel.hidden) return;
+    const width = entries[0]?.contentRect.width;
+    if (width && width > 0) replayStageContentWidth = width;
     invalidateReplayGeometry();
     drawReplay();
   });

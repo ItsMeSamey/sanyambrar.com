@@ -6,9 +6,9 @@
 - Writes are staged. Pass computed next values to imperative APIs instead of reading a signal immediately after setting it.
 - Use draft store setters, split `createEffect(compute, apply)`, and async memos with `Loading`/`Errored`.
 - Lifecycle callbacks return only a cleanup function or `undefined`. Do not accidentally return DOM promises.
-- Preserve the shared theme, root-swap navigation, local game saves and lazy editor/worker loading.
+- Preserve the shared theme, Solid-internal root-swap navigation, clean standalone-app document boundaries, local game saves and lazy editor/worker loading.
 - Run `bun run check` before committing. Type checking, typed linting and browser interaction tests are separate checks.
-- `scripts/dev.mjs` uses the same Vite compiler as production. Run a build first for shared static assets.
+- `scripts/dev.mjs` uses the same Vite compiler as production. Shared and route-critical CSS must be present synchronously in served HTML; dev must not depend on generated deployment CSS/runtime to achieve a styled first paint.
 - Keep build and dev targets in the root `vite.config.ts`, selected by `SAMEY_VITE_BUILD`; do not reintroduce per-target Vite config files.
 - Keep `scripts/dev.mjs` on Node unless requalified; Vite 8 `createServer()` under Bun failed to bind the dev port while CLI build/preview under Bun worked.
 - Regenerate and commit `docs/` with source changes. Do not deploy or push without permission.
@@ -21,7 +21,10 @@
 - Keybr assets are emitted as normal JSON/data files; do not reintroduce custom gzip Vite middleware or browser-side decompression. Hosting owns transport compression.
 - Empty CSS-module selectors can intentionally generate scoped class/id tokens; trace their JSX/query consumers before deleting them as no-op styling.
 - Assigning canvas width/height clears its bitmap and resets context state; reactive canvas code must order backing-store resize before paint in one effect, round DPR dimensions, and test real painted pixels after mount/resize/theme changes.
-- Speculative navigation prefetch must stay side-effect free: parse destination HTML into a detached inert document and warm only declared same-origin resource bytes; never execute destination scripts or adopt prefetched DOM before navigation commits.
+- Speculative hover/focus prefetch is for Solid-internal route modules only. Standalone apps such as Wordle/Keybr and article documents must stay request-idle until navigation; do not prefetch their HTML/module/data graphs across document boundaries.
+- Always-loaded shared shell CSS/runtime must be embedded into generated production HTML and must not survive as mutable `docs/site.css` or `docs/shared-runtime.js` requests. Dev shells must embed source CSS while loading source runtime once.
+- Do not same-document swap between separately bootstrapped apps. Wordle, Keybr and standalone article documents own their CSS/module lifecycles and must cross boundaries with a fresh document; keep SPA navigation inside the Solid portfolio only.
+- Keybr owns its internal scrollbars under `#app`; the shared virtual-scrollbar runtime may own the document scrollbar but must not deep-scan reactive Keybr subtrees. Large informational work such as full-book statistics must yield/chunk instead of blocking lesson selection/paint.
 - Keep route-local CSS with the route that owns it and inline always-needed route CSS into generated direct-load HTML; shared `site.css` should contain only genuinely cross-route runtime styling.
 - For transformed fixed-design mocks, convert viewport rects back into local coordinates before positioning child overlays, and reserve non-overlapping space for fullscreen chrome at compact sizes.
 - Forced-colors QA must verify selected/checked/current states retain a non-background cue; custom backgrounds and shadows can collapse to the same system colors.

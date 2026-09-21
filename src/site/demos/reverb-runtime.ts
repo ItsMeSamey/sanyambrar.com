@@ -1148,11 +1148,13 @@ export function runReverbDemoRuntime(
         1,
         Math.max(0, (now - startedAt) / PANEL_SETTLE_DURATION_MS),
       );
-      renderSettingsPanelProgress(from + (target - from) * fastOutSlowIn(raw));
-      if (raw < 1) requestAnimationFrame(frame);
-      else {
+      const value = from + (target - from) * fastOutSlowIn(raw);
+      if (raw >= 1 || Math.abs(target - value) <= 0.001) {
         renderSettingsPanelProgress(target);
         onDone?.();
+      } else {
+        renderSettingsPanelProgress(value);
+        requestAnimationFrame(frame);
       }
     };
     requestAnimationFrame(frame);
@@ -1167,11 +1169,13 @@ export function runReverbDemoRuntime(
         1,
         Math.max(0, (now - startedAt) / PANEL_SETTLE_DURATION_MS),
       );
-      renderLibraryPanelProgress(from + (target - from) * fastOutSlowIn(raw));
-      if (raw < 1) requestAnimationFrame(frame);
-      else {
+      const value = from + (target - from) * fastOutSlowIn(raw);
+      if (raw >= 1 || Math.abs(target - value) <= 0.001) {
         renderLibraryPanelProgress(target);
         onDone?.();
+      } else {
+        renderLibraryPanelProgress(value);
+        requestAnimationFrame(frame);
       }
     };
     requestAnimationFrame(frame);

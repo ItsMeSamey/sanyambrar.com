@@ -9,6 +9,7 @@ import { LessonLoader } from "../../lesson/loader.tsx";
 import { type Settings } from "../../settings/settings.ts";
 import { useSettings } from "../../settings/context.ts";
 import { SegmentedControl } from "../../widget/components/segmented/SegmentedControl.tsx";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 
 import { useIntl } from "../../intl/runtime.tsx";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
@@ -20,60 +21,37 @@ import { LessonPreview } from "./lesson/LessonPreview.tsx";
 import { NumbersLessonSettings } from "./lesson/NumbersLessonSettings.tsx";
 import { WordListLessonSettings } from "./lesson/WordListLessonSettings.tsx";
 
-const lessonTypes = [
-  LessonType.GUIDED,
-  LessonType.WORDLIST,
-  LessonType.BOOKS,
-  LessonType.CUSTOM,
-  LessonType.CODE,
-  LessonType.NUMBERS,
-] as const;
-
 export function LessonSettings(): JSX.Element {
   const { formatMessage } = useIntl();
   const { settings, updateSettings } = useSettings();
-  let lessonBody!: HTMLDivElement;
-  let switching = false;
+  const committedType = () => settings.get(lessonProps.type);
+  const [selectedType, setSelectedType] = createSignal(committedType());
+  createEffect(committedType, value => { setSelectedType(value); });
+  let commitFrame = 0;
 
-  const waitForLesson = (type: LessonType) => new Promise<void>((resolve) => {
-    const ready = () => lessonBody.querySelector(`[data-keybr-lesson-type="${type.id}"]`) != null;
-    if (ready()) { resolve(); return; }
-    const observer = new MutationObserver(() => {
-      if (!ready()) return;
-      clearTimeout(timeout);
-      observer.disconnect();
-      resolve();
+  const commitSelectedType = () => {
+    if (commitFrame) cancelAnimationFrame(commitFrame);
+    commitFrame = requestAnimationFrame(() => {
+      commitFrame = requestAnimationFrame(() => {
+        commitFrame = 0;
+        const value = selectedType();
+        if (value !== committedType()) updateSettings(settings.set(lessonProps.type, value));
+      });
     });
-    const timeout = window.setTimeout(() => {
-      observer.disconnect();
-      resolve();
-    }, 3000);
-    observer.observe(lessonBody, { childList: true, subtree: true });
-  });
+  };
+  onCleanup(() => { if (commitFrame) cancelAnimationFrame(commitFrame); });
 
   const changeLessonType = (value: LessonType) => {
-    const current = settings.get(lessonProps.type);
-    if (switching || value === current) return;
-    const from = lessonTypes.indexOf(current);
-    const to = lessonTypes.indexOf(value);
-    const direction = to < from ? "back" : "forward";
-    const commit = async () => {
-      updateSettings(settings.set(lessonProps.type, value));
-      await waitForLesson(value);
-    };
-    const animate = globalThis.SameyAnimateLocalSwap;
-    if (!animate) { void commit(); return; }
-    switching = true;
-    void animate(lessonBody, commit, direction)
-      .catch((error) => console.error("Lesson type transition failed", error))
-      .finally(() => { switching = false; });
+    if (value === selectedType()) return;
+    setSelectedType(value);
+    commitSelectedType();
   };
 
   return <>
     <SegmentedControl
       label="Lesson type"
       comfortable
-      value={settings.get(lessonProps.type)}
+      value={selectedType()}
       options={[
         { value: LessonType.GUIDED, label: formatMessage({ id: "t_Guided_lessons", defaultMessage: "Guided lessons" }) },
         { value: LessonType.WORDLIST, label: formatMessage({ id: "t_Common_words", defaultMessage: "Common words" }) },
@@ -84,9 +62,9 @@ export function LessonSettings(): JSX.Element {
       ]}
       onChange={changeLessonType}
     />
-    <div ref={lessonBody} class="keybr-lesson-settings-body">
+    <div class="keybr-lesson-settings-body">
       <LessonLoader>
-        {(lesson) => <div data-keybr-lesson-type={settings.get(lessonProps.type).id}>
+        {(lesson) => <div data-keybr-lesson-type={committedType().id}>
           {tabBody(settings, lesson)}
           <LessonPreview lesson={lesson}/>
         </div>}

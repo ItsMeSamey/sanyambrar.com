@@ -57,20 +57,6 @@ async function visitKeybr(page, info) {
   await visit(page, '/keybr', info);
 }
 
-async function keybrRootModule(page, info) {
-  const port = info.project.metadata.port;
-  const response = await page.request.get(`http://127.0.0.1:${port}/keybr`);
-  if (!response.ok()) throw new Error(`Could not read built Keybr HTML: ${response.status()}`);
-  const html = await response.text();
-  const entry = html.match(/<script\b[^>]*data-keybr-entry[^>]*>([\s\S]*?)<\/script>/i)?.[1];
-  const rootImport = entry?.match(/import\{\s*([A-Za-z_$][\w$]*)\s+as\s+[A-Za-z_$][\w$]*\s*\}from["']\.\/(keybr-assets\/[^"']+\.js)["']/);
-  if (!rootImport?.[1] || !rootImport[2]) throw new Error('Could not find the inlined Keybr entry dependency');
-  return {
-    pattern: new RegExp('/' + rootImport[2].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\?.*)?$'),
-    exportName: rootImport[1],
-  };
-}
-
 async function expectFullErrorPage(page, errorPage) {
   await expect(errorPage).toBeVisible();
   await expect(errorPage).toBeFocused();
@@ -239,7 +225,7 @@ test('responsive route surfaces stay contained across common and extreme aspect 
       }
     }
 
-    const overlays = document.querySelectorAll('[role="dialog"],[data-samey-overlay],.site-route-error,#samey-load-error');
+    const overlays = document.querySelectorAll('[role="dialog"],[data-samey-overlay],.site-route-error');
     for (const element of overlays) {
       if (!visible(element)) continue;
       const rect = element.getBoundingClientRect();
@@ -2276,191 +2262,90 @@ for (const legacyRoute of legacyHtmlRoutes) test(`canonicalizes legacy ${legacyR
   await expect.poll(() => new URL(page.url()).pathname).toBe(canonicalPath);
 });
 
-test('SPA mount failures surface the original exception stack and cause', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Production bundle failure injection targets the built Keybr entry module');
-
-  const marker = `${EXPECTED_ERROR_SURFACE_MARKER}: keybr entry root cause`;
-  const keybrEntry = await keybrRootModule(page, info);
-  await page.route(keybrEntry.pattern, route => route.fulfill({
-    status: 200,
-    contentType: 'text/javascript',
-    body: `export const ${keybrEntry.exportName} = () => {
-  const cause = new Error(${JSON.stringify(marker)});
-  window.dispatchEvent(new ErrorEvent('error', {
-    message: cause.message,
-    error: cause,
-    filename: import.meta.url,
-    lineno: 1,
-    colno: 1,
-  }));
-};`,
-  }));
-
+test('standalone app boundaries use fresh documents with one shared shell', async ({ page }, info) => {
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await visit(page, '/', info);
-  await page.evaluate(() => {
-    const navigate = globalThis.SameyNavigate;
-    if (!navigate) throw new Error('SameyNavigate is unavailable');
-    void navigate('/keybr.html');
-  });
 
-  const loadError = page.locator('#samey-load-error');
-  const stack = loadError.locator('.samey-error-stack');
-  await expectFullErrorPage(page, loadError);
-  expect(await page.evaluate(() => [...document.body.children]
-    .filter(node => node.id !== 'samey-load-error' && !node.hasAttribute('data-samey-runtime'))
-    .every(node => node.hasAttribute('inert') && node.getAttribute('aria-hidden') === 'true')),
-  'Broken destination content must be inaccessible behind the error page').toBe(true);
-  await expect(loadError).toContainText('application failed while mounting');
-  await expect(stack).toContainText(marker);
-  await expect(stack).toContainText('Caused by:');
-  await expect(stack).toContainText(`Error: ${marker}`);
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-  expect(results.violations.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
+  const shellState = () => page.evaluate(() => ({
+    sharedStyles: document.querySelectorAll('style[data-samey-shared]').length,
+    sharedRuntimes: document.querySelectorAll('script[data-samey-shared-runtime]').length,
+    bodyMargin: getComputedStyle(document.body).margin,
+    token: globalThis.__sameyQaDocumentToken,
+  }));
+  const markDocument = label => page.evaluate(value => { globalThis.__sameyQaDocumentToken = value; }, label);
+  const expectFresh = async (previous, label) => {
+    const state = await shellState();
+    expect(state.sharedStyles, label + ' must have one shared stylesheet owner').toBe(1);
+    expect(state.sharedRuntimes, label + ' must have one shared runtime owner').toBe(1);
+    expect(state.bodyMargin, label + ' must be styled before application mount').toBe('0px');
+    expect(state.token, label + ' must not inherit the previous document global').not.toBe(previous);
+  };
+  const nativeNavigate = async (href, expectedPath) => {
+    await page.evaluate(next => { void globalThis.SameyNavigate?.(next); }, href).catch(() => {});
+    await page.waitForURL(url => url.pathname === expectedPath, { timeout: 20_000 });
+    await page.waitForLoadState('networkidle');
+  };
 
-  await loadError.getByRole('button', { name: 'Go back', exact: true }).click();
+  await markDocument('home');
+  await nativeNavigate('/wordle', '/wordle');
+  await expect(page.locator('[data-wordle-root]')).toBeVisible();
+  await expectFresh('home', 'Wordle');
+  await markDocument('wordle');
+  await page.locator('a[href="/"]').first().click();
   await page.waitForURL(url => url.pathname === '/');
-  await expect(page.locator('#solid-site-app')).toBeVisible();
-  await expect(loadError).toHaveCount(0);
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('heading', { name: 'Games', exact: true })).toBeVisible();
+  await expectFresh('wordle', 'Home after Wordle');
 
-  await page.evaluate(async () => {
-    const navigate = globalThis.SameyNavigate;
-    if (!navigate) throw new Error('SameyNavigate is unavailable');
-    await navigate('/keybr').catch(() => {});
-  });
-  await expectFullErrorPage(page, loadError);
-  await page.unroute(keybrEntry.pattern);
-  await loadError.getByRole('link', { name: 'Open normally', exact: true }).click();
+  await markDocument('home-keybr');
+  await page.locator('a[href="/keybr"]').first().click();
   await page.waitForURL(url => url.pathname === '/keybr');
+  await page.waitForLoadState('networkidle');
   await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect(loadError).toHaveCount(0);
+  await expectFresh('home-keybr', 'Keybr');
+  await markDocument('keybr');
+  await page.locator('a[href="/"]').first().click();
+  await page.waitForURL(url => url.pathname === '/');
+  await page.waitForLoadState('networkidle');
+  await expectFresh('keybr', 'Home after Keybr');
+
+  await markDocument('home-article');
+  await nativeNavigate('/blog/posts/btop-mutex', '/blog/posts/btop-mutex');
+  await expect(page.getByRole('heading', { name: "btop's broken lock", exact: true })).toBeVisible();
+  await expectFresh('home-article', 'Article');
 });
 
-test('Keybr SPA navigation waits for a slow entry module without a false startup timeout', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Production bundle delay injection targets the built Keybr entry module');
-
-  const keybrEntry = await keybrRootModule(page, info);
-  await page.route(keybrEntry.pattern, async route => {
-    await new Promise(resolve => setTimeout(resolve, 2200));
-    await route.continue();
-  });
-
-  await visit(page, '/', info);
-  await page.evaluate(async () => {
-    const navigate = globalThis.SameyNavigate;
-    if (!navigate) throw new Error('SameyNavigate is unavailable');
-    await navigate('/keybr');
-  });
-
-  await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect(page.locator('#samey-load-error')).toHaveCount(0);
-});
-
-test('Keybr remounts after leaving and returning through SPA navigation', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Cross-app SPA navigation is exercised by the production shell');
-
-  await visit(page, '/', info);
-  const navigate = route => page.evaluate(async href => {
-    const navigate = globalThis.SameyNavigate;
-    if (!navigate) throw new Error('SameyNavigate is unavailable');
-    await navigate(href);
-  }, route);
-
-  await navigate('/keybr');
-  await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('function');
-
-  await navigate('/');
-  await expect(page.locator('#solid-site-app')).toBeVisible();
-  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).not.toBe('function');
-
-  await navigate('/keybr');
-  await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect(page.locator('#samey-load-error')).toHaveCount(0);
-  await expect.poll(() => page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('function');
-
-  await page.goBack();
-  await expect(page.locator('#solid-site-app')).toBeVisible();
-  await page.goForward();
-  await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect(page.locator('#samey-load-error')).toHaveCount(0);
-});
-
-test('Keybr hover prefetch warms subdependencies without mounting the app', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch is exercised by the production shell');
-
+test('standalone app hover stays request-idle until navigation', async ({ page }, info) => {
   const requested = [];
   page.on('request', request => {
-    const url = new URL(request.url());
-    if (url.pathname === '/keybr' || url.pathname.startsWith('/keybr-assets/')) requested.push(url.pathname);
+    const path = new URL(request.url()).pathname;
+    if (path === '/keybr' || path === '/wordle' || path.startsWith('/keybr-assets/')) requested.push(path);
   });
 
   await visit(page, '/', info);
-  const keybr = page.locator('.game-card-1');
-  await expect(keybr).toBeVisible();
+  requested.length = 0;
+  const keybr = page.locator('a[href="/keybr"]').first();
   await keybr.hover();
+  await page.waitForTimeout(300);
+  await keybr.focus();
+  await page.waitForTimeout(100);
 
-  await expect.poll(() => requested.some(path => path === '/keybr'), { message: 'Keybr HTML should prefetch on hover' }).toBe(true);
-  await expect.poll(() => requested.filter(path => /\/keybr-assets\/.*\.js$/.test(path)).length, {
-    message: 'Keybr module graph should prefetch on hover',
-  }).toBeGreaterThan(5);
-  await expect.poll(() => requested.some(path => /\/keybr-assets\/model-en-[^/]+\.data$/.test(path)), {
-    message: 'Selected Keybr phonetic model should prefetch on hover',
-  }).toBe(true);
-  await expect.poll(() => requested.some(path => /\/keybr-assets\/words-en-[^/]+\.json$/.test(path)), {
-    message: 'Selected Keybr word list should prefetch on hover',
-  }).toBe(true);
-
+  expect(requested, 'Hover/focus must not download a separate app document or module graph').toEqual([]);
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.locator('#app')).toHaveCount(0);
-  expect(await page.evaluate(() => typeof globalThis.SameyKeybrDispose)).toBe('undefined');
-
-  await keybr.click();
-  await expect(page.locator('#keybr-root')).toBeVisible();
-  await expect(page.locator('#samey-load-error')).toHaveCount(0);
 });
 
-test('prefetch cache ignores URL fragments for the same document', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch cache is exercised by the production shell');
-  let keybrHtmlRequests = 0;
-  page.on('request', request => {
-    const url = new URL(request.url());
-    if (url.pathname === '/keybr') keybrHtmlRequests += 1;
-  });
+test('Solid route hover preloads only its route module', async ({ page }, info) => {
+  const requested = [];
+  page.on('request', request => requested.push(new URL(request.url()).pathname));
   await visit(page, '/', info);
-  await page.evaluate(() => {
-    globalThis.SameyPreloadPage?.('/keybr#practice');
-    globalThis.SameyPreloadPage?.('/keybr#settings');
-  });
-  await expect.poll(() => keybrHtmlRequests, {
-    message: 'Hash variants of one page must share the detached-document prefetch cache',
-  }).toBe(1);
-});
+  requested.length = 0;
 
-test('speculative prefetch keeps destination HTML inert', async ({ page }, info) => {
-  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch is exercised by the production shell');
-
-  let htmlPrefetched = false;
-  await page.route(/\/keybr(?:\?.*)?$/, async route => {
-    const response = await route.fetch();
-    const body = (await response.text()).replace(
-      '</body>',
-      '<div id="rogue-prefetch-element"></div><script>globalThis.__roguePrefetchExecuted=true;document.body.append(Object.assign(document.createElement("div"),{id:"rogue-script-element"}));</script></body>',
-    );
-    htmlPrefetched = true;
-    await route.fulfill({ response, body });
-  });
-
-  await visit(page, '/', info);
-  const bodyChildrenBefore = await page.locator('body').evaluate(body => body.children.length);
-  await page.locator('.game-card-1').hover();
-  await expect.poll(() => htmlPrefetched).toBe(true);
-  await page.waitForTimeout(250);
-
-  expect(await page.evaluate(() => globalThis.__roguePrefetchExecuted)).toBeUndefined();
-  await expect(page.locator('#rogue-prefetch-element')).toHaveCount(0);
-  await expect(page.locator('#rogue-script-element')).toHaveCount(0);
-  await expect(page.locator('#app')).toHaveCount(0);
-  expect(await page.locator('body').evaluate(body => body.children.length)).toBe(bodyChildrenBefore);
+  await page.locator('a[href="/work/"]').first().hover();
+  await expect.poll(() => requested.some(path =>
+    info.project.metadata.development ? path.endsWith('/src/site/pages/Work.tsx') : /\/site-chunks\/Work-[^/]+\.js$/.test(path),
+  ), { message: 'Internal Solid hover should warm only the destination route module' }).toBe(true);
+  expect(requested.some(path => path === '/work/' || path === '/work')).toBe(false);
+  expect(requested.some(path => path === '/keybr' || path.startsWith('/keybr-assets/'))).toBe(false);
   await expect(page).toHaveURL(/\/$/);
 });
 
@@ -2539,22 +2424,75 @@ test('direct site routes inline their route CSS and preload static route modules
   }
 });
 
-test('development site routes never load generated deployment chunks or route CSS', async ({ page }, info) => {
+test('always-loaded shared shell CSS and runtime are embedded in production HTML', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns embedded shared shell assets');
+  const externalShellRequests = [];
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/site.css') || path.endsWith('/shared-runtime.js')) externalShellRequests.push(path);
+  });
+
+  for (const route of ['/', '/work/', '/wordle', '/keybr', '/blog/posts/btop-mutex']) {
+    await page.goto(`http://127.0.0.1:${info.project.metadata.port}${route}`, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('style[data-samey-shared]')).toHaveCount(1);
+    await expect(page.locator('script[data-samey-shared-runtime]')).toHaveCount(1);
+    await expect(page.locator('link[rel="stylesheet"][data-samey-shared]')).toHaveCount(0);
+    await expect(page.locator('script[src*="shared-runtime.js"]')).toHaveCount(0);
+  }
+  expect(externalShellRequests, 'Always-loaded shared shell assets must not require separate requests').toEqual([]);
+});
+
+test('development first paint stays styled when source JavaScript is unavailable', async ({ page }, info) => {
+  test.skip(!info.project.metadata.development, 'Source-only first-paint contract belongs to development');
+  await page.route('**/*', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/@vite/client' || path.startsWith('/src/'))
+      return route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
+    await route.continue();
+  });
+  await page.goto(`http://127.0.0.1:${info.project.metadata.sitePort}/`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('style[data-samey-dev-style]')).toHaveCount(2);
+  const paint = await page.evaluate(() => {
+    const games = document.querySelector('.grid');
+    const projects = document.querySelector('.project-grid');
+    const heading = document.querySelector('h1');
+    const card = document.querySelector('.card');
+    return {
+      bodyMargin: getComputedStyle(document.body).margin,
+      gamesDisplay: games ? getComputedStyle(games).display : null,
+      projectDisplay: projects ? getComputedStyle(projects).display : null,
+      headingFamily: heading ? getComputedStyle(heading).fontFamily : null,
+      cardDecoration: card ? getComputedStyle(card).textDecorationLine : null,
+    };
+  });
+  expect(paint.bodyMargin).toBe('0px');
+  expect(paint.gamesDisplay).toBe('grid');
+  expect(paint.projectDisplay).toBe('grid');
+  expect(paint.headingFamily).toContain('system-ui');
+  expect(paint.cardDecoration).toBe('none');
+});
+
+test('development site routes inline source CSS and never load generated deployment chunks', async ({ page }, info) => {
   test.skip(!info.project.metadata.development, 'Source-only route contract belongs to development');
   const deploymentChunkRequests = [];
+  const globalCssRequests = [];
   page.on('request', request => {
     const url = new URL(request.url());
     if (url.pathname.includes('/site-chunks/')) deploymentChunkRequests.push(url.pathname);
+    if (/\/(?:site\/styles\/home|tools\/style|shared\/styles\/(?:site|game-settings)|games\/(?:chain|wordle|keybr)\/style)\.css$/.test(url.pathname))
+      globalCssRequests.push(url.pathname);
   });
 
   for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
     await visit(page, route, info);
     await expect(page.locator('style[data-samey-route-style]')).toHaveCount(0);
+    expect(await page.locator('style[data-samey-dev-style]').count()).toBeGreaterThanOrEqual(2);
     await expect(page.locator('link[data-samey-route-module]')).toHaveCount(0);
     await expect(page.locator('script[src*="/site-chunks/"]')).toHaveCount(0);
     await expect(page.locator('script[src*="/src/site/main.tsx"]')).toHaveCount(1);
   }
   expect(deploymentChunkRequests, 'Source dev must not crawl deployment module graphs').toEqual([]);
+  expect(globalCssRequests, 'Source dev global CSS must already be embedded in HTML').toEqual([]);
 });
 
 test('Keybr inlines page CSS and declares startup data preloads', async ({ page }, info) => {
@@ -4265,6 +4203,72 @@ test('Keybr Settings view constructs rules without translating content', async (
   expect(animationTargets.targets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
   await expect(page.locator('[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]')).toHaveCount(0);
+});
+
+test('Keybr lesson type changes stay responsive while lesson data loads', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production desktop browser covers delayed lesson-data responsiveness');
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  let releaseBook;
+  const bookGate = new Promise(resolve => { releaseBook = resolve; });
+  await page.route(/\/keybr-assets\/en-alice-wonderland-[^/]+\.json(?:\?.*)?$/, async route => {
+    await bookGate;
+    await route.continue();
+  });
+  await visit(page, '/keybr?p=settings', info);
+
+  const books = page.getByRole('radio', { name: 'Books', exact: true });
+  await books.click();
+  await expect(books).toBeChecked();
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await expect(page.locator('#samey-loading-top')).toHaveCSS('visibility', 'visible');
+
+  const custom = page.getByRole('radio', { name: 'Custom text', exact: true });
+  await custom.click();
+  await expect(custom).toBeChecked();
+  await expect(page.locator('[data-keybr-lesson-type="custom"]')).toBeVisible();
+  await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+
+  const bookResponse = page.waitForResponse(/\/keybr-assets\/en-alice-wonderland-[^/]+\.json(?:\?.*)?$/);
+  releaseBook();
+  await bookResponse;
+  await page.unroute(/\/keybr-assets\/en-alice-wonderland-[^/]+\.json(?:\?.*)?$/);
+
+  const common = page.getByRole('radio', { name: 'Common words', exact: true });
+  const numbers = page.getByRole('radio', { name: 'Numbers', exact: true });
+  await common.click();
+  await numbers.click();
+  await expect(numbers).toBeChecked();
+  await expect(page.locator('[data-keybr-lesson-type="numbers"]')).toBeVisible();
+});
+
+test('Keybr owns internal scrollbars without shared geometry rescans', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers the shared scrollbar ownership boundary');
+  await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
+  await visit(page, '/keybr?p=settings', info);
+  await expect(page.locator('#app')).toHaveAttribute('data-samey-native-scrollbars', '');
+  await page.evaluate(() => {
+    globalThis.__sameyQaKeybrScrollerRects = 0;
+    const nativeRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function(...args) {
+      const stack = new Error('keybr scrollbar audit').stack ?? '';
+      if (stack.includes('considerVirtualScroller')) globalThis.__sameyQaKeybrScrollerRects += 1;
+      return nativeRect.apply(this, args);
+    };
+    globalThis.__sameyQaRestoreKeybrRect = () => {
+      Element.prototype.getBoundingClientRect = nativeRect;
+      delete globalThis.__sameyQaRestoreKeybrRect;
+    };
+  });
+  await page.getByRole('radio', { name: 'Books', exact: true }).click();
+  await expect(page.locator('[data-keybr-lesson-type="books"]')).toBeVisible();
+  await page.waitForTimeout(120);
+  const count = await page.evaluate(() => {
+    const value = globalThis.__sameyQaKeybrScrollerRects ?? 0;
+    globalThis.__sameyQaRestoreKeybrRect?.();
+    delete globalThis.__sameyQaKeybrScrollerRects;
+    return value;
+  });
+  expect(count, 'Keybr subtree updates must not enter the shared virtual-scrollbar geometry path').toBe(0);
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
