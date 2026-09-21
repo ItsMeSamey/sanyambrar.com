@@ -1,14 +1,14 @@
 import { omit } from 'solid-js';
 import { type ComponentProps } from '@solidjs/web';
 
-type SmartLinkProps = ComponentProps<'a'> & { preload?: boolean };
+type SmartLinkProps = ComponentProps<'a'> & { preload?: boolean; documentPreload?: boolean };
 
-function prefetch(href: unknown) {
+function prefetch(href: unknown, documentPreload = false) {
   if (typeof href !== 'string' || !href) return;
   try {
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) return;
-    if (document.documentElement.hasAttribute('data-site-spa') && globalThis.SameySolidPreload?.(url.href)) return;
+    if (document.documentElement.hasAttribute('data-site-spa') && globalThis.SameySolidPreload?.(url.href) && !documentPreload) return;
     globalThis.SameyPreloadPage?.(url.href);
   } catch (error) {
     console.warn('Could not prefetch navigation target', href, error);
@@ -16,21 +16,21 @@ function prefetch(href: unknown) {
 }
 
 export function SmartLink(props: SmartLinkProps) {
-  const local = props, rest = omit(props, 'href', 'preload', 'onPointerEnter', 'onPointerDown', 'onFocus');
+  const local = props, rest = omit(props, 'href', 'preload', 'documentPreload', 'onPointerEnter', 'onPointerDown', 'onFocus');
   const shouldPreload = () => local.preload !== false;
   return <a
     {...rest}
     href={local.href}
     onPointerEnter={event => {
-      if (shouldPreload()) prefetch(local.href);
+      if (shouldPreload()) prefetch(local.href, local.documentPreload);
       if (typeof local.onPointerEnter === 'function') local.onPointerEnter(event);
     }}
     onPointerDown={event => {
-      if (shouldPreload()) prefetch(local.href);
+      if (shouldPreload()) prefetch(local.href, local.documentPreload);
       if (typeof local.onPointerDown === 'function') local.onPointerDown(event);
     }}
     onFocus={event => {
-      if (shouldPreload()) prefetch(local.href);
+      if (shouldPreload()) prefetch(local.href, local.documentPreload);
       if (typeof local.onFocus === 'function') local.onFocus(event);
     }}
   />;

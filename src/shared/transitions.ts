@@ -362,6 +362,20 @@ async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElem
 const waitMs = (duration: number) => new Promise<void>(resolve => setTimeout(resolve, duration));
 let swapGeneration = 0;
 let activeSwapCleanup: (() => void) | undefined;
+let visualTransitionDepth = 0;
+
+function beginVisualTransition() {
+  visualTransitionDepth += 1;
+  document.documentElement.setAttribute('data-samey-route-transition', '');
+  dispatchEvent(new Event('samey-transitionstart'));
+}
+
+function endVisualTransition() {
+  visualTransitionDepth = Math.max(0, visualTransitionDepth - 1);
+  if (visualTransitionDepth !== 0) return;
+  document.documentElement.removeAttribute('data-samey-route-transition');
+  dispatchEvent(new Event('samey-transitionend'));
+}
 
 function claimSwap() {
   const cleanup = activeSwapCleanup;
@@ -376,7 +390,8 @@ export async function animateRootSwap(
   next: () => HTMLElement | null,
   direction: Direction = 'forward',
 ) {
-  dispatchEvent(new Event('samey-transitionstart'));
+  beginVisualTransition();
+  try {
   const generation = claimSwap();
   if (!current || reducedMotion() || !current.animate) {
     await commit();
@@ -424,6 +439,9 @@ export async function animateRootSwap(
   await waitAnimations(entrance.animations);
   cleanupEntrance();
   if (generation === swapGeneration) activeSwapCleanup = undefined;
+  } finally {
+    endVisualTransition();
+  }
 }
 
 export async function animateMountedViewSwap(from: HTMLElement, to: HTMLElement, commit: () => void, direction: Direction = 'forward') {
