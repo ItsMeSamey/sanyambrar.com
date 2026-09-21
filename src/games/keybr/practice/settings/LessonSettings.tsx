@@ -9,7 +9,7 @@ import { LessonLoader } from "../../lesson/loader.tsx";
 import { type Settings } from "../../settings/settings.ts";
 import { useSettings } from "../../settings/context.ts";
 import { SegmentedControl } from "../../widget/components/segmented/SegmentedControl.tsx";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 import { useIntl } from "../../intl/runtime.tsx";
 import { BooksLessonSettings } from "./lesson/BooksLessonSettings.tsx";
@@ -20,6 +20,12 @@ import { GuidedLessonSettings } from "./lesson/GuidedLessonSettings.tsx";
 import { LessonPreview } from "./lesson/LessonPreview.tsx";
 import { NumbersLessonSettings } from "./lesson/NumbersLessonSettings.tsx";
 import { WordListLessonSettings } from "./lesson/WordListLessonSettings.tsx";
+
+const usesLessonPacing = (type: LessonType) =>
+  type === LessonType.GUIDED
+  || type === LessonType.WORDLIST
+  || type === LessonType.BOOKS
+  || type === LessonType.CUSTOM;
 
 export function LessonSettings(): JSX.Element {
   const { formatMessage } = useIntl();
@@ -43,6 +49,9 @@ export function LessonSettings(): JSX.Element {
 
   const changeLessonType = (value: LessonType) => {
     if (value === selectedType()) return;
+    // Selection feedback is synchronous and rapid clicks always replace the pending
+    // destination. The heavier lesson subtree commits in a later frame so layout
+    // cannot monopolize the trusted click task.
     setSelectedType(value);
     commitSelectedType();
   };
@@ -66,11 +75,23 @@ export function LessonSettings(): JSX.Element {
       <LessonLoader>
         {(lesson) => <div data-keybr-lesson-type={committedType().id}>
           {tabBody(settings, lesson)}
-          <LessonPreview lesson={lesson}/>
+          <OptionalLessonPreview lesson={lesson}/>
         </div>}
       </LessonLoader>
     </div>
-    <DailyGoalSettings />
+    <DailyGoalSettings showLessonPacing={usesLessonPacing(committedType())}/>
+  </>;
+}
+
+function OptionalLessonPreview(props: { readonly lesson: Lesson }): JSX.Element {
+  const [visible, setVisible] = createSignal(false);
+  return <>
+    <button type="button" class="quiet" onClick={() => setVisible((value) => !value)}>
+      {visible() ? "Hide lesson preview" : "Show lesson preview"}
+    </button>
+    <Show when={visible()}>
+      <LessonPreview lesson={props.lesson}/>
+    </Show>
   </>;
 }
 

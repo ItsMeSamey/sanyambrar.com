@@ -69,6 +69,7 @@ export class BooksLesson extends Lesson {
   readonly book: Book;
   readonly content: Content;
   wordIndex = 0;
+  #rawParagraphs: readonly string[] | null = null;
   #paragraphCacheKey = "";
   #paragraphCache: readonly string[] = [];
   #wordListCacheKey = "";
@@ -107,24 +108,27 @@ export class BooksLesson extends Lesson {
     this.wordIndex = this.#history[this.#pageIndex] ?? 0;
   }
 
+  get rawParagraphs(): readonly string[] {
+    return this.#rawParagraphs ??= flattenContent(this.content);
+  }
+
   get paragraphs(): readonly string[] {
     const lettersOnly = this.settings.get(lessonProps.books.lettersOnly);
     const lowercase = this.settings.get(lessonProps.books.lowercase);
     const key = `${Number(lettersOnly)}:${Number(lowercase)}`;
     if (key !== this.#paragraphCacheKey) {
       this.#paragraphCacheKey = key;
-      this.#paragraphCache = this.#flattenContent(this.content, lettersOnly, lowercase);
+      this.#paragraphCache = this.#filterParagraphs(this.rawParagraphs, lettersOnly, lowercase);
       this.#wordListCacheKey = "";
     }
     return this.#paragraphCache;
   }
 
   get paragraphIndex(): number {
-    const paragraphs = this.paragraphs;
     return clamp(
       this.settings.get(lessonProps.books.paragraphIndex),
       0,
-      Math.max(0, paragraphs.length - 1),
+      Math.max(0, this.rawParagraphs.length - 1),
     );
   }
 
@@ -172,11 +176,27 @@ export class BooksLesson extends Lesson {
   }
 
   generatePreview(): string {
-    const start = this.paragraphIndex === this.#progressParagraphIndex
-      ? this.#history[this.#pageIndex] ?? 0
-      : 0;
-    const cursor = { wordIndex: this.#normalizeWordIndex(start) };
-    return generateFragment(this.settings, wordSequence(this.wordList, cursor));
+    const paragraphs = this.rawParagraphs;
+    let paragraphIndex = this.paragraphIndex;
+    let words: readonly string[] = [];
+    let wordIndex = 0;
+    const lettersOnly = this.settings.get(lessonProps.books.lettersOnly);
+    const lowercase = this.settings.get(lessonProps.books.lowercase);
+    const codePoints = this.#filteredCodePoints(lettersOnly);
+    const nextWord = () => {
+      let checked = 0;
+      while (checked <= paragraphs.length) {
+        if (wordIndex < words.length) return words[wordIndex++];
+        if (paragraphs.length === 0) return null;
+        const paragraph = paragraphs[paragraphIndex];
+        paragraphIndex = (paragraphIndex + 1) % paragraphs.length;
+        words = splitParagraph(this.#filterParagraphWith(paragraph, codePoints, lowercase));
+        wordIndex = 0;
+        checked++;
+      }
+      return null;
+    };
+    return generateFragment(this.settings, nextWord);
   }
 
   #moveNext(): void {
@@ -239,21 +259,24 @@ export class BooksLesson extends Lesson {
     });
   }
 
-  #flattenContent(content: Content, lettersOnly: boolean, lowercase: boolean) {
+  #filteredCodePoints(lettersOnly: boolean) {
     const codePoints = new Set(this.keyboard.getCodePoints());
     if (lettersOnly) {
       for (const codePoint of codePoints) {
-        if (!this.model.language.includes(codePoint)) {
-          codePoints.delete(codePoint);
-        }
+        if (!this.model.language.includes(codePoint)) codePoints.delete(codePoint);
       }
     }
-    return flattenContent(content).map((paragraph) => {
-      let text = filterText(paragraph, codePoints);
-      if (lowercase) {
-        text = this.model.language.lowerCase(text);
-      }
-      return text;
-    });
+    return codePoints;
+  }
+
+  #filterParagraphWith(paragraph: string, codePoints: ReadonlySet<number>, lowercase: boolean): string {
+    let text = filterText(paragraph, codePoints);
+    if (lowercase) text = this.model.language.lowerCase(text);
+    return text;
+  }
+
+  #filterParagraphs(paragraphs: readonly string[], lettersOnly: boolean, lowercase: boolean) {
+    const codePoints = this.#filteredCodePoints(lettersOnly);
+    return paragraphs.map((paragraph) => this.#filterParagraphWith(paragraph, codePoints, lowercase));
   }
 }

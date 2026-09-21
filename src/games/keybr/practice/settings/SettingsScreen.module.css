@@ -30,3 +30,12 @@
     flex-wrap: wrap;
   }
 }
+
+.settingsScreen :global(fieldset) {
+  contain: layout style;
+}
+
+.settingsSection {
+  min-inline-size: 0;
+  contain: layout style;
+}

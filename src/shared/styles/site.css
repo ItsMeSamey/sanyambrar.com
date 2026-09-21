@@ -38,8 +38,6 @@ html.samey-hardware-cursor[data-site-loading],html.samey-hardware-cursor[data-si
   --site-fast:110ms;
   --site-medium:190ms;
   --site-slow:280ms;
-  --samey-dialog-origin-x:50vw;
-  --samey-dialog-origin-y:50vh;
 }
 button,[role=button],.game-settings-action,.top-nav a,.compact-row,.card,.project{
   -webkit-tap-highlight-color:transparent;

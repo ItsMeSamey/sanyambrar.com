@@ -9,15 +9,11 @@ import { Explainer } from "../../../widget/components/explainer/Explainer.tsx";
 import { Field, FieldList } from "../../../widget/components/fieldlist/FieldList.tsx";
 import { FieldSet } from "../../../widget/components/form/Form.tsx";
 import { NameValue } from "../../../widget/components/text/NameValue.tsx";
-import { Para } from "../../../widget/components/text/Para.tsx";
 import { Range } from "../../../widget/components/range/Range.tsx";
-import { TextField } from "../../../widget/components/textfield/TextField.tsx";
 
-import { createMemo } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
-import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
-import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
 export function WordListLessonSettings(props: {
     readonly lesson: WordListLesson;
@@ -35,10 +31,8 @@ export function WordListLessonSettings(props: {
         })}>
         <WordListPreview lesson={props.lesson}/>
         <WordListStats lesson={props.lesson}/>
-        <TargetSpeedProp />
         <RepeatWordsProp />
         <TextManglingProp />
-        <LessonLengthProp />
       </FieldSet>
     </>);
 }
@@ -47,6 +41,8 @@ function WordListPreview(props: {
 }): JSX.Element {
     const { formatMessage } = useIntl();
     const { settings, updateSettings } = useSettings();
+    const [showWords, setShowWords] = createSignal(false);
+    const joinedWords = createMemo(() => showWords() ? props.lesson.wordList.join(", ") : "");
     return (<>
       <FieldList>
         <Field>
@@ -66,9 +62,12 @@ function WordListPreview(props: {
         }}/>
         </Field>
       </FieldList>
-      <Para>
-        <TextField type="textarea" value={[...props.lesson.wordList].join(", ")} readOnly={true}/>
-      </Para>
+      <button type="button" class="quiet" onClick={() => setShowWords((value) => !value)}>
+        {showWords() ? "Hide word list" : "Show word list"}
+      </button>
+      <Show when={showWords()}>
+        <textarea readonly rows={8} value={joinedWords()} aria-label="Word list" />
+      </Show>
     </>);
 }
 const wordListStats = (wordList: WordListLesson["wordList"]) => {

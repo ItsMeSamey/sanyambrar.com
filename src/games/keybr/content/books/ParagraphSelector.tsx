@@ -5,6 +5,7 @@ import { Icon } from "../../widget/components/icon/Icon.tsx";
 import { IconButton } from "../../widget/components/button/IconButton.tsx";
 import { Range } from "../../widget/components/range/Range.tsx";
 import { SkipForward, SkipBack } from "../../../../shared/components/Icons.tsx";
+import styles from "./ParagraphSelector.module.css";
 
 import { useIntl } from "../../intl/runtime.tsx";
 import { ParagraphIndex } from "./ParagraphPreview.tsx";
@@ -15,13 +16,13 @@ export function ParagraphSelector(props: {
 }): JSX.Element {
     const { locale } = useIntl();
     const rtl = getDir(locale) === "rtl";
-    return (<FieldList>
+    return (<FieldList class={styles.root}>
       <Field>Paragraph:</Field>
       <Field>
         <ParagraphIndex paragraphIndex={props.paragraphIndex}/>
       </Field>
       <Field>
-        <Range size={32} min={0} max={props.paragraphs.length - 1} step={1} value={props.paragraphIndex} onChange={props.onChange}/>
+        <Range size="full" min={0} max={props.paragraphs.length - 1} step={1} value={props.paragraphIndex} onChange={props.onChange}/>
       </Field>
       <Field>
         <span style={{ display: "contents" }}>

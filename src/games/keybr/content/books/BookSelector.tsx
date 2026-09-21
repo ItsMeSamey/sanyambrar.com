@@ -10,13 +10,17 @@ const BOOKS = Book.ALL.map((book) => book).sort((a, b) =>
 );
 const normalize = (value: string) =>
   value.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase();
+const BOOK_PAGE_SIZE = 24;
 
 export function BookSelector(props: {
   readonly book: Book;
   readonly onChange: (book: Book) => void;
 }): JSX.Element {
   const [open, setOpen] = createSignal(false);
+  const [mounted, setMounted] = createSignal(false);
+  const [listMounted, setListMounted] = createSignal(false);
   const [query, setQuery] = createSignal("");
+  const [visibleCount, setVisibleCount] = createSignal(BOOK_PAGE_SIZE);
   let dialog!: HTMLDialogElement;
   let searchInput!: HTMLInputElement;
   const filtered = createMemo(() => {
@@ -25,12 +29,18 @@ export function BookSelector(props: {
       ? BOOKS.filter(({ title, author }) => normalize(`${title} ${author}`).includes(needle))
       : BOOKS;
   });
+  const visibleBooks = createMemo(() => filtered().slice(0, visibleCount()));
 
   createEffect(open, (isOpen) => {
     if (isOpen) {
-      if (!dialog.open) dialog.showModal();
-      queueMicrotask(() => searchInput?.focus());
-    } else if (dialog.open) {
+      setMounted(true);
+      queueMicrotask(() => {
+        if (!open()) return;
+        if (!dialog.open) dialog.showModal();
+        searchInput?.focus();
+        if (!listMounted()) requestAnimationFrame(() => open() && setListMounted(true));
+      });
+    } else if (dialog?.open) {
       dialog.close();
     }
   });
@@ -38,6 +48,7 @@ export function BookSelector(props: {
   const close = () => {
     setOpen(false);
     setQuery("");
+    setVisibleCount(BOOK_PAGE_SIZE);
   };
   const select = (book: Book) => {
     close();
@@ -49,22 +60,23 @@ export function BookSelector(props: {
       Choose book
     </button>
 
-    <dialog
-      ref={dialog}
-      class={styles.dialog}
-      data-samey-overlay=""
-      aria-labelledby="keybr-book-library-title"
-      onClose={close}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          close();
-        }
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) close();
-      }}
-    >
+    <Show when={mounted()}>
+      <dialog
+        ref={dialog}
+        class={styles.dialog}
+        data-samey-overlay=""
+        aria-labelledby="keybr-book-library-title"
+        onClose={close}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            close();
+          }
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) close();
+        }}
+      >
       <div class={styles.dialogShell}>
         <header class={styles.dialogHeader}>
           <div>
@@ -81,35 +93,51 @@ export function BookSelector(props: {
             type="search"
             value={query()}
             placeholder="Title or author"
-            onInput={(event) => setQuery(event.currentTarget.value)}
+            onInput={(event) => {
+              setQuery(event.currentTarget.value);
+              setVisibleCount(BOOK_PAGE_SIZE);
+            }}
           />
         </label>
         <div class={styles.resultMeta} aria-live="polite">
           {filtered().length} of {BOOKS.length} books
         </div>
-        <Show when={filtered().length > 0} fallback={<p class={styles.empty}>No books match “{query()}”.</p>}>
-          <ul class={styles.list}>
-            <For each={filtered()}>{(book) => {
-              const selected = () => book.id === props.book.id;
-              return <li>
-                <button
-                  type="button"
-                  class={clsx(styles.book, selected() && styles.selected)}
-                  aria-pressed={selected() ? "true" : "false"}
-                  onClick={() => select(book)}
-                >
-                  <img src={book.coverImage} loading="lazy" alt="" aria-hidden="true" />
-                  <span class={styles.bookCopy}>
-                    <strong>{book.title}</strong>
-                    <span>{book.author}</span>
-                  </span>
-                  <Show when={selected()}><span class={styles.selectedLabel}>Selected</span></Show>
-                </button>
-              </li>;
-            }}</For>
-          </ul>
+        <Show when={listMounted()} fallback={<p class={styles.empty}>Loading library…</p>}>
+          <Show when={filtered().length > 0} fallback={<p class={styles.empty}>No books match “{query()}”.</p>}>
+            <ul
+              class={styles.list}
+              onScroll={(event) => {
+                const list = event.currentTarget;
+                if (list.scrollTop + list.clientHeight < list.scrollHeight - 160) return;
+                setVisibleCount((count) => Math.min(filtered().length, count + BOOK_PAGE_SIZE));
+              }}
+            >
+              <For each={visibleBooks()}>{(book) => {
+                const selected = () => book.id === props.book.id;
+                return <li>
+                  <button
+                    type="button"
+                    class={clsx(styles.book, selected() && styles.selected)}
+                    aria-pressed={selected() ? "true" : "false"}
+                    onClick={() => select(book)}
+                  >
+                    <img src={book.coverImage} loading="lazy" alt="" aria-hidden="true" />
+                    <span class={styles.bookCopy}>
+                      <strong>{book.title}</strong>
+                      <span>{book.author}</span>
+                    </span>
+                    <Show when={selected()}><span class={styles.selectedLabel}>Selected</span></Show>
+                  </button>
+                </li>;
+              }}</For>
+              <Show when={visibleBooks().length < filtered().length}>
+                <li class={styles.more} aria-hidden="true">Scroll for more books</li>
+              </Show>
+            </ul>
+          </Show>
         </Show>
       </div>
-    </dialog>
+      </dialog>
+    </Show>
   </div>;
 }

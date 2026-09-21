@@ -6,11 +6,9 @@ import { FieldSet } from "../../../widget/components/form/Form.tsx";
 import { FormattedMessage, useIntl } from "../../../intl/runtime.tsx";
 import { AlphabetSizeProp } from "./AlphabetSizeProp.tsx";
 import { KeyboardOrderProp } from "./KeyboardOrderProp.tsx";
-import { LessonLengthProp } from "./LessonLengthProp.tsx";
 import { NaturalWordsProp } from "./NaturalWordsProp.tsx";
 import { RecoverKeysProp } from "./RecoverKeysProp.tsx";
 import { RepeatWordsProp } from "./RepeatWordsProp.tsx";
-import { TargetSpeedProp } from "./TargetSpeedProp.tsx";
 import { TextManglingProp } from "./TextManglingProp.tsx";
 export function GuidedLessonSettings(): JSX.Element {
     const { formatMessage } = useIntl();
@@ -24,14 +22,12 @@ export function GuidedLessonSettings(): JSX.Element {
             id: "t_Lesson_options",
             defaultMessage: "Lesson options",
         })}>
-        <TargetSpeedProp />
         <RecoverKeysProp />
         <KeyboardOrderProp />
         <NaturalWordsProp />
         <RepeatWordsProp />
         <AlphabetSizeProp />
         <TextManglingProp />
-        <LessonLengthProp />
       </FieldSet>
     </>);
 }

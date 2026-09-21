@@ -22,6 +22,7 @@ type ViteManifest = Record<string, ViteManifestEntry>;
 const isRecord = (value: unknown): value is UnknownRecord => value !== null && typeof value === "object" && !Array.isArray(value);
 let siteManifest: ViteManifest = {};
 let keybrManifest: ViteManifest = {};
+let appearanceBootstrapConfig: UnknownRecord | null = null;
 
 const ROOT = import.meta.dirname;
 const SITE_PUBLIC = join(ROOT, "src/site/public");
@@ -116,7 +117,7 @@ async function injectSitePrerender() {
     let source = await readFile(path, "utf8");
     const emptyRoot = '<div id="site-root"></div>';
     must(source.includes(emptyRoot), "site prerender target root missing in " + route.file);
-    source = source.replace(emptyRoot, '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
+    source = source.replace(emptyRoot, () => '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
     await writeFile(path, source);
   }
   log("prerendered static Solid route shells");
@@ -135,6 +136,7 @@ async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerende
 async function generateAppearance() {
   const appearancePath = join(ROOT, "src/shared/appearance.json");
   const config = requireRecord(JSON.parse(await readFile(appearancePath, "utf8")), `${relative(ROOT, appearancePath)} must contain a JSON object`);
+  appearanceBootstrapConfig = config;
   const colors = requireRecord(config.colors, "appearance: colors must be an object");
   const fonts = requireRecord(config.fonts, "appearance: fonts must be an object");
   const hex = /^#[0-9a-f]{6}$/i;
@@ -207,15 +209,167 @@ function manifestStaticResources(manifest: ViteManifest, sourceSuffix: string): 
 const htmlAttr = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
 const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c");
 
-async function injectSitePreloadHints() {
-  const siteEntryResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
-  const siteEntryScripts = new Set(siteEntryResources.scripts);
+const escapeInlineScript = (source: string) => source.replaceAll("</script", "<\\/script");
+const escapeInlineStyle = (source: string) => source.replaceAll("</style", "<\\/style");
+const inlineModuleSpecifier = /\b(from\s*|import\s*(?:\(\s*)?)(["'`])(\.{1,2}\/[^"'`]+)\2/g;
+const inlineModuleKey = (file: string) => "samey-inline/" + file;
+const resolvedModuleFile = (file: string, specifier: string) =>
+  new URL(specifier, new URL("/" + file, PUBLIC_ORIGIN)).pathname.replace(/^\//, "");
+const embeddedAssetUrl = /new URL\(\s*(["'`])([^"'`$]+)\1\s*,\s*(?:``\s*\+\s*)?import\.meta\.url\s*\)/g;
+const rewriteEmbeddedModuleSource = (source: string, file: string, embedded: ReadonlySet<string>) => {
+  const importsRewritten = source.replace(
+    inlineModuleSpecifier,
+    (_match, prefix: string, quote: string, specifier: string) => {
+      const target = resolvedModuleFile(file, specifier);
+      if (embedded.has(target)) return prefix + quote + inlineModuleKey(target) + quote;
+      const dynamic = prefix.trim().startsWith("import") && prefix.includes("(");
+      must(dynamic, `embedded module ${file} has static dependency outside its embedded graph: ${target}`);
+      // data: modules have no hierarchical base URL. Resolve genuinely lazy imports against the
+      // live site origin at runtime; the import map may still remap that full URL when appropriate.
+      return 'import(new URL(' + JSON.stringify('/' + target) + ',location.origin).href';
+    },
+  );
+  return importsRewritten.replace(embeddedAssetUrl, (_match, _quote: string, specifier: string) => {
+    const target = specifier.startsWith('/') ? specifier : '/' + resolvedModuleFile(file, specifier);
+    return 'new URL(' + JSON.stringify(target) + ',location.origin)';
+  });
+};
+const patchInlinePreloadGuard = (source: string) => {
+  const pattern = /,([A-Za-z_$][\w$]*) in ([A-Za-z_$][\w$]*)\)return;/;
+  const match = source.match(pattern);
+  must(match, "site entry is missing Vite preload cache guard");
+  let patched = source.replace(pattern, (_all, url: string, cache: string) =>
+    ",globalThis.__sameyInlineAssetUrls?.has(" + url + ")||" + url + " in " + cache + ")return;");
+  must(patched !== source && !pattern.test(patched), "site entry preload guard patch did not apply exactly once");
+
+  // Vite normally resolves preload dependency paths relative to import.meta.url. The site entry
+  // is a data: module once embedded, so Chromium cannot resolve root-relative URLs from that
+  // opaque base. Those dependency paths are site-root URLs; resolve them against the live origin.
+  const resolver = /import\.meta\.resolve\?import\.meta\.resolve\(([A-Za-z_$][\w$]*)\):new URL\(\1,import\.meta\.url\)\.href/;
+  must(resolver.test(patched), "site entry is missing Vite preload URL resolver");
+  patched = patched.replace(resolver, (_all, url: string) => 'new URL(' + url + ',location.origin).href');
+  must(!resolver.test(patched), "site entry preload URL resolver patch did not apply exactly once");
+  return patched;
+};
+const dataModuleUrl = (source: string) => "data:text/javascript;base64," + Buffer.from(source).toString("base64");
+const sharedStylesheetTag = /<link\b(?=[^>]*\brel=["']stylesheet["'])(?=[^>]*\bhref=["'][^"']*site\.css(?:\?[^"']*)?["'])[^>]*>/i;
+const sharedRuntimeTag = /<script\b(?=[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'])[^>]*><\/script>/i;
+const inlineThemeBootstrapTag = /<script\b[^>]*data-samey-theme-bootstrap[^>]*>[\s\S]*?<\/script>/i;
+const inlineSharedStyleTag = /<style\b[^>]*data-samey-inline-shell[^>]*>[\s\S]*?<\/style>/i;
+const inlineSharedRuntimeTag = /<script\b[^>]*data-samey-(?:inline-runtime|shared-runtime)[^>]*>[\s\S]*?<\/script>/i;
+const mutableSiteEntryTag = /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["'][^"']*site-app(?:-[A-Za-z0-9_-]+)?\.js(?:\?[^"']*)?["'])[^>]*><\/script>/i;
+
+function earlyThemeBootstrap() {
+  const config = appearanceBootstrapConfig;
+  must(config, "appearance bootstrap config is unavailable");
+  const colors = requireRecord(config.colors, "appearance bootstrap colors are unavailable");
+  const palette: Record<string, { tone: string; background: string; text: string }> = {};
+  for (const [id, value] of Object.entries(colors)) {
+    if (!isRecord(value)) continue;
+    const tone = value.tone === "dark" ? "dark" : "light";
+    const background = typeof value.background === "string" ? value.background : tone === "dark" ? "#121213" : "#ffffff";
+    const text = typeof value.text === "string" ? value.text : tone === "dark" ? "#f8f8f8" : "#121213";
+    palette[id] = { tone, background, text };
+  }
+  const script = `(function(){try{var p=${jsonForHtml(palette)},r=JSON.parse(localStorage.getItem("keybr.theme")||"null")||{},v=r.color||"system";if(v==="light-contrast"||v==="clear-light"||["gray","yellow","garden","coffee","honey"].includes(v))v="light";else if(v==="dark-contrast")v="clear-dark";else if(v==="chocolate")v="dark";var t;if(v==="custom")t=r.custom;else if(typeof v==="string"&&v.indexOf("saved:")===0&&Array.isArray(r.savedThemes)){var id=v.slice(6);t=r.savedThemes.find(function(x){return x&&x.id===id})}else if(v==="system")t=p[matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"];else t=p[v];if(!t)t=p[matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"]||p.light;var hex=function(x){return typeof x==="string"&&/^#[0-9a-f]{6}$/i.test(x)},tone=t&&t.tone==="dark"?"dark":"light",bg=hex(t&&t.background)?t.background:(tone==="dark"?"#121213":"#ffffff"),fg=hex(t&&t.text)?t.text:(tone==="dark"?"#f8f8f8":"#121213"),e=document.documentElement;e.dataset.siteTheme=v;e.dataset.kbTheme=tone;e.dataset.color=v;e.classList.toggle("dark",tone==="dark");e.style.colorScheme=tone;e.style.setProperty("--site-bg",bg);e.style.setProperty("--site-fg",fg);e.style.backgroundColor=bg;e.style.color=fg}catch(e){}})();`;
+  return '<script data-samey-theme-bootstrap>' + escapeInlineScript(script) + '</script>';
+}
+
+async function inlineAlwaysLoadedAssets() {
+  const sharedCss = escapeInlineStyle(await readFile(join(GENERATED_SHARED_RUNTIME, "site.css"), "utf8"));
+  const sharedRuntime = escapeInlineScript(await readFile(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js"), "utf8"));
+  const sharedCssInline = '<style data-samey-shared data-samey-inline-shell>' + sharedCss + '</style>';
+  const runtimeReference = /<script\b(?=[^>]*\bsrc=["']([^"']*shared-runtime\.js(?:\?[^"']*)?)["'])[^>]*><\/script>/i;
+  const runtimeRoot = (source: string) => {
+    const ref = source.match(runtimeReference)?.[1]?.replace(/[?#].*$/, "");
+    if (!ref) return "./";
+    const suffix = "shared-runtime.js";
+    must(ref.endsWith(suffix), "malformed shared runtime reference");
+    return ref.slice(0, -suffix.length) || "./";
+  };
+
+  const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
+  const themeBootstrap = earlyThemeBootstrap();
+  for (const file of htmlFiles) {
+    let source = await readFile(file, "utf8");
+    if (inlineThemeBootstrapTag.test(source)) source = source.replace(inlineThemeBootstrapTag, () => themeBootstrap);
+    else source = source.replace(/<head>/i, () => "<head>" + themeBootstrap);
+    if (sharedStylesheetTag.test(source)) source = source.replace(sharedStylesheetTag, () => sharedCssInline);
+    else if (inlineSharedStyleTag.test(source)) source = source.replace(inlineSharedStyleTag, () => sharedCssInline);
+    const sharedRuntimeInline = '<script data-samey-shared data-samey-shared-runtime data-samey-inline-runtime data-samey-runtime-root="'
+      + htmlAttr(runtimeRoot(source)) + '">' + sharedRuntime + '</script>';
+    if (sharedRuntimeTag.test(source)) source = source.replace(sharedRuntimeTag, () => sharedRuntimeInline);
+    else if (inlineSharedRuntimeTag.test(source)) source = source.replace(inlineSharedRuntimeTag, () => sharedRuntimeInline);
+    await writeFile(file, source);
+  }
+
+  if (Object.keys(siteManifest).length > 0) {
+    const entryKey = manifestEntryKey(siteManifest, "src/site/main.tsx");
+    const entryFile = siteManifest[entryKey]?.file;
+    must(entryFile, "site manifest entry file is missing");
+    const startupResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
+    const startupModules = new Set(startupResources.scripts.filter(file => file !== entryFile));
+
+    for (const route of SITE_ROUTES) {
+      const moduleFiles = new Set([...startupModules, entryFile]);
+      const styleFiles = new Set<string>();
+      for (const sourcePath of route.sources) {
+        const resources = manifestStaticResources(siteManifest, sourcePath);
+        resources.scripts.forEach(file => moduleFiles.add(file));
+        resources.styles.forEach(file => styleFiles.add(file));
+      }
+      const imports: Record<string, string> = {};
+      for (const file of [...moduleFiles].sort()) {
+        let rawSource = await readFile(join(DOCS, file), "utf8");
+        if (rawSource.includes("vite:preloadError")) rawSource = patchInlinePreloadGuard(rawSource);
+        const moduleSource = rewriteEmbeddedModuleSource(rawSource, file, moduleFiles);
+        const moduleUrl = dataModuleUrl(moduleSource);
+        imports[inlineModuleKey(file)] = moduleUrl;
+        imports["/" + file] = moduleUrl;
+      }
+      const embeddedAssetPaths = [...moduleFiles, ...styleFiles].sort().map(file => "/" + file);
+      const inlineAssetGuard = '<script data-samey-inline-asset-guard>globalThis.__sameyInlineAssetUrls=new Set(' +
+        jsonForHtml(embeddedAssetPaths) + '.map(function(path){return new URL(path,location.origin).href}));</script>';
+      const importMap = '<script type="importmap" data-samey-inline-importmap>' + jsonForHtml({ imports }) + '</script>';
+      const inlineEntry = '<script type="module" data-samey-site-entry>import ' +
+        JSON.stringify(inlineModuleKey(entryFile)) + ';</script>';
+      const path = join(DOCS, route.file);
+      let source = await readFile(path, "utf8");
+      must(mutableSiteEntryTag.test(source), "site entry tag missing in " + route.file);
+      source = source.replace(mutableSiteEntryTag, () => inlineAssetGuard + importMap + inlineEntry);
+      await writeFile(path, source);
+    }
+
+    await rm(join(DOCS, entryFile), { force: true });
+    for (const file of startupModules) await rm(join(DOCS, file), { force: true });
+  }
+
+  await rm(join(DOCS, "site.css"), { force: true });
+  await rm(join(DOCS, "shared-runtime.js"), { force: true });
+
+  const solidRouteFiles = new Set(SITE_ROUTES.map(route => route.file));
+  for (const file of await walk(DOCS, (_path, name) => name.endsWith(".html"))) {
+    const source = await readFile(file, "utf8");
+    const relativeFile = relative(DOCS, file).replaceAll("\\", "/");
+    must(!/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/i.test(source),
+      "external always-loaded shell asset remains in " + relativeFile);
+    if (solidRouteFiles.has(relativeFile)) {
+      must(source.includes("data-samey-inline-importmap"), "site import map missing in " + relativeFile);
+      must(source.includes("data-samey-site-entry"), "inline site entry missing in " + relativeFile);
+      must(!/src=["'][^"']*site-app(?:-[A-Za-z0-9_-]+)?\.js/i.test(source),
+        "external site entry remains in " + relativeFile);
+      must(!source.includes('rel="modulepreload"') && !source.includes("rel='modulepreload'"),
+        "direct-route module preload remains in " + relativeFile);
+    }
+  }
+  log("inlined always-loaded CSS/runtime/site startup modules into HTML");
+}
+
+async function injectSiteRouteStyles() {
   for (const route of SITE_ROUTES) {
-    const scripts = new Set<string>();
     const styles = new Set<string>();
     for (const sourcePath of route.sources) {
       const resources = manifestStaticResources(siteManifest, sourcePath);
-      resources.scripts.forEach(item => { if (!siteEntryScripts.has(item)) scripts.add(item); });
       resources.styles.forEach(item => styles.add(item));
     }
     const inlinedStyles = await Promise.all([...styles].map(async file => {
@@ -224,16 +378,13 @@ async function injectSitePreloadHints() {
         .replaceAll("</style", "<\\/style");
       return '<style data-samey-route-style data-samey-style-src="' + htmlAttr(route.assetRoot + file) + '">' + css + "</style>";
     }));
-    const preload = [
-      ...inlinedStyles,
-      ...[...scripts].map(file => '<link rel="modulepreload" crossorigin data-samey-route-module href="' + htmlAttr(route.assetRoot + file) + '">'),
-    ].join("");
+    const preload = inlinedStyles.join("");
     const path = join(DOCS, route.file);
     let source = await readFile(path, "utf8");
-    source = source.replace("</head>", preload + "</head>");
+    source = source.replace("</head>", () => preload + "</head>");
     await writeFile(path, source);
   }
-  log("embedded route dependency hints in HTML");
+  log("embedded route CSS in HTML");
 }
 
 async function beginDocsTransaction() {
@@ -280,7 +431,7 @@ async function publishSite() {
   }
   await mkdir(join(DOCS, "blog", "posts"), { recursive: true });
   await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
-  await injectSitePreloadHints();
+  await injectSiteRouteStyles();
 }
 
 async function buildSharedRuntime() {
@@ -346,10 +497,18 @@ async function buildKeybr() {
   must(entryScriptMatch?.[1], "Keybr HTML is missing its module entry script");
   const entryScriptHref = entryScriptMatch[1].replace(/^\.\//, "");
   must(/^keybr-assets\/index-[A-Za-z0-9_-]+\.js$/.test(entryScriptHref), "unexpected Keybr entry script: " + entryScriptHref);
-  const entryScript = (await readFile(join(GENERATED_KEYBR, entryScriptHref), "utf8"))
-    .replace(/(from\s*["']|import\s*["']|import\(\s*["'])\.\//g, "$1./keybr-assets/")
-    .replaceAll("</script", "<\\/script");
-  source = source.replace(entryScriptRe, '<script type="module" crossorigin data-keybr-entry>' + entryScript + "</script>");
+
+  const startupResources = manifestStaticResources(keybrManifest, "index.html");
+  const startupModules = new Set(startupResources.scripts);
+  must(startupModules.size === 1 && startupModules.has(entryScriptHref),
+    "Keybr startup JS must be one consolidated entry bundle");
+  const entryScript = escapeInlineScript(rewriteEmbeddedModuleSource(
+    await readFile(join(GENERATED_KEYBR, entryScriptHref), "utf8"),
+    entryScriptHref,
+    new Set(),
+  ));
+  source = source.replace(entryScriptRe, () => '<script type="module" data-keybr-entry>' + entryScript + '</script>');
+  source = source.replace(/<link\b[^>]*\brel=["']modulepreload["'][^>]*>/gi, "");
 
   const stylesheetRe = /<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
   const cssHrefs = [...source.matchAll(stylesheetRe)].map(match => match[1]).filter((href): href is string => typeof href === "string");
@@ -381,7 +540,7 @@ async function buildKeybr() {
   const prefetchData = '<script type="application/json" data-samey-prefetch-assets>' + jsonForHtml(prefetchAssets) + "</script>";
   const directPreload = '<script data-samey-keybr-preload>(function(){try{var n=document.querySelector("[data-samey-prefetch-assets]");if(!n)return;var m=JSON.parse(n.textContent||"{}"),s=JSON.parse(localStorage.getItem("settings")||"{}"),l=typeof s["keyboard.language"]==="string"?s["keyboard.language"]:"en",t=typeof s["lesson.type"]==="string"?s["lesson.type"]:"guided",u=[m.models&&m.models[l]];if(t==="guided"||t==="wordlist")u.push(m.words&&m.words[l]);else if(t==="books"){var b=typeof s["lesson.books.book"]==="string"?s["lesson.books.book"]:"en-alice-wonderland";u.push(m.books&&m.books[b])}for(var i=0;i<u.length;i++)if(u[i]){var a=document.createElement("link");a.rel="preload";a.as="fetch";a.href=u[i];a.crossOrigin="anonymous";document.head.append(a)}}catch(e){}})();</script>';
   const shared = '<link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./site.css" data-samey-shared><script src="./shared-runtime.js"></script>';
-  source = source.replace("</head>", criticalCss + prefetchData + directPreload + shared + "</head>");
+  source = source.replace("</head>", () => criticalCss + prefetchData + directPreload + shared + "</head>");
 
   await mkdir(DOCS, { recursive: true });
   await writeFile(join(DOCS, "keybr.html"), source);
@@ -389,9 +548,9 @@ async function buildKeybr() {
   must(existsSync(assets), "Keybr build did not emit split assets");
   await rm(join(DOCS, "keybr-assets"), { recursive: true, force: true });
   await cp(assets, join(DOCS, "keybr-assets"), { recursive: true, force: true });
-  await rm(join(DOCS, entryScriptHref), { force: true });
+  for (const file of startupModules) await rm(join(DOCS, file), { force: true });
   for (const href of cssHrefs) await rm(join(DOCS, href.replace(/^\.\//, "")), { force: true });
-  log("keybr -> docs/keybr.html with inline entry/CSS + split dependency/data assets");
+  log("keybr -> docs/keybr.html with one inline startup bundle/CSS + lazy data/media assets");
 }
 
 const PUBLIC_ORIGIN = "https://sanyambrar.com";
@@ -421,71 +580,48 @@ async function validateExtensionlessPublicLinks() {
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
-    // Optional runtimes and Keybr chunks are cached on demand rather than
-    // downloaded by every service-worker install. Their filenames are immutable.
-    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/"));
+    // HTML owns its startup CSS/JS. Lazy chunks, workers, WASM and optional runtimes
+    // are cached on demand rather than downloaded by every service-worker install.
+    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/")
+      && !path.startsWith("site-chunks/") && !path.startsWith("assets/"));
 }
 
-async function finalizeShellAssets() {
-  const siteEntries = await walk(join(DOCS, "site-chunks"), (_path, name) => /^site-app-[A-Za-z0-9_-]+\.js$/.test(name));
-  must(siteEntries.length === 1, `deployment: expected one hashed site entry, found ${siteEntries.length}`);
-  const siteEntry = relative(DOCS, siteEntries[0]).replaceAll("\\", "/");
-  const sharedCss = await readFile(join(GENERATED_SHARED_RUNTIME, "site.css"), "utf8");
-  const sharedRuntime = await readFile(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js"), "utf8");
+async function validateEmbeddedPageShells() {
+  const stylesheet = /<link\b(?=[^>]*\brel=["']stylesheet["'])(?=[^>]*\bhref=["'][^"']+["'])[^>]*>/i;
+  const modulePreload = /<link\b(?=[^>]*\brel=["']modulepreload["'])(?=[^>]*\bhref=["'][^"']+["'])[^>]*>/i;
+  const externalScript = /<script\b(?=[^>]*\bsrc=["'][^"']+["'])[^>]*>/i;
+  for (const file of await walk(DOCS, (_path, name) => name.endsWith(".html"))) {
+    const source = await readFile(file, "utf8");
+    const name = relative(DOCS, file).replaceAll("\\", "/");
+    must(!stylesheet.test(source), "external stylesheet is forbidden in generated HTML: " + name);
+    must(!modulePreload.test(source), "modulepreload is forbidden in generated HTML: " + name);
+    must(!externalScript.test(source), "external script is forbidden in generated HTML: " + name);
+    const bootstrapAt = source.indexOf("data-samey-theme-bootstrap");
+    const shellAt = source.indexOf("data-samey-inline-shell");
+    must(bootstrapAt >= 0, "early theme bootstrap is missing in generated HTML: " + name);
+    if (shellAt >= 0) must(bootstrapAt < shellAt, "early theme bootstrap follows the shared shell in " + name);
+  }
+  log("verified every generated HTML embeds its page-load CSS/JS");
+}
+
+async function stampInlineShellVersion() {
   const hash = createHash("sha256");
-  hash.update(siteEntry).update("\0");
-  hash.update("site.css").update("\0").update(sharedCss).update("\0");
-  hash.update("shared-runtime.js").update("\0").update(sharedRuntime).update("\0");
+  hash.update(await readFile(join(GENERATED_SHARED_RUNTIME, "site.css"))).update("\0");
+  hash.update(await readFile(join(GENERATED_SHARED_RUNTIME, "shared-runtime.js"))).update("\0");
+  if (Object.keys(siteManifest).length > 0) {
+    const entry = siteManifest[manifestEntryKey(siteManifest, "src/site/main.tsx")];
+    must(entry?.file, "deployment: site entry missing while stamping build version");
+    hash.update(entry.file).update("\0");
+  }
   const version = hash.digest("hex").slice(0, 16);
-  const htmlFiles = await walk(DOCS, (_path, name) => name.endsWith(".html"));
-  const sharedStyleTag = /<link\b[^>]*\bdata-samey-shared\b[^>]*>/i;
-  const sharedRuntimeTag = /<script\b[^>]*\bsrc=["']([^"']*shared-runtime\.js(?:\?[^"']*)?)["'][^>]*><\/script>/i;
-  const safeSharedCss = sharedCss.replaceAll("</style", "<\\/style");
-  const safeSharedRuntime = sharedRuntime.replaceAll("</script", "<\\/script");
-  for (const file of htmlFiles) {
+  for (const file of await walk(DOCS, (_path, name) => name.endsWith(".html"))) {
     let source = await readFile(file, "utf8");
-    const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
-    if (spaShell)
-      source = source.replace(/site-app\.js(?:\?v=[^"']*)?/g, siteEntry);
-    const styleMatch = sharedStyleTag.exec(source);
-    const runtimeMatch = sharedRuntimeTag.exec(source);
-    must(!!styleMatch === !!runtimeMatch, `deployment: incomplete shared shell assets in ${relative(DOCS, file)}`);
-    if (styleMatch && runtimeMatch) {
-      const runtimeRef = runtimeMatch[1].replace(/[?#].*$/, "");
-      const suffix = "shared-runtime.js";
-      must(runtimeRef.endsWith(suffix), `deployment: malformed shared runtime reference in ${relative(DOCS, file)}`);
-      const runtimeRoot = runtimeRef.slice(0, -suffix.length) || "./";
-      source = source.replace(sharedStyleTag, () => `<style data-samey-shared>${safeSharedCss}</style>`);
-      source = source.replace(sharedRuntimeTag, () => `<script data-samey-shared-runtime data-samey-runtime-root="${htmlAttr(runtimeRoot)}" data-samey-build="${version}">${safeSharedRuntime}</script>`);
-    }
     const buildMeta = /<meta\s+name=["']samey-build["']\s+content=["'][^"']*["']\s*\/?>/i;
-    if (buildMeta.test(source))
-      source = source.replace(buildMeta, `<meta name="samey-build" content="${version}">`);
-    else source = source.replace(/<head>/i, `<head><meta name="samey-build" content="${version}">`);
+    if (buildMeta.test(source)) source = source.replace(buildMeta, '<meta name="samey-build" content="' + version + '">');
+    else source = source.replace(/<head>/i, '<head><meta name="samey-build" content="' + version + '">');
     await writeFile(file, source);
   }
-  for (const file of htmlFiles) {
-    const source = await readFile(file, "utf8");
-    const spaShell = /<html\b[^>]*\bdata-site-spa(?:\s|>|=)/i.test(source);
-    const siteKindShell = /<html\b[^>]*\bdata-site-kind\s*=/i.test(source);
-    const refs = [...source.matchAll(/(?:href|src)=["'][^"']*(?:site\.css|shared-runtime\.js)(?:\?[^"']*)?["']/g)].map(match => match[0]);
-    must(refs.length === 0, `deployment: external always-loaded shell asset remains in ${relative(DOCS, file)}`);
-    must(!source.includes("site-app.js"), `deployment: mutable site-app reference remains in ${relative(DOCS, file)}`);
-    if (spaShell)
-      must(source.includes(siteEntry), `deployment: hashed site entry missing in ${relative(DOCS, file)}`);
-    if (siteKindShell) {
-      must(source.includes("data-samey-shared>"), `deployment: inline shared CSS missing in ${relative(DOCS, file)}`);
-      must(source.includes("data-samey-shared-runtime"), `deployment: inline shared runtime missing in ${relative(DOCS, file)}`);
-    }
-    must(source.includes(`<meta name="samey-build" content="${version}">`), `deployment: missing build version in ${relative(DOCS, file)}`);
-  }
-  await Promise.all([
-    rm(join(DOCS, "site.css"), { force: true }),
-    rm(join(DOCS, "shared-runtime.js"), { force: true }),
-  ]);
-  must(!existsSync(join(DOCS, "site-app.js")), "deployment: mutable site-app.js must not be emitted");
-  must(!existsSync(join(DOCS, "site.css")) && !existsSync(join(DOCS, "shared-runtime.js")), "deployment: always-loaded shared shell assets must be embedded");
-  log(`embedded shared shell CSS/runtime -> ${version}; site entry -> ${siteEntry}`);
+  log("stamped inline shell version -> " + version);
   return version;
 }
 
@@ -598,21 +734,23 @@ self.addEventListener('fetch', event => {
 
 async function main() {
   must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, site, or all)`);
-  const sharedBuild = buildSharedRuntime();
+  await generateAppearance();
+  await buildSharedRuntime();
   if (targets.has("site")) {
-    await generateAppearance();
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
-    await Promise.all([sharedBuild, buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
+    await Promise.all([buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
     await injectSitePrerender();
-  } else await sharedBuild;
+  }
   await beginDocsTransaction();
   if (targets.has("site")) await publishSite();
   const jobs: Promise<void>[] = [];
   if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
   await Promise.all(jobs);
-  await finalizeShellAssets();
+  await inlineAlwaysLoadedAssets();
+  await validateEmbeddedPageShells();
+  await stampInlineShellVersion();
   await validateExtensionlessPublicLinks();
   await generateServiceWorker();
   if (fullBuild) log("build complete; docs/ is the GitHub Pages site root");

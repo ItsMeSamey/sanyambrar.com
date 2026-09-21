@@ -6,7 +6,7 @@ import { type PhoneticModel } from "../phonetic-model/phoneticmodel.ts";
 import { type RNGStream } from "../rand/types.ts";
 import { type KeyStatsMap } from "../result/keystats.ts";
 import { type Settings } from "../settings/settings.ts";
-import { Dictionary, filterWordList } from "./dictionary.ts";
+import { Dictionary, filteredDictionary } from "./dictionary.ts";
 import { LessonKey, LessonKeys } from "./key.ts";
 import { Lesson } from "./lesson.ts";
 import { lessonProps } from "./settings.ts";
@@ -29,11 +29,7 @@ export class GuidedLesson extends Lesson {
     wordList: WordList,
   ) {
     super(settings, keyboard, model);
-    this.dictionary = new Dictionary(
-      filterWordList(wordList, this.codePoints).filter(
-        (word) => word.length > 2,
-      ),
-    );
+    this.dictionary = filteredDictionary(wordList, this.codePoints, 3);
   }
 
   override get letters() {
