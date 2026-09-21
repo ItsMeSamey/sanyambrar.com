@@ -2,7 +2,9 @@ import { searchIndex, type Entry } from '../site/data.ts'
 import { searchShortcutLabel } from './platform.ts'
 
 const currentScript = document.currentScript
-const SCRIPT_ROOT = new URL('.', currentScript instanceof HTMLScriptElement ? currentScript.src : location.href)
+const runtimeRoot = currentScript instanceof HTMLScriptElement ? currentScript.dataset.sameyRuntimeRoot : ''
+const scriptUrl = currentScript instanceof HTMLScriptElement && currentScript.src ? currentScript.src : location.href
+const SCRIPT_ROOT = runtimeRoot ? new URL(runtimeRoot, location.href) : new URL('.', scriptUrl)
 const norm = (value: string) => value.toLowerCase()
 
 function score(item: Entry, query: string): number {

@@ -1,7 +1,7 @@
 export {};
 
 type NavigationDirection = "forward" | "back";
-type NavigationOptions = { replace?: boolean; force?: boolean; direction?: NavigationDirection };
+type NavigationOptions = { replace?: boolean };
 type AppearanceSnapshot = { readonly color: string; readonly font: string };
 
 declare global {
@@ -13,8 +13,6 @@ declare global {
   var SameyLoading: ((loading: boolean) => void) | undefined;
   var SameyLoadingBegin: (() => () => void) | undefined;
   var SameyLoadingBeginAfterDelay: ((delay?: number) => () => void) | undefined;
-  var SameyCancelPageSwap: (() => void) | undefined;
-  var SameyPageSwapNavigate: ((href: string, options?: NavigationOptions) => Promise<void>) | undefined;
   var SameyNavigate: ((href: string, options?: NavigationOptions) => Promise<void> | void) | undefined;
   var SameyPreloadPage: ((href: string) => void) | undefined;
   var SameyMountSolid: (() => void) | undefined;

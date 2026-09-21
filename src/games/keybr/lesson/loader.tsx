@@ -24,20 +24,23 @@ export function LessonLoader(props: {
   const { settings } = useSettings();
   return (
     <PhoneticModelLoader language={KeyboardOptions.from(settings).language}>
-      {(model) => <Loader model={model} fallback={props.fallback}>{props.children}</Loader>}
+      {(model) => <Show keyed when={settings.get(lessonProps.type)}>
+        {(type) => <Loader model={model} type={type} fallback={props.fallback}>{props.children}</Loader>}
+      </Show>}
     </PhoneticModelLoader>
   );
 }
 
 function Loader(props: {
   readonly model: PhoneticModel;
+  readonly type: LessonType;
   readonly children: (result: Lesson) => JSX.Element;
   readonly fallback?: JSX.Element;
 }) {
   const { settings } = useSettings();
   const keyboard = useKeyboard();
   const lesson = createMemo(async () => {
-      const type = settings.get(lessonProps.type);
+      const type = props.type;
       const language = KeyboardOptions.from(settings).language;
       const book = settings.get(lessonProps.books.book);
       const model = props.model;
@@ -60,7 +63,7 @@ function Loader(props: {
   });
   const currentLesson = () => {
     const loaded = lesson();
-    return loaded?.type === settings.get(lessonProps.type) ? loaded.value : undefined;
+    return loaded?.type === props.type ? loaded.value : undefined;
   };
   return (
     <Loading fallback={props.fallback ?? <LoadingProgress />}>

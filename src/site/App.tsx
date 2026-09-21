@@ -54,7 +54,6 @@ function routeFromUrl(url: URL): Route | null {
   return null;
 }
 
-const isStandaloneApp = (url: URL) => /\/(?:wordle|keybr)(?:\.html)?\/?$/.test(url.pathname);
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
 const hashTarget = (url: URL) => {
   if (!url.hash) return '';
@@ -72,12 +71,16 @@ export const preloadSiteRoute = async (url: URL) => {
   const route = routeFromUrl(url);
   if (route) await preload(route);
 };
+const preloadSiteHref = (href: string) => {
+  try {
+    const route = routeFromUrl(new URL(href, location.href));
+    if (route) void preload(route);
+  } catch {}
+};
 const setLoading = (value: boolean) => {
   globalThis.SameyLoading?.(value);
   document.documentElement.toggleAttribute('data-solid-loading', value);
 };
-const cancelSharedPageSwap = () => globalThis.SameyCancelPageSwap?.();
-const pageSwapNavigate = () => globalThis.SameyPageSwapNavigate;
 
 async function animateRouteSwap(commit: () => void, direction: NavigationDirection = 'forward') {
   await animateRootSwap(
@@ -245,21 +248,9 @@ export function App(props: { initialUrl?: string } = {}) {
     const id = ++navigationId;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
-    cancelSharedPageSwap();
     setNavigationError(null);
     if (url.href === location.href) { retryRenderedRoute(); setLoading(false); return; }
     dispatchEvent(new Event('samey-navigationstart'));
-    if (isStandaloneApp(url)) {
-      const pageSwap = pageSwapNavigate();
-      setLoading(true);
-      try {
-        if (pageSwap) { await pageSwap(url.href, { replace }); return; }
-        location.assign(url.href);
-      } catch (error) {
-        setNavigationError(navigationFailure(url, error, 'The game could not be loaded.'));
-      } finally { if (id === navigationId) setLoading(false); }
-      return;
-    }
     if (sameDocumentHash(url)) {
       setLoading(false);
       writeHistory(url, replace);
@@ -269,14 +260,9 @@ export function App(props: { initialUrl?: string } = {}) {
     }
     const next = routeFromUrl(url);
     if (!next) {
-      const pageSwap = pageSwapNavigate();
-      setLoading(true);
-      try {
-        if (pageSwap) await pageSwap(url.href, {replace});
-        else location.assign(url.href);
-      } catch (error) {
-        if (id === navigationId) setNavigationError(navigationFailure(url, error, 'The page could not be loaded.'));
-      } finally { if (id === navigationId) setLoading(false); }
+      setLoading(false);
+      if (replace) location.replace(url.href);
+      else location.assign(url.href);
       return;
     }
     if (next.kind === route().kind && cleanPath(url.pathname) === cleanPath(location.pathname)) {
@@ -323,6 +309,7 @@ export function App(props: { initialUrl?: string } = {}) {
   onSettled(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
+    globalThis.SameyPreloadPage = preloadSiteHref;
     globalThis.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -338,7 +325,6 @@ export function App(props: { initialUrl?: string } = {}) {
     };
     const pop = () => {
       const id = ++navigationId;
-      cancelSharedPageSwap();
       const url = new URL(location.href);
       const next = routeFromUrl(url);
       const previousIndex = navigationIndex;
@@ -350,12 +336,7 @@ export function App(props: { initialUrl?: string } = {}) {
       setNavigationError(null);
       dispatchEvent(new Event('samey-navigationstart'));
       if (!next) {
-        const pageSwap = pageSwapNavigate();
-        if (!pageSwap) { location.reload(); return; }
-        setLoading(true);
-        void pageSwap(url.href, {replace: true, force: true}).catch((error: unknown) => {
-          if (id === navigationId) setNavigationError(navigationFailure(url, error, 'The page could not be restored.'));
-        }).finally(() => { if (id === navigationId) setLoading(false); });
+        location.reload();
         return;
       }
       if (next.key === route().key) {
@@ -395,6 +376,7 @@ export function App(props: { initialUrl?: string } = {}) {
     return () => {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
+      if (globalThis.SameyPreloadPage === preloadSiteHref) globalThis.SameyPreloadPage = undefined;
       globalThis.SameyNavigate = undefined;
     };
   });

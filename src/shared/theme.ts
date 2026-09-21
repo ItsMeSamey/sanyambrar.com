@@ -1,7 +1,5 @@
-import { navigationState, readNavigationIndex } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
-import { errorMessage, errorWithCause, formatThrownError } from './error.ts';
 import { writeClipboardText } from './clipboard.ts';
 import { shortcutKey } from './platform.ts';
 import appearanceConfig from './appearance.json';
@@ -68,9 +66,13 @@ const asRecord = (value: unknown): UnknownRecord => isRecord(value) ? value : {}
 const eventElement = (event: Event): Element | null => event.target instanceof Element ? event.target : null;
 (() => {
   const currentScript = document.currentScript;
-  const SCRIPT_URL = new URL(currentScript instanceof HTMLScriptElement ? currentScript.src : location.href);
-  const SCRIPT_ROOT = new URL(".", SCRIPT_URL);
-  const BUILD_VERSION = SCRIPT_URL.searchParams.get("v") || "";
+  const runtimeRoot = currentScript instanceof HTMLScriptElement ? currentScript.dataset.sameyRuntimeRoot : "";
+  const SCRIPT_URL = new URL(currentScript instanceof HTMLScriptElement && currentScript.src ? currentScript.src : location.href);
+  const SCRIPT_ROOT = runtimeRoot ? new URL(runtimeRoot, location.href) : new URL(".", SCRIPT_URL);
+  const BUILD_VERSION = SCRIPT_URL.searchParams.get("v")
+    || (currentScript instanceof HTMLScriptElement ? currentScript.dataset.sameyBuild : "")
+    || document.querySelector<HTMLMetaElement>('meta[name="samey-build"]')?.content
+    || "";
   const KEY = "keybr.theme";
   const FONT_KEY = "samey.font";
   const CURSOR_MODES: readonly CursorMode[] = ["invert", "hardware", "native"];
@@ -932,17 +934,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     apply();
   };
 
-  const pushState = history.pushState.bind(history);
-  const replaceState = history.replaceState.bind(history);
-  let pageHistoryIndex = readNavigationIndex() ?? 0;
-  const writePageHistory = (url: URL, replace: boolean) => {
-    const current = readNavigationIndex();
-    if (current != null) pageHistoryIndex = current;
-    if (!replace) pageHistoryIndex += 1;
-    const state = navigationState(pageHistoryIndex);
-    (replace ? replaceState : pushState)(state, "", url.href);
-  };
-
   const runtimeNode = <T extends HTMLElement>(el: T): T => { el.dataset.sameyRuntime = ""; return el; };
 
   const linksIn = (root: ParentNode | HTMLAnchorElement = document): Iterable<HTMLAnchorElement> =>
@@ -1127,6 +1118,11 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const overlayIsVisible = (el: Element): el is HTMLElement => {
       if (!(el instanceof HTMLElement) || !el.isConnected || el.hidden || el.getAttribute("aria-hidden") === "true" || el.dataset.open === "false") return false;
+      if (el instanceof HTMLDialogElement && !el.open) return false;
+      // Native popovers stay mounted while closed. Reject the closed state from
+      // DOM/top-layer state alone so ordinary page mutations do not force a
+      // full style/layout flush just to rediscover that the popover is closed.
+      if (el.hasAttribute("popover") && !el.hasAttribute("data-expanded") && !el.matches(":popover-open")) return false;
       const style = getComputedStyle(el);
       if (style.display === "none") return false;
       // Native popovers intentionally spend a brief positioning phase at
@@ -1971,6 +1967,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (virtualDrag?.thumb === thumb && virtualDrag.pointerId === pointerId) virtualDrag = null;
   };
   let virtualRaf = 0;
+  let virtualNeedsRoot = false;
   const scrollMetrics = (target: Element) => target === document.scrollingElement
     ? { top: scrollY, size: innerHeight, total: target.scrollHeight }
     : { top: target.scrollTop, size: target.clientHeight, total: target.scrollHeight };
@@ -1988,7 +1985,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const updateVirtualBars = () => {
     virtualRaf = 0;
+    const includeRoot = virtualNeedsRoot;
+    virtualNeedsRoot = false;
     for (const [target, bar] of virtualBars) {
+      if (target === document.scrollingElement && !includeRoot) continue;
       if (!virtualScrollerEligible(target)) { bar.remove(); virtualBars.delete(target); continue; }
       const { top, size, total } = scrollMetrics(target);
       if (total <= size + 2) { bar.hidden = true; continue; }
@@ -2009,7 +2009,11 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }
     updateVirtualXBars();
   };
-  const scheduleVirtualBars = () => { if (!virtualRaf) virtualRaf = requestAnimationFrame(updateVirtualBars); };
+  const scheduleVirtualBars = (includeRoot = true) => {
+    virtualNeedsRoot ||= includeRoot;
+    if (!virtualRaf) virtualRaf = requestAnimationFrame(updateVirtualBars);
+  };
+  const scheduleVirtualBarsFor = (target: Element) => scheduleVirtualBars(target === document.scrollingElement);
   const addVirtualBar = (target: Element) => {
     if (virtualBars.has(target)) return;
     const bar = runtimeNode(document.createElement("div")); bar.className = "samey-vscroll";
@@ -2026,14 +2030,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
-      setScroll(target, startTop + (event.clientY - startY) * dragScale); scheduleVirtualBars();
+      setScroll(target, startTop + (event.clientY - startY) * dragScale); scheduleVirtualBarsFor(target);
     });
     bar.addEventListener("pointerdown", (event) => {
       if (event.target === thumb) return;
       const { size, total } = scrollMetrics(target); const rect = bar.getBoundingClientRect();
-      setScroll(target, ((event.clientY - rect.top) / rect.height) * Math.max(0, total - size)); scheduleVirtualBars();
+      setScroll(target, ((event.clientY - rect.top) / rect.height) * Math.max(0, total - size)); scheduleVirtualBarsFor(target);
     });
-    target.addEventListener("scroll", scheduleVirtualBars, { passive: true }); virtualBars.set(target, bar);
+    target.addEventListener("scroll", () => scheduleVirtualBarsFor(target), { passive: true }); virtualBars.set(target, bar);
   };
   const virtualXBars = new Map<Element, HTMLDivElement>();
   const addVirtualXBar = (target: Element) => {
@@ -2051,13 +2055,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     thumb.addEventListener("lostpointercapture", event => finishVirtualDrag(thumb, event.pointerId));
     thumb.addEventListener("pointermove", (event) => {
       if (!thumb.hasPointerCapture(event.pointerId)) return;
-      target.scrollLeft = startLeft + (event.clientX - startX) * dragScale; scheduleVirtualBars();
+      target.scrollLeft = startLeft + (event.clientX - startX) * dragScale; scheduleVirtualBars(false);
     });
     bar.addEventListener("pointerdown", (event) => {
       if (event.target === thumb) return;
-      const rect = bar.getBoundingClientRect(); target.scrollLeft = ((event.clientX - rect.left) / rect.width) * Math.max(0, target.scrollWidth - target.clientWidth); scheduleVirtualBars();
+      const rect = bar.getBoundingClientRect(); target.scrollLeft = ((event.clientX - rect.left) / rect.width) * Math.max(0, target.scrollWidth - target.clientWidth); scheduleVirtualBars(false);
     });
-    target.addEventListener("scroll", scheduleVirtualBars, { passive: true }); virtualXBars.set(target, bar);
+    target.addEventListener("scroll", () => scheduleVirtualBars(false), { passive: true }); virtualXBars.set(target, bar);
   };
   const updateVirtualXBars = () => {
     for (const [target, bar] of virtualXBars) {
@@ -2073,15 +2077,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const considerVirtualScroller = (el: Element) => {
     if (!el.isConnected || virtualScrollerOptOut(el)) return;
-    const overflowY = el.scrollHeight > el.clientHeight + 2;
-    const overflowX = el.scrollWidth > el.clientWidth + 2;
-    if (!overflowY && !overflowX) return;
     const style = getComputedStyle(el);
     if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= 0.001 || style.pointerEvents === "none") return;
+    const allowsY = style.overflowY === "auto" || style.overflowY === "scroll";
+    const allowsX = style.overflowX === "auto" || style.overflowX === "scroll";
+    if (!allowsY && !allowsX) return;
+    const overflowY = allowsY && el.scrollHeight > el.clientHeight + 2;
+    const overflowX = allowsX && el.scrollWidth > el.clientWidth + 2;
+    if (!overflowY && !overflowX) return;
     const rect = el.getBoundingClientRect();
     if (rect.width < 8 || rect.height < 8) return;
-    if (overflowY && (style.overflowY === "auto" || style.overflowY === "scroll")) addVirtualBar(el);
-    if (overflowX && (style.overflowX === "auto" || style.overflowX === "scroll")) addVirtualXBar(el);
+    if (overflowY) addVirtualBar(el);
+    if (overflowX) addVirtualXBar(el);
   };
   const scanVirtualScrollers = () => {
     const root = document.scrollingElement;
@@ -2109,7 +2116,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
             for (const el of target.querySelectorAll("*:not([data-samey-runtime])")) considerVirtualScroller(el);
         }
         pending.clear();
-        scheduleVirtualBars();
+        scheduleVirtualBars(false);
       });
     };
     new MutationObserver((records) => {
@@ -2126,7 +2133,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
             scheduleTargets([target], !!target && !target.hasAttribute("hidden"));
           continue;
         }
-        if (record.removedNodes.length) scheduleVirtualBars();
+        if (record.removedNodes.length) scheduleVirtualBars(false);
         for (const node of record.addedNodes)
           scheduleTargets([node instanceof Element ? node : node.parentElement], true);
       }
@@ -2135,27 +2142,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     // reads. Child additions and hidden visibility changes are sufficient for
     // discovery; scroll/resize keep known scrollbar geometry current.
     }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
-    new ResizeObserver(scheduleVirtualBars).observe(document.documentElement);
+    const rootResizeObserver = new ResizeObserver(() => scheduleVirtualBars(true));
+    rootResizeObserver.observe(document.documentElement);
+    rootResizeObserver.observe(document.body);
     addEventListener("resize", () => { scheduleVirtualBars(); scheduleTargets([document.body], true); });
-    addEventListener("scroll", scheduleVirtualBars, true);
+    addEventListener("scroll", (event) => {
+      const target = event.target;
+      const root = document.scrollingElement;
+      scheduleVirtualBars(target === document || target === root || target === document.documentElement || target === document.body);
+    }, true);
   };
 
-  type PageNavigationOptions = { replace?: boolean; force?: boolean; direction?: "forward" | "back"; returnUrl?: string };
-  type FetchedPage = { doc: Document; baseUrl: URL; ready: Promise<void> };
-  const hashTarget = (url: URL) => { if (!url.hash) return ""; try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); } };
-  const pageStyleNodes = () => [...document.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style:not([data-samey-shared]),link[rel="stylesheet"]:not([data-samey-shared])')];
-  const markInitialPageStyles = () => pageStyleNodes().forEach(el => { el.dataset.spaPage = ""; });
-  const pageCache = new Map<string, Promise<FetchedPage>>();
-  const PAGE_CACHE_LIMIT = 4;
-  const setLoading = (value: boolean) => {
-    globalThis.SameyLoading?.(value);
-  };
-  const syncHtmlData = (doc: Document) => {
-    const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color"]);
-    for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
-    for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-"))
-      document.documentElement.setAttribute(attr.name, attr.value);
-  };
   const extensionlessPageUrl = (url: URL) => {
     const clean = new URL(url.href);
     if (clean.origin !== location.origin) return clean;
@@ -2165,473 +2162,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
   if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
-
-  type KeybrPrefetchAssets = {
-    models?: Record<string, string>;
-    words?: Record<string, string>;
-    books?: Record<string, string>;
-  };
-  const warmedResources = new Map<string, Promise<void>>();
-  const WARMED_RESOURCE_LIMIT = 96;
-  const warmResource = (url: URL) => {
-    if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return Promise.resolve();
-    if (!/\.(?:js|css|json|data|wasm|woff2?|ttf)$/i.test(url.pathname)) return Promise.resolve();
-    const cached = warmedResources.get(url.href);
-    if (cached) {
-      warmedResources.delete(url.href);
-      warmedResources.set(url.href, cached);
-      return cached;
-    }
-    const task = fetch(url, { credentials: "same-origin", cache: "force-cache" }).then(response => {
-      if (!response.ok) throw new Error("Prefetch failed: HTTP " + response.status + " for " + url.href);
-    }).catch(error => {
-      if (warmedResources.get(url.href) === task) warmedResources.delete(url.href);
-      console.debug("Navigation resource prefetch failed", url.href, error);
-    });
-    warmedResources.set(url.href, task);
-    while (warmedResources.size > WARMED_RESOURCE_LIMIT) {
-      const oldest = warmedResources.keys().next().value;
-      if (oldest == null) break;
-      warmedResources.delete(oldest);
-    }
-    return task;
-  };
-  const addWarmUrl = (urls: Set<string>, value: string | null | undefined, baseUrl: URL) => {
-    if (!value) return;
-    try {
-      const url = new URL(value, baseUrl);
-      if (url.origin === location.origin && /^https?:$/.test(url.protocol)) urls.add(url.href);
-    } catch {}
-  };
-  const keybrPrefetchResources = (doc: Document, baseUrl: URL, urls: Set<string>) => {
-    const data = doc.querySelector<HTMLScriptElement>('script[type="application/json"][data-samey-prefetch-assets]');
-    if (!data?.textContent) return;
-    let rawAssets: unknown;
-    try { rawAssets = JSON.parse(data.textContent) as unknown; }
-    catch { return; }
-    if (!isRecord(rawAssets)) return;
-    const stringMap = (value: unknown): Record<string, string> | undefined => {
-      if (!isRecord(value)) return undefined;
-      return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
-    };
-    const assets: KeybrPrefetchAssets = {
-      models: stringMap(rawAssets.models),
-      words: stringMap(rawAssets.words),
-      books: stringMap(rawAssets.books),
-    };
-    let settings: Record<string, unknown> = {};
-    try {
-      const raw: unknown = JSON.parse(localStorage.getItem("settings") || "{}") as unknown;
-      if (isRecord(raw)) settings = raw;
-    } catch {}
-    const language = typeof settings["keyboard.language"] === "string" ? settings["keyboard.language"] : "en";
-    const lessonType = typeof settings["lesson.type"] === "string" ? settings["lesson.type"] : "guided";
-    addWarmUrl(urls, assets.models?.[language] ?? assets.models?.en, baseUrl);
-    if (lessonType === "guided" || lessonType === "wordlist") {
-      addWarmUrl(urls, assets.words?.[language] ?? assets.words?.en, baseUrl);
-    } else if (lessonType === "books") {
-      const book = typeof settings["lesson.books.book"] === "string" ? settings["lesson.books.book"] : "en-alice-wonderland";
-      addWarmUrl(urls, assets.books?.[book], baseUrl);
-    }
-  };
-  const pageWarmResources = (doc: Document, baseUrl: URL) => {
-    const urls = new Set<string>();
-    for (const script of doc.querySelectorAll<HTMLScriptElement>("script[src]"))
-      addWarmUrl(urls, script.getAttribute("src"), baseUrl);
-    for (const link of doc.querySelectorAll<HTMLLinkElement>("link[href]")) {
-      const rel = (link.getAttribute("rel") || "").toLowerCase().split(/\s+/);
-      if (rel.some(value => value === "stylesheet" || value === "modulepreload" || value === "preload" || value === "prefetch"))
-        addWarmUrl(urls, link.getAttribute("href"), baseUrl);
-    }
-    for (const style of doc.querySelectorAll<HTMLStyleElement>("style[data-samey-style-src]"))
-      addWarmUrl(urls, style.dataset.sameyStyleSrc, baseUrl);
-    if (doc.documentElement.dataset.siteKind === "keybr") keybrPrefetchResources(doc, baseUrl, urls);
-    return [...urls];
-  };
-  const fetchPage = async (url: URL): Promise<FetchedPage> => {
-    const logical = extensionlessPageUrl(url);
-    const fetchUrl = new URL(logical.href);
-    fetchUrl.hash = "";
-    const key = fetchUrl.href;
-    const cached = pageCache.get(key);
-    if (cached) {
-      pageCache.delete(key);
-      pageCache.set(key, cached);
-      return cached;
-    }
-    const task = (async () => {
-      const response = await fetch(fetchUrl, { headers: { "X-Samey-SPA": "1" }, credentials: "same-origin" });
-      if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || 'Unknown'} for ${fetchUrl.href}`);
-      // DOMParser creates an inert, detached document. Prefetch never adopts its
-      // elements or executes its scripts; it only warms same-origin resource bytes.
-      const doc = new DOMParser().parseFromString(await response.text(), "text/html");
-      const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
-      const baseUrl = new URL(baseTag || ".", fetchUrl.href);
-      const ready = Promise.all(pageWarmResources(doc, baseUrl).map(value => warmResource(new URL(value)))).then(() => {});
-      return { doc, baseUrl, ready };
-    })();
-    pageCache.set(key, task);
-    while (pageCache.size > PAGE_CACHE_LIMIT) {
-      const oldest = pageCache.keys().next().value;
-      if (oldest == null) break;
-      pageCache.delete(oldest);
-    }
-    try { return await task; }
-    catch (error) {
-      if (pageCache.get(key) === task) pageCache.delete(key);
-      throw error;
-    }
-  };
-  const normalizePageUrls = (doc: Document, baseUrl: URL) => {
-    for (const el of doc.querySelectorAll<HTMLElement>("[href]")) {
-      const value = el.getAttribute("href");
-      if (!value || value.startsWith("#") || /^(?:mailto:|tel:|javascript:|data:)/i.test(value)) continue;
-      el.setAttribute("href", new URL(value, baseUrl).href);
-    }
-    for (const el of doc.querySelectorAll<HTMLElement>("[src]")) {
-      const value = el.getAttribute("src");
-      if (!value || /^(?:data:|blob:)/i.test(value)) continue;
-      el.setAttribute("src", new URL(value, baseUrl).href);
-    }
-  };
-  const externalScriptReady = (script: HTMLScriptElement) => new Promise<void>(resolve => {
-    const done = () => resolve();
-    script.addEventListener("load", done, { once: true });
-    script.addEventListener("error", done, { once: true });
-  });
-  const runBodyScripts = (baseUrl: URL) => {
-    const pending: Promise<void>[] = [];
-    for (const old of [...document.body.querySelectorAll<HTMLScriptElement>("script")]) {
-      const fresh = document.createElement("script");
-      for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
-      const source = old.getAttribute("src");
-      if (source) {
-        pending.push(externalScriptReady(fresh));
-        fresh.src = new URL(source, baseUrl).href;
-      } else {
-        fresh.textContent = old.textContent;
-      }
-      old.replaceWith(fresh);
-    }
-    return Promise.all(pending).then(() => {});
-  };
-  const runHeadScripts = (doc: Document, baseUrl: URL) => {
-    const pending: Promise<void>[] = [];
-    document.head.querySelectorAll("script[data-spa-page-script]").forEach(script => script.remove());
-    for (const old of [...doc.head.querySelectorAll<HTMLScriptElement>("script")]) {
-      const source = old.getAttribute("src");
-      const resolved = source ? new URL(source, baseUrl).href : "";
-      if (resolved && /\/shared-runtime\.js(?:[?#]|$)/.test(resolved)) continue;
-      if (old.hasAttribute("data-keybr-entry") && typeof globalThis.SameyMountKeybr === "function") continue;
-      const fresh = document.createElement("script");
-      for (const attr of old.attributes) if (attr.name !== "src") fresh.setAttribute(attr.name, attr.value);
-      fresh.dataset.spaPageScript = "";
-      if (resolved) {
-        pending.push(externalScriptReady(fresh));
-        fresh.src = resolved;
-      } else {
-        fresh.textContent = old.textContent;
-      }
-      document.head.append(fresh);
-    }
-    return Promise.all(pending).then(() => {});
-  };
-  const clearPageBody = (): HTMLElement | null => {
-    const runtimeAnchor = document.body.querySelector<HTMLElement>("[data-samey-runtime]");
-    for (const child of [...document.body.children]) if (!child.hasAttribute("data-samey-runtime")) child.remove();
-    return runtimeAnchor;
-  };
-  let currentPagePath = location.pathname;
-  let currentPageUrl = extensionlessPageUrl(new URL(location.href)).href;
-  const swapPage = (doc: Document, baseUrl: URL, url: URL, replace: boolean) => {
-    const disposalErrors: unknown[] = [];
-    for (const [label, dispose] of [
-      ["Solid", globalThis.SameySolidDispose],
-      ["Wordle", globalThis.SameyWordleDispose],
-      ["Keybr", globalThis.SameyKeybrDispose],
-    ] as const) {
-      try { dispose?.(); }
-      catch (error) { disposalErrors.push(errorWithCause(`${label} teardown failed`, error)); }
-    }
-    if (disposalErrors.length) throw new AggregateError(disposalErrors, "Current page teardown failed");
-    dispatchEvent(new Event("samey-pageleave"));
-    normalizePageUrls(doc, baseUrl);
-    document.querySelectorAll("head > [data-spa-page]").forEach(el => el.remove());
-    for (const el of [...doc.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style,link[rel="stylesheet"]')]) {
-      const copy = el.cloneNode(true);
-      if (!(copy instanceof HTMLStyleElement || copy instanceof HTMLLinkElement)) continue;
-      copy.dataset.spaPage = "";
-      if (copy instanceof HTMLLinkElement && el instanceof HTMLLinkElement) {
-        const href = el.getAttribute("href");
-        if (href) copy.href = new URL(href, baseUrl).href;
-      }
-      document.head.append(copy);
-    }
-    const runtimeAnchor = clearPageBody();
-    for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
-    document.title = doc.title; syncHtmlData(doc);
-    currentPagePath = url.pathname;
-    currentPageUrl = url.href;
-    writePageHistory(url, replace);
-    const scriptsReady = Promise.all([
-      runBodyScripts(baseUrl),
-      runHeadScripts(doc, baseUrl),
-    ]).then(() => {});
-    apply(); scanVirtualScrollers();
-    if (!url.hash) scrollTo({ top: 0, left: 0, behavior: "instant" });
-    else queueMicrotask(() => document.getElementById(hashTarget(url))?.scrollIntoView());
-    dispatchEvent(new CustomEvent("samey-pageload", { detail: { url: url.href } }));
-    return scriptsReady;
-  };
-  const destinationRoot = (): HTMLElement | null => {
-    if (document.documentElement.dataset.siteKind === "keybr") return document.getElementById("app");
-    if (document.documentElement.hasAttribute("data-static-article")) return document.querySelector<HTMLElement>(".article-route");
-    return document.querySelector<HTMLElement>("#solid-site-app,[data-wordle-root],.site-route,.article-route");
-  };
-  const destinationMounted = (root: HTMLElement | null) => {
-    const kind = document.documentElement.dataset.siteKind;
-    if (kind === "keybr") return typeof globalThis.SameyKeybrDispose === "function";
-    if (kind === "wordle") return typeof globalThis.SameyWordleDispose === "function";
-    const solidRoot = document.getElementById("site-root");
-    if (solidRoot) return solidRoot.hasAttribute("data-samey-solid-mounted");
-    if (document.documentElement.hasAttribute("data-static-article")) return Boolean(root?.childElementCount);
-    return Boolean(root?.childElementCount);
-  };
-  const remountReusableDestination = () => {
-    const kind = document.documentElement.dataset.siteKind;
-    if (kind === "keybr" && typeof globalThis.SameyKeybrDispose !== "function" && document.getElementById("app"))
-      globalThis.SameyMountKeybr?.();
-    else if (document.getElementById("site-root"))
-      globalThis.SameyMountSolid?.();
-  };
-  const beginDestinationFailureCapture = () => {
-    let failed = false;
-    let failure: unknown;
-    const record = (error: unknown) => {
-      if (failed) return;
-      failed = true;
-      failure = error;
-    };
-    const onError = (event: Event) => {
-      if (event instanceof ErrorEvent) {
-        const locationText = [event.filename, event.lineno && event.colno ? `${event.lineno}:${event.colno}` : ""].filter(Boolean).join(":");
-        record(event.error ?? new Error(`${event.message || "Uncaught page error"}${locationText ? ` at ${locationText}` : ""}`));
-        return;
-      }
-      const target = event.target;
-      if (target instanceof HTMLScriptElement) record(new Error(`Script failed to load: ${target.src || "[inline script]"}`));
-      else if (target instanceof HTMLLinkElement) record(new Error(`Stylesheet failed to load: ${target.href || "[unknown stylesheet]"}`));
-    };
-    const onRejection = (event: PromiseRejectionEvent) => record(event.reason);
-    addEventListener("error", onError, true);
-    addEventListener("unhandledrejection", onRejection);
-    return {
-      failure: () => failed ? failure : undefined,
-      stop: () => {
-        removeEventListener("error", onError, true);
-        removeEventListener("unhandledrejection", onRejection);
-      },
-    };
-  };
-  const DESTINATION_STARTUP_TIMEOUT_MS = 15_000;
-  const DESTINATION_STARTUP_POLL_MS = 25;
-  const waitForDestinationRoot = async (
-    capturedFailure: () => unknown | undefined,
-    scriptsReady: Promise<void>,
-  ) => {
-    let scriptsSettled = false;
-    void scriptsReady.then(() => { scriptsSettled = true; });
-    const deadline = performance.now() + DESTINATION_STARTUP_TIMEOUT_MS;
-    while (performance.now() < deadline) {
-      const root = destinationRoot();
-      if (destinationMounted(root)) return root;
-      const failure = capturedFailure();
-      if (failure !== undefined) {
-        throw errorWithCause(
-          `The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`,
-          failure,
-        );
-      }
-      if (scriptsSettled) {
-        remountReusableDestination();
-        const mountedRoot = destinationRoot();
-        if (destinationMounted(mountedRoot)) return mountedRoot;
-      }
-      await new Promise<void>(resolve => setTimeout(resolve, DESTINATION_STARTUP_POLL_MS));
-    }
-    const failure = capturedFailure();
-    if (failure !== undefined) {
-      throw errorWithCause(
-        `The ${document.documentElement.dataset.siteKind || "destination"} application failed while mounting.`,
-        failure,
-      );
-    }
-    const kind = document.documentElement.dataset.siteKind || "destination";
-    throw new Error(
-      scriptsSettled
-        ? `The ${kind} application did not mount before the startup timeout.`
-        : `The ${kind} application scripts did not finish loading before the startup timeout.`,
-    );
-  };
-  type ErrorPageBackgroundSnapshot = {
-    node: HTMLElement;
-    inert: boolean;
-    ariaHidden: string | null;
-  };
-  let loadErrorBackground: ErrorPageBackgroundSnapshot[] = [];
-  const restoreLoadErrorBackground = () => {
-    for (const { node, inert, ariaHidden } of loadErrorBackground) {
-      if (!node.isConnected) continue;
-      node.inert = inert;
-      if (ariaHidden == null) node.removeAttribute("aria-hidden");
-      else node.setAttribute("aria-hidden", ariaHidden);
-    }
-    loadErrorBackground = [];
-  };
-  const dismissLoadError = () => {
-    document.getElementById("samey-load-error")?.remove();
-    restoreLoadErrorBackground();
-  };
-  const showLoadError = (
-    url: URL,
-    error: unknown,
-    retry: () => unknown | Promise<unknown>,
-    returnUrl: string,
-  ) => {
-    dismissLoadError();
-    const panel = runtimeNode(document.createElement("section"));
-    panel.id = "samey-load-error";
-    panel.className = "samey-load-error samey-error-page";
-    panel.setAttribute("role", "alert");
-    panel.setAttribute("aria-live", "assertive");
-    panel.setAttribute("aria-labelledby", "samey-load-error-title");
-    panel.tabIndex = -1;
-    const message = errorMessage(error, "The page could not be loaded.");
-    const destination = url.pathname + url.search + url.hash;
-    panel.innerHTML = `<div class="samey-error-page-panel"><span class="samey-error-page-kicker">Navigation error</span><h1 id="samey-load-error-title">Page failed to load</h1><p class="samey-error-page-message"></p><div class="samey-error-page-target"><span>Destination</span><code></code></div><pre class="samey-error-stack samey-load-error-stack" tabindex="0"></pre><div class="samey-load-error-actions samey-error-page-actions"><button type="button" class="primary" data-retry>Retry</button><a>Open normally</a><button type="button" class="quiet" data-dismiss>Go back</button></div></div>`;
-    const messageNode = panel.querySelector<HTMLElement>(".samey-error-page-message");
-    const destinationNode = panel.querySelector<HTMLElement>(".samey-error-page-target code");
-    const stackNode = panel.querySelector<HTMLElement>(".samey-load-error-stack");
-    const normal = panel.querySelector<HTMLAnchorElement>("a");
-    const retryButton = panel.querySelector<HTMLButtonElement>("[data-retry]");
-    const dismissButton = panel.querySelector<HTMLButtonElement>("[data-dismiss]");
-    if (messageNode) messageNode.textContent = message;
-    if (destinationNode) destinationNode.textContent = destination;
-    if (stackNode) stackNode.textContent = formatThrownError(error);
-    if (normal) {
-      normal.href = url.href;
-      normal.dataset.sameyNativeNav = "";
-      normal.addEventListener("click", event => {
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
-        event.stopPropagation();
-        location.assign(url.href);
-      });
-    }
-    retryButton?.addEventListener("click", () => { dismissLoadError(); void retry(); });
-    dismissButton?.addEventListener("click", () => {
-      dismissLoadError();
-      const target = extensionlessPageUrl(new URL(returnUrl, location.href));
-      if (target.href !== extensionlessPageUrl(new URL(location.href)).href) location.replace(target.href);
-    });
-    document.body.append(panel);
-    loadErrorBackground = [...document.body.children]
-      .filter((node): node is HTMLElement => node instanceof HTMLElement && node !== panel && !node.hasAttribute("data-samey-runtime"))
-      .map(node => ({ node, inert: node.inert, ariaHidden: node.getAttribute("aria-hidden") }));
-    for (const { node } of loadErrorBackground) {
-      node.inert = true;
-      node.setAttribute("aria-hidden", "true");
-    }
-    queueMicrotask(() => panel.focus({ preventScroll: true }));
-  };
-  let pageNavigationId = 0;
-  const cancelPageNavigation = () => { pageNavigationId++; setLoading(false); };
-  globalThis.SameyCancelPageSwap = cancelPageNavigation;
-  const loadPage = async (
-    href: string | URL,
-    { replace = false, force = false, direction, returnUrl }: PageNavigationOptions = {},
-  ) => {
-    const id = ++pageNavigationId;
-    const stableReturnUrl = returnUrl ?? currentPageUrl;
-    const url = extensionlessPageUrl(new URL(href, location.href));
-    if (url.origin !== location.origin) { location.href = url.href; return; }
-    dismissLoadError();
-    if (!force && url.href === location.href) { setLoading(false); return; }
-    dispatchEvent(new Event("samey-navigationstart"));
-    setLoading(true);
-    try {
-      const { doc, baseUrl, ready } = await fetchPage(url);
-      await ready;
-      if (id !== pageNavigationId) return;
-      const current = destinationRoot();
-      const commit = async () => {
-        const failures = beginDestinationFailureCapture();
-        try {
-          const scriptsReady = swapPage(doc, baseUrl, url, replace);
-          await waitForDestinationRoot(failures.failure, scriptsReady);
-          document.getElementById("samey-boot")?.remove();
-          document.getElementById("samey-boot-style")?.remove();
-        } finally {
-          failures.stop();
-        }
-      };
-      const swapDirection = direction ?? (url.pathname === "/" || /\/index(?:\.html)?$/.test(url.pathname) ? "back" : "forward");
-      await animateRootSwap(current, commit, destinationRoot, swapDirection);
-    } catch (error) {
-      if (id !== pageNavigationId) return;
-      showLoadError(url, error, () => loadPage(url.href, { replace, force, returnUrl: stableReturnUrl }), stableReturnUrl);
-      throw error;
-    } finally {
-      if (id === pageNavigationId) setLoading(false);
-    }
-  };
-  globalThis.SameyPageSwapNavigate = (href, opts) => loadPage(href, opts);
+  globalThis.SameyPreloadPage = undefined;
   globalThis.SameyAnimateLocalSwap = (root, commit, direction = "forward") => animateRootSwap(root, commit, () => root, direction);
-  const shouldSpa = (url: URL) => url.origin === location.origin;
-  const prefetch = (href: string) => {
-    const url = new URL(href, location.href);
-    if (!shouldSpa(url)) return;
-    fetchPage(url).then(page => page.ready).catch(error => console.debug("Page prefetch failed", error));
-  };
-  globalThis.SameyPreloadPage = prefetch;
-  let documentNavigationMounted = false;
-  const mountSpa = () => {
-    if (document.documentElement.hasAttribute("data-site-spa")) return;
-    globalThis.SameyNavigate = (href, opts) => loadPage(href, opts);
-    if (documentNavigationMounted) return;
-    documentNavigationMounted = true;
-    document.addEventListener("pointerover", event => {
-      if (document.documentElement.hasAttribute("data-site-spa")) return;
-      const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
-      if (link && !link.target) prefetch(link.href);
-    }, { passive: true });
-    document.addEventListener("focusin", event => {
-      if (document.documentElement.hasAttribute("data-site-spa")) return;
-      const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
-      if (link && !link.target) prefetch(link.href);
-    });
-    document.addEventListener("click", event => {
-      if (document.documentElement.hasAttribute("data-site-spa")) return;
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const link = eventElement(event)?.closest<HTMLAnchorElement>("a[href]");
-      if (!link || link.target || link.hasAttribute("download") || link.hasAttribute("data-samey-native-nav")) return;
-      const url = new URL(link.href, location.href);
-      if (!shouldSpa(url) || url.hash && url.pathname === location.pathname && url.search === location.search) return;
-      event.preventDefault();
-      const direction = link.dataset.navDirection === "back" || url.pathname === "/" ? "back" : "forward";
-      void loadPage(url.href, { direction }).catch(error => console.error("SPA navigation failed", error));
-    });
-    addEventListener("popstate", () => {
-      const solidMounted = document.documentElement.hasAttribute("data-site-spa")
-        && document.getElementById("site-root")?.hasAttribute("data-samey-solid-mounted");
-      if (solidMounted || location.pathname === currentPagePath) return;
-      const previousIndex = pageHistoryIndex;
-      const nextIndex = readNavigationIndex();
-      const direction = nextIndex != null && nextIndex < previousIndex ? "back" : "forward";
-      if (nextIndex != null) pageHistoryIndex = nextIndex;
-      void loadPage(location.href, { replace: true, force: true, direction }).catch(error => console.error("SPA history restoration failed", error));
-    });
-  };
 
   addEventListener("storage", (event) => { if (event.key === KEY || event.key === FONT_KEY) apply(); });
   matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
@@ -2743,14 +2275,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
 
   const mountRuntime = () => {
-    if (readNavigationIndex() == null) replaceState(navigationState(pageHistoryIndex), "", location.href);
     normalizeExternalLinks(); observeLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSmoothSliderMotion();
-    // Only styles present on a directly loaded non-Solid document are initial page styles.
-    // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;
-    // marking those on the first swapped page would delete them on the next back navigation.
-    if (!document.documentElement.hasAttribute("data-site-spa")) markInitialPageStyles();
-    mountSpa();
-    addEventListener("samey-pageload", mountSpa);
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
