@@ -4417,6 +4417,7 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
   await expect(exitFullscreen).toHaveCSS('opacity', '0');
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
   await expectContained();
+  await expect(exitFullscreen).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(frame).not.toHaveClass(/is-fullscreen/);
   await expect(fullscreen).toHaveAttribute('aria-pressed', 'false');
@@ -4632,7 +4633,9 @@ test('Reverb blob renderer pauses while its screen is hidden', async ({ page }, 
 
   await host.locator('#openSettings').click();
   await expect(host.locator('#settingsScreen')).toHaveClass(/active/);
-  await page.waitForTimeout(80);
+  // Settings owns a native 220 ms reveal. Sample only after that intentional
+  // foreground motion settles so this counter isolates hidden blob polling.
+  await page.waitForTimeout(260);
   const hiddenDrawCount = await drawCount();
   const hiddenRafCount = await rafCount();
   const hiddenTimer = await timerSeconds();

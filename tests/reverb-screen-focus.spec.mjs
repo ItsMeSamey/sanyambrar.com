@@ -231,4 +231,20 @@ test('Reverb screen focus handoff cannot steal a later external focus', async ({
   await expect(fullscreen).toBeFocused();
   await page.evaluate(() => new Promise(requestAnimationFrame));
   await expect(fullscreen).toBeFocused();
+
+  // Range readiness is delayed until the native opening motion reaches 98%. A later
+  // external focus handoff must win instead of being stolen when that readiness fires.
+  await host.evaluate(element => {
+    const openRange = element.shadowRoot?.querySelector('#openRange');
+    if (!(openRange instanceof HTMLElement)) throw new Error('Range opener is unavailable');
+    openRange.click();
+  });
+  await fullscreen.focus();
+  await expect(fullscreen).toBeFocused();
+  await expect.poll(() => host.evaluate(element =>
+    element.shadowRoot?.querySelector('#rangeScreen')?.getAttribute('data-range-interaction-ready')
+      ?? element.shadowRoot?.querySelector('#rangeScreen')?.dataset.rangeInteractionReady
+      ?? 'false'
+  )).toBe('true');
+  await expect(fullscreen).toBeFocused();
 });

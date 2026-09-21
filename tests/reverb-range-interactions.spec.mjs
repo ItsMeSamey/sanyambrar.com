@@ -227,17 +227,35 @@ test('Reverb Range duration wheel drops a delayed commit after target handoff', 
   await page.keyboard.press('Enter');
   await start.focus();
 
-  const box = await wheel.boundingBox();
-  if (!box) throw new Error('Range duration wheel has no geometry');
-  const x = box.x + box.width * 0.68;
-  const y = box.y + box.height * 0.5;
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.mouse.move(x, y - box.height * (42 / 160), { steps: 4 });
-  await page.mouse.up();
+  await host.evaluate(element => {
+    const root = element.shadowRoot;
+    const wheel = root?.querySelector('#rangeDurationWheel');
+    const end = root?.querySelector('#rangeEnd');
+    if (!(wheel instanceof HTMLElement) || !(end instanceof HTMLElement))
+      throw new Error('Range wheel handoff surfaces are unavailable');
+    const rect = wheel.getBoundingClientRect();
+    const x = rect.left + rect.width * 0.68;
+    const startY = rect.top + rect.height * 0.5;
+    const endY = startY - rect.height * (42 / 160);
+    const pointer = (type, y, buttons) => new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 211,
+      pointerType: 'mouse',
+      isPrimary: true,
+      button: 0,
+      buttons,
+      clientX: x,
+      clientY: y,
+    });
+    wheel.dispatchEvent(pointer('pointerdown', startY, 1));
+    wheel.dispatchEvent(pointer('pointermove', endY, 1));
+    wheel.dispatchEvent(pointer('pointerup', endY, 0));
+    // Handoff in the same browser task as release. A Playwright RPC round-trip can exceed
+    // the native 150 ms settle delay under suite load and no longer models a pre-commit tap.
+    end.focus({ preventScroll: true });
+  });
   await expect(exportButton).toBeDisabled();
-
-  await end.focus();
   await expect(end).toBeFocused();
   await page.waitForTimeout(180);
 

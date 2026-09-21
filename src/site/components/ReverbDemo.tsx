@@ -305,6 +305,12 @@ function mountReverbDemo(host: HTMLDivElement) {
 
   const demoDocument: ReverbDemoDocument = {
     createElement: document.createElement.bind(document),
+    createElementNS: document.createElementNS.bind(document),
+    get activeElement() { return shadow.activeElement; },
+    get externalFocusActive() {
+      const activeElement = document.activeElement;
+      return activeElement != null && activeElement !== document.body && activeElement !== host;
+    },
     querySelector: selectors => shadow.querySelector(selectors),
     querySelectorAll: selectors => shadow.querySelectorAll(selectors),
     addEventListener: (type, listener, options) => shadow.addEventListener(type, listener, options),
