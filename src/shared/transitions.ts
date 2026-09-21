@@ -21,20 +21,24 @@ const CONSTRUCTED_TRANSITION = {
 } as const;
 
 const CONSTRUCTION_LINE_SELECTOR = [
-  'header', 'nav', 'main', 'section', 'article', 'aside', 'footer', 'form', 'figure', 'fieldset',
+  'footer', 'form', 'fieldset',
   'table', 'thead', 'tbody', 'tr', 'ul', 'ol', 'blockquote', 'pre', 'hr', 'details', 'summary',
   '[role="dialog"]', '[role="group"]', '[role="radiogroup"]', '[data-samey-construction-line]',
-  'button', 'input', 'select', 'textarea', 'kbd',
+  'input', 'select', 'textarea', 'kbd',
   '.site-topbar', '.intro', '.grid', '.grid > *', '.compact-list', '.compact-row',
   '.intro-meta span + span', '.chain-live-mark',
   '.project-grid', '.project', '.home-tool-matrix', '.home-tool', '.home-writing-split', '.home-writing-read',
   '.home-writing-index', '.home-writing-link', '.fact-strip', '.fact-strip > *', '.detail-copy',
-  '.blog-split-index', '.blog-index-nav', '.blog-index-link', '.blog-index-detail', '.blog-detail-footer',
+  '.article-head', '.article-route .aside', '.article-route .viz',
+  '.reverb-demo-fullscreen-button', '.markdown-view-toggle button',
   '.cnn-demo-shell', '.cnn-controls-row', '.cnn-output-pane', '.cnn-unknown-key > b',
   '.markdown-divider', '.vditor-ir__node:is(h1,h2,h3,h4,h5,h6)',
-  '.wordle-mode-card', '.stats-section', '.stats-history-row', '.active-game-card', '.samey-dialog',
-  '.chain-mode-card', '.chain-stats-grid > *', '.chain-replay-stage', '.chain-replay-controls', '.chain-result',
-  '.game-settings-popover', '.game-settings-actions', '.keybr-segmented', '.keybr-segmented-item',
+  '.wordle-mode-card', '.wordle-date-picker-trigger', '.wordle-mode-action',
+  '.stats-section', '.stats-history-row', '.active-game-card', '.samey-dialog',
+  '.chain-mode-card', '.chain-mode-action', '.chain-preset',
+  '.chain-stats-grid > *', '.chain-replay-stage', '.chain-replay-controls', '.chain-result',
+  '.game-settings-popover', '.game-settings-actions', '.game-settings-action',
+  '.keybr-segmented', '.keybr-segmented-item',
 ].join(',');
 
 const CONSTRUCTION_CONTENT_SELECTOR = [
@@ -46,15 +50,13 @@ const CONSTRUCTION_CONTENT_SELECTOR = [
   '.home-tool-desc', '.home-writing-link > *', '.home-writing-kicker', '.home-writing-detail time',
   '.home-writing-detail h2', '.home-writing-dek', '.home-writing-summary', '.home-writing-detail li',
   '.page-intro > *', '.project-detail > .eyebrow', '.project-detail > h1', '.project-source-link',
-  '.fact-strip > *', '.project-description > *', '.blog-index-eyebrow', '.blog-index-intro h1',
-  '.blog-index-intro p', '.blog-index-link > *', '.blog-detail-kicker', '.blog-detail-date',
-  '.blog-index-detail h2', '.blog-detail-dek', '.blog-detail-summary', '.blog-detail-points li',
-  '.blog-detail-footer > *', '.chain-mode-eyebrow', '.chain-mode-spec', '.chain-turn',
+  '.fact-strip > *', '.project-description > *', '.chain-mode-eyebrow', '.chain-mode-spec', '.chain-turn',
   '.chain-stats-grid > *', '.chain-stat-row', '.game-settings-section-title',
   '.game-settings-slider-head', '.keybr-segmented-item',
 ].join(',');
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const CONTENT_MEASURE_BATCH = 16;
 const BORDER_HIDE_ATTR = {
   top: 'data-samey-construction-hide-top',
   right: 'data-samey-construction-hide-right',
@@ -182,14 +184,11 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
     svg.append(stroke);
     return true;
   };
-  const queueHide = (element: HTMLElement, sides: BorderSide[], rounded = false) => {
+  const queueHide = (element: HTMLElement, sides: BorderSide[]) => {
     let attrs = hiddenBorders.get(element);
     if (!attrs) {
       attrs = new Set<string>();
       hiddenBorders.set(element, attrs);
-    }
-    if (rounded) {
-      attrs.add('data-samey-construction-rounded');
     }
     for (const side of sides) {
       const attr = BORDER_HIDE_ATTR[side];
@@ -229,7 +228,7 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
         ].join(':');
         addStroke(key, rounded.paths[side], first.width, first.color, rounded.rounded);
       }
-      queueHide(element, visible, rounded.rounded);
+      queueHide(element, visible);
       continue;
     }
 
@@ -259,7 +258,6 @@ function makeConstructionLayer(root: HTMLElement): ConstructionLayer {
   // transition is being prepared, which shows up as a hitch before the first
   // construction stroke.
   for (const [element, attrs] of hiddenBorders) {
-    element.setAttribute('data-samey-construction-source', '');
     for (const attr of attrs) element.setAttribute(attr, '');
   }
   document.body.append(layer);
@@ -284,32 +282,37 @@ function animateConstructionLines(construction: ConstructionLayer, phase: Phase,
   });
 }
 
-function measureConstructionContent(root: HTMLElement) {
-  const measured: { element: HTMLElement; baseline: number }[] = [];
-  const measuredElements = new Set<HTMLElement>();
+type MeasuredContent = { element: HTMLElement; baseline: number };
+
+async function measureConstructionContent(root: HTMLElement) {
+  const measured: MeasuredContent[] = [];
+  const coveredElements = new Set<HTMLElement>();
+  let inspected = 0;
   for (const element of root.querySelectorAll<HTMLElement>(CONSTRUCTION_CONTENT_SELECTOR)) {
     if (measured.length >= CONSTRUCTED_TRANSITION.maxContentTargets) break;
     if (element.closest('[hidden],[aria-hidden="true"]')) continue;
-    if (!inViewport(element.getBoundingClientRect())) continue;
     let ancestor = element.parentElement;
     let nested = false;
     while (ancestor && ancestor !== root) {
-      if (measuredElements.has(ancestor)) {
+      if (coveredElements.has(ancestor)) {
         nested = true;
         break;
       }
       ancestor = ancestor.parentElement;
     }
     if (nested) continue;
+    coveredElements.add(element);
+    if (inspected > 0 && inspected % CONTENT_MEASURE_BATCH === 0) await nextFrame();
+    inspected++;
+    if (!inViewport(element.getBoundingClientRect())) continue;
     const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
     const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
     measured.push({ element, baseline });
-    measuredElements.add(element);
   }
   return measured;
 }
 
-function animateConstructionContent(measured: ReturnType<typeof measureConstructionContent>, phase: Phase) {
+function animateConstructionContent(measured: MeasuredContent[], phase: Phase) {
   const entering = phase === 'in';
   return measured.map(({ element, baseline }, index) => {
     const faded = Math.max(0, baseline * CONSTRUCTED_TRANSITION.contentFloor);
@@ -333,15 +336,15 @@ function animateConstructionContent(measured: ReturnType<typeof measureConstruct
 function restoreConstructionSources(construction: ConstructionLayer) {
   for (const [element, attrs] of construction.hiddenBorders) {
     for (const attr of attrs) element.removeAttribute(attr);
-    element.removeAttribute('data-samey-construction-source');
   }
 }
 
 async function animateConstructionExit(root: HTMLElement, direction: Direction) {
-  const content = measureConstructionContent(root);
   const construction = makeConstructionLayer(root);
+  const lineAnimations = animateConstructionLines(construction, 'out', direction);
+  const content = await measureConstructionContent(root);
   const animations = [
-    ...animateConstructionLines(construction, 'out', direction),
+    ...lineAnimations,
     ...animateConstructionContent(content, 'out'),
   ];
   await waitAnimations(animations);
@@ -349,10 +352,11 @@ async function animateConstructionExit(root: HTMLElement, direction: Direction) 
 }
 
 async function animateConstructionEntrance(root: HTMLElement, direction: Direction) {
-  const content = measureConstructionContent(root);
   const construction = makeConstructionLayer(root);
+  const lineAnimations = animateConstructionLines(construction, 'in', direction);
+  const content = await measureConstructionContent(root);
   const animations = [
-    ...animateConstructionLines(construction, 'in', direction),
+    ...lineAnimations,
     ...animateConstructionContent(content, 'in'),
   ];
   await waitAnimations(animations);
@@ -362,7 +366,12 @@ async function animateConstructionEntrance(root: HTMLElement, direction: Directi
 }
 
 async function resolveIncoming(next: () => HTMLElement | null, current: HTMLElement | null) {
-  await Promise.resolve();
+  // Solid commits the incoming tree synchronously. Move construction geometry
+  // prep into the next animation-frame task so route rendering and measurement
+  // cannot combine into one long main-thread task. The continuation runs from
+  // the rAF callback before that frame paints, so the real incoming borders do
+  // not flash before the construction overlay takes ownership.
+  await nextFrame();
   let incoming = next();
   if (!incoming || incoming === current || !incoming.isConnected) {
     await nextFrame();

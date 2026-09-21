@@ -7,6 +7,7 @@ import { toastProps, useToast } from "../../widget/components/toast/context.tsx"
 import { toast } from "../../widget/components/toast/Toaster.tsx";
 import { FormattedMessage } from "../../intl/runtime.tsx";
 import styles from "./EventAlert.module.css";
+import animations from "../../widget/components/toast/animations.module.css";
 import { type LessonEvent } from "./event-types.ts";
 function EventAlert(props: {
     readonly event: LessonEvent;
@@ -40,7 +41,7 @@ export function displayEvent(event: LessonEvent): void {
 
 function Award(props: { readonly icon: JSX.Element; readonly children: JSX.Element }): JSX.Element {
     const toast = useToast();
-    return <div class={styles.award} {...toastProps(toast)}>
+    return <div class={clsx(styles.award, animations.fadeIn)} {...toastProps(toast)}>
       <div class={styles.awardIcon}>{props.icon}</div>
       <div class={styles.message}>{props.children}</div>
     </div>;

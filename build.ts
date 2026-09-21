@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 import { details, games, posts, projects } from "./src/site/data.ts";
@@ -45,48 +45,77 @@ let docsExistedBeforeBuild = false;
 const log = (message: string) => console.log(`[build] ${message}`);
 const must: (ok: unknown, message: string) => asserts ok = (ok, message) => { if (!ok) throw new Error(message); };
 const requireRecord = (value: unknown, message: string): UnknownRecord => { must(isRecord(value), message); return value; };
-const siteShell = (title: string, kind: string, root = "./") => `<!doctype html><html lang="en" data-site-spa data-site-kind="${kind}" data-site-page="${kind}" data-home-href="${root}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>${title}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="${root}site.css" data-samey-shared><script src="${root}shared-runtime.js"></script><script type="module" src="${root}site-app.js"></script></head><body><div id="site-root"></div></body></html>`;
+const siteShell = (title: string, kind: string, root = "./") => `<!doctype html><html lang="en" data-site-spa data-site-kind="${kind}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>${title}</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="${root}site.css" data-samey-shared><script src="${root}shared-runtime.js"></script><script type="module" src="${root}site-app.js"></script></head><body><div id="site-root"></div></body></html>`;
 
-async function generateSiteRoute(root: string, path: string, title: string, kind: string, assetRoot: string) {
-  const routeDir = join(root, path);
-  await mkdir(routeDir, { recursive: true });
-  await writeFile(join(routeDir, "index.html"), siteShell(title, kind, assetRoot));
-}
+type SiteRoute = {
+  path: string;
+  href: string;
+  file: string;
+  title: string;
+  kind: string;
+  assetRoot: string;
+  sources: string[];
+  prerender: boolean;
+};
+const routeAssetRoot = (path: string) => path ? "../".repeat(path.split("/").length) : "./";
+const siteRoute = (
+  path: string,
+  title: string,
+  kind: string,
+  sources: string[],
+  prerender = false,
+): SiteRoute => ({
+  path,
+  href: path ? `/${path}/` : "/",
+  file: path ? `${path}/index.html` : "index.html",
+  title,
+  kind,
+  assetRoot: routeAssetRoot(path),
+  sources,
+  prerender,
+});
+const PROJECT_DEMO_SOURCES = {
+  "reverb-ui": "src/site/components/ReverbDemo.tsx",
+  "cnn-draw": "src/site/components/CnnDemo.tsx",
+} as const;
+const SITE_ROUTES: SiteRoute[] = [
+  siteRoute("", "Sanyam Brar", "home", ["src/site/pages/Home.tsx"], true),
+  siteRoute("work", "Work · Sanyam Brar", "work", ["src/site/pages/Work.tsx"], true),
+  siteRoute("tools", "Tools · Sanyam Brar", "tools", ["src/tools/Tools.tsx"]),
+  siteRoute("chain", "Chain Reaction", "chain", ["src/games/chain/Chain.tsx"]),
+  siteRoute("blog", "Writing · Sanyam Brar", "blog", ["src/blogs/Blog.tsx"], true),
+  ...Object.entries(details).map(([slug, detail]) => siteRoute(
+    `projects/${slug}`,
+    `${detail.title} · Sanyam Brar`,
+    "project",
+    ["src/site/pages/Project.tsx", ...(detail.demo ? [PROJECT_DEMO_SOURCES[detail.demo]] : [])],
+    !detail.demo,
+  )),
+];
 
 async function generateSite(root: string) {
-  await mkdir(root, { recursive: true });
-  await writeFile(join(root, "index.html"), siteShell("Sanyam Brar", "home"));
-  await Promise.all([
-    generateSiteRoute(root, "work", "Work · Sanyam Brar", "work", "../"),
-    generateSiteRoute(root, "tools", "Tools · Sanyam Brar", "tools", "../"),
-    generateSiteRoute(root, "chain", "Chain Reaction", "chain", "../"),
-    generateSiteRoute(root, "blog", "Writing · Sanyam Brar", "blog", "../"),
-    ...Object.entries(details).map(([slug, detail]) => generateSiteRoute(root, `projects/${slug}`, `${detail.title} · Sanyam Brar`, "project", "../../")),
-  ]);
+  await Promise.all(SITE_ROUTES.map(async route => {
+    const file = join(root, route.file);
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, siteShell(route.title, route.kind, route.assetRoot));
+  }));
 }
 
 type SitePrerenderModule = { prerenderSiteRoute?: (href: string) => Promise<string> };
-const SITE_PRERENDER_ROUTES = [
-  ["index.html", "/"],
-  ["work/index.html", "/work/"],
-  ["blog/index.html", "/blog/"],
-  ["projects/zhtml/index.html", "/projects/zhtml/"],
-  ["projects/oneserial/index.html", "/projects/oneserial/"],
-] as const;
 
 async function injectSitePrerender() {
   const module = await import(pathToFileURL(join(GENERATED_SITE_PRERENDER, "prerender.js")).href) as SitePrerenderModule;
   const prerender = module.prerenderSiteRoute;
   must(typeof prerender === "function", "site prerender bundle is missing prerenderSiteRoute");
-  for (const [file, pathname] of SITE_PRERENDER_ROUTES) {
-    const markup = await prerender(new URL(pathname, PUBLIC_ORIGIN).href);
-    must(markup.includes('id="solid-site-app"'), "site prerender root missing for " + pathname);
-    must(!markup.includes("site-fatal-shell"), "site prerender rendered the fatal shell for " + pathname);
-    must(!markup.includes("<script"), "site prerender unexpectedly emitted a script for " + pathname);
-    const path = join(GENERATED_SITE, file);
+  for (const route of SITE_ROUTES.filter(route => route.prerender)) {
+    const markup = await prerender(new URL(route.href, PUBLIC_ORIGIN).href);
+    must(markup.includes('id="solid-site-app"'), "site prerender root missing for " + route.href);
+    must(!markup.includes("site-fatal-shell"), "site prerender rendered the fatal shell for " + route.href);
+    must(!markup.includes("<script"), "site prerender unexpectedly emitted a script for " + route.href);
+    const path = join(GENERATED_SITE, route.file);
     let source = await readFile(path, "utf8");
     const emptyRoot = '<div id="site-root"></div>';
-    must(source.includes(emptyRoot), "site prerender target root missing in " + file);
+    must(source.includes(emptyRoot), "site prerender target root missing in " + route.file);
     source = source.replace(emptyRoot, '<div id="site-root" data-samey-prerendered>' + markup + '</div>');
     await writeFile(path, source);
   }
@@ -181,18 +210,7 @@ const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\
 async function injectSitePreloadHints() {
   const siteEntryResources = manifestStaticResources(siteManifest, "src/site/main.tsx");
   const siteEntryScripts = new Set(siteEntryResources.scripts);
-  const routes: { file: string; assetRoot: string; sources: string[] }[] = [
-    { file: "index.html", assetRoot: "./", sources: ["src/site/pages/Home.tsx"] },
-    { file: "work/index.html", assetRoot: "../", sources: ["src/site/pages/Work.tsx"] },
-    { file: "tools/index.html", assetRoot: "../", sources: ["src/tools/Tools.tsx"] },
-    { file: "chain/index.html", assetRoot: "../", sources: ["src/games/chain/Chain.tsx"] },
-    { file: "blog/index.html", assetRoot: "../", sources: ["src/blogs/Blog.tsx"] },
-    { file: "projects/reverb/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx", "src/site/components/ReverbDemo.tsx"] },
-    { file: "projects/cnn/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx", "src/site/components/CnnDemo.tsx"] },
-    { file: "projects/zhtml/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx"] },
-    { file: "projects/oneserial/index.html", assetRoot: "../../", sources: ["src/site/pages/Project.tsx"] },
-  ];
-  for (const route of routes) {
+  for (const route of SITE_ROUTES) {
     const scripts = new Set<string>();
     const styles = new Set<string>();
     for (const sourcePath of route.sources) {

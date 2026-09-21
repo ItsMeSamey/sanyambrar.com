@@ -1,7 +1,9 @@
-import { readHistoryState } from './history.ts';
+import { navigationState, readNavigationIndex } from './history.ts';
 import { animateRootSwap } from './transitions.ts';
 import { contrastText } from './contrast.ts';
 import { errorMessage, errorWithCause, formatThrownError } from './error.ts';
+import { writeClipboardText } from './clipboard.ts';
+import { shortcutKey } from './platform.ts';
 import appearanceConfig from './appearance.json';
 
 
@@ -115,6 +117,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     return { dot, text, grab, loading };
   };
   const hardwareCursorCache = new Map<string, CursorBitmaps>();
+  const HARDWARE_CURSOR_CACHE_LIMIT = 12;
   const CURSOR_SUPERSAMPLE = 4;
   const hardwareCursorPngs = (theme: Theme): CursorBitmaps => {
     const cacheKey = `${theme.text}|${theme.background}`;
@@ -197,6 +200,11 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       }),
     };
     hardwareCursorCache.set(cacheKey, out);
+    while (hardwareCursorCache.size > HARDWARE_CURSOR_CACHE_LIMIT) {
+      const oldest = hardwareCursorCache.keys().next().value;
+      if (oldest == null) break;
+      hardwareCursorCache.delete(oldest);
+    }
     return out;
   };
   const applyHardwareCursorTheme = (root: HTMLElement, theme: Theme) => {
@@ -927,36 +935,28 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
 
   const pushState = history.pushState.bind(history);
   const replaceState = history.replaceState.bind(history);
-  const NAV_INDEX_KEY = "__sameyNavIndex";
-  const readNavigationIndex = () => { const value: unknown = readHistoryState()?.[NAV_INDEX_KEY]; return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null; };
   let pageHistoryIndex = readNavigationIndex() ?? 0;
   const writePageHistory = (url: URL, replace: boolean) => {
     const current = readNavigationIndex();
     if (current != null) pageHistoryIndex = current;
     if (!replace) pageHistoryIndex += 1;
-    const state = {...(readHistoryState() || {}), [NAV_INDEX_KEY]: pageHistoryIndex};
+    const state = navigationState(pageHistoryIndex);
     (replace ? replaceState : pushState)(state, "", url.href);
   };
 
   const runtimeNode = <T extends HTMLElement>(el: T): T => { el.dataset.sameyRuntime = ""; return el; };
 
-  const normalizeExternalLinks = (root: ParentNode = document) => {
-    for (const link of root.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+  const linksIn = (root: ParentNode | HTMLAnchorElement = document): Iterable<HTMLAnchorElement> =>
+    root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll<HTMLAnchorElement>("a[href]");
+  const normalizeExternalLinks = (root: ParentNode | HTMLAnchorElement = document) => {
+    for (const link of linksIn(root)) {
       let url;
       try { url = new URL(link.href, location.href); } catch { continue; }
       if (!/^https?:$/.test(url.protocol) || url.origin === location.origin) continue;
-      delete link.dataset.sameyExternal;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
     }
   };
-  const observeExternalLinks = () => new MutationObserver((records) => {
-    for (const record of records) for (const node of record.addedNodes) {
-      if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
-      if (node.matches("a[href]")) normalizeExternalLinks(node.parentElement ?? document);
-      else normalizeExternalLinks(node);
-    }
-  }).observe(document.documentElement, { subtree: true, childList: true });
   const loadingFrames = generateLoadingFrames;
   const loadingCursorSvg = generateAnimatedSineCircleSvg;
   globalThis.SameyLoadingSvg = loadingCursorSvg;
@@ -1235,11 +1235,22 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const queueOverlayRefresh = () => {
       if (!overlayRefreshFrame) overlayRefreshFrame = requestAnimationFrame(refreshOverlayState);
     };
-    new MutationObserver(queueOverlayRefresh).observe(document.documentElement, {
+    const nodeContainsOverlay = (node: Node) => node instanceof Element
+      && (node.matches(overlaySelector) || node.querySelector(overlaySelector) != null);
+    const overlayMutationMatters = (record: MutationRecord) => {
+      const target = record.target instanceof Element ? record.target : null;
+      if (record.type === "attributes")
+        return !!target && (target.matches(overlaySelector) || target.querySelector(overlaySelector) != null);
+      if (target?.closest(overlaySelector)) return true;
+      return [...record.addedNodes, ...record.removedNodes].some(nodeContainsOverlay);
+    };
+    new MutationObserver((records) => {
+      if (records.some(overlayMutationMatters)) queueOverlayRefresh();
+    }).observe(document.documentElement, {
       subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "aria-hidden", "data-open"],
     });
-    addEventListener("resize", queueOverlayRefresh, { passive: true });
-    addEventListener("scroll", queueOverlayRefresh, { passive: true, capture: true });
+    addEventListener("resize", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true });
+    addEventListener("scroll", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true, capture: true });
     queueOverlayRefresh();
 
     const grabSelector = ".samey-vscroll-thumb,.samey-hscroll-thumb,input[type=range],[draggable=true],[data-grab-cursor]";
@@ -1832,23 +1843,52 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return el;
     return el instanceof Element ? el.closest('[contenteditable="true"], [contenteditable="plaintext-only"]') : null;
   };
-  const selectedText = () => getSelection()?.toString() || "";
-  const writeClipboard = async (text: string) => {
-    if (!text) return;
-    try { await navigator.clipboard.writeText(text); }
-    catch {
-      const area = document.createElement("textarea");
-      area.value = text; area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
-      document.body.append(area);
-      try { area.select(); document.execCommand("copy"); } finally { area.remove(); }
+  const selectedText = (el: EditableElement | null) => {
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
+      return el.value.slice(Math.min(start, end), Math.max(start, end));
     }
+    return getSelection()?.toString() || "";
+  };
+  const editContentEditable = (el: HTMLElement, text: string, inputType: "insertFromPaste" | "deleteByCut") => {
+    el.focus();
+    const selection = getSelection();
+    if (!selection) return false;
+    let range: Range;
+    if (selection.rangeCount && el.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+      range = selection.getRangeAt(0);
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+    }
+    range.deleteContents();
+    if (text) {
+      const node = document.createTextNode(text);
+      range.insertNode(node);
+      range.setStartAfter(node);
+    }
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType, data: text || null }));
+    return true;
+  };
+  const cutFrom = (el: EditableElement | null) => {
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
+      el.setRangeText("", Math.min(start, end), Math.max(start, end), "end");
+      el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
+      return;
+    }
+    if (el?.isContentEditable) editContentEditable(el, "", "deleteByCut");
   };
   const pasteInto = (el: EditableElement | null, text: string) => {
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end");
       el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: text }));
     } else if (el?.isContentEditable) {
-      el.focus(); document.execCommand("insertText", false, text);
+      editContentEditable(el, text, "insertFromPaste");
     }
   };
   const linkCopyText = (link: Element | null) => {
@@ -1865,13 +1905,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       return part.replace(/\.html?$/i, "").replace(/[-_]+/g, " ") || url.hostname;
     } catch { return "Link"; }
   };
-  const stampLinkCopyLabels = (root: ParentNode | HTMLAnchorElement = document) => {
-    const links: Iterable<HTMLAnchorElement> = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll<HTMLAnchorElement>("a[href]");
-    for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
-  };
-  stampLinkCopyLabels();
-  new MutationObserver((records) => {
-    for (const record of records) for (const node of record.addedNodes) if (node instanceof Element && !node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) stampLinkCopyLabels(node);
+  const observeLinks = () => new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) {
+      if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
+      if (node instanceof HTMLAnchorElement) normalizeExternalLinks(node);
+      else if (node.querySelector("a[href]")) normalizeExternalLinks(node);
+    }
   }).observe(document.documentElement, { childList: true, subtree: true });
 
   const mountContextMenu = () => {
@@ -1914,16 +1953,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       returnFocus = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
       const image = target instanceof Element ? target.closest<HTMLImageElement>("img[src]") : null;
-      const selection = selectedText();
       const editable = editableTarget(target);
-      if (selection) add("Copy", () => writeClipboard(selection), true, navigator.platform?.includes("Mac") ? "⌘C" : "Ctrl+C");
-      if (editable && selection) add("Cut", async () => { await writeClipboard(selection); document.execCommand("delete"); }, true, navigator.platform?.includes("Mac") ? "⌘X" : "Ctrl+X");
-      if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, navigator.platform?.includes("Mac") ? "⌘V" : "Ctrl+V");
+      const selection = selectedText(editable);
+      if (selection) add("Copy", () => writeClipboardText(selection), true, shortcutKey("C"));
+      if (editable && selection) add("Cut", async () => { if (await writeClipboardText(selection)) cutFrom(editable); }, true, shortcutKey("X"));
+      if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, shortcutKey("V"));
       add("Select all", () => {
         if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) { editable.focus(); editable.select(); }
         else if (editable) { const range = document.createRange(); range.selectNodeContents(editable); const sel = getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(range); } }
         else { const range = document.createRange(); range.selectNodeContents(document.body); const sel = getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(range); } }
-      }, true, navigator.platform?.includes("Mac") ? "⌘A" : "Ctrl+A");
+      }, true, shortcutKey("A"));
       if (selection && !editable) {
         sep();
         add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, "_blank", "noopener"));
@@ -1932,22 +1971,22 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         sep();
         if (link) {
           add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
-          add("Copy link", () => writeClipboard(link.href));
-          add("Copy Markdown link", () => writeClipboard(`[${linkCopyText(link)}](${link.href})`));
+          add("Copy link", () => writeClipboardText(link.href));
+          add("Copy Markdown link", () => writeClipboardText(`[${linkCopyText(link)}](${link.href})`));
         }
         if (image) {
           add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
-          add("Copy image address", () => writeClipboard(image.src));
+          add("Copy image address", () => writeClipboardText(image.src));
           add("Save image", () => { const a = document.createElement("a"); a.href = image.src; a.download = image.alt || "image"; a.click(); });
         }
       }
       sep();
       add("Back", () => history.back(), history.length > 1);
       add("Forward", () => history.forward());
-      add("Reload", () => location.reload(), true, navigator.platform?.includes("Mac") ? "⌘R" : "Ctrl+R");
-      add("Copy page link", () => writeClipboard(location.href));
-      add("Copy page title", () => writeClipboard(document.title));
-      add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
+      add("Reload", () => location.reload(), true, shortcutKey("R"));
+      add("Copy page link", () => writeClipboardText(location.href));
+      add("Copy page title", () => writeClipboardText(document.title));
+      add("Print…", () => print(), true, shortcutKey("P"));
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
       menu.hidden = false;
       menuViewportWidth = innerWidth;
@@ -2179,22 +2218,20 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
 
   type PageNavigationOptions = { replace?: boolean; force?: boolean; direction?: "forward" | "back"; returnUrl?: string };
-  type FetchedPage = { doc: Document; baseUrl: URL; responseUrl: string; ready: Promise<void> };
+  type FetchedPage = { doc: Document; baseUrl: URL; ready: Promise<void> };
   const hashTarget = (url: URL) => { if (!url.hash) return ""; try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); } };
   const pageStyleNodes = () => [...document.head.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style:not([data-samey-shared]),link[rel="stylesheet"]:not([data-samey-shared])')];
   const markInitialPageStyles = () => pageStyleNodes().forEach(el => { el.dataset.spaPage = ""; });
   const pageCache = new Map<string, Promise<FetchedPage>>();
+  const PAGE_CACHE_LIMIT = 4;
   const setLoading = (value: boolean) => {
     globalThis.SameyLoading?.(value);
   };
-  const syncHtmlData = (doc: Document, baseUrl: URL) => {
+  const syncHtmlData = (doc: Document) => {
     const keep = new Set(["data-site-theme","data-kb-theme","data-font","data-color"]);
     for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
-    for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
-      let value = attr.value;
-      if ((attr.name === "data-home-href" || attr.name === "data-back-href") && value) value = new URL(value, baseUrl).href;
-      document.documentElement.setAttribute(attr.name, value);
-    }
+    for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-"))
+      document.documentElement.setAttribute(attr.name, attr.value);
   };
   const extensionlessPageUrl = (url: URL) => {
     const clean = new URL(url.href);
@@ -2212,18 +2249,28 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     books?: Record<string, string>;
   };
   const warmedResources = new Map<string, Promise<void>>();
+  const WARMED_RESOURCE_LIMIT = 96;
   const warmResource = (url: URL) => {
     if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return Promise.resolve();
     if (!/\.(?:js|css|json|data|wasm|woff2?|ttf)$/i.test(url.pathname)) return Promise.resolve();
     const cached = warmedResources.get(url.href);
-    if (cached) return cached;
+    if (cached) {
+      warmedResources.delete(url.href);
+      warmedResources.set(url.href, cached);
+      return cached;
+    }
     const task = fetch(url, { credentials: "same-origin", cache: "force-cache" }).then(response => {
       if (!response.ok) throw new Error("Prefetch failed: HTTP " + response.status + " for " + url.href);
     }).catch(error => {
-      warmedResources.delete(url.href);
+      if (warmedResources.get(url.href) === task) warmedResources.delete(url.href);
       console.debug("Navigation resource prefetch failed", url.href, error);
     });
     warmedResources.set(url.href, task);
+    while (warmedResources.size > WARMED_RESOURCE_LIMIT) {
+      const oldest = warmedResources.keys().next().value;
+      if (oldest == null) break;
+      warmedResources.delete(oldest);
+    }
     return task;
   };
   const addWarmUrl = (urls: Set<string>, value: string | null | undefined, baseUrl: URL) => {
@@ -2280,22 +2327,37 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const fetchPage = async (url: URL): Promise<FetchedPage> => {
     const logical = extensionlessPageUrl(url);
-    const key = logical.href;
+    const fetchUrl = new URL(logical.href);
+    fetchUrl.hash = "";
+    const key = fetchUrl.href;
     const cached = pageCache.get(key);
-    if (cached) return cached;
+    if (cached) {
+      pageCache.delete(key);
+      pageCache.set(key, cached);
+      return cached;
+    }
     const task = (async () => {
-      const response = await fetch(logical, { headers: { "X-Samey-SPA": "1" }, credentials: "same-origin" });
-      if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || 'Unknown'} for ${logical.href}`);
+      const response = await fetch(fetchUrl, { headers: { "X-Samey-SPA": "1" }, credentials: "same-origin" });
+      if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || 'Unknown'} for ${fetchUrl.href}`);
       // DOMParser creates an inert, detached document. Prefetch never adopts its
       // elements or executes its scripts; it only warms same-origin resource bytes.
       const doc = new DOMParser().parseFromString(await response.text(), "text/html");
       const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
-      const baseUrl = new URL(baseTag || ".", logical.href);
+      const baseUrl = new URL(baseTag || ".", fetchUrl.href);
       const ready = Promise.all(pageWarmResources(doc, baseUrl).map(value => warmResource(new URL(value)))).then(() => {});
-      return { doc, baseUrl, responseUrl: logical.href, ready };
+      return { doc, baseUrl, ready };
     })();
     pageCache.set(key, task);
-    try { return await task; } catch (error) { pageCache.delete(key); throw error; }
+    while (pageCache.size > PAGE_CACHE_LIMIT) {
+      const oldest = pageCache.keys().next().value;
+      if (oldest == null) break;
+      pageCache.delete(oldest);
+    }
+    try { return await task; }
+    catch (error) {
+      if (pageCache.get(key) === task) pageCache.delete(key);
+      throw error;
+    }
   };
   const normalizePageUrls = (doc: Document, baseUrl: URL) => {
     for (const el of doc.querySelectorAll<HTMLElement>("[href]")) {
@@ -2384,7 +2446,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }
     const runtimeAnchor = clearPageBody();
     for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
-    document.title = doc.title; syncHtmlData(doc, baseUrl);
+    document.title = doc.title; syncHtmlData(doc);
     currentPagePath = url.pathname;
     currentPageUrl = url.href;
     writePageHistory(url, replace);
@@ -2655,7 +2717,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   apply();
   const mountSmoothSliderMotion = () => {
     type SliderParts = { root: HTMLElement; native: HTMLInputElement | null; thumb: HTMLElement | null; track: HTMLElement };
-    type ActiveSlider = SliderParts & { pointerId: number; clientX: number };
+    type ActiveSlider = SliderParts & {
+      pointerId: number;
+      clientX: number;
+      rect: DOMRect;
+      nativeInset: number;
+      usable: number;
+    };
     let active: ActiveSlider | null = null;
     let frame = 0;
     let snapTimer = 0;
@@ -2666,8 +2734,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (!root) return null;
       const native = root.querySelector<HTMLInputElement>('input[type="range"]');
       const thumb = root.querySelector<HTMLElement>('[role="slider"]');
-      const track = native?.closest<HTMLElement>(".game-range-shell") ?? root.querySelector<HTMLElement>("[data-kb-slider-track],.samey-slider-track");
-      const hit = target.closest('input[type="range"],[role="slider"],.game-range-shell,[data-kb-slider-track],.samey-slider-track');
+      const track = native?.closest<HTMLElement>(".game-range-shell") ?? root.querySelector<HTMLElement>("[data-kb-slider-track]");
+      const hit = target.closest('input[type="range"],[role="slider"],.game-range-shell,[data-kb-slider-track]');
       if (!hit || !root.contains(hit) || !track || (!native && !thumb)) return null;
       return { root, native, thumb, track };
     };
@@ -2686,10 +2754,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       frame = 0;
       const current = active;
       if (!current?.root.isConnected) return;
-      const rect = current.track.getBoundingClientRect();
-      if (!(rect.width > 0)) return;
-      const nativeInset = current.native ? 8 : 0;
-      const usable = Math.max(1, rect.width - nativeInset * 2);
+      const { rect, nativeInset, usable } = current;
       const x = Math.max(rect.left + nativeInset, Math.min(rect.right - nativeInset, current.clientX));
       const pointerRatio = clamp01((x - rect.left - nativeInset) / usable);
       const currentRatio = actualRatio(current);
@@ -2718,8 +2783,18 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const parts = sliderParts(event.target);
       if (!parts || parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
       if (active) return;
+      const rect = parts.track.getBoundingClientRect();
+      if (!(rect.width > 0)) return;
+      const nativeInset = parts.native ? 8 : 0;
       clearTimeout(snapTimer);
-      active = { ...parts, pointerId: event.pointerId, clientX: event.clientX };
+      active = {
+        ...parts,
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        rect,
+        nativeInset,
+        usable: Math.max(1, rect.width - nativeInset * 2),
+      };
       parts.root.removeAttribute("data-samey-slider-snapping");
       parts.root.setAttribute("data-samey-slider-dragging", "");
       queuePaint();
@@ -2744,8 +2819,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
 
   const mountRuntime = () => {
-    if (readNavigationIndex() == null) replaceState({...(readHistoryState() || {}), [NAV_INDEX_KEY]: pageHistoryIndex}, "", location.href);
-    normalizeExternalLinks(); observeExternalLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSmoothSliderMotion();
+    if (readNavigationIndex() == null) replaceState(navigationState(pageHistoryIndex), "", location.href);
+    normalizeExternalLinks(); observeLinks(); mountControls(); mountLoadingBar(); mountCursor(); mountContextMenu(); mountVirtualScrollbars(); mountSmoothSliderMotion();
     // Only styles present on a directly loaded non-Solid document are initial page styles.
     // Styles that survive a Solid -> game/article swap can include runtime-loaded Monaco CSS;
     // marking those on the first swapped page would delete them on the next back navigation.
@@ -2755,7 +2830,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
   else mountRuntime();
-  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  const developmentShell = document.documentElement.hasAttribute("data-samey-dev");
+  if ("serviceWorker" in navigator && developmentShell) {
+    void navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const registration of registrations) void registration.unregister();
+    }).catch(error => console.debug("Could not clear development service worker", error));
+  } else if ("serviceWorker" in navigator && location.protocol !== "file:") {
     const serviceWorkerUrl = new URL("sw.js", SCRIPT_ROOT);
     if (BUILD_VERSION) serviceWorkerUrl.searchParams.set("v", BUILD_VERSION);
     navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: "none" }).catch(error => console.error("Service worker registration failed", error));

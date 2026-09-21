@@ -1,4 +1,4 @@
-import { readHistoryState } from '../shared/history.ts';
+import { navigationState, readNavigationIndex } from '../shared/history.ts';
 import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
@@ -42,16 +42,6 @@ type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationDirection = 'forward' | 'back';
 type NavigationError = { url: string; returnUrl: string; message: string; detail: string };
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
-const NAV_INDEX_KEY = '__sameyNavIndex';
-const readNavigationIndex = () => {
-  const value = readHistoryState()?.[NAV_INDEX_KEY];
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
-};
-const navigationState = (index: number) => ({
-  ...(readHistoryState() && typeof readHistoryState() === 'object' ? readHistoryState() : {}),
-  [NAV_INDEX_KEY]: index,
-});
-
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
   if (/\/blog(?:\/index)?$/.test(path)) return { key: 'blog', kind: 'blog' };
@@ -88,12 +78,6 @@ const setLoading = (value: boolean) => {
 };
 const cancelSharedPageSwap = () => globalThis.SameyCancelPageSwap?.();
 const pageSwapNavigate = () => globalThis.SameyPageSwapNavigate;
-const preloadUrl = (url: URL) => {
-  if (url.origin !== location.origin) return;
-  // Prefetch must stay side-effect free. The shared runtime fetches the target
-  // into an inert detached Document and warms declared subresources as bytes.
-  globalThis.SameyPreloadPage?.(url.href);
-};
 
 async function animateRouteSwap(commit: () => void, direction: NavigationDirection = 'forward') {
   await animateRootSwap(
@@ -215,10 +199,6 @@ export function App(props: { initialUrl?: string } = {}) {
     document.body.classList.toggle('site-tools-active', next.kind === 'tools');
     document.body.classList.toggle('site-chain-active', next.kind === 'chain');
     document.documentElement.dataset.siteKind = next.kind;
-    document.documentElement.dataset.sitePage = next.kind;
-    document.documentElement.dataset.homeHref = '/';
-    if (next.kind === 'project') document.documentElement.dataset.backHref = '/work/';
-    else delete document.documentElement.dataset.backHref;
     document.title = next.kind === 'home' ? 'Sanyam Brar'
       : next.kind === 'work' ? 'Work · Sanyam Brar'
       : next.kind === 'tools' ? 'Tools · Sanyam Brar'
@@ -343,8 +323,6 @@ export function App(props: { initialUrl?: string } = {}) {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
     globalThis.SameyNavigate = (href, opts) => navigate(href, !!opts?.replace);
-    globalThis.SameySolidPreload = href => preloadUrl(new URL(href, location.href));
-
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -416,7 +394,6 @@ export function App(props: { initialUrl?: string } = {}) {
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
       globalThis.SameyNavigate = undefined;
-      globalThis.SameySolidPreload = undefined;
     };
   });
 

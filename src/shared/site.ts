@@ -1,11 +1,6 @@
 import { searchIndex, type Entry } from '../site/data.ts'
+import { searchShortcutLabel } from './platform.ts'
 
-const userAgentPlatform = (() => {
-  const data: unknown = Reflect.get(navigator, 'userAgentData')
-  if (!data || typeof data !== 'object') return ''
-  const platform: unknown = Reflect.get(data, 'platform')
-  return typeof platform === 'string' ? platform : ''
-})()
 const currentScript = document.currentScript
 const SCRIPT_ROOT = new URL('.', currentScript instanceof HTMLScriptElement ? currentScript.src : location.href)
 const norm = (value: string) => value.toLowerCase()
@@ -43,8 +38,7 @@ function finishClose(target: HTMLElement | null, restoreFocus: boolean) {
   }))
 }
 
-const shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? '⌘ K' : 'Ctrl K'
-const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = shortcutLabel)
+const syncShortcutLabels = () => document.querySelectorAll<HTMLElement>('[data-search-shortcut]').forEach(element => element.textContent = searchShortcutLabel)
 syncShortcutLabels()
 addEventListener('samey-pageload', syncShortcutLabels)
 

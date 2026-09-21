@@ -11,6 +11,7 @@ import { createEffect, createSignal, Show } from 'solid-js';
 import { type JSX } from '@solidjs/web';
 import { render } from '@solidjs/web';
 import { type IntlShape, RawIntlProvider } from "./intl/runtime.tsx";
+import { ModifierState } from "./textinput-events/modifiers.ts";
 
 export function main(): void {
   const element = document.getElementById("app");
@@ -18,6 +19,7 @@ export function main(): void {
   const dispose = render(() => <ThemeProvider><ErrorHandler><Bootstrap /></ErrorHandler></ThemeProvider>, element);
   globalThis.SameyKeybrDispose = () => {
     dispose();
+    ModifierState.dispose();
     delete globalThis.SameyKeybrDispose;
   };
 }

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from '../../shared/components/Di
 import { SettingsKnobs, SettingsHardProps, SettingsSoftProps } from './popup_settings'
 import { Button } from '../../shared/components/Button.tsx'
 import { showError } from '../../shared/components/Toast.tsx'
+import { writeClipboardText } from '../../shared/clipboard.ts'
 import { binarySearch } from './word-list'
 import { challengeUrl, isWordLength } from './challenge'
 
@@ -43,18 +44,7 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
             const url = challengeUrl(config, soft.fastInvalidate)
             if (!url) return showError(new Error('Could not create share URL'))
             try {
-              if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url.href)
-              else {
-                const input = document.createElement('textarea')
-                input.value = url.href
-                input.style.position = 'fixed'
-                input.style.opacity = '0'
-                document.body.append(input)
-                try {
-                  input.select()
-                  if (!document.execCommand('copy')) throw new Error('Copy failed')
-                } finally { input.remove() }
-              }
+              if (!await writeClipboardText(url.href)) throw new Error('Copy failed')
               setCopyButtonText('Copied!')
               clearTimeout(copyResetTimer)
               copyResetTimer = setTimeout(() => setCopyButtonText('Copy'), 1000)

@@ -21,5 +21,4 @@
   color: var(--Popup__color);
   background-color: var(--Popup__background-color);
   background-clip: padding-box;
-  box-shadow: var(--Popup--small__box-shadow);
 }

@@ -4,6 +4,17 @@
 		const value = history.state;
 		return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
 	}
+	var NAV_INDEX_KEY = "__sameyNavIndex";
+	function readNavigationIndex() {
+		const value = readHistoryState()[NAV_INDEX_KEY];
+		return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+	}
+	function navigationState(index) {
+		return {
+			...readHistoryState(),
+			[NAV_INDEX_KEY]: index
+		};
+	}
 	//#endregion
 	//#region src/shared/transitions.ts
 	var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -24,15 +35,8 @@
 		leaveEasing: "cubic-bezier(.4,0,1,1)"
 	};
 	var CONSTRUCTION_LINE_SELECTOR = [
-		"header",
-		"nav",
-		"main",
-		"section",
-		"article",
-		"aside",
 		"footer",
 		"form",
-		"figure",
 		"fieldset",
 		"table",
 		"thead",
@@ -49,7 +53,6 @@
 		"[role=\"group\"]",
 		"[role=\"radiogroup\"]",
 		"[data-samey-construction-line]",
-		"button",
 		"input",
 		"select",
 		"textarea",
@@ -73,11 +76,11 @@
 		".fact-strip",
 		".fact-strip > *",
 		".detail-copy",
-		".blog-split-index",
-		".blog-index-nav",
-		".blog-index-link",
-		".blog-index-detail",
-		".blog-detail-footer",
+		".article-head",
+		".article-route .aside",
+		".article-route .viz",
+		".reverb-demo-fullscreen-button",
+		".markdown-view-toggle button",
 		".cnn-demo-shell",
 		".cnn-controls-row",
 		".cnn-output-pane",
@@ -85,17 +88,22 @@
 		".markdown-divider",
 		".vditor-ir__node:is(h1,h2,h3,h4,h5,h6)",
 		".wordle-mode-card",
+		".wordle-date-picker-trigger",
+		".wordle-mode-action",
 		".stats-section",
 		".stats-history-row",
 		".active-game-card",
 		".samey-dialog",
 		".chain-mode-card",
+		".chain-mode-action",
+		".chain-preset",
 		".chain-stats-grid > *",
 		".chain-replay-stage",
 		".chain-replay-controls",
 		".chain-result",
 		".game-settings-popover",
 		".game-settings-actions",
+		".game-settings-action",
 		".keybr-segmented",
 		".keybr-segmented-item"
 	].join(",");
@@ -146,17 +154,6 @@
 		".project-source-link",
 		".fact-strip > *",
 		".project-description > *",
-		".blog-index-eyebrow",
-		".blog-index-intro h1",
-		".blog-index-intro p",
-		".blog-index-link > *",
-		".blog-detail-kicker",
-		".blog-detail-date",
-		".blog-index-detail h2",
-		".blog-detail-dek",
-		".blog-detail-summary",
-		".blog-detail-points li",
-		".blog-detail-footer > *",
 		".chain-mode-eyebrow",
 		".chain-mode-spec",
 		".chain-turn",
@@ -167,6 +164,7 @@
 		".keybr-segmented-item"
 	].join(",");
 	var SVG_NS = "http://www.w3.org/2000/svg";
+	var CONTENT_MEASURE_BATCH = 16;
 	var BORDER_HIDE_ATTR = {
 		top: "data-samey-construction-hide-top",
 		right: "data-samey-construction-hide-right",
@@ -274,13 +272,12 @@
 			svg.append(stroke);
 			return true;
 		};
-		const queueHide = (element, sides, rounded = false) => {
+		const queueHide = (element, sides) => {
 			let attrs = hiddenBorders.get(element);
 			if (!attrs) {
 				attrs = /* @__PURE__ */ new Set();
 				hiddenBorders.set(element, attrs);
 			}
-			if (rounded) attrs.add("data-samey-construction-rounded");
 			for (const side of sides) {
 				const attr = BORDER_HIDE_ATTR[side];
 				attrs.add(attr);
@@ -324,7 +321,7 @@
 					first.color,
 					rounded.paths[side]
 				].join(":"), rounded.paths[side], first.width, first.color, rounded.rounded);
-				queueHide(element, visible, rounded.rounded);
+				queueHide(element, visible);
 				continue;
 			}
 			const tl = parseRadius(style.borderTopLeftRadius, rect.width, rect.height);
@@ -344,10 +341,7 @@
 				sides[side].color
 			].join(":"), paths[side], sides[side].width, sides[side].color)) queueHide(element, [side]);
 		}
-		for (const [element, attrs] of hiddenBorders) {
-			element.setAttribute("data-samey-construction-source", "");
-			for (const attr of attrs) element.setAttribute(attr, "");
-		}
+		for (const [element, attrs] of hiddenBorders) for (const attr of attrs) element.setAttribute(attr, "");
 		document.body.append(layer);
 		return {
 			layer,
@@ -378,30 +372,33 @@
 			});
 		});
 	}
-	function measureConstructionContent(root) {
+	async function measureConstructionContent(root) {
 		const measured = [];
-		const measuredElements = /* @__PURE__ */ new Set();
+		const coveredElements = /* @__PURE__ */ new Set();
+		let inspected = 0;
 		for (const element of root.querySelectorAll(CONSTRUCTION_CONTENT_SELECTOR)) {
 			if (measured.length >= CONSTRUCTED_TRANSITION.maxContentTargets) break;
 			if (element.closest("[hidden],[aria-hidden=\"true\"]")) continue;
-			if (!inViewport(element.getBoundingClientRect())) continue;
 			let ancestor = element.parentElement;
 			let nested = false;
 			while (ancestor && ancestor !== root) {
-				if (measuredElements.has(ancestor)) {
+				if (coveredElements.has(ancestor)) {
 					nested = true;
 					break;
 				}
 				ancestor = ancestor.parentElement;
 			}
 			if (nested) continue;
+			coveredElements.add(element);
+			if (inspected > 0 && inspected % CONTENT_MEASURE_BATCH === 0) await nextFrame();
+			inspected++;
+			if (!inViewport(element.getBoundingClientRect())) continue;
 			const parsedOpacity = Number.parseFloat(getComputedStyle(element).opacity);
 			const baseline = Number.isFinite(parsedOpacity) ? parsedOpacity : 1;
 			measured.push({
 				element,
 				baseline
 			});
-			measuredElements.add(element);
 		}
 		return measured;
 	}
@@ -421,15 +418,13 @@
 		});
 	}
 	function restoreConstructionSources(construction) {
-		for (const [element, attrs] of construction.hiddenBorders) {
-			for (const attr of attrs) element.removeAttribute(attr);
-			element.removeAttribute("data-samey-construction-source");
-		}
+		for (const [element, attrs] of construction.hiddenBorders) for (const attr of attrs) element.removeAttribute(attr);
 	}
 	async function animateConstructionExit(root, direction) {
-		const content = measureConstructionContent(root);
 		const construction = makeConstructionLayer(root);
-		const animations = [...animateConstructionLines(construction, "out", direction), ...animateConstructionContent(content, "out")];
+		const lineAnimations = animateConstructionLines(construction, "out", direction);
+		const content = await measureConstructionContent(root);
+		const animations = [...lineAnimations, ...animateConstructionContent(content, "out")];
 		await waitAnimations(animations);
 		return {
 			...construction,
@@ -437,16 +432,17 @@
 		};
 	}
 	async function animateConstructionEntrance(root, direction) {
-		const content = measureConstructionContent(root);
 		const construction = makeConstructionLayer(root);
-		const animations = [...animateConstructionLines(construction, "in", direction), ...animateConstructionContent(content, "in")];
+		const lineAnimations = animateConstructionLines(construction, "in", direction);
+		const content = await measureConstructionContent(root);
+		const animations = [...lineAnimations, ...animateConstructionContent(content, "in")];
 		await waitAnimations(animations);
 		restoreConstructionSources(construction);
 		for (const animation of animations) animation.cancel();
 		construction.layer.remove();
 	}
 	async function resolveIncoming(next, current) {
-		await Promise.resolve();
+		await nextFrame();
 		let incoming = next();
 		if (!incoming || incoming === current || !incoming.isConnected) {
 			await nextFrame();
@@ -539,6 +535,39 @@
 			return error;
 		}
 	}
+	//#endregion
+	//#region src/shared/clipboard.ts
+	async function writeClipboardText(value) {
+		const text = String(value ?? "");
+		if (navigator.clipboard?.writeText) try {
+			await navigator.clipboard.writeText(text);
+			return true;
+		} catch {}
+		const field = document.createElement("textarea");
+		field.value = text;
+		field.setAttribute("readonly", "");
+		field.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none";
+		document.body.append(field);
+		try {
+			field.select();
+			return document.execCommand("copy");
+		} catch {
+			return false;
+		} finally {
+			field.remove();
+		}
+	}
+	//#endregion
+	//#region src/shared/platform.ts
+	var userAgentPlatform = (() => {
+		const data = Reflect.get(navigator, "userAgentData");
+		if (!data || typeof data !== "object") return "";
+		const platform = Reflect.get(data, "platform");
+		return typeof platform === "string" ? platform : "";
+	})();
+	var applePlatform = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.userAgent);
+	var shortcutKey = (key) => applePlatform ? `⌘${key}` : `Ctrl+${key}`;
+	var searchShortcutLabel = applePlatform ? "⌘ K" : "Ctrl K";
 	var appearance_default = {
 		colors: {
 			"light": {
@@ -827,6 +856,7 @@
 			};
 		};
 		const hardwareCursorCache = /* @__PURE__ */ new Map();
+		const HARDWARE_CURSOR_CACHE_LIMIT = 12;
 		const CURSOR_SUPERSAMPLE = 4;
 		const hardwareCursorPngs = (theme) => {
 			const cacheKey = `${theme.text}|${theme.background}`;
@@ -934,6 +964,11 @@
 				})
 			};
 			hardwareCursorCache.set(cacheKey, out);
+			while (hardwareCursorCache.size > HARDWARE_CURSOR_CACHE_LIMIT) {
+				const oldest = hardwareCursorCache.keys().next().value;
+				if (oldest == null) break;
+				hardwareCursorCache.delete(oldest);
+			}
 			return out;
 		};
 		const applyHardwareCursorTheme = (root, theme) => {
@@ -1827,28 +1862,21 @@
 		};
 		const pushState = history.pushState.bind(history);
 		const replaceState = history.replaceState.bind(history);
-		const NAV_INDEX_KEY = "__sameyNavIndex";
-		const readNavigationIndex = () => {
-			const value = readHistoryState()?.[NAV_INDEX_KEY];
-			return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
-		};
 		let pageHistoryIndex = readNavigationIndex() ?? 0;
 		const writePageHistory = (url, replace) => {
 			const current = readNavigationIndex();
 			if (current != null) pageHistoryIndex = current;
 			if (!replace) pageHistoryIndex += 1;
-			const state = {
-				...readHistoryState() || {},
-				[NAV_INDEX_KEY]: pageHistoryIndex
-			};
+			const state = navigationState(pageHistoryIndex);
 			(replace ? replaceState : pushState)(state, "", url.href);
 		};
 		const runtimeNode = (el) => {
 			el.dataset.sameyRuntime = "";
 			return el;
 		};
+		const linksIn = (root = document) => root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll("a[href]");
 		const normalizeExternalLinks = (root = document) => {
-			for (const link of root.querySelectorAll("a[href]")) {
+			for (const link of linksIn(root)) {
 				let url;
 				try {
 					url = new URL(link.href, location.href);
@@ -1856,21 +1884,10 @@
 					continue;
 				}
 				if (!/^https?:$/.test(url.protocol) || url.origin === location.origin) continue;
-				delete link.dataset.sameyExternal;
 				link.target = "_blank";
 				link.rel = "noopener noreferrer";
 			}
 		};
-		const observeExternalLinks = () => new MutationObserver((records) => {
-			for (const record of records) for (const node of record.addedNodes) {
-				if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
-				if (node.matches("a[href]")) normalizeExternalLinks(node.parentElement ?? document);
-				else normalizeExternalLinks(node);
-			}
-		}).observe(document.documentElement, {
-			subtree: true,
-			childList: true
-		});
 		const loadingFrames = generateLoadingFrames;
 		const loadingCursorSvg = generateAnimatedSineCircleSvg;
 		globalThis.SameyLoadingSvg = loadingCursorSvg;
@@ -2158,7 +2175,16 @@
 			const queueOverlayRefresh = () => {
 				if (!overlayRefreshFrame) overlayRefreshFrame = requestAnimationFrame(refreshOverlayState);
 			};
-			new MutationObserver(queueOverlayRefresh).observe(document.documentElement, {
+			const nodeContainsOverlay = (node) => node instanceof Element && (node.matches(overlaySelector) || node.querySelector(overlaySelector) != null);
+			const overlayMutationMatters = (record) => {
+				const target = record.target instanceof Element ? record.target : null;
+				if (record.type === "attributes") return !!target && (target.matches(overlaySelector) || target.querySelector(overlaySelector) != null);
+				if (target?.closest(overlaySelector)) return true;
+				return [...record.addedNodes, ...record.removedNodes].some(nodeContainsOverlay);
+			};
+			new MutationObserver((records) => {
+				if (records.some(overlayMutationMatters)) queueOverlayRefresh();
+			}).observe(document.documentElement, {
 				subtree: true,
 				childList: true,
 				attributes: true,
@@ -2168,8 +2194,12 @@
 					"data-open"
 				]
 			});
-			addEventListener("resize", queueOverlayRefresh, { passive: true });
-			addEventListener("scroll", queueOverlayRefresh, {
+			addEventListener("resize", () => {
+				if (visibleOverlays.length) queueOverlayRefresh();
+			}, { passive: true });
+			addEventListener("scroll", () => {
+				if (visibleOverlays.length) queueOverlayRefresh();
+			}, {
 				passive: true,
 				capture: true
 			});
@@ -2860,23 +2890,52 @@
 			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return el;
 			return el instanceof Element ? el.closest("[contenteditable=\"true\"], [contenteditable=\"plaintext-only\"]") : null;
 		};
-		const selectedText = () => getSelection()?.toString() || "";
-		const writeClipboard = async (text) => {
-			if (!text) return;
-			try {
-				await navigator.clipboard.writeText(text);
-			} catch {
-				const area = document.createElement("textarea");
-				area.value = text;
-				area.style.cssText = "position:fixed;opacity:0;pointer-events:none";
-				document.body.append(area);
-				try {
-					area.select();
-					document.execCommand("copy");
-				} finally {
-					area.remove();
-				}
+		const selectedText = (el) => {
+			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+				const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
+				return el.value.slice(Math.min(start, end), Math.max(start, end));
 			}
+			return getSelection()?.toString() || "";
+		};
+		const editContentEditable = (el, text, inputType) => {
+			el.focus();
+			const selection = getSelection();
+			if (!selection) return false;
+			let range;
+			if (selection.rangeCount && el.contains(selection.getRangeAt(0).commonAncestorContainer)) range = selection.getRangeAt(0);
+			else {
+				range = document.createRange();
+				range.selectNodeContents(el);
+				range.collapse(false);
+			}
+			range.deleteContents();
+			if (text) {
+				const node = document.createTextNode(text);
+				range.insertNode(node);
+				range.setStartAfter(node);
+			}
+			range.collapse(true);
+			selection.removeAllRanges();
+			selection.addRange(range);
+			el.dispatchEvent(new InputEvent("input", {
+				bubbles: true,
+				inputType,
+				data: text || null
+			}));
+			return true;
+		};
+		const cutFrom = (el) => {
+			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+				const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
+				el.setRangeText("", Math.min(start, end), Math.max(start, end), "end");
+				el.dispatchEvent(new InputEvent("input", {
+					bubbles: true,
+					inputType: "deleteByCut",
+					data: null
+				}));
+				return;
+			}
+			if (el?.isContentEditable) editContentEditable(el, "", "deleteByCut");
 		};
 		const pasteInto = (el, text) => {
 			if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
@@ -2886,10 +2945,7 @@
 					inputType: "insertFromPaste",
 					data: text
 				}));
-			} else if (el?.isContentEditable) {
-				el.focus();
-				document.execCommand("insertText", false, text);
-			}
+			} else if (el?.isContentEditable) editContentEditable(el, text, "insertFromPaste");
 		};
 		const linkCopyText = (link) => {
 			if (!(link instanceof HTMLAnchorElement)) return "";
@@ -2906,13 +2962,12 @@
 				return "Link";
 			}
 		};
-		const stampLinkCopyLabels = (root = document) => {
-			const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll("a[href]");
-			for (const link of links) if (!link.dataset.copyLabel) link.dataset.copyLabel = linkCopyText(link);
-		};
-		stampLinkCopyLabels();
-		new MutationObserver((records) => {
-			for (const record of records) for (const node of record.addedNodes) if (node instanceof Element && !node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) stampLinkCopyLabels(node);
+		const observeLinks = () => new MutationObserver((records) => {
+			for (const record of records) for (const node of record.addedNodes) {
+				if (!(node instanceof Element) || node.closest?.(".monaco-host, .monaco-editor, .monaco-diff-editor")) continue;
+				if (node instanceof HTMLAnchorElement) normalizeExternalLinks(node);
+				else if (node.querySelector("a[href]")) normalizeExternalLinks(node);
+			}
 		}).observe(document.documentElement, {
 			childList: true,
 			subtree: true
@@ -2980,14 +3035,13 @@
 				returnFocus = (target instanceof HTMLElement ? target.closest("a[href],button,input,textarea,select,[tabindex]") : null) ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 				const link = target instanceof Element ? target.closest("a[href]") : null;
 				const image = target instanceof Element ? target.closest("img[src]") : null;
-				const selection = selectedText();
 				const editable = editableTarget(target);
-				if (selection) add("Copy", () => writeClipboard(selection), true, navigator.platform?.includes("Mac") ? "⌘C" : "Ctrl+C");
+				const selection = selectedText(editable);
+				if (selection) add("Copy", () => writeClipboardText(selection), true, shortcutKey("C"));
 				if (editable && selection) add("Cut", async () => {
-					await writeClipboard(selection);
-					document.execCommand("delete");
-				}, true, navigator.platform?.includes("Mac") ? "⌘X" : "Ctrl+X");
-				if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, navigator.platform?.includes("Mac") ? "⌘V" : "Ctrl+V");
+					if (await writeClipboardText(selection)) cutFrom(editable);
+				}, true, shortcutKey("X"));
+				if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, shortcutKey("V"));
 				add("Select all", () => {
 					if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) {
 						editable.focus();
@@ -3009,7 +3063,7 @@
 							sel.addRange(range);
 						}
 					}
-				}, true, navigator.platform?.includes("Mac") ? "⌘A" : "Ctrl+A");
+				}, true, shortcutKey("A"));
 				if (selection && !editable) {
 					sep();
 					add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, "_blank", "noopener"));
@@ -3018,12 +3072,12 @@
 					sep();
 					if (link) {
 						add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
-						add("Copy link", () => writeClipboard(link.href));
-						add("Copy Markdown link", () => writeClipboard(`[${linkCopyText(link)}](${link.href})`));
+						add("Copy link", () => writeClipboardText(link.href));
+						add("Copy Markdown link", () => writeClipboardText(`[${linkCopyText(link)}](${link.href})`));
 					}
 					if (image) {
 						add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
-						add("Copy image address", () => writeClipboard(image.src));
+						add("Copy image address", () => writeClipboardText(image.src));
 						add("Save image", () => {
 							const a = document.createElement("a");
 							a.href = image.src;
@@ -3035,10 +3089,10 @@
 				sep();
 				add("Back", () => history.back(), history.length > 1);
 				add("Forward", () => history.forward());
-				add("Reload", () => location.reload(), true, navigator.platform?.includes("Mac") ? "⌘R" : "Ctrl+R");
-				add("Copy page link", () => writeClipboard(location.href));
-				add("Copy page title", () => writeClipboard(document.title));
-				add("Print…", () => print(), true, navigator.platform?.includes("Mac") ? "⌘P" : "Ctrl+P");
+				add("Reload", () => location.reload(), true, shortcutKey("R"));
+				add("Copy page link", () => writeClipboardText(location.href));
+				add("Copy page title", () => writeClipboardText(document.title));
+				add("Print…", () => print(), true, shortcutKey("P"));
 				if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
 				menu.hidden = false;
 				menuViewportWidth = innerWidth;
@@ -3349,10 +3403,11 @@
 			el.dataset.spaPage = "";
 		});
 		const pageCache = /* @__PURE__ */ new Map();
+		const PAGE_CACHE_LIMIT = 4;
 		const setLoading = (value) => {
 			globalThis.SameyLoading?.(value);
 		};
-		const syncHtmlData = (doc, baseUrl) => {
+		const syncHtmlData = (doc) => {
 			const keep = /* @__PURE__ */ new Set([
 				"data-site-theme",
 				"data-kb-theme",
@@ -3360,11 +3415,7 @@
 				"data-color"
 			]);
 			for (const attr of [...document.documentElement.attributes]) if (attr.name.startsWith("data-") && !keep.has(attr.name)) document.documentElement.removeAttribute(attr.name);
-			for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) {
-				let value = attr.value;
-				if ((attr.name === "data-home-href" || attr.name === "data-back-href") && value) value = new URL(value, baseUrl).href;
-				document.documentElement.setAttribute(attr.name, value);
-			}
+			for (const attr of doc.documentElement.attributes) if (attr.name.startsWith("data-")) document.documentElement.setAttribute(attr.name, attr.value);
 		};
 		const extensionlessPageUrl = (url) => {
 			const clean = new URL(url.href);
@@ -3376,21 +3427,31 @@
 		const initialPublicUrl = extensionlessPageUrl(new URL(location.href));
 		if (initialPublicUrl.href !== location.href) history.replaceState(history.state, "", initialPublicUrl.href);
 		const warmedResources = /* @__PURE__ */ new Map();
+		const WARMED_RESOURCE_LIMIT = 96;
 		const warmResource = (url) => {
 			if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return Promise.resolve();
 			if (!/\.(?:js|css|json|data|wasm|woff2?|ttf)$/i.test(url.pathname)) return Promise.resolve();
 			const cached = warmedResources.get(url.href);
-			if (cached) return cached;
+			if (cached) {
+				warmedResources.delete(url.href);
+				warmedResources.set(url.href, cached);
+				return cached;
+			}
 			const task = fetch(url, {
 				credentials: "same-origin",
 				cache: "force-cache"
 			}).then((response) => {
 				if (!response.ok) throw new Error("Prefetch failed: HTTP " + response.status + " for " + url.href);
 			}).catch((error) => {
-				warmedResources.delete(url.href);
+				if (warmedResources.get(url.href) === task) warmedResources.delete(url.href);
 				console.debug("Navigation resource prefetch failed", url.href, error);
 			});
 			warmedResources.set(url.href, task);
+			while (warmedResources.size > WARMED_RESOURCE_LIMIT) {
+				const oldest = warmedResources.keys().next().value;
+				if (oldest == null) break;
+				warmedResources.delete(oldest);
+			}
 			return task;
 		};
 		const addWarmUrl = (urls, value, baseUrl) => {
@@ -3443,31 +3504,40 @@
 		};
 		const fetchPage = async (url) => {
 			const logical = extensionlessPageUrl(url);
-			const key = logical.href;
+			const fetchUrl = new URL(logical.href);
+			fetchUrl.hash = "";
+			const key = fetchUrl.href;
 			const cached = pageCache.get(key);
-			if (cached) return cached;
+			if (cached) {
+				pageCache.delete(key);
+				pageCache.set(key, cached);
+				return cached;
+			}
 			const task = (async () => {
-				const response = await fetch(logical, {
+				const response = await fetch(fetchUrl, {
 					headers: { "X-Samey-SPA": "1" },
 					credentials: "same-origin"
 				});
-				if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || "Unknown"} for ${logical.href}`);
+				if (!response.ok) throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText || "Unknown"} for ${fetchUrl.href}`);
 				const doc = new DOMParser().parseFromString(await response.text(), "text/html");
 				const baseTag = doc.querySelector("base[href]")?.getAttribute("href");
-				const baseUrl = new URL(baseTag || ".", logical.href);
-				const ready = Promise.all(pageWarmResources(doc, baseUrl).map((value) => warmResource(new URL(value)))).then(() => {});
+				const baseUrl = new URL(baseTag || ".", fetchUrl.href);
 				return {
 					doc,
 					baseUrl,
-					responseUrl: logical.href,
-					ready
+					ready: Promise.all(pageWarmResources(doc, baseUrl).map((value) => warmResource(new URL(value)))).then(() => {})
 				};
 			})();
 			pageCache.set(key, task);
+			while (pageCache.size > PAGE_CACHE_LIMIT) {
+				const oldest = pageCache.keys().next().value;
+				if (oldest == null) break;
+				pageCache.delete(oldest);
+			}
 			try {
 				return await task;
 			} catch (error) {
-				pageCache.delete(key);
+				if (pageCache.get(key) === task) pageCache.delete(key);
 				throw error;
 			}
 		};
@@ -3556,7 +3626,7 @@
 			const runtimeAnchor = clearPageBody();
 			for (const child of [...doc.body.children]) document.body.insertBefore(document.importNode(child, true), runtimeAnchor);
 			document.title = doc.title;
-			syncHtmlData(doc, baseUrl);
+			syncHtmlData(doc);
 			currentPagePath = url.pathname;
 			currentPageUrl = url.href;
 			writePageHistory(url, replace);
@@ -3827,8 +3897,8 @@
 				if (!root) return null;
 				const native = root.querySelector("input[type=\"range\"]");
 				const thumb = root.querySelector("[role=\"slider\"]");
-				const track = native?.closest(".game-range-shell") ?? root.querySelector("[data-kb-slider-track],.samey-slider-track");
-				const hit = target.closest("input[type=\"range\"],[role=\"slider\"],.game-range-shell,[data-kb-slider-track],.samey-slider-track");
+				const track = native?.closest(".game-range-shell") ?? root.querySelector("[data-kb-slider-track]");
+				const hit = target.closest("input[type=\"range\"],[role=\"slider\"],.game-range-shell,[data-kb-slider-track]");
 				if (!hit || !root.contains(hit) || !track || !native && !thumb) return null;
 				return {
 					root,
@@ -3852,10 +3922,7 @@
 				frame = 0;
 				const current = active;
 				if (!current?.root.isConnected) return;
-				const rect = current.track.getBoundingClientRect();
-				if (!(rect.width > 0)) return;
-				const nativeInset = current.native ? 8 : 0;
-				const usable = Math.max(1, rect.width - nativeInset * 2);
+				const { rect, nativeInset, usable } = current;
 				const x = Math.max(rect.left + nativeInset, Math.min(rect.right - nativeInset, current.clientX));
 				const pointerRatio = clamp01((x - rect.left - nativeInset) / usable);
 				const currentRatio = actualRatio(current);
@@ -3890,11 +3957,17 @@
 				const parts = sliderParts(event.target);
 				if (!parts || parts.native?.disabled || parts.thumb?.getAttribute("aria-disabled") === "true") return;
 				if (active) return;
+				const rect = parts.track.getBoundingClientRect();
+				if (!(rect.width > 0)) return;
+				const nativeInset = parts.native ? 8 : 0;
 				clearTimeout(snapTimer);
 				active = {
 					...parts,
 					pointerId: event.pointerId,
-					clientX: event.clientX
+					clientX: event.clientX,
+					rect,
+					nativeInset,
+					usable: Math.max(1, rect.width - nativeInset * 2)
 				};
 				parts.root.removeAttribute("data-samey-slider-snapping");
 				parts.root.setAttribute("data-samey-slider-dragging", "");
@@ -3919,12 +3992,9 @@
 			addEventListener("samey-pageleave", abort);
 		};
 		const mountRuntime = () => {
-			if (readNavigationIndex() == null) replaceState({
-				...readHistoryState() || {},
-				[NAV_INDEX_KEY]: pageHistoryIndex
-			}, "", location.href);
+			if (readNavigationIndex() == null) replaceState(navigationState(pageHistoryIndex), "", location.href);
 			normalizeExternalLinks();
-			observeExternalLinks();
+			observeLinks();
 			mountControls();
 			mountLoadingBar();
 			mountCursor();
@@ -3937,7 +4007,11 @@
 		};
 		if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountRuntime, { once: true });
 		else mountRuntime();
-		if ("serviceWorker" in navigator && location.protocol !== "file:") {
+		const developmentShell = document.documentElement.hasAttribute("data-samey-dev");
+		if ("serviceWorker" in navigator && developmentShell) navigator.serviceWorker.getRegistrations().then((registrations) => {
+			for (const registration of registrations) registration.unregister();
+		}).catch((error) => console.debug("Could not clear development service worker", error));
+		else if ("serviceWorker" in navigator && location.protocol !== "file:") {
 			const serviceWorkerUrl = new URL("sw.js", SCRIPT_ROOT);
 			if (BUILD_VERSION) serviceWorkerUrl.searchParams.set("v", BUILD_VERSION);
 			navigator.serviceWorker.register(serviceWorkerUrl.href, { updateViaCache: "none" }).catch((error) => console.error("Service worker registration failed", error));
@@ -4090,12 +4164,6 @@
 	];
 	//#endregion
 	//#region src/shared/site.ts
-	var userAgentPlatform = (() => {
-		const data = Reflect.get(navigator, "userAgentData");
-		if (!data || typeof data !== "object") return "";
-		const platform = Reflect.get(data, "platform");
-		return typeof platform === "string" ? platform : "";
-	})();
 	var currentScript = document.currentScript;
 	var SCRIPT_ROOT = new URL(".", currentScript instanceof HTMLScriptElement ? currentScript.src : location.href);
 	var norm = (value) => value.toLowerCase();
@@ -4126,8 +4194,7 @@
 			if (restoreFocus && target) target.isConnected && target.focus();
 		}));
 	}
-	var shortcutLabel = /Mac|iPhone|iPad|iPod/i.test(userAgentPlatform || navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K";
-	var syncShortcutLabels = () => document.querySelectorAll("[data-search-shortcut]").forEach((element) => element.textContent = shortcutLabel);
+	var syncShortcutLabels = () => document.querySelectorAll("[data-search-shortcut]").forEach((element) => element.textContent = searchShortcutLabel);
 	syncShortcutLabels();
 	addEventListener("samey-pageload", syncShortcutLabels);
 	function resultNode(item, index) {

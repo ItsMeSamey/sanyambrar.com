@@ -99,17 +99,10 @@
   --Chart-hist-m__color: var(--keybr-chart-hist-m);
   --Chart-hist-r__color: var(--keybr-chart-hist-r);
 
-  --DailyGoal-bar__color: var(--site-fg, var(--secondary));
-  --DailyGoal-frame__color: color-mix(in srgb, var(--site-fg, var(--secondary)) 35%, transparent);
   --Calendar-caption__background-color: var(--primary-d1);
   --Calendar-headerCell__background-color: var(--primary-d2);
   --Calendar-cell--background-color: var(--primary-l1);
 
-  --Player__background-color: var(--primary);
-  --Player--me__background-color: var(--primary-d1);
-  --Player--finished__background-color: transparent;
-  --PlayerDetails__color: var(--secondary);
-  --PlayerDetails__background-color: var(--primary-l1);
 
   --Name-color: var(--secondary-l2);
   --Value-color: var(--secondary-d1);
@@ -137,13 +130,9 @@
 
   --Popup__color: var(--text-color);
   --Popup__background-color: var(--background-color);
-  --Popup__box-shadow: 0 0.5rem 3rem var(--shadow-color);
-  --Popup--small__box-shadow: 0 0 1rem var(--shadow-color);
   --Spotlight__background-color: color-mix(in srgb, var(--site-blur-tint, #000000) 6%, transparent);
   --Spotlight__border-color: var(--secondary-l2);
   --Spotlight-marker__shadow-color: var(--shadow-color);
-  --Surface__box-shadow: none;
-  --Surface__backdrop-filter: none;
 
   --syntax-keyword: var(--site-accent-fg, var(--site-accent, var(--accent)));
   --syntax-string: var(--site-fast-fg, var(--site-fast-color, var(--accent)));
@@ -161,9 +150,6 @@
 
 html[data-kb-theme="dark"] {
   --shadow-color: color-mix(in srgb, var(--site-shadow-tint, #000000) 53%, transparent);
-  --keybr-data-strength: 58%;
-  --keybr-zone-strength: 28%;
-  --keybr-accent-strength: 54%;
 }
 
 html[data-font="sans-serif"] { --default-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; --header-font-family: var(--default-font-family); --value-font-family: var(--default-font-family); --monospace-font-family: var(--default-font-family); }

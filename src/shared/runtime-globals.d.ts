@@ -17,7 +17,6 @@ declare global {
   var SameyPageSwapNavigate: ((href: string, options?: NavigationOptions) => Promise<void>) | undefined;
   var SameyNavigate: ((href: string, options?: NavigationOptions) => Promise<void> | void) | undefined;
   var SameyPreloadPage: ((href: string) => void) | undefined;
-  var SameySolidPreload: ((href: string) => void) | undefined;
   var SameyMountSolid: (() => void) | undefined;
   var SameySolidDispose: (() => void) | undefined;
   var SameyWordleDispose: (() => void) | undefined;
