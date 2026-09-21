@@ -9,15 +9,6 @@ const REVERB_PHONE_WIDTH = 411;
 const REVERB_PHONE_HEIGHT = 912;
 const REVERB_FULLSCREEN_EXIT_GUTTER = 50;
 
-function animateFrame(frame: HTMLDivElement, reduceMotion: boolean) {
-  frame.getAnimations().forEach(animation => animation.cancel());
-  if (reduceMotion) return;
-  frame.animate([{ opacity: 0.72 }, { opacity: 1 }], {
-    duration: 170,
-    easing: 'cubic-bezier(.16,1,.3,1)',
-  });
-}
-
 function installResponsivePhone(host: HTMLDivElement, onGeometryChange: () => void = () => {}) {
   const sync = () => {
     const width = host.clientWidth;
@@ -51,27 +42,39 @@ function installResponsivePhone(host: HTMLDivElement, onGeometryChange: () => vo
     onGeometryChange();
   };
   const resizeObserver = new ResizeObserver(sync);
-  const fullscreenObserver = new MutationObserver(sync);
   resizeObserver.observe(host);
-  fullscreenObserver.observe(host, { attributes: true, attributeFilter: ['data-fullscreen'] });
   sync();
-  return () => {
-    resizeObserver.disconnect();
-    fullscreenObserver.disconnect();
-    host.removeAttribute('data-compact-scale');
-    host.style.removeProperty('--reverb-demo-scale');
-    host.style.removeProperty('--reverb-demo-phone-left');
+  return {
+    sync,
+    dispose() {
+      resizeObserver.disconnect();
+      host.removeAttribute('data-compact-scale');
+      host.style.removeProperty('--reverb-demo-scale');
+      host.style.removeProperty('--reverb-demo-phone-left');
+    },
   };
 }
 
-function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: HTMLButtonElement) {
+function installFullscreen(
+  frame: HTMLDivElement,
+  host: HTMLDivElement,
+  button: HTMLButtonElement,
+  syncGeometry: () => void,
+) {
   const token = `reverb-${Math.random().toString(36).slice(2)}`;
-  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let active = false;
   let previousBodyOverflow = '';
   let previousHtmlOverflow = '';
   let releaseBackground = () => {};
   let exitTraversalPending = false;
+  let geometryFrame = 0;
+  const queueGeometrySync = () => {
+    if (geometryFrame) return;
+    geometryFrame = requestAnimationFrame(() => {
+      geometryFrame = 0;
+      syncGeometry();
+    });
+  };
 
   const stateIsOurs = () => Boolean(readHistoryState() && readHistoryState()[FULLSCREEN_STATE_KEY] === token);
   const clearOwnedHistoryState = () => {
@@ -171,7 +174,7 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
       releaseBackground = () => {};
       requestAnimationFrame(() => button.isConnected && button.focus({ preventScroll: true }));
     }
-    animateFrame(frame, reducedMotion());
+    queueGeometrySync();
   };
 
   const enterFullscreen = () => {
@@ -232,6 +235,8 @@ function installFullscreen(frame: HTMLDivElement, host: HTMLDivElement, button: 
   window.addEventListener('keydown', onKeyDown);
 
   return () => {
+    if (geometryFrame) cancelAnimationFrame(geometryFrame);
+    geometryFrame = 0;
     button.removeEventListener('click', onButtonClick);
     window.removeEventListener('popstate', onPopState);
     window.removeEventListener('samey-pageleave', onPageLeave);
@@ -363,9 +368,9 @@ export function ReverbDemo() {
   let dispose = () => {};
   onSettled(() => {
     const demo = mountReverbDemo(host);
-    const disposeScale = installResponsivePhone(host, demo.invalidateLayout);
-    const disposeFullscreen = installFullscreen(frame, host, fullscreenButton);
-    dispose = () => { disposeFullscreen(); disposeScale(); demo.dispose(); };
+    const scale = installResponsivePhone(host, demo.invalidateLayout);
+    const disposeFullscreen = installFullscreen(frame, host, fullscreenButton, scale.sync);
+    dispose = () => { disposeFullscreen(); scale.dispose(); demo.dispose(); };
   });
   onCleanup(() => dispose());
   return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">

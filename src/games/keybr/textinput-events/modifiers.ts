@@ -12,6 +12,9 @@ const all = [
 
 let initialized = false;
 let modifiers: readonly ModifierId[] = [];
+const updateModifiers = (event: KeyboardEvent) => {
+  modifiers = getModifiers(event);
+};
 
 /**
  * A static global object which tracks the state of the modifier keys,
@@ -33,14 +36,18 @@ export class ModifierState {
   static initialize() {
     if (!initialized) {
       // ModifierState must receive keyboard events before any other event listener.
-      window.addEventListener("keydown", (event) => {
-        modifiers = getModifiers(event);
-      });
-      window.addEventListener("keyup", (event) => {
-        modifiers = getModifiers(event);
-      });
+      window.addEventListener("keydown", updateModifiers);
+      window.addEventListener("keyup", updateModifiers);
       initialized = true;
     }
+  }
+
+  static dispose() {
+    if (!initialized) return;
+    window.removeEventListener("keydown", updateModifiers);
+    window.removeEventListener("keyup", updateModifiers);
+    modifiers = [];
+    initialized = false;
   }
 }
 

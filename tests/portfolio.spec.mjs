@@ -1632,6 +1632,7 @@ test('animated overlays stay contained through opening frames and reduced motion
         overflowX: style.overflowX,
         backgroundColor: style.backgroundColor,
         backdropFilter: style.backdropFilter,
+        boxShadow: style.boxShadow,
       };
     }, viewport);
     expect(result.names, `${label} must expose its intended opening animation`).toContain(expectedName);
@@ -1653,6 +1654,7 @@ test('animated overlays stay contained through opening frames and reduced motion
     expect(result.overflowX, `${label} must clip horizontal paint at its rounded edge`).toBe('hidden');
     expect(result.backgroundColor, `${label} surface must be opaque rather than expose content below`).not.toBe('rgba(0, 0, 0, 0)');
     expect(result.backdropFilter, `${label} surface must not blur content through its own rounded edge`).toBe('none');
+    expect(result.boxShadow, `${label} must not paint shadow bands outside its rounded border`).toBe('none');
   };
 
   await visit(page, '/', info);
@@ -2417,6 +2419,23 @@ test('Keybr hover prefetch warms subdependencies without mounting the app', asyn
   await expect(page.locator('#samey-load-error')).toHaveCount(0);
 });
 
+test('prefetch cache ignores URL fragments for the same document', async ({ page }, info) => {
+  test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch cache is exercised by the production shell');
+  let keybrHtmlRequests = 0;
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/keybr') keybrHtmlRequests += 1;
+  });
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    globalThis.SameyPreloadPage?.('/keybr#practice');
+    globalThis.SameyPreloadPage?.('/keybr#settings');
+  });
+  await expect.poll(() => keybrHtmlRequests, {
+    message: 'Hash variants of one page must share the detached-document prefetch cache',
+  }).toBe(1);
+});
+
 test('speculative prefetch keeps destination HTML inert', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Cross-app prefetch is exercised by the production shell');
 
@@ -2829,7 +2848,18 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
           && Number(style.opacity) >= 0.12 && bounds.width > 0 && bounds.height > 0;
       }) : false;
       const strokes = [...document.querySelectorAll('.samey-construction-stroke')];
-      const roundedSources = [...document.querySelectorAll('[data-samey-construction-rounded]')];
+      const hiddenSources = [...document.querySelectorAll(
+        '[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]',
+      )];
+      const roundedSources = hiddenSources.filter(element => {
+        const style = getComputedStyle(element);
+        return [
+          style.borderTopLeftRadius,
+          style.borderTopRightRadius,
+          style.borderBottomRightRadius,
+          style.borderBottomLeftRadius,
+        ].some(value => Number.parseFloat(value) > 0);
+      });
       const partialStroke = strokes.some(stroke => {
         const offset = Math.abs(Number.parseFloat(getComputedStyle(stroke).strokeDashoffset));
         return Number.isFinite(offset) && offset > 0.03 && offset < 0.97;
@@ -2848,7 +2878,7 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
         area: rect ? rect.width * rect.height : 0,
         contentVisible,
         partialStroke,
-        sourceBordersHidden: document.querySelector('[data-samey-construction-source]') != null,
+        sourceBordersHidden: hiddenSources.length > 0,
         roundedStroke: strokes.some(stroke => stroke.dataset.rounded === 'true'),
         roundedSourcesStable,
       });
@@ -2880,7 +2910,7 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
   expect(animationTargets.some(target => target.routeContent && target.transitionContent && target.hasOpacity)).toBe(true);
   expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
-  await expect(page.locator('[data-samey-construction-source]')).toHaveCount(0);
+  await expect(page.locator('[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]')).toHaveCount(0);
 });
 
 test('slow project demo chunks keep the previous route painted until the destination is complete', async ({ page }, info) => {
@@ -3204,6 +3234,37 @@ test('virtual scrollbar drag releases pointer ownership on window blur', async (
   await page.mouse.up();
 });
 
+test('virtual scrollbar thumb remains draggable at the viewport edge', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One desktop browser covers edge hit-testing');
+  await visit(page, '/', info);
+  await page.evaluate(() => {
+    const spacer = document.createElement('div');
+    spacer.id = 'qa-scroll-edge-spacer';
+    spacer.style.height = '3200px';
+    document.body.append(spacer);
+  });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > innerHeight + 500)).toBe(true);
+  const rootBar = page.locator('.samey-vscroll').filter({ has: page.locator('.samey-vscroll-thumb') }).first();
+  await expect(rootBar).toBeVisible();
+  const thumb = rootBar.locator('.samey-vscroll-thumb');
+  const box = await thumb.boundingBox();
+  if (!box) throw new Error('Root virtual scrollbar thumb has no geometry');
+  const edgeX = await page.evaluate(() => innerWidth - 1);
+  const centerY = box.y + box.height / 2;
+  expect(await page.evaluate(([x, y]) => {
+    const hit = document.elementFromPoint(x, y);
+    return hit?.classList.contains('samey-vscroll-thumb') ?? false;
+  }, [edgeX, centerY]), 'The rightmost viewport pixel over the thumb must hit the draggable thumb, not the track').toBe(true);
+  const before = await page.evaluate(() => scrollY);
+  await page.mouse.move(edgeX, centerY);
+  await page.mouse.down();
+  await page.mouse.move(edgeX, centerY + 60, { steps: 6 });
+  await expect.poll(() => page.evaluate(() => scrollY), {
+    message: 'Dragging from the viewport edge must move the page scrollbar',
+  }).toBeGreaterThan(before);
+  await page.mouse.up();
+});
+
 test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 260 });
   await visit(page, '/blog/posts/btop-mutex', info);
@@ -3309,6 +3370,7 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
       overflowX: style.overflowX,
       background: style.backgroundColor,
       backdrop: style.backdropFilter,
+      boxShadow: style.boxShadow,
       separators,
     };
   });
@@ -3316,6 +3378,7 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   expect(menuSurface.overflowX).toBe('hidden');
   expect(menuSurface.background).not.toBe('rgba(0, 0, 0, 0)');
   expect(menuSurface.backdrop).toBe('none');
+  expect(menuSurface.boxShadow, 'Context menu must not paint horizontal shadow bands outside its rounded border').toBe('none');
   expect(menuSurface.separators.length).toBeGreaterThan(0);
   expect(menuSurface.separators.every(separator =>
     separator.tag === 'DIV'
@@ -3513,28 +3576,42 @@ test('Wordle typing does not trigger virtual-scrollbar subtree rescans', async (
   await visit(page, '/wordle', info);
   await page.getByRole('button', { name: 'Configure', exact: true }).click();
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await page.waitForTimeout(50);
   await page.evaluate(() => {
     globalThis.__sameyQaVirtualScrollerRects = 0;
+    globalThis.__sameyQaOverlayScans = 0;
     const nativeRect = Element.prototype.getBoundingClientRect;
+    const nativeQuerySelectorAll = Document.prototype.querySelectorAll;
     Element.prototype.getBoundingClientRect = function(...args) {
       const stack = new Error('virtual scrollbar audit').stack ?? '';
       if (stack.includes('virtualScrollerEligible')) globalThis.__sameyQaVirtualScrollerRects += 1;
       return nativeRect.apply(this, args);
     };
+    Document.prototype.querySelectorAll = function(selector) {
+      if (selector === '[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]')
+        globalThis.__sameyQaOverlayScans += 1;
+      return nativeQuerySelectorAll.call(this, selector);
+    };
     globalThis.__sameyQaRestoreRect = () => {
       Element.prototype.getBoundingClientRect = nativeRect;
+      Document.prototype.querySelectorAll = nativeQuerySelectorAll;
       delete globalThis.__sameyQaRestoreRect;
     };
   });
   await page.keyboard.type('aapple');
   await page.waitForTimeout(120);
-  const reads = await page.evaluate(() => {
-    const count = globalThis.__sameyQaVirtualScrollerRects ?? 0;
+  const audit = await page.evaluate(() => {
+    const value = {
+      scrollerRects: globalThis.__sameyQaVirtualScrollerRects ?? 0,
+      overlayScans: globalThis.__sameyQaOverlayScans ?? 0,
+    };
     globalThis.__sameyQaRestoreRect?.();
     delete globalThis.__sameyQaVirtualScrollerRects;
-    return count;
+    delete globalThis.__sameyQaOverlayScans;
+    return value;
   });
-  expect(reads, 'Typing class churn must not deep-scan descendant scrollbar geometry').toBeLessThanOrEqual(20);
+  expect(audit.scrollerRects, 'Typing class churn must not deep-scan descendant scrollbar geometry').toBeLessThanOrEqual(20);
+  expect(audit.overlayScans, 'Typing DOM churn must not rescan global overlay geometry').toBe(0);
 });
 
 test('shared slider drag keeps its first pointer owner', async ({ page }, info) => {
@@ -3550,6 +3627,19 @@ test('shared slider drag keeps its first pointer owner', async ({ page }, info) 
   const x30 = box.x + box.width * .3;
   const x80 = box.x + box.width * .8;
   const offset = () => root.evaluate(element => element.style.getPropertyValue('--samey-slider-drag-offset'));
+  await page.evaluate(() => {
+    globalThis.__sameyQaSliderPaintRects = 0;
+    const nativeRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function(...args) {
+      const stack = new Error('slider paint rect').stack ?? '';
+      if (stack.includes('paintDrag')) globalThis.__sameyQaSliderPaintRects += 1;
+      return nativeRect.apply(this, args);
+    };
+    globalThis.__sameyQaRestoreSliderRect = () => {
+      Element.prototype.getBoundingClientRect = nativeRect;
+      delete globalThis.__sameyQaRestoreSliderRect;
+    };
+  });
 
   await dispatchSyntheticPointer(slider, 'pointerdown', 1, x20, y);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -3563,6 +3653,13 @@ test('shared slider drag keeps its first pointer owner', async ({ page }, info) 
   await dispatchSyntheticPointer(slider, 'pointermove', 2, x20, y);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   expect(await offset(), 'A secondary pointer must not take over the active shared slider drag').toBe(afterOwnerMove);
+  const paintRects = await page.evaluate(() => {
+    const count = globalThis.__sameyQaSliderPaintRects ?? 0;
+    globalThis.__sameyQaRestoreSliderRect?.();
+    delete globalThis.__sameyQaSliderPaintRects;
+    return count;
+  });
+  expect(paintRects, 'Slider rAF paint must use pointerdown geometry instead of forcing layout').toBe(0);
 });
 
 test('shared slider drag aborts on window blur', async ({ page }, info) => {
@@ -3759,7 +3856,7 @@ test('Keybr Settings view constructs rules without translating content', async (
   expect(animationTargets.targets.some(target => target.appContent && target.transitionContent && target.hasOpacity)).toBe(true);
   expect(animationTargets.targets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
-  await expect(page.locator('[data-samey-construction-source]')).toHaveCount(0);
+  await expect(page.locator('[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]')).toHaveCount(0);
 });
 
 test('Keybr settings persist and typing is live', async ({ page }, info) => {
@@ -4479,6 +4576,21 @@ test('Chain replay stays usable at extreme sizes and resumes a fork', async ({ p
     }).toBe(true);
   }
   await page.setViewportSize({ width: 390, height: 844 });
+  const replayStage = page.locator('.chain-replay-stage');
+  await replayStage.evaluate(element => {
+    globalThis.__sameyQaReplayStageRects = 0;
+    const nativeRect = element.getBoundingClientRect.bind(element);
+    element.getBoundingClientRect = (...args) => {
+      globalThis.__sameyQaReplayStageRects += 1;
+      return nativeRect(...args);
+    };
+  });
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.waitForTimeout(180);
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  expect(await page.evaluate(() => globalThis.__sameyQaReplayStageRects ?? 0),
+    'Replay animation must reuse cached geometry instead of measuring on each frame').toBe(0);
+  await page.getByRole('button', { name: 'Previous', exact: true }).click();
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.locator('.chain-replay-controls output')).toHaveText('Move 1 / 4');
   await page.getByRole('button', { name: 'Next', exact: true }).click();

@@ -60,7 +60,6 @@ const toolOptions = [...TOOLS];
 const isToolId = (value: unknown): value is ToolId => typeof value === 'string' && validTools.has(value);
 const selectedTool = ():ToolId => {
   const value = new URLSearchParams(location.search).get('tool');
-  if (value === 'ascii' || value === 'words') return 'text';
   return isToolId(value) ? value : 'text';
 };
 

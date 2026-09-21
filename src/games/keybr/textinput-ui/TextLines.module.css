@@ -17,11 +17,11 @@
 }
 
 .focus {
-  filter: none;
+  opacity: 1;
 }
 
 .blur {
-  filter: blur(3px);
+  opacity: 0.42;
 }
 
 .size_X0 {

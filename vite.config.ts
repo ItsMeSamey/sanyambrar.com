@@ -27,11 +27,25 @@ const extensionlessHtmlPreview: Plugin = {
   },
 }
 
+const solidRuntimeDynamicImport: Plugin = {
+  name: 'samey-solid-runtime-dynamic-import',
+  enforce: 'pre',
+  transform(code, id) {
+    if (!code.includes('function loadModuleAssets(mapping)') || !code.includes('import(entryUrl)')) return null
+    if (!id.includes('@solidjs_web.js') && !id.includes('@solidjs/web/dist/')) return null
+    return {
+      code: code.replace('import(entryUrl)', 'import(/* @vite-ignore */ entryUrl)'),
+      map: null,
+    }
+  },
+}
+
 export default defineConfig(() => {
   if (target === 'wordle') return {
     publicDir: false,
     input: path.resolve(root, 'src/games/wordle/index.html'),
-    plugins: [solid(), viteSingleFile({ removeViteModuleLoader: true })],
+    plugins: [solidRuntimeDynamicImport, solid(), viteSingleFile({ removeViteModuleLoader: true })],
+    optimizeDeps: { entries: ['src/games/wordle/index.html'] },
     build: {
       outDir: path.resolve(root, '.build/wordle'),
       rolldownOptions: { checks: { pluginTimings: false } },
@@ -41,13 +55,21 @@ export default defineConfig(() => {
   if (target === 'site') return {
     publicDir: false,
     input: path.resolve(root, 'src/site/main.tsx'),
-    plugins: [extensionlessHtmlPreview, solid()],
+    assetsInclude: ['**/*.data'],
+    plugins: [solidRuntimeDynamicImport, extensionlessHtmlPreview, solid()],
+    optimizeDeps: { entries: ['src/site/main.tsx'] },
+    css: {
+      modules: { localsConvention: 'camelCase' },
+    },
     build: {
       outDir: path.resolve(root, '.build/site-runtime'),
       emptyOutDir: true,
       target: 'es2022',
       manifest: true,
       cssCodeSplit: true,
+      // Monaco is intentionally lazy-loaded by editor tools; keep warnings
+      // useful for anything that grows beyond that known split editor chunk.
+      chunkSizeWarningLimit: 3000,
       rolldownOptions: {
         output: {
           entryFileNames: 'site-chunks/site-app-[hash].js',
@@ -60,7 +82,7 @@ export default defineConfig(() => {
 
   if (target === 'site-prerender') return {
     publicDir: false,
-    plugins: [solid({ ssr: true })],
+    plugins: [solidRuntimeDynamicImport, solid({ ssr: true })],
     build: {
       outDir: path.resolve(root, '.build/site-prerender'),
       emptyOutDir: true,
@@ -78,7 +100,7 @@ export default defineConfig(() => {
   if (target === 'blog') return {
     publicDir: false,
     input: path.resolve(root, 'src/blogs/btop-mutex.html'),
-    plugins: [solid(), viteSingleFile({ removeViteModuleLoader: true })],
+    plugins: [solidRuntimeDynamicImport, solid(), viteSingleFile({ removeViteModuleLoader: true })],
     build: {
       outDir: path.resolve(root, '.build/blog-post'),
       emptyOutDir: true,
@@ -112,7 +134,8 @@ export default defineConfig(() => {
     root: keybrRoot,
     base: './',
     assetsInclude: ['**/*.data'],
-    plugins: [solid()],
+    plugins: [solidRuntimeDynamicImport, solid()],
+    optimizeDeps: { entries: ['index.html'] },
     css: { modules: { localsConvention: 'camelCase' } },
     build: {
       outDir: path.resolve(root, '.build/keybr'),

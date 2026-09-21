@@ -2,6 +2,7 @@ import type * as Monaco from 'monaco-editor/editor/editor.api';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
 import { formatThrownError } from '../shared/error.ts';
+import { writeClipboardText } from '../shared/clipboard.ts';
 
 type MonacoModule = typeof import('../site/monaco.ts');
 type MonacoApi = MonacoModule['monaco'];
@@ -65,17 +66,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
     swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>',
   })[name] || '';
-  const copy = async (value: unknown) => {
-    try {
-      if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(String(value)); return true; }
-      const field = document.createElement('textarea');
-      field.value = String(value); field.setAttribute('readonly', '');
-      field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-      document.body.append(field);
-      try { field.select(); return document.execCommand('copy'); }
-      finally { field.remove(); }
-    } catch { return false; }
-  };
+  const copy = writeClipboardText;
 
   let disposeTool = () => {};
   let disposed = false;

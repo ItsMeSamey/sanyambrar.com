@@ -124,7 +124,7 @@ export function ChainPage() {
               <button ref={el => refs.replayPlay = el} type="button">Play</button>
               <button ref={el => refs.replayNext = el} type="button">Next</button>
               <button ref={el => refs.replayResume = el} class="chain-replay-resume" type="button">Resume from here</button>
-              <output ref={el => refs.replayStatus = el}>Move 0 / 0</output>
+              <output ref={el => refs.replayStatus = el} class="chain-replay-status">Move 0 / 0</output>
             </div>
           </section>
         </main>

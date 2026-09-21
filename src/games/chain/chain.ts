@@ -94,6 +94,7 @@ export function mountChain(refs: ChainRefs) {
   let replayDisplay: ReplayWave | null = null;
   let replayParticles: Particle[] = [];
   let replayFrame = 0;
+  let replayGeom: ReplayGeometry | null = null;
   let currentMatchId = '';
   let gamePlayers: Player[] = [];
   const replayContext = replayCanvas.getContext('2d', { alpha: false });
@@ -599,6 +600,7 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function replayGeometry(entry: Match): ReplayGeometry {
+    if (replayGeom && replayGeom.cfg.rows === entry.r && replayGeom.cfg.cols === entry.c) return replayGeom;
     const cfg = {rows:entry.r,cols:entry.c};
     const rect = replayCanvas.parentElement?.getBoundingClientRect() ?? replayCanvas.getBoundingClientRect();
     const maxW = Math.max(180, Math.min(680, rect.width - 24));
@@ -615,8 +617,9 @@ export function mountChain(refs: ChainRefs) {
     replayCtx.setTransform(scale,0,0,scale,0,0);
     replayCtx.imageSmoothingEnabled = true;
     replayCtx.imageSmoothingQuality = 'high';
-    return {cfg,w,h,cell:cellSize,ox:1,oy:1,scale};
+    return replayGeom = {cfg,w,h,cell:cellSize,ox:1,oy:1,scale};
   }
+  const invalidateReplayGeometry = () => { replayGeom = null; };
 
   function drawReplay(now = performance.now()) {
     replayFrame = 0;
@@ -681,6 +684,7 @@ export function mountChain(refs: ChainRefs) {
 
   function openReplay(entry: Match) {
     stopReplay();
+    invalidateReplayGeometry();
     replayEntry = entry;
     replayFrames = buildReplayFrames(entry);
     replayIndex = 0;
@@ -696,6 +700,7 @@ export function mountChain(refs: ChainRefs) {
   function closeReplay() {
     stopReplay();
     replayPanel.hidden = true;
+    invalidateReplayGeometry();
     replayEntry = null;
     replayFrames = [];
     replayIndex = 0;
@@ -769,17 +774,31 @@ export function mountChain(refs: ChainRefs) {
     }
   }
 
-  const css = () => getComputedStyle(document.documentElement);
-  const color = (name: string, fallback: string) => css().getPropertyValue(name).trim() || fallback;
+  const themeColorCache = new Map<string, string>();
+  const resolvedColorCache = new Map<string, string>();
+  const semanticColorCache = new Map<number, string>();
+  const color = (name: string, fallback: string) => {
+    const cached = themeColorCache.get(name);
+    if (cached) return cached;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+    themeColorCache.set(name, value);
+    return value;
+  };
   const colorProbe = document.createElement('span');
   colorProbe.hidden = true;
   document.body.append(colorProbe);
   function resolvedColor(expression: string, fallback: string) {
+    const cached = resolvedColorCache.get(expression);
+    if (cached) return cached;
     colorProbe.style.color = '';
     colorProbe.style.color = expression;
-    return getComputedStyle(colorProbe).color || fallback;
+    const value = getComputedStyle(colorProbe).color || fallback;
+    resolvedColorCache.set(expression, value);
+    return value;
   }
   function semanticPlayerColor(player: number): string {
+    const cached = semanticColorCache.get(player);
+    if (cached) return cached;
     const themed = [
       '',
       'var(--site-fast-color, #16a34a)',
@@ -789,8 +808,15 @@ export function mountChain(refs: ChainRefs) {
       'color-mix(in srgb, var(--site-effort-color, #2563eb) 58%, var(--site-fast-color, #16a34a))',
       'color-mix(in srgb, var(--site-error, #dc2626) 58%, var(--site-effort-color, #2563eb))',
     ];
-    return resolvedColor(themed[player] || 'var(--site-effort-color)', color('--site-effort-color', '#2563eb'));
+    const value = resolvedColor(themed[player] || 'var(--site-effort-color)', color('--site-effort-color', '#2563eb'));
+    semanticColorCache.set(player, value);
+    return value;
   }
+  const invalidateThemeColors = () => {
+    themeColorCache.clear();
+    resolvedColorCache.clear();
+    semanticColorCache.clear();
+  };
 
   function playerColor(player: number, players: Player[] = gamePlayers): string {
     return players?.[player - 1]?.color || semanticPlayerColor(player);
@@ -1456,13 +1482,30 @@ export function mountChain(refs: ChainRefs) {
   if (readPageHistoryIndex() == null)
     history.replaceState({...(readHistoryState() || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
   addEventListener('popstate', onPopState);
-  const repaintTheme = () => { orbCache.clear(); updateStatus(); requestDraw(); drawReplay(); };
-  const positionSettingsOnResize = () => { if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings(); drawReplay(); };
+  const repaintTheme = () => {
+    invalidateThemeColors();
+    orbCache.clear();
+    updateStatus();
+    requestDraw();
+    drawReplay();
+  };
+  const positionSettingsOnResize = () => {
+    if (settingsButton.getAttribute('aria-expanded') === 'true') positionSettings();
+    invalidateReplayGeometry();
+    drawReplay();
+  };
   addEventListener('resize', positionSettingsOnResize, {passive:true});
   const resizeObserver = new ResizeObserver(() => { if (!gameView.hidden) layout(); });
   resizeObserver.observe(stage);
+  const replayResizeObserver = new ResizeObserver(() => {
+    if (replayPanel.hidden) return;
+    invalidateReplayGeometry();
+    drawReplay();
+  });
+  if (replayCanvas.parentElement) replayResizeObserver.observe(replayCanvas.parentElement);
   const stopPixelRatioWatch = watchDevicePixelRatio(() => {
     if (!gameView.hidden) layout();
+    invalidateReplayGeometry();
     drawReplay();
   });
   window.addEventListener('samey-themechange', repaintTheme);
@@ -1486,6 +1529,7 @@ export function mountChain(refs: ChainRefs) {
     removeEventListener('resize', positionSettingsOnResize);
     removeEventListener('popstate', onPopState);
     resizeObserver.disconnect();
+    replayResizeObserver.disconnect();
     stopPixelRatioWatch();
     themeObserver.disconnect();
     window.removeEventListener('samey-themechange', repaintTheme);

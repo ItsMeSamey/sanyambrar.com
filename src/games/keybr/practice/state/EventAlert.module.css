@@ -1,5 +1,4 @@
 .award {
-  composes: fadeIn from "../../widget/components/toast/animations.module.css";
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -11,13 +10,9 @@
   block-size: 5rem;
 }
 
-.awardIcon > svg {
-  filter: drop-shadow(var(--Popup--small__box-shadow));
-}
-
 .awardIcon > div,
 .awardIcon > span {
-  box-shadow: var(--Popup__box-shadow);
+  outline: 1px solid color-mix(in srgb, currentColor 24%, transparent);
 }
 
 .message {
@@ -29,7 +24,6 @@
   color: var(--Popup__color);
   background-color: var(--Popup__background-color);
   background-clip: padding-box;
-  box-shadow: var(--Popup__box-shadow);
 }
 
 .icon {

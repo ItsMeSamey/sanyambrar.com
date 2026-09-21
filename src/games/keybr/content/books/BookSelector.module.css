@@ -59,7 +59,6 @@
   color: var(--secondary);
   background: var(--background-color);
   background-clip: padding-box;
-  box-shadow: var(--Popup__box-shadow);
   isolation: isolate;
 }
 

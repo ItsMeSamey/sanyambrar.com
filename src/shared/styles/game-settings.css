@@ -1,7 +1,5 @@
 /* Shared game settings primitives used by Wordle, Chain Reaction, and Keybr. */
 :root {
-  --game-control-top: 11px;
-  --game-control-right: 12px;
   --game-control-size: 36px;
   --game-settings-width: 360px;
 }
@@ -36,7 +34,6 @@
   color: var(--color-popover-foreground, var(--site-fg, #121213));
   background: var(--color-popover, var(--site-bg, #fff));
   background-clip: padding-box;
-  box-shadow: 0 12px 32px var(--site-shadow-4);
   isolation: isolate;
 }
 [data-popper-positioner] > .game-settings-popover { position: relative !important; }
@@ -101,7 +98,6 @@
 }
 
 @media (max-width: 640px) {
-  :root { --game-control-top: 9px; --game-control-right: 8px; }
   .game-settings-popover { width: min(var(--game-settings-width), calc(100vw - 16px)); max-height: calc(100dvh - 18px); }
   .game-settings-body { padding: 12px; }
 }

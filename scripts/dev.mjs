@@ -14,6 +14,14 @@ const settings = targets[target];
 const requestedPort = Number(process.env.SAMEY_DEV_PORT ?? settings.port);
 if (!Number.isSafeInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535) throw new Error('SAMEY_DEV_PORT must be a valid port');
 const docs = resolve(root, 'docs');
+const sharedRuntimeUrl = target === 'keybr'
+  ? '/@fs' + resolve(root, 'src/shared/runtime.ts')
+  : '/src/shared/runtime.ts';
+const siteSourcePages = new Map([
+  ['/wordle', 'src/games/wordle/index.html'],
+  ['/keybr', 'src/games/keybr/index.html'],
+  ['/blog/posts/btop-mutex', 'src/blogs/btop-mutex.html'],
+]);
 process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
@@ -28,6 +36,11 @@ const existingFile = async file => {
 const htmlFileFor = async path => {
   if (settings.html && (path === '/' || path === settings.route || path === settings.route + '.html'))
     return resolve(root, settings.html);
+  if (target === 'site') {
+    const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
+    const source = siteSourcePages.get(key);
+    if (source) return resolve(root, source);
+  }
   if (path.endsWith('/')) return existingFile(resolve(docs, '.' + path, 'index.html'));
   if (path.endsWith('.html')) return existingFile(resolve(docs, '.' + path));
   if (!extname(path)) {
@@ -52,8 +65,18 @@ const server = await createServer({
           const htmlFile = await htmlFileFor(path);
           if (htmlFile) {
             let html = await readFile(htmlFile, 'utf8');
+            html = html.replace(/<html(?=\s|>)/i, '<html data-samey-dev');
+            html = html
+              .replace(/<link\b[^>]*\bdata-samey-shared\b[^>]*>\s*/gi, '')
+              .replace(/<script\b[^>]*\bsrc=["'][^"']*shared-runtime\.js(?:\?[^"']*)?["'][^>]*><\/script>\s*/gi, '');
+            if (!html.includes(sharedRuntimeUrl))
+              html = html.replace('</head>', `<script type="module" src="${sharedRuntimeUrl}"></script></head>`);
             if (target === 'site') html = html.replace(/src="[^"\s]*site-chunks\/site-app-[^"\s]+\.js"/, 'src="/src/site/main.tsx"');
-            if (!html.includes('shared-runtime.js')) html = html.replace('</head>', '<link rel="stylesheet" href="/site.css" data-samey-shared><script src="/shared-runtime.js"></script></head>');
+            if (target === 'site' && htmlFile.endsWith('/src/games/keybr/index.html'))
+              html = html.replace('src="/main.tsx"', 'src="/src/games/keybr/main.tsx"');
+            if (target === 'site' && htmlFile.endsWith('/src/blogs/btop-mutex.html'))
+              html = html.replace('src="./shell.tsx"', 'src="/src/blogs/shell.tsx"');
+            html = html.replace(/(<link\b[^>]*\brel=["']icon["'][^>]*\bhref=)["'][^"']*["']/i, '$1"/favicon.svg"');
             if (!html.includes('rel="icon"')) html = html.replace('</head>', '<link rel="icon" href="/favicon.svg"></head>');
             html = await server.transformIndexHtml(path, html);
             response.setHeader('Content-Type', 'text/html');

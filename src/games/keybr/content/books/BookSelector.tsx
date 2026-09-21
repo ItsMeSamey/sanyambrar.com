@@ -52,6 +52,7 @@ export function BookSelector(props: {
     <dialog
       ref={dialog}
       class={styles.dialog}
+      data-samey-overlay=""
       aria-labelledby="keybr-book-library-title"
       onClose={close}
       onKeyDown={(event) => {

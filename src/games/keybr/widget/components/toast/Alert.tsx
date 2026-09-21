@@ -3,7 +3,9 @@ import { CircleAlert, CircleCheck, Info, X } from "../../../../../shared/compone
 import { type MouseProps } from "../types.ts";
 import { IconButton } from "../button/IconButton.tsx";
 import { Icon } from "../icon/Icon.tsx";
+import { clsx } from "clsx";
 import styles from "./Alert.module.css";
+import animations from "./animations.module.css";
 import { toastProps, useToast } from "./context.tsx";
 import { omit, merge } from 'solid-js';
 export function Alert(allProps: {
@@ -14,7 +16,7 @@ export function Alert(allProps: {
     const mergedProps = merge(allProps, { get severity() { return allProps.severity ?? null; }, get closeButton() { return allProps.closeButton ?? false; } });
     const local = mergedProps, props = omit(mergedProps, "children", "severity", "closeButton");
     const toast = useToast();
-    return (<div {...props} class={styles.alert} {...toastProps(toast)}>
+    return (<div {...props} class={clsx(styles.alert, animations.fadeIn)} {...toastProps(toast)}>
       {local.severity && <SeverityIcon severity={local.severity}/>}
       <div class={styles.message}>{local.children}</div>
       {local.closeButton && <IconButton icon={<Icon shape={X}/>} onClick={() => toast.close()}/>}
