@@ -2282,6 +2282,41 @@ test('Tools heavy tool switches warm dependencies and animate forward and back',
   });
 });
 
+test('Tools rapid switching preserves every history step', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One production browser covers rapid local tool history');
+  await visit(page, '/tools/?tool=number', info);
+  const tab = name => page.getByRole('tab', { name, exact: true });
+  const expectTool = async (id, pattern) => {
+    await expect(page).toHaveURL(pattern);
+    await expect(page.locator('[data-tool-view]')).toHaveAttribute('data-tool-view', id);
+  };
+
+  for (const [name, id, pattern] of [
+    ['Diff', 'diff', /tool=diff/],
+    ['Markdown', 'markdown', /tool=markdown/],
+    ['Numbers', 'number', /tool=number/],
+  ]) {
+    await tab(name).click();
+    await expectTool(id, pattern);
+  }
+
+  await tab('Diff').click();
+  await page.waitForTimeout(15);
+  await tab('Markdown').click();
+  await page.waitForTimeout(15);
+  await tab('Numbers').click();
+  await expectTool('number', /tool=number/);
+
+  await page.goBack();
+  await expectTool('markdown', /tool=markdown/);
+  await page.goBack();
+  await expectTool('diff', /tool=diff/);
+  await page.goForward();
+  await expectTool('markdown', /tool=markdown/);
+  await page.goForward();
+  await expectTool('number', /tool=number/);
+});
+
 const legacyHtmlRoutes = [
   '/index.html',
   '/work/index.html',

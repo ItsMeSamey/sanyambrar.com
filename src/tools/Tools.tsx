@@ -142,12 +142,18 @@ export function ToolsPage() {
       console.debug('Tool dependency warmup failed', tool, error));
   };
   const directionFor = (from:ToolId, to:ToolId) => toolOptions.findIndex(tool => tool.id === to) < toolOptions.findIndex(tool => tool.id === from) ? 'back' : 'forward';
+  let requested = active();
+  let requestGeneration = 0;
   const swapTool = (next:ToolId, syncUrl = true, requestedDirection?:'forward'|'back') => {
+    if (next === requested) return;
+    requested = next;
+    const generation = ++requestGeneration;
+    if (syncUrl) setToolUrl(next);
     const current = active();
     if (next === current) return;
     const commit = () => {
+      if (generation !== requestGeneration) return;
       setActive(next);
-      if (syncUrl) setToolUrl(next);
     };
     const root = document.querySelector<HTMLElement>('.tools-app');
     const animate = globalThis.SameyAnimateLocalSwap;
