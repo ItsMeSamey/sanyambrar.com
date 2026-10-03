@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs site",
-    "typecheck": "tsc -b tsconfig.json --pretty false",
+    "typecheck": "node node_modules/typescript-7/bin/tsc -b tsconfig.json --pretty false",
     "build": "bun build.ts",
     "build:wordle": "bun build.ts wordle",
     "build:keybr": "bun build.ts keybr",
@@ -20,29 +20,32 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",
-    "@kobalte/core": "2.0.0-alpha.1",
-    "@solidjs/web": "2.0.0-rc.6",
+    "@kobalte/core": "2.0.0-alpha.2",
+    "@solidjs/web": "2.0.0-rc.13",
     "clsx": "2.1.1",
     "idb": "^8.0.3",
-    "lucide": "1.41.0",
-    "monaco-editor": "0.56.0",
-    "solid-js": "2.0.0-rc.6",
+    "lucide": "1.50.0",
+    "monaco-editor": "0.57.0",
+    "solid-js": "2.0.0-rc.13",
     "vditor": "^4.0.0",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
-    "typescript": "^6.0.3",
-    "vite": "^8.2.2",
-    "@solidjs/vite-plugin": "3.0.0-next.39",
+    "@types/node": "^26.6.4",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.2",
+    "@solidjs/vite-plugin": "3.0.0-next.47",
     "@playwright/test": "1.63.0",
     "@axe-core/playwright": "4.13.0",
-    "eslint": "10.10.0",
-    "typescript-eslint": "8.69.0"
+    "eslint": "10.11.0",
+    "typescript-eslint": "8.71.0",
+    "typescript-7": "npm:typescript@^7.0.2"
   },
   "overrides": {
-    "solid-js": "2.0.0-rc.6",
-    "@solidjs/web": "2.0.0-rc.6",
-    "@solidjs/signals": "2.0.0-rc.6"
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/web": "2.0.0-rc.13",
+    "@solidjs/signals": "2.0.0-rc.13",
+    "brace-expansion": "5.0.12",
+    "dompurify": "3.4.16"
   }
 }

@@ -1101,7 +1101,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const lightBackdrop = effectiveBackdropLuma(target) >= .45;
       const source = lightBackdrop ? "#ccc" : "#fff";
       cursor.style.setProperty("--samey-cursor-blend", source);
-      linkFill.style.setProperty("--samey-cursor-blend", source);
+      if (!overlayOwnsInteraction) linkFill.style.setProperty("--samey-cursor-blend", source);
       cursor.dataset.blendSource = lightBackdrop ? "light" : "dark";
     };
     const overlaySelector = "[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]";
@@ -1114,7 +1114,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       return value.trim().endsWith("%") ? dimension * parsed / 100 : parsed;
     };
     const cornerRadius = (value: string, width: number, height: number) => {
-      const [x = "0", y = x] = value.trim().split(/\\s+/);
+      const [x = "0", y = x] = value.trim().split(/\s+/);
       return { x: cssRadiusPx(x, width), y: cssRadiusPx(y, height) };
     };
     const overlayIsVisible = (el: Element): el is HTMLElement => {
@@ -1138,9 +1138,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       overlayRefreshFrame = 0;
       visibleOverlays = [...document.querySelectorAll<HTMLElement>(overlaySelector)].filter(overlayIsVisible);
       overlayOwnsInteraction = visibleOverlays.length > 0;
-      // Difference-blend link fill and floating UI must never share a composed
-      // frame. Floating UI owns pointer presentation completely until it closes.
-      if (overlayOwnsInteraction) hideFillImmediate();
+      // Keep the page's one continuous blend surface below floating UI. The
+      // browser paints opaque rounded menus over it; cutting the fill into
+      // rectangles (or clearing it) breaks the blob at the menu's edges.
       refreshCursorMode();
     };
     const queueOverlayRefresh = () => {
@@ -1158,7 +1158,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     new MutationObserver((records) => {
       if (records.some(overlayMutationMatters)) refreshOverlayState();
     }).observe(document.documentElement, {
-      subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "aria-hidden", "data-open", "data-expanded"],
+      subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "open", "aria-hidden", "data-open", "data-expanded"],
     });
     addEventListener("resize", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true });
     addEventListener("scroll", () => { if (visibleOverlays.length) queueOverlayRefresh(); }, { passive: true, capture: true });
@@ -1344,7 +1344,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const renderFill = (time: number) => {
       fillFrame = 0;
-      if (overlayOwnsInteraction) { hideFillImmediate(); return; }
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       if (fillCollapsing) {
         if (!fillCollapseStart) fillCollapseStart = time;
@@ -1450,7 +1449,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-pageload", syncCursorIdlePolicy);
     addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link: LinkElement | null) {
-      if (overlayOwnsInteraction) { hideFillImmediate(); return; }
+      // Floating UI owns new hover targets, but the existing page highlight
+      // keeps its geometry and blend color until ownership returns.
+      if (overlayOwnsInteraction) return;
       if (!link) {
         const oldRect = activeFillRect;
         fillTarget = null;
@@ -1569,6 +1570,11 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         pointerGeometryFrame = 0;
         const actual = document.elementFromPoint(pendingX, pendingY);
         const actualLink = linkTarget(actual);
+        if (overlayOwnsInteraction) {
+          if (fillTarget && !fillTarget.isConnected) hideFillImmediate();
+          else if (fillTarget) { refreshLinkGeometry(fillTarget); updateFillGoal(); ensureFillFrame(); }
+          return;
+        }
         if (fillTarget && actualLink !== fillTarget) hideFillImmediate();
         else if (fillTarget && actualLink === fillTarget) refreshLinkGeometry(fillTarget);
         pointTextTarget = null;
@@ -1625,7 +1631,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       // begin several pixels inside the same element, so very slow movement used
       // to leave the round cursor stuck. Only those position-sensitive text zones
       // get a once-per-frame geometry refresh; raw cursor positioning stays clean.
-      if (fillTarget) { updateFillGoal(); ensureFillFrame(); }
+      if (fillTarget && !overlayOwnsInteraction) { updateFillGoal(); ensureFillFrame(); }
       schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
     };
     const refreshPointerTarget = (event: PointerEvent) => {
@@ -1641,7 +1647,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (hasRawPointer) document.addEventListener("pointerrawupdate", moveCursorOnly, { capture: true, passive: true });
     document.addEventListener("pointermove", moveCursorFallback, { capture: true, passive: true });
     document.addEventListener("pointerover", refreshPointerTarget, { capture: true, passive: true });
-    document.addEventListener("contextmenu", hideFillImmediate, { capture: true });
     addEventListener("scroll", queuePointerGeometryRefresh, { passive: true, capture: true });
     addEventListener("resize", queuePointerGeometryRefresh, { passive: true });
     addEventListener("samey-navigationstart", hideFillImmediate);
@@ -1756,7 +1761,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.addEventListener("drop", stopDragging, true);
     addEventListener("pointercancel", stopDragging, true);
     addEventListener("blur", stopDragging);
-    addEventListener("pointerout", (event) => { if (!event.relatedTarget && !nativeDragging && performance.now() >= linkHandoffUntil) { clearCursorIdle(); hidePointerVisuals(); } });
+    addEventListener("pointerout", (event) => {
+      if (event.relatedTarget || nativeDragging || performance.now() < linkHandoffUntil) return;
+      clearCursorIdle();
+      hideCursorVisual();
+      // showModal() makes the underlying target inert and may synthesize a
+      // pointerout with no related target. That is not a page/window exit.
+      if (!overlayOwnsInteraction) hideFillImmediate();
+    });
   };
 
   const editableTarget = (el: EventTarget | null): EditableElement | null => {
