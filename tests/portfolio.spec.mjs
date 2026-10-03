@@ -2788,6 +2788,13 @@ test('development first paint stays styled when source JavaScript is unavailable
   test.skip(!info.project.metadata.development, 'Source-only first-paint contract belongs to development');
   await page.route('**/*', async route => {
     const path = new URL(route.request().url()).pathname;
+    if (route.request().resourceType() === 'document') {
+      const response = await route.fetch();
+      // Vite's Solid plugin also injects inline diagnostic imports. Disable
+      // those with the application scripts for a genuinely script-free paint.
+      const body = (await response.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+      return route.fulfill({ response, body });
+    }
     if (path === '/@vite/client' || /\.(?:[cm]?[jt]sx?|js)$/.test(path))
       return route.fulfill({ status: 200, contentType: 'text/javascript', body: '' });
     await route.continue();
@@ -3646,13 +3653,8 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   const menu = page.getByRole('menu', { name: 'Context menu' });
   await expect(menu).toBeVisible();
   if (info.project.name !== 'production-mobile') {
-    await expect(page.locator('.samey-cursor-link-fill')).toHaveAttribute('hidden', '');
-    expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-      elements.every(element => {
-        const rect = element.getBoundingClientRect();
-        return rect.width === 0 && rect.height === 0;
-      }),
-    ), 'Opening the context menu must immediately kill the underlying page-link fill').toBe(true);
+    await expect(page.locator('.samey-cursor-link-fill')).not.toHaveAttribute('hidden', '');
+    await expect(page.locator('.samey-cursor-link-fill-slice:not([hidden])')).toHaveCount(1);
   }
   expect(await menu.locator('hr').count(), 'Context menu must not manufacture visible separator rules').toBe(0);
   const menuSurface = await menu.evaluate(element => {
@@ -3746,88 +3748,51 @@ test('custom context menu stays contained and keyboard navigable', async ({ page
   await expect(link).toBeFocused();
 });
 
-test('blocking overlays cannot leave a page-card link fill composited underneath', async ({ page }, info) => {
-  test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
+test('floating overlays preserve one intact page blob underneath their rounded surfaces', async ({ page }, info) => {
+  test.skip(info.project.name === 'production-mobile', 'Link fill requires a fine pointer');
   await page.setViewportSize({ width: 1600, height: 1000 });
   await visit(page, '/', info);
   const chain = page.locator('a[href="/chain/"]').first();
+  await expect(chain).toBeVisible();
   const box = await chain.boundingBox();
   if (!box) throw new Error('Chain card has no geometry');
-  const x = box.x + box.width * .65;
-  const y = box.y + box.height * .45;
+  const x = box.x + box.width * .65, y = box.y + box.height * .45;
   await page.mouse.move(x, y);
-  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-    elements.some(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width > 100 && rect.height > 40;
-    }),
-  ), { message: 'Chain card must establish a large link-fill before the blocker test' }).toBe(true);
-
+  const fill = page.locator('.samey-cursor-link-fill-slice');
+  await expect.poll(async () => (await fill.boundingBox())?.width ?? 0).toBeGreaterThan(100);
+  const original = await fill.boundingBox();
+  const color = await fill.evaluate(element => getComputedStyle(element).backgroundColor);
   await page.mouse.click(x, y, { button: 'right' });
   const menu = page.getByRole('menu', { name: 'Context menu' });
   await expect(menu).toBeVisible();
-  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
-    message: 'Blocking context menu must take paint ownership from the page link immediately',
-  }).toBe(true);
-  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-    elements.every(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width === 0 && rect.height === 0;
-    }),
-  )).toBe(true);
-
+  await expect(fill).toBeVisible();
+  expect(await fill.boundingBox()).toEqual(original);
+  expect(await page.locator('.samey-cursor-link-fill-slice:not([hidden])').count()).toBe(1);
+  expect(await fill.evaluate(element => Number(getComputedStyle(element).zIndex))).toBeLessThan(
+    await menu.evaluate(element => Number(getComputedStyle(element).zIndex)));
+  const menuBox = await menu.boundingBox();
+  await page.mouse.move(menuBox.x + 30, menuBox.y + 30);
+  expect(await fill.boundingBox()).toEqual(original);
+  expect(await fill.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(color);
   await page.keyboard.press('Escape');
   await expect(menu).not.toBeVisible();
   await page.mouse.move(x, y);
-  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-    elements.some(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width > 100 && rect.height > 40;
-    }),
-  )).toBe(true);
+  await expect(fill).toBeVisible();
 
+  // A second overlay with a link must not retarget the global page highlight.
   await page.evaluate(() => {
     const overlay = document.createElement('div');
     overlay.id = 'qa-overlay-owner';
     overlay.dataset.sameyOverlay = '';
-    overlay.style.cssText = 'position:fixed;left:8px;top:80px;width:140px;height:90px;background:var(--site-bg);z-index:2147483400';
+    overlay.style.cssText = 'position:fixed;left:32px;top:96px;width:240px;height:120px;background:var(--site-bg);border-radius:20px';
+    overlay.innerHTML = '<a href="/work/" style="display:block;padding:24px">Overlay link</a>';
     document.body.append(overlay);
   });
-  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
-    message: 'Any visible floating overlay must revoke an underlying page-link fill',
-  }).toBe(true);
+  const retained = await fill.boundingBox();
+  await page.locator('#qa-overlay-owner a').hover();
+  expect(await fill.boundingBox()).toEqual(retained);
+  await expect(fill).toBeVisible();
   await page.locator('#qa-overlay-owner').evaluate(element => element.remove());
-  await expect.poll(async () => page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-    elements.some(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width > 100 && rect.height > 40;
-    }),
-  ), { message: 'Page link fill should reacquire after overlay ownership ends' }).toBe(true);
-
-  await page.evaluate(() => {
-    const lower = document.createElement('div');
-    lower.id = 'qa-lower-overlay';
-    lower.dataset.sameyOverlay = '';
-    lower.style.cssText = 'position:fixed;left:32px;top:96px;width:240px;height:120px;background:var(--site-bg);z-index:2147483644';
-    const link = document.createElement('a');
-    link.href = '/work/';
-    link.textContent = 'Overlay link';
-    link.style.cssText = 'display:block;width:180px;height:64px;margin:24px;border:1px solid var(--site-line)';
-    lower.append(link);
-    document.body.append(lower);
-  });
-  const overlayLink = page.locator('#qa-lower-overlay a');
-  const overlayLinkBox = await overlayLink.boundingBox();
-  if (!overlayLinkBox) throw new Error('Synthetic overlay link has no geometry');
-  await page.mouse.move(overlayLinkBox.x + overlayLinkBox.width / 2, overlayLinkBox.y + overlayLinkBox.height / 2);
-  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
-    message: 'Links inside floating UI must not reactivate the global difference-blend fill',
-  }).toBe(true);
-  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements => elements.every(element => {
-    const rect = element.getBoundingClientRect();
-    return rect.width === 0 && rect.height === 0;
-  })), 'Floating UI must have zero global blend-fill pixels, including over links inside it').toBe(true);
-  await page.locator('#qa-lower-overlay').evaluate(element => element.remove());
 });
 
 test('card link fill never bleeds outside its target geometry', async ({ page }, info) => {
@@ -3913,7 +3878,7 @@ test('stationary pointer retargets link fill after scrolling', async ({ page }, 
   ), 'Scroll-induced retargeting must move the fill to the link actually under the stationary pointer').toBe(true);
 });
 
-test('native popover ownership revokes an underlying link fill before positioning completes', async ({ page }, info) => {
+test('native popover ownership preserves the underlying blob while positioning', async ({ page }, info) => {
   test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
   await page.setViewportSize({ width: 1280, height: 800 });
   await visit(page, '/wordle', info);
@@ -3943,15 +3908,8 @@ test('native popover ownership revokes an underlying link fill before positionin
   await page.getByRole('button', { name: 'Settings', exact: true }).evaluate(element => element.click());
   const settings = page.locator('.game-settings-popover');
   await expect(settings).toBeVisible();
-  await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
-    message: 'Expanded native popover must revoke the old page-link fill',
-  }).toBe(true);
-  expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-    elements.every(element => {
-      const rect = element.getBoundingClientRect();
-      return rect.width === 0 && rect.height === 0;
-    }),
-  )).toBe(true);
+  await expect(page.locator('.samey-cursor-link-fill')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('.samey-cursor-link-fill-slice:not([hidden])')).toHaveCount(1);
 });
 
 test('SPA navigation revokes link fill before preload and construction begin', async ({ page }, info) => {
@@ -3981,7 +3939,7 @@ test('SPA navigation revokes link fill before preload and construction begin', a
   )).toBe(true);
 });
 
-test('real blocking overlays revoke an underlying page-link fill without pointer movement', async ({ page }, info) => {
+test('real blocking overlays preserve the existing page blob without pointer movement', async ({ page }, info) => {
   test.skip(info.project.name === 'production-mobile', 'Custom link-fill compositor requires a fine-pointer desktop browser');
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1180, height: 760 });
@@ -3998,16 +3956,13 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
       }),
     ), { message: label + ' must establish a link fill before overlay ownership changes' }).toBe(true);
   };
-  const expectRevoked = async label => {
-    await expect.poll(() => page.locator('.samey-cursor-link-fill').evaluate(element => element.hidden), {
-      message: label + ' must revoke the underlying page-link fill',
-    }).toBe(true);
-    expect(await page.locator('.samey-cursor-link-fill-slice').evaluateAll(elements =>
-      elements.every(element => {
-        const rect = element.getBoundingClientRect();
-        return rect.width === 0 && rect.height === 0;
-      }),
-    ), label + ' must not leave any composited fill fragment').toBe(true);
+  const expectRetained = async label => {
+    await expect(page.locator('.samey-cursor-link-fill'), label + ' retains the page blob').not.toHaveAttribute('hidden', '');
+    await expect(page.locator('.samey-cursor-link-fill-slice:not([hidden])')).toHaveCount(1);
+    expect(await page.locator('.samey-cursor-link-fill-slice').evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 20 && rect.height > 12;
+    }), label + ' retains a complete surface').toBe(true);
   };
   const programmaticClick = locator => locator.evaluate(element => element.click());
   const qaPageLink = async label => {
@@ -4028,13 +3983,13 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await establishFill(homeCard, 'Home Chain card');
   await programmaticClick(page.getByRole('button', { name: 'Search', exact: true }));
   await expect(page.locator('.site-search')).toBeVisible();
-  await expectRevoked('Search');
+  await expectRetained('Search');
   await page.keyboard.press('Escape');
 
   await establishFill(homeCard, 'Home Chain card');
   await programmaticClick(page.getByRole('button', { name: 'Appearance', exact: true }));
   await expect(page.locator('.samey-theme-panel')).toBeVisible();
-  await expectRevoked('Appearance');
+  await expectRetained('Appearance');
   await page.keyboard.press('Escape');
 
   await visit(page, '/wordle', info);
@@ -4042,14 +3997,14 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await establishFill(wordleLink, 'Wordle QA link');
   await programmaticClick(page.getByRole('button', { name: /^Choose date,/ }));
   await expect(page.getByRole('dialog', { name: 'Choose date' })).toBeVisible();
-  await expectRevoked('Wordle date picker');
+  await expectRetained('Wordle date picker');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Configure', exact: true }).evaluate(element => element.click());
   wordleLink = await qaPageLink('Wordle game QA link');
   await establishFill(wordleLink, 'Wordle game QA link');
   await programmaticClick(page.getByRole('button', { name: 'Settings', exact: true }));
   await expect(page.getByRole('dialog', { name: 'Game settings' })).toBeVisible();
-  await expectRevoked('Wordle Settings');
+  await expectRetained('Wordle Settings');
   await page.keyboard.press('Escape');
 
   await page.setViewportSize({ width: 600, height: 760 });
@@ -4061,7 +4016,7 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await page.keyboard.press('Enter');
   await expect(toolTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('listbox')).toBeVisible();
-  await expectRevoked('Tools selector');
+  await expectRetained('Tools selector');
   await page.keyboard.press('Escape');
 
   await page.setViewportSize({ width: 900, height: 700 });
@@ -4081,7 +4036,7 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await establishFill(chainLink, 'Chain QA link');
   await programmaticClick(page.getByRole('button', { name: 'Settings', exact: true }));
   await expect(page.locator('#chain-settings')).toHaveAttribute('aria-hidden', 'false');
-  await expectRevoked('Chain Settings');
+  await expectRetained('Chain Settings');
   await page.keyboard.press('Escape');
   await page.evaluate(() => {
     const board = new Uint8Array(16), owners = new Uint8Array(16), entered = new Uint8Array([0, 1, 1]);
@@ -4099,7 +4054,7 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   const chainResultBox = await chainResultLink.boundingBox();
   if (!chainResultBox) throw new Error('Chain result QA link has no geometry');
   await page.mouse.move(chainResultBox.x + chainResultBox.width / 2, chainResultBox.y + chainResultBox.height / 2);
-  await expectRevoked('Chain result');
+  await expect(page.locator('.samey-cursor-link-fill')).toHaveAttribute('hidden', ''); // No pre-existing blob on this fresh document.
 
   await page.addInitScript(() => localStorage.setItem('prefs.practice.tourSeen', 'true'));
   await visit(page, '/keybr?p=settings', info);
@@ -4110,13 +4065,13 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await keybrFont.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('listbox')).toBeVisible();
-  await expectRevoked('Keybr settings font menu');
+  await expectRetained('Keybr settings font menu');
   await page.keyboard.press('Escape');
   const keybrLink = await qaPageLink('Keybr QA link');
   await establishFill(keybrLink, 'Keybr QA link');
   await programmaticClick(page.getByRole('button', { name: 'Choose book', exact: true }));
   await expect(page.getByRole('dialog', { name: 'Choose a book', exact: true })).toBeVisible();
-  await expectRevoked('Keybr book library');
+  await expectRetained('Keybr book library');
   await page.keyboard.press('Escape');
 
   await visit(page, '/keybr', info);
@@ -4124,7 +4079,7 @@ test('real blocking overlays revoke an underlying page-link fill without pointer
   await establishFill(keybrTourLink, 'Keybr tour QA link');
   await programmaticClick(page.getByTitle('Show a guided tour with help slides.'));
   await expect(page.locator('[data-samey-overlay-backdrop]')).toBeVisible();
-  await expectRevoked('Keybr guided tour');
+  await expectRetained('Keybr guided tour');
 });
 
 test('Wordle typing, persistence, settings, reveal and statistics', async ({ page }, info) => {

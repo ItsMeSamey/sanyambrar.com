@@ -30,7 +30,7 @@ src/
 
 Most pages share the same shell for navigation, themes, search, transitions, context menus, and the custom cursor. Same-origin navigation swaps real page roots instead of using iframes.
 
-The site, Wordle and Keybr share Solid 2 RC and the same Vite compiler. `solid-js` and `@solidjs/web` are pinned to `2.0.0-rc.6`; `@kobalte/core` remains on `2.0.0-alpha.1`, with package overrides keeping Solid core, web, and signals on the same RC. Larger editors and demos load only when opened.
+The site, Wordle and Keybr share Solid 2 RC and the same Vite compiler. `solid-js` and `@solidjs/web` are pinned to `2.0.0-rc.13`; `@kobalte/core` uses `2.0.0-alpha.2`, with package overrides keeping Solid core, web, and signals on the same RC. Larger editors and demos load only when opened.
 
 Diff uses one editable Monaco DiffEditor. Monaco owns line alignment, gap zones, and character-level highlighting. It is used without dependency patches.
 
@@ -50,6 +50,10 @@ Monaco is used as a normal pinned dependency; the repository does not patch or m
 Build once for the generated site assets, then use `bun run dev` for the site, `bun run dev:wordle`, or `bun run dev:keybr`. These serve on localhost ports 4320, 4321 and 4322 and use the production Vite compiler.
 
 `bun run check` runs type checking, typed linting, the build, and Playwright tests. Tests use Chromium; an installed `/usr/bin/brave` is detected automatically, or set `BROWSER_EXECUTABLE` to your browser. Otherwise install Playwright's Chromium with `bunx playwright install chromium`.
+
+Type checking explicitly runs TypeScript 7 through the `typescript-7` package alias. The `typescript` dependency stays on 6.0 for typescript-eslint's compiler API; calling the aliased compiler directly avoids depending on which package owns the shared `tsc` executable.
+
+Dependency overrides pin the patched DOMPurify and brace-expansion releases. `bun audit` still reports [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in `braces`, which has no patched release as of 2026-10-03. It is pulled in by the build-only single-file plugin; our empty `inlinePattern` configuration bypasses its pattern matcher.
 
 
 ## Repository map
