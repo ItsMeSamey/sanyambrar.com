@@ -1,9 +1,9 @@
 import type { BoardState } from './core';
-import { deserializeError, type BotDecision, type BotResponse, type BotStatus } from './protocol';
+import { deserializeError, type BotDecision, type BotRequest, type BotResponse, type BotStatus } from './protocol';
 
 interface Pending {
   id: number;
-  resolve: (decision: BotDecision) => void;
+  resolve: (decision: BotDecision | undefined) => void;
   reject: (error: unknown) => void;
   onStatus?: (status: BotStatus) => void;
 }
@@ -13,7 +13,21 @@ export class ChainBotClient {
   private pending?: Pending;
   private nextId = 0;
 
-  chooseMove(state: BoardState, onStatus?: (status: BotStatus) => void): Promise<BotDecision> {
+  private preparation?: Promise<void>;
+
+  prepare(onStatus?: (status: BotStatus) => void): Promise<void> {
+    return this.preparation ??= this.request({ type: 'prepare' }, onStatus).then(() => undefined);
+  }
+
+  async chooseMove(state: BoardState, onStatus?: (status: BotStatus) => void): Promise<BotDecision> {
+    await this.prepare(onStatus);
+    const decision = await this.request({ type: 'choose', state }, onStatus);
+    if (!decision) throw new Error('Bot worker returned no decision.');
+    return decision;
+  }
+
+  private request(request: Omit<Extract<BotRequest, { type: 'prepare' }>, 'id'> | Omit<Extract<BotRequest, { type: 'choose' }>, 'id'>,
+    onStatus?: (status: BotStatus) => void): Promise<BotDecision | undefined> {
     if (this.pending) return Promise.reject(new Error('A Chain Reaction bot request is already running.'));
     return new Promise((resolve, reject) => {
       const id = ++this.nextId;
@@ -32,7 +46,8 @@ export class ChainBotClient {
             }
             const pending = this.pending;
             this.pending = undefined;
-            if (message.type === 'decision') pending.resolve(message.decision);
+            if (message.type === 'ready') pending.resolve(undefined);
+            else if (message.type === 'decision') pending.resolve(message.decision);
             else {
               this.worker = undefined;
               worker.terminate();
@@ -51,7 +66,7 @@ export class ChainBotClient {
           };
         }
         // Structured cloning preserves the caller's live board buffers.
-        this.worker.postMessage({ type: 'choose', id, state });
+        this.worker.postMessage({ ...request, id });
       } catch (error) { this.fail(error); }
     });
   }

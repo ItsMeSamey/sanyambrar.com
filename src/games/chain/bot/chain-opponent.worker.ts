@@ -11,7 +11,7 @@ let busy = false;
 
 scope.onmessage = (event): void => {
   const request = event.data;
-  if (request.type !== 'choose') return;
+  if (request.type !== 'choose' && request.type !== 'prepare') return;
   if (busy) {
     scope.postMessage({ type: 'error', id: request.id, error: serializeError(new Error('Bot worker is already busy.')) });
     return;
@@ -23,6 +23,10 @@ scope.onmessage = (event): void => {
       runtime ??= await createChainBotRuntime({
         onStatus: status => scope.postMessage({ type: 'status', id: request.id, status }),
       });
+      if (request.type === 'prepare') {
+        scope.postMessage({ type: 'ready', id: request.id });
+        return;
+      }
       scope.postMessage({ type: 'status', id: request.id, status: { phase: 'thinking' } });
       const decision = await chooseMove(request.state, states => runtime!.evaluate(states));
       scope.postMessage({

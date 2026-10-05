@@ -17,8 +17,9 @@ export interface SerializedError {
   cause?: SerializedError;
   errors?: SerializedError[];
 }
-export type BotRequest = { type: 'choose'; id: number; state: BoardState };
+export type BotRequest = { type: 'prepare'; id: number } | { type: 'choose'; id: number; state: BoardState };
 export type BotResponse =
+  | { type: 'ready'; id: number }
   | { type: 'status'; id: number; status: BotStatus }
   | { type: 'decision'; id: number; decision: BotDecision }
   | { type: 'error'; id: number; error: SerializedError };

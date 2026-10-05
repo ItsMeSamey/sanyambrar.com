@@ -20,6 +20,7 @@ for (const motion of ['reduce', 'no-preference']) test(`rounded overlays preserv
   // Let the finite hover expansion settle before comparing occlusion frames.
   await page.waitForTimeout(600);
   const clip = { x: 60, y: 120, width: 360, height: 280 };
+  const beforeGeometry = await fill.evaluate(e => ({fill: e.getBoundingClientRect().toJSON(), scrollY, target: document.getElementById('qa-blob-pixels').getBoundingClientRect().toJSON()}));
   const before = (await page.screenshot({ clip })).toString('base64');
   await page.evaluate(() => {
     const panel = document.createElement('div');
@@ -33,6 +34,8 @@ for (const motion of ['reduce', 'no-preference']) test(`rounded overlays preserv
   await expect(fill).toBeVisible();
   await page.locator('#qa-blob-panel').evaluate(element =>
     Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => undefined))));
+  const afterGeometry = await fill.evaluate(e => ({fill: e.getBoundingClientRect().toJSON(), scrollY, target: document.getElementById('qa-blob-pixels').getBoundingClientRect().toJSON()}));
+  expect(afterGeometry, 'Opening an overlay must not reposition the underlying page or blob').toEqual(beforeGeometry);
   const after = (await page.screenshot({ clip })).toString('base64');
   const comparison = await page.evaluate(async ({ before, after }) => {
     const decode = async data => {
