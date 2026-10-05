@@ -16,7 +16,8 @@
     "check:keybr-corpus": "bun scripts/check-keybr-corpus.mjs",
     "lint": "eslint src --max-warnings 0",
     "test": "playwright test",
-    "check": "bun run typecheck && bun run lint && bun run build && bun run test"
+    "check": "bun run typecheck && bun run lint && bun run test:chain && bun run build && bun run test",
+    "test:chain": "bun test tests/chain-bot-core.test.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",
@@ -26,6 +27,7 @@
     "idb": "^8.0.3",
     "lucide": "1.50.0",
     "monaco-editor": "0.57.0",
+    "onnxruntime-web": "1.30.0",
     "solid-js": "2.0.0-rc.13",
     "vditor": "^4.0.0",
     "vite-plugin-singlefile": "^2.3.3"

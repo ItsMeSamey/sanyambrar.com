@@ -1,6 +1,8 @@
 import { readHistoryState } from '../../shared/history.ts';
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
 import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
+import { formatThrownError } from '../../shared/error.ts';
+import { ChainBotClient } from './bot/client.ts';
 import type { ChainRefs } from './dom.ts';
 
 type GridConfig = { rows: number; cols: number };
@@ -8,7 +10,7 @@ type Config = GridConfig & { enemies: number };
 type Limit = readonly [min: number, max: number];
 type Page = 'menu' | 'game' | 'stats';
 type Direction = 'forward' | 'back';
-type BotSettings = { thinkMinMs?: number; thinkMaxMs?: number } & Record<string, unknown>;
+type BotSettings = Record<string, unknown>;
 type Bot = { id: string; name: string; version: number; settings: BotSettings };
 type Player = { id: number; name: string; kind: 'human' | 'bot'; color: string; bot?: Bot };
 type Move = { owner: number; index: number };
@@ -45,6 +47,7 @@ export function mountChain(refs: ChainRefs) {
     resultMenuButton, statsButtons, statsBackButton, statsView, statGames, statWins, statRate,
     statLargest, statRecent, replayPanel, replayCanvas, replayTitle, replayCopy, replayClose,
     replayPrev, replayPlay, replayNext, replayResume, replayStatus, presets,
+    botStatus, botStatusLabel, botErrorDetail, botRetryButton,
   } = refs;
   const mainContext = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!mainContext) return () => {};
@@ -82,6 +85,10 @@ export function mountChain(refs: ChainRefs) {
   let focusCell = 0;
   let particles: Particle[] = [];
   let gameVersion = 0;
+  let disposed = false;
+  let botClient: ChainBotClient | null = null;
+  let botRunId = 0;
+  let botLoop: Promise<void> | null = null;
   let pendingPage: Page | null = null;
   let resultRecorded = false;
   let moveHistory: number[] = [];
@@ -170,21 +177,27 @@ export function mountChain(refs: ChainRefs) {
 
   const newMatchId = () => `chain-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
 
-  function createPlayers(enemies: number): Player[] {
+  const trainedBot = (): Bot => ({
+    id:'crt-v7',name:'CRT Bot',version:134,
+    settings:{candidates:4,valueQScale:12,checkpoint:'abfa59f791d261febb5ed4917e87d0c427b8467a38940a4ea68b297d9b540a7a'},
+  });
+
+  function createPlayers(enemies: number, bot = trainedBot()): Player[] {
     const players: Player[] = [{id:HUMAN,name:'You',kind:'human',color:semanticPlayerColor(HUMAN)}];
     for (let i = 1; i <= enemies; i++) players.push({
       id:i+1,
-      name:`Random Bot ${i}`,
+      name:`${bot.name} ${i}`,
       kind:'bot',
       color:semanticPlayerColor(i+1),
-      bot:{id:'random',name:'Random Bot',version:1,settings:{thinkMinMs:65,thinkMaxMs:135}},
+      bot:{...bot,settings:{...bot.settings}},
     });
     return players;
   }
 
   function normalizePlayers(raw: unknown, enemies: number): Player[] {
     const count = enemies + 1;
-    if (!Array.isArray(raw) || raw.length !== count) return createPlayers(enemies);
+    if (!Array.isArray(raw) || raw.length !== count)
+      return createPlayers(enemies, {id:'random',name:'Random Bot',version:1,settings:{}});
     const out = [];
     for (let i = 0; i < count; i++) {
       const item = record(raw[i]);
@@ -208,6 +221,18 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function emptyMatchDb(): MatchDb { return {v:1,base:{games:0,wins:0,largest:0},matches:[]}; }
+
+  function upgradeOpponents() {
+    if (gameOver) return;
+    gamePlayers = gamePlayers.map(player => {
+      if (player.kind !== 'bot' || (player.bot?.id === 'crt-v7' && player.bot.version === 134)) return player;
+      const bot = trainedBot();
+      // Preserve the cutover point without rewriting any previously played move.
+      bot.settings.previousBot = player.bot?.id ?? 'random';
+      bot.settings.upgradedAtMove = moveHistory.length;
+      return {...player, name:/^Random Bot(?: \d+)?$/.test(player.name) ? `CRT Bot ${player.id-1}` : player.name, bot};
+    });
+  }
 
   function normalizeMatch(raw: unknown): Match | null {
     if (!isRecord(raw)) return null;
@@ -258,7 +283,7 @@ export function mountChain(refs: ChainRefs) {
         },
         matches:legacyRecent.map(entry => ({
           id:newMatchId(),t:entry.t,u:entry.t,end:entry.t,s:'completed',w:entry.x || (entry.w ? HUMAN : 0),
-          r:entry.r,c:entry.c,e:entry.e,m:Array.isArray(entry.m)?entry.m.slice():[],q:Array.isArray(entry.m)&&entry.m.length>0,p:createPlayers(entry.e),parent:'legacy',fork:0,
+          r:entry.r,c:entry.c,e:entry.e,m:Array.isArray(entry.m)?entry.m.slice():[],q:Array.isArray(entry.m)&&entry.m.length>0,p:normalizePlayers(null,entry.e),parent:'legacy',fork:0,
         })),
       };
       localStorage.setItem(MATCHES_KEY, JSON.stringify(db));
@@ -359,7 +384,7 @@ export function mountChain(refs: ChainRefs) {
       return {
         config:cfg,board:b,owners:o,entered:enteredSaved,turn:savedTurn,gameOver:savedOver,inGame:saved.i,moves,replayComplete:historyComplete,
         matchId:version >= 4 && typeof saved.id === 'string' ? saved.id : '',
-        players:version >= 4 ? normalizePlayers(saved.pl, cfg.enemies) : createPlayers(cfg.enemies),
+        players:normalizePlayers(version >= 4 ? saved.pl : null, cfg.enemies),
       };
     } catch (error) {
       console.warn('Could not read Chain Reaction saved game', error);
@@ -732,6 +757,7 @@ export function mountChain(refs: ChainRefs) {
     stopReplay();
     const frameData = replayFrames[replayIndex];
     abandonCurrentMatch();
+    cancelBotTurns();
     gameVersion++;
     config = {rows:replayEntry.r,cols:replayEntry.c,enemies:replayEntry.e};
     saveConfig();
@@ -748,6 +774,7 @@ export function mountChain(refs: ChainRefs) {
     replayComplete = true;
     currentMatchId = newMatchId();
     gamePlayers = normalizePlayers(replayEntry.p, config.enemies);
+    upgradeOpponents();
     particles = [];
     focusCell = 0;
     syncSettings();
@@ -1099,6 +1126,9 @@ export function mountChain(refs: ChainRefs) {
       if (page === PAGE_STATS) showStats(false);
       else showMenu(false);
     }
+    // Resume a canceled loop if visibility returned before this cascade settled.
+    // continueTurns also guards against a loop that still owns the current turn.
+    else continueTurns();
   }
 
   function legalMoves(owner: number): number[] {
@@ -1120,20 +1150,80 @@ export function mountChain(refs: ChainRefs) {
     return HUMAN;
   }
 
-  async function continueTurns() {
+  function clearBotStatus() {
+    botStatus.hidden = true;
+    botStatus.removeAttribute('data-error');
+    botStatusLabel.textContent = '';
+    botErrorDetail.textContent = '';
+    botErrorDetail.hidden = true;
+    botRetryButton.hidden = true;
+    canvas.removeAttribute('aria-busy');
+  }
+
+  function cancelBotTurns() {
+    botRunId++;
+    botClient?.dispose();
+    botClient = null;
+    botLoop = null;
+    clearBotStatus();
+  }
+
+  function continueTurns() {
+    if (botLoop || disposed || gameOver || locked || turn === HUMAN || currentView !== gameView || document.hidden || pendingPage) return;
     const version = gameVersion;
-    while (version === gameVersion && !gameOver && turn !== HUMAN && !locked) {
-      const player = turn;
-      const moves = legalMoves(player);
-      if (!moves.length) { entered[player] = 1; turn = nextPlayer(player); saveGameState(true); continue; }
-      const botSettings = gamePlayers[player - 1]?.bot?.settings || {};
-      const thinkMin = Math.max(0, Number(botSettings.thinkMinMs) || 65);
-      const thinkMax = Math.max(thinkMin, Number(botSettings.thinkMaxMs) || 135);
-      await new Promise(resolve => setTimeout(resolve, thinkMin + Math.random() * (thinkMax - thinkMin)));
-      if (version !== gameVersion || gameOver || turn !== player || locked) return;
-      const idx = moves[(Math.random() * moves.length) | 0];
-      await playMove(idx, player);
-    }
+    const runId = ++botRunId;
+    const isCurrent = () => !disposed && version === gameVersion && runId === botRunId &&
+      currentView === gameView && !document.hidden && !pendingPage && !gameOver;
+    const run = async () => {
+      try {
+        while (isCurrent() && turn !== HUMAN && !locked) {
+          const player = turn;
+          if (!legalMoves(player).length) {
+            entered[player] = 1;
+            turn = nextPlayer(player);
+            saveGameState(true);
+            continue;
+          }
+          const opponent = gamePlayers[player-1]?.name ?? `CRT Bot ${player-1}`;
+          clearBotStatus();
+          botStatus.hidden = false;
+          botStatusLabel.textContent = `${opponent} is thinking…`;
+          canvas.setAttribute('aria-busy', 'true');
+          botClient ??= new ChainBotClient();
+          const decision = await botClient.chooseMove({
+            rows, cols, players:playerCount, turn:player,
+            counts:board.slice(), owners:owners.slice(), entered:entered.slice(1),
+          }, status => {
+            if (!isCurrent() || turn !== player) return;
+            const progress = status.progress === undefined ? '' : ` ${Math.round(status.progress * 100)}%`;
+            const text = status.phase === 'loading' ? `Loading opponent…${progress}` : `${opponent} is thinking…`;
+            botStatusLabel.textContent = text;
+            statusEl.textContent = text;
+          });
+          if (!isCurrent() || turn !== player || locked) return;
+          const index = decision.index;
+          if (!Number.isInteger(index) || index < 0 || index >= board.length || (owners[index] !== EMPTY && owners[index] !== player))
+            throw new Error(`Opponent returned an illegal move: ${index}`);
+          clearBotStatus();
+          await playMove(index, player);
+        }
+      } catch (error) {
+        if (!isCurrent() || (error instanceof DOMException && error.name === 'AbortError')) return;
+        botClient?.dispose();
+        botClient = null;
+        canvas.removeAttribute('aria-busy');
+        botStatus.hidden = false;
+        botStatus.dataset.error = 'true';
+        botStatusLabel.textContent = 'The opponent could not make its move. Your game is saved.';
+        statusEl.textContent = botStatusLabel.textContent;
+        botErrorDetail.textContent = formatThrownError(error);
+        botErrorDetail.hidden = false;
+        botRetryButton.hidden = false;
+      }
+    };
+    const task = run();
+    botLoop = task;
+    void task.finally(() => { if (botLoop === task) botLoop = null; });
   }
 
   async function humanMove(i: number) {
@@ -1184,6 +1274,7 @@ export function mountChain(refs: ChainRefs) {
   canvas.addEventListener('blur', onCanvasBlur);
 
   function reset(nextConfig = config) {
+    cancelBotTurns();
     gameVersion++;
     particles = [];
     config = {...nextConfig};
@@ -1221,6 +1312,7 @@ export function mountChain(refs: ChainRefs) {
     replayComplete = saved.replayComplete === true;
     currentMatchId = saved.matchId || newMatchId();
     gamePlayers = normalizePlayers(saved.players, config.enemies);
+    upgradeOpponents();
     if (!gameOver && entered[turn] && !hasCells(turn)) turn = nextPlayer(turn);
     focusCell = Math.min(focusCell, Math.max(0, board.length - 1));
     locked = false;
@@ -1274,6 +1366,7 @@ export function mountChain(refs: ChainRefs) {
 
   function showMenu(syncUrl = true, direction: Direction = 'back') {
     const wasInGame = currentView === gameView;
+    cancelBotTurns();
     if (syncUrl) writePage(PAGE_MENU);
     if (wasInGame && locked) {
       pendingPage = PAGE_MENU;
@@ -1293,6 +1386,7 @@ export function mountChain(refs: ChainRefs) {
 
   function showStats(syncUrl = true, direction: Direction = 'forward') {
     const wasInGame = currentView === gameView;
+    cancelBotTurns();
     if (syncUrl) writePage(PAGE_STATS);
     if (wasInGame && locked) {
       pendingPage = PAGE_STATS;
@@ -1301,7 +1395,7 @@ export function mountChain(refs: ChainRefs) {
     }
     pendingPage = null;
     const commit = () => {
-      if (wasInGame) saveGameState(false);
+      if (wasInGame) { gameVersion++; saveGameState(false); }
       setSettingsOpen(false);
       setResultOpen(false);
       renderStats();
@@ -1535,7 +1629,17 @@ export function mountChain(refs: ChainRefs) {
   else showMenu(false);
   viewTransitionsReady = true;
 
+  const onBotRetry = () => continueTurns();
+  const onVisibilityChange = () => {
+    if (document.hidden) cancelBotTurns();
+    else continueTurns();
+  };
+  botRetryButton.addEventListener('click', onBotRetry);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   return () => {
+    disposed = true;
+    cancelBotTurns();
     gameVersion++;
     stopReplay();
     if (frame) cancelAnimationFrame(frame);
@@ -1557,5 +1661,7 @@ export function mountChain(refs: ChainRefs) {
     canvas.removeEventListener('keydown', onCanvasKeyDown);
     canvas.removeEventListener('focus', onCanvasFocus);
     canvas.removeEventListener('blur', onCanvasBlur);
+    botRetryButton.removeEventListener('click', onBotRetry);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
   };
 }

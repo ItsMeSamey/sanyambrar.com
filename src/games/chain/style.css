@@ -27,3 +27,12 @@ body.site-chain-active{margin:0;width:100%;height:100%;overflow:hidden;backgroun
 
 /* Keep game controls rectilinear so constructed view swaps can trace their edges. */
 .chain-shell button{border-radius:0!important}
+
+.chain-bot-status{flex:0 0 auto;margin:0 22px;padding:9px 0;border-bottom:1px solid var(--site-line);color:var(--site-muted);font-size:.78rem;line-height:1.5;max-height:35vh;overflow:auto}
+.chain-bot-status[hidden],.chain-bot-status [hidden]{display:none!important}
+.chain-bot-status-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.chain-bot-status button{flex:0 0 auto;min-height:36px;padding:5px 10px;border:1px solid var(--site-line);background:var(--site-bg);color:var(--site-fg);font:inherit;cursor:pointer}
+.chain-bot-status button:hover,.chain-bot-status button:focus-visible{border-color:var(--site-fg)}
+.chain-bot-status[data-error=true]{color:var(--site-error)}
+.chain-bot-status .samey-error-stack{max-height:18vh;margin:8px 0 0;user-select:text}
+@media(max-width:700px){.chain-bot-status{margin-inline:12px}}

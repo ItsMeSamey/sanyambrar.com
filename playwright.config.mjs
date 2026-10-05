@@ -19,6 +19,7 @@ const server = (command, port) => ({ command, url: `http://127.0.0.1:${port}`, r
 
 export default defineConfig({
   testDir: './tests',
+  testIgnore: '**/*.test.ts',
   timeout: 45_000,
   expect: { timeout: 8_000 },
   fullyParallel: true,

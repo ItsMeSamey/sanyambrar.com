@@ -1,0 +1,4533 @@
+{
+  "modelEpoch": 134,
+  "modelSha256": "691f5a176b9835efee8f0760582f3f5f34f6d284582bb9839fa1d625f032e86e",
+  "qualification": "Seeded browser integration diagnostic; busy shared host; elapsed time is not a latency benchmark.",
+  "completedAt": "2026-10-05T01:59:25.045Z",
+  "initialBackend": "wasm",
+  "finalBackend": "wasm",
+  "navigatorGpu": true,
+  "browserElapsedMs": 11142.5,
+  "games": [
+    {
+      "rows": 4,
+      "cols": 4,
+      "seed": 13401,
+      "modelPlayer": 1,
+      "maxMoves": 64,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 4,
+      "cols": 4,
+      "seed": 13401,
+      "modelPlayer": 2,
+      "maxMoves": 64,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 13,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 4,
+      "cols": 4,
+      "seed": 13402,
+      "modelPlayer": 1,
+      "maxMoves": 64,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 13,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 4,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 4,
+      "cols": 4,
+      "seed": 13402,
+      "modelPlayer": 2,
+      "maxMoves": 64,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 5,
+      "cols": 7,
+      "seed": 13401,
+      "modelPlayer": 1,
+      "maxMoves": 140,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 26,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 20,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 22,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 5,
+      "cols": 7,
+      "seed": 13401,
+      "modelPlayer": 2,
+      "maxMoves": 140,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 20,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 26,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 20,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 13,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 13,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 5,
+      "cols": 7,
+      "seed": 13402,
+      "modelPlayer": 1,
+      "maxMoves": 140,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 26,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 13,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 20,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 5,
+      "cols": 7,
+      "seed": 13402,
+      "modelPlayer": 2,
+      "maxMoves": 140,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 20,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 13,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 34,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 20,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 26,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 4,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 22,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 22,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 22,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 14,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 9,
+      "cols": 6,
+      "seed": 13401,
+      "modelPlayer": 1,
+      "maxMoves": 216,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 40,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 35,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 47,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 35,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 26,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 49,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 20,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 47,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 35,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 37,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 11,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 26,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 16,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 20,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 52,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 39,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 45,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 40,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 41,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 22,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 11,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 9,
+      "cols": 6,
+      "seed": 13401,
+      "modelPlayer": 2,
+      "maxMoves": 216,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 40,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 28,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 47,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 49,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 47,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 34,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 41,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 41,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 16,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 46,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 47,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 4,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 35,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 20,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 28,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 41,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 16,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 14,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 40,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 41,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 35,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 35,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 16,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 43,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 27,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 51,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 42,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 42,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 46,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 9,
+      "cols": 6,
+      "seed": 13402,
+      "modelPlayer": 1,
+      "maxMoves": 216,
+      "status": "terminal",
+      "winner": 1,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 25,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 16,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 43,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 39,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 52,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 46,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 51,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 39,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 51,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 49,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 47,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 49,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 50,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 8,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 22,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 47,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 8,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 47,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 41,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 10,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 35,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 22,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    },
+    {
+      "rows": 9,
+      "cols": 6,
+      "seed": 13402,
+      "modelPlayer": 2,
+      "maxMoves": 216,
+      "status": "terminal",
+      "winner": 2,
+      "outcome": "model-win",
+      "moves": [
+        {
+          "turn": 1,
+          "index": 32,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 25,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 5,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 23,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 38,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 37,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 31,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 43,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 7,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 52,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 6,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 48,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 15,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 35,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 51,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 19,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 53,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 12,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 44,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 18,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 29,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 36,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 30,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 33,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 18,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 45,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 50,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 49,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 22,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 1,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 9,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 24,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 29,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 25,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 2,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 37,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 27,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 0,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 21,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 50,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 30,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 22,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 16,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 3,
+          "candidates": 4,
+          "status": "ok"
+        },
+        {
+          "turn": 1,
+          "index": 17,
+          "candidates": 0,
+          "status": "ok"
+        },
+        {
+          "turn": 2,
+          "index": 23,
+          "candidates": 4,
+          "status": "terminal"
+        }
+      ],
+      "backend": "wasm"
+    }
+  ],
+  "probes": [
+    {
+      "rows": 30,
+      "cols": 30,
+      "players": 6,
+      "seed": 13403,
+      "index": 29,
+      "candidates": 4,
+      "status": "ok",
+      "backend": "wasm"
+    },
+    {
+      "rows": 6,
+      "cols": 9,
+      "players": 2,
+      "seed": 13403,
+      "index": 53,
+      "candidates": 4,
+      "status": "ok",
+      "backend": "wasm"
+    }
+  ],
+  "totalElapsedMs": 13881.093807000001,
+  "messages": [
+    {
+      "type": "error",
+      "text": "WebSocket connection to 'ws://127.0.0.1:4540/?token=[redacted]' failed: "
+    },
+    {
+      "type": "error",
+      "text": "WebSocket connection to 'ws://127.0.0.1:4540/?token=[redacted]' failed: "
+    },
+    {
+      "type": "error",
+      "text": "[vite] failed to connect to websocket.\nyour current setup:\n  (browser) 127.0.0.1:4540/ <--[HTTP]--> 127.0.0.1:4540/ (server)\n  (browser) 127.0.0.1:4540/ <--[WebSocket (failing)]--> 127.0.0.1:4540/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr ."
+    },
+    {
+      "type": "warning",
+      "text": "No available adapters."
+    },
+    {
+      "type": "warning",
+      "text": "Chain Reaction WebGPU initialization failed; retrying the same model with WASM. Error: no available backend found. ERR: [webgpu] Error: Failed to get GPU adapter. You may need to enable flag \"--enable-unsafe-webgpu\" if you are using Chrome.\n    at Bt (http://127.0.0.1:4540/.tmp/vite-site-4540/deps/onnxruntime-web_webgpu.js?v=cf2363d7:92:17)\n    at async t.create (http://127.0.0.1:4540/.tmp/vite-site-4540/deps/onnxruntime-web_webgpu.js?v=cf2363d7:719:17)\n    at async createChainBotRuntime (http://127.0.0.1:4540/src/games/chain/bot/runtime.ts:72:14)\n    at async eval (eval at evaluate (:311:30), <anonymous>:16:19)\n    at async <anonymous>:337:30"
+    }
+  ]
+}
