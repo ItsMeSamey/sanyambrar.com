@@ -24,6 +24,10 @@ export type ChainRefs = {
   presets: HTMLButtonElement[];
   stage: HTMLElement;
   statusEl: HTMLElement;
+  botStatus: HTMLElement;
+  botStatusLabel: HTMLElement;
+  botErrorDetail: HTMLElement;
+  botRetryButton: HTMLButtonElement;
   turnEl: HTMLElement;
   youSwatch: HTMLElement;
   activeSwatch: HTMLElement;

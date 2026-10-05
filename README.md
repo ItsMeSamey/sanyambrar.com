@@ -34,6 +34,16 @@ The site, Wordle and Keybr share Solid 2 RC and the same Vite compiler. `solid-j
 
 Diff uses one editable Monaco DiffEditor. Monaco owns line alignment, gap zones, and character-level highlighting. It is used without dependency patches.
 
+## Chain Reaction opponents
+
+Chain Reaction uses the accepted CRT epoch 134 model with four-candidate Gumbel search. The opponent evaluates the exact outcome of candidate moves and estimates its chance of winning against every remaining player. All supported board sizes and one to five opponents use the same trained model.
+
+Inference runs in a dedicated browser worker, using WebGPU when available and single-threaded WebAssembly otherwise. The 13.8 MB FP32 model and matching ONNX Runtime 1.30 assets are self-hosted and load on the first opponent turn. They are excluded from service-worker installation downloads and cached when used. There is no inference server or random-move fallback.
+
+Pending decisions stop when a game is reset, left, hidden, or unmounted. A failed download or inference shows the full error and a retry button while retaining the saved position. Unfinished older games upgrade their opponents at the next session, recording the move where the change happened. Completed history keeps its original opponent identity; a replay fork upgrades only the new match.
+
+The model's accepted checkpoint is unchanged. [Export instructions and identity](scripts/chain-model/README.md) describe how to reproduce the ONNX file and its numerical parity checks. `bun run test:chain` checks rules, feature encoding, and search against Python fixtures. `tests/chain-bot.spec.mjs` checks actual browser inference, game turns, cancellation, retries, and saved-game migration.
+
 ## Build
 
 ```sh

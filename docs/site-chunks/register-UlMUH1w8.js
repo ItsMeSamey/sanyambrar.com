@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/shell-BaVeMPj8.js","site-chunks/rolldown-runtime-8BhlS34s.js"])))=>i.map(i=>d[i]);
+import{n as e}from"./rolldown-runtime-8BhlS34s.js";import{n as t,r as n}from"./main-DW26mUNC.js";import{n as r,t as i}from"./_.contribution-CyVo8HVq.js";function a(){return(a=e((()=>{i(),n(),r({id:`shell`,extensions:[`.sh`,`.bash`],aliases:[`Shell`,`sh`],loader:()=>t(()=>import(`./shell-BaVeMPj8.js`),__vite__mapDeps([0,1]))})})))()}a();

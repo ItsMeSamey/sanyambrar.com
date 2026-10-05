@@ -485,9 +485,10 @@ async function validateExtensionlessPublicLinks() {
 async function deployAssets() {
   return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|json|wasm)$/.test(name) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
-    // Optional runtimes and Keybr chunks are cached on demand rather than
-    // downloaded by every service-worker install. Their filenames are immutable.
-    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/"));
+    // Optional runtimes are cached when used. Visiting another page must not
+    // download the Chain Reaction model, inference runtime, or worker.
+    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/") &&
+      !/^assets\/(?:ort[.-]|chain-opponent[.-])/.test(path));
 }
 
 async function finalizeShellAssets() {

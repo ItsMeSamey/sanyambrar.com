@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import solid from '@solidjs/vite-plugin'
-import { defineConfig, type Plugin } from 'vite'
+import { defaultClientConditions, defineConfig, type Plugin } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 
 const root = import.meta.dirname
@@ -55,9 +55,11 @@ export default defineConfig(() => {
   if (target === 'site') return {
     publicDir: false,
     input: path.resolve(root, 'src/site/main.tsx'),
-    assetsInclude: ['**/*.data'],
+    assetsInclude: ['**/*.data', '**/*.onnx'],
+    resolve: { conditions: ['onnxruntime-web-use-extern-wasm', ...defaultClientConditions] },
+    worker: { format: 'es' },
     plugins: [solidRuntimeDynamicImport, extensionlessHtmlPreview, solid()],
-    optimizeDeps: { entries: ['src/site/main.tsx'] },
+    optimizeDeps: { entries: ['src/site/main.tsx'], include: ['onnxruntime-web/webgpu'] },
     css: {
       modules: { localsConvention: 'camelCase' },
     },

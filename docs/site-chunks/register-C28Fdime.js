@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/markdown-PcNAFu_A.js","site-chunks/rolldown-runtime-8BhlS34s.js"])))=>i.map(i=>d[i]);
+import{n as e}from"./rolldown-runtime-8BhlS34s.js";import{n as t,r as n}from"./main-DW26mUNC.js";import{n as r,t as i}from"./_.contribution-CyVo8HVq.js";function a(){return(a=e((()=>{i(),n(),r({id:`markdown`,extensions:[`.md`,`.markdown`,`.mdown`,`.mkdn`,`.mkd`,`.mdwn`,`.mdtxt`,`.mdtext`],aliases:[`Markdown`,`markdown`],loader:()=>t(()=>import(`./markdown-PcNAFu_A.js`),__vite__mapDeps([0,1]))})})))()}a();

@@ -94,7 +94,7 @@ export function ChainPage() {
             <article class="chain-mode-card">
               <span class="chain-mode-eyebrow">Quick match</span>
               <h2>Classic</h2>
-              <div class="chain-mode-spec">9 × 6 board<br/>1 enemy</div>
+              <div class="chain-mode-spec">9 × 6 board<br/>1 trained opponent</div>
               <button ref={el => refs.quickButton = el} class="chain-mode-action chain-mode-action-secondary" type="button">Start classic</button>
             </article>
             <article class="chain-mode-card">
@@ -156,6 +156,13 @@ export function ChainPage() {
             <Slider label="Enemies" min={1} max={5} inputRef={el => refs.enemiesInput = el} outputRef={el => refs.enemiesValue = el}/>
             <div class="game-settings-actions"><button ref={el => refs.newGameButton = el} class="game-settings-action" type="button">Start new game</button></div>
           </div>
+        </aside>
+        <aside ref={el => refs.botStatus = el} class="chain-bot-status" hidden aria-live="polite">
+          <div class="chain-bot-status-line">
+            <span ref={el => refs.botStatusLabel = el}/>
+            <button ref={el => refs.botRetryButton = el} type="button" hidden>Retry opponent</button>
+          </div>
+          <pre ref={el => refs.botErrorDetail = el} class="samey-error-stack" hidden/>
         </aside>
         <main ref={el => refs.stage = el} class="chain-stage">
           <canvas ref={el => refs.canvas = el} role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
