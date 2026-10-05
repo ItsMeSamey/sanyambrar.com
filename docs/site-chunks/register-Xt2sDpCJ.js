@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/java-B4fWK0Ji.js","site-chunks/rolldown-runtime-8BhlS34s.js"])))=>i.map(i=>d[i]);
+import{n as e}from"./rolldown-runtime-8BhlS34s.js";import{n as t,r as n}from"./main-BFicF8Iv.js";import{n as r,t as i}from"./_.contribution-Cnxn_fI6.js";function a(){return(a=e((()=>{i(),n(),r({id:`java`,extensions:[`.java`,`.jav`],aliases:[`Java`,`java`],mimetypes:[`text/x-java-source`,`text/x-java`],loader:()=>t(()=>import(`./java-B4fWK0Ji.js`),__vite__mapDeps([0,1]))})})))()}a();

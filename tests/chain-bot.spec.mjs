@@ -79,6 +79,48 @@ test('menu keeps inference lazy; classic game uses the real worker for a legal m
   await expect(page.locator('.chain-bot-status')).toBeHidden();
 });
 
+test('opponent activity preserves board geometry at every viewport size', async ({ page }, info) => {
+  let requested = false;
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route(MODEL, async route => {
+    requested = true;
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await visit(page, info);
+  await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  const grid = page.getByRole('grid', { name: /Chain Reaction board/ });
+  const marker = page.locator('.chain-turn-swatch').last();
+  const sizes = [{ width: 1440, height: 1000 }, { width: 320, height: 568 },
+    { width: 844, height: 320 }, { width: 280, height: 900 }];
+  const geometry = async () => {
+    // Allow the ResizeObserver and canvas backing-store update to settle.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    return { board: await grid.boundingBox(), marker: await marker.boundingBox() };
+  };
+  await expect(marker).toHaveAttribute('data-busy', 'true');
+  await expect.poll(() => requested).toBe(true);
+  expect((await saved(page)).m).toEqual([]);
+  const idle = [];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    idle.push(await geometry());
+  }
+  try {
+    await human(page);
+    await expect(marker).toHaveAttribute('data-busy', 'true');
+    await expect(page.locator('.chain-bot-status')).toBeHidden();
+    for (const [index, size] of sizes.entries()) {
+      await page.setViewportSize(size);
+      expect(await geometry()).toEqual(idle[index]);
+    }
+  } finally { release(); }
+  await moves(page, 2);
+  await expect(marker).not.toHaveAttribute('data-busy', 'true');
+  expect(await geometry()).toEqual(idle.at(-1));
+});
+
 test('actual ORT Web WASM logits match every Torch golden batch and survive disposal', async ({ page }, info) => {
   test.skip(!info.project.metadata.development, 'Source runtime API is available on the development server');
   await visit(page, info);
@@ -141,11 +183,15 @@ test('failed model download exposes the complete error and Retry preserves the h
     : route.continue());
   await visit(page, info);
   await page.getByRole('button', { name: 'Start classic', exact: true }).click();
+  const grid = page.getByRole('grid', { name: /Chain Reaction board/ });
+  const before = await grid.boundingBox();
   await human(page);
   const status = page.locator('.chain-bot-status[data-error="true"]');
   await expect(status).toBeVisible({ timeout: 30_000 });
   await expect(status.locator('pre.samey-error-stack')).toBeVisible();
   await expect(status.locator('pre.samey-error-stack')).toContainText('HTTP 503');
+  expect(await grid.boundingBox()).toEqual(before);
+  await expect(page.locator('.chain-turn-swatch').last()).not.toHaveAttribute('data-busy', 'true');
   expect((await saved(page)).m).toEqual([1024]);
   failed = false;
   await status.getByRole('button', { name: 'Retry opponent', exact: true }).click();
@@ -175,6 +221,7 @@ for (const destination of ['menu', 'stats', 'reset', 'unmount']) test(`pending d
   await human(page);
   await requestSeen;
   const original = await saved(page);
+  const cancelledWorkerClosed = workerClosed;
   if (destination === 'menu') await page.getByRole('link', { name: 'Back to Chain Reaction menu', exact: true }).click();
   else if (destination === 'stats') await page.getByRole('button', { name: 'Statistics', exact: true }).filter({ visible: true }).click();
   else if (destination === 'reset') {
@@ -183,7 +230,7 @@ for (const destination of ['menu', 'stats', 'reset', 'unmount']) test(`pending d
   } else await page.goto(url(info, '/work/'));
   if (destination === 'menu' || destination === 'stats') await expect.poll(async () => (await saved(page))?.i).toBe(false);
   const cancelled = await saved(page);
-  await workerClosed;
+  await cancelledWorkerClosed;
   release();
   // The real inference worker must close before the held model request is released.
   await requestDone;

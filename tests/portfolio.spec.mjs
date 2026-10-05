@@ -3772,7 +3772,10 @@ test('floating overlays preserve one intact page blob underneath their rounded s
     await menu.evaluate(element => Number(getComputedStyle(element).zIndex)));
   const menuBox = await menu.boundingBox();
   await page.mouse.move(menuBox.x + 30, menuBox.y + 30);
-  expect(await fill.boundingBox()).toEqual(original);
+  await expect.poll(async () => await fill.boundingBox()).not.toEqual(original);
+  const moved = await fill.boundingBox();
+  expect(moved.width).toBeCloseTo(original.width, 0);
+  expect(moved.height).toBeCloseTo(original.height, 0);
   expect(await fill.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(color);
   await page.keyboard.press('Escape');
   await expect(menu).not.toBeVisible();
@@ -3790,7 +3793,9 @@ test('floating overlays preserve one intact page blob underneath their rounded s
   });
   const retained = await fill.boundingBox();
   await page.locator('#qa-overlay-owner a').hover();
-  expect(await fill.boundingBox()).toEqual(retained);
+  const occluded = await fill.boundingBox();
+  expect(occluded.width).toBeCloseTo(retained.width, 0);
+  expect(occluded.height).toBeCloseTo(retained.height, 0);
   await expect(fill).toBeVisible();
   await page.locator('#qa-overlay-owner').evaluate(element => element.remove());
 });

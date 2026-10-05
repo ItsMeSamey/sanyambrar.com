@@ -1,3 +1,4 @@
+import type { BotDecision } from './bot/protocol';
 import { readHistoryState } from '../../shared/history.ts';
 import { animateMountedViewSwap } from '../../shared/transitions.ts';
 import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
@@ -1036,6 +1037,7 @@ export function mountChain(refs: ChainRefs) {
   function updateStatus() {
     youSwatch.style.backgroundColor = playerColor(HUMAN);
     activeSwatch.style.backgroundColor = playerColor(turn || HUMAN);
+    activeSwatch.style.color = playerColor(turn || HUMAN);
     turnEl.setAttribute('aria-label', gameOver
       ? (turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`)
       : (turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`));
@@ -1151,6 +1153,7 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function clearBotStatus() {
+    activeSwatch.removeAttribute('data-busy');
     botStatus.hidden = true;
     botStatus.removeAttribute('data-error');
     botStatusLabel.textContent = '';
@@ -1169,13 +1172,26 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function continueTurns() {
-    if (botLoop || disposed || gameOver || locked || turn === HUMAN || currentView !== gameView || document.hidden || pendingPage) return;
+    if (botLoop || disposed || gameOver || locked || currentView !== gameView || document.hidden || pendingPage) return;
     const version = gameVersion;
     const runId = ++botRunId;
     const isCurrent = () => !disposed && version === gameVersion && runId === botRunId &&
       currentView === gameView && !document.hidden && !pendingPage && !gameOver;
     const run = async () => {
       try {
+        clearBotStatus();
+        activeSwatch.dataset.busy = 'true';
+        activeSwatch.style.setProperty('--chain-busy-color', playerColor(turn === HUMAN ? 2 : turn));
+        statusEl.textContent = 'Loading opponent…';
+        botClient ??= new ChainBotClient();
+        await botClient.prepare(status => {
+          if (!isCurrent()) return;
+          const progress = status.progress === undefined ? '' : ` ${Math.round(status.progress * 100)}%`;
+          statusEl.textContent = `Loading opponent…${progress}`;
+        });
+        if (!isCurrent()) return;
+        clearBotStatus();
+        updateStatus();
         while (isCurrent() && turn !== HUMAN && !locked) {
           const player = turn;
           if (!legalMoves(player).length) {
@@ -1186,18 +1202,18 @@ export function mountChain(refs: ChainRefs) {
           }
           const opponent = gamePlayers[player-1]?.name ?? `CRT Bot ${player-1}`;
           clearBotStatus();
-          botStatus.hidden = false;
-          botStatusLabel.textContent = `${opponent} is thinking…`;
+          activeSwatch.style.setProperty('--chain-busy-color', playerColor(player));
+          activeSwatch.dataset.busy = 'true';
+          statusEl.textContent = `${opponent} is thinking…`;
           canvas.setAttribute('aria-busy', 'true');
           botClient ??= new ChainBotClient();
-          const decision = await botClient.chooseMove({
+          const decision: BotDecision = await botClient.chooseMove({
             rows, cols, players:playerCount, turn:player,
             counts:board.slice(), owners:owners.slice(), entered:entered.slice(1),
           }, status => {
             if (!isCurrent() || turn !== player) return;
             const progress = status.progress === undefined ? '' : ` ${Math.round(status.progress * 100)}%`;
             const text = status.phase === 'loading' ? `Loading opponent…${progress}` : `${opponent} is thinking…`;
-            botStatusLabel.textContent = text;
             statusEl.textContent = text;
           });
           if (!isCurrent() || turn !== player || locked) return;
@@ -1211,7 +1227,7 @@ export function mountChain(refs: ChainRefs) {
         if (!isCurrent() || (error instanceof DOMException && error.name === 'AbortError')) return;
         botClient?.dispose();
         botClient = null;
-        canvas.removeAttribute('aria-busy');
+        clearBotStatus();
         botStatus.hidden = false;
         botStatus.dataset.error = 'true';
         botStatusLabel.textContent = 'The opponent could not make its move. Your game is saved.';
@@ -1414,7 +1430,7 @@ export function mountChain(refs: ChainRefs) {
         layout();
         updateStatus();
         if (gameOver) showResult();
-        else if (turn !== HUMAN) continueTurns();
+        else continueTurns();
       });
     };
     showView(gameView, commit, requestedDirection ?? (fromStats ? 'back' : 'forward'));

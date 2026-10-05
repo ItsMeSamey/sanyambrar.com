@@ -1101,7 +1101,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const lightBackdrop = effectiveBackdropLuma(target) >= .45;
       const source = lightBackdrop ? "#ccc" : "#fff";
       cursor.style.setProperty("--samey-cursor-blend", source);
-      if (!overlayOwnsInteraction) linkFill.style.setProperty("--samey-cursor-blend", source);
+      if (!(target instanceof Element && target.closest(overlaySelector))) linkFill.style.setProperty("--samey-cursor-blend", source);
       cursor.dataset.blendSource = lightBackdrop ? "light" : "dark";
     };
     const overlaySelector = "[data-samey-overlay],[data-samey-overlay-backdrop],[data-samey-overlay-blocker]";
@@ -1280,12 +1280,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const width = fillW, height = fillH;
       const left = fillX - width / 2, top = fillY - height / 2;
       fillSlice.hidden = width <= 0 || height <= 0;
-      fillSlice.style.transform = `translate3d(${left}px,${top}px,0) scale3d(${width / fillDot},${height / fillDot},1)`;
-      const scaleX = Math.max(.001, width / fillDot);
-      const scaleY = Math.max(.001, height / fillDot);
-      const radiusX = Math.min(fillRadiusX, width / 2) / scaleX;
-      const radiusY = Math.min(fillRadiusY, height / 2) / scaleY;
-      fillSlice.style.borderRadius = `${radiusX}px / ${radiusY}px`;
+      // Paint the rounded shape at its real size. Scaling a tiny raster surface
+      // lets Chromium rerasterize its edge differently when an overlay opens.
+      fillSlice.style.transform = `translate3d(${left}px,${top}px,0)`;
+      fillSlice.style.width = `${width}px`;
+      fillSlice.style.height = `${height}px`;
+      fillSlice.style.borderRadius = `${Math.min(fillRadiusX, width / 2)}px / ${Math.min(fillRadiusY, height / 2)}px`;
     }
     const refreshLinkGeometry = (link: LinkElement | null) => {
       geometryLink = link;
@@ -1449,9 +1449,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-pageload", syncCursorIdlePolicy);
     addEventListener("samey-solid-routechange", syncCursorIdlePolicy);
     function setFillTarget(link: LinkElement | null) {
-      // Floating UI owns new hover targets, but the existing page highlight
-      // keeps its geometry and blend color until ownership returns.
-      if (overlayOwnsInteraction) return;
+      // Floating UI occludes the continuous page highlight. Its own controls
+      // do not steal that highlight, but exposed page links can still receive it.
+      if (overlayOwnsInteraction && (!fillVisible || !link || link.closest(overlaySelector))) return;
       if (!link) {
         const oldRect = activeFillRect;
         fillTarget = null;
@@ -1478,7 +1478,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       fillTarget = link; fillCollapsing = false; fillCollapseStart = 0; linkFill.hidden = false;
       const rect = updateFillGoal();
       if (!rect) return;
-      if (!fillVisible || changed) {
+      if (!fillVisible) {
         const dot = dotInside(rect);
         fillX = dot.x; fillY = dot.y; fillW = dot.width; fillH = dot.height;
         fillRadiusX = dot.width / 2; fillRadiusY = dot.height / 2;
@@ -1521,7 +1521,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const setMode = (target: EventTarget | null) => {
       const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
       const candidateLink = grab || selectingText ? null : linkTarget(target);
-      const link = overlayOwnsInteraction ? null : candidateLink;
+      const link = candidateLink;
       const text = !grab && (selectingText || !link && wantsText(target));
       if (cursorMode !== "invert") {
         if (cursorMode === "hardware") document.documentElement.dataset.sameyCursorShape = grab ? "grab" : text ? "text" : "dot";
@@ -1631,7 +1631,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       // begin several pixels inside the same element, so very slow movement used
       // to leave the round cursor stuck. Only those position-sensitive text zones
       // get a once-per-frame geometry refresh; raw cursor positioning stays clean.
-      if (fillTarget && !overlayOwnsInteraction) { updateFillGoal(); ensureFillFrame(); }
+      if (fillTarget) { updateFillGoal(); ensureFillFrame(); }
       schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
     };
     const refreshPointerTarget = (event: PointerEvent) => {

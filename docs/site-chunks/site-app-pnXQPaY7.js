@@ -1,0 +1,1 @@
+import{t as e}from"./main-BFicF8Iv.js";e();
