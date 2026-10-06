@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="article-id" content="b3872cdf-2028-4e2a-a5a6-17f02b487744">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="I went back to a weird btop crash and found a custom atomic lock that was not actually exclusive, plus another race around Runner::active. These are the fixes that became PR #1649.">
+  <meta name="article-path" content="/blog/1">
+  <meta name="description" content="Following a btop crash led me to a lock that could let two threads in at once and a race around Runner::active. The code and fixes from PR #1649.">
   <title>btop's broken lock · Sanyam Brar</title>
   <link vite-ignore rel="icon" href="../../favicon.svg" type="image/svg+xml">
   <link vite-ignore rel="stylesheet" href="../../site.css" data-samey-shared>
@@ -17,34 +19,28 @@
     <main data-text-cursor-zone>
     <header class="article-head">
       <h1>btop's broken lock</h1>
-      <p class="dek">the mutex that wasn't</p>
+      <p class="dek">Two threads could hold the same lock.</p>
       <div class="meta">25 Aug 2026 · btop · C++ atomics · PR <a class="plain" href="https://github.com/aristocratos/btop/pull/1649" data-copy-label="btop PR #1649" target="_blank" rel="noopener noreferrer">#1649</a></div>
     </header>
 
-    <p>I had been seeing btop crash every now and then. In January 2025 I opened <a href="https://github.com/aristocratos/btop/issues/1012" data-copy-label="btop issue #1012" target="_blank" rel="noopener noreferrer">issue #1012</a> with a core dump. It looked related to CPU cores being off-lined, but it was rare enough that I could not make it happen on demand. I poked around, hit some other sanitizer failures, opened <a href="https://github.com/aristocratos/btop/issues/1042" data-copy-label="btop issue #1042" target="_blank" rel="noopener noreferrer">#1042</a>, then left it alone for a while.</p>
+    <p>btop had been crashing every now and then on my machine. In January 2025 I opened <a href="https://github.com/aristocratos/btop/issues/1012" data-copy-label="btop issue #1012" target="_blank" rel="noopener noreferrer">issue #1012</a> with a core dump. The crash seemed related to CPU cores being off-lined, but I could rarely reproduce it. While investigating, I found other sanitizer failures and reported them in <a href="https://github.com/aristocratos/btop/issues/1042" data-copy-label="btop issue #1042" target="_blank" rel="noopener noreferrer">#1042</a>. I left it there for a while.</p>
 
-    <p>About a year later I came back to it and started following the races again. While looking at the UI thread and runner thread, I ended up in the tiny custom atomic lock used all over the codebase. I was not really looking for a lock bug. I just opened the implementation.</p>
-
-    <p><strong>WTF. The mutex was not a mutex.</strong></p>
-
-    <p>There were actually two problems in the same area. The blocking lock could let more than one thread through, and <code>Runner::active</code> was waited on with relaxed ordering even though the rest of the code used that wait like a real thread hand-off.</p>
-
-    <div class="aside"><p>Small distinction: I am not saying PR #1649 fixed the original CPU-hotplug crash in #1012. That one is still open. It is just how I ended up looking here. The races from #1042 are what this PR actually fixed.</p></div>
+    <p>About a year later, I picked it back up. I was tracing shared accesses between the UI and runner threads when I got to btop's custom atomic lock. Turns out, two threads could hold it at once. The waits on <code>Runner::active</code> were broken too. Callers relied on them to coordinate access to shared state, but the waits used relaxed ordering.</p>
 
     <figure class="viz">
-      <div class="viz-head"><div class="viz-title">How I got here</div><div class="viz-note">from the repository history</div></div>
+      <div class="viz-head"><div class="viz-title">The issue and the fixes</div><div class="viz-note">from the repository history</div></div>
       <div class="timeline">
         <div class="time-date">14 Jan 2025</div><div class="time-event hot"><b>#1012</b>Rare coredump while CPU cores were being off-lined.</div>
         <div class="time-date">19 Feb 2025</div><div class="time-event"><b>#1042</b>ASan found an Intel GPU use-after-free. TSan also reported races in non-GPU builds.</div>
         <div class="time-date">8 May 2026</div><div class="time-event hot"><b>Back to the races</b>Tracing <code>Config::current_preset</code> led into <code>Runner::active</code> and the custom atomic helpers.</div>
-        <div class="time-date">8–9 May</div><div class="time-event"><b>Eight fix commits</b>Race guards, atomic semantics, signal safety, a leak, and a proper timed waiting primitive.</div>
+        <div class="time-date">8–9 May</div><div class="time-event"><b>Eight fix commits</b>Race guards, atomic semantics, signal safety, a leak, and timed waits.</div>
         <div class="time-date">23 May 2026</div><div class="time-event done"><b>PR #1649 merged</b><code>a7d27a6</code> landed the locking fixes in btop.</div>
       </div>
     </figure>
 
-    <h2>Bug #1: compare-exchange let a second thread in</h2>
+    <h2>The lock let a second thread in</h2>
 
-    <p>Before the fix, <code>atomic_lock</code> was basically a <code>std::atomic&lt;bool&gt;</code> with RAII around it. Construction set it to <code>true</code>, destruction put it back to <code>false</code>. With <code>wait=true</code>, the constructor used compare-exchange and was meant to wait until it could flip unlocked to locked.</p>
+    <p><code>atomic_lock</code> wrapped a <code>std::atomic&lt;bool&gt;</code> in RAII: the constructor set the flag to <code>true</code>, and the destructor cleared it. With <code>wait=true</code>, construction was supposed to wait until compare-exchange could change the flag from unlocked to locked.</p>
 
     <div class="code-label"><span>Before PR #1649</span><a href="https://github.com/aristocratos/btop/blob/6e39144aaf5a6bc01b9f795010b0914431067183/src/btop_tools.cpp#L553-L561" data-copy-label="btop_tools.cpp lines 553–561" target="_blank" rel="noopener noreferrer">btop_tools.cpp</a></div>
     <pre tabindex="0"><code>atomic_lock::atomic_lock(atomic&lt;bool&gt;&amp; atom, bool wait) : atom(atom) {
@@ -61,20 +57,16 @@ atomic_lock::~atomic_lock() noexcept {
     this-&gt;atom.notify_all();
 }</code></pre>
 
-    <p>The part that looked wrong was <code>not_true</code>. It starts as <code>false</code>, then the same variable is reused as the <code>expected</code> argument to <code>compare_exchange_strong</code> every retry.</p>
-
-    <p>The one compare-exchange detail that matters here is this:</p>
+    <p>The loop keeps passing <code>not_true</code>, initially <code>false</code>, as <code>expected</code>:</p>
 
     <pre tabindex="0"><code>atom.compare_exchange_strong(expected, desired)</code></pre>
 
-    <p>If <code>atom == expected</code>, it stores <code>desired</code> and returns true. If not, it returns false <strong>and writes the value it saw back into <code>expected</code></strong>.</p>
-
-    <p>That write-back is the whole bug.</p>
+    <p>If <code>atom == expected</code>, the operation stores <code>desired</code> and returns true. Otherwise, it returns false and writes the value it observed into <code>expected</code>. The loop reused that changed value on its next attempt.</p>
 
     <figure class="viz cas-viz" id="cas-viz" tabindex="0" aria-label="Interactive simulation of the broken atomic lock">
       <div class="viz-head">
-        <div><div class="viz-title">The broken acquisition</div><div class="viz-sub">Step through the exact state that lets Thread B enter while A still owns the lock.</div></div>
-        <div class="cas-shortcuts">← / → to step</div>
+        <div><div class="viz-title">Acquiring the lock</div><div class="viz-sub">Step through A taking the lock, then B trying to take it too.</div></div>
+        <div class="cas-shortcuts"><kbd><span class="sr-only">Left arrow</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg></kbd> / <kbd><span class="sr-only">Right arrow</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></kbd> to step</div>
       </div>
 
       <div class="cas-progress" role="group" aria-label="Simulation steps">
@@ -126,36 +118,22 @@ atomic_lock::~atomic_lock() noexcept {
       <figcaption class="viz-caption" id="cas-caption">No contention yet.</figcaption>
     </figure>
 
-    <p>Thread A does <code>false → true</code> and enters. Thread B starts with <code>expected == false</code>, sees the atomic is already <code>true</code>, and the first CAS correctly fails. But that failure also changes B's <code>expected</code> to <code>true</code>.</p>
+    <p>Thread A changes the flag from <code>false → true</code> and enters. B starts with <code>expected == false</code>, so its first CAS fails against the flag A has set. That failure changes B's <code>expected</code> to <code>true</code>, and the loop leaves it there.</p>
 
-    <p>And the loop never resets it.</p>
-
-    <p>So B retries with <code>expected == true</code>. The atomic is still true because A still owns the lock. Comparison succeeds, desired is also true, so this is just <code>true → true</code>. C++ says success and B leaves the loop.</p>
-
-    <p>Now A and B both think they own it.</p>
-
-    <p>So this was not some fairness problem. One failed compare-exchange could turn the next loop iteration into a successful no-op. Anything relying on <code>atomic_lock(..., true)</code> for actual mutual exclusion could overlap.</p>
+    <p>On B's next attempt, both the flag and <code>expected</code> are <code>true</code>. The CAS succeeds with a <code>true → true</code> transition, and B enters while A still holds the lock. Anything using <code>atomic_lock(..., true)</code> could end up with two threads inside the supposedly protected code.</p>
 
     <h3>Where btop was using it</h3>
 
-    <p>At the May 2026 revision I was working from, the waiting form guarded at least these two paths:</p>
+    <p>In May 2026, at least two callers used the waiting form:</p>
 
     <div class="fix-grid">
       <div class="fix-card"><b>Terminal resize</b><p><code>term_resize()</code> used <code>atomic_lock lck(resizing, true)</code> to prevent concurrent resize handling. The broken CAS meant re-entry was still possible.</p></div>
       <div class="fix-card"><b>Config writes</b><p><code>Config::write()</code> waited on <code>writelock</code> and then used <code>atomic_lock lck(writelock, true)</code>. Two writers could pass the guard at once.</p></div>
     </div>
 
-    <p>This is where I had the obvious question: how did this survive for so long? Mostly because the bad timing has to actually happen. If the second thread arrives a little later, fine. If those paths almost never contend, also fine. Even if they overlap, you still need them to touch something where the overlap matters. Then some machine or timing change makes it suddenly visible.</p>
+    <h2>The waits were broken too</h2>
 
-    <p>Undefined behavior does not have to be dramatic. A broken mutex can sit there for years because most runs never hit the exact timing that proves it is broken.</p>
-
-    <h2>Bug #2: seeing an atomic flag is not synchronization</h2>
-
-    <p>The compare-exchange bug was pretty obvious once I slowed down and read it. The memory-ordering one was less loud.</p>
-
-    <p>btop has a runner thread doing collection and drawing, while the main/input thread also changes config and UI state. <code>Runner::active</code> was used as the gate between them. Runner marks itself active while doing unsafe-to-overlap work, and main-thread code waits on it before touching shared state.</p>
-
-    <p>The wait helper was this:</p>
+    <p>btop's runner thread collects data and draws the UI. The main/input thread also changes config and UI state, so the two threads coordinate through <code>Runner::active</code>. The runner marks itself active while using shared state, and main-thread code waits for it to finish before accessing that state.</p>
 
     <div class="code-label"><span>Old wait</span><span>btop_tools.cpp</span></div>
     <pre tabindex="0"><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
@@ -167,18 +145,16 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
         sleep_ms(1);
 }</code></pre>
 
-    <p><code>relaxed</code> is fine if the only thing you care about is the atomic itself. It keeps that atomic coherent. It does <strong>not</strong> make the normal reads and writes around it magically line up with another thread.</p>
-
-    <p>But callers were doing more than waiting for a boolean. They treated <code>Runner::active == false</code> as “runner is done, shared state is safe for me now”. That needs a real synchronization edge.</p>
+    <p>Callers saw <code>Runner::active == false</code> and went ahead with state the runner had just been updating. Relaxed ordering kept the flag coherent, but didn't synchronize those ordinary reads and writes.</p>
 
     <figure class="viz" id="ordering-viz">
-      <div class="viz-head"><div class="viz-title">Seeing the flag is not the same as seeing the work</div><div class="mode-switch"><button type="button" data-order="old" class="on">old: relaxed</button><button type="button" data-order="fixed">fixed: release/acquire</button></div></div>
+      <div class="viz-head"><div class="viz-title">What the wait synchronizes</div><div class="mode-switch"><button type="button" data-order="old" class="on">old: relaxed</button><button type="button" data-order="fixed">fixed: release/acquire</button></div></div>
       <div class="ordering">
         <div class="lane">
           <div class="op">Runner writes shared state<small>ordinary, non-atomic writes</small></div>
           <div class="op" id="release-op">active = false<small>relaxed / no release edge</small></div>
         </div>
-        <div class="hb bad" id="hb-arrow">×</div>
+        <div class="hb bad" id="hb-arrow" role="img" aria-label="Missing synchronization"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></div>
         <div class="lane">
           <div class="op" id="acquire-op">wait observes false<small>relaxed / no acquire edge</small></div>
           <div class="op">UI reads or mutates shared state<small>ordinary, non-atomic access</small></div>
@@ -187,11 +163,7 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
       <figcaption class="viz-caption" id="ordering-caption">The flag itself is coherent. Runner's normal writes still have no happens-before path to the waiting thread.</figcaption>
     </figure>
 
-    <p>For this pattern, the runner needs to publish “I am done” with release semantics, and the waiter needs acquire semantics when it observes that state. Then the ordinary work before the release is ordered before ordinary work after the acquire.</p>
-
-    <p>Less standardese: the flag change becomes the hand-off. Stuff runner did before unlock is visible before the UI continues after the wait.</p>
-
-    <p>My first fix was just to make that contract real: acquire on the waits, release on unlock/store.</p>
+    <p>My first fix added release ordering to the unlock stores and acquire ordering to the waits. When the acquire observes the release, the runner's earlier writes become visible to the waiting thread.</p>
 
     <div class="code-label"><span>Commit <code>88b0ed6</code>, then tightened by <code>5aaca91</code> and <code>312592f</code></span><a href="https://github.com/aristocratos/btop/commit/88b0ed67e6a9516ddcdc3d0c24e06dc2d3952931" data-copy-label="btop commit 88b0ed6" target="_blank" rel="noopener noreferrer">view commit</a></div>
     <pre tabindex="0"><code>void atomic_wait(const atomic&lt;bool&gt;&amp; atom, bool old) noexcept {
@@ -211,11 +183,11 @@ while (!atom.compare_exchange_strong(
 // unlock
 atom.store(false, std::memory_order_release);</code></pre>
 
-    <p>The failed CAS can still be relaxed because it did not acquire the lock. The important bits are: reset <code>expected</code> before retrying, acquire when ownership succeeds, release when unlocking.</p>
+    <p>A failed CAS can use relaxed ordering because only successful acquisition needs to synchronize with the previous unlock. Each retry resets <code>expected</code> to <code>false</code>; success acquires the lock, and unlocking releases it.</p>
 
-    <h2>The race that got me here: <code>current_preset</code></h2>
+    <h2>How I got here: <code>current_preset</code></h2>
 
-    <p>The thing that originally pulled me into this was <code>Config::current_preset</code>, a <code>std::optional&lt;int&gt;</code> touched by both input handling and drawing.</p>
+    <p>I reached these helpers while tracing accesses to <code>Config::current_preset</code>, a <code>std::optional&lt;int&gt;</code> shared by input handling and drawing.</p>
 
     <p>The runner read it while drawing:</p>
 
@@ -223,7 +195,7 @@ atom.store(false, std::memory_order_release);</code></pre>
     ? "*"
     : to_string(Config::current_preset.value())</code></pre>
 
-    <p>Meanwhile <code>p</code>/<code>P</code> could change the same optional from the input thread. There was an <code>atomic_wait(Runner::active)</code> in the path, which looked reassuring until I noticed it happened <em>after</em> the reads and mutations:</p>
+    <p>Pressing <code>p</code>/<code>P</code> could change the same optional from the input thread. I found an <code>atomic_wait(Runner::active)</code> in that path, but it ran after the reads and mutations it needed to protect:</p>
 
     <div class="code-label"><span>Before <code>557fbe5</code></span><span>btop_input.cpp</span></div>
     <pre tabindex="0"><code>const auto old_preset = Config::current_preset;
@@ -234,29 +206,23 @@ atom.store(false, std::memory_order_release);</code></pre>
 atomic_wait(Runner::active);
 Config::apply_preset(...);</code></pre>
 
-    <p>So the wait was on the wrong side. By the time it waited for runner, the racy access had already happened.</p>
-
     <figure class="viz">
       <div class="viz-head"><div class="viz-title">The <code>current_preset</code> race</div><div class="viz-note">before 557fbe5</div></div>
       <div class="race-map">
         <div class="race-lane"><h4>Main / input thread</h4><div class="race-op write">read current_preset</div><div class="race-op write">increment / decrement / reset it</div><div class="race-op">wait for Runner::active</div></div>
-        <div class="race-center"><div><span>⚠</span>overlap window</div></div>
+        <div class="race-center"><div><span aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 10 18H2L12 3Zm0 5v5m0 4h.01"/></svg></span>overlap window</div></div>
         <div class="race-lane"><h4>Runner thread</h4><div class="race-op">collect</div><div class="race-op read">draw reads current_preset</div><div class="race-op">release active</div></div>
       </div>
       <figcaption class="viz-caption">By the time this wait runs, the bad access already happened.</figcaption>
     </figure>
 
-    <p><a href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0" data-copy-label="btop commit 557fbe5" target="_blank" rel="noopener noreferrer"><code>557fbe5</code></a> moved the wait above the first access. I then found two menu paths that could also reset <code>current_preset</code> while runner was drawing, so <a href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553" data-copy-label="btop commit 677336f" target="_blank" rel="noopener noreferrer"><code>677336f</code></a> put the guard there too.</p>
+    <p>In <a href="https://github.com/aristocratos/btop/commit/557fbe519be31d0e4fe20705a8a455ecb8d8dcc0" data-copy-label="btop commit 557fbe5" target="_blank" rel="noopener noreferrer"><code>557fbe5</code></a>, I moved the wait before the first access. Two menu paths could also reset <code>current_preset</code> while the runner was drawing; <a href="https://github.com/aristocratos/btop/commit/677336f8badf159bf16b9cf1f50e1ef8f30ba553" data-copy-label="btop commit 677336f" target="_blank" rel="noopener noreferrer"><code>677336f</code></a> added guards to those paths.</p>
 
-    <p>This is why fixing only the lock helper was not enough. A perfect lock cannot protect an access that happens before you take it.</p>
+    <h2>Timed waits for <code>Runner::active</code></h2>
 
-    <h2>Why I stopped forcing timed waits through the atomic</h2>
+    <p>Some callers also needed a timeout, which C++ atomic wait/notify doesn't provide. The old <code>atomic_wait_for</code> polled the flag, sleeping 1 ms between checks.</p>
 
-    <p>The first version fixed the atomic semantics. A day later I changed the runner state again and made <code>atomic_waiting_lock</code>, backed by a normal <code>std::mutex</code> and <code>std::condition_variable</code>.</p>
-
-    <p>Not because atomics are bad. The API just wanted both normal waits and <em>timed</em> waits, and C++ atomic wait/notify is awkward for the timed part. The old <code>atomic_wait_for</code> basically polled the atomic and slept for 1 ms between checks.</p>
-
-    <p>A condition variable fit the job better:</p>
+    <p>I replaced that polling with <code>atomic_waiting_lock</code>, backed by a <code>std::mutex</code> and <code>std::condition_variable</code>. The condition variable handles the timeout directly:</p>
 
     <pre tabindex="0"><code>class atomic_waiting_lock {
     bool value{};
@@ -271,23 +237,21 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
                 [this, old] { return value != old; });
 }</code></pre>
 
-    <p><code>Runner::active</code> moved from <code>atomic&lt;bool&gt;</code> to that class, and runner gets an RAII <code>guard</code> from <code>active.lock()</code>. State change, waiting, timeout, notification and lock lifetime all live in one place now.</p>
+    <p><code>Runner::active</code> moved from <code>atomic&lt;bool&gt;</code> to this class, and the runner now obtains an RAII <code>guard</code> through <code>active.lock()</code>. The class handled the waits, timeouts and notifications; the guard handled the lock's lifetime.</p>
 
-    <p>I kept the small generic <code>atomic_lock</code> for simple boolean guards, with the CAS loop fixed. Runner had a more annoying contract, so it got the mutex + condition variable version instead.</p>
+    <p>I kept the generic <code>atomic_lock</code>, with its corrected CAS loop, for the simpler boolean guards elsewhere in btop.</p>
 
-    <h2>A few other things from the same sweep</h2>
-
-    <p>Once I had sanitizer builds going and was already reading nearby code, a few unrelated fixes came along with the PR too.</p>
+    <h2>Other fixes in the PR</h2>
 
     <h3>Teardown from the signal handler</h3>
 
-    <p>The SIGINT handler could call <code>clean_quit(0)</code> directly. That function joins threads, writes config, logs, formats strings, touches the terminal, and can allocate. Basically a list of things you do not want to run from an asynchronous POSIX signal handler.</p>
+    <p>The SIGINT handler could call <code>clean_quit(0)</code> directly. That function joins threads, writes config, logs, formats strings, accesses the terminal and can allocate memory. Several of those operations are unsafe inside an asynchronous POSIX signal handler.</p>
 
-    <p><a href="https://github.com/aristocratos/btop/commit/3843042" data-copy-label="btop commit 3843042" target="_blank" rel="noopener noreferrer"><code>3843042</code></a> changed SIGINT to set state and call <code>Input::interrupt()</code>. That helper is only <code>kill(getpid(), SIGUSR1)</code>; normal program flow wakes up and does the real shutdown later, outside the handler.</p>
+    <p>In <a href="https://github.com/aristocratos/btop/commit/3843042" data-copy-label="btop commit 3843042" target="_blank" rel="noopener noreferrer"><code>3843042</code></a>, I changed the handler to set state and call <code>Input::interrupt()</code>. That helper calls <code>kill(getpid(), SIGUSR1)</code>, waking normal program flow so it can perform the shutdown outside the handler.</p>
 
     <h3>An Intel GPU failure-path leak</h3>
 
-    <p><a href="https://github.com/aristocratos/btop/commit/327f695" data-copy-label="btop commit 327f695" target="_blank" rel="noopener noreferrer"><code>327f695</code></a> also fixed two early-return leaks around <code>gpu_device_name</code>, plus the engine structure when PMU init failed. Nothing to do with the lock really; same sanitizer run found it.</p>
+    <p>The same sanitizer run found leaks in Intel GPU initialization. <a href="https://github.com/aristocratos/btop/commit/327f695" data-copy-label="btop commit 327f695" target="_blank" rel="noopener noreferrer"><code>327f695</code></a> added cleanup for <code>gpu_device_name</code> on two early-return paths and for the engine structure when PMU initialization failed.</p>
 
     <h2>The sequence of fixes</h2>
 
@@ -299,40 +263,28 @@ void atomic_waiting_lock::wait_for(bool old, uint64_t ms) const noexcept {
       <a class="commit plain" href="https://github.com/aristocratos/btop/commit/327f695" data-copy-label="btop commit 327f695" target="_blank" rel="noopener noreferrer"><code>327f695</code><div>Fix Intel GPU cleanup on failure paths.</div></a>
       <a class="commit plain" href="https://github.com/aristocratos/btop/commit/5aaca91b3bffdfef4d5c11d96352670670815fd5" data-copy-label="btop commit 5aaca91" target="_blank" rel="noopener noreferrer"><code>5aaca91</code><div>Use relaxed ordering for failed CAS attempts.</div></a>
       <a class="commit plain" href="https://github.com/aristocratos/btop/commit/312592f01ecb5bc963ae0e78a81eafc0ffa3392a" data-copy-label="btop commit 312592f" target="_blank" rel="noopener noreferrer"><code>312592f</code><div>Make <code>expected</code> local, reset it on failure, and notify one waiter.</div></a>
-      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/2c631e4c8f430701e804f5f35151bb8798e55759" data-copy-label="btop commit 2c631e4" target="_blank" rel="noopener noreferrer"><code>2c631e4</code><div>Move runner timed waiting to a mutex + condition variable abstraction.</div></a>
+      <a class="commit plain" href="https://github.com/aristocratos/btop/commit/2c631e4c8f430701e804f5f35151bb8798e55759" data-copy-label="btop commit 2c631e4" target="_blank" rel="noopener noreferrer"><code>2c631e4</code><div>Use a mutex and condition variable for the runner's timed waits.</div></a>
     </div>
 
-    <h2>This lock had already changed once before</h2>
+    <h2>The lock's history</h2>
 
-    <p>I checked the history because I wanted to know where this lock came from. In October 2021 btop replaced atomic-bool spinlocks with mutexes in <code>804fe60</code>, specifically for a rare deadlock. Three days later <code>1601422</code> moved back to custom atomic-bool locks. The compare-exchange version that was still there in 2026 comes from around that time, with wait/notify added later.</p>
+    <p>In October 2021, <code>804fe60</code> replaced atomic-bool spinlocks with mutexes to address a rare deadlock. Three days later, <code>1601422</code> switched back to custom atomic-bool locks. The compare-exchange implementation I found in 2026 dates from around that switch; wait/notify came later.</p>
 
-    <p>I am not saying using atomics there was stupid. There can be decent reasons: hot paths, portability at the time, library support, wanting a tiny primitive. But once you build something mutex-shaped yourself, you also own all the boring mutex guarantees. One owner. Correct wakeups. Correct publication. Correct lifetime. And memory ordering that still works somewhere other than your own x86 machine.</p>
-
-    <p>Atomics are tiny code with a lot of contract attached to them.</p>
-
-    <h2>So why did it work for years?</h2>
-
-    <p>Because “has a race” and “crashes every run” are very different things.</p>
+    <h2>Why it could keep working anyway</h2>
 
     <ul>
-      <li>The compare-exchange bug only shows itself when threads actually contend on a <code>wait=true</code> path.</li>
-      <li>The relaxed-ordering bug needs ordinary shared accesses to overlap while code is relying on that atomic transition as the hand-off.</li>
-      <li>CPU count, terminal activity, I/O, optimization, sanitizers, kernel scheduling... all of these move the timing window around.</li>
-      <li>x86 is also fairly forgiving. Bad C++ ordering can look fine there for a long time; the language-level race is still undefined behavior.</li>
-      <li>And even if two threads enter together, you still need the overlap to hit state where somebody notices.</li>
+      <li>The compare-exchange bug required contention on a <code>wait=true</code> path. A thread arriving after the previous owner had unlocked could acquire normally.</li>
+      <li>The ordering bug affected ordinary shared accesses that relied on the atomic transition for a hand-off.</li>
+      <li>CPU count, terminal activity, I/O, compiler optimization, sanitizers and kernel scheduling all changed the timing.</li>
+      <li>x86's relatively strong memory ordering could hide symptoms, while the C++ data race remained undefined behavior.</li>
+      <li>Even when two threads entered together, a visible failure depended on which state they accessed during the overlap.</li>
     </ul>
 
-    <p>This is why TSan helped a lot here. It does not need the race to become a visible crash first. It points at conflicting accesses without a valid happens-before relation. That got me close enough; reading the synchronization code did the rest.</p>
+    <p>TSan reported conflicting accesses without a valid happens-before relation, including runs where btop appeared to work. Those reports gave me the accesses to trace back through the lock and the waits.</p>
 
-    <h2>The open-source part of this</h2>
+    <h2>The original crash is still open</h2>
 
-    <p>btop is mature, widely used software. This lock was still wrong for years. Both can be true.</p>
-
-    <p>I do not think the interesting question is “how did the maintainers miss this?” A project like btop has more platforms, hardware combinations and weird runtime paths than a small maintainer group can continuously stare at. This kind of thing is normal.</p>
-
-    <p>If you use it and have time, there are a lot of useful ways to help. Reproduce one annoying crash. Run a sanitizer build. Review a change. Fix something small. Or sponsor the project if that is easier.</p>
-
-    <p>I started from a crash I could barely reproduce. A year later I followed a few sanitizer reports, then one synchronization path, then another, and eventually found a lock that could let two threads own it. Bit of a detour, but a useful one.</p>
+    <p>PR #1649 merged on 23 May 2026 and fixed the #1042 races. The intermittent CPU-hotplug crash from #1012 is still open. If you can reproduce that one, a core dump or a set of steps would help.</p>
     </main>
   </div>
 </body>

@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["site-chunks/sql-CUJIFcwb.js","site-chunks/rolldown-runtime-8BhlS34s.js"])))=>i.map(i=>d[i]);
+import{n as e}from"./rolldown-runtime-8BhlS34s.js";import{n as t,r as n}from"./main-BvzEG0rp.js";import{n as r,t as i}from"./_.contribution-OqRHjgDn.js";function a(){return(a=e((()=>{i(),n(),r({id:`sql`,extensions:[`.sql`],aliases:[`SQL`],loader:()=>t(()=>import(`./sql-CUJIFcwb.js`),__vite__mapDeps([0,1]))})})))()}a();

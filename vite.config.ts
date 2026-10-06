@@ -106,12 +106,12 @@ export default defineConfig(() => {
     },
   }
 
-  if (target === 'blog') return {
+  if (target === 'blog' || target === 'sealed') return {
     publicDir: false,
-    input: path.resolve(root, 'src/blogs/btop-mutex.html'),
+    input: path.resolve(root, target === 'blog' ? 'src/blogs/btop-mutex.html' : 'src/site/public/blog/2/index.html'),
     plugins: [solidRuntimeDynamicImport, solid(), viteSingleFile({ removeViteModuleLoader: true })],
     build: {
-      outDir: path.resolve(root, '.build/blog-post'),
+      outDir: path.resolve(root, target === 'blog' ? '.build/blog-post' : '.build/sealed-post'),
       emptyOutDir: true,
       target: 'es2022',
     },

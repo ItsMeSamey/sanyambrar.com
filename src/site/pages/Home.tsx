@@ -1,5 +1,5 @@
 import '../styles/home.css';
-import { ArrowUpRight } from '../../shared/components/Icons.tsx';
+import { ArrowUpRight, ChevronRight } from '../../shared/components/Icons.tsx';
 import { games, posts, projects } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';
 import { GameCards, ProjectCards } from '../components/Entries.tsx';
@@ -9,11 +9,11 @@ import { TopBar } from '../../shared/components/TopBar.tsx';
 
 const writingPreview = {
   date: '25 AUG 2026',
-  summary: 'I went looking at a btop crash and ended up finding a lock that could let two threads in at once. There was a second race hiding around Runner::active too.',
+  summary: 'Following a btop crash led me to a lock that could let two threads in at once. From there I traced another race through Runner::active.',
   points: [
-    'A failed compare-exchange changed expected. The next retry could then succeed without acquiring anything.',
-    'Runner::active was treated like a hand-off, but the relaxed wait did not actually make it one.',
-    'Those fixes landed in btop PR #1649. The old CPU-hotplug crash is a separate thing and still not something I can claim was fixed.',
+    'A failed compare-exchange changed expected, allowing the next attempt to pass while another thread held the lock.',
+    'Callers relied on Runner::active to hand off shared state. The waits needed acquire ordering.',
+    'PR #1649 landed the race fixes. The original CPU-hotplug crash remains open.',
   ],
 };
 
@@ -36,7 +36,7 @@ function WritingSplit() {
       {posts.map((entry, index) => <SmartLink class="home-writing-link" href={entry.href} aria-current={index === 0 ? 'page' : undefined}>
         <span class="home-writing-num">{String(index + 1).padStart(2, '0')}</span>
         <span><strong>{entry.title}</strong><small>{entry.note}</small></span>
-        <span class="home-writing-chevron" aria-hidden="true">›</span>
+        <ChevronRight class="home-writing-chevron" size={18} aria-hidden="true"/>
       </SmartLink>)}
     </nav>
     <article class="home-writing-detail" data-text-cursor-zone>

@@ -32,6 +32,7 @@ const GENERATED_SITE_RUNTIME = join(ROOT, ".build", "site-runtime");
 const GENERATED_SITE_PRERENDER = join(ROOT, ".build", "site-prerender");
 const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
+const GENERATED_SEALED_POST = join(ROOT, ".build", "sealed-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
 const GENERATED_KEYBR = join(ROOT, ".build", "keybr");
 const ALL = new Set(["wordle", "keybr", "site"]);
@@ -123,7 +124,7 @@ async function injectSitePrerender() {
   log("prerendered static Solid route shells");
 }
 
-async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerender" | "blog" | "shared") {
+async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerender" | "blog" | "sealed" | "shared") {
   const { stdout, stderr } = await runFile(process.execPath, ["./node_modules/vite/bin/vite.js", "build"], {
     cwd: ROOT,
     env: { ...process.env, SAMEY_VITE_BUILD: target },
@@ -320,7 +321,13 @@ async function publishSite() {
     await cp(join(vditorDist, file), join(deployedVditor, file), { force: true });
   }
   await mkdir(join(DOCS, "blog", "posts"), { recursive: true });
-  await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "posts", "btop-mutex.html"), { force: true });
+  await cp(join(GENERATED_BLOG_POST, "btop-mutex.html"), join(DOCS, "blog", "1.html"), { force: true });
+  await cp(join(GENERATED_SEALED_POST, "index.html"), join(DOCS, "blog", "2", "index.html"), { force: true });
+  await cp(join(GENERATED_SEALED_POST, "index.html"), join(DOCS, "blog", "2.html"), { force: true });
+  const redirect = (target: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer"><title>Redirecting</title><link rel="stylesheet" href="/site.css" data-samey-shared><script src="/shared-runtime.js"></script><script>location.replace(${JSON.stringify(target)}+location.search+location.hash)</script></head><body><a href="${target}">Continue</a></body></html>`;
+  await mkdir(join(DOCS, "blog", "sealed"), { recursive: true });
+  await writeFile(join(DOCS, "blog", "sealed", "index.html"), redirect('/blog/2'));
+  await writeFile(join(DOCS, "blog", "posts", "btop-mutex.html"), redirect('/blog/1'));
   await injectSitePreloadHints();
 }
 
@@ -349,6 +356,16 @@ async function buildSiteRuntime() {
   must(siteEntries.length === 1, `site runtime emitted ${siteEntries.length} hashed entry files`);
   await rm(join(GENERATED_SITE_RUNTIME, ".vite"), { recursive: true, force: true });
   log("site SPA -> .build/site-runtime");
+}
+
+async function buildSealedPost() {
+  await runViteBuild("sealed");
+  const candidates = await walk(GENERATED_SEALED_POST, (_path, name) => name === "index.html");
+  must(candidates.length === 1, "private reader build must emit one HTML entry");
+  const destination = join(GENERATED_SEALED_POST, "index.html");
+  if (candidates[0] !== destination) await rename(candidates[0], destination);
+  const html = await readFile(destination, "utf8");
+  must(!html.includes("article-chrome.tsx"), "private reader shell was not compiled");
 }
 
 async function buildSitePrerender() {
@@ -487,7 +504,7 @@ async function deployAssets() {
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
     // Optional runtimes are cached when used. Visiting another page must not
     // download the Chain Reaction model, inference runtime, or worker.
-    .filter(path => !path.startsWith("vditor/") && !path.startsWith("keybr-assets/") &&
+    .filter(path => path !== "blog/2.html" && !path.startsWith("blog/2/") && !path.startsWith("vditor/") && !path.startsWith("keybr-assets/") &&
       !/^assets\/(?:ort[.-]|chain-opponent[.-])/.test(path));
 }
 
@@ -704,7 +721,7 @@ async function main() {
   if (targets.has("site")) {
     await rm(GENERATED_SITE, { recursive: true, force: true });
     await generateSite(GENERATED_SITE);
-    await Promise.all([sharedBuild, buildBlogPost(), buildSiteRuntime(), buildSitePrerender()]);
+    await Promise.all([sharedBuild, buildBlogPost(), buildSealedPost(), buildSiteRuntime(), buildSitePrerender()]);
     await injectSitePrerender();
   } else await sharedBuild;
   await beginDocsTransaction();

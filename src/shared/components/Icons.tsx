@@ -1,4 +1,6 @@
 import { omit } from 'solid-js';
+import { ChevronLeft as ChevronLeftNode, ChevronRight as ChevronRightNode } from 'lucide';
+import { Copy as CopyNode, Lock as LockNode, LockOpen as LockOpenNode } from 'lucide';
 import { Dynamic, createComponent, type JSX } from '@solidjs/web';
 import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
 
@@ -30,15 +32,20 @@ export const AlarmClockCheck = /* @__PURE__ */ icon(AlarmClockCheckNode, 'alarm-
 export const ArrowUpRight = /* @__PURE__ */ icon(ArrowUpRightNode, 'arrow-up-right');
 export const ChartNoAxesColumn = /* @__PURE__ */ icon(ChartNoAxesColumnNode, 'chart-no-axes-column');
 export const Check = /* @__PURE__ */ icon(CheckNode, 'check');
+export const ChevronLeft = /* @__PURE__ */ icon(ChevronLeftNode, 'chevron-left');
+export const ChevronRight = /* @__PURE__ */ icon(ChevronRightNode, 'chevron-right');
 export const ChevronsUpDown = /* @__PURE__ */ icon(ChevronsUpDownNode, 'chevrons-up-down');
 export const CircleAlert = /* @__PURE__ */ icon(CircleAlertNode, 'circle-alert');
 export const CircleCheck = /* @__PURE__ */ icon(CircleCheckNode, 'circle-check');
 export const CircleHelp = /* @__PURE__ */ icon(CircleHelpNode, 'circle-help');
 export const CirclePlay = /* @__PURE__ */ icon(CirclePlayNode, 'circle-play');
 export const CircleStop = /* @__PURE__ */ icon(CircleStopNode, 'circle-stop');
+export const Copy = /* @__PURE__ */ icon(CopyNode, 'copy');
 export const Download = /* @__PURE__ */ icon(DownloadNode, 'download');
 export const Frown = /* @__PURE__ */ icon(FrownNode, 'frown');
 export const Info = /* @__PURE__ */ icon(InfoNode, 'info');
+export const Lock = /* @__PURE__ */ icon(LockNode, 'lock');
+export const LockOpen = /* @__PURE__ */ icon(LockOpenNode, 'lock-open');
 export const Maximize2 = /* @__PURE__ */ icon(Maximize2Node, 'maximize2');
 export const MoonStar = /* @__PURE__ */ icon(MoonStarNode, 'moon-star');
 export const Move = /* @__PURE__ */ icon(MoveNode, 'move');
