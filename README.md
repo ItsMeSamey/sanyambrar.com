@@ -53,6 +53,14 @@ bun run build
 
 `docs/` is the deployable site.
 
+## Private writing
+
+`/blog/2` is a standalone, client-decrypted article reader listed as
+`[REDACTED]` in Writing and search. Its public files
+contain only a generic shell and authenticated ciphertext. Plaintext article sources,
+images, export files and the decryption key stay outside this repository.
+See [the private-post workflow](scripts/PRIVATE-POST.md) before editing or publishing it.
+
 Monaco is used as a normal pinned dependency; the repository does not patch or modify `node_modules` during install.
 
 ## Development and validation

@@ -3,6 +3,7 @@ import { afterVisualTransition } from './afterVisualTransition.ts';
 import { contrastText } from './contrast.ts';
 import { writeClipboardText } from './clipboard.ts';
 import { shortcutKey } from './platform.ts';
+import { hideLayer, isTopLayer, showLayer, topLayer } from './overlay.ts';
 import appearanceConfig from './appearance.json';
 
 
@@ -654,6 +655,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const closeAppearance = () => {
     if (!appearancePanel) return;
+    hideLayer(appearancePanel);
     appearancePanel.hidden = true;
     appearanceTrigger?.setAttribute("aria-expanded", "false");
     appearanceTrigger = null;
@@ -667,6 +669,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     trigger.setAttribute("aria-expanded", "true");
     renderAppearancePanel();
     appearancePanel.hidden = false;
+    showLayer(appearancePanel);
     positionAppearancePanel(trigger);
   };
 
@@ -805,8 +808,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     page.setAttribute("aria-labelledby", "samey-theme-advanced-title");
     page.dataset.sameyOverlay = "";
     page.dataset.sameyRuntime = "";
+    page.dataset.kbTopLayer = "";
     page.hidden = true;
     page.innerHTML = `<div class="samey-theme-advanced-shell"><header><div><span>Appearance</span><h1 id="samey-theme-advanced-title">Advanced &amp; Colorblind</h1></div><button type="button" class="samey-ui-button samey-icon-button" data-close-advanced aria-label="Close Advanced &amp; Colorblind">×</button></header><main><section class="samey-advanced-editor" data-advanced-editor><div class="samey-advanced-field"><label><span>Theme name</span><input class="samey-ui-input" name="themeName" value="My theme" maxlength="80"></label><label><span>Tone</span><select class="samey-ui-select" name="tone"><option value="light">Light</option><option value="dark">Dark</option></select></label></div><div class="samey-advanced-color-grid">${editorFields.map(([key, label]) => `<label><span>${escapeHtml(label)}</span><span class="samey-color-input"><input class="samey-ui-color" type="color" data-color-for="${key}" aria-label="${escapeHtml(label)} color"><input class="samey-ui-input" name="${key}" spellcheck="false" maxlength="7"></span></label>`).join("")}</div><div class="samey-advanced-actions"><button type="button" class="samey-ui-button samey-ui-button-primary" data-save-theme>Save theme</button><button type="button" class="samey-ui-button" data-reset-editor>Reset to current</button></div></section><aside><section data-colorblind-section><h2>Colorblind</h2><p>Choose the vision profile and luminance variant independently. Changes preview immediately and remain editable.</p>${colorblindControls()}</section><section><h2>Theme menu</h2><p>Choose which standard and saved themes appear in the compact menu. Colorblind choices stay in this page instead of becoming nine separate menu entries.</p><div class="samey-advanced-check-list" data-theme-menu-list></div></section><section><h2>Saved themes</h2><div data-saved-themes></div></section></aside></main></div>`;
+    page.querySelector('.samey-theme-advanced-shell')?.setAttribute('data-kb-top-layer', '');
     document.body.append(page);
     advancedPage = page;
     const editor = page.querySelector<HTMLElement>("[data-advanced-editor]");
@@ -837,7 +842,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       else if (target.dataset.deleteSaved) deleteSavedTheme(target.dataset.deleteSaved);
     });
     page.addEventListener("keydown", (event) => {
-      if (event.key !== "Tab") return;
+      if (event.key !== "Tab" || !isTopLayer(page)) return;
       const focusable = [...page.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]
         .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden");
       if (!focusable.length) return;
@@ -879,12 +884,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     fillAdvancedEditor(read());
     renderAdvancedSavedThemes();
     page.hidden = false;
+    showLayer(page);
     document.documentElement.classList.add("samey-advanced-open");
     page.scrollTop = 0;
     requestAnimationFrame(() => page.querySelector<HTMLButtonElement>("[data-close-advanced]")?.focus({ preventScroll: true }));
   };
   const closeAdvanced = (restoreFocus = true) => {
     if (!advancedPage || advancedPage.hidden) return;
+    hideLayer(advancedPage);
     advancedPage.hidden = true;
     document.documentElement.classList.remove("samey-advanced-open");
     const trigger = advancedReturnFocus;
@@ -899,6 +906,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     panel.className = "samey-theme-panel";
     panel.dataset.sameyRuntime = "";
     panel.dataset.sameyOverlay = "";
+    panel.dataset.kbTopLayer = "";
     panel.hidden = true;
     panel.addEventListener("click", (event) => {
       const target = eventElement(event);
@@ -922,9 +930,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }, { passive: true, capture: true });
     addEventListener("samey-pageleave", () => { closeAppearance(); closeAdvanced(false); });
     addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      if (advancedPage && !advancedPage.hidden) { closeAdvanced(); event.preventDefault(); return; }
-      if (!appearancePanel?.hidden) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (advancedPage && isTopLayer(advancedPage)) { closeAdvanced(); event.preventDefault(); return; }
+      if (appearancePanel && isTopLayer(appearancePanel)) {
         const trigger = appearanceTrigger;
         closeAppearance();
         if (trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
@@ -1019,6 +1027,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     dragPreview.hidden = true;
     document.body.append(linkFill, dragPreview, cursor);
     let cursorMode = read().cursorMode;
+    cursor.dataset.sameyLayerDecoration = '';
+    const syncCursorLayer = () => {
+      if (cursorMode === 'invert' && topLayer()) showLayer(cursor);
+      else {
+        hideLayer(cursor);
+        cursor.removeAttribute('popover');
+      }
+    };
+    addEventListener('samey-layer-change', syncCursorLayer);
     const loadingPath = cursor.querySelector(".samey-cursor-loading path");
     // The reusable loading SVG carries SMIL for standalone boot screens. The
     // cursor advances the same path explicitly, so disable the duplicate SVG
@@ -1590,6 +1607,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       document.documentElement.classList.toggle("samey-native-cursor", cursorMode === "native");
       applyHardwareCursorTheme(document.documentElement, theme);
       cursor.hidden = cursorMode !== "invert";
+      syncCursorLayer();
       if (cursorMode !== "invert") setCursorVisible(false);
       if (cursorMode !== "invert" && hasPointerPosition) setMode(document.elementFromPoint(pendingX, pendingY));
       if (cursorMode === "invert" && hasPointerPosition && !nativeDragging) { setCursorVisible(true); setMode(document.elementFromPoint(pendingX, pendingY)); armCursorIdle(); }
@@ -1849,6 +1867,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (document.getElementById("samey-context-menu")) return;
     const menu = runtimeNode(document.createElement("div"));
     menu.id = "samey-context-menu"; menu.className = "samey-context-menu"; menu.dataset.sameyOverlayBlocker = ""; menu.hidden = true;
+    menu.dataset.kbTopLayer = "";
     menu.setAttribute("role", "menu"); menu.setAttribute("aria-label", "Context menu");
     document.body.append(menu);
     let target: EventTarget | null = null;
@@ -1857,7 +1876,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let menuViewportHeight = 0;
     const close = (restoreFocus = false) => {
       if (menu.hidden) return;
+      hideLayer(menu);
       menu.hidden = true; menu.replaceChildren();
+      document.body.append(menu);
       const focusTarget = returnFocus; returnFocus = null;
       if (restoreFocus && focusTarget) requestAnimationFrame(() => focusTarget.isConnected && focusTarget.focus({ preventScroll: true }));
     };
@@ -1880,9 +1901,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       }
       if (event.shiftKey && event.button === 2) return;
       event.preventDefault();
-      target = event.target; menu.replaceChildren();
-      const focusTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("a[href],button,input,textarea,select,[tabindex]") : null;
-      returnFocus = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      const reopening = !menu.hidden && event.target instanceof Node && menu.contains(event.target);
+      const owner = reopening ? menu.parentElement : event.target instanceof Element ? event.target.closest<HTMLElement>('[role="dialog"], :popover-open, dialog[open]') : null;
+      if (!reopening) {
+        target = event.target;
+        const focusTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("a[href],button,input,textarea,select,[tabindex]") : null;
+        returnFocus = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      }
+      hideLayer(menu);
+      menu.replaceChildren();
+      // Keep focus inside a modal's scope while painting above its surface.
+      (owner && owner !== menu && !menu.contains(owner) ? owner : document.body).append(menu);
       const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
       const image = target instanceof Element ? target.closest<HTMLImageElement>("img[src]") : null;
       const editable = editableTarget(target);
@@ -1921,6 +1950,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       add("Print…", () => print(), true, shortcutKey("P"));
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
       menu.hidden = false;
+      showLayer(menu);
       menuViewportWidth = innerWidth;
       menuViewportHeight = innerHeight;
       const rect = menu.getBoundingClientRect();
@@ -1930,6 +1960,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     }, true);
     document.addEventListener("pointerdown", (event) => { if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close(); }, true);
     addEventListener("blur", () => close());
+    addEventListener("samey-pageleave", () => close());
+    document.addEventListener('beforetoggle', event => {
+      if ((event as ToggleEvent).newState === 'closed' && event.target instanceof Element && event.target !== menu && event.target.contains(menu)) close();
+    }, true);
     addEventListener("resize", () => {
       if (!menu.hidden && (innerWidth !== menuViewportWidth || innerHeight !== menuViewportHeight)) close();
     });
@@ -1944,6 +1978,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         }
         return;
       }
+      if (!isTopLayer(menu)) return;
       const items = [...menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); return; }
       if (!items.length) return;
@@ -1989,7 +2024,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   const virtualScrollerEligible = (target: Element | null) => {
     if (!target) return false;
     if (target === document.scrollingElement) return true;
-    if (!target.isConnected || virtualScrollerOptOut(target)) return false;
+    // Closed disclosure content can retain its last nonzero layout geometry.
+    if (!target.isConnected || virtualScrollerOptOut(target) || !target.checkVisibility()) return false;
     const style = getComputedStyle(target);
     if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity || "1") <= 0.001) return false;
     const rect = target.getBoundingClientRect();
@@ -2097,7 +2133,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (!allowsY && !allowsX) return;
     const overflowY = allowsY && el.scrollHeight > el.clientHeight + 2;
     const overflowX = allowsX && el.scrollWidth > el.clientWidth + 2;
-    if (!overflowY && !overflowX) return;
+    if ((!overflowY && !overflowX) || !el.checkVisibility()) return;
     const rect = el.getBoundingClientRect();
     if (rect.width < 8 || rect.height < 8) return;
     if (overflowY) addVirtualBar(el);
@@ -2139,11 +2175,13 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
           // Class churn is a high-frequency interaction channel (typing,
           // selected/pressed states, animations). Existing scroll owners are
           // already tracked and updated by scroll/resize, while new subtrees are
-          // discovered through childList. Only hidden visibility changes need a
-          // targeted rediscovery because descendants may have been ineligible
-          // during the initial scan.
+          // discovered through childList. Hidden and disclosure state changes
+          // need targeted rediscovery: their descendants may have been
+          // ineligible during the initial scan.
           if (record.attributeName === "hidden")
             scheduleTargets([target], !!target && !target.hasAttribute("hidden"));
+          else if (record.attributeName === "open" && target instanceof HTMLDetailsElement)
+            scheduleTargets([target], target.open);
           continue;
         }
         if (record.removedNodes.length) scheduleVirtualBars(false);
@@ -2152,9 +2190,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       }
     // Inline style and class are high-frequency interaction channels. Observing
     // either makes typing/drag/animation state schedule unnecessary geometry
-    // reads. Child additions and hidden visibility changes are sufficient for
+    // reads. Child additions, hidden state and disclosure changes drive
     // discovery; scroll/resize keep known scrollbar geometry current.
-    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden"] });
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "open"] });
     const rootResizeObserver = new ResizeObserver(() => scheduleVirtualBars(true));
     rootResizeObserver.observe(document.documentElement);
     rootResizeObserver.observe(document.body);

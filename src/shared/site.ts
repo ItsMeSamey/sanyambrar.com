@@ -1,5 +1,6 @@
 import { searchIndex, type Entry } from '../site/data.ts'
 import { searchShortcutLabel } from './platform.ts'
+import { hideLayer, isTopLayer, showLayer } from './overlay.ts'
 
 const currentScript = document.currentScript
 const runtimeRoot = currentScript instanceof HTMLScriptElement ? currentScript.dataset.sameyRuntimeRoot : ''
@@ -34,6 +35,7 @@ function finishClose(target: HTMLElement | null, restoreFocus: boolean) {
     if (!box?.classList.contains('is-closing')) return
     clearTimeout(closeTimer)
     closeTimer = 0
+    hideLayer(box)
     box.hidden = true
     box.classList.remove('is-closing')
     if (restoreFocus && target) target.isConnected && target.focus()
@@ -111,6 +113,7 @@ function close(restoreFocus = true) {
   const target = opener
   opener = null
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    hideLayer(box)
     box.hidden = true
     if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
     return
@@ -138,8 +141,11 @@ function ensure() {
   box.className = 'site-search'
   box.dataset.sameyOverlay = ''
   box.dataset.sameyRuntime = ''
+  box.dataset.kbTopLayer = ''
   box.hidden = true
   box.innerHTML = '<div class="site-search-backdrop" data-close-search></div><div class="site-search-panel" role="dialog" aria-modal="true" aria-label="Search"><div class="site-search-input"><span>›</span><input autocomplete="off" spellcheck="false" placeholder="Search games, tools, writing, work…"><kbd>esc</kbd></div><div class="site-search-results"></div></div>'
+  // The modal library scans descendants when a new runtime surface is mounted.
+  box.querySelector('.site-search-panel')?.setAttribute('data-kb-top-layer', '')
   document.body.append(box)
   const searchInput = box.querySelector<HTMLInputElement>('input')
   const searchResults = box.querySelector<HTMLDivElement>('.site-search-results')
@@ -158,7 +164,7 @@ function ensure() {
     else if (target?.closest('[data-close-search]')) close()
   })
   box.addEventListener('keydown', event => {
-    if (event.key !== 'Tab') return
+    if (event.key !== 'Tab' || !isTopLayer(box)) return
     const focusable = [searchInput, ...searchResults.querySelectorAll<HTMLAnchorElement>('a.search-result')]
     const current = document.activeElement
     const index = focusable.indexOf(current as HTMLInputElement | HTMLAnchorElement)
@@ -195,6 +201,7 @@ function open(trigger?: EventTarget | null) {
   closeTimer = 0
   box.classList.remove('is-closing')
   box.hidden = false
+  showLayer(box)
   active = 0
   input.value = ''
   render()
@@ -207,7 +214,7 @@ addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
     box && !box.hidden && !box.classList.contains('is-closing') ? close() : open()
-  } else if (event.key === 'Escape') close()
+  } else if (event.key === 'Escape' && !event.defaultPrevented && isTopLayer(box)) { event.preventDefault(); close() }
 })
 document.addEventListener('click', event => {
   const target = event.target instanceof Element ? event.target : null

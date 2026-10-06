@@ -14,7 +14,10 @@ export const projects:Entry[]=[
   {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw something and run the model in-browser with WASM.',tags:['python / zig','ml','mnist'],demo:true},
 ];
 
-export const posts:Entry[]=[{title:"btop's broken lock",href:'/blog/posts/btop-mutex',kind:'Writing',note:"the mutex that wasn't",tags:['c++','concurrency','btop']}];
+export const posts:Entry[]=[
+  {title:"btop's broken lock",href:'/blog/1',kind:'Writing',note:'Two threads could hold the same lock.',tags:['c++','concurrency','btop']},
+  {title:'[REDACTED]',href:'/blog/2',kind:'Writing',note:'[REDACTED]'},
+];
 export const contributions:Entry[]=[
   {title:'aristocratos/btop · PR #1649',href:'https://github.com/aristocratos/btop/pull/1649',kind:'OSS',note:'Data races, mutex-like locking and signal-safety fixes.',tags:['c++','concurrency']},
   {title:'karlseguin/http.zig',href:'https://github.com/karlseguin/http.zig',kind:'OSS',note:'Memory leak fixes, CORS performance and Zig build updates.',tags:['zig','http']},

@@ -1,0 +1,37 @@
+.article-route{--syntax-keyword:var(--site-accent);--syntax-string:var(--site-fast-color,var(--site-accent));--syntax-number:var(--site-effort-color,var(--site-accent));--syntax-comment:var(--article-muted);--article-fg:var(--site-fg,#121213);--article-line:var(--site-line,#d3d6da);--article-soft:var(--site-soft,#f6f7f8);--article-muted:color-mix(in srgb,var(--site-fg,#121213) 10%,var(--site-muted,#787c7e));--article-link:color-mix(in srgb,var(--site-fg,#121213) 72%,var(--site-effort-color,var(--site-accent,#787c7e)));--article-accent:color-mix(in srgb,var(--site-error,#ff3333) 62%,var(--site-fg,#121213));--article-text:color-mix(in srgb,var(--site-fg,#121213) 90%,var(--site-bg,#fff))}
+.article-route>main{width:min(var(--site-content-width,1080px),100%);margin:0 auto;padding:38px 20px 88px}
+.article-head{padding-bottom:25px;border-bottom:1px solid var(--article-line);margin-bottom:34px}
+.article-route>main h1{max-width:760px;font-size:clamp(34px,7vw,58px);line-height:.98;letter-spacing:-.048em;margin:0 0 16px}
+.article-route>main .dek{max-width:690px;color:var(--article-muted);font-size:17px;line-height:1.55;margin:0 0 16px}
+.article-route>main .meta{font:12px/1.45 var(--site-font,system-ui);color:var(--article-muted)}
+.article-route>main p,.article-route>main li{font-size:17px;line-height:1.72;color:var(--article-text)}
+.article-route>main p{margin:20px 0}
+.article-route>main ul{margin:16px 0 22px;padding-left:22px}
+.article-route>main li+li{margin-top:8px}
+.article-route>main h2{font-size:27px;line-height:1.15;letter-spacing:-.03em;margin:52px 0 14px;padding-left:13px;border-left:3px solid var(--article-accent)}
+.article-route>main h3{font-size:20px;line-height:1.25;letter-spacing:-.015em;margin:34px 0 10px}
+.article-route>main code{font:14px var(--site-font,system-ui);color:var(--article-fg);background:var(--article-soft);padding:.12em .35em;border-radius:4px}
+.article-route>main pre{box-sizing:border-box;max-width:100%;overflow:auto;overscroll-behavior-inline:contain;background:var(--article-soft);border:1px solid var(--article-line);border-radius:8px;padding:16px;font:13px/1.55 var(--site-font,system-ui);tab-size:4}
+.article-route>main pre:focus-visible{outline:2px solid color-mix(in srgb,var(--article-link) 55%,transparent);outline-offset:3px}
+.article-route>main pre code{background:none;padding:0;overflow-wrap:normal}
+.article-route>main a:not(.plain){color:var(--article-link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.article-route>main a:not(.plain):hover{color:var(--article-fg)}
+.article-route>main strong{font-weight:760}
+@media(max-width:680px){.article-route>main{padding-top:28px}}
+@media(max-width:220px){.article-route>main{padding-inline:8px}}
+.article-access-menu{box-sizing:border-box;width:220px;padding:5px;color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 8px 24px var(--site-shadow-2)}
+.article-access-menu button{box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:9px 10px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;font:13px/1.5 var(--site-font,system-ui);cursor:pointer}
+.article-access-menu button svg{width:16px;height:16px;flex-shrink:0}
+.article-access-menu button span{min-width:0;overflow-wrap:anywhere}
+.article-access-menu button:hover:not(:disabled){background:var(--site-soft,#f6f7f8)}
+.article-access-menu button:focus-visible{outline:2px solid var(--site-accent,#2563eb);outline-offset:-2px}
+.article-access-menu button:disabled{opacity:.45;cursor:default}
+@media(forced-colors:active){.article-access-menu{border-color:CanvasText}.article-access-menu button:focus-visible{outline-color:Highlight}.article-access-menu button:disabled{color:GrayText;opacity:1}}
+/* Shared syntax colors for article code. */
+.article-route .syn-keyword{color:var(--syntax-keyword);font-weight:650}
+.article-route .syn-type,.article-route .syn-namespace{color:color-mix(in srgb,var(--syntax-keyword) 72%,var(--syntax-number))}
+.article-route .syn-constant,.article-route .syn-number{color:var(--syntax-number)}
+.article-route .syn-string{color:var(--syntax-string)}
+.article-route .syn-comment{color:var(--syntax-comment);font-style:italic}
+.article-route .syn-function{color:var(--article-link)}
+.article-route .syn-preproc{color:var(--article-accent)}

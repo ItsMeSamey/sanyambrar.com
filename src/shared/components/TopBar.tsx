@@ -1,5 +1,5 @@
 import { type JSX } from '@solidjs/web';
-import { MoonStar } from './Icons.tsx';
+import { ChevronLeft, MoonStar } from './Icons.tsx';
 import { Search } from './Icons.tsx';
 import { HomeBrand } from './Brand.tsx';
 import { SmartLink } from './NavLink.tsx';
@@ -56,19 +56,19 @@ export function GameTopBarActions(props:{children?:JSX.Element;ariaLabel?:string
 }
 
 /** The only site top bar implementation. Pages customize content through slots. */
-export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;nav?:JSX.Element|false}) {
+export function TopBar(props:{start?:JSX.Element;context?:JSX.Element;contextClass?:string;nav?:JSX.Element|false;actions?:JSX.Element}) {
   return <header class="site-topbar">
     <div class="site-topbar-inner site-topbar-inner-contained">
       <div class="site-topbar-start">{props.start ?? <HomeBrand class="brand home-brand-link"/>}</div>
       <div class={`site-topbar-context${props.contextClass ? ` ${props.contextClass}` : ''}`}>{props.context}</div>
-      {props.nav === false ? null : (props.nav ?? <nav class="top-nav site-topbar-nav" aria-label="Primary"><AppearanceButton/><SearchButton/></nav>)}
+      {props.nav === false ? null : (props.nav ?? <nav class="top-nav site-topbar-nav" aria-label="Primary">{props.actions}<AppearanceButton/><SearchButton/></nav>)}
     </div>
   </header>;
 }
 
 export function BackLink(props:{id?:string;href?:string;onClick?:JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;class?:string;children:JSX.Element}) {
   const className = `backline${props.class ? ` ${props.class}` : ''}`;
-  const content = <><span class="backline-mark" aria-hidden="true">{'<'}</span><span>{props.children}</span></>;
+  const content = <><ChevronLeft class="backline-mark" size="1em" aria-hidden="true"/><span>{props.children}</span></>;
   return props.href
     ? <SmartLink id={props.id} class={className} href={props.href} data-nav-direction="back">{content}</SmartLink>
     : <button id={props.id} class={className} type="button" role="link" onClick={props.onClick}>{content}</button>;

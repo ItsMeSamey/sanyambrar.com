@@ -1,90 +1,10 @@
-const keywords = new Set([
-  'alignas','alignof','and','and_eq','asm','auto','bitand','bitor','break','case','catch','class','compl','concept','const','consteval','constexpr','constinit','const_cast','continue','co_await','co_return','co_yield','decltype','default','delete','do','dynamic_cast','else','enum','explicit','export','extern','false','for','friend','goto','if','inline','mutable','namespace','new','noexcept','not','not_eq','nullptr','operator','or','or_eq','private','protected','public','register','reinterpret_cast','requires','return','sizeof','static','static_assert','static_cast','struct','switch','template','this','thread_local','throw','true','try','typedef','typeid','typename','union','using','virtual','volatile','while','xor','xor_eq',
-]);
-const types = new Set([
-  'bool','char','char8_t','char16_t','char32_t','double','float','int','long','short','signed','unsigned','void','wchar_t','size_t','uint64_t','atomic','mutex','condition_variable','unique_lock','chrono','string','optional','guard',
-]);
-const constants = new Set(['memory_order_relaxed','memory_order_acquire','memory_order_release','memory_order_acq_rel','memory_order_seq_cst']);
+import { ArrowRight, X, createElement } from 'lucide';
 
-const esc = (text: string) => text.replace(/[&<>]/g, char => char === '&' ? '&amp;' : char === '<' ? '&lt;' : '&gt;');
-const token = (kind: string, text: string) => `<span class="syn-${kind}">${esc(text)}</span>`;
-const identStart = (char: string) => /[A-Za-z_]/.test(char);
-const identPart = (char: string) => /[A-Za-z0-9_]/.test(char);
-
-function highlightCpp(source: string): string {
-  let out = '', i = 0, lineStart = true;
-  while (i < source.length) {
-    const char = source[i], next = source[i + 1] ?? '';
-    if (char === '\n') { out += '\n'; i++; lineStart = true; continue; }
-    if (/\s/.test(char)) { out += char; i++; continue; }
-
-    if (lineStart && char === '#') {
-      const end = source.indexOf('\n', i);
-      const stop = end < 0 ? source.length : end;
-      out += token('preproc', source.slice(i, stop));
-      i = stop; lineStart = false; continue;
-    }
-    lineStart = false;
-
-    if (char === '/' && next === '/') {
-      const end = source.indexOf('\n', i);
-      const stop = end < 0 ? source.length : end;
-      out += token('comment', source.slice(i, stop));
-      i = stop; continue;
-    }
-    if (char === '/' && next === '*') {
-      const end = source.indexOf('*/', i + 2);
-      const stop = end < 0 ? source.length : end + 2;
-      out += token('comment', source.slice(i, stop));
-      i = stop; continue;
-    }
-    if (char === '"' || char === "'") {
-      const quote = char;
-      let j = i + 1;
-      while (j < source.length) {
-        if (source[j] === '\\') { j += 2; continue; }
-        if (source[j++] === quote) break;
-      }
-      out += token('string', source.slice(i, j));
-      i = j; continue;
-    }
-    if (/\d/.test(char)) {
-      let j = i + 1;
-      while (j < source.length && /[0-9A-Fa-f_xX.'uUlL]/.test(source[j])) j++;
-      out += token('number', source.slice(i, j));
-      i = j; continue;
-    }
-    if (identStart(char)) {
-      let j = i + 1;
-      while (j < source.length && identPart(source[j])) j++;
-      const word = source.slice(i, j);
-      let kind = keywords.has(word) ? 'keyword' : types.has(word) ? 'type' : constants.has(word) ? 'constant' : '';
-      if (!kind) {
-        let k = j;
-        while (k < source.length && /\s/.test(source[k])) k++;
-        if (source[k] === '(') kind = 'function';
-        else if (word === 'std') kind = 'namespace';
-      }
-      out += kind ? token(kind, word) : esc(word);
-      i = j; continue;
-    }
-    out += esc(char);
-    i++;
-  }
-  return out;
-}
-
-function highlightBlogCode(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLElement>('pre > code, .cas-code code').forEach(code => {
-    if (code.dataset.highlighted) return;
-    code.innerHTML = highlightCpp(code.textContent ?? '');
-    code.dataset.highlighted = 'cpp';
-  });
-}
+import { highlightArticleCode } from '../shared/article-code';
 
 import './btop-mutex.css';
 (() => {
-  highlightBlogCode();
+  highlightArticleCode();
   const $ = (id: string) => {
     const element = document.getElementById(id);
     if (!element) throw new Error(`Missing #${id}`);
@@ -125,43 +45,43 @@ import './btop-mutex.css';
         atom: false, owners: [], aState: 'running', bState: 'waiting',
         aExpected: 'false', bExpected: 'false',
         aInstruction: 'expected = false', bInstruction: 'not contending yet',
-        tag: 'A', kind: '', event: 'Thread A prepares the expected value required for an unlocked lock.',
-        caption: 'A wants to change false → true.'
+        tag: 'A', kind: '', event: 'A sets expected to false, the value of an unlocked flag.',
+        caption: 'A tries to change the flag from false to true.'
       },
       {
         atom: true, owners: ['A'], aState: 'owner', bState: 'waiting',
         aExpected: 'false', bExpected: 'false',
         aInstruction: 'CAS(false → true) → success', bInstruction: 'not contending yet',
-        tag: 'A', kind: '', event: 'The comparison matches. A stores true and now owns the critical section.',
-        caption: 'So far, the lock behaves correctly.'
+        tag: 'A', kind: '', event: 'The comparison matches, so A changes the flag to true and enters the critical section.',
+        caption: 'A has the lock.'
       },
       {
         atom: true, owners: ['A'], aState: 'inside', bState: 'running',
         aExpected: 'false', bExpected: 'false',
         aInstruction: 'inside critical section', bInstruction: 'expected = false',
-        tag: 'B', kind: '', event: 'Thread B arrives while A still owns the lock.',
-        caption: 'This is the contention case the loop has to handle.'
+        tag: 'B', kind: '', event: 'B arrives while A is still in the critical section.',
+        caption: 'B tries to acquire the lock while A holds it.'
       },
       {
         atom: true, owners: ['A'], aState: 'inside', bState: 'retry',
         aExpected: 'false', bExpected: 'true',
         aInstruction: 'inside critical section', bInstruction: 'CAS(false → true) → fail',
-        tag: 'CAS fail', kind: 'fail', event: 'B observes true. The CAS fails and C++ overwrites B\'s expected argument with the observed value: true.',
-        caption: 'The failure mutates expected. The loop does not reset it.'
+        tag: 'CAS fail', kind: 'fail', event: 'B sees true, so the CAS fails. The failed CAS writes true back into B\'s expected argument.',
+        caption: 'B retries with expected still set to true.'
       },
       {
         atom: true, owners: ['A'], aState: 'inside', bState: 'owner?',
         aExpected: 'false', bExpected: 'true',
         aInstruction: 'inside critical section', bInstruction: 'CAS(true → true) → success',
-        tag: 'CAS success', kind: 'breach', event: 'The next comparison is true == true. The desired value is also true, so the CAS succeeds without changing the atomic.',
-        caption: 'The API reports success even though A never released the lock.'
+        tag: 'CAS success', kind: 'breach', event: 'Now the comparison is true == true. The CAS succeeds, but the flag stays true and A has not released the lock.',
+        caption: 'B gets a successful result while A still holds the lock.'
       },
       {
         atom: true, owners: ['A', 'B'], aState: 'inside', bState: 'inside',
         aExpected: 'false', bExpected: 'true',
         aInstruction: 'inside critical section', bInstruction: 'inside critical section',
-        tag: 'broken', kind: 'breach', event: 'Both threads are now inside code that was written under the assumption of mutual exclusion.',
-        caption: 'The boolean still says “locked”, but there are two owners.'
+        tag: 'broken', kind: 'breach', event: 'Both threads enter code that assumes exclusive access.',
+        caption: 'The flag says locked. Both threads think they own it.'
       }
     ];
 
@@ -253,11 +173,13 @@ import './btop-mutex.css';
       const fixed = mode === 'fixed';
       release.innerHTML = fixed ? 'active = false<small>release</small>' : 'active = false<small>relaxed / no release edge</small>';
       acquire.innerHTML = fixed ? 'wait observes false<small>acquire</small>' : 'wait observes false<small>relaxed / no acquire edge</small>';
-      arrow.textContent = fixed ? '→' : '×';
+      arrow.replaceChildren(createElement(fixed ? ArrowRight : X, { 'aria-hidden': 'true', width: 24, height: 24 }));
+      arrow.setAttribute('role', 'img');
+      arrow.setAttribute('aria-label', fixed ? 'Synchronized hand-off' : 'Missing synchronization');
       arrow.className = `hb ${fixed ? 'good' : 'bad'}`;
       caption.textContent = fixed
-        ? 'The release/acquire hand-off creates a happens-before edge. Shared work before release is ordered before shared access after acquire.'
-        : 'The atomic value is coherent, but there is no happens-before edge carrying the runner\'s ordinary writes to the waiting thread.';
+        ? 'The wait sees the runner\'s release. Its acquire ordering makes the runner\'s earlier writes visible before the UI uses them.'
+        : 'The UI sees the flag change, but the relaxed operations do not order the runner\'s writes before the UI reads shared state.';
     };
     buttons.forEach(b => b.addEventListener('click', () => setMode(b.dataset.order)));
     setMode('old');

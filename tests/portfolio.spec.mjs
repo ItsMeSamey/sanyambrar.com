@@ -128,7 +128,7 @@ async function keybrChartsPainted(page) {
   }));
 }
 
-const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/projects/zhtml/', '/projects/oneserial/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/posts/btop-mutex', '/wordle', '/keybr', '/chain/'];
+const routes = ['/', '/work/', '/projects/reverb/', '/projects/cnn/', '/projects/zhtml/', '/projects/oneserial/', '/tools/?tool=text', '/tools/?tool=base', '/tools/?tool=diff', '/tools/?tool=number', '/tools/?tool=markdown', '/blog/', '/blog/1', '/wordle', '/keybr', '/chain/'];
 for (const route of routes) test(`renders ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
   await expect(page.locator('body')).not.toHaveText('');
@@ -2329,7 +2329,7 @@ const legacyHtmlRoutes = [
   '/projects/zhtml/index.html',
   '/wordle.html',
   '/keybr.html',
-  '/blog/posts/btop-mutex.html',
+  '/blog/1.html',
 ];
 for (const legacyRoute of legacyHtmlRoutes) test(`canonicalizes legacy ${legacyRoute}`, async ({ page }, info) => {
   await visit(page, legacyRoute, info);
@@ -2385,7 +2385,7 @@ test('standalone app boundaries use fresh documents with one shared shell', asyn
   await expectFresh('keybr', 'Home after Keybr');
 
   await markDocument('home-article');
-  await nativeNavigate('/blog/posts/btop-mutex', '/blog/posts/btop-mutex');
+  await nativeNavigate('/blog/1', '/blog/1');
   await expect(page.getByRole('heading', { name: "btop's broken lock", exact: true })).toBeVisible();
   await expectFresh('home-article', 'Article');
 });
@@ -2403,7 +2403,7 @@ test('Wordle, Keybr and article document boundaries use native view transitions'
     { href: '/', path: '/' },
     { href: '/keybr', path: '/keybr' },
     { href: '/', path: '/' },
-    { href: '/blog/posts/btop-mutex', path: '/blog/posts/btop-mutex' },
+    { href: '/blog/1', path: '/blog/1' },
   ]) {
     await page.evaluate(href => {
       const link = [...document.querySelectorAll('a[href]')].find(node => node.getAttribute('href') === href);
@@ -2738,7 +2738,7 @@ test('production pages reuse one hashed shared CSS/runtime pair instead of embed
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns hashed shared shell assets');
   let expectedCss;
   let expectedRuntime;
-  for (const route of ['/', '/work/', '/wordle', '/keybr', '/blog/posts/btop-mutex']) {
+  for (const route of ['/', '/work/', '/wordle', '/keybr', '/blog/1']) {
     await page.goto(`http://127.0.0.1:${info.project.metadata.port}${route}`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('style[data-samey-shared]')).toHaveCount(0);
     const css = page.locator('link[rel="stylesheet"][data-samey-shared]');
@@ -2945,7 +2945,7 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
   await expectContained('.home-writing-read');
   await visit(page, '/projects/reverb/', info);
   await expectContained('.project-source-link, .project-fdroid-link');
-  await visit(page, '/blog/posts/btop-mutex', info);
+  await visit(page, '/blog/1', info);
   await expectContained('.article-route main button, .article-route main a[href]');
   await visit(page, '/tools/?tool=diff', info);
   await expectContained('[data-diff-language], [data-diff-swap]');
@@ -3058,6 +3058,9 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
   await expect.poll(() => activeSearchResultIsVisible(), { message: 'Resizing to an extreme short viewport must keep the active search result visible' }).toBe(true);
   await page.keyboard.press('ArrowDown');
   await expect.poll(() => activeSearchResultIsVisible(), { message: 'Keyboard search selection must remain visible at 128px viewport height' }).toBe(true);
+  // Projects use document navigation; choose a known SPA route for this check.
+  await searchInput.fill('work');
+  await expect(page.locator('.search-result.active b')).toHaveText('Work');
   const activeResult = page.locator('.search-result.active');
   const { activeHref, activeTitle } = await activeResult.evaluate(element => ({
     activeHref: element.href,
@@ -3566,7 +3569,7 @@ test('virtual scrollbar thumb remains draggable at the viewport edge', async ({ 
 
 test('appearance menu dismisses when its anchor scrolls away', async ({ page }, info) => {
   await page.setViewportSize({ width: 900, height: 260 });
-  await visit(page, '/blog/posts/btop-mutex', info);
+  await visit(page, '/blog/1', info);
   const appearance = page.getByRole('button', { name: 'Appearance', exact: true });
   const panel = page.locator('.samey-theme-panel');
 
@@ -4943,7 +4946,7 @@ test('Keybr storybook progress survives reload, preview and book switches', asyn
   await expect.poll(lessonText).toBe(jekyllSecond);
 });
 
-for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff', '/tools/?tool=markdown', '/blog/posts/btop-mutex']) test(`accessible ${route}`, async ({ page }, info) => {
+for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff', '/tools/?tool=markdown', '/blog/1']) test(`accessible ${route}`, async ({ page }, info) => {
   await visit(page, route, info);
   if (route === '/tools/?tool=diff') {
     const editContexts = page.locator('.monaco-diff-editor .native-edit-context');
@@ -4959,7 +4962,7 @@ for (const route of ['/', '/wordle', '/tools/?tool=number', '/tools/?tool=diff',
     await expect(divider).toHaveAttribute('aria-valuenow', /\d/);
     await expect(page.locator('#vditorExportIframe')).toHaveAttribute('title', 'Markdown export preview');
   }
-  if (route === '/blog/posts/btop-mutex') {
+  if (route === '/blog/1') {
     await expect(page.locator('.article-route > main pre[tabindex="0"]')).toHaveCount(7);
   }
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
@@ -5042,7 +5045,7 @@ test('muted text keeps contrast on tinted surfaces', async ({ page }, info) => {
 
   for (const [route, selector] of [
     ['/projects/cnn/', '.cnn-demo-section'],
-    ['/blog/posts/btop-mutex', '.article-route > main'],
+    ['/blog/1', '.article-route > main'],
   ]) {
     await visit(page, route, info);
     for (const color of ['light', 'dark']) {
