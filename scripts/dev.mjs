@@ -81,7 +81,7 @@ const devRouteAssets = {
   project: [hrefForSourceCss(linkedCss.home)],
 };
 process.env.SAMEY_VITE_BUILD = target;
-const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
+const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.gif': 'image/gif', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
 const existingFile = async file => {
   try { return (await stat(file)).isFile() ? file : null; }
