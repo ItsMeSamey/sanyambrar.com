@@ -16,6 +16,7 @@ export function Intro() {
       <ExternalLink href={PERSONAL_GITHUB} copyLabel="Sanyam Brar on GitHub">GitHub ↗</ExternalLink>
       <ExternalLink href={ORG_GITHUB} copyLabel="SmallThingz on GitHub">SmallThingz ↗</ExternalLink>
       <ExternalLink href={SITE_SOURCE} copyLabel="Source for this site">{"Site's source ↗"}</ExternalLink>
+      <ExternalLink href="/Sanyam_Brar_Resume.pdf" copyLabel="Sanyam Brar's resume">Resume ↗</ExternalLink>
     </div>
   </section>;
 }

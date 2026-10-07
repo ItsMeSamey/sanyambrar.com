@@ -178,13 +178,13 @@ async function renderArticle(payload, key, signal, current) {
     }
   }
   const assetUrls = new Map();
-  const images = [];
+  const previews = [];
   const asset = (reference, image) => {
     if (!reference?.startsWith('asset:')) return null;
     const name = reference.slice(6);
     if (!Object.hasOwn(payload.assets, name)) return null;
     const value = payload.assets[name];
-    if (image ? !value.mime.startsWith('image/') : value.mime !== 'application/octet-stream') return null;
+    if (image ? !value.mime.startsWith('image/') : !['application/octet-stream', 'application/pdf'].includes(value.mime)) return null;
     return { name, ...value };
   };
   const assetUrl = value => {
@@ -210,8 +210,9 @@ async function renderArticle(payload, key, signal, current) {
     if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
     if (!(node instanceof Element) || !allowed.has(node.tagName)) return document.createDocumentFragment();
     const element = document.createElement(node.tagName.toLowerCase());
-    const classes = [...node.classList].filter(name => ['aside', 'dek', 'meta', 'eyebrow', 'gallery', 'gallery-paired', 'gallery-stack', 'gallery-crop', 'gallery-joined', 'gallery-slice', 'gallery-slice-top', 'gallery-slice-bottom', 'gallery-full', 'crop-top', 'route-pair', 'code-label', 'download-index', 'download-row', 'download-purpose', 'article-overview', 'overview-title', 'system-map', 'system-map-node', 'system-map-main', 'system-map-workers', 'system-map-branches', 'system-map-detail', 'system-map-uncertain'].includes(name));
+    const classes = [...node.classList].filter(name => ['aside', 'dek', 'meta', 'eyebrow', 'gallery', 'gallery-paired', 'gallery-stack', 'gallery-crop', 'gallery-joined', 'gallery-slice', 'gallery-slice-top', 'gallery-slice-bottom', 'gallery-full', 'crop-top', 'route-pair', 'code-label', 'download-index', 'download-row', 'download-purpose', 'article-overview', 'overview-title', 'article-endnotes', 'article-postscript', 'article-hire', 'pdf-icon', 'resume-copy', 'resume-title', 'resume-subtitle', 'system-map', 'system-map-node', 'system-map-main', 'system-map-workers', 'system-map-branches', 'system-map-detail', 'system-map-uncertain'].includes(name));
     if (classes.length) element.className = classes.join(' ');
+    if (classes.includes('pdf-icon')) element.setAttribute('aria-hidden', 'true');
     if (headingIds.has(node)) element.id = headingIds.get(node);
     if (node.tagName === 'IMG') {
       const value = asset(node.getAttribute('src'), true);
@@ -219,12 +220,17 @@ async function renderArticle(payload, key, signal, current) {
       element.alt = node.getAttribute('alt') || '';
       element.loading = 'lazy';
       element.decoding = 'async';
-      images.push(assetUrl(value).then(url => { element.src = url; }));
+      previews.push(assetUrl(value).then(url => { element.src = url; }));
     }
     if (node.tagName === 'A') {
       const href = node.getAttribute('href') || '';
       const attachment = asset(href, false);
-      if (attachment) {
+      if (attachment?.mime === 'application/pdf') {
+        element.target = '_blank';
+        element.rel = 'noopener noreferrer';
+        element.referrerPolicy = 'no-referrer';
+        previews.push(assetUrl(attachment).then(url => { element.href = url; }));
+      } else if (attachment) {
         element.href = '#';
         element.download = attachment.name;
         let busy = false;
@@ -272,7 +278,7 @@ async function renderArticle(payload, key, signal, current) {
   };
   const fragment = document.createDocumentFragment();
   for (const node of template.content.childNodes) fragment.append(copy(node));
-  await Promise.all(images);
+  await Promise.all(previews);
   if (current === generation && !signal.aborted) addReadingTools(fragment, current);
   return fragment;
 }

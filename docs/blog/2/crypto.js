@@ -53,7 +53,7 @@ export async function openPost(source, key) {
     const entries = Object.entries(payload.assets);
     if (entries.length > 64) throw Error('Too many assets');
     for (const [name, asset] of entries) {
-      if (!/^[a-zA-Z0-9._-]{1,128}$/.test(name) || !asset || !/^[a-f0-9]{64}$/.test(asset.id) || !['image/jpeg', 'image/png', 'image/webp', 'application/octet-stream'].includes(asset.mime)) throw Error('Invalid asset');
+      if (!/^[a-zA-Z0-9._-]{1,128}$/.test(name) || !asset || !/^[a-f0-9]{64}$/.test(asset.id) || !['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 'application/octet-stream'].includes(asset.mime)) throw Error('Invalid asset');
     }
     return payload;
   } finally {

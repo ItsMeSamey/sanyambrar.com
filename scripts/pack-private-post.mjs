@@ -40,7 +40,7 @@ const assets = Object.create(null);
 const encryptedAssets = Object.create(null);
 for (const asset of manifest.assets) {
   if (!/^[a-zA-Z0-9._-]+$/.test(asset.name) || Object.hasOwn(assets, asset.name)) throw Error('Invalid or duplicate asset name');
-  if (!['image/jpeg', 'image/png', 'image/webp', 'application/octet-stream'].includes(asset.mime)) throw Error('Unsupported asset type');
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf', 'application/octet-stream'].includes(asset.mime)) throw Error('Unsupported asset type');
   let bytes = await readFile(resolve(source, asset.source));
   if (asset.resetThreadAllowlist) {
     const original = bytes.toString('utf8');
