@@ -16,7 +16,6 @@ export const projects:Entry[]=[
 
 export const posts:Entry[]=[
   {title:"btop's broken lock",href:'/blog/1',kind:'Writing',note:'Two threads could hold the same lock.',tags:['c++','concurrency','btop']},
-  {title:'[REDACTED]',href:'/blog/2',kind:'Writing',note:'[REDACTED]'},
 ];
 export const contributions:Entry[]=[
   {title:'aristocratos/btop · PR #1649',href:'https://github.com/aristocratos/btop/pull/1649',kind:'OSS',note:'Data races, mutex-like locking and signal-safety fixes.',tags:['c++','concurrency']},

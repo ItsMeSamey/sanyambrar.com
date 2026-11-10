@@ -13,32 +13,6 @@ async function expectOnTop(surface) {
   })).toBe(true);
 }
 
-test('right-click menu opens above a native popover and Escape closes only the newest surface', async ({ page }, info) => {
-  await visit(page, '/blog/2', info);
-  const access = page.getByRole('button', { name: 'Article access', exact: true });
-  const underlying = page.getByRole('dialog', { name: 'Article access', exact: true });
-  const menu = page.getByRole('menu', { name: 'Context menu' });
-  for (const [width, height] of [[1440,1000],[390,844],[180,180],[800,160]]) {
-    await page.setViewportSize({ width, height });
-    await access.focus();
-    await access.click();
-    await expect(underlying).toBeVisible();
-    await underlying.click({ button: 'right', position: { x: 3, y: 3 } });
-    await expect(menu).toBeVisible();
-    await expectOnTop(menu);
-    await expect(underlying).toBeVisible();
-    expect(await menu.evaluate(node => {
-      const r = node.getBoundingClientRect();
-      return r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
-    })).toBe(true);
-    await page.keyboard.press('Escape');
-    await expect(menu).not.toBeVisible();
-    await expect(underlying).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(underlying).not.toBeVisible();
-  }
-});
-
 test('opening search after the context menu puts search above it, then restores the previous surface', async ({ page }, info) => {
   await visit(page, '/', info);
   await page.mouse.click(30, 100, { button: 'right' });

@@ -23,7 +23,6 @@ const siteSourcePages = new Map([
   ['/wordle', 'src/games/wordle/index.html'],
   ['/keybr', 'src/games/keybr/index.html'],
   ['/blog/1', 'src/blogs/btop-mutex.html'],
-  ['/blog/2', 'src/site/public/blog/2/index.html'],
 ]);
 const linkedCss = {
   shared: 'src/shared/styles/site.css',
@@ -144,16 +143,10 @@ const server = await createServer({
         try {
           const path = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
           const legacy = path.replace(/\/$/, '').replace(/\/index\.html$/, '').replace(/\.html$/, '');
-          const destination = legacy === '/blog/sealed' ? '/blog/2' : legacy === '/blog/posts/btop-mutex' ? '/blog/1' : null;
+          const destination = legacy === '/blog/posts/btop-mutex' ? '/blog/1' : null;
           if (target === 'site' && destination) {
             response.writeHead(308, { Location: destination + new URL(request.url, 'http://localhost').search });
             response.end();
-            return;
-          }
-          if (target === 'site' && /^\/blog\/2\/(?:payload\.bin|blobs\/[a-f0-9]{64}\.bin)$/.test(path)) {
-            response.setHeader('Content-Type', 'application/octet-stream');
-            response.setHeader('Cache-Control', 'no-store');
-            response.end(await readFile(resolve(root, 'src/site/public', '.' + path)));
             return;
           }
           if (target === 'site' && path === '/@samey-route-assets.json') {
@@ -192,8 +185,6 @@ const server = await createServer({
               html = html.replace('src="/main.tsx"', 'src="/src/games/keybr/main.tsx"');
             if (target === 'site' && htmlFile.endsWith('/src/blogs/btop-mutex.html'))
               html = html.replace('src="./shell.tsx"', 'src="/src/blogs/shell.tsx"');
-            if (target === 'site' && htmlFile.endsWith('/src/site/public/blog/2/index.html'))
-              html = html.replace('src="./reader.js"', 'src="/src/site/public/blog/2/reader.js"').replace('href="./reader.css"', 'href="/src/site/public/blog/2/reader.css"').replace('src="../../../../blogs/article-chrome.tsx"', 'src="/src/blogs/article-chrome.tsx"');
             html = html.replace(/(<link\b[^>]*\brel=["']icon["'][^>]*\bhref=)["'][^"']*["']/i, '$1"/favicon.svg"');
             if (!html.includes('rel="icon"')) html = html.replace('</head>', '<link rel="icon" href="/favicon.svg"></head>');
             html = await server.transformIndexHtml(path, html);
