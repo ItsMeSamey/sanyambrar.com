@@ -8,8 +8,9 @@ const targets = {
   site: { port: 4320 },
   wordle: { port: 4321, html: 'src/games/wordle/index.html', route: '/wordle' },
   keybr: { port: 4322, html: 'src/games/keybr/index.html', route: '/keybr' },
+  afterimage: { port: 4323, html: 'src/games/afterimage/index.html', route: '/afterimage' },
 };
-if (!Object.hasOwn(targets, target)) throw new Error('Expected site, wordle, or keybr');
+if (!Object.hasOwn(targets, target)) throw new Error('Expected site, wordle, keybr, or afterimage');
 const settings = targets[target];
 const requestedPort = Number(process.env.SAMEY_DEV_PORT ?? settings.port);
 if (!Number.isSafeInteger(requestedPort) || requestedPort < 1024 || requestedPort > 65535) throw new Error('SAMEY_DEV_PORT must be a valid port');
@@ -22,6 +23,7 @@ const siteRuntimeUrl = target === 'site' ? '/src/site/main.tsx' : '/@fs' + resol
 const siteSourcePages = new Map([
   ['/wordle', 'src/games/wordle/index.html'],
   ['/keybr', 'src/games/keybr/index.html'],
+  ['/afterimage', 'src/games/afterimage/index.html'],
   ['/blog/1', 'src/blogs/btop-mutex.html'],
 ]);
 const linkedCss = {
@@ -32,6 +34,7 @@ const linkedCss = {
   chain: 'src/games/chain/style.css',
   wordle: 'src/games/wordle/style.css',
   keybr: 'src/games/keybr/style.css',
+  afterimage: 'src/games/afterimage/style.css',
   article: 'src/blogs/btop-mutex.css',
 };
 const sharedCss = [linkedCss.shared, linkedCss.settings];
@@ -39,6 +42,7 @@ const linkedCssFiles = new Set(Object.values(linkedCss).map(file => resolve(root
 const routeKindFor = (path, htmlFile) => {
   if (htmlFile.endsWith('/src/games/wordle/index.html')) return 'wordle';
   if (htmlFile.endsWith('/src/games/keybr/index.html')) return 'keybr';
+  if (htmlFile.endsWith('/src/games/afterimage/index.html')) return 'afterimage';
   if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return 'article';
   const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
   if (key === '/') return 'home';
@@ -53,6 +57,7 @@ const routeCssFor = (path, htmlFile) => {
   const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
   if (htmlFile.endsWith('/src/games/wordle/index.html')) return [linkedCss.wordle];
   if (htmlFile.endsWith('/src/games/keybr/index.html')) return [linkedCss.keybr];
+  if (htmlFile.endsWith('/src/games/afterimage/index.html')) return [linkedCss.afterimage];
   if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return [linkedCss.article];
   if (key === '/tools') return [linkedCss.tools];
   if (key === '/chain') return [linkedCss.chain];
@@ -80,7 +85,7 @@ const devRouteAssets = {
   project: [hrefForSourceCss(linkedCss.home)],
 };
 process.env.SAMEY_VITE_BUILD = target;
-const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.gif': 'image/gif', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
+const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.gif': 'image/gif', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
 
 const existingFile = async file => {
   try { return (await stat(file)).isFile() ? file : null; }
@@ -91,7 +96,7 @@ const existingFile = async file => {
 };
 
 const htmlFileFor = async path => {
-  if (settings.html && (path === '/' || path === settings.route || path === settings.route + '.html'))
+  if (settings.html && (path === '/' || path === settings.route || path === settings.route + '/' || path === settings.route + '.html'))
     return resolve(root, settings.html);
   if (target === 'site') {
     const key = path !== '/' ? path.replace(/\/$/, '').replace(/\.html$/, '') : path;
@@ -153,6 +158,15 @@ const server = await createServer({
             response.setHeader('Content-Type', 'application/json');
             response.end(JSON.stringify(devRouteAssets));
             return;
+          }
+          if (path.startsWith('/afterimage/') && mime[extname(path)]) {
+            const publicRoot = resolve(root, 'src/games/afterimage/public');
+            const publicFile = resolve(publicRoot, '.' + path);
+            if (publicFile.startsWith(publicRoot + sep) && await existingFile(publicFile)) {
+              response.setHeader('Content-Type', mime[extname(path)]);
+              response.end(await readFile(publicFile));
+              return;
+            }
           }
           const file = resolve(docs, '.' + path);
           if (file !== docs && !file.startsWith(docs + sep)) return next();

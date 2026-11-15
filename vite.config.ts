@@ -41,6 +41,21 @@ const solidRuntimeDynamicImport: Plugin = {
 }
 
 export default defineConfig(() => {
+  if (target === 'afterimage') return {
+    publicDir: path.resolve(root, 'src/games/afterimage/public'),
+    input: path.resolve(root, 'src/games/afterimage/index.html'),
+    plugins: [solidRuntimeDynamicImport, solid()],
+    optimizeDeps: { entries: ['src/games/afterimage/index.html'] },
+    build: {
+      outDir: path.resolve(root, '.build/afterimage'),
+      emptyOutDir: true,
+      target: 'es2022',
+      manifest: true,
+      assetsDir: 'afterimage/assets',
+      rolldownOptions: { output: { strictExecutionOrder: true } },
+    },
+  }
+
   if (target === 'wordle') return {
     publicDir: false,
     input: path.resolve(root, 'src/games/wordle/index.html'),

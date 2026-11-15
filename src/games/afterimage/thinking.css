@@ -1,0 +1,52 @@
+.ai-thinking { width: 100%; }
+.ai-thinking-play { display: grid; gap: 1rem; width: min(100%, 42rem); margin-inline: auto; }
+.ai-thinking-feedback { min-height: 2.8em; margin: 0; text-align: center; font-size: .875rem; line-height: 1.4; }
+.ai-thinking-shapes { display: flex; justify-content: center; gap: clamp(.75rem, 4vw, 2rem); }
+.ai-thinking-shapes figure { width: min(42%, 12rem); margin: 0; text-align: center; }
+.ai-thinking-shapes svg { display: block; width: 100%; height: auto; color: var(--site-accent, currentColor); }
+.ai-thinking-shapes figcaption { font-size: .8rem; opacity: .7; }
+.ai-thinking-answers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
+.ai-thinking[data-mode="rotation"] .ai-thinking-answers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ai-thinking-answer-slot { position: relative; min-width: 0; }
+.ai-thinking-answer-slot > .ui-button { width: 100%; height: 100%; min-height: 4.5rem; padding: .6rem; display: flex; flex-direction: column; justify-content: center; gap: .3rem; white-space: normal; font-size: 1rem; }
+.ai-thinking-answer-slot kbd { font: inherit; font-size: .7rem; opacity: .65; }
+.ai-thinking-answer-slot > .ai-thinking-next { position: absolute; inset: 0; flex-direction: row; }
+.ai-thinking-answers [data-outcome="correct"] { border: 2px solid #34834a; }
+.ai-thinking-answers [data-outcome="wrong"] { border: 2px solid #b3424f; }
+.ai-thinking-answers button:disabled { opacity: .8; }
+.ai-thinking-word { margin: .5rem 0; text-align: center; font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 800; line-height: 1.2; letter-spacing: .02em; }
+.ai-thinking[data-mode="stroop"] .ai-thinking-answer-slot > button { color: var(--answer-ink); font-weight: 650; }
+.ai-thinking-equation { margin: .25rem 0; text-align: center; font-variant-numeric: tabular-nums; font-size: clamp(2rem, 8vw, 4rem); }
+.ai-thinking-sequence { display: flex; justify-content: center; flex-wrap: wrap; align-items: center; gap: clamp(.3rem, 1.5vw, 1rem); margin: 1.75rem 0; font-size: clamp(1.2rem, 4vw, 2rem); font-variant-numeric: tabular-nums; }
+.ai-thinking-sequence > span:nth-child(even) { opacity: .45; font-size: .8em; }
+.ai-thinking-search { width: min(100%, 24rem); margin-inline: auto; gap: .45rem; }
+.ai-thinking-search .ai-thinking-answer-slot { aspect-ratio: 1; }
+.ai-thinking-search .ai-thinking-answer-slot > button { min-height: 0; padding: .35rem; color: var(--site-accent, currentColor); }
+.ai-thinking-search svg { width: 100%; height: 100%; max-height: 5rem; pointer-events: none; }
+.ai-thinking-math { display: grid; gap: .65rem; width: min(100%, 24rem); margin-inline: auto; }
+.ai-thinking-math > label { font-size: .8rem; }
+.ai-thinking-entry { display: flex; gap: .5rem; }
+.ai-thinking-entry input { width: 0; flex: 1; min-width: 0; padding: .5rem .75rem; border: 1px solid currentColor; border-radius: .4rem; background: transparent; color: inherit; font: inherit; font-size: 1.4rem; }
+.ai-thinking-entry > button { gap: .4rem; }
+.ai-thinking-keypad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.ai-thinking-keypad > button { min-height: 2.8rem; font-size: 1.1rem; }
+@media (max-width: 380px) {
+  .ai-thinking-answers { gap: .3rem; }
+  .ai-thinking-answer-slot > .ui-button { font-size: .8rem; padding: .4rem .2rem; }
+  .ai-thinking[data-mode="stroop"] .ai-thinking-answers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-height: 520px) and (min-width: 600px) {
+  .ai-thinking-play { gap: .5rem; }
+  .ai-thinking-shapes figure { width: 7rem; }
+  .ai-thinking-feedback { min-height: 1.4em; }
+  .ai-thinking-search { width: 17rem; gap: .3rem; }
+  .ai-thinking-equation { font-size: 2rem; }
+  .ai-thinking-keypad > button { min-height: 2rem; padding-block: .25rem; }
+  .ai-thinking-word { font-size: 2.5rem; }
+  .ai-thinking-sequence { margin: .5rem 0; }
+}
+@media (forced-colors: active) {
+  .ai-thinking-answers [data-outcome="correct"] { border: 3px double Highlight; }
+  .ai-thinking-answers [data-outcome="wrong"] { border: 2px dashed CanvasText; }
+  .ai-thinking[data-mode="stroop"] .ai-thinking-word { forced-color-adjust: none; color-scheme: light; background: white; }
+}

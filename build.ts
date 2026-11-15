@@ -34,7 +34,8 @@ const GENERATED_SHARED_RUNTIME = join(ROOT, ".build", "shared-runtime");
 const GENERATED_BLOG_POST = join(ROOT, ".build", "blog-post");
 const GENERATED_WORDLE = join(ROOT, ".build", "wordle");
 const GENERATED_KEYBR = join(ROOT, ".build", "keybr");
-const ALL = new Set(["wordle", "keybr", "site"]);
+const GENERATED_AFTERIMAGE = join(ROOT, ".build", "afterimage");
+const ALL = new Set(["wordle", "keybr", "afterimage", "site"]);
 const requested = process.argv.slice(2);
 const targets = requested.length === 0 || requested.includes("all") ? ALL : new Set(requested);
 const invalidTargets = [...targets].filter((target) => !ALL.has(target));
@@ -123,7 +124,7 @@ async function injectSitePrerender() {
   log("prerendered static Solid route shells");
 }
 
-async function runViteBuild(target: "wordle" | "keybr" | "site" | "site-prerender" | "blog" | "shared") {
+async function runViteBuild(target: "wordle" | "keybr" | "afterimage" | "site" | "site-prerender" | "blog" | "shared") {
   const { stdout, stderr } = await runFile(process.execPath, ["./node_modules/vite/bin/vite.js", "build"], {
     cwd: ROOT,
     env: { ...process.env, SAMEY_VITE_BUILD: target },
@@ -460,6 +461,21 @@ async function buildKeybr() {
   log("keybr -> docs/keybr.html with one inline startup bundle/CSS + lazy data/media assets");
 }
 
+async function buildAfterimage() {
+  await runViteBuild("afterimage");
+  const html = await walk(GENERATED_AFTERIMAGE, (_path, name) => name.endsWith(".html"));
+  must(html.length === 1, `Afterimage build emitted ${html.length} HTML files`);
+  const source = await readFile(html[0], "utf8");
+  must(source.includes('data-site-kind="afterimage"') && !source.includes("data-site-spa"), "Afterimage must own a standalone document");
+  must(/<link\b[^>]*rel="stylesheet"[^>]*href="\/afterimage\/assets\//.test(source), "Afterimage route CSS must be linked before first paint");
+  const destination = join(DOCS, "afterimage");
+  await rm(destination, { recursive: true, force: true });
+  await mkdir(destination, { recursive: true });
+  await cp(join(GENERATED_AFTERIMAGE, "afterimage"), destination, { recursive: true, force: true });
+  await writeFile(join(destination, "index.html"), source);
+  log("afterimage -> docs/afterimage/ with hashed app assets and scoped install manifest");
+}
+
 const PUBLIC_ORIGIN = "https://sanyambrar.com";
 const exposesHtmlSuffix = (href: string, base = PUBLIC_ORIGIN + "/") => {
   try {
@@ -485,7 +501,8 @@ async function validateExtensionlessPublicLinks() {
 }
 
 async function deployAssets() {
-  return (await walk(DOCS, (_path, name) => /\.(?:html|css|js|json|wasm)$/.test(name) && name !== "sw.js"))
+  return (await walk(DOCS, (path, name) => (/\.(?:html|css|js|json|wasm|webmanifest)$/.test(name) ||
+    relative(DOCS, path).replaceAll("\\", "/").startsWith("afterimage/")) && name !== "sw.js"))
     .map((path) => relative(DOCS, path).replaceAll("\\", "/"))
     // Optional runtimes are cached when used. Visiting another page must not
     // download the Chain Reaction model, inference runtime, or worker.
@@ -609,7 +626,7 @@ const relativePath = request => {
 };
 const immutableAsset = request => {
   const path = relativePath(request);
-  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/') || path.startsWith('shared/');
+  return path.startsWith('site-chunks/') || path.startsWith('assets/') || path.startsWith('keybr-assets/') || path.startsWith('afterimage/assets/') || path.startsWith('shared/');
 };
 const cacheKey = request => {
   const url = new URL(request.url);
@@ -700,7 +717,7 @@ self.addEventListener('fetch', event => {
 }
 
 async function main() {
-  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, site, or all)`);
+  must(invalidTargets.length === 0, `unknown target: ${invalidTargets.join(", ")} (use wordle, keybr, afterimage, site, or all)`);
   await generateAppearance();
   const sharedBuild = buildSharedRuntime();
   if (targets.has("site")) {
@@ -714,6 +731,7 @@ async function main() {
   const jobs: Promise<void>[] = [];
   if (targets.has("wordle")) jobs.push(buildWordle());
   if (targets.has("keybr")) jobs.push(buildKeybr());
+  if (targets.has("afterimage")) jobs.push(buildAfterimage());
   await Promise.all(jobs);
   await finalizeShellAssets();
   await validateExtensionlessPublicLinks();
