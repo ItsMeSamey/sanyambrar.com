@@ -1,6 +1,6 @@
 import { TOOLS } from '../shared/catalog.ts';
 
-export type Entry={title:string;href:string;kind:string;note:string;tags?:string[];demo?:boolean};
+export type Entry={title:string;href:string;kind:string;note:string;tags?:string[];demo?:boolean;date?:string;summary?:string};
 export type ProjectDetail={title:string;dek:string;facts:string[];body:string;links:Entry[];demo?:'reverb-ui'|'cnn-draw'};
 
 export const games:Entry[]=[
@@ -13,10 +13,12 @@ const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool
 export const projects:Entry[]=[
   {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android recorder that keeps a rolling audio window in memory.',tags:['kotlin','android','audio'],demo:true},
   {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw something and run the model in-browser with WASM.',tags:['python / zig','ml','mnist'],demo:true},
+  {title:'zhtml',href:'/projects/zhtml/',kind:'Project',note:'HTML parsing in Zig, built around throughput and memory behavior.',tags:['zig','html','parsing']},
+  {title:'OneSerial',href:'/projects/oneserial/',kind:'Project',note:'Nested structures packed into one contiguous allocation.',tags:['zig','zero-copy','serialization']},
 ];
 
 export const posts:Entry[]=[
-  {title:"btop's broken lock",href:'/blog/1',kind:'Writing',note:'Two threads could hold the same lock.',tags:['c++','concurrency','btop']},
+  {title:"btop's broken lock",href:'/blog/1',kind:'Writing',note:'Two threads could hold the same lock.',tags:['c++','concurrency','btop'],date:'2026-08-25',summary:'Following a btop crash led me to a lock that could let two threads in at once. From there I traced another race through Runner::active.'},
 ];
 export const contributions:Entry[]=[
   {title:'aristocratos/btop · PR #1649',href:'https://github.com/aristocratos/btop/pull/1649',kind:'OSS',note:'Data races, mutex-like locking and signal-safety fixes.',tags:['c++','concurrency']},
