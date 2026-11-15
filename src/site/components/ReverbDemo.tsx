@@ -8,11 +8,9 @@ import durationWheelCss from '../demos/reverb-duration-wheel.css?raw';
 import silenceCurveCss from '../demos/reverb-silence-curve.css?raw';
 import compressionSliderCss from '../demos/reverb-compression-slider.css?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
+import { REVERB_PHONE_WIDTH, REVERB_PHONE_HEIGHT, REVERB_NOISE_SIZE, REVERB_TOPBAR_NOISE_X, REVERB_TOPBAR_NOISE_Y } from '../demos/reverb-reference.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
-const REVERB_PHONE_WIDTH = 411;
-const REVERB_PHONE_HEIGHT = 912;
-const REVERB_FULLSCREEN_EXIT_GUTTER = 50;
 const REVERB_NOISE_URL = new URL('../demos/reverb-native-noise.png', import.meta.url).href;
 
 type PreparedReverbTemplate = { styleText: string; body: DocumentFragment };
@@ -42,7 +40,8 @@ const prepareReverbTemplate = () => {
     body.append(node.cloneNode(true));
   }
   preparedTemplate = {
-    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host') + '\n' + [currentSettingsCss, durationWheelCss, silenceCurveCss, compressionSliderCss].join('\n'),
+    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host') + '\n' + [currentSettingsCss, durationWheelCss, silenceCurveCss, compressionSliderCss].join('\n')
+      + `\n:host{--screen-w:${REVERB_PHONE_WIDTH}px;--screen-h:${REVERB_PHONE_HEIGHT}px;--reverb-noise-size:${REVERB_NOISE_SIZE}px;--reverb-topbar-noise-x:${REVERB_TOPBAR_NOISE_X}px;--reverb-topbar-noise-y:${REVERB_TOPBAR_NOISE_Y}px}`,
     body,
   };
   return preparedTemplate;
@@ -62,30 +61,17 @@ export function preloadReverbDemoAssets(): Promise<void> {
 
 function installResponsivePhone(host: HTMLDivElement, onGeometryChange: () => void = () => {}) {
   const sync = () => {
-    const width = host.clientWidth;
-    const height = host.clientHeight;
+    const { width, height } = host.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
-    const fullscreen = host.hasAttribute('data-fullscreen');
-    const naturalScale = Math.min(
+    const scale = Math.min(
       1,
       width / REVERB_PHONE_WIDTH,
       height / REVERB_PHONE_HEIGHT,
     );
-    const naturalRightGutter = (width - REVERB_PHONE_WIDTH * naturalScale) / 2;
-    const reserveExitGutter = fullscreen && naturalRightGutter < REVERB_FULLSCREEN_EXIT_GUTTER;
-    const compact = width < REVERB_PHONE_WIDTH || height < REVERB_PHONE_HEIGHT || reserveExitGutter;
-    const scale = reserveExitGutter
-      ? Math.min(
-          1,
-          Math.max(1, width - REVERB_FULLSCREEN_EXIT_GUTTER) / REVERB_PHONE_WIDTH,
-          height / REVERB_PHONE_HEIGHT,
-        )
-      : naturalScale;
+    const compact = width < REVERB_PHONE_WIDTH || height < REVERB_PHONE_HEIGHT;
     host.toggleAttribute('data-compact-scale', compact);
     if (compact) {
       host.style.setProperty('--reverb-demo-scale', String(scale));
-      if (reserveExitGutter) host.style.setProperty('--reverb-demo-phone-left', `${(width - REVERB_FULLSCREEN_EXIT_GUTTER) / 2}px`);
-      else host.style.removeProperty('--reverb-demo-phone-left');
     } else {
       host.style.removeProperty('--reverb-demo-scale');
       host.style.removeProperty('--reverb-demo-phone-left');
@@ -452,10 +438,7 @@ export function ReverbDemo() {
     cancelBoot();
     dispose();
   });
-  return <section class="reverb-demo-section" aria-labelledby="reverb-ui-demo-title">
-    <div class="reverb-demo-head">
-      <h2 id="reverb-ui-demo-title">UI demo</h2>
-    </div>
+  return <section class="reverb-demo-section" aria-label="Reverb demo">
     <div class="reverb-demo-frame-shell">
       <div ref={frame} class="reverb-demo-frame">
         <div ref={host} class="reverb-demo-host" role="group" aria-label="Interactive Reverb UI demo" />

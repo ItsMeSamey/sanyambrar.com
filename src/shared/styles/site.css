@@ -182,7 +182,8 @@ html[data-site-loading] .samey-loading-top-bar{animation:samey-loading-stripes .
 /* More coherent shared surfaces. */
 .game-settings-trigger{border-radius:0}
 .samey-theme-panel,.samey-context-menu,.site-search-panel,.game-settings-popover,.samey-popover{border-radius:var(--site-radius);border-color:var(--site-line,#ddd);background:var(--site-bg,#fff);background-clip:padding-box;backdrop-filter:none;-webkit-backdrop-filter:none;isolation:isolate}
-.samey-theme-panel,.samey-context-menu,.site-search-panel,.game-settings-popover,.samey-popover,.samey-dialog{box-shadow:0 2px 6px var(--site-shadow-1),0 16px 48px var(--site-shadow-2)}
+.samey-theme-panel,.samey-context-menu,.game-settings-popover,.samey-popover,.samey-dialog{box-shadow:0 2px 6px var(--site-shadow-1),0 16px 48px var(--site-shadow-2)}
+.site-search-panel{box-shadow:none}
 .samey-theme-panel,.game-settings-popover,.samey-popover{overflow-x:hidden!important;overflow-y:auto!important}
 .site-search-input{min-height:52px}.search-result{min-height:54px;align-items:center}.search-result.active{box-shadow:inset 2px 0 var(--site-accent)}
 @media(max-height:160px){.site-search{padding-block:4px}.site-search-panel{max-height:calc(100dvh - 8px)}.site-search-input{min-height:36px;padding-inline:10px;gap:7px}.site-search-input>span{font-size:14px}.site-search-input input{font-size:13px}.site-search-input kbd{display:none}.site-search-results{box-sizing:border-box;max-height:calc(100dvh - 45px);padding:4px}.search-result{box-sizing:border-box;min-height:40px;padding:5px 7px;gap:7px}.search-result small{display:none}.search-result em{padding:3px 4px;font-size:8px}}

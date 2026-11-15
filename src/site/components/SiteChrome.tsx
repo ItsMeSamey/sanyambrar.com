@@ -11,9 +11,9 @@ function ExternalLink(props:{href:string;children:JSX.Element;copyLabel?:string}
   return <a href={props.href} data-copy-label={props.copyLabel} target="_blank" rel="noopener noreferrer">{props.children}<ArrowUpRight aria-hidden="true"/></a>;
 }
 
-export function PortfolioTopBar(props:{current?:'home'|'work'|'writing';start?:JSX.Element}) {
+export function PortfolioTopBar(props:{current?:'home'|'work'|'writing';start?:JSX.Element;omitWork?:boolean}) {
   return <TopBar start={props.start} actions={<>
-    <SmartLink href="/work/" aria-current={props.current === 'work' ? 'page' : undefined}>Work</SmartLink>
+    {!props.omitWork && <SmartLink href="/work/" aria-current={props.current === 'work' ? 'page' : undefined}>Work</SmartLink>}
     <SmartLink href="/blog/" aria-current={props.current === 'writing' ? 'page' : undefined}>Writing</SmartLink>
   </>}/>;
 }

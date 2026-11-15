@@ -47,7 +47,7 @@ export function ZhtmlDemo() {
     </form>
     <Show when={failure()}><p class="engine-demo-error" role="alert">{failure()} Check the HTML or selector and try again.</p></Show>
     <Show when={result()}>{value => <>
-      <div class="engine-demo-stats" role="status"><span>{value().sourceBytes} source bytes</span><span>{value().nodes.length} nodes</span><strong>{value().matches} matches</strong></div>
+      <div class="engine-demo-stats" role="status"><span>{value().sourceBytes} source bytes</span><span>{value().nodes.length} {value().nodes.length === 1 ? 'node' : 'nodes'}</span><strong>{value().matches} {value().matches === 1 ? 'match' : 'matches'}</strong></div>
       <div class="engine-demo-tree" aria-label="Parsed nodes"><For each={value().nodes}>{node => <button type="button" class={`${node.matched ? 'is-match' : ''} ${selected() === node.index ? 'is-selected' : ''}`} aria-pressed={selected() === node.index ? 'true' : 'false'} onClick={() => setSelected(node.index)} style={{ '--node-depth': String(Math.min(node.depth, 12)) }}><span class="engine-demo-node-id">{node.index}</span><code>{node.tag === '#text' ? `“${node.text.trim().slice(0, 90)}”` : `<${node.tag}>`}</code><Show when={node.matched}><span class="engine-demo-match">match</span></Show></button>}</For></div>
       <Show when={selectedNode()}>{node => <div class="engine-demo-inspect"><strong>Node {node().index} · depth {node().depth}</strong><pre>{node().tag === '#text' ? node().text : `<${node().tag}>${node().matched ? '\nMatches the selector.' : '\nDoes not match the selector.'}`}</pre></div>}</Show>
     </>}</Show>

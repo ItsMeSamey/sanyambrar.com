@@ -1,5 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { REVERB_PHONE_WIDTH, REVERB_PHONE_HEIGHT } from '../src/site/demos/reverb-reference.ts';
 
 const EXPECTED_ERROR_SURFACE_MARKER = 'QA_EXPECTED_ERROR_SURFACE';
 
@@ -5900,28 +5901,34 @@ test('project source links use Git branding and Reverb exposes F-Droid beside So
   }
 });
 
-test('Reverb demo preserves the 411x912 reference surface without stretching', async ({ page }, info) => {
+test('Reverb demo preserves native reference dimensions and aspect ratio without stretching', async ({ page }, info) => {
   const dimensions = async (host) => host.evaluate(element => {
     const phone = element.shadowRoot?.querySelector('#phone');
     if (!phone) return null;
     const rect = phone.getBoundingClientRect();
     return [rect.width, rect.height];
   });
+  const expectReferenceSize = async (host) => expect.poll(async () => {
+    const size = await dimensions(host);
+    if (!size) return Infinity;
+    return Math.max(Math.abs(size[0] - REVERB_PHONE_WIDTH), Math.abs(size[1] - REVERB_PHONE_HEIGHT));
+  }, { message: 'The unscaled phone must match the 421 dpi native reference within subpixel layout rounding' }).toBeLessThan(.05);
   const expectReferenceRatio = async (host) => expect.poll(async () => {
     const size = await dimensions(host);
-    if (!size) return null;
-    return Number((size[0] / size[1]).toFixed(6));
-  }).toBe(Number((411 / 912).toFixed(6)));
+    if (!size || size[1] <= 0) return Infinity;
+    // Compare independently with the physical capture, not the shared constants.
+    return Math.abs(size[0] / size[1] - 1080 / 2400);
+  }, { message: 'Uniform scaling must preserve the physical capture aspect ratio' }).toBeLessThan(.0001);
 
   await page.setViewportSize({ width: 1440, height: 1100 });
   await visit(page, '/projects/reverb/', info);
   const host = page.getByRole('group', { name: 'Interactive Reverb UI demo' });
-  await expect.poll(() => dimensions(host)).toEqual([411, 912]);
+  await expectReferenceSize(host);
   await expectReferenceRatio(host);
 
   const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
   await fullscreen.click();
-  await expect.poll(() => dimensions(host)).toEqual([411, 912]);
+  await expectReferenceSize(host);
   await expectReferenceRatio(host);
   await page.keyboard.press('Escape');
 

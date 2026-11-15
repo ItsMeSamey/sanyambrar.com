@@ -75,6 +75,7 @@ export function installReverbDurationWheel(host: HTMLElement, options: DurationW
 
   let value = safeSeconds(options.value);
   let maximum = safeSeconds(options.maximumSeconds ?? 86400);
+  value = Math.min(value, maximum);
   let profile = 0;
   let width = Math.max(1, host.clientWidth || 350);
   let active = -1;
@@ -376,7 +377,7 @@ export function installReverbDurationWheel(host: HTMLElement, options: DurationW
   return {
     setValue(seconds: number) {
       cancelPointer();
-      value = safeSeconds(seconds);
+      value = Math.min(safeSeconds(seconds), maximum);
       rebuild();
       render();
     },
@@ -385,6 +386,7 @@ export function installReverbDurationWheel(host: HTMLElement, options: DurationW
     setMaximumSeconds(seconds: number) {
       cancelPointer();
       maximum = safeSeconds(seconds);
+      value = Math.min(value, maximum);
       rebuild();
       render();
     },

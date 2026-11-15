@@ -195,13 +195,39 @@
 
 .phone { font-family:"Reverb Sans",Roboto,sans-serif; }
 .phone :is(button,input) { font-family:inherit; }
-.phone .blob-control.live .blob-content { color:#000; }
+.phone .blob-control.live .blob-content { color:var(--blob-live-ink,#000); }
+.phone .blob-control.full .blob-content { color:var(--on-primary-container); }
 .phone .blob-summary { opacity:1; }
-.phone :is(.topbar,.settings-appbar) { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:129.0083333333px 339.075px; }
-.phone #homeScreen > .statusbar { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:129.0083333333px 339.075px; }
-.phone #homeScreen > .topbar { background-position:129.0083333333px calc(339.075px - var(--status-h)); }
+.phone :is(.topbar,.settings-appbar) { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:var(--reverb-topbar-noise-x) var(--reverb-topbar-noise-y); }
+.phone #homeScreen > .statusbar { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:var(--reverb-topbar-noise-x) var(--reverb-topbar-noise-y); }
+.phone #homeScreen > .topbar { background-position:var(--reverb-topbar-noise-x) calc(var(--reverb-topbar-noise-y) - var(--status-h)); }
 .phone .quick-save-section > .section-title { font-size:16px; line-height:24px; font-weight:500; letter-spacing:0; }
 
-.phone .settings-audio-group { border:0; box-shadow:inset 0 0 0 1.141666667px var(--border); }
-.phone .settings-audio-group :is(.settings-grid,.settings-feature) { border:0; box-shadow:inset 0 .380555556px var(--border); }
-.phone .settings-audio-group .settings-grid > * + * { border:0; box-shadow:inset .380555556px 0 var(--border); }
+.phone .settings-audio-group { border:0; box-shadow:inset 0 0 0 1.140142518px var(--border); }
+.phone .settings-audio-group :is(.settings-grid,.settings-feature) { border:0; box-shadow:inset 0 .380047506px var(--border); }
+.phone .settings-audio-group .settings-grid > * + * { border:0; box-shadow:inset .380047506px 0 var(--border); }
+
+/* Launcher resources sampled from the bound normal installed-app capture. */
+.phone { --reverb-brand-background:#000; --reverb-brand-main:#dbf6fa; --reverb-brand-accent:var(--primary); }
+.phone[data-demo-theme="light"] { --reverb-brand-background:#dbf6fa; --reverb-brand-main:#000; }
+.phone .brand { background:var(--reverb-brand-background); }
+.phone :is(.brand,.about-logo) :is(.trail1,.trail2) { stroke:var(--reverb-brand-accent); }
+.phone :is(.brand,.about-logo) .main { stroke:var(--reverb-brand-main); }
+
+.phone .storage-card { padding:10px 16px; border:0; box-shadow:inset 0 0 0 1.140142518px var(--border); }
+.phone .move-button { position:relative; isolation:isolate; margin-left:0; min-height:48px; padding:0 12px; background:none; color:color-mix(in srgb,var(--on-surface-variant) 38%,transparent); font-size:14px; line-height:20px; font-weight:500; letter-spacing:.1px; }
+.phone .move-button::before { position:absolute; z-index:-1; inset:4px 0; content:""; border-radius:12px; background:var(--surface-container-high); }
+.phone .reliability-row { min-height:72px; border:0; box-shadow:inset 0 0 0 1.140142518px var(--border); }
+.phone .reliability-copy .summary { letter-spacing:.4px; }
+
+.phone :is(.settings-slider-labels,.calibration-hint,.settings-inline-note,.reliability-copy .summary) { letter-spacing:0; }
+.phone :is(.calibration-button,.quick-save-add,.calibration-dial > span,.move-button) { font-weight:600; }
+.phone .settings-audio-group .settings-card { display:flex; flex-direction:column; align-items:stretch; justify-content:center; }
+.phone .settings-card :is(.caption,.value) { letter-spacing:0; padding-right:34px; }
+.phone .settings-card .chev { position:absolute; right:14px; top:50%; width:24px; height:24px; border:0; transform:translateY(-50%); fill:var(--on-surface-variant); }
+
+/* Native fresh text roles trim first/last line leading; group strokes are overlays. */
+.phone .quick-save-section > .section-title { line-height:19px; }
+.phone #newQuickTile > svg { width:20px; height:20px; }
+.phone .auto-start-feature { margin-top:16px; border:0; box-shadow:inset 0 0 0 1.140142518px var(--border); }
+.phone .auto-start-feature > .settings-inline-note { line-height:14px; }

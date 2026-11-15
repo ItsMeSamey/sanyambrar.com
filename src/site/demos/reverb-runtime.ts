@@ -1,6 +1,8 @@
 // Interactive Reverb demo runtime. The geometry and state mirror the Android
 // native surfaces in the Reverb repository; the demo uses browser-only sample history.
 import { installReverbSettings, type ReverbSettingsExtras } from './reverb-settings.ts';
+import { REVERB_NOISE_SIZE } from './reverb-reference.ts';
+import { installReverbBlobSupport } from './reverb-blob-support.ts';
 export type ReverbDemoDocument = Pick<Document, "createElement" | "createElementNS"> & {
   readonly activeElement: Element | null;
   readonly externalFocusActive: boolean;
@@ -38,6 +40,7 @@ type ScreenId =
   | "rangeScreen";
 type BlobRuntime = {
   setActive(active: boolean): void;
+  setPresentation?(state: { disabled: boolean; full: boolean; saving: boolean }): void;
   setVisible(visible: boolean): void;
   refreshTheme(): void;
   invalidateSize?(): void;
@@ -85,7 +88,7 @@ export function runReverbDemoRuntime(
   let runtimeDevicePixelRatio = Math.max(devicePixelRatio || 1, 0.01);
   const syncDevicePixelRatio = (value: number) => {
     runtimeDevicePixelRatio = Math.max(value || 1, 0.01);
-    phone.style.setProperty("--reverb-noise-size", `${1024 * 411 / 1080}px`);
+    phone.style.setProperty("--reverb-noise-size", `${REVERB_NOISE_SIZE}px`);
   };
   phone.style.setProperty("--reverb-noise", `url("${NOISE_URL}")`);
   syncDevicePixelRatio(runtimeDevicePixelRatio);
@@ -1051,10 +1054,16 @@ export function runReverbDemoRuntime(
       target.focus({ preventScroll: true });
   }
   function activateScreen(id: ScreenId): void {
-    screens.forEach((screen) =>
-      screen.classList.toggle("active", screen.id === id),
-    );
+    const previous = document.activeElement;
+    if (previous instanceof HTMLElement && previous.closest(".screen")?.id !== id) previous.blur();
+    screens.forEach((screen) => {
+      const active = screen.id === id;
+      screen.classList.toggle("active", active);
+      screen.inert = !active;
+      screen.setAttribute("aria-hidden", String(!active));
+    });
   }
+  activateScreen(currentScreen);
   const PREDICTIVE_BACK_COMMIT_MAX_DURATION_MS = 220;
   function fastOutSlowIn(progress: number): number {
     const x = Math.max(0, Math.min(1, progress));
@@ -1474,16 +1483,17 @@ export function runReverbDemoRuntime(
     const blockedByOther =
       live && activeBuffer != null && activeBuffer !== renderedBuffer;
     blobControl.classList.toggle("live", displayedActive);
-    blobControl.classList.toggle("dimmed", blockedByOther || rangeExportPending);
-    blobControl.disabled = rangeExportPending || disabled || full;
+    blobControl.classList.toggle("full", full);
+    blobControl.classList.toggle("dimmed", disabled || blockedByOther || rangeExportPending);
+    blobControl.disabled = rangeExportPending || full;
     blobControl.setAttribute(
       "aria-label",
-      disabled ? "Buffer off" : full ? "One-shot buffer full" : displayedActive ? "Tap to pause capture" : "Tap to start capture",
+      disabled ? "Buffer off. Open retention settings" : full ? "One-shot buffer full" : displayedActive ? "Tap to pause capture" : "Tap to start capture",
     );
     blobIconUse.setAttribute("href", full ? "#i-check" : displayedActive ? PAUSE_PATH : WAVE_PATH);
     blobTime.textContent = disabled ? "Off" : retentionMode === "size" ? formatMiB(currentSeconds(renderedBuffer)) : formatTimer(currentSeconds(renderedBuffer));
     blobSummary.textContent = retentionMode === "size" ? formatTimer(currentSeconds(renderedBuffer)) : formatMiB(currentSeconds(renderedBuffer));
-    blobSummary.classList.toggle("hidden", disabled || !hasHistory);
+    blobSummary.classList.toggle("hidden", disabled || (!displayedActive && !full));
     const exportFull = document.querySelector<HTMLButtonElement>(
       '.action-button[aria-label="Export full"]',
     );
@@ -1493,6 +1503,7 @@ export function runReverbDemoRuntime(
     byId<HTMLButtonElement>("clearBuffer").disabled =
       rangeExportPending || !hasHistory || displayedActive;
     byId<HTMLButtonElement>("openLibrary").disabled = rangeExportPending;
+    blobShader.setPresentation?.({ disabled, full, saving: rangeExportPending });
     blobShader.setActive(displayedActive && !phone.classList.contains("about-open"));
   }
   function appendCapture(seconds: number): void {
@@ -2894,7 +2905,15 @@ export function runReverbDemoRuntime(
     }
     const renderedBuffer = bufferRenderedBuffer();
     const limit = renderedBuffer === "one" ? oneLimitSeconds : loopLimitSeconds;
-    if (rangeExportPending || limit <= 0 || (renderedBuffer === "one" && oneSeconds >= limit)) return;
+    if (rangeExportPending || (renderedBuffer === "one" && limit > 0 && oneSeconds >= limit)) return;
+    if (limit <= 0) {
+      openSettings();
+      settingsReturnFocus = blobControl;
+      const input = byId<HTMLInputElement>(renderedBuffer === "one" ? "oneRetention" : "loopRetention");
+      byId<HTMLElement>("settingsScreen").querySelector<HTMLElement>(".settings-body")?.scrollTo({ top: 0 });
+      input.focus({ preventScroll: true });
+      return;
+    }
     if (live && activeBuffer === renderedBuffer) {
       live = false;
       activeBuffer = null;
@@ -5460,6 +5479,14 @@ export function runReverbDemoRuntime(
   const extraSettings = installReverbSettings(document, {
     changed: () => recomputeDirty(),
     sampleFormat: () => dropdownValues()[1]?.textContent ?? "16-bit integer",
+    maximumDurationSeconds: (compression) => {
+      if (compression) return 86400;
+      const format = dropdownValues()[1]?.textContent ?? "16-bit integer";
+      const header = format === "32-bit float" ? 58 : 44;
+      const payload = 0xffffffff + 8 - header - (format === "8-bit integer" ? 1 : 0);
+      return Math.max(1, Math.min(86400, Math.floor(payload / draftBytesPerSecond())));
+    },
+    maximumFrequencyHz: () => Math.min(20000, (Number.parseFloat(dropdownValues()[2]?.textContent ?? "44.1") || 44.1) * 500),
     setTimeout: (handler, delay) => setTimeout(handler, delay),
     clearTimeout,
     feedback: showToast,
@@ -6403,7 +6430,7 @@ export function runReverbDemoRuntime(
     const fragmentPrecision =
       precisionInfo && precisionInfo.precision ? "highp" : "mediump";
     const fs = `precision ${fragmentPrecision} float;
-uniform vec2 resolution;uniform float time;uniform float activity;uniform float life;uniform float active;
+uniform vec2 resolution;uniform float time;uniform float activity;uniform float life;uniform float active;uniform float skipSilence;
 uniform vec4 bands0;uniform vec4 bands1;uniform vec4 primaryColor;uniform vec4 tertiaryColor;uniform vec4 pausedColor;
 float ssInv(float a,float b,float x){return 1.0-smoothstep(a,b,x);}
 void main(){
@@ -6414,18 +6441,23 @@ void main(){
   float low=dot(bands0,vec4(0.34,0.30,0.21,0.15));
   float high=dot(bands1,vec4(0.34,0.30,0.21,0.15));
   float h3=sin(angle*3.0+time*0.78); float h7=sin(angle*7.0-time*0.39+1.8);
-  float audioWave=h3*low*0.66+h7*high*0.44;
+  float energy=sqrt(clamp(max(activity,low*0.9+high*0.7),0.0,1.0))*(1.0-0.92*skipSilence)*active*life;
+  float fold=energy*(h3*(0.035+0.035*low)+h7*(0.008+0.018*high));
   float idle=h3*0.0056+h7*0.0024;
   float liveRadius=0.330+activity*0.018;
   float baseRadius=mix(0.095,liveRadius,life);
-  float blobRadius=baseRadius+active*life*(idle+audioWave*(0.105+activity*0.030));
+  float blobRadius=baseRadius+active*life*idle+fold;
   float distanceToEdge=radius-blobRadius;
   float body=ssInv(-0.006,0.012,distanceToEdge);
   float glow=active*life*(1.0-body)*ssInv(0.0,0.024,max(distanceToEdge,0.0))*(0.055+activity*0.12);
   float gradientMix=clamp(0.46+p.x*0.9-p.y*0.55,0.0,1.0);
   vec4 activeColor=mix(primaryColor,tertiaryColor,gradientMix);
-  float colorLife=smoothstep(0.36,0.86,life);
+  float colorLife=smoothstep(0.36,0.86,life)*active;
   vec4 bodyColor=mix(pausedColor,activeColor,colorLife);
+  float drain=skipSilence*active*colorLife*(0.35+0.65*smoothstep(0.0,0.7,radius/baseRadius));
+  float luminance=dot(bodyColor.rgb,vec3(0.2126,0.7152,0.0722));
+  vec3 mutedColor=mix(bodyColor.rgb,vec3(luminance),0.42)*0.72;
+  bodyColor.rgb=mix(bodyColor.rgb,mutedColor,drain);
   vec4 glowColor=mix(primaryColor,tertiaryColor,0.58);
   float alpha=body+glow;
   vec3 premultiplied=bodyColor.rgb*body+glowColor.rgb*glow;
@@ -6470,6 +6502,7 @@ void main(){
       "activity",
       "life",
       "active",
+      "skipSilence",
       "bands0",
       "bands1",
       "primaryColor",
@@ -6491,20 +6524,36 @@ void main(){
       const pixel = colorCtx.getImageData(0, 0, 1, 1).data;
       return [pixel[0] / 255, pixel[1] / 255, pixel[2] / 255, pixel[3] / 255];
     }
+    let disabledState = false, fullState = false, savingState = false;
+    let primaryVector: number[] = [], tertiaryVector: number[] = [], pausedVector: number[] = [], backgroundVector: number[] = [];
     function refreshWebGLTheme() {
       gl.useProgram(prog);
-      gl.uniform4fv(u.primaryColor, colorVector("--blob-primary", "#2DD4BF"));
-      gl.uniform4fv(u.tertiaryColor, colorVector("--blob-tertiary", "#ACCBE5"));
+      const primary = colorVector("--blob-primary", "#2DD4BF");
+      const tertiary = colorVector("--blob-tertiary", "#ACCBE5");
+      gl.uniform4fv(u.primaryColor, primary);
+      gl.uniform4fv(u.tertiaryColor, tertiary);
+      primaryVector = primary;
+      tertiaryVector = tertiary;
+      pausedVector = colorVector(fullState ? "--primary-container" : "--surface-container-highest", "#2A3244");
+      backgroundVector = colorVector("--surface", "#0a0f10");
+      const linear = (channel: number) => channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+      const center = primary.slice(0, 3).map((channel, index) => linear((channel + tertiary[index]) / 2));
+      const luminance = center[0] * .2126 + center[1] * .7152 + center[2] * .0722;
+      phone.style.setProperty("--blob-live-ink", luminance >= linear(117 / 255) ? "#000" : "#fff");
       gl.uniform4fv(
         u.pausedColor,
-        colorVector("--surface-container-highest", "#2A3244"),
+        pausedVector,
       );
     }
     refreshWebGLTheme();
+    const support = installReverbBlobSupport(canvas, blobTime.parentElement!, phone);
     let targetLife = 1,
       currentLife = 1,
       targetActivity = 0.22,
-      currentActivity = 0.22;
+      currentActivity = 0.22,
+      currentPresence = 1,
+      currentSilence = 0,
+      targetSilence = 0;
     const targetBands = new Float32Array(8),
       currentBands = new Float32Array(8);
     let activeState = true,
@@ -6514,6 +6563,8 @@ void main(){
       frameQueued = false;
     let fallback: BlobRuntime | null = null;
     let sizeObserver: ResizeObserver | null = null;
+    const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+    let reduceMotion = motionPreference.matches;
     let cssWidth = 0;
     let cssHeight = 0;
     let sizeDirty = true;
@@ -6521,7 +6572,9 @@ void main(){
       if (fallback) return fallback;
       sizeObserver?.disconnect();
       sizeObserver = null;
+      support.dispose();
       fallback = makeFallbackBlob(canvas);
+      fallback.setPresentation?.({ disabled: disabledState, full: fullState, saving: savingState });
       fallback.setActive(activeState);
       fallback.setVisible(visibleState);
       fallback.refreshTheme();
@@ -6553,7 +6606,7 @@ void main(){
       gl.uniform2f(u.resolution, w, h);
     }
     function advance(dt: number) {
-      const normalized = Math.max(0.25, Math.min(3, dt * 30));
+      const normalized = Math.max(0, Math.min(3, dt * 30));
       let rate = targetActivity > currentActivity ? 0.72 : 0.16;
       let mix = 1 - Math.pow(1 - rate, normalized);
       currentActivity += (targetActivity - currentActivity) * mix;
@@ -6566,6 +6619,11 @@ void main(){
       mix = 1 - Math.pow(1 - rate, normalized);
       currentLife += (targetLife - currentLife) * mix;
       if (Math.abs(currentLife - targetLife) <= 0.006) currentLife = targetLife;
+      const presence = activeState && !savingState ? 1 : 0;
+      currentPresence += (presence - currentPresence) * (1 - Math.exp(-dt / (presence > currentPresence ? .18 : .12)));
+      currentSilence += (targetSilence - currentSilence) * (1 - Math.exp(-dt / (targetSilence > currentSilence ? .32 : .10)));
+      if (Math.abs(currentPresence - presence) <= .002) currentPresence = presence;
+      if (Math.abs(currentSilence - targetSilence) <= .002) currentSilence = targetSilence;
     }
     function syntheticSignal(ts: number) {
       if (!activeState) {
@@ -6576,6 +6634,8 @@ void main(){
       if (ts - signalClock < 85) return;
       signalClock = ts;
       const x = ts / 1000;
+      const sampleQuiet = Math.sin(x * .41) < -.45;
+      targetSilence = settingsInitial?.extras.skipSilence && sampleQuiet && activeState && !savingState ? 1 : 0;
       targetActivity =
         0.2 + 0.22 * (0.5 + 0.5 * Math.sin(x * 1.7)) + 0.09 * Math.random();
       for (let i = 0; i < 8; i++) {
@@ -6599,6 +6659,8 @@ void main(){
         requestAnimationFrame(frame);
       }
     };
+    const motionChanged = () => { reduceMotion = motionPreference.matches; queueFrame(); };
+    motionPreference.addEventListener('change', motionChanged);
     function frame(now: number) {
       frameQueued = false;
       if (!visibleState || fallback) return;
@@ -6609,24 +6671,44 @@ void main(){
       resize();
       const dt = Math.max(0.001, Math.min(0.1, (now - last) / 1000));
       last = now;
-      syntheticSignal(now);
-      advance(dt);
+      if (reduceMotion) {
+        currentLife = targetLife;
+        currentActivity = activeState ? .22 : 0;
+        currentPresence = activeState && !savingState ? 1 : 0;
+        currentSilence = 0;
+        currentBands.fill(0);
+      } else {
+        syntheticSignal(now);
+        advance(dt);
+      }
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(prog);
-      gl.uniform1f(u.time, now / 1000);
+      gl.uniform1f(u.time, reduceMotion ? 0 : now / 1000);
       gl.uniform1f(u.activity, currentActivity);
       gl.uniform1f(u.life, currentLife);
-      gl.uniform1f(u.active, activeState ? 1 : 0);
+      gl.uniform1f(u.active, currentPresence);
+      gl.uniform1f(u.skipSilence, currentSilence);
       gl.uniform4fv(u.bands0, currentBands.subarray(0, 4));
       gl.uniform4fv(u.bands1, currentBands.subarray(4, 8));
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      queueFrame();
+      const stillMoving = Math.abs(currentLife - targetLife) > .006
+        || Math.abs(currentPresence - (activeState && !savingState ? 1 : 0)) > .002
+        || Math.abs(currentSilence - targetSilence) > .002;
+      support.update({
+        life: currentLife, presence: currentPresence, silence: currentSilence, activity: currentActivity,
+        low: currentBands[0] * .34 + currentBands[1] * .30 + currentBands[2] * .21 + currentBands[3] * .15,
+        high: currentBands[4] * .34 + currentBands[5] * .30 + currentBands[6] * .21 + currentBands[7] * .15,
+        active: activeState && !savingState, full: fullState, transitioning: stillMoving,
+        primary: primaryVector, tertiary: tertiaryVector, paused: pausedVector, background: backgroundVector,
+      });
+      if (!reduceMotion && (activeState && !savingState || stillMoving)) queueFrame();
     }
     const invalidateSize = () => {
       cssWidth = 0;
       cssHeight = 0;
       sizeDirty = true;
+      support.invalidateGeometry();
       fallback?.invalidateSize?.();
       queueFrame();
     };
@@ -6645,14 +6727,26 @@ void main(){
     }
     queueFrame();
     return {
+      setPresentation(state) {
+        const paletteChanged = fullState !== state.full;
+        const changed = disabledState !== state.disabled || fullState !== state.full || savingState !== state.saving;
+        disabledState = state.disabled; fullState = state.full; savingState = state.saving;
+        targetLife = disabledState ? .36 : activeState && !savingState ? 1 : .38;
+        if (paletteChanged) refreshWebGLTheme();
+        fallback?.setPresentation?.(state);
+        if (changed) queueFrame();
+      },
       setActive(v: boolean) {
+        const changed = activeState !== v;
         activeState = v;
-        targetLife = v ? 1 : 0.38;
+        targetLife = disabledState ? .36 : v && !savingState ? 1 : .38;
         if (!v) {
           targetActivity = 0;
+          targetSilence = 0;
           targetBands.fill(0);
         }
         fallback?.setActive(v);
+        if (changed) queueFrame();
       },
       setVisible(v: boolean) {
         visibleState = v;
@@ -6665,11 +6759,17 @@ void main(){
       refreshTheme() {
         if (fallback) fallback.refreshTheme();
         else refreshWebGLTheme();
+        queueFrame();
       },
       invalidateSize,
       dispose() {
+        visibleState = false;
+        motionPreference.removeEventListener('change', motionChanged);
         sizeObserver?.disconnect();
+        support.dispose();
         fallback?.dispose?.();
+        gl.deleteBuffer(buf);
+        gl.deleteProgram(prog);
       },
       currentBaseRadiusFraction() {
         return fallback?.currentBaseRadiusFraction() ??
@@ -6700,46 +6800,125 @@ void main(){
       ctx = canvas.getContext("2d");
     }
     if (!ctx) {
-      canvas.style.background =
-        "radial-gradient(circle at 45% 42%,color-mix(in srgb,var(--blob-primary) 90%,transparent) 0 13%,color-mix(in srgb,var(--blob-tertiary) 45%,transparent) 22%,transparent 42%)";
-      let active = true;
+      let active = true, disabled = false, full = false, saving = false;
+      const radius = () => 0.095 + (disabled ? 0.36 : active && !saving ? 1 : 0.38) * 0.235;
+      const render = () => {
+        const color = active && !saving
+          ? "var(--blob-primary)"
+          : full ? "var(--primary-container)" : "var(--surface-container-highest)";
+        const edge = radius() * 100 * Math.SQRT2;
+        canvas.style.background = `radial-gradient(circle at center,${color} 0 ${edge}%,transparent ${edge + 1.2}%)`;
+      };
+      render();
       return {
         setActive(v: boolean) {
           active = v;
-          canvas.style.opacity = v ? "1" : ".56";
+          render();
+        },
+        setPresentation(state) {
+          disabled = state.disabled; full = state.full; saving = state.saving;
+          render();
         },
         setVisible() {},
-        refreshTheme() {},
-        invalidateSize() {},
+        refreshTheme: render,
+        invalidateSize: render,
         dispose() {},
         currentBaseRadiusFraction() {
-          return active ? 0.334 : 0.1843;
+          return radius();
         },
       };
     }
     const context2d: CanvasRenderingContext2D = ctx;
+    const support = installReverbBlobSupport(canvas, blobTime.parentElement!, phone);
+    let disabledState = false, fullState = false, savingState = false;
     let primaryColor = "#2DD4BF",
       tertiaryColor = "#ACCBE5",
       pausedColor = "#2A3244";
-    function refreshTheme() {
+    let primaryVector: number[] = [], tertiaryVector: number[] = [], pausedVector: number[] = [], backgroundVector: number[] = [];
+    let activeGradient: CanvasGradient | null = null;
+    let silenceTexture: HTMLCanvasElement | null = null;
+    let silenceContext: CanvasRenderingContext2D | null = null;
+    let silenceTextureDirty = true;
+    function mutedColor(color: string) {
+      const rgba = parseCssRgba(color);
+      const red = Math.round(rgba.r * 255),
+        green = Math.round(rgba.g * 255),
+        blue = Math.round(rgba.b * 255);
+      const luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+      const channel = (value: number) => Math.max(0, Math.min(255,
+        Math.round((value + (luminance - value) * 0.42) * 0.72)));
+      return `rgb(${channel(red)},${channel(green)},${channel(blue)})`;
+    }
+    function getSilenceTexture(width: number, height: number) {
+      if (!silenceTexture) {
+        silenceTexture = document.createElement("canvas");
+        silenceContext = silenceTexture.getContext("2d");
+      }
+      if (!silenceContext) return null;
+      if (silenceTexture.width !== width || silenceTexture.height !== height) {
+        silenceTexture.width = width;
+        silenceTexture.height = height;
+        silenceTextureDirty = true;
+      }
+      if (!silenceTextureDirty) return silenceTexture;
+      // Native FallbackRenderer caches a muted linear gradient multiplied by
+      // this six-stop radial mask. Rebuild only for a size or palette change.
+      const mutedGradient = silenceContext.createLinearGradient(0, 0, width, height);
+      mutedGradient.addColorStop(0, mutedColor(primaryColor));
+      mutedGradient.addColorStop(1, mutedColor(tertiaryColor));
+      const drainMask = silenceContext.createRadialGradient(
+        width / 2, height / 2, 0, width / 2, height / 2, Math.min(width, height) * 0.33,
+      );
+      for (const position of [0, 0.175, 0.35, 0.525, 0.7, 1]) {
+        const t = Math.min(1, position / 0.7);
+        const alpha = Math.round((0.35 + 0.65 * t * t * (3 - 2 * t)) * 255) / 255;
+        drainMask.addColorStop(position, `rgba(255,255,255,${alpha})`);
+      }
+      silenceContext.clearRect(0, 0, width, height);
+      silenceContext.fillStyle = mutedGradient;
+      silenceContext.fillRect(0, 0, width, height);
+      silenceContext.globalCompositeOperation = "destination-in";
+      silenceContext.fillStyle = drainMask;
+      silenceContext.fillRect(0, 0, width, height);
+      silenceContext.globalCompositeOperation = "source-over";
+      silenceTextureDirty = false;
+      return silenceTexture;
+    }
+    function readTheme() {
       primaryColor = resolveCssColor(canvas, "--blob-primary", "#2DD4BF");
       tertiaryColor = resolveCssColor(canvas, "--blob-tertiary", "#ACCBE5");
       pausedColor = resolveCssColor(
         canvas,
-        "--surface-container-highest",
+        fullState ? "--primary-container" : "--surface-container-highest",
         "#2A3244",
       );
+      const vector = (color: string) => {
+        const rgba = parseCssRgba(color);
+        return [rgba.r, rgba.g, rgba.b, rgba.a];
+      };
+      primaryVector = vector(primaryColor);
+      tertiaryVector = vector(tertiaryColor);
+      pausedVector = vector(pausedColor);
+      backgroundVector = vector(resolveCssColor(canvas, "--surface", "#0a0f10"));
+      activeGradient = null;
+      silenceTextureDirty = true;
     }
-    refreshTheme();
+    readTheme();
     let targetLife = 1,
       currentLife = 1,
       targetActivity = 0.22,
       currentActivity = 0.22,
+      currentPresence = 1,
+      currentSilence = 0,
+      targetSilence = 0,
       activeState = true,
       visibleState = true,
       last = performance.now(),
       signalClock = 0,
-      frameQueued = false;
+      frameQueued = false,
+      disposed = false;
+    const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
+    let reduceMotion = motionPreference.matches;
     let sizeObserver: ResizeObserver | null = null;
     let sizeDirty = true;
     let renderWidth = Math.max(1, canvas.width);
@@ -6749,14 +6928,17 @@ void main(){
       x = new Float32Array(40),
       y = new Float32Array(40);
     function syntheticSignal(ts: number) {
-      if (!activeState) {
+      if (!activeState || savingState || disabledState) {
         targetActivity = 0;
+        targetSilence = 0;
         targetBands.fill(0);
         return;
       }
       if (ts - signalClock < 85) return;
       signalClock = ts;
       const x = ts / 1000;
+      const sampleQuiet = Math.sin(x * 0.41) < -0.45;
+      targetSilence = settingsInitial?.extras.skipSilence && sampleQuiet ? 1 : 0;
       targetActivity =
         0.2 + 0.22 * (0.5 + 0.5 * Math.sin(x * 1.7)) + 0.09 * Math.random();
       for (let i = 0; i < 8; i++) {
@@ -6775,22 +6957,29 @@ void main(){
       }
     }
     function advance(dt: number) {
-      const normalized = Math.max(0.25, Math.min(3, dt * 30));
-      let rate = targetActivity > currentActivity ? 0.34 : 0.16,
-        mix = Math.min(0.82, rate * normalized);
+      const normalized = Math.max(0, Math.min(3, dt * 30));
+      let rate = targetActivity > currentActivity ? 0.72 : 0.16,
+        mix = 1 - Math.pow(1 - rate, normalized);
       currentActivity += (targetActivity - currentActivity) * mix;
       for (let i = 0; i < 8; i++) {
-        rate = targetBands[i] > currentBands[i] ? 0.3 : 0.13;
-        mix = Math.min(0.8, rate * normalized);
+        rate = targetBands[i] > currentBands[i] ? 0.68 : 0.13;
+        mix = 1 - Math.pow(1 - rate, normalized);
         currentBands[i] += (targetBands[i] - currentBands[i]) * mix;
       }
       rate = targetLife > currentLife ? 0.18 : 0.15;
-      mix = Math.min(0.65, rate * normalized);
+      mix = 1 - Math.pow(1 - rate, normalized);
       currentLife += (targetLife - currentLife) * mix;
       if (Math.abs(currentLife - targetLife) <= 0.006) currentLife = targetLife;
+      const targetPresence = activeState && !savingState ? 1 : 0;
+      currentPresence += (targetPresence - currentPresence) *
+        (1 - Math.exp(-dt / (targetPresence > currentPresence ? 0.18 : 0.12)));
+      if (Math.abs(currentPresence - targetPresence) <= 0.002) currentPresence = targetPresence;
+      currentSilence += (targetSilence - currentSilence) *
+        (1 - Math.exp(-dt / (targetSilence > currentSilence ? 0.32 : 0.10)));
+      if (Math.abs(currentSilence - targetSilence) <= 0.002) currentSilence = targetSilence;
     }
     const queueFrame = () => {
-      if (visibleState && !frameQueued) {
+      if (visibleState && !disposed && !frameQueued) {
         frameQueued = true;
         requestAnimationFrame(frame);
       }
@@ -6800,35 +6989,49 @@ void main(){
       sizeDirty = false;
       const r = canvas.getBoundingClientRect();
       const dpr = Math.min(runtimeDevicePixelRatio, 2);
-      renderWidth = Math.max(1, Math.round(r.width * dpr));
-      renderHeight = Math.max(1, Math.round(r.height * dpr));
+      renderWidth = Math.max(1, Math.round((canvas.clientWidth || r.width) * dpr));
+      renderHeight = Math.max(1, Math.round((canvas.clientHeight || r.height) * dpr));
       if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
         canvas.width = renderWidth;
         canvas.height = renderHeight;
+        activeGradient = null;
+        silenceTextureDirty = true;
       }
     };
     function frame(now: number) {
       frameQueued = false;
-      if (!visibleState) return;
+      if (!visibleState || disposed) return;
       resize();
       const w = renderWidth, h = renderHeight;
       const dt = Math.max(0.001, Math.min(0.1, (now - last) / 1000));
       last = now;
-      syntheticSignal(now);
-      advance(dt);
+      if (reduceMotion) {
+        currentLife = targetLife;
+        currentPresence = activeState && !savingState ? 1 : 0;
+        currentSilence = 0;
+        currentActivity = 0;
+        currentBands.fill(0);
+      } else {
+        syntheticSignal(now);
+        advance(dt);
+      }
       context2d.clearRect(0, 0, w, h);
       const min = Math.min(w, h),
         cx = w * 0.5,
         cy = h * 0.5,
         base = min * (0.095 + currentLife * (0.235 + currentActivity * 0.018));
+      const low = currentBands[0] * 0.34 + currentBands[1] * 0.30 + currentBands[2] * 0.21 + currentBands[3] * 0.15;
+      const high = currentBands[4] * 0.34 + currentBands[5] * 0.30 + currentBands[6] * 0.21 + currentBands[7] * 0.15;
+      const energy = Math.sqrt(Math.max(0, Math.min(1, Math.max(currentActivity, low * 0.9 + high * 0.7)))) *
+        (1 - 0.92 * currentSilence) * currentLife * currentPresence;
+      const time = reduceMotion ? 0 : now / 1000;
       for (let i = 0; i < 40; i++) {
-        const angle = (i / 40) * Math.PI * 2 - Math.PI / 2,
-          band = currentBands[Math.floor((i * 8) / 40)];
-        const idle = activeState
-          ? Math.sin(angle * 3 + (now / 1000) * 0.8) * min * 0.005 +
-            Math.sin(angle * 5 - (now / 1000) * 0.55) * min * 0.0025
-          : 0;
-        const radius = base + (activeState ? band * min * 0.105 + idle : 0);
+        const angle = (i / 40) * Math.PI * 2 - Math.PI / 2;
+        const h3 = Math.sin(angle * 3 + time * 0.78);
+        const h7 = Math.sin(angle * 7 - time * 0.39 + 1.8);
+        const idle = (h3 * 0.0056 + h7 * 0.0024) * min * currentLife * currentPresence;
+        const fold = energy * (h3 * (0.035 + 0.035 * low) + h7 * (0.008 + 0.018 * high)) * min;
+        const radius = base + fold + idle;
         x[i] = cx + Math.cos(angle) * radius;
         y[i] = cy + Math.sin(angle) * radius;
       }
@@ -6845,17 +7048,44 @@ void main(){
         );
       }
       context2d.closePath();
-      if (activeState) {
-        const g = context2d.createLinearGradient(0, 0, w, h);
-        g.addColorStop(0, primaryColor);
-        g.addColorStop(1, tertiaryColor);
-        context2d.fillStyle = g;
-      } else context2d.fillStyle = pausedColor;
+      context2d.globalAlpha = 1;
+      context2d.fillStyle = pausedColor;
       context2d.fill();
-      queueFrame();
+      if (currentPresence > 0) {
+        if (!activeGradient) {
+          activeGradient = context2d.createLinearGradient(0, 0, w, h);
+          activeGradient.addColorStop(0, primaryColor);
+          activeGradient.addColorStop(1, tertiaryColor);
+        }
+        const colorLife = Math.max(0, Math.min(1, (currentLife - 0.36) / 0.5));
+        context2d.globalAlpha = Math.floor(colorLife * colorLife * (3 - 2 * colorLife) * currentPresence * 255) / 255;
+        context2d.fillStyle = activeGradient;
+        context2d.fill();
+        context2d.globalAlpha = 1;
+      }
+      if (currentPresence > 0 && currentSilence > 0) {
+        const texture = getSilenceTexture(w, h);
+        if (texture) {
+          context2d.save();
+          context2d.clip();
+          context2d.globalAlpha = Math.floor(currentSilence * currentPresence * 255) / 255;
+          context2d.drawImage(texture, 0, 0);
+          context2d.restore();
+        }
+      }
+      support.update({
+        life: currentLife, presence: currentPresence, silence: currentSilence, activity: currentActivity, low, high,
+        active: activeState && !savingState, full: fullState,
+        transitioning: currentLife !== targetLife || currentPresence !== (activeState && !savingState ? 1 : 0) || currentSilence !== targetSilence,
+        primary: primaryVector, tertiary: tertiaryVector, paused: pausedVector, background: backgroundVector, fallback: true,
+      });
+      if (!reduceMotion && (activeState && !savingState || currentLife !== targetLife ||
+        currentPresence !== (activeState && !savingState ? 1 : 0) || currentSilence !== targetSilence || currentActivity > 0.003 ||
+        currentBands.some((band) => band > 0.006))) queueFrame();
     }
     const invalidateSize = () => {
       sizeDirty = true;
+      support.invalidateGeometry();
       queueFrame();
     };
     if (typeof ResizeObserver !== "undefined") {
@@ -6871,15 +7101,33 @@ void main(){
       });
       sizeObserver.observe(canvas);
     }
+    const motionChanged = () => {
+      reduceMotion = motionPreference.matches;
+      last = performance.now();
+      queueFrame();
+    };
+    motionPreference.addEventListener("change", motionChanged);
     queueFrame();
     return {
+      setPresentation(state) {
+        const paletteChanged = fullState !== state.full;
+        const changed = disabledState !== state.disabled || fullState !== state.full || savingState !== state.saving;
+        disabledState = state.disabled; fullState = state.full; savingState = state.saving;
+        targetLife = disabledState ? 0.36 : activeState && !savingState ? 1 : 0.38;
+        if (disabledState || savingState) targetSilence = 0;
+        if (paletteChanged) readTheme();
+        if (changed) queueFrame();
+      },
       setActive(v: boolean) {
+        const changed = activeState !== v;
         activeState = v;
-        targetLife = v ? 1 : 0.38;
+        targetLife = disabledState ? 0.36 : v && !savingState ? 1 : 0.38;
         if (!v) {
           targetActivity = 0;
+          targetSilence = 0;
           targetBands.fill(0);
         }
+        if (changed) queueFrame();
       },
       setVisible(v: boolean) {
         visibleState = v;
@@ -6888,10 +7136,20 @@ void main(){
           queueFrame();
         }
       },
-      refreshTheme,
+      refreshTheme() {
+        readTheme();
+        queueFrame();
+      },
       invalidateSize,
       dispose() {
+        disposed = true;
+        visibleState = false;
+        support.dispose();
+        motionPreference.removeEventListener("change", motionChanged);
         sizeObserver?.disconnect();
+        if (silenceTexture) silenceTexture.width = silenceTexture.height = 0;
+        silenceTexture = null;
+        silenceContext = null;
       },
       currentBaseRadiusFraction() {
         return 0.095 + currentLife * (0.235 + currentActivity * 0.018);

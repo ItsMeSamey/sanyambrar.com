@@ -20,6 +20,8 @@ export type ReverbSettingsExtras = {
 type Options = {
   changed(): void;
   sampleFormat(): string;
+  maximumDurationSeconds(compression: boolean): number;
+  maximumFrequencyHz(): number;
   setTimeout(handler: () => void, delay: number): number;
   clearTimeout(id: number): void;
   feedback(message: string): void;
@@ -64,7 +66,7 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     value: state.calibrationFit,
     onChange(value) {
       state.calibrationFit = value;
-      if (state.sampledPeaks) state.calibration = sampledReverbSilencePoints(state.sampledPeaks, value);
+      if (state.sampledPeaks) state.calibration = sampledReverbSilencePoints(state.sampledPeaks, value, options.maximumFrequencyHz());
       renderCurve();
       options.changed();
     },
@@ -74,11 +76,17 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     onChange(value) { state.compressionLevel = value; options.changed(); },
   });
   const notificationWheel = installReverbDurationWheel(byId('notificationDuration'), {
-    value: state.notificationSeconds, label: 'Notification save duration',
+    value: state.notificationSeconds, maximumSeconds: options.maximumDurationSeconds(state.compression), label: 'Notification save duration',
     onInteractionChange: () => options.changed(),
     onChange(value) { state.notificationSeconds = value; options.changed(); },
   });
-  const tileWheel = installReverbDurationWheel(byId('quickTileDuration'), { value: 120, label: 'Quick-save tile duration', onChange() {}, onInteractionChange: () => options.changed() });
+  const representableTileSeconds = (value: number) => value <= 999 ? Math.max(1, value)
+    : value <= 59940 ? Math.max(999, Math.floor(value / 60) * 60) : Math.max(59940, Math.floor(Math.min(value, 86400) / 3600) * 3600);
+  const tileWheel = installReverbDurationWheel(byId('quickTileDuration'), {
+    value: 120, label: 'Quick-save tile duration', maximumSeconds: representableTileSeconds(options.maximumDurationSeconds(state.compression)),
+    onChange(value) { tileWheel.setValue(representableTileSeconds(value)); },
+    onInteractionChange: () => options.changed(),
+  });
   const setSwitch = (id: string, on: boolean, body?: string) => {
     const button = byId<HTMLButtonElement>(id);
     button.classList.toggle('on', on);
@@ -86,7 +94,7 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     if (body) byId(body).hidden = !on;
   };
   function renderCurve() {
-    chart.render(state.calibration, selectedBand, state.sampledPeaks, 20000, !calibrationTimer && !holdingCalibration);
+    chart.render(state.calibration, selectedBand, state.sampledPeaks, options.maximumFrequencyHz(), !calibrationTimer && !holdingCalibration);
   }
   const renderTiles = () => {
     tileList.replaceChildren();
@@ -113,7 +121,11 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     compressionSlider.setValue(state.compressionLevel);
     byId('flacWarning').hidden = !state.compression || options.sampleFormat() === '16-bit integer';
     fitDial.setValue(state.calibrationFit);
+    const maximum = options.maximumDurationSeconds(state.compression);
+    notificationWheel.setMaximumSeconds(maximum);
+    state.notificationSeconds = Math.min(state.notificationSeconds, maximum);
     notificationWheel.setValue(state.notificationSeconds);
+    tileWheel.setMaximumSeconds(representableTileSeconds(maximum));
     renderCurve(); renderTiles();
   };
   const stopCalibration = (complete = false) => {
@@ -126,7 +138,7 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     if (complete) {
       // A deterministic demonstration spectrum; this never requests or measures a microphone.
       state.sampledPeaks = Array.from({ length: 96 }, (_, index) => -76 + 8 * Math.sin(index * .21) + 3 * Math.cos(index * .67));
-      state.calibration = sampledReverbSilencePoints(state.sampledPeaks, state.calibrationFit);
+      state.calibration = sampledReverbSilencePoints(state.sampledPeaks, state.calibrationFit, options.maximumFrequencyHz());
       selectedBand = Math.min(selectedBand, state.calibration.length - 1);
       byId('calibrationStatus').textContent = 'Sample calibration ready';
       options.changed();
@@ -145,7 +157,11 @@ export function installReverbSettings(root: ReverbDemoDocument, options: Options
     renderCurve();
   };
   const toggle = (id: string, key: 'compression' | 'skipSilence' | 'notificationSave' | 'autoStart') => {
-    byId(id).addEventListener('click', () => {
+    const control = byId<HTMLButtonElement>(id);
+    control.closest('.settings-feature-head')?.addEventListener('click', event => {
+      if (event.target instanceof Node && !control.contains(event.target)) control.click();
+    });
+    control.addEventListener('click', () => {
       state[key] = !state[key];
       if (key === 'skipSilence' && !state.skipSilence) stopCalibration();
       if (key === 'notificationSave' && !state.notificationSave) notificationWheel.cancelPointer();

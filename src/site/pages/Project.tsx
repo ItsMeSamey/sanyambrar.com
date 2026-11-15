@@ -4,6 +4,7 @@ import type { JSX } from '@solidjs/web';
 import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { BackLink } from '../../shared/components/TopBar.tsx';
+import { ArrowUpRight } from '../../shared/components/Icons.tsx';
 import { PageHeading, PortfolioFooter, PortfolioTopBar } from '../components/SiteChrome.tsx';
 
 function GitIcon() {
@@ -22,7 +23,7 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
   const source = () => props.detail.links.find(link => link.title === 'Source') ?? props.detail.links[0];
   const fdroid = () => props.detail.links.find(link => link.title === 'F-Droid');
   return <>
-    <PortfolioTopBar current="work" start={<BackLink href="/work/">Work</BackLink>}/>
+    <PortfolioTopBar current="work" omitWork start={<BackLink href="/work/">Work</BackLink>}/>
     <main class="detail project-main">
       <article class="project-detail">
         <PageHeading title={props.detail.title} workspace>
@@ -31,14 +32,14 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
             <SmartLink class="project-action-link project-source-link" href={link().href} target="_blank" rel="noopener noreferrer" data-copy-label="Source">
               <GitIcon/>
               <span class="project-action-label">Source</span>
-              <span class="project-action-arrow" aria-hidden="true">↗</span>
+              <ArrowUpRight class="project-action-arrow" aria-hidden="true"/>
             </SmartLink>
           }</Show>
           <Show when={fdroid()}>{link =>
             <SmartLink class="project-action-link project-fdroid-link" href={link().href} target="_blank" rel="noopener noreferrer" data-copy-label="F-Droid">
               <FDroidIcon/>
               <span class="project-action-label">F-Droid</span>
-              <span class="project-action-arrow" aria-hidden="true">↗</span>
+              <ArrowUpRight class="project-action-arrow" aria-hidden="true"/>
             </SmartLink>
           }</Show>
           </div>
@@ -50,7 +51,7 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
         </div>
         <Show when={props.detail.links.some(link => link !== source() && link !== fdroid())}>
           <nav class="project-related-links" aria-label="Related projects">{props.detail.links.filter(link => link !== source() && link !== fdroid()).map(link =>
-            <SmartLink class="project-action-link" href={link.href} target="_blank" rel="noopener noreferrer" data-copy-label={link.title}>{link.title}<span class="project-action-arrow" aria-hidden="true">↗</span></SmartLink>
+            <SmartLink class="project-action-link" href={link.href} target="_blank" rel="noopener noreferrer" data-copy-label={link.title}>{link.title}<ArrowUpRight class="project-action-arrow" aria-hidden="true"/></SmartLink>
           )}</nav>
         </Show>
       </article>
