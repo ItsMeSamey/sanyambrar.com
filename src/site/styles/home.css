@@ -1,94 +1,103 @@
 .site-standard *{box-sizing:border-box}
-.site-standard{--portfolio-muted:color-mix(in srgb,var(--site-fg) 12%,var(--site-muted));margin:0;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font:14px/1.5 var(--site-font,ui-sans-serif,system-ui);letter-spacing:.005em}
+.site-standard{--portfolio-muted:color-mix(in srgb,var(--site-fg) 12%,var(--site-muted));--portfolio-cover:var(--site-accent-fg,var(--site-accent));--portfolio-cover-ink:var(--site-accent-on-fg,#fff);margin:0;background:var(--site-bg,#fff);color:var(--site-fg,#121213);font:14px/1.5 var(--site-font,ui-sans-serif,system-ui);letter-spacing:.005em}
 .site-standard a{color:inherit;text-decoration:none}
 .site-standard button,.site-standard input,.site-standard textarea{font:inherit}
 .site-standard>main{width:min(var(--site-content-width,1080px),100%);margin:auto;padding-inline:22px}
 .site-standard h1,.site-standard h2,.site-standard h3,.site-standard p{overflow-wrap:anywhere}
 .site-standard a:focus-visible{outline:2px solid var(--site-accent-fg,var(--site-accent));outline-offset:4px}
-.site-standard .portfolio-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:48px 0 38px;min-width:0}
-.site-standard .portfolio-heading h1{margin:0;font-size:clamp(2.8rem,7.8vw,6rem);font-weight:760;line-height:.98;letter-spacing:-.065em}
-.site-standard .portfolio-heading-home{padding-top:60px;padding-bottom:52px}
-.site-standard .portfolio-heading-home h1{font-size:clamp(2.8rem,8.4vw,6.4rem)}
-.site-standard .profile-links{display:grid;gap:4px;flex:none;padding-bottom:3px}
-.site-standard .profile-links a,.site-standard .portfolio-footer a{display:flex;align-items:center;justify-content:space-between;gap:28px;min-height:25px;font-size:12px}
-.site-standard .profile-links svg,.site-standard .portfolio-footer svg{width:13px;height:13px;color:var(--site-muted)}
+.site-standard>main.portfolio-main{padding-block:28px 44px}
+.site-standard .portfolio-sheet{min-width:0}
+.site-standard .portfolio-sheet a:focus-visible{outline-offset:-4px}
+
+/* A graphic cover leads into connected project and game surfaces. */
+.site-standard .portfolio-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;min-width:0;min-height:156px;padding:30px;border-radius:12px;background:var(--portfolio-cover);color:var(--portfolio-cover-ink)}
+.site-standard .portfolio-heading h1{margin:0;font-size:clamp(2.8rem,7.8vw,6rem);font-weight:700;line-height:.94;letter-spacing:-.07em}
+.site-standard .portfolio-heading-home{min-height:210px;align-items:center}
+.site-standard .portfolio-heading-home h1{font-size:clamp(2.8rem,8.2vw,6.2rem);line-height:.9;max-width:7.8em}
+.site-standard .portfolio-surname{font-weight:430;font-style:italic;letter-spacing:-.075em}
+.site-standard .profile-links{display:grid;gap:4px;flex:none}
+.site-standard .profile-links a,.site-standard .portfolio-footer a{display:flex;align-items:center;justify-content:space-between;gap:28px;min-height:27px;font-size:12px}
+.site-standard .profile-links svg,.site-standard .portfolio-footer svg{width:13px;height:13px;color:inherit;opacity:.68}
 .site-standard .profile-links a:hover,.site-standard .portfolio-footer a:hover{text-decoration:underline;text-underline-offset:4px}
-.site-standard .portfolio-section{margin:0 0 48px;min-width:0}
-.site-standard .section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;min-width:0}
-.site-standard .section-head h2{margin:0;font-size:15px;font-weight:650;letter-spacing:-.015em}
-.site-standard .section-head-link{display:inline-flex;align-items:center;gap:8px}
-.site-standard .section-head-link svg{width:14px;height:14px;color:var(--site-muted)}
-.site-standard .section-count,.site-standard .entry-number{color:var(--site-muted);font:11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.site-standard .portfolio-heading a:focus-visible{outline-color:currentColor}
+.site-standard .portfolio-section{margin:30px 0 0;min-width:0}
+.site-standard .section-head{display:flex;align-items:center;gap:16px;min-width:0;margin:0 0 12px}
+.site-standard .section-head h2{margin:0;max-width:100%;font-size:14px;font-weight:650;letter-spacing:-.02em}
+.site-standard .section-head-link{display:inline-flex;align-items:center;gap:7px;max-width:100%;min-height:24px}
+.site-standard .section-head-link svg{width:13px;height:13px;flex:none;color:var(--site-muted)}
+.site-standard .section-body{min-width:0}
 .site-standard .entry-arrow{width:19px;height:19px;flex:none;color:var(--site-muted);transition:color var(--site-fast,110ms) var(--site-ease-out,ease)}
 .site-standard a:hover .entry-arrow,.site-standard a:focus-visible .entry-arrow{color:var(--site-fg)}
 .site-standard .entry-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;min-width:0;color:var(--site-muted);font-size:10px;line-height:1.5}
 .site-standard .entry-tags>span{overflow-wrap:anywhere}
 .site-standard .entry-tags>span+span::before{content:"/";margin-right:12px;color:var(--site-line)}
 
-/* Project graphics have reserved geometry and no running animation. */
-.site-standard .project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
-.site-standard .project{display:block;min-width:0;border-top:1px solid var(--site-line);border-bottom:1px solid var(--site-line)}
-.site-standard .project-specimen{height:182px;padding:8px 12px;background:color-mix(in srgb,var(--site-soft) 60%,var(--site-bg));border-bottom:1px solid var(--site-line)}
+.site-standard .project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 28%,var(--site-bg))}
+.site-standard .project{display:flex;flex-direction:column;min-width:0;border:0;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .project+.project{background:color-mix(in srgb,var(--site-soft) 54%,var(--site-bg))}
+.site-standard .project-specimen{height:168px;padding:10px 14px 0}
 .site-standard .project-visual-svg{display:block;width:100%;height:100%;max-width:100%}
-.site-standard .project-card-copy{padding:20px 2px 19px;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .project-card-copy{display:flex;flex-direction:column;flex:1;padding:12px 24px 24px}
 .site-standard .project-head{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
-.site-standard .project-name{margin:0;font-size:30px;font-weight:690;line-height:1.1;letter-spacing:-.045em}
-.site-standard .project-card-copy>p{max-width:47ch;margin:12px 0 17px;color:var(--portfolio-muted);font-size:13px;line-height:1.6}
+.site-standard .project-name{margin:0;font-size:34px;font-weight:650;line-height:1.1;letter-spacing:-.055em}
+.site-standard .project-card-copy>p{max-width:46ch;margin:12px 0 18px;color:var(--portfolio-muted);font-size:12px;line-height:1.6}
+.site-standard .project-card-copy>.entry-tags{margin-top:auto}
+.site-standard .project:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 36%,var(--site-bg))}
 .site-standard .project:hover .project-name,.site-standard .project:focus-visible .project-name{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}
-.site-standard .project-index{border-top:1px solid var(--site-line);margin-bottom:48px}
-.site-standard .project-index-row{display:grid;grid-template-columns:42px minmax(0,1fr) minmax(160px,30%) 22px;gap:20px;align-items:center;min-width:0;min-height:176px;padding:25px 4px;border-bottom:1px solid var(--site-line);transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
-.site-standard .project-index-row:hover{background:color-mix(in srgb,var(--site-soft) 48%,var(--site-bg))}
-.site-standard .project-index-row>.entry-number{align-self:start;padding-top:8px}
+.site-standard .project-index{margin:12px 0 0}
+.site-standard .project-index-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,30%) 22px;gap:24px;align-items:center;min-width:0;min-height:164px;padding:24px 18px;border-radius:8px;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .project-index-row:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 24%,var(--site-bg))}
 .site-standard .project-index-copy{min-width:0}
-.site-standard .project-index-copy h2{margin:0;font-size:32px;font-weight:680;line-height:1.15;letter-spacing:-.045em}
+.site-standard .project-index-copy h2{margin:0;font-size:32px;font-weight:650;line-height:1.15;letter-spacing:-.05em}
 .site-standard .project-index-copy p{max-width:48ch;margin:9px 0 14px;color:var(--portfolio-muted);font-size:13px}
 .site-standard .project-index-specimen{height:110px;min-width:0}
 
-.site-standard .game-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--site-line)}
-.site-standard .card{display:flex;flex-direction:column;justify-content:space-between;gap:23px;min-width:0;min-height:142px;padding:24px 16px 19px;position:relative;border-right:1px solid var(--site-line);transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
-.site-standard .card:first-child{padding-left:0}
-.site-standard .card:last-child{border-right:0;padding-right:0}
-.site-standard .card:hover{background:color-mix(in srgb,var(--site-soft) 50%,var(--site-bg))}
+/* Individual game links share a single surface and one-pixel seams. */
+.site-standard .game-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--site-line);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--site-soft) 42%,var(--site-bg))}
+.site-standard .card{display:flex;flex-direction:column;justify-content:space-between;gap:24px;min-width:0;min-height:150px;padding:25px 17px 21px;position:relative;border:0;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .card+.card{border-left:1px solid var(--site-line)}
+.site-standard .card:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 30%,var(--site-bg))}
+.site-standard .card:focus-visible{z-index:1;outline-offset:-4px}
 .site-standard .card-top{display:flex;align-items:center;min-width:0;min-height:27px}
 .site-standard .game-title{display:flex;align-items:center;min-width:0;min-height:27px}
-.site-standard .game-wordle{--wordle-mark-cell:24px;--wordle-mark-font:11px;gap:0}
+.site-standard .game-wordle{--wordle-mark-cell:22px;--wordle-mark-font:10px;gap:0}
 .site-standard .game-keybr{font-size:25px;line-height:1.1}
 .site-standard .game-keybr .keybr-cursor{animation:none}
 .site-standard .game-chain-live{width:100%;max-width:208px}
-.site-standard .game-afterimage{font-size:25px;font-weight:760;letter-spacing:-.065em;line-height:1.1;overflow-wrap:anywhere}
+.site-standard .game-afterimage{font-size:24px;font-weight:760;letter-spacing:-.065em;line-height:1.1;overflow-wrap:anywhere}
 .site-standard .game-card-bottom{display:flex;align-items:flex-end;gap:9px;min-width:0}
-.site-standard .card-copy{min-width:0;color:var(--portfolio-muted);font-size:12px;line-height:1.5}
+.site-standard .card-copy{min-width:0;color:var(--portfolio-muted);font-size:11px;line-height:1.5}
 .site-standard .game-card-bottom .entry-arrow{width:15px;height:15px;margin-left:auto}
 
-.site-standard .home-tool-matrix{border-top:1px solid var(--site-line)}
-.site-standard .home-tool{display:grid;grid-template-columns:minmax(140px,.55fr) minmax(0,1fr) 19px;align-items:center;gap:24px;min-height:61px;padding:12px 4px;border-bottom:1px solid var(--site-line);transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
-.site-standard .home-tool strong{font-size:14px;font-weight:620;letter-spacing:-.015em;overflow-wrap:anywhere}
-.site-standard .home-tool-desc{color:var(--portfolio-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
-.site-standard .home-tool:hover{background:color-mix(in srgb,var(--site-soft) 48%,var(--site-bg))}
-
-.site-standard .compact-list{border-top:1px solid var(--site-line)}
-.site-standard .compact-row{display:grid;grid-template-columns:42px minmax(0,1fr) 70px 19px;align-items:center;gap:20px;min-height:94px;padding:18px 4px;border-bottom:1px solid var(--site-line);transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
-.site-standard .compact-row:hover{background:color-mix(in srgb,var(--site-soft) 48%,var(--site-bg))}
+.site-standard .home-tool-matrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));min-width:0;border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--site-soft) 54%,var(--site-bg))}
+.site-standard .home-tool{display:grid;grid-template-columns:minmax(0,1fr) 15px;align-content:start;align-items:center;gap:10px 9px;min-width:0;padding:20px 16px;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .home-tool strong{font-size:13px;font-weight:620;letter-spacing:-.02em;overflow-wrap:anywhere}
+.site-standard .home-tool-desc{grid-column:1/-1;grid-row:2;color:var(--portfolio-muted);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.site-standard .home-tool>.entry-arrow{grid-column:2;grid-row:1;width:15px;height:15px}
+.site-standard .home-tool:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 20%,var(--site-bg))}
+.site-standard .compact-list{min-width:0}
+.site-standard .compact-row{display:grid;grid-template-columns:minmax(0,1fr) 50px 19px;align-items:center;gap:18px;min-height:84px;padding:15px 18px;border-radius:8px;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .compact-row:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 20%,var(--site-bg))}
 .site-standard .compact-copy{min-width:0}
 .site-standard .compact-name{display:block;font-size:16px;font-weight:610;letter-spacing:-.025em;overflow-wrap:anywhere}
 .site-standard .compact-note{display:block;margin-top:5px;color:var(--portfolio-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .site-standard .compact-language{color:var(--site-muted);font-size:11px}
 
-.site-standard .writing-list{border-top:1px solid var(--site-line)}
-.site-standard .writing-entry{border-bottom:1px solid var(--site-line)}
-.site-standard .writing-entry-link{display:grid;grid-template-columns:185px minmax(0,1fr) 22px;align-items:start;gap:28px;padding:28px 4px 32px;min-width:0}
-.site-standard .writing-entry-meta{display:grid;gap:16px;min-width:0;padding-top:6px}
+.site-standard .writing-entry+.writing-entry{margin-top:24px}
+.site-standard .writing-entry-link{display:grid;grid-template-columns:minmax(0,1fr) 22px;align-items:start;gap:18px;min-width:0;padding:18px;border-radius:8px}
+.site-standard .writing-entry-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;min-width:0}
 .site-standard .writing-entry-meta time{color:var(--portfolio-muted);font-size:12px}
 .site-standard .writing-entry-meta .entry-tags{gap:3px 8px}
 .site-standard .writing-entry-meta .entry-tags>span+span::before{margin-right:8px}
 .site-standard .writing-entry-copy{min-width:0}
-.site-standard .writing-entry-copy :is(h2,h3){margin:0;font-size:clamp(1.8rem,3.2vw,2.5rem);font-weight:650;line-height:1.12;letter-spacing:-.05em}
+.site-standard .writing-entry-copy :is(h2,h3){margin:0;font-size:clamp(1.7rem,3vw,2.5rem);font-weight:620;line-height:1.12;letter-spacing:-.05em}
 .site-standard .writing-entry-link>.entry-arrow{margin-top:7px}
 .site-standard .writing-entry-link:hover :is(h2,h3){text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:6px}
-.site-standard .writing-list-expanded .writing-entry-link{padding-block:37px 48px;min-height:260px}
-.site-standard .writing-list-expanded .writing-entry-copy h2{font-size:clamp(2.1rem,4.8vw,3.8rem);max-width:13ch}
+.site-standard .writing-list-expanded{margin-top:16px}
+.site-standard .writing-list-expanded .writing-entry-link{padding:24px 18px 30px}
+.site-standard .writing-list-expanded .writing-entry-copy h2{font-size:clamp(2.1rem,4.8vw,3.8rem)}
 .site-standard .writing-entry-copy p{max-width:52ch;margin:24px 0 0;color:var(--portfolio-muted);font-size:15px;line-height:1.75}
-.site-standard .portfolio-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0;margin-top:54px;padding:20px 0 28px;border-top:1px solid var(--site-line);color:var(--site-muted)}
+.site-standard .portfolio-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0;margin:0;padding:28px 0 0;color:var(--site-muted)}
 .site-standard .portfolio-footer a{font-size:11px}
 
 /* Project details keep their useful metadata and live demo close to the title. */
@@ -110,79 +119,83 @@
 .site-standard .project-related-links{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0 0}
 .site-standard .project-detail-specimen{height:240px;margin:32px 0;padding:24px;border-block:1px solid var(--site-line);background:color-mix(in srgb,var(--site-soft) 60%,var(--site-bg))}
 
-@media(max-width:850px){
+
+/* Responsive joined layouts. */
+@media(max-width:900px){
  .site-standard .game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
- .site-standard .card:nth-child(n){padding-inline:18px}
- .site-standard .card:nth-child(odd){padding-left:0}
- .site-standard .card:nth-child(even){border-right:0;padding-right:0}
- .site-standard .card:nth-child(-n+2){border-bottom:1px solid var(--site-line)}
- .site-standard .project-index-row{grid-template-columns:30px minmax(0,1fr) minmax(130px,27%) 20px;gap:16px}
+ .site-standard .card:nth-child(n){border-left:0}
+ .site-standard .card:nth-child(even){border-left:1px solid var(--site-line)}
+ .site-standard .card:nth-child(n+3){border-top:1px solid var(--site-line)}
+ .site-standard .project-index-row{grid-template-columns:minmax(0,1fr) minmax(130px,27%) 20px;gap:16px}
  .site-standard .project-index-specimen{height:92px}
+ .site-standard .portfolio-heading-home h1{max-width:6em}
 }
 @media(max-width:700px){
+ .site-standard .home-tool-matrix{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .site-standard .home-tool:last-child{grid-column:1/-1}
  .site-standard>main{padding-inline:12px}
- .site-standard .portfolio-heading{padding:34px 0 30px}
- .site-standard .portfolio-heading-home{flex-direction:column;align-items:flex-start;gap:22px;padding-top:38px;padding-bottom:34px}
+ .site-standard>main.portfolio-main{padding-block:18px 28px}
+ .site-standard .portfolio-heading{min-height:130px;padding:25px 22px}
+ .site-standard .portfolio-heading-home{flex-direction:column;align-items:flex-start;gap:22px;min-height:0;padding-block:29px 22px}
+ .site-standard .portfolio-heading-home h1{max-width:none;line-height:1}
  .site-standard .profile-links{display:flex;flex-wrap:wrap;gap:6px 18px}
  .site-standard .profile-links a{gap:6px;font-size:11px}
  .site-standard .portfolio-heading:not(.portfolio-heading-home) .profile-links{display:none}
- .site-standard .portfolio-section{margin-bottom:36px}
- .site-standard .project-grid{gap:16px}
- .site-standard .project-specimen{height:142px;padding:6px}
- .site-standard .project-card-copy{padding-top:17px}
- .site-standard .project-name{font-size:26px}
+ .site-standard .project-specimen{height:146px;padding:8px 10px 0}
+ .site-standard .project-card-copy{padding:10px 18px 20px}
+ .site-standard .project-name{font-size:28px}
  .site-standard .project-card-copy>p{font-size:12px}
- .site-standard .project-index{margin-bottom:36px}
- .site-standard .writing-entry-link{grid-template-columns:minmax(0,1fr) 20px;gap:15px;padding-block:22px}
+ .site-standard .writing-entry-link,.site-standard .writing-list-expanded .writing-entry-link{grid-template-columns:minmax(0,1fr) 20px;gap:15px;padding:23px 18px;min-height:0}
  .site-standard .writing-entry-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:space-between;gap:9px 16px;padding:0}
- .site-standard .writing-list-expanded .writing-entry-link{padding-block:25px 34px;min-height:0}
  .site-standard .writing-list-expanded .writing-entry-copy h2{max-width:none}
  .site-standard .project-detail-head{padding-top:34px;align-items:flex-start;flex-direction:column;gap:20px}
  .site-standard .project-description>p{font-size:14px}
 }
 @media(max-width:520px){
- .site-standard .project-grid{grid-template-columns:1fr;gap:24px}
- .site-standard .project-specimen{height:158px}
- .site-standard .project-card-copy>p{max-width:none;min-height:0}
- .site-standard .project-index-row{grid-template-columns:22px minmax(0,1fr) 19px;gap:13px;min-height:154px;padding-block:23px}
+ .site-standard .project-grid{grid-template-columns:1fr}
+ .site-standard .project-specimen{height:146px}
+ .site-standard .project-index-row{grid-template-columns:minmax(0,1fr) 19px;gap:13px;min-height:145px;padding:20px 12px}
  .site-standard .project-index-specimen{display:none}
  .site-standard .project-index-copy h2{font-size:29px}
- .site-standard .compact-row{grid-template-columns:22px minmax(0,1fr) 19px;gap:13px}
+ .site-standard .compact-row{grid-template-columns:minmax(0,1fr) 19px;gap:13px;padding:15px 12px}
  .site-standard .compact-language{display:none}
  .site-standard .compact-name{font-size:14px}
- .site-standard .home-tool{grid-template-columns:minmax(0,1fr) 18px;gap:4px 14px;padding-block:15px}
+ .site-standard .home-tool-matrix{grid-template-columns:1fr}
+ .site-standard .home-tool{grid-template-columns:minmax(0,1fr) 18px;gap:4px 14px;padding:12px 16px}
  .site-standard .home-tool-desc{grid-column:1;grid-row:2;font-size:11px}
  .site-standard .home-tool>.entry-arrow{grid-column:2;grid-row:1/3}
  .site-standard .game-wordle{--wordle-mark-cell:21px;--wordle-mark-font:10px}
- .site-standard .card:nth-child(n){padding:20px 12px 17px}
- .site-standard .card:nth-child(odd){padding-left:0}
- .site-standard .card:nth-child(even){padding-right:0}
- .site-standard .card-copy{font-size:11px}
+ .site-standard .card{padding:22px 16px 18px}
  .site-standard .game-afterimage{font-size:23px}
  .site-standard .entry-tags{font-size:9px}
- .site-standard .portfolio-footer{margin-top:38px;gap:14px}
+ .site-standard .portfolio-footer{gap:14px;padding:22px 0 0}
 }
-@media(max-width:320px){
+@media(max-width:360px){
  .site-standard .portfolio-heading h1{font-size:2.5rem}
+ .site-standard .portfolio-heading-home h1{max-width:5em;font-size:3.1rem;line-height:.94}
+ .site-standard .portfolio-heading-home h1>span{display:block}
  .site-standard .game-grid{grid-template-columns:1fr}
- .site-standard .card:nth-child(n){min-height:117px;padding:20px 0;border-right:0;border-bottom:1px solid var(--site-line)}
- .site-standard .card:last-child{border-bottom:0}
+ .site-standard .card:nth-child(n){min-height:113px;border-left:0;border-top:1px solid var(--site-line)}
+ .site-standard .card:first-child{border-top:0}
  .site-standard .game-chain-live{max-width:230px}
  .site-standard .project-index-row,.site-standard .compact-row{grid-template-columns:minmax(0,1fr) 18px;gap:10px}
- .site-standard .project-index-row>.entry-number,.site-standard .compact-row>.entry-number{display:none}
  .site-standard .project-card-copy>p,.site-standard .writing-entry-copy p{font-size:12px}
- .site-standard .writing-entry-copy :is(h2,h3),.site-standard .writing-list-expanded .writing-entry-copy h2{font-size:1.8rem}
- .site-standard .profile-links{gap:7px 12px}
- .site-standard .portfolio-footer{align-items:flex-start;flex-direction:column;gap:8px}
+ .site-standard .writing-entry-copy :is(h2,h3),.site-standard .writing-list-expanded .writing-entry-copy h2{font-size:1.7rem}
+ .site-standard .profile-links{gap:4px 12px}
 }
 @media(max-width:220px){
+ .site-standard .portfolio-heading{padding:20px 14px}
+ .site-standard .portfolio-heading-home h1{font-size:2.3rem}
+ .site-standard .game-wordle{--wordle-mark-cell:16px;--wordle-mark-font:8px}
  .site-standard .project-action-link{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
  .site-standard .project-action-label{min-width:0;overflow-wrap:anywhere}
  .site-standard .project-detail-head h1{font-size:2.3rem}
- .site-standard .project-specimen{height:110px}
+ .site-standard .project-specimen{height:100px}
+ .site-standard .project-card-copy,.site-standard .card,.site-standard .home-tool,.site-standard .writing-entry-link,.site-standard .writing-list-expanded .writing-entry-link{padding-inline:12px}
+ .site-standard .portfolio-footer{align-items:flex-start;flex-direction:column;gap:8px}
 }
 @media(prefers-reduced-motion:reduce){
- .site-standard .entry-arrow,.site-standard .card,.site-standard .project-card-copy,.site-standard .project-index-row,.site-standard .compact-row,.site-standard .home-tool,.site-standard .project-action-arrow{transition:none!important}
+ .site-standard .entry-arrow,.site-standard .card,.site-standard .project,.site-standard .project-index-row,.site-standard .compact-row,.site-standard .home-tool,.site-standard .project-action-arrow{transition:none!important}
 }
 
 /* Demo project pages carry their atmosphere across the full route. */

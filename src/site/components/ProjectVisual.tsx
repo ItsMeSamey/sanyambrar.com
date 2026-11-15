@@ -5,20 +5,32 @@ const accent = 'var(--site-accent-fg, var(--site-accent))';
 const soft = 'var(--site-soft)';
 
 const wave = [3, 5, 7, 4, 9, 16, 11, 6, 20, 32, 21, 15, 38, 48, 29, 19, 36, 24, 14, 8, 13, 24, 17, 8, 5, 10, 18, 11, 6, 3];
+const bufferSamples = Array.from({ length: 48 }, (_, index) => {
+  const angle = Math.PI + (index + 1) / 50 * Math.PI * 2;
+  const amplitude = 5 + wave[index % wave.length] * .2;
+  const inner = 58 - amplitude / 2;
+  const outer = 58 + amplitude / 2;
+  const x = Math.cos(angle);
+  const y = Math.sin(angle);
+  return `M${(364 + x * inner).toFixed(1)} ${(90 + y * inner).toFixed(1)}L${(364 + x * outer).toFixed(1)} ${(90 + y * outer).toFixed(1)}`;
+});
+const recentBufferPath = bufferSamples.slice(0, 12).join('');
+const retainedBufferPath = bufferSamples.slice(12).join('');
 
 function ReverbVisual() {
   return <>
-    <path d="M32 90h416" stroke={line} stroke-dasharray="2 6"/>
-    <g stroke={ink} stroke-width="3" stroke-linecap="round">
-      {wave.map((height, index) => <path d={`M${40 + index * 8} ${90 - height}v${height * 2}`}/>)}
+    <path d="M36 90h266" stroke={line}/>
+    <g stroke={accent} stroke-width="3.5" stroke-linecap="round">
+      {wave.map((height, index) => <path d={`M${40 + index * 8} ${90 - height}v${height * 2}`} opacity={index < 5 ? .3 : 1}/>)}
     </g>
-    <path d="M284 90h24m-5-5 5 5-5 5" fill="none" stroke={muted}/>
-    <circle cx="371" cy="90" r="49" fill="var(--site-bg)" stroke={line} stroke-width="12"/>
-    <path d="M371 41a49 49 0 1 1-46.6 33.9" fill="none" stroke={accent} stroke-width="12" stroke-linecap="butt"/>
-    <circle cx="371" cy="90" r="31" fill="none" stroke={line} stroke-dasharray="1 5"/>
-    <path d="M371 90V64m0 26 17 10" fill="none" stroke={ink} stroke-width="2" stroke-linecap="round"/>
-    <circle cx="371" cy="90" r="3" fill={ink}/>
-    <path d="M40 153h232m-232-3v6m232-6v6" stroke={line}/>
+    <path d="M284 90h17m-5-5 5 5-5 5" fill="none" stroke={accent}/>
+    <circle cx="364" cy="90" r="58" fill="none" stroke={line}/>
+    <g stroke-width="3.5">
+      <path d={retainedBufferPath} stroke={ink} opacity=".38"/>
+      <path d={recentBufferPath} stroke={accent}/>
+    </g>
+    <circle cx="306" cy="90" r="4" fill={accent}/>
+    <path d="M364 50a40 40 0 1 1-40 40m-4 5 4-5 5 4" fill="none" stroke={line}/>
   </>;
 }
 

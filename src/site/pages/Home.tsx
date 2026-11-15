@@ -3,7 +3,7 @@ import { ArrowUpRight } from '../../shared/components/Icons.tsx';
 import { games, posts, projects } from '../data.ts';
 import { TOOLS } from '../../shared/catalog.ts';
 import { GameCards, ProjectCards, WritingEntries } from '../components/Entries.tsx';
-import { PageHeading, PortfolioFooter, PortfolioTopBar, ProfileLinks, Section } from '../components/SiteChrome.tsx';
+import { PageHeading, PortfolioFooter, PortfolioSheet, PortfolioTopBar, ProfileLinks, Section } from '../components/SiteChrome.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 
 function EditorialTools() {
@@ -19,13 +19,15 @@ function EditorialTools() {
 export function Home() {
   return <>
     <PortfolioTopBar current="home"/>
-    <main>
-      <PageHeading title="Sanyam Brar" home><ProfileLinks/></PageHeading>
-      <Section id="work-title" title="Work" href="/work/" count={projects.length}><ProjectCards entries={projects.slice(0, 2)}/></Section>
-      <Section id="games-title" title="Games" count={games.length}><GameCards entries={games}/></Section>
-      <Section id="tools-title" title="Tools" href="/tools/" count={TOOLS.length}><EditorialTools/></Section>
-      <Section id="writing-title" title="Writing" href="/blog/" count={posts.length}><WritingEntries entries={posts}/></Section>
-      <PortfolioFooter/>
+    <main class="portfolio-main">
+      <PortfolioSheet>
+        <PageHeading title="Sanyam Brar" home><ProfileLinks/></PageHeading>
+        <Section id="work-title" title="Work" href="/work/"><ProjectCards entries={projects.slice(0, 2)}/></Section>
+        <Section id="games-title" title="Games"><GameCards entries={games}/></Section>
+        <Section id="tools-title" title="Tools" href="/tools/"><EditorialTools/></Section>
+        <Section id="writing-title" title="Writing" href="/blog/"><WritingEntries entries={posts}/></Section>
+        <PortfolioFooter/>
+      </PortfolioSheet>
     </main>
   </>;
 }

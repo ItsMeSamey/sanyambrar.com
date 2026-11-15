@@ -6,16 +6,14 @@ import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { ProjectVisual } from './ProjectVisual.tsx';
 
 const external = (href:string) => /^https?:/.test(href);
-const indexLabel = (index:number) => String(index + 1).padStart(2, '0');
 
 function EntryTags(props:{entry:Entry}) {
   return <span class="entry-tags">{props.entry.tags?.map(tag => <span>{tag}</span>)}</span>;
 }
 
 export function CompactList(props:{entries:Entry[]}) {
-  return <div class="compact-list">{props.entries.map((entry, index) =>
+  return <div class="compact-list">{props.entries.map(entry =>
     <SmartLink class="compact-row" href={entry.href} target={external(entry.href) ? '_blank' : undefined} rel={external(entry.href) ? 'noopener noreferrer' : undefined} data-copy-label={entry.title}>
-      <span class="entry-number" aria-hidden="true">{indexLabel(index)}</span>
       <span class="compact-copy"><span class="compact-name">{entry.title}</span><span class="compact-note">{entry.note}</span></span>
       <span class="compact-language">{entry.tags?.[0]}</span>
       <ArrowUpRight class="entry-arrow" aria-hidden="true"/>
@@ -53,9 +51,8 @@ export function ProjectCards(props:{entries:Entry[]}) {
 }
 
 export function ProjectIndex(props:{entries:Entry[]}) {
-  return <div class="project-index">{props.entries.map((entry, index) =>
+  return <div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
     <SmartLink class="project-index-row" href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title} data-samey-construction-line>
-      <span class="entry-number" aria-hidden="true">{indexLabel(index)}</span>
       <div class="project-index-copy"><h2>{entry.title}</h2><p>{entry.note}</p><EntryTags entry={entry}/></div>
       <div class="project-index-specimen"><ProjectVisual href={entry.href}/></div>
       <ArrowUpRight class="entry-arrow" aria-hidden="true"/>
@@ -66,7 +63,7 @@ export function ProjectIndex(props:{entries:Entry[]}) {
 const postDate = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' });
 
 export function WritingEntries(props:{entries:Entry[];expanded?:boolean}) {
-  return <div class={`writing-list${props.expanded ? ' writing-list-expanded' : ''}`}>{props.entries.map(entry =>
+  return <div class={`writing-list${props.expanded ? ' writing-list-expanded' : ''}`} data-samey-construction-line>{props.entries.map(entry =>
     <article class="writing-entry" data-samey-construction-line>
       <SmartLink class="writing-entry-link" href={entry.href} data-copy-label={entry.title}>
         <div class="writing-entry-meta">{entry.date && <time datetime={entry.date}>{postDate.format(new Date(entry.date))}</time>}<EntryTags entry={entry}/></div>

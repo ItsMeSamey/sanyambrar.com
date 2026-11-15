@@ -20,9 +20,13 @@ export function PortfolioTopBar(props:{current?:'home'|'work'|'writing';start?:J
 
 export function PageHeading(props:{title:string;home?:boolean;children?:JSX.Element}) {
   return <header class={`portfolio-heading${props.home ? ' portfolio-heading-home' : ''}`}>
-    <h1>{props.title}</h1>
+    <h1>{props.home ? <><span>Sanyam</span>{' '}<span class="portfolio-surname">Brar</span></> : props.title}</h1>
     {props.children}
   </header>;
+}
+
+export function PortfolioSheet(props:{children:JSX.Element}) {
+  return <div class="portfolio-sheet" data-samey-construction-line>{props.children}</div>;
 }
 
 export function ProfileLinks() {
@@ -40,12 +44,11 @@ export function PortfolioFooter() {
   </footer>;
 }
 
-export function Section(props:{id:string;title:string;href?:string;children:JSX.Element;class?:string;count?:number}) {
-  return <section class={`portfolio-section${props.class ? ` ${props.class}` : ''}`} aria-labelledby={props.id}>
-    <div class="section-head">
+export function Section(props:{id:string;title:string;href?:string;children:JSX.Element;class?:string}) {
+  return <section class={`portfolio-section${props.class ? ` ${props.class}` : ''}`} aria-labelledby={props.id} data-samey-construction-line>
+    <div class="section-head" data-samey-construction-line>
       <h2 id={props.id}>{props.href ? <SmartLink class="section-head-link" href={props.href}>{props.title}<ArrowUpRight aria-hidden="true"/></SmartLink> : props.title}</h2>
-      {props.count != null && <span class="section-count">{String(props.count).padStart(2, '0')}</span>}
     </div>
-    {props.children}
+    <div class="section-body">{props.children}</div>
   </section>;
 }
