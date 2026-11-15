@@ -1,6 +1,6 @@
 import { For, Match, Show, Switch, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
-import { ChevronRight as ArrowRight, Undo2 as Delete } from '../../shared/components/Icons.tsx';
+import { ChevronRight as ArrowRight, Delete } from '../../shared/components/Icons.tsx';
 import { Ready, Result, Stats, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { acceptsAnswer, arithmeticPoints, colorNames, createQuestionFactory, inkColors, points, protocol, rotation, secondsLeft, type Question, type RotationQuestion, type ThinkingMode } from './thinking-core.ts';

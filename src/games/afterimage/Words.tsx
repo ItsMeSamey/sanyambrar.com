@@ -1,5 +1,6 @@
 import { createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
+import { CornerDownLeft, Delete } from '../../shared/components/Icons.tsx';
 import { Ready, Result, Stats, useResultGate, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { typingPassages } from './words-data.ts';
@@ -65,9 +66,9 @@ function NumberEntry(props: { length: number; onSubmit: (value: string) => void 
     }}/>
     <div id="ai-number-count" class="ai-number-count">{value().length} / {props.length} digits{value().length > props.length ? ` · ${value().length - props.length} extra` : value().length < props.length ? ` · ${props.length - value().length} to go` : ''}</div>
     <div class="ai-number-keypad" role="group" aria-label="Number keypad"><For each={[...'123456789', 'Clear', '0', 'Backspace']}>{key =>
-      <Button class="ai-number-key" aria-label={key === 'Backspace' ? 'Erase selection or previous digit' : key === 'Clear' ? 'Clear answer' : `Digit ${key}`} onPointerDown={event => { if (event.button === 0) { event.preventDefault(); press(key); } }} onClick={event => { if (event.detail === 0) press(key); }}>{key === 'Backspace' ? '⌫' : key}</Button>
+      <Button class="ai-number-key" aria-label={key === 'Backspace' ? 'Erase selection or previous digit' : key === 'Clear' ? 'Clear answer' : `Digit ${key}`} onPointerDown={event => { if (event.button === 0) { event.preventDefault(); press(key); } }} onClick={event => { if (event.detail === 0) press(key); }}><Show when={key === 'Backspace'} fallback={key}><Delete size={22}/></Show></Button>
     }</For></div>
-    <Button class="ai-primary ai-number-submit" disabled={!value()} onClick={() => press('Enter')}>Check answer <span aria-hidden="true">↵</span></Button>
+    <Button class="ai-primary ai-number-submit" disabled={!value()} onClick={() => press('Enter')}>Check answer <CornerDownLeft size={20}/></Button>
     <span class="ai-sr-only" role="status">{notice()}</span>
   </div>;
 }
