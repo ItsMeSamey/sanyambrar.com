@@ -1,4 +1,4 @@
-import { createMemo, For, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import type { GameId } from './types.ts';
 import { referenceFor, summarizeBins, type HistogramReference } from './reference-model.ts';
 import { ChartGrid, useChartWidth } from './Chart.tsx';
@@ -7,6 +7,9 @@ import { chartLabel, chartPosition, chartScale } from './chart-model.ts';
 function Histogram(props: { reference: HistogramReference; value?: number }) {
   const summary = createMemo(() => summarizeBins(props.reference.bins)!);
   const geometry = useChartWidth();
+  const [lastValue, setLastValue] = createSignal(0);
+  // Retain the legend's exact width when cleared, including its narrow-screen wrap.
+  createEffect(() => props.value, value => { if (value !== undefined) setLastValue(value); });
   const domain = createMemo(() => {
     const bins = props.reference.bins;
     const step = bins.length > 1 ? bins[1].id - bins[0].id : 1;
@@ -17,7 +20,7 @@ function Histogram(props: { reference: HistogramReference; value?: number }) {
   const y = (count: number) => chartPosition(count / summary().total * 100, scale(), 176, 24);
   const barWidth = () => (geometry.width() - 60) / (domain().max - domain().min) * domain().step;
   return <>
-    <div class="ai-reference-metrics"><span class="ai-chart-legend">Mean ≈ <strong>{summary().mean.toFixed(1)}</strong> {props.reference.unit}</span><span>Median bin <strong>{summary().median}</strong></span><Show when={props.value !== undefined}><span class="ai-chart-selected-legend">Selected <strong>{chartLabel(props.value!)}</strong> {props.reference.unit}</span></Show></div>
+    <div class="ai-reference-metrics"><span class="ai-chart-legend">Mean ≈ <strong>{summary().mean.toFixed(1)}</strong> {props.reference.unit}</span><span>Median bin <strong>{summary().median}</strong></span><span class="ai-chart-selected-legend" aria-hidden={props.value === undefined ? 'true' : undefined}>Selected <strong>{chartLabel(props.value ?? lastValue())}</strong> {props.reference.unit}</span></div>
     <svg ref={geometry.ref} class="ai-reference-chart" viewBox={`0 0 ${geometry.width()} 210`} role="img" aria-label={`Human Benchmark binned score distribution. Vertical axis: percentage of observations. Estimated mean ${summary().mean.toFixed(1)} ${props.reference.unit}. ${summary().total} published observations.${props.value !== undefined ? ` Selected run: ${props.value} ${props.reference.unit}.` : ''}`}>
       <ChartGrid scale={scale()} width={geometry.width()} top={24} bottom={176} percent/>
       <For each={props.reference.bins}>{bin => <rect class="ai-chart-bar" x={x(bin.id) - barWidth() / 2 + .5} y={y(bin.count)} width={Math.max(0.5, barWidth() - 1)} height={176 - y(bin.count)} rx="1"><title>Bin {bin.id}: {bin.count} observations ({(100 * bin.count / summary().total).toFixed(2)}%)</title></rect>}</For>
