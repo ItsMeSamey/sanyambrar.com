@@ -1,5 +1,18 @@
 import { describe, expect, test } from 'bun:test';
-import { normalizeToolRadix, prepareDecodeInput } from '../src/tools/tools.ts';
+import { normalizeToolRadix, prepareDecodeInput, textStats } from '../src/tools/tools.ts';
+
+describe('text tool word counts', () => {
+  test('accented and decomposed words are counted once', () => {
+    expect(textStats('Caf\u00e9 r\u00e9sum\u00e9 na\u00efve').words).toBe(3);
+    expect(textStats('Cafe\u0301 re\u0301sume\u0301 nai\u0308ve').words).toBe(3);
+    expect(textStats('hello_world 123 \u4f60\u597d\u4e16\u754c').words).toBe(3);
+    expect(textStats('\ud83c\udf89 \u0301 !').words).toBe(0);
+  });
+
+  test('codepoint and UTF-8 counts remain distinct', () => {
+    expect(textStats('A\ud83c\udf89\u00e9')).toEqual({ words: 2, chars: 3, bytes: 7, nonAscii: 2 });
+  });
+});
 
 describe('number tool radix input', () => {
   test('fractional, out-of-range and nonfinite input always produces a usable radix', () => {

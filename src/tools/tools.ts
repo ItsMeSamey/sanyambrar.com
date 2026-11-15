@@ -14,6 +14,21 @@ export const normalizeToolRadix = (value: number, fallback: number) =>
   Number.isFinite(value) ? Math.min(62, Math.max(2, Math.trunc(value))) : fallback;
 export const prepareDecodeInput = (format: string, text: string) =>
   ['url', 'html', 'unicode', 'rot13'].includes(format) ? text : text.trim();
+const WORD_PATTERN = /[\p{L}\p{N}_][\p{L}\p{N}\p{M}_]*/gu;
+const te = new TextEncoder();
+export function textStats(text: string) {
+  let chars = 0, nonAscii = 0;
+  for (const char of text) {
+    chars++;
+    if (char.codePointAt(0)! > 127) nonAscii++;
+  }
+  return {
+    words: text.match(WORD_PATTERN)?.length ?? 0,
+    chars,
+    bytes: te.encode(text).length,
+    nonAscii,
+  };
+}
 const query = <T extends Element>(root: ParentNode, selector: string): T => {
   const element = root.querySelector<T>(selector);
   if (!element) throw new Error(`Missing ${selector}`);
@@ -204,21 +219,6 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
 
   const currentRender = (generation: number) => generation === renderGeneration;
 
-  const te = new TextEncoder();
-  function textStats(text: string) {
-    let chars = 0, nonAscii = 0;
-    for (const char of text) {
-      chars++;
-      if (char.codePointAt(0)! > 127) nonAscii++;
-    }
-    return {
-      words: text.match(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)?.length ?? 0,
-      chars,
-      bytes: te.encode(text).length,
-      nonAscii,
-    };
-  }
-
   async function textTool(generation: number) {
     loadingEditor();
     const monaco = await ensureMonaco();
@@ -236,7 +236,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       const decorations = [];
       for (let lineNumber = 1; lineNumber <= model.getLineCount(); lineNumber++) {
         const line = model.getLineContent(lineNumber);
-        for (const match of line.matchAll(/[A-Za-z0-9_]+|[\p{L}\p{N}]+/gu)) {
+        for (const match of line.matchAll(WORD_PATTERN)) {
           decorations.push({ range: new monaco.Range(lineNumber, match.index + 1, lineNumber, match.index + match[0].length + 1), options: { inlineClassName: 'monaco-word-highlight' } });
         }
         for (let index = 0; index < line.length;) {
@@ -706,6 +706,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     editor.setModel(model);
 
     let richReady = false;
+    let richDisposed = false;
     let syncingFromRich = false;
     let richSyncFrame = 0;
     let richLayoutFrame = 0;
@@ -745,6 +746,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       });
     };
     const syncModelFromRich = (text: string) => {
+      if (richDisposed) return;
       set('text', text);
       const current = model.getValue();
       if (text === current) return;
@@ -810,6 +812,12 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       input: syncModelFromRich,
       after: () => {
         richReady = true;
+        // Vditor initializes after loading its locale/parser scripts. Its destroy
+        // method is only safe once initialization has completed.
+        if (richDisposed) {
+          rich.destroy();
+          return;
+        }
         richHost.dataset.ready = 'true';
         richHost.removeAttribute('aria-busy');
         const exportFrame = richHost.querySelector<HTMLIFrameElement>('#vditorExportIframe');
@@ -877,6 +885,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     });
 
     disposeTool = () => {
+      richDisposed = true;
       stopDividerDrag?.();
       stopDividerDrag = null;
       if (richSyncFrame) cancelAnimationFrame(richSyncFrame);
@@ -885,9 +894,12 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       removeEventListener('samey-themechange', themeChange);
       removeEventListener('resize', viewportChange);
       change.dispose();
-      rich.destroy();
-      editor.dispose();
-      model.dispose();
+      try {
+        if (richReady) rich.destroy();
+      } finally {
+        try { editor.dispose(); }
+        finally { model.dispose(); }
+      }
     };
   }
 
