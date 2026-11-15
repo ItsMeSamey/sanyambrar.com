@@ -2,7 +2,7 @@
 
 My personal site, plus a pile of small games and tools. It ships as static files, but navigation still feels like one app.
 
-**[Live site](https://sanyambrar.com/)** · [Work](https://sanyambrar.com/work/) · [Writing](https://sanyambrar.com/blog/) · [Tools](https://sanyambrar.com/tools/)
+**[Live site](https://sanyambrar.com/)** · [Work](https://sanyambrar.com/work/) · [Writing](https://sanyambrar.com/blog/) · [Tools](https://sanyambrar.com/tools/) · [Afterimage](https://sanyambrar.com/afterimage/)
 
 ## What's here
 
