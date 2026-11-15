@@ -2811,6 +2811,8 @@ test('interactive site routes are styled and visible before site JavaScript exec
       { route: '/chain/', selector: '.chain-shell' },
       { route: '/projects/reverb/', selector: '.project-detail' },
       { route: '/projects/cnn/', selector: '.project-detail' },
+      { route: '/projects/zhtml/', selector: '.engine-demo' },
+      { route: '/projects/oneserial/', selector: '.engine-demo' },
     ]) {
       await page.goto(`http://127.0.0.1:${info.project.metadata.port}${target.route}`, { waitUntil: 'commit' });
       await expect(page.locator('#site-root')).toHaveAttribute('data-samey-prerendered', '');
@@ -2843,17 +2845,36 @@ test('interactive site routes are styled and visible before site JavaScript exec
 test('direct site routes link render-blocking route CSS and preload static route modules', async ({ page }, info) => {
   test.skip(Boolean(info.project.metadata.development), 'Generated production HTML owns route stylesheet and preload hints');
 
-  for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', '/projects/cnn/']) {
+  const demos = new Map([
+    ['/projects/reverb/', 'ReverbDemo'],
+    ['/projects/cnn/', 'CnnDemo'],
+    ['/projects/zhtml/', 'ZhtmlDemo'],
+    ['/projects/oneserial/', 'OneSerialDemo'],
+  ]);
+  for (const route of ['/', '/work/', '/tools/?tool=text', '/chain/', '/blog/', ...demos.keys()]) {
+    const response = await page.request.get(`http://127.0.0.1:${info.project.metadata.port}${route}`);
+    expect(response.ok()).toBe(true);
+    const html = await response.text();
+    const initialStyles = [...html.matchAll(/<link\b[^>]*>/g)]
+      .map(match => match[0])
+      .filter(tag => tag.includes('data-samey-route-style'));
+    expect(initialStyles.length, `${route} must ship its route CSS in the document`).toBeGreaterThan(0);
+    expect(initialStyles.every(tag => /rel="stylesheet"/.test(tag) && !/media="not all"/.test(tag)),
+      `${route} must apply its initial CSS before JavaScript`).toBe(true);
     await visit(page, route, info);
     const styles = page.locator('link[rel="stylesheet"][data-samey-route-style]');
     await expect(styles).not.toHaveCount(0);
     await expect(styles.first()).toHaveAttribute('href', /\/(?:site-chunks|src)\/.+\.css$/);
+    await expect.poll(() => styles.evaluateAll(links => links.every(link =>
+      link.parentElement === document.head && link.sheet && !link.disabled
+      && (!link.media || matchMedia(link.media).matches),
+    )), { message: `${route} must have every required route stylesheet active` }).toBe(true);
     await expect(page.locator('link[rel="modulepreload"][data-samey-route-module]')).not.toHaveCount(0);
-  }
-
-  for (const route of ['/projects/zhtml/', '/projects/oneserial/']) {
-    await visit(page, route, info);
-    await expect(page.locator('link[rel="stylesheet"][data-samey-route-style]')).toHaveCount(1);
+    const demo = demos.get(route);
+    if (demo) {
+      await expect(page.locator(`link[rel="modulepreload"][data-samey-route-module][href*="/${demo}-"]`),
+        `${route} must preload its real demo module`).toHaveCount(1);
+    }
   }
 });
 
@@ -5692,6 +5713,154 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   await expect(result).not.toBeVisible();
   await expect(page.getByRole('grid', { name: /Chain Reaction board/ })).toBeFocused();
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].every(child => !child.inert))).toBe(true);
+});
+
+test('mobile project previews reveal their controls and return focus on close', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  for (const route of ['/', '/work/']) {
+    await visit(page, route, info);
+    const trigger = page.locator(route === '/' ? '.project' : '.project-index-row').filter({
+      has: page.getByRole('heading', { name: 'CNN', exact: true }),
+    }).locator('.project-try');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const preview = page.getByRole('region', { name: 'CNN demo', exact: true });
+    await expect(preview).toBeFocused();
+    const actions = preview.locator('.project-preview-actions');
+    await expect(actions).toBeInViewport({ ratio: 1 });
+    await expect.poll(() => actions.evaluate(element => element.getBoundingClientRect().top
+      >= (document.querySelector('.site-topbar')?.getBoundingClientRect().bottom ?? 0)))
+      .toBe(true);
+    await expect(preview.locator('.cnn-pad')).toHaveAttribute('data-cnn-runtime-ready', '');
+    await expect(preview.locator('.cnn-pad')).toBeInViewport();
+    await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
+    await expect(preview).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toBeInViewport({ ratio: 1 });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  }
+});
+
+test('Home CNN preview loads on demand, runs inference, and releases its worker on close', async ({ page }, info) => {
+  test.setTimeout(60_000);
+  // Observe real Worker instances without replacing the engine or its messages.
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    const records = new WeakMap();
+    globalThis.__qaProjectWorkers = [];
+    window.Worker = class extends NativeWorker {
+      constructor(url, options) {
+        super(url, options);
+        const record = { url: String(url), terminated: false };
+        records.set(this, record);
+        globalThis.__qaProjectWorkers.push(record);
+      }
+      terminate() {
+        const record = records.get(this);
+        if (record) record.terminated = true;
+        super.terminate();
+      }
+    };
+  });
+  const cnnWorkers = () => page.evaluate(() => globalThis.__qaProjectWorkers
+    .filter(worker => worker.url.includes('cnn-worker')));
+  await visit(page, '/', info);
+  await expect(page.locator('.cnn-demo-section')).toHaveCount(0);
+  expect(await cnnWorkers()).toEqual([]);
+
+  const trigger = page.locator('.project').filter({
+    has: page.getByRole('heading', { name: 'CNN', exact: true }),
+  }).locator('.project-try');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  const preview = page.getByRole('region', { name: 'CNN demo', exact: true });
+  await expect(preview).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  const canvas = preview.locator('.cnn-pad');
+  await expect(canvas).toHaveAttribute('data-cnn-runtime-ready', '');
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Inline CNN canvas has no geometry');
+  await page.mouse.move(box.x + box.width * .5, box.y + box.height * .2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * .5, box.y + box.height * .8, { steps: 12 });
+  await page.mouse.up();
+  await expect(preview.locator('.cnn-prediction')).toHaveText(/^[0-9?]$/);
+  await expect(preview.getByRole('button', { name: 'Clear', exact: true })).toBeEnabled();
+  const started = (await cnnWorkers()).length;
+  expect(started).toBeGreaterThan(0);
+
+  await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
+  await expect(preview).toHaveCount(0);
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toBeFocused();
+  await expect.poll(async () => (await cnnWorkers()).filter(worker => !worker.terminated).length,
+    { message: 'Closing the preview must terminate its real CNN worker' }).toBe(0);
+
+  await trigger.click();
+  await expect(preview.locator('.cnn-pad')).toHaveAttribute('data-cnn-runtime-ready', '');
+  await expect(preview.locator('.cnn-prediction')).toHaveText('—');
+  await expect(preview.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  await expect.poll(async () => (await cnnWorkers()).length).toBeGreaterThan(started);
+  await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
+  await expect.poll(async () => (await cnnWorkers()).filter(worker => !worker.terminated).length).toBe(0);
+});
+
+test('Work switches real parser and serialization previews without keeping the previous demo mounted', async ({ page }, info) => {
+  test.setTimeout(60_000);
+  await visit(page, '/work/', info);
+  await expect(page.locator('.engine-demo')).toHaveCount(0);
+  const triggerFor = name => page.locator('.project-index-row').filter({
+    has: page.getByRole('heading', { name, exact: true }),
+  }).locator('.project-try');
+  const parserTrigger = triggerFor('zhtml');
+  const serialTrigger = triggerFor('OneSerial');
+  await parserTrigger.click();
+  const parser = page.getByRole('region', { name: 'zhtml demo', exact: true });
+  await expect(parser.locator('.engine-demo-stats')).toContainText('2 matches');
+  await parser.getByRole('textbox', { name: /^HTML/ }).fill('<main><a class="keep">one</a><a>two</a><a class="keep">three</a></main>');
+  await parser.getByRole('textbox', { name: 'CSS selector', exact: true }).fill('a.keep');
+  await parser.getByRole('button', { name: 'Parse & query', exact: true }).click();
+  await expect(parser.locator('.engine-demo-stats')).toContainText('2 matches');
+  const matches = parser.locator('.engine-demo-tree button.is-match');
+  await expect(matches).toHaveCount(2);
+  await matches.first().click();
+  await expect(matches.first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(parser.locator('.engine-demo-inspect')).toContainText('Matches the selector.');
+  await parser.getByRole('textbox', { name: 'CSS selector', exact: true }).fill('a');
+  await expect(parser.locator('.engine-demo-stats')).toHaveCount(0);
+  await parser.getByRole('button', { name: 'Parse & query', exact: true }).click();
+  await expect(parser.locator('.engine-demo-stats')).toContainText('3 matches');
+
+  await serialTrigger.click();
+  const serial = page.getByRole('region', { name: 'OneSerial demo', exact: true });
+  await expect(parser).toHaveCount(0);
+  await expect(page.locator('.project-preview')).toHaveCount(1);
+  await expect(parserTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(serialTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(serial.locator('.engine-demo-stats')).toContainText('Validation passed');
+  const record = { id: 77, user: { name: 'Nora', active: false }, scores: [0, 65535] };
+  await serial.getByRole('textbox', { name: /^Record/ }).fill(JSON.stringify(record));
+  await serial.getByRole('button', { name: 'Pack & validate', exact: true }).click();
+  await expect(serial.locator('.engine-demo-stats')).toContainText('Validation passed');
+  expect(JSON.parse(await serial.locator('.engine-demo-inspect pre').textContent())).toEqual(record);
+  const byteCount = await serial.locator('.engine-demo-bytes code').count();
+  expect(byteCount).toBeGreaterThan(0);
+  await serial.locator('.engine-demo-regions button').first().click();
+  await expect(serial.locator('.engine-demo-bytes .is-highlighted')).not.toHaveCount(0);
+
+  await serial.getByRole('checkbox', { name: 'Remove the final byte before validation', exact: true }).check();
+  await serial.getByRole('button', { name: 'Pack & validate', exact: true }).click();
+  await expect(serial.locator('.engine-demo-stats')).toContainText('Validation rejected');
+  await expect(serial.locator('.engine-demo-bytes code')).toHaveCount(byteCount - 1);
+  await expect(serial.locator('.engine-demo-inspect')).toHaveCount(0);
+  await serial.getByRole('button', { name: 'Close OneSerial demo', exact: true }).click();
+  await expect(page.locator('.project-preview')).toHaveCount(0);
+  await expect(serialTrigger).toBeFocused();
+  await expect(serialTrigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(page).toHaveURL(/\/work\/?$/);
 });
 
 test('project source links use Git branding and Reverb exposes F-Droid beside Source', async ({ page }, info) => {

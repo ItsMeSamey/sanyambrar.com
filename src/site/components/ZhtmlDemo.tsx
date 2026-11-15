@@ -39,8 +39,6 @@ export function ZhtmlDemo() {
   onCleanup(() => { disposed = true; engine.destroy(); });
   const selectedNode = () => result()?.nodes.find(node => node.index === selected());
   return <section class="engine-demo" aria-label="Try zhtml">
-    <div class="engine-demo-heading"><h3>Parse it. Query it.</h3><span>zhtml · WebAssembly</span></div>
-    <p class="engine-demo-intro">Edit HTML and a CSS selector. The actual Zig parser builds the tree below; matching elements are marked.</p>
     <div class="engine-demo-examples" aria-label="HTML examples"><For each={examples}>{(item, index) => <button type="button" disabled={busy()} onClick={() => example(index())}>{item.name}</button>}</For></div>
     <form onSubmit={event => { event.preventDefault(); void parse(); }}>
       <label for={`${id}-html`}>HTML <span>up to 8 KiB</span></label>
@@ -53,6 +51,5 @@ export function ZhtmlDemo() {
       <div class="engine-demo-tree" aria-label="Parsed nodes"><For each={value().nodes}>{node => <button type="button" class={`${node.matched ? 'is-match' : ''} ${selected() === node.index ? 'is-selected' : ''}`} aria-pressed={selected() === node.index ? 'true' : 'false'} onClick={() => setSelected(node.index)} style={{ '--node-depth': String(Math.min(node.depth, 12)) }}><span class="engine-demo-node-id">{node.index}</span><code>{node.tag === '#text' ? `“${node.text.trim().slice(0, 90)}”` : `<${node.tag}>`}</code><Show when={node.matched}><span class="engine-demo-match">match</span></Show></button>}</For></div>
       <Show when={selectedNode()}>{node => <div class="engine-demo-inspect"><strong>Node {node().index} · depth {node().depth}</strong><pre>{node().tag === '#text' ? node().text : `<${node().tag}>${node().matched ? '\nMatches the selector.' : '\nDoes not match the selector.'}`}</pre></div>}</Show>
     </>}</Show>
-    <p class="engine-demo-note">HTML is inspected as text and never executed. zhtml intentionally differs from browser HTML error recovery.</p>
   </section>;
 }

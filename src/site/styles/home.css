@@ -35,7 +35,7 @@
 .site-standard .project-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 28%,var(--site-bg))}
 .site-standard .project{display:flex;flex-direction:column;min-width:0;border:0;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
 .site-standard .project+.project{background:color-mix(in srgb,var(--site-soft) 54%,var(--site-bg))}
-.site-standard .project-card-copy{display:flex;flex-direction:column;flex:1;min-height:220px;padding:30px 28px 26px}
+.site-standard .project-card-copy{display:flex;flex-direction:column;flex:1;min-height:190px;padding:24px}
 .site-standard .project-head{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
 .site-standard .project-name{flex:1;margin:0;font-size:48px;font-weight:650;line-height:1.1;letter-spacing:-.065em}
 .site-standard .project-name a{display:flex;align-items:center;justify-content:space-between;gap:18px}
@@ -66,7 +66,7 @@
 
 /* Individual game links share a single surface and one-pixel seams. */
 .site-standard .game-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--site-line);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--site-soft) 42%,var(--site-bg))}
-.site-standard .card{display:flex;flex-direction:column;justify-content:space-between;gap:24px;min-width:0;min-height:150px;padding:25px 17px 21px;position:relative;border:0;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.site-standard .card{display:flex;flex-direction:column;justify-content:space-between;gap:16px;min-width:0;min-height:126px;padding:20px 17px;position:relative;border:0;transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease)}
 .site-standard .card+.card{border-left:1px solid var(--site-line)}
 .site-standard .card:hover{background:color-mix(in srgb,var(--site-accent-bg,var(--site-soft)) 30%,var(--site-bg))}
 .site-standard .card:focus-visible{z-index:1;outline-offset:-4px}
@@ -151,7 +151,7 @@
  .site-standard .profile-links{display:flex;flex-wrap:wrap;gap:6px 18px}
  .site-standard .profile-links a{gap:6px;font-size:11px}
  .site-standard .portfolio-heading:not(.portfolio-heading-home) .profile-links{display:none}
- .site-standard .project-card-copy{min-height:210px;padding:24px 18px 20px}
+ .site-standard .project-card-copy{min-height:0;padding:24px 18px 20px}
  .site-standard .project-name{font-size:38px}
  .site-standard .project-card-copy>p{font-size:12px}
  .site-standard .writing-entry-link,.site-standard .writing-list-expanded .writing-entry-link{grid-template-columns:minmax(0,1fr) 20px;gap:15px;padding:23px 18px;min-height:0}

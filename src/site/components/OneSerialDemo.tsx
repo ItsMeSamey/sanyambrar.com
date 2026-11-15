@@ -40,8 +40,6 @@ export function OneSerialDemo() {
   onCleanup(() => { disposed = true; engine.destroy(); });
   const selected = () => result()?.regions?.[region() ?? -1];
   return <section class="engine-demo" aria-label="Try OneSerial">
-    <div class="engine-demo-heading"><h3>One record. One buffer.</h3><span>OneSerial · WebAssembly</span></div>
-    <p class="engine-demo-intro">Pack an editable nested record with the actual Zig library. Inspect its bytes, validate the buffer, then read the typed values back.</p>
     <form onSubmit={event => { event.preventDefault(); void pack(); }}>
       <label for={`${id}-json`}>Record <span>JSON input</span></label>
       <textarea id={`${id}-json`} class="engine-demo-source" spellcheck={false} value={source()} maxlength={8192} onInput={event => { setSource(event.currentTarget.value); edit(); }}/>
@@ -52,12 +50,12 @@ export function OneSerialDemo() {
     <Show when={failure()}><p class="engine-demo-error" role="alert">{failure()} Use the schema above: a name up to 512 UTF-8 bytes and up to 128 scores from 0 to 65535.</p></Show>
     <Show when={result()}>{value => <>
       <div class="engine-demo-stats" role="status"><span>{value().bytes.length} packed bytes</span><strong>{value().valid ? 'Validation passed' : 'Validation rejected'}</strong></div>
-      <Show when={!value().valid}><p class="engine-demo-error">OneSerial rejected the truncated buffer: {value().validation}. No trusted read was attempted.</p></Show>
+      <Show when={!value().valid}><p class="engine-demo-error">Truncated buffer: {value().validation}.</p></Show>
       <Show when={value().regions}><div class="engine-demo-regions" aria-label="Packed fields"><For each={value().regions}>{(field, index) => <button type="button" aria-pressed={region() === index() ? 'true' : 'false'} onClick={() => setRegion(region() === index() ? undefined : index())}><span>{field.name}</span><code>{field.start}–{field.end - 1}</code></button>}</For></div></Show>
       <div class="engine-demo-bytes" aria-label="Serialized bytes in hexadecimal"><For each={value().bytes}>{(byte, index) => <code class={selected() && index() >= selected()!.start && index() < selected()!.end ? 'is-highlighted' : ''} title={`Offset ${index()}: ${byte}`}>{byte.toString(16).padStart(2, '0')}</code>}</For></div>
-      <Show when={value().valid}><div class="engine-demo-inspect"><strong>Read back through validated typed views</strong><pre>{JSON.stringify(value().decoded, null, 2)}</pre></div></Show>
+      <Show when={value().valid}><div class="engine-demo-inspect"><strong>Decoded record</strong><pre>{JSON.stringify(value().decoded, null, 2)}</pre></div></Show>
       <button type="button" class="engine-demo-download" onClick={download}>Download this buffer</button>
     </>}</Show>
-    <p class="engine-demo-note">Field ranges include alignment bytes. This fixed schema uses the wasm32 little-endian representation. OneSerial is experimental; these bytes are not a portable interchange format.</p>
+    <p class="engine-demo-note">wasm32, little-endian. Ranges include alignment padding; this layout is platform-specific.</p>
   </section>;
 }
