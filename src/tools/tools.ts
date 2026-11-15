@@ -10,6 +10,10 @@ type VditorModule = typeof import('vditor');
 type EditorOptions = Monaco.editor.IStandaloneEditorConstructionOptions & Monaco.editor.IDiffEditorConstructionOptions;
 const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+export const normalizeToolRadix = (value: number, fallback: number) =>
+  Number.isFinite(value) ? Math.min(62, Math.max(2, Math.trunc(value))) : fallback;
+export const prepareDecodeInput = (format: string, text: string) =>
+  ['url', 'html', 'unicode', 'rot13'].includes(format) ? text : text.trim();
 const query = <T extends Element>(root: ParentNode, selector: string): T => {
   const element = root.querySelector<T>(selector);
   if (!element) throw new Error(`Missing ${selector}`);
@@ -349,7 +353,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   };
 
   const strictDecode = (format: Format, text: string) => {
-    const raw = text.trim();
+    const raw = prepareDecodeInput(format, text);
     if (!raw) return '';
     if (format === 'hex') {
       const value = raw.replace(/^0x/i, '').replace(/\s/g, '');
@@ -578,8 +582,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
 
   type NumberDefinition = readonly [key: string, label: string, radix: number, group: number];
   function numberTool() {
-    let base = Math.min(62, Math.max(2, +get('base', '10') || 10));
-    let custom = Math.min(62, Math.max(2, +get('custom', '36') || 36));
+    let base = normalizeToolRadix(+get('base', '10'), 10);
+    let custom = normalizeToolRadix(+get('custom', '36'), 36);
     let text = get('text', '255');
     root.innerHTML = `<section class="number-tool"><div class="number-shell"><section class="number-input-pane"><label for="number-input">Input</label><input id="number-input" spellcheck="false" value="${esc(text)}"></section><div class="number-options" aria-label="Number options"><label><span>Source base</span><input id="source-base" type="number" min="2" max="62" value="${base}"></label><div class="radix-choices" aria-label="Common source bases">${[2, 8, 10, 16].map(value => `<button type="button" data-base="${value}">Base ${value}</button>`).join('')}</div><label><span>Custom output base</span><input id="custom-base" type="number" min="2" max="62" value="${custom}"></label></div><div class="number-error" id="number-error" hidden></div><section class="number-output-pane"><header><h1>Output</h1></header><div class="number-grid"></div><section class="bit-panel"><header><h2>Bits</h2><span id="bit-caption"></span></header><div id="bit-values" class="bit-values"></div></section></section></div></section>`;
     const input = query<HTMLInputElement>(root, '#number-input');
@@ -641,8 +645,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
 
     buildCards();
     input.oninput = () => { text = input.value; paint(); };
-    sourceBase.onchange = () => { base = Math.min(62, Math.max(2, +sourceBase.value || 2)); sourceBase.value = String(base); paint(); };
-    customBase.onchange = () => { custom = Math.min(62, Math.max(2, +customBase.value || 2)); customBase.value = String(custom); paint(); };
+    sourceBase.onchange = () => { base = normalizeToolRadix(sourceBase.valueAsNumber, base); sourceBase.value = String(base); paint(); };
+    customBase.onchange = () => { custom = normalizeToolRadix(customBase.valueAsNumber, custom); customBase.value = String(custom); paint(); };
     query<HTMLElement>(root, '.radix-choices').onclick = event => {
       const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-base]') : null;
       if (!button) return;
