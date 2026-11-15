@@ -1,44 +1,25 @@
 import { catchError } from "../debug/logger.ts";
-import { errorMessage, errorWithCause } from "../../../shared/error.ts";
 import { createMemo, Loading, Show } from "solid-js";
 import { type JSX } from "@solidjs/web";
+import { Alert } from "../widget/components/toast/Alert.tsx";
+import { toast } from "../widget/components/toast/Toaster.tsx";
 import { SettingsContext } from "./context.ts";
 import { Settings, type SettingsStorage } from "./settings.ts";
 import { createSettingsState } from "./state.ts";
+import { createLocalSettingsStorage, type SettingsStorageFailure } from "./storage.ts";
+
+function reportStorageFailure({ operation, error }: SettingsStorageFailure) {
+  console.warn(`Could not ${operation} Keybr settings`, error);
+  toast(() => <Alert severity="error" closeButton>
+    <p role="status">{operation === "read"
+      ? "Saved settings could not be read. Temporary defaults are in use; your saved settings have not been replaced."
+      : "Settings could not be saved. Your changes still work for this visit."}</p>
+    <p>Allow site storage and reload to try again.</p>
+  </Alert>, { autoClose: false, pauseOnHover: false, closeOnClick: false });
+}
 
 export function SettingsLoader(props: { readonly children: JSX.Element; readonly fallback?: JSX.Element }) {
-  const storage = createMemo<SettingsStorage>(() => {
-    const key = "settings";
-    const read = (): Settings => {
-      let value: string | null;
-      try {
-        value = localStorage.getItem(key);
-      } catch (error) {
-        throw errorWithCause(`Could not read Keybr settings: ${errorMessage(error)}`, error);
-      }
-      if (value != null) {
-        try {
-          return new Settings(JSON.parse(value));
-        } catch (error) {
-          throw errorWithCause(`Keybr settings are invalid: ${errorMessage(error)}`, error);
-        }
-      }
-      const settings = new Settings(undefined, true);
-      try {
-        localStorage.setItem(key, JSON.stringify(settings.toJSON()));
-      } catch (error) {
-        throw errorWithCause(`Could not initialize Keybr settings: ${errorMessage(error)}`, error);
-      }
-      return settings;
-    };
-    return {
-      async load() { return read(); },
-      async store(settings) {
-        localStorage.setItem(key, JSON.stringify(settings.toJSON()));
-        return settings;
-      },
-    };
-  });
+  const storage = createMemo<SettingsStorage>(() => createLocalSettingsStorage(reportStorageFailure));
   const settings = createMemo(() => storage().load().catch((error) => {
     catchError(error);
     throw error;
