@@ -93,7 +93,13 @@ import './btop-mutex.css';
       timer = null;
       play.textContent = 'Play';
     };
-    addEventListener('samey-pageleave', stop, { once: true });
+    addEventListener('samey-pageleave', stop);
+    addEventListener('pagehide', stop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    const visibility = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) stop();
+    });
+    visibility.observe(root);
 
     const paint = () => {
       const s = states[step];
@@ -169,7 +175,11 @@ import './btop-mutex.css';
     const arrow = $('hb-arrow');
     const caption = $('ordering-caption');
     const setMode = (mode?: string) => {
-      buttons.forEach(b => b.classList.toggle('on', b.dataset.order === mode));
+      buttons.forEach(button => {
+        const selected = button.dataset.order === mode;
+        button.classList.toggle('on', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      });
       const fixed = mode === 'fixed';
       release.innerHTML = fixed ? 'active = false<small>release</small>' : 'active = false<small>relaxed / no release edge</small>';
       acquire.innerHTML = fixed ? 'wait observes false<small>acquire</small>' : 'wait observes false<small>relaxed / no acquire edge</small>';

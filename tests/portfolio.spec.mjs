@@ -2554,6 +2554,122 @@ test('Chain route styles are staged and retired across direct-load round trips',
   await expect(homeStyle).toHaveAttribute('media', 'not all');
 });
 
+async function holdExtraRouteStylesheet(page, info, kind) {
+  const origin = `http://127.0.0.1:${info.project.metadata.port}`;
+  const href = `${origin}/shared/${EXPECTED_ERROR_SURFACE_MARKER}-${kind}.css`;
+  const requests = [];
+  // A manifest-only dependency isolates route readiness from Vite's separate
+  // module dependency preloader, which may also wait for ordinary route CSS.
+  await page.route(/\/shared\/site-routes-[^/]+\.json$/, async route => {
+    const response = await route.fetch();
+    const manifest = await response.json();
+    manifest[kind] = [...manifest[kind], href];
+    await route.fulfill({ response, json: manifest });
+  });
+  await page.route(href, route => { requests.push(route); });
+  const fulfill = request => request.fulfill({
+    status: 200,
+    contentType: 'text/css',
+    body: '.site-route{--qa-route-style:ready}',
+  });
+  const reject = request => request.fulfill({
+    status: 200,
+    contentType: 'text/plain',
+    headers: { 'X-Content-Type-Options': 'nosniff' },
+    body: 'Expected stylesheet MIME rejection.',
+  });
+  return { origin, href, requests, fulfill, reject };
+}
+
+async function warmWorkWithHeldStylesheet(page, info, held) {
+  let workModule = '';
+  page.on('request', request => {
+    if (/\/site-chunks\/Work-[^/]+\.js$/.test(new URL(request.url()).pathname)) workModule = request.url();
+  });
+  await visit(page, '/', info);
+  await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
+  await page.locator('a[href="/work/"]').first().hover();
+  await expect.poll(() => held.requests.length).toBe(1);
+  await expect.poll(() => workModule).not.toBe('');
+  // Finish the real destination module before checking the blocked CSS path.
+  await page.evaluate(href => import(href).then(() => undefined), workModule);
+  await page.evaluate(() => {
+    globalThis.__qaStyleNavigationDone = false;
+    void globalThis.SameyNavigate('/work/').then(() => { globalThis.__qaStyleNavigationDone = true; });
+  });
+}
+
+test('hover and navigation await one pending route stylesheet before committing', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One built browser covers the route stylesheet lifecycle');
+  const held = await holdExtraRouteStylesheet(page, info, 'work');
+  await warmWorkWithHeldStylesheet(page, info, held);
+  const style = page.locator(`link[data-samey-route-style][href="${held.href}"]`);
+  await expect(style).toHaveCount(1);
+  await expect(style).toHaveAttribute('media', 'not all');
+  const blockedFrames = await page.evaluate(async () => {
+    const states = [];
+    for (let frame = 0; frame < 4; frame++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      states.push({ path: location.pathname, finished: globalThis.__qaStyleNavigationDone });
+    }
+    return states;
+  });
+  expect(blockedFrames).toEqual(Array.from({ length: 4 }, () => ({ path: '/', finished: false })));
+  await held.fulfill(held.requests[0]);
+  await expect(page).toHaveURL(/\/work\/?$/);
+  await expect(style).toHaveAttribute('media', 'all');
+  await expect(page.locator('.site-route')).toHaveCSS('--qa-route-style', 'ready');
+  expect(held.requests).toHaveLength(1);
+});
+
+test('failed warmed route stylesheet is removed and Retry fetches a fresh link', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One built browser covers the route stylesheet lifecycle');
+  const held = await holdExtraRouteStylesheet(page, info, 'work');
+  await warmWorkWithHeldStylesheet(page, info, held);
+  const style = page.locator(`link[data-samey-route-style][href="${held.href}"]`);
+  await style.evaluate(link => { globalThis.__qaFailedRouteStyle = link; });
+  await held.reject(held.requests[0]);
+  const errorPage = page.locator('.site-route-error');
+  await expect(errorPage).toBeVisible();
+  await expect(errorPage).toContainText('Route stylesheet failed');
+  await expect(style).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  await errorPage.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect.poll(() => held.requests.length).toBe(2);
+  await expect(style).toHaveCount(1);
+  expect(await style.evaluate(link => link !== globalThis.__qaFailedRouteStyle)).toBe(true);
+  await held.fulfill(held.requests[1]);
+  await expect(page).toHaveURL(/\/work\/?$/);
+  await expect(errorPage).toHaveCount(0);
+  await expect(style).toHaveAttribute('media', 'all');
+  await expect(page.locator('.site-route')).toHaveCSS('--qa-route-style', 'ready');
+});
+
+test('initial stylesheet failure before app startup is replaced without hanging mount', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'Generated HTML provides the initial stylesheet lifecycle');
+  const held = await holdExtraRouteStylesheet(page, info, 'home');
+  await page.route(`${held.origin}/`, async route => {
+    const response = await route.fetch();
+    const html = await response.text();
+    const initialStyle = `<link rel="stylesheet" data-samey-route-style data-samey-route-owner="home" data-qa-initial-style href="${held.href}"><script>globalThis.__qaInitialRouteStyle=document.currentScript.previousElementSibling</script>`;
+    await route.fulfill({ response, body: html.replace('</head>', `${initialStyle}</head>`) });
+  });
+  await page.goto(`${held.origin}/`, { waitUntil: 'commit' });
+  await expect.poll(() => held.requests.length).toBe(1);
+  // The following inline script runs only after this blocking link has failed,
+  // before the deferred application can attach its stylesheet listeners.
+  await held.reject(held.requests[0]);
+  await expect.poll(() => held.requests.length).toBe(2);
+  const replacement = page.locator('link[data-qa-initial-style]');
+  await expect(replacement).toHaveCount(1);
+  expect(await replacement.evaluate(link => link !== globalThis.__qaInitialRouteStyle && !globalThis.__qaInitialRouteStyle.isConnected)).toBe(true);
+  await expect(replacement).not.toHaveAttribute('media', 'not all');
+  await held.fulfill(held.requests[1]);
+  await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
+  await expect(page.locator('.site-route')).toHaveCSS('--qa-route-style', 'ready');
+  await expect(page.locator('.site-route-error')).toHaveCount(0);
+});
+
 test('standalone app hover installs background navigation warmup without committing', async ({ page }, info) => {
   await visit(page, '/', info);
   const keybr = page.locator('a[href="/keybr"]').first();

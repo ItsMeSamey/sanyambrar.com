@@ -20,3 +20,9 @@
 
 /* Shared TopBar is rendered by src/blogs/shell.tsx. */
 .controls button,.mode-switch button,.cas-progress button{transition:background-color var(--site-fast,110ms) var(--site-ease-out,ease),border-color var(--site-fast,110ms) var(--site-ease-out,ease)}
+.article-route>main .fix-card p{margin:0;font-size:13px;line-height:1.55;color:var(--muted)}
+.mode-switch{min-width:0;max-width:100%}.mode-switch button{min-width:0;white-space:normal;overflow-wrap:anywhere}
+.cas-code,.instruction,.register,.op,.race-op{font-family:var(--site-mono,ui-monospace,monospace)}
+.article-route>main .cas-code code{font:inherit}
+.viz :is(.time-event,.cas-event,.lane,.race-lane,.fix-card){min-width:0;overflow-wrap:anywhere}
+@media(forced-colors:active){.mode-switch button.on{text-decoration:underline;text-underline-offset:3px}.cas-progress button.current{outline:2px solid Highlight;outline-offset:2px}.owner-slots span.on{outline:1px solid CanvasText}.owner-slots span.bad{border-style:double}.cas-thread-card.breach{border:3px double CanvasText;padding:11px}}

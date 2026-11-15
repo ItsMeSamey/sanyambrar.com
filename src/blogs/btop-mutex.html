@@ -148,7 +148,7 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
     <p>Callers saw <code>Runner::active == false</code> and went ahead with state the runner had just been updating. Relaxed ordering kept the flag coherent, but didn't synchronize those ordinary reads and writes.</p>
 
     <figure class="viz" id="ordering-viz">
-      <div class="viz-head"><div class="viz-title">What the wait synchronizes</div><div class="mode-switch"><button type="button" data-order="old" class="on">old: relaxed</button><button type="button" data-order="fixed">fixed: release/acquire</button></div></div>
+      <div class="viz-head"><div class="viz-title">What the wait synchronizes</div><div class="mode-switch" role="group" aria-label="Memory ordering"><button type="button" data-order="old" class="on" aria-pressed="true">old: relaxed</button><button type="button" data-order="fixed" aria-pressed="false">fixed: release/acquire</button></div></div>
       <div class="ordering">
         <div class="lane">
           <div class="op">Runner writes shared state<small>ordinary, non-atomic writes</small></div>

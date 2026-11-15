@@ -126,22 +126,48 @@ const routeAssets = () => {
   return routeAssetsTask;
 };
 const routeStyleLinks = () => [...document.querySelectorAll<HTMLLinkElement>('link[data-samey-route-style][href]')];
+// Navigation must await the same CSS request started by hover/focus warmup.
+const routeStyleLoads = new Map<string, { link: HTMLLinkElement; ready: Promise<void> }>();
 const loadStyleLink = (href: string, owner: RouteKind) => {
   const absolute = new URL(href, location.href).href;
+  const cached = routeStyleLoads.get(absolute);
+  if (cached?.link.isConnected) return cached;
+  routeStyleLoads.delete(absolute);
   const existing = routeStyleLinks().find(link => link.href === absolute);
-  if (existing) return { link: existing, ready: Promise.resolve() };
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = absolute;
-  link.media = 'not all';
-  link.dataset.sameyRouteStyle = '';
-  link.dataset.sameyRouteOwner = owner;
+  if (existing?.sheet) return { link: existing, ready: Promise.resolve() };
+  // An untracked link may have failed before listeners existed. A fresh link
+  // guarantees a load/error event while retaining the shell's CSS order/media.
+  const link = existing ? existing.cloneNode() as HTMLLinkElement : document.createElement('link');
+  if (!existing) {
+    link.rel = 'stylesheet';
+    link.href = absolute;
+    link.media = 'not all';
+    link.dataset.sameyRouteStyle = '';
+    link.dataset.sameyRouteOwner = owner;
+  }
   const ready = new Promise<void>((resolve, reject) => {
-    link.addEventListener('load', () => resolve(), { once: true });
-    link.addEventListener('error', () => reject(new Error(`Route stylesheet failed: ${absolute}`)), { once: true });
+    const cleanup = () => {
+      link.removeEventListener('load', loaded);
+      link.removeEventListener('error', failed);
+    };
+    const loaded = () => {
+      cleanup();
+      resolve();
+    };
+    const failed = () => {
+      cleanup();
+      if (routeStyleLoads.get(absolute)?.link === link) routeStyleLoads.delete(absolute);
+      link.remove();
+      reject(new Error(`Route stylesheet failed: ${absolute}`));
+    };
+    link.addEventListener('load', loaded, { once: true });
+    link.addEventListener('error', failed, { once: true });
   });
-  document.head.append(link);
-  return { link, ready };
+  const load = { link, ready };
+  routeStyleLoads.set(absolute, load);
+  if (existing) existing.replaceWith(link);
+  else document.head.append(link);
+  return load;
 };
 const prepareRouteStyles = async (route: Route): Promise<PreparedRouteStyles> => {
   if (typeof document === 'undefined') return { desired: new Set(), links: [] };
