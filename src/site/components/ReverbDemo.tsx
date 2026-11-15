@@ -3,6 +3,7 @@ import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
 import { afterVisualTransition } from '../../shared/afterVisualTransition.ts';
 import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
+import currentSettingsCss from '../demos/reverb-settings.css?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
@@ -24,7 +25,7 @@ const prepareReverbTemplate = () => {
     body.append(node.cloneNode(true));
   }
   preparedTemplate = {
-    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host'),
+    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host') + '\n' + currentSettingsCss,
     body,
   };
   return preparedTemplate;

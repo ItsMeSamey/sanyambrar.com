@@ -1,5 +1,6 @@
 // Interactive Reverb demo runtime. The geometry and state mirror the Android
-// Compose surfaces in the Reverb repository; the demo remains browser-only.
+// native surfaces in the Reverb repository; the demo uses browser-only sample history.
+import { installReverbSettings, type ReverbSettingsExtras } from './reverb-settings.ts';
 export type ReverbDemoDocument = Pick<Document, "createElement" | "createElementNS"> & {
   readonly activeElement: Element | null;
   readonly externalFocusActive: boolean;
@@ -53,6 +54,7 @@ type SettingsSnapshot = {
   loopSizeMiB: number;
   dropdowns: string[];
   wake: boolean;
+  extras: ReverbSettingsExtras;
 };
 
 const NOISE_URL = new URL("./reverb-noise.png", import.meta.url).href;
@@ -156,7 +158,7 @@ export function runReverbDemoRuntime(
   let rangeBuffer: BufferSlot = "one";
   let oneSeconds = 30 * 60;
   let loopSeconds = 47 * 3600 + 59 * 60 + 55;
-  const bytesPerSecond = 44100 * 2;
+  let bytesPerSecond = 44100 * 2;
   let oneRetentionTimeSeconds = 24 * 3600;
   let loopRetentionTimeSeconds = 48 * 3600;
   let oneRetentionSizeMiB = 6;
@@ -444,7 +446,7 @@ export function runReverbDemoRuntime(
     input.className = "recording-rename-field";
     input.type = "text";
     input.setAttribute("aria-label", "Recording name");
-    input.value = data.title.textContent?.replace(/\.wav$/i, "") ?? "";
+    input.value = data.title.textContent?.replace(/\.(wav|flac)$/i, "") ?? "";
     recordingRenameInput = input;
     input.addEventListener("input", () => {
       input.removeAttribute("aria-invalid");
@@ -477,8 +479,8 @@ export function runReverbDemoRuntime(
     appendToRows("Started", `${data.dateLabel} ${data.time.textContent ?? ""}`.trim());
     appendToRows("Duration", duration);
     appendToRows("Size", size);
-    appendToRows("Codec", "WAV · PCM 16-bit · Mono · 44.1 kHz");
-    appendToRows("MIME", "audio/wav");
+    appendToRows("Codec", data.card.dataset.demoFormat ?? "WAV · PCM 16-bit · Mono · 44.1 kHz");
+    appendToRows("MIME", data.card.dataset.demoCodec === "FLAC" ? "audio/flac" : "audio/wav");
     appendToRows("Storage", "FILE");
     appendToRows("Location", `Music/Reverb/${data.title.textContent ?? ""}`);
   }
@@ -820,7 +822,8 @@ export function runReverbDemoRuntime(
       input.focus({ preventScroll: true });
       return;
     }
-    const displayName = `${name}.wav`;
+    const extension = /\.flac$/i.test(data.title.textContent ?? "") ? ".flac" : ".wav";
+    const displayName = `${name.replace(/\.(wav|flac)$/i, "")}${extension}`;
     data.title.textContent = displayName;
     data.card.dataset.recording = displayName;
     unmountActionSheetImmediate();
@@ -992,12 +995,12 @@ export function runReverbDemoRuntime(
       animateCaptureSaveVisibility(true);
     }
   }
-  function showCaptureSavedStatus(durationSeconds: number): void {
+  function showCaptureSavedStatus(durationSeconds: number, filename: string): void {
     captureSaveStatus.hidden = false;
     captureSaveStatus.classList.add("visible", "saved");
     captureSaveStatus.classList.remove("saving");
     captureSaveStatus.setAttribute("aria-hidden", "false");
-    captureSaveTitle.textContent = `${Date.now()}.wav`;
+    captureSaveTitle.textContent = filename;
     captureSaveSubtitle.textContent = `${formatSavedRecordingDuration(durationSeconds)} • ${formatMiB(durationSeconds)}`;
     captureSaveTrailing.textContent = formatSavedRecordingTime();
     captureSaveCancel.hidden = true;
@@ -1019,9 +1022,10 @@ export function runReverbDemoRuntime(
     captureExportCompletionTimer = setTimeout(() => {
       if (generation !== rangeExportGeneration) return;
       onSaved?.();
+      const filename = addSavedRecording(durationSeconds);
       rangeExportPending = false;
       syncBufferUi();
-      showCaptureSavedStatus(durationSeconds);
+      showCaptureSavedStatus(durationSeconds, filename);
     }, 1200);
   }
   function defaultScreenFocus(id: ScreenId): HTMLElement {
@@ -1456,26 +1460,30 @@ export function runReverbDemoRuntime(
         const selected = slot === renderedBuffer;
         const recording = live && activeBuffer === slot;
         segment.classList.toggle("selected", selected);
-        segment.classList.toggle("idle", selected && !recording);
+        segment.classList.toggle("idle", false);
+        segment.classList.toggle("recording", recording);
         segment.setAttribute("aria-selected", String(selected));
         segment.setAttribute("aria-disabled", String(rangeExportPending));
         segment.tabIndex = selected ? 0 : -1;
       });
     const displayedActive = live && activeBuffer === renderedBuffer;
+    const limit = renderedBuffer === "one" ? oneLimitSeconds : loopLimitSeconds;
+    const disabled = limit <= 0;
+    const full = renderedBuffer === "one" && limit > 0 && oneSeconds >= limit;
     const hasHistory = currentSeconds(renderedBuffer) > 0;
     const blockedByOther =
       live && activeBuffer != null && activeBuffer !== renderedBuffer;
     blobControl.classList.toggle("live", displayedActive);
     blobControl.classList.toggle("dimmed", blockedByOther || rangeExportPending);
-    blobControl.disabled = rangeExportPending;
+    blobControl.disabled = rangeExportPending || disabled || full;
     blobControl.setAttribute(
       "aria-label",
-      displayedActive ? "Tap to pause capture" : "Tap to start capture",
+      disabled ? "Buffer off" : full ? "One-shot buffer full" : displayedActive ? "Tap to pause capture" : "Tap to start capture",
     );
-    blobIconUse.setAttribute("href", displayedActive ? PAUSE_PATH : WAVE_PATH);
-    blobTime.textContent = formatTimer(currentSeconds(renderedBuffer));
-    blobSummary.textContent = formatMiB(currentSeconds(renderedBuffer));
-    blobSummary.classList.toggle("hidden", !displayedActive);
+    blobIconUse.setAttribute("href", full ? "#i-check" : displayedActive ? PAUSE_PATH : WAVE_PATH);
+    blobTime.textContent = disabled ? "Off" : retentionMode === "size" ? formatMiB(currentSeconds(renderedBuffer)) : formatTimer(currentSeconds(renderedBuffer));
+    blobSummary.textContent = retentionMode === "size" ? formatTimer(currentSeconds(renderedBuffer)) : formatMiB(currentSeconds(renderedBuffer));
+    blobSummary.classList.toggle("hidden", disabled || !hasHistory);
     const exportFull = document.querySelector<HTMLButtonElement>(
       '.action-button[aria-label="Export full"]',
     );
@@ -1492,8 +1500,8 @@ export function runReverbDemoRuntime(
     if (activeBuffer === "one") {
       oneSeconds = Math.min(oneLimitSeconds, oneSeconds + seconds);
       if (oneSeconds >= oneLimitSeconds) {
-        live = false;
-        activeBuffer = null;
+        live = loopLimitSeconds > 0;
+        activeBuffer = live ? "loop" : null;
       }
     } else {
       loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds);
@@ -2885,6 +2893,8 @@ export function runReverbDemoRuntime(
       return;
     }
     const renderedBuffer = bufferRenderedBuffer();
+    const limit = renderedBuffer === "one" ? oneLimitSeconds : loopLimitSeconds;
+    if (rangeExportPending || limit <= 0 || (renderedBuffer === "one" && oneSeconds >= limit)) return;
     if (live && activeBuffer === renderedBuffer) {
       live = false;
       activeBuffer = null;
@@ -4435,7 +4445,38 @@ export function runReverbDemoRuntime(
     state.positionSeconds = 0;
     setRecordingPlaying(state, !state.trimMode);
   }
-  document.querySelectorAll<HTMLElement>(".recording-card").forEach((card, cardIndex) => {
+  const recordingTemplate = document.querySelector<HTMLElement>(".recording-card")?.cloneNode(true);
+  let nextRecordingIndex = 0;
+  function addSavedRecording(durationSeconds: number, basename?: string): string {
+    const suffix = settingsInitial.extras.compression ? ".flac" : ".wav";
+    const filename = `${basename ?? Date.now()}${suffix}`;
+    if (!(recordingTemplate instanceof HTMLElement)) return filename;
+    const card = recordingTemplate.cloneNode(true) as HTMLElement;
+    card.dataset.recording = filename;
+    card.dataset.demoCodec = suffix === ".flac" ? "FLAC" : "WAV";
+    card.dataset.demoFormat = `${card.dataset.demoCodec} · ${settingsInitial.dropdowns.slice(0, 3).join(" · ")}`;
+    const title = card.querySelector<HTMLElement>(".recording-title");
+    const subtitle = card.querySelector<HTMLElement>(".recording-subtitle");
+    const time = card.querySelector<HTMLElement>(".recording-time");
+    if (title) title.textContent = filename;
+    if (subtitle) subtitle.textContent = `${formatSavedRecordingDuration(durationSeconds)} • ${formatMiB(durationSeconds)}`;
+    if (time) time.textContent = formatSavedRecordingTime();
+    const list = document.querySelector<HTMLElement>(".library-list");
+    if (!list) return filename;
+    let header = list.querySelector<HTMLElement>("[data-demo-today]");
+    if (!header) {
+      header = document.createElement("div");
+      header.className = "date-header first";
+      header.dataset.demoToday = "";
+      header.textContent = new Date().toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+      list.prepend(header);
+    }
+    list.insertBefore(card, header.nextSibling);
+    installRecordingCard(card, nextRecordingIndex++);
+    syncLibraryDateHeaders();
+    return filename;
+  }
+  function installRecordingCard(card: HTMLElement, cardIndex: number): void {
     const summary = card.querySelector<HTMLButtonElement>(".recording-summary");
     const expanded = card.querySelector<HTMLElement>(".recording-expanded");
     const player = card.querySelector<HTMLElement>(".recording-player");
@@ -4580,6 +4621,8 @@ export function runReverbDemoRuntime(
       state.trimSaveLabel.textContent = "Saving trim…";
       state.trimSaveTimer = setTimeout(() => {
         state.trimSaveTimer = 0;
+        const title = state.card.querySelector<HTMLElement>(".recording-title")?.textContent ?? "Recording";
+        addSavedRecording(state.trimEndSeconds - state.trimStartSeconds, `${title.replace(/\.(wav|flac)$/i, "")}_trim`);
         exitRecordingTrim(state, false);
         state.play.focus({ preventScroll: true });
       }, 650);
@@ -4736,7 +4779,8 @@ export function runReverbDemoRuntime(
       }
       setRecordingPlaying(state, !state.playing);
     });
-  });
+  }
+  document.querySelectorAll<HTMLElement>(".recording-card").forEach(card => installRecordingCard(card, nextRecordingIndex++));
 
   document.addEventListener(
     "pointerdown",
@@ -5413,6 +5457,18 @@ export function runReverbDemoRuntime(
   const dropdownValues = () => [
     ...document.querySelectorAll<HTMLElement>(".settings-card.dropdown .value"),
   ];
+  const extraSettings = installReverbSettings(document, {
+    changed: () => recomputeDirty(),
+    sampleFormat: () => dropdownValues()[1]?.textContent ?? "16-bit integer",
+    setTimeout: (handler, delay) => setTimeout(handler, delay),
+    clearTimeout,
+    feedback: showToast,
+  });
+  function draftBytesPerSecond(): number {
+    const [channels, format, rate] = dropdownValues().map(value => value.textContent ?? "");
+    const sampleBytes = format === "8-bit integer" ? 1 : format === "32-bit float" ? 4 : 2;
+    return (channels === "Stereo" ? 2 : 1) * sampleBytes * (Number.parseFloat(rate ?? "44.1") || 44.1) * 1000;
+  }
   function selectedTheme(): string {
     return (
       themeSegments.find((segment) => segment.classList.contains("selected"))
@@ -5429,6 +5485,7 @@ export function runReverbDemoRuntime(
       loopSizeMiB: loopRetentionSizeMiB,
       dropdowns: dropdownValues().map((value) => value.textContent ?? ""),
       wake: wakeSwitch.classList.contains("on"),
+      extras: extraSettings.snapshot(),
     };
   }
   const formatRetentionTimeInput = (seconds: number) => {
@@ -5476,7 +5533,8 @@ export function runReverbDemoRuntime(
       settingsLoopTimeSeconds !== settingsInitial.loopTimeSeconds ||
       settingsOneSizeMiB !== settingsInitial.oneSizeMiB ||
       settingsLoopSizeMiB !== settingsInitial.loopSizeMiB ||
-      wakeSwitch.classList.contains("on") !== settingsInitial.wake
+      wakeSwitch.classList.contains("on") !== settingsInitial.wake ||
+      JSON.stringify(extraSettings.snapshot()) !== JSON.stringify(settingsInitial.extras)
     )
       return false;
     const dropdowns = dropdownValues();
@@ -5486,7 +5544,7 @@ export function runReverbDemoRuntime(
     );
   };
   const recomputeDirty = () =>
-    setDirty(!settingsMatchSnapshot() || activeRetentionInvalid());
+    setDirty(!settingsMatchSnapshot() || activeRetentionInvalid() || !extraSettings.valid());
   type RetentionErrorState = {
     message: string;
     oneInvalid: boolean;
@@ -5548,7 +5606,15 @@ export function runReverbDemoRuntime(
       themeSegments,
       (segment) => segment.dataset.theme === theme,
     );
+    syncDemoTheme();
     if (dirty) recomputeDirty();
+  }
+  function syncDemoTheme(): void {
+    const mode = selectedTheme();
+    phone.dataset.demoTheme = mode === "Auto"
+      ? (globalThis.document.documentElement.dataset.kbTheme === "light" ? "light" : "dark")
+      : mode.toLowerCase();
+    blobShader.refreshTheme();
   }
   const formatRetentionMinutesEstimate = (seconds: number) => {
     const wholeSeconds = Math.max(0, Math.floor(seconds));
@@ -5558,20 +5624,21 @@ export function runReverbDemoRuntime(
       : (wholeSeconds / 60).toFixed(1);
   };
   const renderRetentionEstimates = () => {
+    const draftBytes = draftBytesPerSecond();
     if (retentionMode === "time") {
       byId("oneEstimate").textContent =
         "≈ " +
-        Math.round((settingsOneTimeSeconds * bytesPerSecond) / (1024 * 1024)) +
+        Math.round((settingsOneTimeSeconds * draftBytes) / (1024 * 1024)) +
         " MiB";
       byId("loopEstimate").textContent =
         "≈ " +
-        Math.round((settingsLoopTimeSeconds * bytesPerSecond) / (1024 * 1024)) +
+        Math.round((settingsLoopTimeSeconds * draftBytes) / (1024 * 1024)) +
         " MiB";
     } else {
       const oneSeconds =
-        (settingsOneSizeMiB * 1024 * 1024) / bytesPerSecond;
+        (settingsOneSizeMiB * 1024 * 1024) / draftBytes;
       const loopSeconds =
-        (settingsLoopSizeMiB * 1024 * 1024) / bytesPerSecond;
+        (settingsLoopSizeMiB * 1024 * 1024) / draftBytes;
       byId("oneEstimate").textContent =
         "≈ " + formatRetentionMinutesEstimate(oneSeconds) + " min";
       byId("loopEstimate").textContent =
@@ -5686,6 +5753,7 @@ export function runReverbDemoRuntime(
       value.textContent = settingsInitial.dropdowns[index] ?? "";
     });
     setWakeSwitchState(settingsInitial.wake);
+    extraSettings.restore(settingsInitial.extras);
     resetRetentionDrafts(settingsInitial);
     retentionMode = settingsInitial.retentionMode;
     setRetentionMode(retentionMode, false);
@@ -5743,6 +5811,10 @@ export function runReverbDemoRuntime(
   });
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
+    if (!extraSettings.valid()) {
+      byId<HTMLInputElement>("notificationDuration").focus();
+      return;
+    }
     if (!validateRetentionDrafts()) {
       recomputeDirty();
       return;
@@ -5751,6 +5823,7 @@ export function runReverbDemoRuntime(
     loopRetentionTimeSeconds = settingsLoopTimeSeconds;
     oneRetentionSizeMiB = settingsOneSizeMiB;
     loopRetentionSizeMiB = settingsLoopSizeMiB;
+    bytesPerSecond = draftBytesPerSecond();
     oneLimitSeconds =
       retentionMode === "time"
         ? oneRetentionTimeSeconds
@@ -5759,8 +5832,13 @@ export function runReverbDemoRuntime(
       retentionMode === "time"
         ? loopRetentionTimeSeconds
         : (loopRetentionSizeMiB * 1024 * 1024) / bytesPerSecond;
-    oneSeconds = Math.min(oneSeconds, oneLimitSeconds);
-    loopSeconds = Math.min(loopSeconds, loopLimitSeconds);
+    if (oneLimitSeconds > 0) oneSeconds = Math.min(oneSeconds, oneLimitSeconds);
+    if (loopLimitSeconds > 0) loopSeconds = Math.min(loopSeconds, loopLimitSeconds);
+    if (live && ((activeBuffer === "one" && (oneLimitSeconds <= 0 || oneSeconds >= oneLimitSeconds)) ||
+      (activeBuffer === "loop" && loopLimitSeconds <= 0))) {
+      activeBuffer = loopLimitSeconds > 0 ? "loop" : oneLimitSeconds > oneSeconds ? "one" : null;
+      live = activeBuffer != null;
+    }
     syncBufferUi();
     settingsInitial = captureSettingsSnapshot();
     clearRetentionErrors();
@@ -5988,6 +6066,8 @@ export function runReverbDemoRuntime(
           if (selected) selectedButton = button;
           button.addEventListener("click", () => {
             value.textContent = option;
+            extraSettings.refresh();
+            renderRetentionEstimates();
             recomputeDirty();
             closeDropdown(true);
           });
@@ -6271,6 +6351,7 @@ export function runReverbDemoRuntime(
     }
   });
   const removeBlurListener = addWindowEventListener("blur", () => {
+    extraSettings.cancelPointer();
     clearGesture(true);
     cancelRangeWheelInteraction();
     cancelRangeWaveScrub(false);
@@ -6819,6 +6900,7 @@ void main(){
   }
   return {
     refreshTheme() {
+      syncDemoTheme();
       blobShader.refreshTheme?.();
     },
     setDevicePixelRatio(value: number) {
@@ -6837,6 +6919,8 @@ void main(){
         tick();
         scheduleClock();
       } else {
+        setRangePlaying(false);
+        for (const state of recordingPlayerStates) setRecordingPlaying(state, false);
         if (clockTimer) clearTimeout(clockTimer);
         if (tickTimer) clearTimeout(tickTimer);
         clockTimer = 0;
@@ -6844,6 +6928,12 @@ void main(){
       }
     },
     dispose() {
+      extraSettings.dispose();
+      setRangePlaying(false);
+      for (const state of recordingPlayerStates) {
+        setRecordingPlaying(state, false);
+        cancelRecordingAnimations(state);
+      }
       runtimeVisible = false;
       syncBlobVisibility();
       if (clockTimer) clearTimeout(clockTimer);
