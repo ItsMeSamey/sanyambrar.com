@@ -1743,10 +1743,14 @@ test('ordinary hover and press feedback keeps whole controls stationary', async 
 
   await visit(page, '/', info);
   await expectStationaryHover(page.locator('.site-standard .card').first(), 'Home card');
-  const compactRow = page.locator('.site-standard .compact-row').first();
-  if (await compactRow.count()) await expectStationaryHover(compactRow, 'Home compact row');
+  await expectStationaryHover(page.locator('.site-standard .project').first(), 'Home project');
+  await expectStationaryHover(page.locator('.site-standard .writing-entry-link').first(), 'Home writing entry');
   await expectStationaryPress(page.getByRole('button', { name: 'Search', exact: true }), 'Topbar Search');
   await page.keyboard.press('Escape');
+
+  await visit(page, '/work/', info);
+  await expectStationaryHover(page.locator('.site-standard .project-index-row').first(), 'Work project');
+  await expectStationaryHover(page.locator('.site-standard .compact-row').first(), 'Work contribution');
 
   await visitKeybr(page, info);
   await expectStationaryPress(page.getByTitle('Switch the current interface layout.'), 'Keybr layout control');
@@ -1765,6 +1769,9 @@ test('ordinary hover and press feedback keeps whole controls stationary', async 
 
 test('offscreen Chain live logo sleeps instead of polling visibility', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production desktop browser covers idle scheduling');
+  // The shorter portfolio can keep its game strip visible at both scroll ends
+  // in a tall viewport. Give this idle check an actual offscreen interval.
+  await page.setViewportSize({ width: 1440, height: 320 });
   await visit(page, '/', info);
   const canvas = page.locator('.chain-live-mark canvas').first();
   await expect(canvas).toBeVisible();
@@ -2740,7 +2747,7 @@ test('static direct routes ship prerendered Solid markup and mount it once', asy
   const port = info.project.metadata.port;
   const staticRoutes = [
     ['/', 'Games'],
-    ['/work/', 'Projects and demos'],
+    ['/work/', 'Work'],
     ['/tools/?tool=text', 'Text Inspector'],
     ['/chain/', 'Chain Reaction'],
     ['/blog/', 'Writing'],
@@ -2779,7 +2786,7 @@ test('prerendered route is visible before site JS and preserves focus through mo
   const root = page.locator('#site-root');
   const home = page.getByRole('link', { name: 'Sanyam Brar · Home' });
   await expect(root).toHaveAttribute('data-samey-prerendered', '');
-  await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
   await home.focus();
   await expect(home).toBeFocused();
 
@@ -2897,7 +2904,7 @@ test('saved appearance owns first paint before the deferred shared runtime start
     bodyBackground: 'rgb(16, 24, 32)',
     siteBackground: '#101820',
   });
-  await expect(page.getByRole('heading', { name: 'Projects and demos' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
 });
 
 test('development first paint stays styled when source JavaScript is unavailable', async ({ page }, info) => {
@@ -3058,7 +3065,7 @@ test('extreme narrow call-to-actions and article controls stay reachable', async
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   };
   await visit(page, '/', info);
-  await expectContained('.home-writing-read');
+  await expectContained('.writing-entry-link');
   await visit(page, '/projects/reverb/', info);
   await expectContained('.project-source-link, .project-fdroid-link');
   await visit(page, '/blog/1', info);
@@ -3234,11 +3241,25 @@ test('search, SPA navigation, history and theme', async ({ page }, info) => {
 });
 
 test('SPA route transitions draw rules, preserve rounded corners, and never bob content', async ({ page }, info) => {
+  // Keep the line-density check on a stable composition; the responsive matrix
+  // separately checks the different layouts used by compact viewports.
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await visit(page, '/', info);
   await page.waitForFunction(() => typeof globalThis.SameyNavigate === 'function');
 
   await page.evaluate(() => {
+    const route = document.querySelector('.site-route');
+    if (!(route instanceof HTMLElement)) throw new Error('Home route is unavailable');
+    // Rounded-path support belongs to the transition engine, independent of
+    // whether the current portfolio design happens to use rounded panels.
+    const roundedRule = document.createElement('div');
+    roundedRule.setAttribute('data-samey-construction-line', '');
+    roundedRule.setAttribute('data-qa-rounded-rule', '');
+    roundedRule.setAttribute('aria-hidden', 'true');
+    roundedRule.style.cssText = 'position:fixed;left:12px;top:64px;width:72px;height:40px;border:1px solid var(--site-line);border-radius:12px 8px 16px 4px;pointer-events:none';
+    route.append(roundedRule);
+    globalThis.__sameyRoundedRuleFixture = roundedRule;
     const nativeAnimate = Element.prototype.animate;
     const targets = [];
     globalThis.__sameyRouteAnimationTargets = targets;
@@ -3298,6 +3319,22 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
           style.borderBottomLeftRadius,
         ].some(value => Number.parseFloat(value) > 0);
       });
+      const roundedRule = globalThis.__sameyRoundedRuleFixture;
+      const fixtureRect = roundedRule?.isConnected ? roundedRule.getBoundingClientRect() : null;
+      const fixtureStyle = fixtureRect ? getComputedStyle(roundedRule) : null;
+      const fixtureConstructed = !!fixtureRect && hiddenSources.includes(roundedRule);
+      const fixtureRadiiStable = !!fixtureStyle && [
+        fixtureStyle.borderTopLeftRadius,
+        fixtureStyle.borderTopRightRadius,
+        fixtureStyle.borderBottomRightRadius,
+        fixtureStyle.borderBottomLeftRadius,
+      ].every((value, index) => value === ['12px', '8px', '16px', '4px'][index]);
+      const fixtureRoundedStrokes = fixtureRect ? strokes.filter(stroke => {
+        if (stroke.dataset.rounded !== 'true') return false;
+        const box = stroke.getBBox();
+        return box.x >= fixtureRect.left - 1 && box.x + box.width <= fixtureRect.right + 1
+          && box.y >= fixtureRect.top - 1 && box.y + box.height <= fixtureRect.bottom + 1;
+      }).length : 0;
       result.push({
         opacity: route ? Number(getComputedStyle(route).opacity) : 0,
         area: rect ? rect.width * rect.height : 0,
@@ -3306,6 +3343,9 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
         sourceBordersHidden: hiddenSources.length > 0,
         roundedStroke: strokes.some(stroke => stroke.dataset.rounded === 'true'),
         roundedSourcesStable,
+        fixtureConstructed,
+        fixtureRadiiStable,
+        fixtureRoundedStrokes,
       });
       if (performance.now() - started < 850) requestAnimationFrame(sample);
       else resolve(result);
@@ -3322,6 +3362,7 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
     const targets = globalThis.__sameyRouteAnimationTargets ?? [];
     globalThis.__sameyRestoreAnimate?.();
     delete globalThis.__sameyRouteAnimationTargets;
+    delete globalThis.__sameyRoundedRuleFixture;
     return targets;
   });
   expect(frames.length).toBeGreaterThanOrEqual(10);
@@ -3332,11 +3373,16 @@ test('SPA route transitions draw rules, preserve rounded corners, and never bob 
   expect(frames.some(frame => frame.sourceBordersHidden)).toBe(true);
   expect(frames.some(frame => frame.roundedStroke)).toBe(true);
   expect(frames.every(frame => frame.roundedSourcesStable)).toBe(true);
+  const fixtureFrames = frames.filter(frame => frame.fixtureConstructed);
+  expect(fixtureFrames.length, 'The rounded fixture must participate in construction').toBeGreaterThan(0);
+  expect(fixtureFrames.every(frame => frame.fixtureRadiiStable), 'Construction must preserve all four fixture radii').toBe(true);
+  expect(fixtureFrames.some(frame => frame.fixtureRoundedStrokes === 4), 'Each rounded fixture side must have an accurate overlay path').toBe(true);
   expect(animationTargets.filter(target => target.constructionStroke).length,
     'Home route transition must retain a dense construction-line pass').toBeGreaterThanOrEqual(20);
   expect(animationTargets.some(target => target.routeContent && target.transitionContent && target.hasOpacity)).toBe(true);
   expect(animationTargets.some(target => target.transitionContent && target.hasTransform)).toBe(false);
   await expect(page.locator('.samey-construction-layer')).toHaveCount(0);
+  await expect(page.locator('[data-qa-rounded-rule]')).toHaveCount(0);
   await expect(page.locator('[data-samey-construction-hide-top],[data-samey-construction-hide-right],[data-samey-construction-hide-bottom],[data-samey-construction-hide-left]')).toHaveCount(0);
 });
 
