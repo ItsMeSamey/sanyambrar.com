@@ -1,6 +1,6 @@
 import '../styles/home.css';
 import { contributions, projects } from '../data.ts';
-import { CompactList, ProjectIndex } from '../components/Entries.tsx';
+import { CompactList, ProjectCards } from '../components/Entries.tsx';
 import { PageHeading, PortfolioFooter, PortfolioSheet, PortfolioTopBar, ProfileLinks, Section } from '../components/SiteChrome.tsx';
 
 export function Work() {
@@ -9,7 +9,7 @@ export function Work() {
     <main class="portfolio-main">
       <PortfolioSheet>
         <PageHeading title="Work"><ProfileLinks/></PageHeading>
-        <ProjectIndex entries={projects}/>
+        <ProjectCards entries={projects} headingLevel={2}/>
         <Section id="contributions-title" title="Contributions"><CompactList entries={contributions}/></Section>
         <PortfolioFooter/>
       </PortfolioSheet>

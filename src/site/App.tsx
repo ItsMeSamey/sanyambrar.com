@@ -4,6 +4,7 @@ import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
 import { formatThrownError } from '../shared/error.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
+import { activateRouteStyles as settleRouteStyles, preloadStyleManifest, prepareStyles, type PreparedStyles } from '../shared/stylesheets.ts';
 import { details } from './data';
 import { ProjectDemo, preloadProjectDemo } from './components/ProjectDemo.tsx';
 
@@ -21,7 +22,9 @@ const moduleCache = new Map<RouteKind, Promise<unknown>>();
 const loadModule = <K extends RouteKind>(kind: K): ReturnType<(typeof rawLoaders)[K]> => {
   let task = moduleCache.get(kind);
   if (!task) {
-    task = rawLoaders[kind]().catch(error => {
+    // Vite's preload helper treats a staged stylesheet href as loaded. Own
+    // readiness before every import, including initial renders and retries.
+    task = prepareStyles(kind).then<unknown>(() => rawLoaders[kind]()).catch(error => {
       moduleCache.delete(kind);
       throw error;
     });
@@ -49,8 +52,7 @@ const preloadLazyRoute = (kind: RouteKind) => ({
 type Route = { key: string; kind: RouteKind; slug?: string };
 type NavigationDirection = 'forward' | 'back';
 type NavigationError = { url: string; returnUrl: string; message: string; detail: string };
-type RouteAssetMap = Partial<Record<RouteKind, string[]>>;
-type PreparedRouteStyles = { desired: Set<string>; links: HTMLLinkElement[] };
+type PreparedRouteStyles = PreparedStyles;
 const cleanPath = (path: string) => path.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
 function routeFromUrl(url: URL): Route | null {
   const path = cleanPath(url.pathname);
@@ -74,80 +76,7 @@ const hashTarget = (url: URL) => {
   if (!url.hash) return '';
   try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); }
 };
-let routeAssetsTask: Promise<RouteAssetMap> | undefined;
-const routeAssets = () => {
-  if (routeAssetsTask) return routeAssetsTask;
-  if (typeof document === 'undefined') return Promise.resolve({} as RouteAssetMap);
-  const source = document.querySelector<HTMLMetaElement>('meta[name="samey-route-assets"]')?.content;
-  if (!source) return Promise.resolve({} as RouteAssetMap);
-  routeAssetsTask = fetch(new URL(source, location.href), { credentials: 'same-origin', cache: 'force-cache' })
-    .then(async response => {
-      if (!response.ok) throw new Error(`Route asset manifest failed: HTTP ${response.status}`);
-      const value: unknown = await response.json();
-      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Route asset manifest is malformed');
-      return value as RouteAssetMap;
-    })
-    .catch(error => {
-      routeAssetsTask = undefined;
-      throw error;
-    });
-  return routeAssetsTask;
-};
-const routeStyleLinks = () => [...document.querySelectorAll<HTMLLinkElement>('link[data-samey-route-style][href]')];
-// Navigation must await the same CSS request started by hover/focus warmup.
-const routeStyleLoads = new Map<string, { link: HTMLLinkElement; ready: Promise<void> }>();
-const loadStyleLink = (href: string, owner: RouteKind) => {
-  const absolute = new URL(href, location.href).href;
-  const cached = routeStyleLoads.get(absolute);
-  if (cached?.link.isConnected) return cached;
-  routeStyleLoads.delete(absolute);
-  const existing = routeStyleLinks().find(link => link.href === absolute);
-  if (existing?.sheet) return { link: existing, ready: Promise.resolve() };
-  // An untracked link may have failed before listeners existed. A fresh link
-  // guarantees a load/error event while retaining the shell's CSS order/media.
-  const link = existing ? existing.cloneNode() as HTMLLinkElement : document.createElement('link');
-  if (!existing) {
-    link.rel = 'stylesheet';
-    link.href = absolute;
-    link.media = 'not all';
-    link.dataset.sameyRouteStyle = '';
-    link.dataset.sameyRouteOwner = owner;
-  }
-  const ready = new Promise<void>((resolve, reject) => {
-    const cleanup = () => {
-      link.removeEventListener('load', loaded);
-      link.removeEventListener('error', failed);
-    };
-    const loaded = () => {
-      cleanup();
-      resolve();
-    };
-    const failed = () => {
-      cleanup();
-      if (routeStyleLoads.get(absolute)?.link === link) routeStyleLoads.delete(absolute);
-      link.remove();
-      reject(new Error(`Route stylesheet failed: ${absolute}`));
-    };
-    link.addEventListener('load', loaded, { once: true });
-    link.addEventListener('error', failed, { once: true });
-  });
-  const load = { link, ready };
-  routeStyleLoads.set(absolute, load);
-  if (existing) existing.replaceWith(link);
-  else document.head.append(link);
-  return load;
-};
-const prepareRouteStyles = async (route: Route): Promise<PreparedRouteStyles> => {
-  if (typeof document === 'undefined') return { desired: new Set(), links: [] };
-  const manifest = await routeAssets();
-  const desired = new Set((manifest[route.kind] ?? []).map(href => new URL(href, location.href).href));
-  const loaded = [...desired].map(href => loadStyleLink(href, route.kind));
-  await Promise.all(loaded.map(entry => entry.ready));
-  return { desired, links: loaded.map(entry => entry.link) };
-};
-const settleRouteStyles = (prepared: PreparedRouteStyles) => {
-  for (const link of routeStyleLinks()) link.media = prepared.desired.has(link.href) ? 'all' : 'not all';
-};
+const prepareRouteStyles = (route: Route): Promise<PreparedRouteStyles> => prepareStyles(route.kind);
 
 const preloadRouteDependencies = async (route: Route) => {
   const [module] = await Promise.all([
@@ -412,7 +341,7 @@ export function App(props: { initialUrl?: string } = {}) {
   onSettled(() => {
     if (readNavigationIndex() == null) history.replaceState(navigationState(navigationIndex), '', location.href);
     syncDocument(initial);
-    void routeAssets().catch(error => console.debug('Route asset manifest warmup failed', error));
+    void preloadStyleManifest().catch(error => console.debug('Route asset manifest warmup failed', error));
     const sharedPreloadPage = globalThis.SameyPreloadPage;
     const preloadSiteHref = (href: string) => {
       try {

@@ -1,0 +1,38 @@
+.reverb-compression-slider {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.reverb-compression-slider > svg {
+  display: block;
+  width: 100%;
+  height: 48px;
+  overflow: visible;
+  pointer-events: none;
+}
+.reverb-compression-inactive { fill: color-mix(in srgb, var(--secondary-container) 82%, #000); }
+.reverb-compression-active,
+.reverb-compression-stop,
+.reverb-compression-tick,
+.reverb-compression-thumb { fill: var(--primary); }
+.reverb-compression-tick-active { fill: var(--secondary-container); }
+.reverb-compression-slider:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (forced-colors: active) {
+  .reverb-compression-slider { forced-color-adjust: none; }
+  .reverb-compression-inactive { fill: GrayText; }
+  .reverb-compression-active,
+  .reverb-compression-stop,
+  .reverb-compression-tick,
+  .reverb-compression-thumb { fill: Highlight; }
+  .reverb-compression-tick-active { fill: Canvas; }
+  .reverb-compression-slider:focus-visible { outline-color: Highlight; }
+}

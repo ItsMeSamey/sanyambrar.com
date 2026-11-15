@@ -20,12 +20,12 @@ export function Home() {
   return <>
     <PortfolioTopBar current="home"/>
     <main class="portfolio-main">
-      <PortfolioSheet>
+      <PortfolioSheet home>
         <PageHeading title="Sanyam Brar" home><ProfileLinks/></PageHeading>
-        <Section id="work-title" title="Work" href="/work/"><ProjectCards entries={projects.slice(0, 2)}/></Section>
-        <Section id="games-title" title="Games"><GameCards entries={games}/></Section>
-        <Section id="tools-title" title="Tools" href="/tools/"><EditorialTools/></Section>
-        <Section id="writing-title" title="Writing" href="/blog/"><WritingEntries entries={posts}/></Section>
+        <Section id="work-title" title="Work" href="/work/" class="home-work"><ProjectCards entries={projects.slice(0, 2)}/></Section>
+        <Section id="games-title" title="Games" class="home-games"><GameCards entries={games}/></Section>
+        <Section id="tools-title" title="Tools" href="/tools/" class="home-tools"><EditorialTools/></Section>
+        <Section id="writing-title" title="Writing" href="/blog/" class="home-writing"><WritingEntries entries={posts}/></Section>
         <PortfolioFooter/>
       </PortfolioSheet>
     </main>

@@ -3,6 +3,7 @@ import { Dynamic } from '@solidjs/web';
 import type { ProjectDemoId } from '../data.ts';
 import { resilientImport } from '../../shared/resilientImport.ts';
 import { formatThrownError } from '../../shared/error.ts';
+import { loadComponentStyles } from '../../shared/stylesheets.ts';
 
 type DemoModule = { component:Component; preloadAssets:() => Promise<unknown> };
 const loaders:Record<ProjectDemoId, () => Promise<DemoModule>> = {
@@ -29,7 +30,9 @@ const ready = new Map<ProjectDemoId, DemoModule>();
 function loadDemo(id:ProjectDemoId) {
   let task = pending.get(id);
   if (!task) {
-    task = loaders[id]().then(module => {
+    // Vite treats any existing stylesheet href as ready, even a staged route
+    // link. Own and activate the CSS before its module can expose a component.
+    task = loadComponentStyles(`demo:${id}`).then(loaders[id]).then(module => {
       ready.set(id, module);
       return module;
     }).catch(error => {

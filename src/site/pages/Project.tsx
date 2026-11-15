@@ -4,7 +4,7 @@ import type { JSX } from '@solidjs/web';
 import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { BackLink } from '../../shared/components/TopBar.tsx';
-import { PortfolioFooter, PortfolioTopBar } from '../components/SiteChrome.tsx';
+import { PageHeading, PortfolioFooter, PortfolioTopBar } from '../components/SiteChrome.tsx';
 
 function GitIcon() {
   return <svg class="project-link-icon project-link-icon-git" viewBox="0 0 24 24" aria-hidden="true">
@@ -23,10 +23,9 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
   const fdroid = () => props.detail.links.find(link => link.title === 'F-Droid');
   return <>
     <PortfolioTopBar current="work" start={<BackLink href="/work/">Work</BackLink>}/>
-    <main class="detail">
+    <main class="detail project-main">
       <article class="project-detail">
-        <header class="project-detail-head" data-samey-construction-line>
-          <h1>{props.detail.title}</h1>
+        <PageHeading title={props.detail.title} workspace>
           <div class="project-action-links">
           <Show when={source()}>{link =>
             <SmartLink class="project-action-link project-source-link" href={link().href} target="_blank" rel="noopener noreferrer" data-copy-label="Source">
@@ -43,10 +42,12 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
             </SmartLink>
           }</Show>
           </div>
-        </header>
-        <div class="fact-strip">{props.detail.facts.map(x => <span>{x}</span>)}</div>
-        <section class="project-description"><p>{props.detail.body}</p></section>
-        {props.demo}
+        </PageHeading>
+        <div class="project-workspace">{props.demo}</div>
+        <div class="project-notes">
+          <div class="fact-strip">{props.detail.facts.map(x => <span>{x}</span>)}</div>
+          <section class="project-description"><p>{props.detail.body}</p></section>
+        </div>
         <Show when={props.detail.links.some(link => link !== source() && link !== fdroid())}>
           <nav class="project-related-links" aria-label="Related projects">{props.detail.links.filter(link => link !== source() && link !== fdroid()).map(link =>
             <SmartLink class="project-action-link" href={link.href} target="_blank" rel="noopener noreferrer" data-copy-label={link.title}>{link.title}<span class="project-action-arrow" aria-hidden="true">↗</span></SmartLink>

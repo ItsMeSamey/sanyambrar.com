@@ -29,6 +29,7 @@ const siteSourcePages = new Map([
 const linkedCss = {
   shared: 'src/shared/styles/site.css',
   home: 'src/site/styles/home.css',
+  engines: 'src/site/styles/engine-demos.css',
   tools: 'src/tools/style.css',
   settings: 'src/shared/styles/game-settings.css',
   chain: 'src/games/chain/style.css',
@@ -61,6 +62,7 @@ const routeCssFor = (path, htmlFile) => {
   if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return [linkedCss.article];
   if (key === '/tools') return [linkedCss.tools];
   if (key === '/chain') return [linkedCss.chain];
+  if (key === '/projects/zhtml' || key === '/projects/oneserial') return [linkedCss.home, linkedCss.engines];
   return [linkedCss.home];
 };
 const hrefForSourceCss = file => target === 'keybr' ? '/@fs' + resolve(root, file) : '/' + file;
@@ -82,7 +84,11 @@ const devRouteAssets = {
   tools: [hrefForSourceCss(linkedCss.tools)],
   chain: [hrefForSourceCss(linkedCss.chain)],
   blog: [hrefForSourceCss(linkedCss.home)],
-  project: [hrefForSourceCss(linkedCss.home)],
+  project: [hrefForSourceCss(linkedCss.home), hrefForSourceCss(linkedCss.engines)],
+  'demo:reverb-ui': [],
+  'demo:cnn-draw': [],
+  'demo:zhtml-parse': [hrefForSourceCss(linkedCss.engines)],
+  'demo:oneserial-pack': [hrefForSourceCss(linkedCss.engines)],
 };
 process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.gif': 'image/gif', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };

@@ -160,6 +160,7 @@ test('responsive route surfaces stay contained across common and extreme aspect 
     { width: 520, height: 800 },
     { width: 390, height: 844 },
     { width: 320, height: 568 },
+    { width: 280, height: 780 },
     { width: 240, height: 720 },
     { width: 180, height: 1000 },
     { width: 128, height: 1000 },
@@ -1749,7 +1750,7 @@ test('ordinary hover and press feedback keeps whole controls stationary', async 
   await page.keyboard.press('Escape');
 
   await visit(page, '/work/', info);
-  await expectStationaryHover(page.locator('.site-standard .project-index-row').first(), 'Work project');
+  await expectStationaryHover(page.locator('.site-standard .project').first(), 'Work project');
   await expectStationaryHover(page.locator('.site-standard .compact-row').first(), 'Work contribution');
 
   await visitKeybr(page, info);
@@ -1769,13 +1770,18 @@ test('ordinary hover and press feedback keeps whole controls stationary', async 
 
 test('offscreen Chain live logo sleeps instead of polling visibility', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One production desktop browser covers idle scheduling');
-  // The shorter portfolio can keep its game strip visible at both scroll ends
-  // in a tall viewport. Give this idle check an actual offscreen interval.
+  // Idle scheduling must not depend on how much content follows the game grid.
   await page.setViewportSize({ width: 1440, height: 320 });
   await visit(page, '/', info);
   const canvas = page.locator('.chain-live-mark canvas').first();
   await expect(canvas).toBeVisible();
-  await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  await page.evaluate(() => {
+    const spacer = document.createElement('div');
+    spacer.style.height = `${innerHeight + 200}px`;
+    spacer.setAttribute('aria-hidden', 'true');
+    document.body.append(spacer);
+    scrollTo(0, document.documentElement.scrollHeight);
+  });
   await expect.poll(() => canvas.evaluate(element => {
     const rect = element.getBoundingClientRect();
     return rect.bottom < -80 || rect.top > innerHeight + 80;
@@ -2589,27 +2595,26 @@ async function holdExtraRouteStylesheet(page, info, kind) {
 }
 
 async function warmWorkWithHeldStylesheet(page, info, held) {
-  let workModule = '';
+  const workModules = [];
   page.on('request', request => {
-    if (/\/site-chunks\/Work-[^/]+\.js$/.test(new URL(request.url()).pathname)) workModule = request.url();
+    if (/\/site-chunks\/Work-[^/]+\.js$/.test(new URL(request.url()).pathname)) workModules.push(request.url());
   });
   await visit(page, '/', info);
   await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
   await page.locator('a[href="/work/"]').first().hover();
   await expect.poll(() => held.requests.length).toBe(1);
-  await expect.poll(() => workModule).not.toBe('');
-  // Finish the real destination module before checking the blocked CSS path.
-  await page.evaluate(href => import(href).then(() => undefined), workModule);
+  expect(workModules, 'Destination imports must wait for route CSS readiness').toEqual([]);
   await page.evaluate(() => {
     globalThis.__qaStyleNavigationDone = false;
     void globalThis.SameyNavigate('/work/').then(() => { globalThis.__qaStyleNavigationDone = true; });
   });
+  return workModules;
 }
 
 test('hover and navigation await one pending route stylesheet before committing', async ({ page }, info) => {
   test.skip(info.project.name !== 'production-desktop', 'One built browser covers the route stylesheet lifecycle');
   const held = await holdExtraRouteStylesheet(page, info, 'work');
-  await warmWorkWithHeldStylesheet(page, info, held);
+  const workModules = await warmWorkWithHeldStylesheet(page, info, held);
   const style = page.locator(`link[data-samey-route-style][href="${held.href}"]`);
   await expect(style).toHaveCount(1);
   await expect(style).toHaveAttribute('media', 'not all');
@@ -2622,11 +2627,49 @@ test('hover and navigation await one pending route stylesheet before committing'
     return states;
   });
   expect(blockedFrames).toEqual(Array.from({ length: 4 }, () => ({ path: '/', finished: false })));
+  expect(workModules, 'Held route CSS must also block the lazy route importer').toEqual([]);
   await held.fulfill(held.requests[0]);
   await expect(page).toHaveURL(/\/work\/?$/);
   await expect(style).toHaveAttribute('media', 'all');
   await expect(page.locator('.site-route')).toHaveCSS('--qa-route-style', 'ready');
   expect(held.requests).toHaveLength(1);
+  expect(workModules.length, 'The real route module must load after CSS is ready').toBeGreaterThan(0);
+});
+
+test('a delayed route manifest blocks destination CSS and imports until it is available', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One built browser covers the route manifest gate');
+  const manifests = [];
+  const requests = [];
+  page.on('request', request => requests.push(request.url()));
+  await page.route(/\/shared\/site-routes-[^/]+\.json$/, route => { manifests.push(route); });
+  const origin = `http://127.0.0.1:${info.project.metadata.port}`;
+  await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
+  await expect.poll(() => manifests.length).toBe(1);
+  const response = await manifests[0].fetch();
+  const manifest = await response.json();
+  const destinationStyles = manifest.chain.filter(href => !manifest.home.includes(href))
+    .map(href => new URL(href, origin).href);
+  expect(destinationStyles.length, 'Chain must have a distinct route stylesheet').toBeGreaterThan(0);
+  const link = page.locator('a[href="/chain/"]');
+  await link.hover();
+  await link.click();
+  const blockedPaths = await page.evaluate(async () => {
+    const paths = [];
+    for (let frame = 0; frame < 4; frame++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      paths.push(location.pathname);
+    }
+    return paths;
+  });
+  expect(blockedPaths).toEqual(['/', '/', '/', '/']);
+  expect(requests.filter(href => destinationStyles.includes(href))).toEqual([]);
+  expect(requests.filter(href => /\/site-chunks\/Chain-[^/]+\.js$/.test(new URL(href).pathname))).toEqual([]);
+  await manifests[0].fulfill({ response, json: manifest });
+  await expect(page).toHaveURL(/\/chain\/?$/);
+  await expect(page.locator('.chain-shell')).toBeVisible();
+  expect(requests.filter(href => destinationStyles.includes(href)).length).toBeGreaterThan(0);
+  await expect(page.locator('link[data-samey-route-owner="chain"]')).toHaveAttribute('media', 'all');
 });
 
 test('failed warmed route stylesheet is removed and Retry fetches a fresh link', async ({ page }, info) => {
@@ -2675,6 +2718,44 @@ test('initial stylesheet failure before app startup is replaced without hanging 
   await expect(page.locator('#site-root')).toHaveAttribute('data-samey-solid-mounted', '');
   await expect(page.locator('.site-route')).toHaveCSS('--qa-route-style', 'ready');
   await expect(page.locator('.site-route-error')).toHaveCount(0);
+});
+
+test('demo CSS remains owned across Writing and Work navigation and project round trips', async ({ page }, info) => {
+  test.skip(info.project.name !== 'production-desktop', 'One built browser covers shared demo stylesheet ownership');
+  await visit(page, '/blog/', info);
+  await page.locator('.site-topbar-nav a[href="/work/"]').click();
+  await expect(page).toHaveURL(/\/work\/?$/);
+  await page.locator('.project-name a[href="/projects/oneserial/"]').hover();
+  const componentStyle = page.locator('link[data-samey-component-style="demo:oneserial-pack"]');
+  await expect(componentStyle).toHaveCount(1);
+  await expect(componentStyle).toHaveAttribute('media', 'all');
+  const componentHref = await componentStyle.getAttribute('href');
+  expect(componentHref).toBeTruthy();
+
+  for (const route of ['/blog/', '/work/']) {
+    await page.evaluate(href => globalThis.SameyNavigate(href), route);
+    await expect(page).toHaveURL(new RegExp(`${route}$`));
+    await expect(componentStyle).toHaveAttribute('media', 'all');
+  }
+  await page.locator('.project-name a[href="/projects/oneserial/"]').hover();
+  await expect(componentStyle).toHaveCount(1);
+  await expect(componentStyle).toHaveAttribute('href', componentHref);
+
+  for (let visitIndex = 0; visitIndex < 2; visitIndex++) {
+    await page.getByRole('link', { name: 'Try OneSerial demo', exact: true }).click();
+    await expect(page).toHaveURL(/\/projects\/oneserial\/?$/);
+    const demo = page.getByRole('region', { name: 'Try OneSerial' });
+    await expect(demo).toBeVisible();
+    await expect(demo.locator('.engine-demo-bytes')).toHaveCSS('display', 'flex');
+    await expect(demo.locator('.engine-demo-bytes code').first()).toHaveCSS('display', 'block');
+    await expect(demo.getByRole('button', { name: 'Pack & validate', exact: true })).toHaveCSS('border-top-style', 'solid');
+    await page.locator('.site-topbar-start a[href="/work/"]').click();
+    await expect(page).toHaveURL(/\/work\/?$/);
+    await page.locator('.site-topbar-nav a[href="/blog/"]').click();
+    await expect(page).toHaveURL(/\/blog\/?$/);
+    await page.locator('.site-topbar-nav a[href="/work/"]').click();
+    await expect(page).toHaveURL(/\/work\/?$/);
+  }
 });
 
 test('standalone app hover installs background navigation warmup without committing', async ({ page }, info) => {
@@ -5715,110 +5796,43 @@ test('Chain completed result owns modal focus', async ({ page }, info) => {
   expect(await page.locator('.chain-game-view').evaluate(view => [...view.children].every(child => !child.inert))).toBe(true);
 });
 
-test('mobile project previews reveal their controls and return focus on close', async ({ page }, info) => {
+test('project Try links open dedicated demos and browser Back restores the listing', async ({ page }, info) => {
+  test.setTimeout(90_000);
   await page.setViewportSize({ width: 320, height: 720 });
-  for (const route of ['/', '/work/']) {
-    await visit(page, route, info);
-    const trigger = page.locator(route === '/' ? '.project' : '.project-index-row').filter({
-      has: page.getByRole('heading', { name: 'CNN', exact: true }),
-    }).locator('.project-try');
-    await trigger.focus();
-    await page.keyboard.press('Enter');
-    const preview = page.getByRole('region', { name: 'CNN demo', exact: true });
-    await expect(preview).toBeFocused();
-    const actions = preview.locator('.project-preview-actions');
-    await expect(actions).toBeInViewport({ ratio: 1 });
-    await expect.poll(() => actions.evaluate(element => element.getBoundingClientRect().top
-      >= (document.querySelector('.site-topbar')?.getBoundingClientRect().bottom ?? 0)))
-      .toBe(true);
-    await expect(preview.locator('.cnn-pad')).toHaveAttribute('data-cnn-runtime-ready', '');
-    await expect(preview.locator('.cnn-pad')).toBeInViewport({ ratio: 1 });
-    await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
-    await expect(preview).toHaveCount(0);
-    await expect(trigger).toBeFocused();
-    await expect(trigger).toBeInViewport({ ratio: 1 });
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  const demos = [
+    { title: 'Reverb', slug: 'reverb', selector: '.reverb-demo-host' },
+    { title: 'CNN', slug: 'cnn', selector: '.cnn-pad' },
+    { title: 'zhtml', slug: 'zhtml', selector: '.engine-demo' },
+    { title: 'OneSerial', slug: 'oneserial', selector: '.engine-demo' },
+  ];
+  for (const listing of ['/', '/work/']) {
+    for (const demo of listing === '/' ? demos.slice(0, 2) : demos) {
+      await visit(page, listing, info);
+      const listingUrl = page.url();
+      await expect(page.locator('.cnn-demo-section, .reverb-demo-section, .engine-demo')).toHaveCount(0);
+      const link = page.getByRole('link', { name: `Try ${demo.title} demo`, exact: true });
+      const destination = `/projects/${demo.slug}/`;
+      await expect(link).toHaveAttribute('href', destination);
+      await link.focus();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(new URL(destination, listingUrl).href);
+      await expect(page.getByRole('heading', { level: 1, name: demo.title, exact: true })).toBeVisible();
+      await expect(page.locator(demo.selector)).toBeVisible();
+      await page.goBack({ waitUntil: 'domcontentloaded' });
+      await expect(page).toHaveURL(listingUrl);
+      await expect(link).toBeVisible();
+      await expect(page.locator('.cnn-demo-section, .reverb-demo-section, .engine-demo')).toHaveCount(0);
+    }
   }
 });
 
-test('Home CNN preview loads on demand, runs inference, and releases its worker on close', async ({ page }, info) => {
-  test.setTimeout(60_000);
-  // Observe real Worker instances without replacing the engine or its messages.
-  await page.addInitScript(() => {
-    const NativeWorker = window.Worker;
-    const records = new WeakMap();
-    globalThis.__qaProjectWorkers = [];
-    window.Worker = class extends NativeWorker {
-      constructor(url, options) {
-        super(url, options);
-        const record = { url: String(url), terminated: false };
-        records.set(this, record);
-        globalThis.__qaProjectWorkers.push(record);
-      }
-      terminate() {
-        const record = records.get(this);
-        if (record) record.terminated = true;
-        super.terminate();
-      }
-    };
-  });
-  const cnnWorkers = () => page.evaluate(() => globalThis.__qaProjectWorkers
-    .filter(worker => worker.url.includes('cnn-worker')));
-  await visit(page, '/', info);
-  await expect(page.locator('.cnn-demo-section')).toHaveCount(0);
-  expect(await cnnWorkers()).toEqual([]);
-
-  const trigger = page.locator('.project').filter({
-    has: page.getByRole('heading', { name: 'CNN', exact: true }),
-  }).locator('.project-try');
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await trigger.focus();
-  await page.keyboard.press('Enter');
-  const preview = page.getByRole('region', { name: 'CNN demo', exact: true });
-  await expect(preview).toBeVisible();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-  const canvas = preview.locator('.cnn-pad');
-  await expect(canvas).toHaveAttribute('data-cnn-runtime-ready', '');
-  await canvas.scrollIntoViewIfNeeded();
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error('Inline CNN canvas has no geometry');
-  await page.mouse.move(box.x + box.width * .5, box.y + box.height * .2);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * .5, box.y + box.height * .8, { steps: 12 });
-  await page.mouse.up();
-  await expect(preview.locator('.cnn-prediction')).toHaveText(/^[0-9?]$/);
-  await expect(preview.getByRole('button', { name: 'Clear', exact: true })).toBeEnabled();
-  const started = (await cnnWorkers()).length;
-  expect(started).toBeGreaterThan(0);
-
-  await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
-  await expect(preview).toHaveCount(0);
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(trigger).toBeFocused();
-  await expect.poll(async () => (await cnnWorkers()).filter(worker => !worker.terminated).length,
-    { message: 'Closing the preview must terminate its real CNN worker' }).toBe(0);
-
-  await trigger.click();
-  await expect(preview.locator('.cnn-pad')).toHaveAttribute('data-cnn-runtime-ready', '');
-  await expect(preview.locator('.cnn-prediction')).toHaveText('—');
-  await expect(preview.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
-  await expect.poll(async () => (await cnnWorkers()).length).toBeGreaterThan(started);
-  await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
-  await expect.poll(async () => (await cnnWorkers()).filter(worker => !worker.terminated).length).toBe(0);
-});
-
-test('Work switches real parser and serialization previews without keeping the previous demo mounted', async ({ page }, info) => {
+test('Work opens real parser and serialization pages with editable engine output', async ({ page }, info) => {
   test.setTimeout(60_000);
   await visit(page, '/work/', info);
   await expect(page.locator('.engine-demo')).toHaveCount(0);
-  const triggerFor = name => page.locator('.project-index-row').filter({
-    has: page.getByRole('heading', { name, exact: true }),
-  }).locator('.project-try');
-  const parserTrigger = triggerFor('zhtml');
-  const serialTrigger = triggerFor('OneSerial');
-  await parserTrigger.click();
-  const parser = page.getByRole('region', { name: 'zhtml demo', exact: true });
+  await page.getByRole('link', { name: 'Try zhtml demo', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/zhtml\/$/);
+  const parser = page.getByRole('region', { name: 'Try zhtml', exact: true });
   await expect(parser.locator('.engine-demo-stats')).toContainText('2 matches');
   await parser.getByRole('textbox', { name: /^HTML/ }).fill('<main><a class="keep">one</a><a>two</a><a class="keep">three</a></main>');
   await parser.getByRole('textbox', { name: 'CSS selector', exact: true }).fill('a.keep');
@@ -5834,12 +5848,12 @@ test('Work switches real parser and serialization previews without keeping the p
   await parser.getByRole('button', { name: 'Parse & query', exact: true }).click();
   await expect(parser.locator('.engine-demo-stats')).toContainText('3 matches');
 
-  await serialTrigger.click();
-  const serial = page.getByRole('region', { name: 'OneSerial demo', exact: true });
+  await page.locator('.site-topbar').getByRole('link', { name: 'Work', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/work\/$/);
+  await page.getByRole('link', { name: 'Try OneSerial demo', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/oneserial\/$/);
+  const serial = page.getByRole('region', { name: 'Try OneSerial', exact: true });
   await expect(parser).toHaveCount(0);
-  await expect(page.locator('.project-preview')).toHaveCount(1);
-  await expect(parserTrigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(serialTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(serial.locator('.engine-demo-stats')).toContainText('Validation passed');
   const record = { id: 77, user: { name: 'Nora', active: false }, scores: [0, 65535] };
   await serial.getByRole('textbox', { name: /^Record/ }).fill(JSON.stringify(record));
@@ -5856,11 +5870,6 @@ test('Work switches real parser and serialization previews without keeping the p
   await expect(serial.locator('.engine-demo-stats')).toContainText('Validation rejected');
   await expect(serial.locator('.engine-demo-bytes code')).toHaveCount(byteCount - 1);
   await expect(serial.locator('.engine-demo-inspect')).toHaveCount(0);
-  await serial.getByRole('button', { name: 'Close OneSerial demo', exact: true }).click();
-  await expect(page.locator('.project-preview')).toHaveCount(0);
-  await expect(serialTrigger).toBeFocused();
-  await expect(serialTrigger).toHaveAttribute('aria-expanded', 'false');
-  await expect(page).toHaveURL(/\/work\/?$/);
 });
 
 test('project source links use Git branding and Reverb exposes F-Droid beside Source', async ({ page }, info) => {
@@ -6099,7 +6108,7 @@ test('Reverb demo stays usable when narrow and fullscreen from a scrolled page',
     const rect = element.getBoundingClientRect();
     return [Math.round(rect.left), Math.round(rect.top), Math.round(rect.width), Math.round(rect.height)];
   })).toEqual([0, 0, 320, 180]);
-  await expect(exitFullscreen).toHaveCSS('opacity', '0');
+  await expect(exitFullscreen).toHaveCSS('opacity', '1');
   expect(await page.evaluate(() => [document.body.style.overflow, document.documentElement.style.overflow])).toEqual(['hidden', 'hidden']);
   await expectContained();
   await expect(exitFullscreen).toBeFocused();
@@ -6114,13 +6123,13 @@ test('Reverb fullscreen owns keyboard focus and restores background accessibilit
   const frame = page.locator('.reverb-demo-frame');
   const fullscreen = page.getByRole('button', { name: 'Fullscreen demo' });
   const topbar = page.locator('.site-topbar');
-  const projectActions = page.locator('.project-action-links');
+  const projectHeading = page.locator('.portfolio-heading-workspace');
   const snapshot = async locator => locator.evaluate(element => ({
     inert: element.inert,
     ariaHidden: element.getAttribute('aria-hidden'),
   }));
   const topbarBefore = await snapshot(topbar);
-  const actionsBefore = await snapshot(projectActions);
+  const headingBefore = await snapshot(projectHeading);
   const focusIsInsideFullscreen = () => page.evaluate(() => {
     const frame = document.querySelector('.reverb-demo-frame.is-fullscreen');
     if (!(frame instanceof HTMLElement)) return false;
@@ -6144,8 +6153,9 @@ test('Reverb fullscreen owns keyboard focus and restores background accessibilit
   await expect(frame).toHaveAttribute('aria-label', 'Reverb UI demo fullscreen');
   await expect.poll(() => topbar.evaluate(element => element.inert)).toBe(true);
   await expect(topbar).toHaveAttribute('aria-hidden', 'true');
-  await expect.poll(() => projectActions.evaluate(element => element.inert)).toBe(true);
-  await expect(projectActions).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(() => projectHeading.evaluate(element => element.inert)).toBe(true);
+  await expect(projectHeading).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0);
   const search = page.locator('.site-search');
   await expect(search).not.toBeVisible();
   await page.keyboard.press('Control+K');
@@ -6180,7 +6190,8 @@ test('Reverb fullscreen owns keyboard focus and restores background accessibilit
   await expect(frame).not.toHaveAttribute('aria-label', 'Reverb UI demo fullscreen');
   await expect(fullscreen).toBeFocused();
   expect(await snapshot(topbar)).toEqual(topbarBefore);
-  expect(await snapshot(projectActions)).toEqual(actionsBefore);
+  expect(await snapshot(projectHeading)).toEqual(headingBefore);
+  await expect(page.getByRole('link', { name: 'Source', exact: true })).toBeVisible();
 
   const brand = host.locator('#brandButton');
   const about = host.locator('#aboutSheet');

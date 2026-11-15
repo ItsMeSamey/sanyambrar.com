@@ -1,0 +1,53 @@
+.reverb-silence-curve {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 245px;
+  padding: 0;
+  border: 0;
+  color: var(--primary);
+  background: transparent;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.reverb-silence-curve > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Reverb Sans",Roboto, sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+}
+.reverb-silence-curve text { stroke: none; }
+.reverb-curve-value { fill: var(--on-surface); }
+.reverb-curve-tick { fill: var(--on-surface-variant); }
+.reverb-curve-grid-db,
+.reverb-curve-grid-hz,
+.reverb-curve-nyquist { stroke: var(--on-surface-variant); stroke-width: 1; }
+.reverb-curve-grid-db { stroke-opacity: .14902; }
+.reverb-curve-grid-hz { stroke-opacity: .12549; }
+.reverb-curve-nyquist { stroke-opacity: .39216; }
+.reverb-curve-spectrum { fill: var(--on-surface-variant); fill-opacity: .25882; }
+.reverb-curve-area { fill: var(--primary); fill-opacity: .09412; }
+.reverb-curve-unmeasured { fill: var(--on-surface-variant); fill-opacity: .13725; }
+.reverb-curve-line { fill: none; stroke: var(--primary); stroke-width: 2; stroke-linejoin: round; }
+.reverb-curve-halo { fill: var(--primary); fill-opacity: .21569; }
+.reverb-curve-point { fill: var(--primary); }
+.reverb-silence-curve[aria-disabled="true"] .reverb-curve-point { fill: var(--on-surface-variant); }
+.reverb-curve-hit { fill: transparent; pointer-events: all; touch-action: none; }
+.reverb-silence-curve:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (forced-colors: active) {
+  .reverb-curve-value,
+  .reverb-curve-tick { fill: CanvasText; }
+  .reverb-curve-line { stroke: CanvasText; }
+  .reverb-curve-point { fill: CanvasText; }
+  .reverb-curve-halo { fill: Highlight; fill-opacity: 1; }
+  .reverb-curve-grid-db,
+  .reverb-curve-grid-hz,
+  .reverb-curve-nyquist { stroke: GrayText; }
+  .reverb-silence-curve:focus-visible { outline-color: Highlight; }
+}

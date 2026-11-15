@@ -275,6 +275,10 @@ async function injectSitePreloadHints() {
     source = source.replace("</head>", preload + "</head>");
     await writeFile(path, source);
   }
+  for (const [id, sourcePath] of Object.entries(PROJECT_DEMO_SOURCES)) {
+    const resources = manifestStaticResources(siteManifest, sourcePath);
+    routeStyles.set(`demo:${id}`, new Set(resources.styles.map(file => "/" + file)));
+  }
   await mkdir(join(DOCS, "shared"), { recursive: true });
   await writeFile(join(DOCS, "shared", "site-routes.json"), JSON.stringify(Object.fromEntries([...routeStyles].map(([kind, files]) => [kind, [...files]]))));
   log("linked route styles and emitted shared route asset manifest");

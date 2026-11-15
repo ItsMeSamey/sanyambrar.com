@@ -1,9 +1,9 @@
+import { Dynamic } from '@solidjs/web';
 import { KeybrMark, WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx';
 import { ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
-import { ArrowUpRight } from '../../shared/components/Icons.tsx';
+import { ArrowUpRight, CirclePlay } from '../../shared/components/Icons.tsx';
 import type { Entry } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
-import { createProjectPreview } from './ProjectPreview.tsx';
 
 const external = (href:string) => /^https?:/.test(href);
 
@@ -37,27 +37,31 @@ export function GameCards(props:{entries:Entry[]}) {
   )}</div>;
 }
 
-export function ProjectCards(props:{entries:Entry[]}) {
-  const preview = createProjectPreview();
-  return <><div class="project-grid">{props.entries.map(entry =>
+function ProjectDemoLink(props:{entry:Entry}) {
+  return props.entry.demoId ? <SmartLink class="project-try" href={props.entry.href} documentPreload={true} aria-label={`Try ${props.entry.title} demo`}>
+    <CirclePlay aria-hidden="true"/>Try
+  </SmartLink> : null;
+}
+
+export function ProjectCards(props:{entries:Entry[];headingLevel?:2|3}) {
+  return <div class="project-grid">{props.entries.map(entry =>
     <article class="project">
       <div class="project-card-copy">
-        <div class="project-head"><h3 class="project-name"><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></h3></div>
+        <div class="project-head"><Dynamic component={props.headingLevel === 2 ? 'h2' : 'h3'} class="project-name"><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></Dynamic></div>
         <p>{entry.note}</p>
-        <div class="project-card-foot"><EntryTags entry={entry}/>{preview.button(entry)}</div>
+        <div class="project-card-foot"><EntryTags entry={entry}/><ProjectDemoLink entry={entry}/></div>
       </div>
     </article>
-  )}</div>{preview.panel}</>;
+  )}</div>;
 }
 
 export function ProjectIndex(props:{entries:Entry[]}) {
-  const preview = createProjectPreview();
-  return <><div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
+  return <div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
     <article class="project-index-row" data-samey-construction-line>
       <div class="project-index-copy"><h2><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></h2><p>{entry.note}</p><EntryTags entry={entry}/></div>
-      {preview.button(entry)}
+      <ProjectDemoLink entry={entry}/>
     </article>
-  )}</div>{preview.panel}</>;
+  )}</div>;
 }
 
 const postDate = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' });

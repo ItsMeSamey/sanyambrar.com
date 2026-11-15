@@ -57,7 +57,7 @@ type SettingsSnapshot = {
   extras: ReverbSettingsExtras;
 };
 
-const NOISE_URL = new URL("./reverb-noise.png", import.meta.url).href;
+const NOISE_URL = new URL("./reverb-native-noise.png", import.meta.url).href;
 const PAUSE_PATH = "#i-pause";
 const WAVE_PATH = "#i-wave";
 const bufferSlot = (value: string | undefined): BufferSlot =>
@@ -85,7 +85,7 @@ export function runReverbDemoRuntime(
   let runtimeDevicePixelRatio = Math.max(devicePixelRatio || 1, 0.01);
   const syncDevicePixelRatio = (value: number) => {
     runtimeDevicePixelRatio = Math.max(value || 1, 0.01);
-    phone.style.setProperty("--reverb-noise-size", `${1024 / runtimeDevicePixelRatio}px`);
+    phone.style.setProperty("--reverb-noise-size", `${1024 * 411 / 1080}px`);
   };
   phone.style.setProperty("--reverb-noise", `url("${NOISE_URL}")`);
   syncDevicePixelRatio(runtimeDevicePixelRatio);

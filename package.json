@@ -19,13 +19,14 @@
     "check:afterimage-build": "node scripts/verify-afterimage-build.mjs",
     "lint": "eslint src --max-warnings 0",
     "test": "playwright test",
-    "check": "bun run typecheck && bun run lint && bun run test:chain && bun run test:afterimage && bun run test:tools && bun run test:keybr && bun run test:projects && bun run test:transitions && bun run build && bun run check:afterimage-build && bun run test",
+    "check": "bun run typecheck && bun run lint && bun run test:chain && bun run test:afterimage && bun run test:tools && bun run test:keybr && bun run test:projects && bun run test:transitions && bun run test:stylesheets && bun run build && bun run check:afterimage-build && bun run test",
     "test:afterimage": "bun test ./tests/afterimage-*.test.ts ./src/games/afterimage/words.test.mjs",
     "test:chain": "bun test tests/chain-bot-core.test.ts",
     "test:tools": "bun test ./tests/tools-*.test.ts",
     "test:keybr": "bun test ./tests/keybr-*.test.ts",
     "test:projects": "node --test tests/project-engines.test.mjs && bun test tests/project-engine-runner.test.ts",
-    "test:transitions": "bun test tests/after-visual-transition.test.ts"
+    "test:transitions": "bun test tests/after-visual-transition.test.ts",
+    "test:stylesheets": "bun test tests/stylesheets.test.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

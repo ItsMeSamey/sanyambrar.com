@@ -1,0 +1,96 @@
+{
+  "source": "Android SDK Platform 29 data/fonts",
+  "sourceDirectory": "/home/a/.android/sdk/platforms/android-29/data/fonts",
+  "installedDeviceMatch": "unverified; these SDK assets have not been compared with the current installed Android system fonts",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "file": "Roboto-Regular.ttf",
+      "sha256": "36c80e1709c552db7d2ee4e8e3fb4b04e9320ac5668647686400dd363dd53d68",
+      "bytes": 305668,
+      "unitsPerEm": 2048,
+      "hhea": {
+        "ascent": 1900,
+        "descent": -500,
+        "lineGap": 0
+      },
+      "head": {
+        "yMin": -555,
+        "yMax": 2163
+      },
+      "os2": {
+        "typoAscent": 2146,
+        "typoDescent": -555,
+        "typoLineGap": 0,
+        "winAscent": 2146,
+        "winDescent": 555
+      }
+    },
+    {
+      "file": "Roboto-Medium.ttf",
+      "sha256": "e73730f314022f25b77e8c58b723cfce958efd74d323537dd79de2c796e170d3",
+      "bytes": 306612,
+      "unitsPerEm": 2048,
+      "hhea": {
+        "ascent": 1900,
+        "descent": -500,
+        "lineGap": 0
+      },
+      "head": {
+        "yMin": -555,
+        "yMax": 2163
+      },
+      "os2": {
+        "typoAscent": 2146,
+        "typoDescent": -555,
+        "typoLineGap": 0,
+        "winAscent": 2146,
+        "winDescent": 555
+      }
+    },
+    {
+      "file": "Roboto-Bold.ttf",
+      "sha256": "97669b0ba3ac6b91b2efbccc5f288e3fddb0c7235cb9523b6fa72cb292e16faf",
+      "bytes": 306972,
+      "unitsPerEm": 2048,
+      "hhea": {
+        "ascent": 1900,
+        "descent": -500,
+        "lineGap": 0
+      },
+      "head": {
+        "yMin": -555,
+        "yMax": 2163
+      },
+      "os2": {
+        "typoAscent": 2146,
+        "typoDescent": -555,
+        "typoLineGap": 0,
+        "winAscent": 2146,
+        "winDescent": 555
+      }
+    },
+    {
+      "file": "DroidSansMono.ttf",
+      "sha256": "0361584c155c1a80c0c259eb69cc42ffaed4ffbacdf2cc862fd77c1e20d8b33e",
+      "bytes": 108264,
+      "unitsPerEm": 2048,
+      "hhea": {
+        "ascent": 1900,
+        "descent": -500,
+        "lineGap": 0
+      },
+      "head": {
+        "yMin": -555,
+        "yMax": 2163
+      },
+      "os2": {
+        "typoAscent": 1567,
+        "typoDescent": -492,
+        "typoLineGap": 132,
+        "winAscent": 1901,
+        "winDescent": 483
+      }
+    }
+  ]
+}

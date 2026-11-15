@@ -18,15 +18,15 @@ export function PortfolioTopBar(props:{current?:'home'|'work'|'writing';start?:J
   </>}/>;
 }
 
-export function PageHeading(props:{title:string;home?:boolean;children?:JSX.Element}) {
-  return <header class={`portfolio-heading${props.home ? ' portfolio-heading-home' : ''}`}>
+export function PageHeading(props:{title:string;home?:boolean;workspace?:boolean;children?:JSX.Element}) {
+  return <header class={`portfolio-heading${props.home ? ' portfolio-heading-home' : ''}${props.workspace ? ' portfolio-heading-workspace' : ''}`}>
     <h1>{props.home ? <><span>Sanyam</span>{' '}<span class="portfolio-surname">Brar</span></> : props.title}</h1>
     {props.children}
   </header>;
 }
 
-export function PortfolioSheet(props:{children:JSX.Element}) {
-  return <div class="portfolio-sheet" data-samey-construction-line>{props.children}</div>;
+export function PortfolioSheet(props:{children:JSX.Element;home?:boolean}) {
+  return <div class={`portfolio-sheet${props.home ? ' portfolio-sheet-home' : ''}`}>{props.children}</div>;
 }
 
 export function ProfileLinks() {

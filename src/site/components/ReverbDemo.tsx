@@ -4,18 +4,35 @@ import { afterVisualTransition } from '../../shared/afterVisualTransition.ts';
 import { onCleanup, onSettled } from 'solid-js';
 import demoHtml from '../demos/reverb-home.html?raw';
 import currentSettingsCss from '../demos/reverb-settings.css?raw';
+import durationWheelCss from '../demos/reverb-duration-wheel.css?raw';
+import silenceCurveCss from '../demos/reverb-silence-curve.css?raw';
+import compressionSliderCss from '../demos/reverb-compression-slider.css?raw';
 import { runReverbDemoRuntime, type ReverbDemoDocument } from '../demos/reverb-runtime.ts';
 
 const FULLSCREEN_STATE_KEY = '__sameyReverbFullscreen';
 const REVERB_PHONE_WIDTH = 411;
 const REVERB_PHONE_HEIGHT = 912;
 const REVERB_FULLSCREEN_EXIT_GUTTER = 50;
-const REVERB_NOISE_URL = new URL('../demos/reverb-noise.png', import.meta.url).href;
+const REVERB_NOISE_URL = new URL('../demos/reverb-native-noise.png', import.meta.url).href;
 
 type PreparedReverbTemplate = { styleText: string; body: DocumentFragment };
 let preparedTemplate: PreparedReverbTemplate | undefined;
 let preloadTask: Promise<void> | undefined;
 let warmNoiseImage: HTMLImageElement | undefined;
+let fontsTask: Promise<void> | undefined;
+const preloadReverbFonts = () => {
+  fontsTask ??= Promise.all([
+    ['Reverb Sans', new URL('../demos/fonts/Roboto-Regular.ttf', import.meta.url).href, '400'],
+    ['Reverb Sans', new URL('../demos/fonts/Roboto-Medium.ttf', import.meta.url).href, '500'],
+    ['Reverb Sans', new URL('../demos/fonts/Roboto-Bold.ttf', import.meta.url).href, '700'],
+    ['Reverb Mono', new URL('../demos/fonts/DroidSansMono.ttf', import.meta.url).href, '400 700'],
+  ].map(async ([family, url, weight]) => {
+    const face = new FontFace(family!, `url("${url}")`, { weight });
+    await face.load();
+    document.fonts.add(face);
+  })).then(() => {});
+  return fontsTask;
+};
 const prepareReverbTemplate = () => {
   if (preparedTemplate) return preparedTemplate;
   const parsed = new DOMParser().parseFromString(demoHtml, 'text/html');
@@ -25,7 +42,7 @@ const prepareReverbTemplate = () => {
     body.append(node.cloneNode(true));
   }
   preparedTemplate = {
-    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host') + '\n' + currentSettingsCss,
+    styleText: (parsed.querySelector('style')?.textContent ?? '').split(':root').join(':host').split('html,body').join(':host') + '\n' + [currentSettingsCss, durationWheelCss, silenceCurveCss, compressionSliderCss].join('\n'),
     body,
   };
   return preparedTemplate;
@@ -34,8 +51,9 @@ const prepareReverbTemplate = () => {
 export function preloadReverbDemoAssets(): Promise<void> {
   if (preloadTask) return preloadTask;
   if (typeof document === 'undefined') return Promise.resolve();
-  preloadTask = Promise.resolve().then(() => {
+  preloadTask = Promise.resolve().then(async () => {
     prepareReverbTemplate();
+    await preloadReverbFonts();
     warmNoiseImage ??= new Image();
     if (!warmNoiseImage.src) warmNoiseImage.src = REVERB_NOISE_URL;
   });

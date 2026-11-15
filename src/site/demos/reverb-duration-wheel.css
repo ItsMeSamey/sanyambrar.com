@@ -1,0 +1,64 @@
+/* RangeDurationWheelView uses a 160dp viewport and its own projected cylinder geometry. */
+.reverb-duration-wheel {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 160px;
+  padding: 0;
+  overflow: hidden;
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.reverb-duration-wheel-svg {
+  display: block;
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.reverb-duration-wheel-svg text {
+  font-family: "Reverb Sans",Roboto, sans-serif;
+  font-style: normal;
+  font-stretch: normal;
+  font-variant: normal;
+  letter-spacing: normal;
+  text-anchor: middle;
+  text-rendering: geometricPrecision;
+}
+.duration-wheel-number { font-size: 25px; font-weight: 400; }
+.duration-wheel-profile { font-size: 14px; font-weight: 700; }
+.duration-wheel-colon { font-size: 25px; font-weight: 700; }
+.duration-wheel-grid line,
+.duration-wheel-divider {
+  stroke: var(--outline-variant);
+  stroke-width: 1px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.duration-wheel-target {
+  position: absolute;
+  top: 0;
+  height: 160px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--on-surface);
+  outline: 0;
+  touch-action: none;
+  cursor: ns-resize;
+  -webkit-tap-highlight-color: transparent;
+}
+.phone .duration-wheel-target:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+@media (forced-colors: active) {
+  .duration-wheel-grid line,
+  .duration-wheel-divider { stroke: CanvasText; }
+  .reverb-duration-wheel-svg text { fill: CanvasText !important; }
+  .phone .duration-wheel-target:focus-visible { outline-color: Highlight; }
+}

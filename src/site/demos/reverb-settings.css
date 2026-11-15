@@ -24,9 +24,9 @@
   --secondary-container: #cfe7eb;
   --on-secondary-container: #354b50;
   --outline: #70797b;
-  --error: #ba1a1a;
-  --error-container: #ffdad6;
-  --on-error-container: #410002;
+  --error: #b3261e;
+  --error-container: #f9dedc;
+  --on-error-container: #410e0b;
   --blob-primary: #2f656d;
   --blob-tertiary: #47617b;
   --border: rgb(23 29 30 / 14%);
@@ -120,95 +120,29 @@
 .settings-inline-note { margin: 0; color: var(--on-surface-variant); font-size: 12px; line-height: 16px; }
 .settings-inline-note.error { color: var(--error); }
 .settings-feature > .settings-inline-note { padding: 8px 14px; }
-.compression-slider-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; color: var(--on-surface-variant); font-size: 12px; line-height: 16px; }
-
-.settings-feature-body input[type="range"] {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  height: 48px;
-  margin: 0;
-  padding: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: transparent;
-  accent-color: var(--primary);
-  touch-action: pan-y;
-}
-.settings-feature-body input[type="range"]::-webkit-slider-runnable-track { height: 16px; border-radius: 8px; background: var(--secondary-container); }
-.settings-feature-body input[type="range"]::-webkit-slider-thumb {
-  width: 4px;
-  height: 44px;
-  margin-top: -14px;
-  border: 0;
-  border-radius: 2px;
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--primary);
-}
-.settings-feature-body input[type="range"]::-moz-range-track { height: 16px; border: 0; border-radius: 8px; background: var(--secondary-container); }
-.settings-feature-body input[type="range"]::-moz-range-progress { height: 16px; border-radius: 8px; background: var(--primary); }
-.settings-feature-body input[type="range"]::-moz-range-thumb { width: 4px; height: 44px; border: 0; border-radius: 2px; background: var(--primary); }
-.settings-slider-labels { display: flex; justify-content: space-between; gap: 12px; color: var(--on-surface-variant); font-size: 12px; line-height: 16px; }
-#compressionValue { color: var(--on-surface); font-variant-numeric: tabular-nums; }
-
-.calibration-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
-.calibration-head > :first-child { min-width: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
-.calibration-chart { display: block; width: 100%; aspect-ratio: 350 / 220; overflow: visible; color: var(--primary); }
-.calibration-chart > svg { display: block; width: 100%; height: 100%; overflow: visible; touch-action: none; }
-.calibration-chart text { fill: var(--on-surface-variant); font: 12px/1 Roboto, system-ui, sans-serif; }
-.calibration-grid { fill: none; stroke: var(--border); stroke-width: 1; }
-.calibration-spectrum { fill: color-mix(in srgb, var(--on-surface-variant) 30%, transparent); }
-#calibrationCurve { fill: none; stroke: var(--primary); stroke-width: 2; }
-.calibration-chart circle[data-band] { fill: var(--primary); stroke: transparent; stroke-width: 16; paint-order: stroke; pointer-events: all; }
-.calibration-chart circle[data-band]:is(:focus-visible, :active) { outline: none; stroke: color-mix(in srgb, var(--primary) 25%, transparent); }
-.calibration-button,
-.quick-save-add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 8px 12px;
-  border-radius: 28px;
-  color: var(--primary);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-.calibration-button { flex: 0 0 auto; margin: 0; background: var(--surface-container-highest); }
-.calibration-button:disabled { color: var(--disabled); }
-.calibration-fit {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  min-height: 64px;
-}
-.calibration-fit > output { min-width: 52px; color: var(--on-surface); font-size: 14px; font-weight: 600; line-height: 20px; font-variant-numeric: tabular-nums; }
-.calibration-fit > label { color: var(--on-surface-variant); font-size: 12px; line-height: 16px; }
-.notification-duration { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 160px; padding: 16px 14px 24px; }
-.notification-duration > label { color: var(--on-surface-variant); font-size: 12px; line-height: 16px; }
-.notification-duration input {
-  width: 100%;
-  min-width: 0;
-  min-height: 64px;
-  padding: 8px 12px;
-  border: 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  outline: none;
-  background: transparent;
-  color: var(--on-surface);
-  text-align: center;
-  font: 400 30px/40px ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  user-select: text;
-  -webkit-user-select: text;
-}
-.notification-duration input:focus-visible { border-color: var(--primary); outline: 1px solid var(--primary); }
-.notification-duration input[aria-invalid="true"] { border-color: var(--error); color: var(--error); }
+.settings-slider-labels { display:flex; justify-content:space-between; color:var(--on-surface-variant); font-size:12px; line-height:16px; letter-spacing:.4px; }
+#silenceBody { padding:12px 16px 0; }
+.calibration-heading { font-size:14px; line-height:20px; font-weight:500; letter-spacing:.1px; }
+.calibration-hint { margin:8px 0; color:var(--on-surface-variant); font-size:12px; line-height:16px; letter-spacing:.4px; }
+.calibration-actions { display:flex; align-items:center; width:100%; margin-top:8px; }
+.calibration-button { position:relative; overflow:hidden; flex:1; height:48px; padding:8px 12px; border:0; border-radius:24px; background:color-mix(in srgb,var(--primary) 12%,transparent); color:var(--on-surface); font-size:14px; line-height:20px; font-weight:500; letter-spacing:.1px; }
+.calibration-button::before { position:absolute; inset:0; content:""; background:color-mix(in srgb,var(--primary) 22%,transparent); transform:scaleX(0); transform-origin:left; pointer-events:none; }
+.calibration-button.calibrating::before { transform:scaleX(1); transition:transform 4s linear; }
+.calibration-button.calibrating-held::before { transform:scaleX(1); transition:none; opacity:.7; }
+.calibration-dial { position:relative; flex:0 0 104px; width:104px; height:64px; max-width:33.333%; touch-action:none; }
+.calibration-dial > svg { display:block; width:100%; height:64px; overflow:visible; }
+.calibration-dial path { fill:none; stroke-width:3; stroke-linecap:round; }
+.calibration-dial-track { stroke:var(--on-surface-variant); }
+.calibration-dial-active { stroke:var(--primary); }
+.calibration-dial circle { fill:var(--primary); }
+.calibration-dial > span { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--on-surface); font-size:14px; line-height:20px; font-weight:500; letter-spacing:.1px; pointer-events:none; }
+.calibration-dial[aria-disabled="true"] .calibration-dial-track { opacity:.17647; }
+.calibration-dial[aria-disabled="true"] :is(.calibration-dial-active,circle) { opacity:.35294; }
+.calibration-dial[aria-disabled="true"] > span { opacity:.5; }
+.calibration-dial:focus-visible { outline-offset:-1px; border-radius:12px; }
+.notification-duration { display:block; height:176px; padding:8px 14px; }
+.reverb-visually-hidden { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.quick-save-add { display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; padding:8px 12px; border-radius:28px; color:var(--primary); font-size:14px; font-weight:500; line-height:20px; letter-spacing:.1px; }
 
 .quick-save-section { padding: 12px 16px; }
 .quick-save-section > :is(.setting-heading, .section-title) { display: block; padding: 0; margin: 0 0 8px; }
@@ -238,9 +172,36 @@
   .phone .segment.selected,
   .phone .switch[aria-checked="true"] { outline: 2px solid Highlight; outline-offset: -3px; }
   .phone .switch-thumb { background: ButtonText; }
-  #calibrationCurve { stroke: CanvasText; }
-  .calibration-chart circle[data-band] { fill: CanvasText; }
-  .calibration-chart circle[data-band]:focus-visible { stroke: Highlight; stroke-width: 3; }
-  .calibration-spectrum { fill: GrayText; }
-  .settings-feature-body input[type="range"] { appearance: auto; -webkit-appearance: auto; }
+  .calibration-dial-track { stroke: GrayText; }
+  .calibration-dial-active { stroke: Highlight; }
+  .calibration-dial circle { fill: Highlight; }
 }
+
+/* Typeface roles and spacing from the installed native Settings/Home source. */
+.phone { --error:#f2b8b5; --error-container:#8c1d18; --on-error-container:#f9dedc; }
+.phone .buffer-segment .label { font-size:14px; line-height:20px; font-weight:600; letter-spacing:.1px; }
+.phone .blob-time { font-family:"Reverb Mono",monospace; font-size:18px; line-height:22px; font-weight:500; letter-spacing:0; }
+.phone .blob-summary { font-family:"Reverb Mono",monospace; font-size:14px; line-height:18px; font-weight:500; letter-spacing:.5px; }
+.phone .settings-appbar h1 { font-size:22px; line-height:28px; font-weight:700; letter-spacing:0; }
+.phone :is(.setting-heading,.section-title) { font-size:19px; line-height:26px; font-weight:500; letter-spacing:0; }
+.phone .retention-label { font-size:14px; line-height:20px; letter-spacing:0; }
+.phone .retention-value { font-size:34px; line-height:40px; letter-spacing:-1.1px; }
+.phone .retention-estimate { font-size:13px; line-height:20px; letter-spacing:0; }
+.phone #wakeSwitch { width:44px; height:26px; border:0; border-radius:13px; background:var(--surface-container-high); }
+.phone #wakeSwitch .switch-thumb { width:18px; height:18px; left:4px; top:4px; background:color-mix(in srgb,var(--on-surface-variant) 84%,transparent); transform:none; }
+.phone #wakeSwitch.on { background:var(--primary); border-color:var(--primary); }
+.phone #wakeSwitch.on .switch-thumb { background:var(--on-primary); transform:translateX(18px); }
+@media (prefers-reduced-motion: reduce) { .calibration-button.calibrating::before { transition:none; } }
+
+.phone { font-family:"Reverb Sans",Roboto,sans-serif; }
+.phone :is(button,input) { font-family:inherit; }
+.phone .blob-control.live .blob-content { color:#000; }
+.phone .blob-summary { opacity:1; }
+.phone :is(.topbar,.settings-appbar) { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:129.0083333333px 339.075px; }
+.phone #homeScreen > .statusbar { background-color:var(--surface); background-image:var(--reverb-noise); background-repeat:repeat; background-size:var(--reverb-noise-size) var(--reverb-noise-size); background-position:129.0083333333px 339.075px; }
+.phone #homeScreen > .topbar { background-position:129.0083333333px calc(339.075px - var(--status-h)); }
+.phone .quick-save-section > .section-title { font-size:16px; line-height:24px; font-weight:500; letter-spacing:0; }
+
+.phone .settings-audio-group { border:0; box-shadow:inset 0 0 0 1.141666667px var(--border); }
+.phone .settings-audio-group :is(.settings-grid,.settings-feature) { border:0; box-shadow:inset 0 .380555556px var(--border); }
+.phone .settings-audio-group .settings-grid > * + * { border:0; box-shadow:inset .380555556px 0 var(--border); }

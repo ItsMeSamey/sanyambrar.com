@@ -1,7 +1,7 @@
 .article-route{--syntax-keyword:var(--site-accent);--syntax-string:var(--site-fast-color,var(--site-accent));--syntax-number:var(--site-effort-color,var(--site-accent));--syntax-comment:var(--article-muted);--article-fg:var(--site-fg,#121213);--article-line:var(--site-line,#d3d6da);--article-soft:var(--site-soft,#f6f7f8);--article-muted:color-mix(in srgb,var(--site-fg,#121213) 10%,var(--site-muted,#787c7e));--article-link:color-mix(in srgb,var(--site-fg,#121213) 72%,var(--site-effort-color,var(--site-accent,#787c7e)));--article-accent:color-mix(in srgb,var(--site-error,#ff3333) 62%,var(--site-fg,#121213));--article-text:color-mix(in srgb,var(--site-fg,#121213) 90%,var(--site-bg,#fff))}
-.article-route>main{box-sizing:border-box;min-width:0;width:min(var(--site-content-width,1080px),100%);margin:0 auto;padding:clamp(28px,4.5vw,52px) 22px 88px;overflow-wrap:anywhere}
-.article-head{padding-bottom:28px;border-bottom:1px solid var(--article-line);margin-bottom:34px}
-.article-route>main h1{max-width:20ch;font-size:clamp(34px,6.5vw,68px);font-weight:760;line-height:1.03;letter-spacing:-.055em;margin:0 0 18px;text-wrap:balance}
+.article-route>main{box-sizing:border-box;min-width:0;width:min(var(--site-content-width,1080px),100%);margin:0 auto;padding:34px clamp(16px,2.5vw,28px) 48px;overflow-wrap:anywhere}
+.article-head{margin-bottom:32px}
+.article-route>main h1{max-width:20ch;font-size:clamp(34px,5.8vw,68px);font-weight:700;line-height:1.05;letter-spacing:-.06em;margin:0 0 18px;text-wrap:balance}
 .article-route>main .dek{max-width:690px;color:var(--article-muted);font-size:17px;line-height:1.55;margin:0 0 16px}
 .article-route>main .meta{font:12px/1.45 var(--site-font,system-ui);color:var(--article-muted)}
 .article-route>main p,.article-route>main li{font-size:17px;line-height:1.72;color:var(--article-text)}
@@ -9,7 +9,7 @@
 .article-route>main>p,.article-route>main>ul,.article-route>main>ol{max-width:76ch;text-wrap:pretty}
 .article-route>main ul{margin:16px 0 22px;padding-left:22px}
 .article-route>main li+li{margin-top:8px}
-.article-route>main h2{font-size:clamp(23px,3.2vw,30px);line-height:1.2;letter-spacing:-.035em;margin:52px 0 16px;padding-top:18px;border-top:1px solid var(--article-line);text-wrap:balance}
+.article-route>main h2{font-size:clamp(23px,3.2vw,30px);font-weight:650;line-height:1.2;letter-spacing:-.035em;margin:40px 0 16px;text-wrap:balance}
 .article-route>main h3{font-size:20px;line-height:1.25;letter-spacing:-.015em;margin:34px 0 10px}
 .article-route>main code{font:.85em var(--site-mono,ui-monospace,monospace);color:var(--article-fg);background:var(--article-soft);padding:.12em .35em;border-radius:4px}
 .article-route>main pre{box-sizing:border-box;max-width:100%;overflow:auto;overscroll-behavior-inline:contain;background:color-mix(in srgb,var(--article-soft) 60%,var(--site-bg,#fff));border:1px solid var(--article-line);border-radius:8px;padding:18px 20px;font:13px/1.65 var(--site-mono,ui-monospace,monospace);tab-size:4}
@@ -34,7 +34,8 @@
 .article-route>main .article-hire>p>a:hover,#article .article-hire>p>a:hover{color:var(--article-fg)}
 .article-route>main .article-hire>p>a:focus-visible{outline:2px solid var(--site-accent,#2563eb);outline-offset:3px}
 @media(forced-colors:active){.article-route>main .article-hire{border-color:CanvasText}.article-route>main .article-hire>p>a,#article .article-hire>p>a{color:LinkText}.article-route>main .article-hire>p>a:focus-visible{outline-color:Highlight}}
-@media(max-width:700px){.article-route>main{padding:28px 12px 64px}.article-head{padding-bottom:23px;margin-bottom:26px}.article-route>main pre{padding:14px;font-size:12px}.article-route>main h2{margin-top:38px}}
+@media(max-width:700px){.article-route>main{padding-block:28px 36px}.article-head{margin-bottom:26px}.article-route>main pre{padding:14px;font-size:12px}.article-route>main h2{margin-top:34px}}
+@media(max-width:360px){.article-route>main{padding-inline:12px}}
 @media(max-width:220px){.article-route>main{padding-inline:8px}}
 .article-access-menu{box-sizing:border-box;width:220px;padding:5px;color:var(--site-fg,#121213);border:1px solid var(--site-line,#ddd);box-shadow:0 8px 24px var(--site-shadow-2)}
 .article-access-menu button{box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:9px 10px;border:0;border-radius:4px;background:transparent;color:inherit;text-align:left;font:13px/1.5 var(--site-font,system-ui);cursor:pointer}
