@@ -29,7 +29,7 @@ const CONSTRUCTION_LINE_SELECTOR = [
   '.intro-meta span + span', '.chain-live-mark',
   '.project-grid', '.project', '.home-tool-matrix', '.home-tool', '.home-writing-split', '.home-writing-read',
   '.home-writing-index', '.home-writing-link', '.fact-strip', '.fact-strip > *', '.detail-copy',
-  '.article-head', '.article-route .aside', '.article-route .viz',
+  '.article-head', '.article-route > main h2', '.article-route .aside', '.article-route .viz',
   '.reverb-demo-fullscreen-button', '.markdown-view-toggle button',
   '.cnn-demo-shell', '.cnn-controls-row', '.cnn-output-pane', '.cnn-unknown-key > b',
   '.markdown-divider', '.vditor-ir__node:is(h1,h2,h3,h4,h5,h6)',
