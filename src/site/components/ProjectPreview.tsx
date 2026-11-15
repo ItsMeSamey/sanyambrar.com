@@ -16,7 +16,7 @@ function PreviewBody(props:{entry:Entry;close:() => void}) {
       if (focused !== focusAtOpen && focused !== document.body && !panel.contains(focused)) return;
       const rect = panel.getBoundingClientRect();
       const topInset = parseFloat(getComputedStyle(panel).scrollMarginTop) || 0;
-      const leadingHeight = Math.min(rect.height, innerHeight / 2);
+      const leadingHeight = Math.min(360, innerHeight / 2);
       panel.focus({ preventScroll:true });
       if (rect.top < topInset || rect.top + leadingHeight > innerHeight) {
         panel.scrollIntoView({ block:'start', inline:'nearest', behavior:'instant' });

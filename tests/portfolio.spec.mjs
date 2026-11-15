@@ -5732,7 +5732,7 @@ test('mobile project previews reveal their controls and return focus on close', 
       >= (document.querySelector('.site-topbar')?.getBoundingClientRect().bottom ?? 0)))
       .toBe(true);
     await expect(preview.locator('.cnn-pad')).toHaveAttribute('data-cnn-runtime-ready', '');
-    await expect(preview.locator('.cnn-pad')).toBeInViewport();
+    await expect(preview.locator('.cnn-pad')).toBeInViewport({ ratio: 1 });
     await preview.getByRole('button', { name: 'Close CNN demo', exact: true }).click();
     await expect(preview).toHaveCount(0);
     await expect(trigger).toBeFocused();
