@@ -43,7 +43,10 @@ export function ensureMonacoLanguage(language: string) {
   let promise = loading.get(language);
   if (!promise) {
     const releaseLoading = globalThis.SameyLoadingBegin?.() ?? (() => {});
-    promise = resilientImport(loader).finally(releaseLoading);
+    promise = resilientImport(loader).catch(error => {
+      loading.delete(language);
+      throw error;
+    }).finally(releaseLoading);
     loading.set(language, promise);
   }
   return promise;
