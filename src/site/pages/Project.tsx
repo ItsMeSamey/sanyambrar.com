@@ -5,7 +5,6 @@ import type { ProjectDetail as ProjectDetailData } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 import { BackLink } from '../../shared/components/TopBar.tsx';
 import { PortfolioFooter, PortfolioTopBar } from '../components/SiteChrome.tsx';
-import { ProjectVisual } from '../components/ProjectVisual.tsx';
 
 function GitIcon() {
   return <svg class="project-link-icon project-link-icon-git" viewBox="0 0 24 24" aria-hidden="true">
@@ -47,9 +46,6 @@ export function ProjectPage(props:{detail:ProjectDetailData;demo?:JSX.Element}) 
         </header>
         <div class="fact-strip">{props.detail.facts.map(x => <span>{x}</span>)}</div>
         <section class="project-description"><p>{props.detail.body}</p></section>
-        <Show when={!props.detail.demo}>
-          <div class="project-detail-specimen" data-samey-construction-line><ProjectVisual href={`/projects/${props.detail.title.toLowerCase()}/`}/></div>
-        </Show>
         {props.demo}
         <Show when={props.detail.links.some(link => link !== source() && link !== fdroid())}>
           <nav class="project-related-links" aria-label="Related projects">{props.detail.links.filter(link => link !== source() && link !== fdroid()).map(link =>

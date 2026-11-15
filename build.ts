@@ -79,6 +79,8 @@ const siteRoute = (
 const PROJECT_DEMO_SOURCES = {
   "reverb-ui": "src/site/components/ReverbDemo.tsx",
   "cnn-draw": "src/site/components/CnnDemo.tsx",
+  "zhtml-parse": "src/site/components/ZhtmlDemo.tsx",
+  "oneserial-pack": "src/site/components/OneSerialDemo.tsx",
 } as const;
 const SITE_ROUTES: SiteRoute[] = [
   siteRoute("", "Sanyam Brar", "home", ["src/site/pages/Home.tsx"], true),

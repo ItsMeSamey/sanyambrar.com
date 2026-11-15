@@ -3,7 +3,7 @@ import { ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { ArrowUpRight } from '../../shared/components/Icons.tsx';
 import type { Entry } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
-import { ProjectVisual } from './ProjectVisual.tsx';
+import { createProjectPreview } from './ProjectPreview.tsx';
 
 const external = (href:string) => /^https?:/.test(href);
 
@@ -38,26 +38,26 @@ export function GameCards(props:{entries:Entry[]}) {
 }
 
 export function ProjectCards(props:{entries:Entry[]}) {
-  return <div class="project-grid">{props.entries.map(entry =>
-    <SmartLink class="project" href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>
-      <div class="project-specimen"><ProjectVisual href={entry.href}/></div>
+  const preview = createProjectPreview();
+  return <><div class="project-grid">{props.entries.map(entry =>
+    <article class="project">
       <div class="project-card-copy">
-        <div class="project-head"><h3 class="project-name">{entry.title}</h3><ArrowUpRight class="entry-arrow" aria-hidden="true"/></div>
+        <div class="project-head"><h3 class="project-name"><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></h3></div>
         <p>{entry.note}</p>
-        <EntryTags entry={entry}/>
+        <div class="project-card-foot"><EntryTags entry={entry}/>{preview.button(entry)}</div>
       </div>
-    </SmartLink>
-  )}</div>;
+    </article>
+  )}</div>{preview.panel}</>;
 }
 
 export function ProjectIndex(props:{entries:Entry[]}) {
-  return <div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
-    <SmartLink class="project-index-row" href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title} data-samey-construction-line>
-      <div class="project-index-copy"><h2>{entry.title}</h2><p>{entry.note}</p><EntryTags entry={entry}/></div>
-      <div class="project-index-specimen"><ProjectVisual href={entry.href}/></div>
-      <ArrowUpRight class="entry-arrow" aria-hidden="true"/>
-    </SmartLink>
-  )}</div>;
+  const preview = createProjectPreview();
+  return <><div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
+    <article class="project-index-row" data-samey-construction-line>
+      <div class="project-index-copy"><h2><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></h2><p>{entry.note}</p><EntryTags entry={entry}/></div>
+      {preview.button(entry)}
+    </article>
+  )}</div>{preview.panel}</>;
 }
 
 const postDate = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' });

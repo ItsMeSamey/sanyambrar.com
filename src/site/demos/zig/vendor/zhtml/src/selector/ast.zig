@@ -1,0 +1,477 @@
+const std = @import("std");
+const declaration_testing = @import("../testing.zig");
+
+test {
+    declaration_testing.refAllDeclsRecursive(@This());
+}
+const common = @import("../common.zig");
+
+pub const Int = common.IndexInt;
+
+/// Relationship between a compound and the compound to its left.
+pub const Combinator = enum(u8) {
+    none,
+    descendant,
+    child,
+    adjacent,
+    sibling,
+
+    /// Formats this combinator for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll(@tagName(self));
+    }
+};
+
+/// Attribute selector operator.
+pub const AttrOp = enum(u8) {
+    exists,
+    eq,
+    prefix,
+    suffix,
+    contains,
+    includes,
+    dash_match,
+
+    /// Formats this attribute operator for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll(@tagName(self));
+    }
+};
+
+/// Attribute value comparison case-sensitivity.
+pub const AttrCase = enum(u8) {
+    /// Existing behavior: compare value bytes exactly.
+    sensitive,
+    /// CSS `[i]` flag: compare value bytes ASCII-case-insensitively.
+    insensitive_ascii,
+
+    /// Formats this case mode for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll(@tagName(self));
+    }
+};
+
+/// Source byte range pointing into selector text.
+pub const Range = extern struct {
+    /// Starting byte offset into selector source.
+    start: Int = 0,
+    /// Number of bytes covered by this range.
+    len: Int = 0,
+
+    /// Returns empty range.
+    pub fn empty() @This() {
+        return .{ .start = 0, .len = 0 };
+    }
+
+    /// Creates range from `start..end`.
+    pub fn from(start: usize, end: usize) @This() {
+        return .{
+            .start = @intCast(start),
+            .len = @intCast(end - start),
+        };
+    }
+
+    /// Returns true when range has zero length.
+    pub fn isEmpty(self: @This()) bool {
+        return self.len == 0;
+    }
+
+    /// Returns the slice represented by this range.
+    pub fn slice(self: @This(), source: []const u8) []const u8 {
+        const s: usize = @intCast(self.start);
+        const e: usize = s + @as(usize, @intCast(self.len));
+        return source[s..e];
+    }
+
+    /// Formats this range for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("Range{{start={}, len={}}}", .{ self.start, self.len });
+    }
+};
+
+/// One parsed attribute selector predicate.
+pub const AttrSelector = extern struct {
+    /// Attribute name span inside selector source.
+    name: Range,
+    /// Comparison operator for this attribute predicate.
+    op: AttrOp = .exists,
+    /// Value comparison mode. Only meaningful for non-`exists` operators.
+    case: AttrCase = .sensitive,
+    /// Optional attribute value span used by non-`exists` operators.
+    value: Range = .{},
+
+    /// Formats this attribute selector for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll("AttrSelector{name=");
+        try self.name.format(writer);
+        try writer.print(", op={s}, case={s}, value=", .{ @tagName(self.op), @tagName(self.case) });
+        try self.value.format(writer);
+        try writer.writeAll("}");
+    }
+};
+
+/// Parsed `An+B` expression for `:nth-child`.
+pub const NthExpr = extern struct {
+    /// Coefficient `A` in `An+B`.
+    a: i32,
+    /// Constant term `B` in `An+B`.
+    b: i32,
+
+    /// Evaluates this expression for a 1-based child index.
+    pub fn matches(self: @This(), index_1based: usize) bool {
+        const a: i64 = self.a;
+        const b: i64 = self.b;
+
+        // Keep ordinary sibling positions on native i64 arithmetic. The only
+        // i64 overflow case is subtracting a negative B from an index near
+        // maxInt(i64); wider usize values also need the fallback below.
+        if (index_1based <= std.math.maxInt(i64)) {
+            const idx: i64 = @intCast(index_1based);
+            if (a == 0) return idx == b;
+            if (b >= 0 or idx <= std.math.maxInt(i64) + b) {
+                const diff = idx - b;
+                if ((diff > 0 and a < 0) or (diff < 0 and a > 0)) return false;
+                if (@rem(diff, a) != 0) return false;
+                return @divTrunc(diff, a) >= 0;
+            }
+        }
+
+        // This path is only reachable for extreme 64-bit sibling indexes. i32
+        // An+B coefficients fit comfortably in i128, so the subtraction and
+        // division cannot overflow here.
+        const idx: i128 = @intCast(index_1based);
+        const wide_a: i128 = self.a;
+        const wide_b: i128 = self.b;
+        if (wide_a == 0) return idx == wide_b;
+        const diff = idx - wide_b;
+        if ((diff > 0 and wide_a < 0) or (diff < 0 and wide_a > 0)) return false;
+        if (@rem(diff, wide_a) != 0) return false;
+        return @divTrunc(diff, wide_a) >= 0;
+    }
+
+    /// Formats this nth expression for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("NthExpr{{a={}, b={}}}", .{ self.a, self.b });
+    }
+};
+
+/// Supported pseudo classes.
+pub const PseudoKind = enum(u8) {
+    first_child,
+    last_child,
+    nth_child,
+
+    /// Formats this pseudo kind for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll(@tagName(self));
+    }
+};
+
+/// One parsed pseudo predicate.
+pub const Pseudo = extern struct {
+    /// Pseudo-class kind.
+    kind: PseudoKind,
+    /// `:nth-child` payload; ignored by non-nth pseudos.
+    nth: NthExpr = .{ .a = 0, .b = 1 },
+
+    /// Formats this pseudo selector for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("Pseudo{{kind={s}, nth=", .{@tagName(self.kind)});
+        try self.nth.format(writer);
+        try writer.writeAll("}");
+    }
+};
+
+/// Supported simple selectors inside `:not(...)`.
+pub const NotKind = enum(u8) {
+    tag,
+    id,
+    class,
+    attr,
+
+    /// Formats this not-kind for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.writeAll(@tagName(self));
+    }
+};
+
+/// One parsed simple `:not(...)` predicate.
+pub const NotSimple = extern struct {
+    /// Simple-selector kind wrapped by `:not(...)`.
+    kind: NotKind,
+    /// Source span for tag/id/class payloads.
+    text: Range = .{},
+    /// Parsed attribute payload when `kind == .attr`.
+    attr: AttrSelector = .{ .name = .{}, .op = .exists, .value = .{} },
+
+    /// Formats this `:not` predicate for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("NotSimple{{kind={s}, text=", .{@tagName(self.kind)});
+        try self.text.format(writer);
+        try writer.writeAll(", attr=");
+        try self.attr.format(writer);
+        try writer.writeAll("}");
+    }
+};
+
+/// One selector compound (tag/id/class/attr/pseudo/not + combinator).
+pub const Compound = extern struct {
+    /// Relationship to the compound immediately on the left.
+    combinator: Combinator = .none,
+    /// Saturated count (0..3) of predicates that require attribute values.
+    /// Stored in existing struct padding so it does not increase `Compound` size.
+    value_attr_count: u8 = 0,
+
+    /// Optional tag-name payload.
+    tag: Range = .{},
+    /// Cached lowercase first-8-byte key for `tag`.
+    tag_key: u64 = 0,
+    /// Optional `#id` payload.
+    id: Range = .{},
+
+    /// Start index into `Selector.classes`.
+    class_start: Int = 0,
+    /// Number of class predicates in this compound.
+    class_len: Int = 0,
+
+    /// Start index into `Selector.attrs`.
+    attr_start: Int = 0,
+    /// Number of attribute predicates in this compound.
+    attr_len: Int = 0,
+
+    /// Start index into `Selector.pseudos`.
+    pseudo_start: Int = 0,
+    /// Number of pseudo-class predicates in this compound.
+    pseudo_len: Int = 0,
+
+    /// Start index into `Selector.not_items`.
+    not_start: Int = 0,
+    /// Number of `:not(...)` predicates in this compound.
+    not_len: Int = 0,
+
+    pub fn hasTag(self: @This()) bool {
+        return !self.tag.isEmpty();
+    }
+
+    pub fn hasId(self: @This()) bool {
+        return !self.id.isEmpty();
+    }
+
+    /// Formats this compound selector for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("Compound{{combinator={s}, tag=", .{@tagName(self.combinator)});
+        try self.tag.format(writer);
+        try writer.print(", tag_key={}, id=", .{self.tag_key});
+        try self.id.format(writer);
+        try writer.print(
+            ", class_start={}, class_len={}, attr_start={}, attr_len={}, pseudo_start={}, pseudo_len={}, not_start={}, not_len={}}}",
+            .{
+                self.class_start,
+                self.class_len,
+                self.attr_start,
+                self.attr_len,
+                self.pseudo_start,
+                self.pseudo_len,
+                self.not_start,
+                self.not_len,
+            },
+        );
+    }
+};
+
+/// One comma-separated selector group.
+pub const Group = extern struct {
+    /// Start index into `Selector.compounds`.
+    compound_start: Int,
+    /// Number of compounds in this selector group.
+    compound_len: Int,
+
+    /// Formats this selector group for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print("Group{{compound_start={}, compound_len={}}}", .{ self.compound_start, self.compound_len });
+    }
+};
+
+/// Compiled selector used by matcher/query APIs.
+pub const Selector = struct {
+    /// Owned or borrowed selector source text.
+    source: []const u8,
+    /// True when slices were allocated by runtime compilation.
+    runtime_owned: bool = false,
+    /// Opaque nonzero identity for runtime-compiled selectors. Reusable
+    /// matcher workspaces use this instead of allocation addresses, which may
+    /// be recycled after a selector is released. Compile-time selectors keep 0.
+    cache_id: u64 = 0,
+    /// Comma-separated selector groups.
+    groups: []const Group,
+    /// Flattened compound list referenced by `groups`.
+    compounds: []const Compound,
+    /// Flattened class selector payloads referenced by compounds.
+    classes: []const Range,
+    /// Flattened attribute selector payloads referenced by compounds.
+    attrs: []const AttrSelector,
+    /// Flattened pseudo selector payloads referenced by compounds.
+    pseudos: []const Pseudo,
+    /// Flattened `:not(...)` payloads referenced by compounds.
+    not_items: []const NotSimple,
+
+    /// Compiles a selector at comptime with compile-time diagnostics.
+    pub fn compile(comptime source: []const u8) @This() {
+        return comptime @import("compile_time.zig").compileImpl(source);
+    }
+
+    /// Compiles a selector at runtime.
+    pub fn compileRuntime(allocator: std.mem.Allocator, source: []const u8) @import("runtime.zig").Error!@This() {
+        return @import("runtime.zig").compileRuntimeImpl(allocator, source);
+    }
+
+    /// Releases memory owned by runtime-compiled selector.
+    pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
+        if (!self.runtime_owned) {
+            self.* = undefined;
+            return;
+        }
+        allocator.free(@constCast(self.source));
+        allocator.free(self.groups);
+        allocator.free(self.compounds);
+        allocator.free(self.classes);
+        allocator.free(self.attrs);
+        allocator.free(self.pseudos);
+        allocator.free(self.not_items);
+        self.* = undefined;
+    }
+
+    /// Formats this selector summary for human-readable output.
+    pub fn format(self: @This(), writer: *std.Io.Writer) std.Io.Writer.Error!void {
+        try writer.print(
+            "Selector{{source=\"{s}\", groups={}, compounds={}, classes={}, attrs={}, pseudos={}, not_items={}}}",
+            .{
+                self.source,
+                self.groups.len,
+                self.compounds.len,
+                self.classes.len,
+                self.attrs.len,
+                self.pseudos.len,
+                self.not_items.len,
+            },
+        );
+    }
+};
+
+test "NthExpr handles full index and i32 coefficient ranges without overflow" {
+    try std.testing.expect((NthExpr{ .a = 1, .b = std.math.minInt(i32) }).matches(1));
+    try std.testing.expect((NthExpr{ .a = std.math.maxInt(i32), .b = std.math.minInt(i32) }).matches(2_147_483_646));
+    try std.testing.expect(!(NthExpr{ .a = -1, .b = std.math.maxInt(i32) }).matches(@as(usize, std.math.maxInt(i32)) + 1));
+
+    if (comptime @bitSizeOf(usize) > 63) {
+        const i64_max: usize = @intCast(std.math.maxInt(i64));
+        try std.testing.expect((NthExpr{ .a = 1, .b = std.math.minInt(i32) }).matches(i64_max));
+        try std.testing.expect((NthExpr{ .a = 1, .b = 0 }).matches(i64_max + 1));
+        try std.testing.expect(!(NthExpr{ .a = -1, .b = std.math.maxInt(i32) }).matches(i64_max + 1));
+    }
+}
+
+test "format selector AST types" {
+    const alloc = std.testing.allocator;
+
+    const combinator_out = try std.fmt.allocPrint(alloc, "{f}", .{Combinator.child});
+    defer alloc.free(combinator_out);
+    try std.testing.expectEqualStrings("child", combinator_out);
+
+    const op_out = try std.fmt.allocPrint(alloc, "{f}", .{AttrOp.prefix});
+    defer alloc.free(op_out);
+    try std.testing.expectEqualStrings("prefix", op_out);
+
+    const range = Range.from(2, 5);
+    const range_out = try std.fmt.allocPrint(alloc, "{f}", .{range});
+    defer alloc.free(range_out);
+    try std.testing.expectEqualStrings("Range{start=2, len=3}", range_out);
+
+    const value_range = Range.from(6, 9);
+    const attr_sel: AttrSelector = .{
+        .name = range,
+        .op = .prefix,
+        .value = value_range,
+    };
+    const attr_out = try std.fmt.allocPrint(alloc, "{f}", .{attr_sel});
+    defer alloc.free(attr_out);
+    try std.testing.expectEqualStrings("AttrSelector{name=Range{start=2, len=3}, op=prefix, case=sensitive, value=Range{start=6, len=3}}", attr_out);
+
+    const nth: NthExpr = .{ .a = 2, .b = 1 };
+    const nth_out = try std.fmt.allocPrint(alloc, "{f}", .{nth});
+    defer alloc.free(nth_out);
+    try std.testing.expectEqualStrings("NthExpr{a=2, b=1}", nth_out);
+
+    const pseudo_kind_out = try std.fmt.allocPrint(alloc, "{f}", .{PseudoKind.nth_child});
+    defer alloc.free(pseudo_kind_out);
+    try std.testing.expectEqualStrings("nth_child", pseudo_kind_out);
+
+    const pseudo: Pseudo = .{ .kind = .nth_child, .nth = nth };
+    const pseudo_out = try std.fmt.allocPrint(alloc, "{f}", .{pseudo});
+    defer alloc.free(pseudo_out);
+    try std.testing.expectEqualStrings("Pseudo{kind=nth_child, nth=NthExpr{a=2, b=1}}", pseudo_out);
+
+    const not_kind_out = try std.fmt.allocPrint(alloc, "{f}", .{NotKind.class});
+    defer alloc.free(not_kind_out);
+    try std.testing.expectEqualStrings("class", not_kind_out);
+
+    const not_simple: NotSimple = .{
+        .kind = .class,
+        .text = Range.from(1, 4),
+        .attr = attr_sel,
+    };
+    const not_out = try std.fmt.allocPrint(alloc, "{f}", .{not_simple});
+    defer alloc.free(not_out);
+    try std.testing.expectEqualStrings(
+        "NotSimple{kind=class, text=Range{start=1, len=3}, attr=AttrSelector{name=Range{start=2, len=3}, op=prefix, case=sensitive, value=Range{start=6, len=3}}}",
+        not_out,
+    );
+
+    const compound: Compound = .{
+        .combinator = .child,
+        .tag = Range.from(0, 3),
+        .tag_key = 0xabc,
+        .id = Range.from(4, 6),
+        .class_start = 1,
+        .class_len = 2,
+        .attr_start = 3,
+        .attr_len = 4,
+        .pseudo_start = 5,
+        .pseudo_len = 6,
+        .not_start = 7,
+        .not_len = 8,
+    };
+    const compound_out = try std.fmt.allocPrint(alloc, "{f}", .{compound});
+    defer alloc.free(compound_out);
+    try std.testing.expectEqualStrings(
+        "Compound{combinator=child, tag=Range{start=0, len=3}, tag_key=2748, id=Range{start=4, len=2}, class_start=1, class_len=2, attr_start=3, attr_len=4, pseudo_start=5, pseudo_len=6, not_start=7, not_len=8}",
+        compound_out,
+    );
+
+    const group: Group = .{ .compound_start = 0, .compound_len = 2 };
+    const group_out = try std.fmt.allocPrint(alloc, "{f}", .{group});
+    defer alloc.free(group_out);
+    try std.testing.expectEqualStrings("Group{compound_start=0, compound_len=2}", group_out);
+
+    const groups = [_]Group{group};
+    const compounds = [_]Compound{compound};
+    const classes = [_]Range{range};
+    const attrs = [_]AttrSelector{attr_sel};
+    const pseudos = [_]Pseudo{pseudo};
+    const not_items = [_]NotSimple{not_simple};
+    const selector: Selector = .{
+        .source = "div.cls",
+        .groups = groups[0..],
+        .compounds = compounds[0..],
+        .classes = classes[0..],
+        .attrs = attrs[0..],
+        .pseudos = pseudos[0..],
+        .not_items = not_items[0..],
+    };
+    const selector_out = try std.fmt.allocPrint(alloc, "{f}", .{selector});
+    defer alloc.free(selector_out);
+    try std.testing.expectEqualStrings(
+        "Selector{source=\"div.cls\", groups=1, compounds=1, classes=1, attrs=1, pseudos=1, not_items=1}",
+        selector_out,
+    );
+}

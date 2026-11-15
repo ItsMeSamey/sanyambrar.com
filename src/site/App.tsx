@@ -1,11 +1,11 @@
 import { navigationState, readNavigationIndex } from '../shared/history.ts';
-import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled, type Component } from 'solid-js';
-import { Dynamic } from '@solidjs/web';
+import { Errored, Match, Show, Loading, Switch, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
 import { TopBar } from '../shared/components/TopBar.tsx';
 import { animateRootSwap } from '../shared/transitions.ts';
 import { formatThrownError } from '../shared/error.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
 import { details } from './data';
+import { ProjectDemo, preloadProjectDemo } from './components/ProjectDemo.tsx';
 
 const rawLoaders = {
   home: () => resilientImport(() => import('./pages/Home')),
@@ -35,38 +35,6 @@ const Work = lazy(() => loadModule('work'), { export: 'Work' });
 const Tools = lazy(() => loadModule('tools'), { export: 'ToolsPage' });
 const Chain = lazy(() => loadModule('chain'), { export: 'ChainPage' });
 const Project = lazy(() => loadModule('project'), { export: 'ProjectPage' });
-let reverbDemoTask: Promise<typeof import('./components/ReverbDemo.tsx')> | undefined;
-let reverbDemoComponent: Component | undefined;
-const loadReverbDemo = () => {
-  reverbDemoTask ??= resilientImport(() => import('./components/ReverbDemo.tsx')).catch(error => {
-    reverbDemoTask = undefined;
-    throw error;
-  }).then(module => {
-    reverbDemoComponent = module.ReverbDemo;
-    return module;
-  });
-  return reverbDemoTask;
-};
-let cnnDemoTask: Promise<typeof import('./components/CnnDemo.tsx')> | undefined;
-let cnnDemoComponent: Component | undefined;
-const loadCnnDemo = () => {
-  cnnDemoTask ??= resilientImport(() => import('./components/CnnDemo.tsx')).catch(error => {
-    cnnDemoTask = undefined;
-    throw error;
-  }).then(module => {
-    cnnDemoComponent = module.CnnDemo;
-    return module;
-  });
-  return cnnDemoTask;
-};
-const ReverbDemoLazy = lazy(loadReverbDemo, { export: 'ReverbDemo' });
-const CnnDemoLazy = lazy(loadCnnDemo, { export: 'CnnDemo' });
-const ReverbDemo = () => reverbDemoComponent
-  ? <Dynamic component={reverbDemoComponent}/>
-  : <ReverbDemoLazy/>;
-const CnnDemo = () => cnnDemoComponent
-  ? <Dynamic component={cnnDemoComponent}/>
-  : <CnnDemoLazy/>;
 const Blog = lazy(() => loadModule('blog'), { export: 'Blog' });
 
 const preloadLazyRoute = (kind: RouteKind) => ({
@@ -101,7 +69,7 @@ export const ownsSiteRoute = (url: URL) => routeFromUrl(url) != null;
 const sameDocumentHash = (url: URL) => cleanPath(url.pathname) === cleanPath(location.pathname) && url.search === location.search && !!url.hash;
 const usesDocumentNavigation = (route: Route) => route.kind === 'project'
   && !!route.slug
-  && (details[route.slug]?.demo === 'reverb-ui' || details[route.slug]?.demo === 'cnn-draw');
+  && !!details[route.slug]?.demo;
 const hashTarget = (url: URL) => {
   if (!url.hash) return '';
   try { return decodeURIComponent(url.hash.slice(1)); } catch { return url.hash.slice(1); }
@@ -189,13 +157,7 @@ const preloadRouteDependencies = async (route: Route) => {
   if (route.kind === 'chain') await module.preloadChainEngine?.();
   if (route.kind !== 'project' || !route.slug) return;
   const demo = details[route.slug]?.demo;
-  if (demo === 'reverb-ui') {
-    const reverb = await loadReverbDemo();
-    await reverb.preloadReverbDemoAssets?.();
-  } else if (demo === 'cnn-draw') {
-    const cnn = await loadCnnDemo();
-    await cnn.preloadCnnDemoAssets?.();
-  }
+  if (demo) await preloadProjectDemo(demo);
 };
 const prepareSiteRoute = async (route: Route) => {
   const styles = prepareRouteStyles(route);
@@ -556,10 +518,7 @@ export function App(props: { initialUrl?: string } = {}) {
               <div class="site-route site-standard">
                 <Project
                   detail={detail}
-                  demo={<>
-                    <Show when={detail.demo === 'reverb-ui'}><ReverbDemo/></Show>
-                    <Show when={detail.demo === 'cnn-draw'}><CnnDemo/></Show>
-                  </>}
+                  demo={<Show when={detail.demo}>{id => <ProjectDemo id={id()}/>}</Show>}
                 />
               </div>
             }</Show>

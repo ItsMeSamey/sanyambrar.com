@@ -8,7 +8,7 @@ My personal site, plus a pile of small games and tools. It ships as static files
 
 | | |
 |---|---|
-| **Games** | Wordle, Keybr, Chain Reaction |
+| **Games** | Wordle, Keybr, Chain Reaction, Afterimage |
 | **Tools** | Live diff, Markdown preview, text inspector, encoders, converters |
 | **Work** | Projects and open-source work |
 | **Writing** | Notes and longer technical posts |
@@ -33,6 +33,8 @@ Most pages share the same shell for navigation, themes, search, transitions, con
 The site, Wordle and Keybr share Solid 2 RC and the same Vite compiler. `solid-js` and `@solidjs/web` are pinned to `2.0.0-rc.13`; `@kobalte/core` uses `2.0.0-alpha.2`, with package overrides keeping Solid core, web, and signals on the same RC. Larger editors and demos load only when opened.
 
 Diff uses one editable Monaco DiffEditor. Monaco owns line alignment, gap zones, and character-level highlighting. It is used without dependency patches.
+
+Project demos open on demand from Home, Work, or their own pages. CNN runs its model in WebAssembly; zhtml and OneSerial run their pinned Zig libraries in bounded workers. Reverb demonstrates the current app UI with sample audio history. Engine sources, licenses and rebuild instructions are in [the demo sources](src/site/demos/zig/README.md); `bun run test:projects` checks the shipped engine and worker lifecycle.
 
 ## Chain Reaction opponents
 

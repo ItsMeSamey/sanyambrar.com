@@ -1,0 +1,45 @@
+const std = @import("std");
+const declaration_testing = @import("../testing.zig");
+
+test {
+    declaration_testing.refAllDeclsRecursive(@This());
+}
+const ast = @import("ast.zig");
+
+pub fn expectAllAttributeOps(sel: anytype) !void {
+    try std.testing.expectEqual(@as(usize, 1), sel.groups.len);
+    try std.testing.expectEqual(@as(usize, 1), sel.compounds.len);
+
+    const comp = sel.compounds[0];
+    try std.testing.expectEqual(@as(ast.Int, 7), comp.attr_len);
+    try std.testing.expect(sel.attrs[comp.attr_start + 0].op == .exists);
+    try std.testing.expect(sel.attrs[comp.attr_start + 1].op == .eq);
+    try std.testing.expect(sel.attrs[comp.attr_start + 2].op == .prefix);
+    try std.testing.expect(sel.attrs[comp.attr_start + 3].op == .suffix);
+    try std.testing.expect(sel.attrs[comp.attr_start + 4].op == .contains);
+    try std.testing.expect(sel.attrs[comp.attr_start + 5].op == .includes);
+    try std.testing.expect(sel.attrs[comp.attr_start + 6].op == .dash_match);
+}
+
+pub fn expectAttributeCaseFlags(sel: anytype) !void {
+    try std.testing.expectEqual(@as(usize, 1), sel.groups.len);
+    try std.testing.expectEqual(@as(usize, 1), sel.compounds.len);
+
+    const comp = sel.compounds[0];
+    try std.testing.expectEqual(@as(ast.Int, 3), comp.attr_len);
+    try std.testing.expect(sel.attrs[comp.attr_start + 0].case == .sensitive);
+    try std.testing.expect(sel.attrs[comp.attr_start + 1].case == .insensitive_ascii);
+    try std.testing.expect(sel.attrs[comp.attr_start + 2].case == .sensitive);
+}
+
+pub fn expectCombinatorChain(sel: anytype) !void {
+    try std.testing.expectEqual(@as(usize, 2), sel.groups.len);
+    try std.testing.expectEqual(@as(usize, 6), sel.compounds.len);
+
+    try std.testing.expect(sel.compounds[0].combinator == .none);
+    try std.testing.expect(sel.compounds[1].combinator == .descendant);
+    try std.testing.expect(sel.compounds[2].combinator == .child);
+    try std.testing.expect(sel.compounds[3].combinator == .adjacent);
+    try std.testing.expect(sel.compounds[4].combinator == .sibling);
+    try std.testing.expect(sel.compounds[5].combinator == .none);
+}
