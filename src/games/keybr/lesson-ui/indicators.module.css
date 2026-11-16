@@ -5,15 +5,16 @@
 }
 
 .name {
-  
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
   min-inline-size: 0;
-  inline-size: min(10rem, 40%);
+  flex: 0 0 auto;
+  inline-size: min(10em, 40%);
   padding-inline-end: 1rem;
   text-align: end;
+  overflow-wrap: anywhere;
+}
+
+.row > .name {
+  white-space: normal;
 }
 
 .value {
@@ -49,7 +50,7 @@
   }
 
   .keySetRow .name {
-    inline-size: min(8rem, 40%);
+    inline-size: min(8em, 40%);
     padding-inline-end: 0.5rem;
   }
 }

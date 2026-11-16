@@ -1,3 +1,4 @@
 .indicators {
   padding-block-start: 1rem;
+  font-size: max(12px, 1rem);
 }
