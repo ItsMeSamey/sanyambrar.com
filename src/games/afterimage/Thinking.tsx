@@ -5,15 +5,16 @@ import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { acceptsAnswer, arithmeticPoints, colorNames, createQuestionFactory, inkColors, points, protocol, rotation, secondsLeft, type Question, type RotationQuestion, type ThinkingMode } from './thinking-core.ts';
 import type { Cell } from './thinking-shapes.ts';
+import { arrowDirection, rotationDescription } from './thinking-description.ts';
 import './thinking.css';
 
-function Shape(props: { cells: readonly Cell[]; angle: number; mirrored?: boolean }) {
+function Shape(props: { name: string; cells: readonly Cell[]; angle: number; mirrored?: boolean }) {
   const width = () => Math.max(...props.cells.map(([x]) => x)) + 1;
   const height = () => Math.max(...props.cells.map(([, y]) => y)) + 1;
-  return <svg viewBox="0 0 120 120" role="img" aria-label="Eight-square shape"><g transform={`translate(60 60) rotate(${props.angle}) scale(${props.mirrored ? -1 : 1} 1)`} fill="currentColor"><For each={props.cells}>{([x, y]) => <rect x={(x - width() / 2) * 16} y={(y - height() / 2) * 16} width="16" height="16"/>}</For></g></svg>;
+  return <svg viewBox="0 0 120 120" role="img" aria-label={`${props.name} shape. ${rotationDescription(props.cells, props.angle, props.mirrored)}`}><g transform={`translate(60 60) rotate(${props.angle}) scale(${props.mirrored ? -1 : 1} 1)`} fill="currentColor"><For each={props.cells}>{([x, y]) => <rect x={(x - width() / 2) * 16} y={(y - height() / 2) * 16} width="16" height="16"/>}</For></g></svg>;
 }
 function RotationView(props: { question: RotationQuestion }) {
-  return <div class="ai-thinking-shapes"><figure><Shape cells={props.question.original} angle={props.question.referenceAngle}/><figcaption>Original</figcaption></figure><figure><Shape cells={props.question.comparison} angle={props.question.referenceAngle + props.question.angle} mirrored={props.question.mirrored}/><figcaption>Compare</figcaption></figure></div>;
+  return <div class="ai-thinking-shapes"><figure><Shape name="Original" cells={props.question.original} angle={props.question.referenceAngle}/><figcaption>Original</figcaption></figure><figure><Shape name="Compare" cells={props.question.comparison} angle={props.question.referenceAngle + props.question.angle} mirrored={props.question.mirrored}/><figcaption>Compare</figcaption></figure></div>;
 }
 function Arrow(props: { angle: number }) {
   return <svg viewBox="0 0 120 120" aria-hidden="true"><g transform={`translate(60 60) rotate(${props.angle})`}><path d="M-30-9H8V-26L34 0 8 26V9H-30Z" fill="currentColor"/></g></svg>;
@@ -22,11 +23,12 @@ function Prompt(props: { question: Question }) {
   const sequence = () => props.question.type === 'patterns' ? props.question.values : [];
   const word = () => props.question.type === 'stroop' ? colorNames[props.question.printed].toUpperCase() : '';
   const ink = () => props.question.type === 'stroop' ? inkColors[props.question.correct] : '';
+  const inkName = () => props.question.type === 'stroop' ? colorNames[props.question.correct] : '';
   const equation = () => props.question.type === 'arithmetic' ? `${props.question.a} ${props.question.operator} ${props.question.b}` : '';
   return <Switch>
     <Match when={props.question.type === 'rotation'}><RotationView question={props.question as RotationQuestion}/></Match>
     <Match when={props.question.type === 'patterns'}><p class="ai-thinking-sequence"><For each={sequence()}>{value => <><span>{value}</span><span aria-hidden="true">→</span></>}</For><span>?</span></p></Match>
-    <Match when={props.question.type === 'stroop'}><p class="ai-thinking-word" style={{ color: ink() }}>{word()}</p></Match>
+    <Match when={props.question.type === 'stroop'}><p class="ai-thinking-word" role="img" aria-label={`Printed word: ${word()}. Ink colour: ${inkName()}.`} style={{ color: ink() }}>{word()}</p></Match>
     <Match when={props.question.type === 'arithmetic'}><p class="ai-thinking-equation">{equation()}</p></Match>
   </Switch>;
 }
@@ -114,7 +116,7 @@ export function ThinkingGame(props: GameProps) {
     if (question.type === 'rotation') return ['Same shape', 'Mirrored shape', 'Changed shape'];
     if (question.type === 'patterns') return question.options.map(String);
     if (question.type === 'stroop') return colorNames;
-    if (question.type === 'search') return question.angles.map((_, i) => `Row ${Math.floor(i / 4) + 1}, column ${i % 4 + 1}`);
+    if (question.type === 'search') return question.angles.map((angle, i) => `Row ${Math.floor(i / 4) + 1}, column ${i % 4 + 1}, arrow pointing ${arrowDirection(angle)}`);
     return [];
   };
   const answerState = (index: number) => {

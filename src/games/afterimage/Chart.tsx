@@ -1,8 +1,8 @@
-import { createEffect, createSignal, For } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { ChevronLeft, ChevronRight, X } from '../../shared/components/Icons.tsx';
-import { chartLabel, chartPosition, type ChartScale } from './chart-model.ts';
+import { chartAxis, chartAxisNote, chartGutter, chartPosition, type ChartScale } from './chart-model.ts';
 
 /** Keep SVG labels and hit targets in CSS pixels at every viewport width. */
 export function useChartWidth() {
@@ -21,13 +21,17 @@ export function useChartWidth() {
 }
 
 export function ChartGrid(props: { scale: ChartScale; width: number; top: number; bottom: number; left?: number; percent?: boolean }) {
-  const left = () => props.left ?? 44;
+  const left = () => props.left ?? chartGutter(props.scale, props.percent);
   const y = (value: number) => chartPosition(value, props.scale, props.bottom, props.top);
-  return <g class="ai-chart-grid" aria-hidden="true"><For each={props.scale.ticks}>{value => <g><path d={`M${left()} ${y(value)}H${props.width - 16}`}/><text x={left() - 9} y={y(value)} dominant-baseline="middle" text-anchor="end">{chartLabel(value)}{props.percent ? '%' : ''}</text></g>}</For></g>;
+  return <g class="ai-chart-grid" aria-hidden="true"><For each={props.scale.ticks}>{(value, index) => <g><path d={`M${left()} ${y(value)}H${props.width - 16}`}/><text x={left() - 9} y={y(value)} dominant-baseline="middle" text-anchor="end">{chartAxis(props.scale).labels[index()]}{props.percent ? '%' : ''}</text></g>}</For></g>;
 }
 
-export function ChartAxes(props: { width: number; horizontal: string; vertical: string }) {
-  return <g class="ai-chart-labels" aria-hidden="true"><text x="44" y="12">{props.vertical}</text><text x={(44 + props.width - 16) / 2} y="224" text-anchor="middle">{props.horizontal}</text></g>;
+export function ChartScaleNote(props: { scale: ChartScale; unit: string }) {
+  return <Show when={chartAxisNote(props.scale)}>{note => <p class="ai-chart-scale-note">{props.unit} = {note()}</p>}</Show>;
+}
+
+export function ChartAxes(props: { width: number; horizontal: string; vertical: string; left?: number }) {
+  return <g class="ai-chart-labels" aria-hidden="true"><text x={props.left ?? 44} y="12">{props.vertical}</text><text x={((props.left ?? 44) + props.width - 16) / 2} y="224" text-anchor="middle">{props.horizontal}</text></g>;
 }
 
 export function ChartDetail(props: { children: JSX.Element; previous?: () => void; next?: () => void; close: () => void }) {

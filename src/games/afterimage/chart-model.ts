@@ -9,11 +9,13 @@ export function chartScale(values: readonly number[], fromZero = false): ChartSc
   const upper = fromZero ? Math.max(0, highest + padding) : highest + padding;
   const magnitude = 10 ** Math.floor(Math.log10((upper - lower) / 4));
   const step = ([1, 2, 2.5, 5, 10].find(value => value * magnitude >= (upper - lower) / 4) ?? 10) * magnitude;
-  const min = Math.floor(lower / step) * step, max = Math.ceil(upper / step) * step;
+  const min = Math.min(lowest, Math.floor(lower / step) * step), max = Math.max(highest, Math.ceil(upper / step) * step);
   if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) || step <= 0) {
     return { min: lowest, max: highest, ticks: lowest === highest ? [lowest] : [lowest, highest] };
   }
-  return { min, max, ticks: Array.from({ length: Math.round((max - min) / step) + 1 }, (_, index) => Number((min + index * step).toPrecision(12))) };
+  const intervals = Math.max(1, Math.round((max - min) / step));
+  const ticks = [...new Set(Array.from({ length: intervals + 1 }, (_, index) => index === intervals ? max : Math.min(max, min + index * step)))];
+  return { min, max, ticks };
 }
 
 export function chartPosition(value: number, scale: ChartScale, start: number, end: number) {
@@ -25,7 +27,45 @@ export function chartPosition(value: number, scale: ChartScale, start: number, e
 
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumSignificantDigits: 12 });
 const decimal = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 12 });
-export const chartLabel = (value: number) => Math.abs(value) >= 10000 ? compact.format(value) : decimal.format(value);
+export function chartLabel(value: number) {
+  const magnitude = Math.abs(value);
+  const scientific = () => {
+    let [coefficient, exponent] = value.toExponential(2).split('e');
+    if (!Number.isFinite(Number(`${coefficient}e${exponent}`))) {
+      const exact = value.toExponential().split('e');
+      coefficient = String(Math.trunc(Number(exact[0]) * 100) / 100);
+      exponent = exact[1];
+    }
+    return `${Number(coefficient)}e${Number(exponent)}`;
+  };
+  // Compact notation stops abbreviating above trillions; significant digits alone
+  // also leave hundreds of leading zeroes for subnormal imported scores.
+  if (magnitude >= 1e9 || magnitude > 0 && magnitude < 0.001) return scientific();
+  const label = magnitude >= 10000 ? compact.format(value) : decimal.format(value);
+  return label.length > 8 ? scientific() : label;
+}
+
+/** Reserve room for bounded labels at the chart's native 11px text size. */
+export function chartLabelWidth(scale: ChartScale, percent = false) {
+  return Math.max(0, ...chartAxis(scale).labels.map(label => (label.length + Number(percent)) * 7));
+}
+
+export const chartGutter = (scale: ChartScale, percent = false) => Math.max(44, chartLabelWidth(scale, percent) + 16);
+
+export function chartAxis(scale: ChartScale): { labels: string[]; offset?: number; multiplier?: number } {
+  const labels = scale.ticks.map(chartLabel);
+  if (new Set(labels).size === labels.length) return { labels };
+  const offset = scale.ticks[0];
+  const span = scale.ticks.at(-1)! - offset;
+  const multiplier = 10 ** Math.floor(Math.log10(span)) || Number.MIN_VALUE;
+  // Subtract before dividing so close, large values retain their differences.
+  return { labels: scale.ticks.map(value => chartLabel((value - offset) / multiplier)), offset, multiplier };
+}
+
+export function chartAxisNote(scale: ChartScale) {
+  const axis = chartAxis(scale);
+  return axis.offset === undefined ? undefined : `${axis.offset} + tick${axis.multiplier === 1 ? '' : ` × ${axis.multiplier}`}`;
+}
 
 export function nearestChartIndex(position: number, start: number, end: number, count: number) {
   if (count <= 0) return null;
