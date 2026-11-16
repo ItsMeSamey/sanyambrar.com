@@ -1,4 +1,4 @@
-import { Errored, For, Loading, Show, createMemo, createSignal, lazy, onSettled } from 'solid-js';
+import { Errored, For, Loading, Show, createMemo, createSignal, lazy, onSettled, untrack } from 'solid-js';
 import * as Select from '@kobalte/core/select';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Trash2, X } from '../../shared/components/Icons.tsx';
@@ -15,7 +15,6 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   const [clearConfirm, setClearConfirm] = createSignal(false);
   const [revision, setRevision] = createSignal(0);
   const [failure, setFailure] = createSignal('');
-  const [boardFormat, setBoardFormat] = createSignal<'standard' | 'compact'>('compact');
   let chart: SVGSVGElement | undefined;
   let detail: HTMLDivElement | undefined;
   const geometry = useChartWidth();
@@ -23,13 +22,26 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   const scope = () => chosen()?.active === activeScope() ? chosen()!.value : activeScope();
   const hovered = () => hover()?.scope === scope() ? hover()!.index : null;
   const setHovered = (index: number | null) => setHover(index === null ? null : { scope: scope(), index });
+  const choices = createMemo(() => {
+    void props.revision; void revision();
+    const fallback: [string, string][] = [[activeScope(), 'Current results']];
+    try { return { options: scopeChoices(props.id, activeScope()), error: '' }; }
+    catch { return { options: fallback, error: 'Saved scores could not be read. Export a backup before changing browser storage.' }; }
+  });
+  const options = createMemo(() => choices().options.map(([value, label]) => ({ value, label })));
   const data = createMemo(() => {
     void props.revision; void revision();
-    let options: [string, string][] = [[scope(), 'Current results']];
-    try { options = scopeChoices(props.id, props.latestScope || initialScope(props.id)); return { rows: readHistory(scope()), options, error: '' }; }
-    catch { return { rows: [], options, error: 'Saved scores could not be read. Export a backup before changing browser storage.' }; }
+    try { return { rows: readHistory(scope()), error: '' }; }
+    catch { return { rows: [], error: 'Saved scores could not be read. Export a backup before changing browser storage.' }; }
   });
-  const options = createMemo(() => data().options.map(([value, label]) => ({ value, label })));
+  const selectScope = (option: { value: string } | null) => untrack(() => {
+    // Controlled selects can repeat their current value when their options refresh.
+    if (!option || option.value === scope()) return;
+    const active = activeScope();
+    setChosen(previous => previous?.active === active && previous.value === option.value ? previous : { active, value: option.value });
+    setHovered(null);
+    setClearConfirm(false);
+  });
   const rows = () => data().rows;
   const selected = createMemo(() => {
     const saved = selections()[scope()];
@@ -54,7 +66,7 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   const recentAverage = createMemo(() => recent().reduce((sum, row) => sum + row.value / recent().length, 0));
   const current = () => {
     const value = scope();
-    return value === initialScope(props.id) || /^(aim-v[46]-(standard|compact)-(mouse|pen)|aim-v6-(standard|compact)-(touch|keyboard)|chimp-v2-(standard|compact)-(mouse|touch|pen|keyboard)|pairs-v4-(mouse|touch|pen|keyboard)|order-v1-(mouse|touch|pen|keyboard)|reaction-v7-(desktop|touch-release|pen)|typing-v4-(hardware|onscreen)-passage|cps-v1-mouse-10s|tps-v3-touch-10s|sequence-v2-fresh|reverse-v2-(growing|fresh))$/.test(value);
+    return value === initialScope(props.id) || /^(aim-v[46]-(standard|compact)-(mouse|pen)|aim-v6-(standard|compact)-(touch|keyboard)|chimp-v2-(standard|compact)-(mouse|touch|pen|keyboard)|pairs-v4-(mouse|touch|pen|keyboard)|order-v1-(mouse|touch|pen|keyboard)|reaction-v7-(desktop|touch-release|pen)|typing-v4-(hardware|onscreen)-passage|cps-v1-mouse-10s|tps-v3-touch-10s|sequence-v3-growing|sequence-v2-fresh|reverse-v2-(growing|fresh))$/.test(value);
   };
   const legacyVisualBest = () => {
     if (props.id !== 'visual' || current()) return null;
@@ -102,21 +114,16 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   onSettled(() => {
     const outside = (event: PointerEvent) => { if (selected() !== null && event.target instanceof Node && !chart?.contains(event.target) && !detail?.contains(event.target) && !(event.target instanceof Element && event.target.closest('.ai-history-scope,.ai-history-select-content,.ai-reference'))) setSelected(null); };
     document.addEventListener('pointerdown', outside);
-    const game = document.querySelector('.ai-game');
-    const measureFormat = () => { const value = game?.querySelector('[data-chimp-format],[data-aim-format]')?.getAttribute(props.id === 'chimp' ? 'data-chimp-format' : 'data-aim-format'); setBoardFormat(value === 'standard' ? 'standard' : 'compact'); };
-    const observer = new MutationObserver(measureFormat);
-    if (game && ['chimp', 'aim'].includes(props.id)) observer.observe(game, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-chimp-format', 'data-aim-format'] });
-    measureFormat();
-    return () => { document.removeEventListener('pointerdown', outside); observer.disconnect(); };
+    return () => { document.removeEventListener('pointerdown', outside); };
   });
   return <section class="ai-history" aria-label="Score history"><header><h2>History</h2><Show when={current() && rows().length}><Button class="ai-history-clear" onClick={() => setClearConfirm(true)}><Trash2 size={16}/>Clear</Button></Show></header>
-    <Show when={options().length > 1}><div class="ai-history-scope"><span>Results</span><Select.Root options={options()} optionValue="value" optionTextValue="label" value={options().find(option => option.value === scope())} onChange={option => { if (option) { setChosen({ active: activeScope(), value: option.value }); setHovered(null); setClearConfirm(false); } }} itemComponent={item => <Select.Item class="ai-history-select-item" item={item.item}><Select.ItemLabel>{item.item.rawValue.label}</Select.ItemLabel><Select.ItemIndicator class="ai-history-select-check"><Check size={14}/></Select.ItemIndicator></Select.Item>}>
+    <Show when={options().length > 1}><div class="ai-history-scope"><span>Results</span><Select.Root options={options()} optionValue="value" optionTextValue="label" value={options().find(option => option.value === scope())} onChange={selectScope} itemComponent={item => <Select.Item class="ai-history-select-item" item={item.item}><Select.ItemLabel>{item.item.rawValue.label}</Select.ItemLabel><Select.ItemIndicator class="ai-history-select-check"><Check size={14}/></Select.ItemIndicator></Select.Item>}>
       <Select.Trigger class="ai-history-select-trigger" aria-label="Results"><Select.Value<{ value: string; label: string }> class="ai-history-select-value">{state => state.selectedOption()?.label}</Select.Value><Select.Icon class="ai-history-select-icon"><ChevronsUpDown size={14}/></Select.Icon></Select.Trigger>
       <Select.Portal><Select.Content class="ai-history-select-content" data-samey-overlay=""><Select.Listbox class="ai-history-select-list"/></Select.Content></Select.Portal>
     </Select.Root></div></Show>
     <Show when={!current()}><p class="ai-muted">Saved under earlier rules</p></Show>
     <Show when={legacyVisualBest()}>{value => <p class="ai-muted">Earlier personal best: {value()} levels</p>}</Show>
-    <Show when={data().error}><p role="status" class="ai-storage-message">{data().error}</p></Show>
+    <Show when={data().error || choices().error}>{message => <p role="status" class="ai-storage-message">{message()}</p>}</Show>
     <Show when={failure()}><p role="status" class="ai-storage-message">{failure()}</p></Show>
     <Show when={rows().length} fallback={<p class="ai-muted">No completed runs yet</p>}>
       <dl class="ai-history-metrics"><div><dt>Runs</dt><dd>{rows().length}</dd></div><div><dt>Average</dt><dd>{summary().average.toFixed(1)} <span>{metric().unit}</span></dd></div><div><dt>Best</dt><dd>{chartLabel(summary().best)} <span>{metric().unit}</span></dd></div></dl>
@@ -136,6 +143,8 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
       <div class="ai-chart-detail-slot"><Show when={selectedRow()}>{row => <div ref={detail} class="ai-point-detail" onKeyDown={keys}><p role="status">Run {(inspected() ?? 0) + 1}: <strong>{row().value} {metric().unit}</strong><br/>{Number.isFinite(row().date) && !Number.isNaN(new Date(row().date).getTime()) ? new Date(row().date).toLocaleString() : 'Date unavailable'}</p><div class="ai-point-actions"><Button aria-label="Previous run" disabled={inspected() === offset()} onClick={() => choose((inspected() ?? 0) - 1)}><ChevronLeft size={18}/></Button><Button aria-label="Next run" disabled={inspected() === rows().length - 1} onClick={() => choose((inspected() ?? 0) + 1)}><ChevronRight size={18}/></Button><Button aria-label="Close details" onClick={closePoint}><X size={18}/></Button></div></div>}</Show></div>
     </Show>
     <Show when={clearConfirm()}><div class="ai-clear-confirm" role="alert"><p>Clear this results format? Export a backup first if you want to keep these runs.</p><Button onClick={clear}>Clear results</Button><Button onClick={() => setClearConfirm(false)}>Cancel</Button></div></Show>
-    <Errored fallback={<p class="ai-muted">Reference data is unavailable.</p>}><Loading fallback={<p class="ai-muted">Loading reference…</p>}><Reference id={props.id} scope={scope()} value={selectedRow()?.value} boardFormat={boardFormat()}/></Loading></Errored>
+    <section class="ai-reference" aria-label="Benchmark averages"><h2>Averages</h2>
+      <Errored fallback={<p class="ai-muted">Benchmark measurements could not be loaded.</p>}><Loading fallback={<p class="ai-muted">Loading averages…</p>}><Reference id={props.id} scope={scope()} value={selectedRow()?.value}/></Loading></Errored>
+    </section>
   </section>;
 }

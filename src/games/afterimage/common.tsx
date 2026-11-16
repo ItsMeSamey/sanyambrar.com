@@ -1,7 +1,7 @@
 import { For, createEffect, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
-import { CirclePlay, Redo2, Trophy } from '../../shared/components/Icons.tsx';
+import { CirclePlay, RotateCw, Trophy } from '../../shared/components/Icons.tsx';
 import type { GameResult, InputKind, Stat } from './types.ts';
 import { readHistory } from './history.ts';
 import { createPointerPresses, isVirtualClick } from './press-input.ts';
@@ -89,19 +89,19 @@ export function personalBest(result: GameResult): number | null {
 }
 
 export function Stats(props: { items: Stat[] }) {
-  return <div class="ai-stats" aria-label="Current run"><For each={props.items}>{item => <div class={['ai-stat', item.lives && 'ai-lives']}><span>{item.label}</span>{item.lives ? <strong aria-label={`${item.value} lives`}><For each={Array.from({ length: Math.max(0, Math.min(10, Number(item.value) || 0)) })}>{() => <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 21 3.4 12.6a5.5 5.5 0 0 1 7.8-7.8l.8.8.8-.8a5.5 5.5 0 0 1 7.8 7.8Z"/></svg>}</For></strong> : <strong>{item.value}</strong>}</div>}</For></div>;
+  return <div class="ai-stats" aria-label="Current run"><For each={props.items} keyed={item => item.label}>{item => <div class={['ai-stat', item().lives && 'ai-lives']}><span>{item().label}</span>{item().lives ? <strong aria-label={`${item().value} lives`}><For each={Array.from({ length: Math.max(0, Math.min(10, Number(item().value) || 0)) }, (_, index) => index)}>{() => <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 21 3.4 12.6a5.5 5.5 0 0 1 7.8-7.8l.8.8.8-.8a5.5 5.5 0 0 1 7.8 7.8Z"/></svg>}</For></strong> : <strong>{item().value}</strong>}</div>}</For></div>;
 }
 
-export function Ready(props: { onStart: () => void; children?: JSX.Element; label?: string; preview?: boolean }) {
-  return <section class={['ai-ready', props.preview && 'ai-ready-preview']}><div class="ai-ready-content">{props.children}</div><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button></section>;
+export function Ready(props: { onStart: () => void; children?: JSX.Element; label?: string; preview?: boolean; overlay?: boolean }) {
+  return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><div class="ai-ready-content">{props.children}</div><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button></section>;
 }
 
-export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element }) {
+export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element; overlay?: boolean }) {
   const ready = useResultGate();
   let retry: HTMLButtonElement | undefined;
   createEffect(ready, enabled => { if (enabled && document.activeElement === document.body) retry?.focus({ preventScroll: true }); });
   const best = () => personalBest(props.result);
-  return <section class="ai-result" aria-label="Run result"><div class="ai-result-score" role="status"><Trophy size={22}/><strong>{props.result.value}</strong><span>{unit(props.result.value, props.result.unit)}</span></div>{best() !== null && <p class="ai-muted">Personal best: {best()} {props.result.unit}</p>}{props.children}<Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><Redo2 size={18}/>Play again</Button></section>;
+  return <section class={['ai-result', props.overlay && 'ai-result-overlay']} aria-label="Run result"><div class="ai-result-panel"><div class="ai-result-score" role="status"><Trophy size={22}/><strong>{props.result.value}</strong><span>{unit(props.result.value, props.result.unit)}</span></div>{best() !== null && <p class="ai-muted">Personal best: {best()} {unit(best() ?? props.result.value, props.result.unit)}</p>}{props.children}<Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/>Play again</Button></div></section>;
 }
 
 export function unit(value: number, name: string) {

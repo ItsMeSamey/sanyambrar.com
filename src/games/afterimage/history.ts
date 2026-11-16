@@ -5,7 +5,7 @@ const aliases: Record<string, string> = { typing: 'typing-v2-60s', stroop: 'stro
 export const scoreKey = (scope: string) => `afterimage-history-${aliases[scope] ?? scope}`;
 export const baseGame = (id: GameId) => id === 'number-order' ? 'order' : id === 'arithmetic' ? 'math' : id.replace('-fresh', '');
 export function initialScope(id: GameId): string {
-  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v4-balanced', chimp: 'chimp-v2-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v1-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v3-60s', patterns: 'patterns-v3-60s', search: 'search-v2-30s' };
+  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v2-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v1-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v3-60s', patterns: 'patterns-v3-60s', search: 'search-v2-30s' };
   return scopes[id];
 }
 export function readHistory(scope: string): HistoryRow[] {
@@ -34,7 +34,7 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
     sequence: [['sequence-v3-growing', 'Growing pattern'], ['sequence-v2-fresh', 'New pattern each round'], ['sequence-v2-growing', 'Earlier growing rules']],
     reverse: [['reverse-v2-growing', 'Growing pattern'], ['reverse-v2-fresh', 'New pattern each round']],
     number: [['number-v2-hb', 'Current rules'], ['number', 'Earlier rules']],
-    verbal: [['verbal-v4-balanced', 'Current rules'], ['verbal-v3-related', 'Previous rules'], ['verbal-v2-random', 'Earlier rules'], ['verbal', 'Original rules']],
+    verbal: [['verbal-v5-progressive', 'Current rules'], ['verbal-v4-balanced', 'Previous balanced rules'], ['verbal-v3-related', 'Earlier related rules'], ['verbal-v2-random', 'Earlier random rules'], ['verbal', 'Original rules']],
     typing: [['typing-v4-hardware-passage', 'Hardware keyboard · passage'], ['typing-v4-onscreen-passage', 'On-screen keyboard · passage'], ['typing-v3-hardware-60s', 'Earlier 60s · hardware'], ['typing-v3-onscreen-60s', 'Earlier 60s · on-screen'], ['typing', 'Earlier 60s · keyboard unknown']],
     rotation: [['rotation-v3-60s', '60 seconds'], ['rotation-v2-12', 'Previous · 12 questions'], ['rotation-v1-12', 'Earlier · 12 questions']],
     patterns: [['patterns-v3-60s', '60 seconds'], ['patterns-v1-12', 'Previous · 12 questions']],

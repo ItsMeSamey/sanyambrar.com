@@ -65,20 +65,23 @@ export async function exerciseKeyboardOwnership(game) {
     const before = snapshot();
     const value = game === 'arithmetic' ? 'Enter' : game === 'search' ? 'ArrowRight' : '1';
     const options = game === 'arithmetic' ? { repeat: true } : {};
-    const opener = query('[aria-label="Import or export history"]');
+    const opener = query('button[aria-label="Search"]');
     opener.focus();
     check(!key(opener, value, options).defaultPrevented, 'consumed a header key');
     opener.click();
-    await wait(() => query('[aria-label="Close history transfer"]'), 'history dialog');
-    const close = query('[aria-label="Close history transfer"]');
-    close.focus();
-    check(!key(close, value, options).defaultPrevented, 'consumed a dialog key');
+    await wait(() => query('.site-search:not([hidden]) input'), 'Search dialog');
+    const searchInput = query('.site-search input');
+    searchInput.value = 'no-result-keyboard-ownership-fixture';
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    searchInput.focus();
+    // Search owns its editing/navigation keys. Game counters must remain unchanged.
+    key(searchInput, value, options);
     // Even a queued game event must yield while another surface owns the top layer.
     check(!key(target, value, options).defaultPrevented, 'consumed a game key beneath an open overlay');
     await pause(20);
     check(snapshot() === before, 'answered beneath the dialog');
-    close.click();
-    await wait(() => !query('[aria-label="Close history transfer"]'), 'closed history dialog');
+    key(searchInput, 'Escape');
+    await wait(() => !query('.site-search:not([hidden])'), 'closed Search dialog');
     await wait(() => document.activeElement === opener, 'restored dialog opener focus');
     target.focus();
     key(target, value, options, true);

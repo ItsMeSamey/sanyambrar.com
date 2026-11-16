@@ -1,9 +1,9 @@
 import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
-import { Stats, setRestartBlocked, useTimers } from './common.tsx';
+import { Result, Stats, setRestartBlocked, useTimers } from './common.tsx';
 import { AimEngine, ReactionEngine, TapEngine, aimScope, reactionScope } from './speed-engine.ts';
 import type { AimView, Press, ReactionView, TapView } from './speed-engine.ts';
-import type { GameProps } from './types.ts';
+import type { GameProps, GameResult } from './types.ts';
 import { isVirtualClick } from './press-input.ts';
 import './speed.css';
 
@@ -11,14 +11,18 @@ const pointerToken = (event: PointerEvent) => `pointer:${event.pointerId}`;
 const keyToken = (event: KeyboardEvent) => `key:${event.key}`;
 const activationKey = (event: KeyboardEvent) => event.key === ' ' || event.key === 'Enter';
 
-function useGuardedView<T extends { blocked: boolean }>(publish: (view: T) => void, scope: (view: T) => string | undefined, props: GameProps) {
+function useGuardedView<T extends { blocked: boolean; phase: string }>(publish: (view: T) => void, scope: (view: T) => string | undefined, props: GameProps) {
   const owner = {};
   let currentScope: string | undefined;
+  let active = false;
+  onSettled(() => { props.onActivityChange?.(false); });
   onCleanup(() => setRestartBlocked(owner, false));
   return (view: T) => {
     setRestartBlocked(owner, view.blocked);
+    const nextActive = view.phase !== 'ready';
+    if (active !== nextActive) { active = nextActive; props.onActivityChange?.(active); }
     const nextScope = scope(view);
-    if (nextScope && nextScope !== currentScope) { currentScope = nextScope; props.onScopeChange?.(nextScope); }
+    if (view.phase !== 'result' && nextScope && nextScope !== currentScope) { currentScope = nextScope; props.onScopeChange?.(nextScope); }
     publish(view);
   };
 }
@@ -42,23 +46,25 @@ function usePressEvents(options: {
   held: Set<string>;
   surface: () => HTMLElement | undefined;
   accessibleClick?: boolean;
+  inactive: () => boolean;
 }) {
   let lastRelease = -Infinity;
   const hidden = () => document.hidden;
   const pointerdown = (event: PointerEvent) => {
-    if (hidden() || event.button !== 0 || !['mouse', 'touch', 'pen'].includes(event.pointerType)) return;
+    if (options.inactive() || hidden() || event.button !== 0 || !['mouse', 'touch', 'pen'].includes(event.pointerType)) return;
     if (event.pointerType === 'mouse' && 'sourceCapabilities' in event && (event.sourceCapabilities as { firesTouchEvents?: boolean } | null)?.firesTouchEvents) return;
     event.preventDefault();
     if (event.target instanceof Element) event.target.closest('button')?.focus({ preventScroll: true });
     options.down({ token: pointerToken(event), kind: event.pointerType as Press['kind'] }, event);
   };
   const keydown = (event: KeyboardEvent) => {
-    if (!activationKey(event)) return;
+    if (options.inactive() || !activationKey(event)) return;
     event.preventDefault();
     if (hidden() || event.repeat) return;
     options.down({ token: keyToken(event), kind: 'keyboard' }, event);
   };
   const click = (event: MouseEvent) => {
+    if (options.inactive()) return;
     event.preventDefault();
     if (!options.accessibleClick || hidden() || !isVirtualClick(event) || options.held.size || performance.now() - lastRelease < 500) return;
     const token = 'accessible-click';
@@ -102,11 +108,13 @@ function usePressEvents(options: {
 
 function Reaction(props: GameProps) {
   const timers = useTimers();
+  const [result, setResult] = createSignal<GameResult | null>(null);
   const [view, setView] = createSignal<ReactionView>({ phase: 'ready', trial: 1, sample: 0, average: 0, input: null, blocked: false, message: '' });
   const updateView = useGuardedView<ReactionView>(setView, view => view.input ? reactionScope(view.input) : undefined, props);
-  const engine = new ReactionEngine({ now: () => performance.now(), after: timers.after, clear: timers.clear }, updateView, result => props.onFinish(result));
+  const engine = new ReactionEngine({ now: () => performance.now(), after: timers.after, clear: timers.clear }, updateView, result => { setResult(result); props.onFinish(result); });
   let pad: HTMLButtonElement | undefined;
   const events = usePressEvents({
+    inactive: () => engine.snapshot().phase === 'result',
     down: (press, event) => {
       engine.down(press);
       if (press.kind === 'touch' && event instanceof PointerEvent && engine.snapshot().phase === 'waiting') {
@@ -127,8 +135,8 @@ function Reaction(props: GameProps) {
   };
   const instruction = () => {
     const current = view();
-    if (current.phase === 'ready') return 'Click or press Space to begin. On touch, hold until green.';
-    if (current.phase === 'waiting') return 'Wait for green';
+    if (current.phase === 'ready') return 'Click or press Space to begin. On touch, hold until the cue.';
+    if (current.phase === 'waiting') return 'Wait for the cue';
     if (current.phase === 'go') return current.input === 'touch' ? 'Lift your finger' : 'Click or press Space';
     if (current.phase === 'result') return current.input === 'touch' ? 'Five-trial average · Hold to play again' : 'Five-trial average · Play again';
     return current.input === 'touch' ? 'Hold when ready for the next trial' : 'Click when ready for the next trial';
@@ -136,9 +144,12 @@ function Reaction(props: GameProps) {
   return <div class="ai-speed ai-reaction-game" data-state={view().phase}>
     <Stats items={[{ label: 'Trial', value: `${view().trial} / 5` }, { label: 'Protocol', value: view().input === 'touch' ? 'Touch release' : view().input === 'pen' ? 'Pen press' : 'Mouse / keyboard' }]}/>
     <p class="ai-speed-feedback" aria-live="polite">{view().message}</p>
-    <button ref={pad} type="button" class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
+    <div class="ai-speed-stage">
+    <button ref={pad} type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <strong role={['between', 'early', 'result'].includes(view().phase) ? 'status' : undefined}>{label()}</strong><span>{instruction()}</span>
     </button>
+    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/>}</Show>
+    </div>
   </div>;
 }
 
@@ -149,31 +160,37 @@ function Tapping(props: GameProps) {
   const updateView = useViewClock<TapView>(publishView, () => engine.tick(), 50);
   const engine = new TapEngine({ now: () => performance.now(), after: timers.after, clear: timers.clear }, updateView, result => props.onFinish(result));
   let pad: HTMLButtonElement | undefined;
-  const events = usePressEvents({ down: press => engine.down(press), release: token => engine.release(token), cancel: () => { if (engine.snapshot().phase === 'running') engine.cancel(); else { engine.guard.interrupt(); engine.release('interrupted'); } }, held: engine.guard.held, surface: () => pad });
+  const events = usePressEvents({ inactive: () => engine.snapshot().phase === 'result', down: press => engine.down(press), release: token => engine.release(token), cancel: () => { if (engine.snapshot().phase === 'running') engine.cancel(); else { engine.guard.interrupt(); engine.release('interrupted'); } }, held: engine.guard.held, surface: () => pad });
   onCleanup(() => engine.dispose());
   const countLabel = () => view().practice ? 'Key presses' : view().input === 'mouse' ? 'Clicks' : view().input === 'touch' ? 'Taps' : 'Count';
+  const result = (): GameResult => ({ value: view().count / 10, scope: view().practice ? 'cps-keyboard-practice' : view().input === 'mouse' ? 'cps-v1-mouse-10s' : 'tps-v3-touch-10s', unit: view().practice ? 'keys / s' : view().input === 'mouse' ? 'clicks / s' : 'taps / s' });
   return <div class="ai-speed ai-tapping-game" data-state={view().phase}>
-    <Stats items={view().phase === 'result' ? [{ label: 'Rate', value: `${(view().count / 10).toFixed(2)} / s` }, { label: countLabel(), value: view().count }, { label: 'Time', value: '10.0s' }] : [{ label: countLabel(), value: view().count }, { label: 'Time', value: `${(Math.ceil(view().remaining / 100) / 10).toFixed(1)}s` }]}/>
+    <Stats items={[{ label: 'Rate', value: `${(view().count / Math.max(0.1, view().phase === 'result' ? 10 : (10000 - view().remaining) / 1000)).toFixed(2)} / s` }, { label: countLabel(), value: view().count }, { label: 'Time', value: view().phase === 'result' ? '10.0s' : `${(Math.ceil(view().remaining / 100) / 10).toFixed(1)}s` }]}/>
     <p class="ai-speed-feedback" aria-live="polite">{view().practice ? 'Keyboard practice · not saved' : view().message}</p>
-    <button ref={pad} class="ai-tap-pad" type="button" disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
+    <div class="ai-speed-stage">
+    <button ref={pad} class="ai-tap-pad" type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <Show when={view().phase === 'result'} fallback={<><strong>{view().phase === 'ready' ? view().practice ? 'Press Space or Enter' : 'Click or tap to begin' : view().practice ? 'Press' : view().input === 'mouse' ? 'Click' : 'Tap'}</strong><span>{view().phase === 'ready' ? 'Ten seconds. Input is detected automatically.' : 'Keep going'}</span></>}>
         <strong role="status">{(view().count / 10).toFixed(2)} {view().practice ? 'keys' : view().input === 'mouse' ? 'clicks' : 'taps'} / s</strong><span>Play again</span>
       </Show>
     </button>
-    <Button class="ai-speed-practice" aria-pressed={view().practice ? 'true' : 'false'} onClick={() => { engine.togglePractice(); pad?.focus({ preventScroll: true }); }}>{view().practice ? 'Return to click / tap test' : 'Keyboard practice'}</Button>
+    <Show when={view().phase === 'result'}><Result overlay result={result()} onRetry={() => { engine.cancel(''); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/></Show>
+    </div>
+    <Button class="ai-speed-practice" disabled={view().phase === 'result'} aria-pressed={view().practice ? 'true' : 'false'} onClick={() => { engine.togglePractice(); pad?.focus({ preventScroll: true }); }}>{view().practice ? 'Return to click / tap test' : 'Keyboard practice'}</Button>
   </div>;
 }
 
 function TargetIcon() { return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>; }
 function Aim(props: GameProps) {
   const timers = useTimers();
+  const [result, setResult] = createSignal<GameResult | null>(null);
   const [view, setView] = createSignal<AimView>({ phase: 'ready', hits: 0, misses: 0, elapsed: 0, score: 0, input: null, format: 'compact', target: null, outgoing: [], blocked: false, message: '' });
   const publishView = useGuardedView<AimView>(setView, view => aimScope(view.input ?? 'mouse', view.format), props);
   const updateView = useViewClock<AimView>(publishView, () => engine.tick(), 100);
-  const engine = new AimEngine({ now: () => performance.now(), after: timers.after, clear: timers.clear }, updateView, result => props.onFinish(result));
+  const engine = new AimEngine({ now: () => performance.now(), after: timers.after, clear: timers.clear }, updateView, result => { setResult(result); props.onFinish(result); });
   let arena: HTMLDivElement | undefined;
   let restoreFocus = false;
   const events = usePressEvents({
+    inactive: () => engine.snapshot().phase === 'result',
     down: (press, event) => {
       if (!arena) return;
       const target = event.target instanceof Element ? event.target.closest<HTMLElement>('.ai-aim-target') : null;
@@ -202,12 +219,15 @@ function Aim(props: GameProps) {
     <Stats items={[{ label: view().phase === 'result' ? 'ms / target' : 'Targets', value: view().phase === 'result' ? view().score : `${view().hits} / 30` }, { label: 'Time', value: `${(view().elapsed / 1000).toFixed(view().phase === 'result' ? 2 : 1)}s` }, { label: 'Misses', value: view().misses }]}/>
     <div class="ai-aim-progress" aria-hidden="true"><span style={{ transform: `scaleX(${view().hits / 30})` }}/></div>
     <p class="ai-speed-feedback" aria-live="polite">{view().phase === 'result' ? `${view().score} ms per target · ${view().input} · ${view().format} board` : view().message}</p>
-    <div ref={arena} class="ai-aim-arena" data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
+    <div class="ai-speed-stage">
+    <div ref={arena} class="ai-aim-arena" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
       <For each={view().outgoing}>{point => <span class="ai-aim-exit" style={{ left: `${point.x}px`, top: `${point.y}px` }} aria-hidden="true"><TargetIcon/></span>}</For>
       <Show when={view().target} fallback={<><button class="ai-aim-target is-start" type="button" aria-label="Start aim training" onKeyDown={events.keydown}><TargetIcon/></button><span class="ai-aim-note">Hit the target to start</span></>}>
         <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y} serial={point.serial}/>}</For>
       </Show>
       <Show when={view().phase === 'result'}><span class="ai-aim-retry-note">Hit the target to play again</span></Show>
+    </div>
+    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => arena?.querySelector('button')?.focus({ preventScroll: true }), 0); }}/>}</Show>
     </div>
     <p class="ai-speed-note">{view().format === 'standard' ? 'Standard board · 970 × 500' : 'Compact board'} · 30 targets · Input methods have separate histories.</p>
   </div>;

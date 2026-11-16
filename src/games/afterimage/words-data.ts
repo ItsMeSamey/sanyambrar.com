@@ -1,4 +1,4 @@
-// Original Afterimage vocabulary, related-word families, and complete typing passages.
+// Original Afterimage vocabulary and related-word families.
 export const words = `
   acorn almond apple apricot avocado banana barley bean beet berry broccoli cabbage
   carrot cauliflower celery cherry chestnut chickpea cinnamon coconut corn cucumber date fig
@@ -349,14 +349,3 @@ export const wordFamilies = [
   "time moment instant second minute hour",
 ].map((family) => family.split(" "));
 export const vocabulary = [...new Set([...words, ...wordFamilies.flat()])];
-
-export const typingPassages = [
-  "At the end of the street, a small bakery opens before sunrise. Warm light reaches the pavement as the first trays leave the oven. A cyclist stops for bread, and the owner waves through the window. The city is still quiet enough to hear a spoon touch the side of a cup.",
-  "We took the longer path home because the rain had finally stopped. Water shone on the leaves, and small clouds moved above the hills. Near the old bridge, a dog paused to inspect a fallen branch. There was no reason to hurry, so we waited and watched the river.",
-  "Building a useful thing often begins with a simple question. What would make this easier? A rough drawing can reveal more than a long meeting. Try the smallest version, notice where it fails, and change one part at a time. A good idea grows stronger when it meets the real world.",
-  "The library kept its maps in a wide wooden drawer. Some showed streets that no longer existed, while others marked gardens where houses now stood. I traced a route with my finger and imagined the sound of wheels on stone. Every map was a record of what someone thought mattered.",
-  "On Saturday, we carried a table into the garden and shared lunch under the apple tree. Someone brought a bowl of cherries; someone else forgot the plates. We made room for another chair and passed the bread around. By late afternoon, the shade had moved to the other side of the lawn.",
-  "Learning a new skill changes the way you notice small details. A musician hears the space between notes. A painter sees blue in a shadow that once looked grey. With patient practice, familiar things become interesting again. Progress is often quiet, but it leaves a trace in everything you do.",
-  "The train followed the coast for an hour before turning inland. Beyond the glass, fishing boats became fields, and fields became clusters of red roofs. A child across the aisle counted tunnels. I put away my book and watched a place I had never visited become part of the journey.",
-  "A clear night is an invitation to look up. Give your eyes a little time, and more stars begin to appear between the bright ones. The view rewards stillness instead of speed. Even from a small balcony, the sky can make an ordinary evening feel unexpectedly large.",
-];

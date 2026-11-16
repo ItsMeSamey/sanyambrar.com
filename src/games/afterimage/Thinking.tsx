@@ -85,6 +85,7 @@ export function ThinkingGame(props: GameProps) {
     deadline = performance.now() + rules.duration * 1000;
     updateEntry(''); setSearchFocus(0);
     update({ phase: 'running', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, remaining: rules.duration, feedback: '', selected: -1, result: null });
+    props.onActivityChange?.(true);
     tick(); focusAnswer();
   }
   function next(keepFeedback = false, focus = 0) {
@@ -155,38 +156,44 @@ export function ThinkingGame(props: GameProps) {
   function release(event: KeyboardEvent) { held.delete(event.key); }
   function blur() { held.clear(); }
   function visibility() {
-    if (document.hidden && live()) { timers.clear(); held.clear(); update({ phase: 'ready', feedback: 'Run interrupted. Start a fresh run.', remaining: rules.duration }); }
+    if (document.hidden && live()) {
+      timers.clear(); held.clear(); updateEntry(''); setSearchFocus(0);
+      update({ phase: 'ready', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, selected: -1, result: null, feedback: 'Run interrupted. Start a fresh run.', remaining: rules.duration });
+      props.onActivityChange?.(false);
+    }
   }
   onSettled(() => {
+    props.onActivityChange?.(false);
     document.addEventListener('keydown', keys); document.addEventListener('keyup', release); document.addEventListener('visibilitychange', visibility); window.addEventListener('blur', blur);
   });
   onCleanup(() => { document.removeEventListener('keydown', keys); document.removeEventListener('keyup', release); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('blur', blur); });
   const instructions = { rotation: 'Compare the eight-square shapes. Is the second rotated, mirrored, or changed? Use keys 1–3.', patterns: 'Find the next number. Use keys 1–4, then Next to continue.', search: 'Find the arrow pointing a different way. Use the arrow keys to move and Enter to choose.', stroop: 'Choose the ink colour, not the word. Tap a colour or press 1–4.', arithmetic: 'Solve additions, subtractions and multiplications. Negative answers are allowed.' }[mode];
-  return <div ref={root} class="ai-thinking" data-mode={mode}>
+  const playing = () => ['running', 'answered', 'between'].includes(view().phase);
+  return <div ref={root} class="ai-thinking" data-mode={mode} data-state={view().phase}>
     <Stats items={[{ label: 'Time', value: `${view().remaining}s` }, { label: 'Score', value: view().score }, ...(mode === 'arithmetic' ? [] : [{ label: 'Mistakes', value: view().errors }])]}/>
-    <Show when={view().phase === 'ready'}><Ready onStart={start}><p>{instructions}</p><p>{rules.duration} seconds · {mode === 'arithmetic' ? 'Correct +1, wrong −1; score never falls below 0.' : 'Score: correct answers − mistakes, minimum 0.'}</p><Show when={mode === 'rotation'}><Prompt question={view().question}/></Show><p role="status">{view().feedback}</p></Ready></Show>
-    <Show when={view().result} keyed>{result => <Result result={result} onRetry={start}><p>{view().correct} correct · {view().errors} mistakes · {rules.duration} seconds</p></Result>}</Show>
-    <Show when={['running', 'answered', 'between'].includes(view().phase)}>
-      <div class="ai-thinking-play">
+    <div class="ai-thinking-stage">
+      <div class="ai-thinking-play" inert={!playing()} aria-hidden={!playing() ? 'true' : undefined}>
         <p class="ai-thinking-feedback" role="status">{view().feedback || instructions}</p>
-        <Prompt question={view().question}/>
+        <div class="ai-thinking-prompt"><Prompt question={view().question}/></div>
         <Show when={mode === 'arithmetic'} fallback={<div class={['ai-thinking-answers', mode === 'search' && 'ai-thinking-search']}>
           <For each={labels()}>{(label, index) => <div class="ai-thinking-answer-slot">
             <Button data-answer={index()} aria-label={mode === 'search' ? label : `${label}, key ${index() + 1}`} data-outcome={answerState(index())} disabled={view().phase === 'answered'} tabindex={mode === 'search' && searchFocus() !== index() ? -1 : 0}
               style={mode === 'stroop' ? { '--answer-ink': inkColors[index()] } : undefined}
-              onPointerDown={event => { if (!presses.down(event)) return; event.currentTarget.focus({ preventScroll: true }); if (mode === 'search') setSearchFocus(index()); answer(index()); }}
+              onPointerDown={event => { if (state.phase !== 'running' || !presses.down(event)) return; event.currentTarget.focus({ preventScroll: true }); if (mode === 'search') setSearchFocus(index()); answer(index()); }}
               onClick={event => { if (presses.click(event)) answer(index()); }}>
               <Show when={mode === 'search'} fallback={<><kbd aria-hidden="true">{index() + 1}</kbd><span>{label}</span></>}><Arrow angle={view().question.type === 'search' ? (view().question as { angles: number[] }).angles[index()] : 0}/></Show>
             </Button>
-            <Show when={view().phase === 'answered' && view().selected === index()}><Button class="ai-thinking-next ai-primary" data-next data-outcome={answerState(index())} aria-label="Next question" onPointerDown={event => { if (presses.down(event) && state.phase === 'answered') next(); }} onClick={event => { if (presses.click(event) && state.phase === 'answered') next(); }}><span>Next</span><ArrowRight size={18}/></Button></Show>
+            <Show when={view().phase === 'answered' && view().selected === index()}><Button class="ai-thinking-next ai-primary" data-next data-outcome={answerState(index())} aria-label="Next question" onPointerDown={event => { if (state.phase === 'answered' && presses.down(event)) next(); }} onClick={event => { if (state.phase === 'answered' && presses.click(event)) next(); }}><span>Next</span><ArrowRight size={18}/></Button></Show>
           </div>}</For>
         </div>}>
           <form class="ai-thinking-math" onSubmit={event => { event.preventDefault(); submit(); }}>
             <label for="ai-thinking-entry">Your answer</label><div class="ai-thinking-entry"><input id="ai-thinking-entry" ref={input} type="text" inputmode="none" autocomplete="off" value={entry()} onInput={event => updateEntry(event.currentTarget.value.replace(/[^\d-]/g, '').slice(0, 8))}/><Button type="submit" class="ai-primary">Answer<ArrowRight size={18}/></Button></div>
-            <div class="ai-thinking-keypad"><For each={['1', '2', '3', '4', '5', '6', '7', '8', '9', '−', '0', 'Delete']}>{key => <Button aria-label={key === '−' ? 'Change sign' : key} onPointerDown={event => { if (presses.down(event)) enter(key); }} onClick={event => { if (presses.click(event)) enter(key); }}><Show when={key === 'Delete'} fallback={key}><Delete size={18}/></Show></Button>}</For></div>
+            <div class="ai-thinking-keypad"><For each={['1', '2', '3', '4', '5', '6', '7', '8', '9', '−', '0', 'Delete']}>{key => <Button aria-label={key === '−' ? 'Change sign' : key} onPointerDown={event => { if (state.phase === 'running' && presses.down(event)) enter(key); }} onClick={event => { if (state.phase === 'running' && presses.click(event)) enter(key); }}><Show when={key === 'Delete'} fallback={key}><Delete size={18}/></Show></Button>}</For></div>
           </form>
         </Show>
       </div>
-    </Show>
+      <Show when={view().phase === 'ready'}><Ready overlay onStart={start}><p>{instructions}</p><p>{rules.duration} seconds · {mode === 'arithmetic' ? 'Correct +1, wrong −1; score never falls below 0.' : 'Score: correct answers − mistakes, minimum 0.'}</p><p role="status">{view().feedback}</p></Ready></Show>
+      <Show when={view().result} keyed>{result => <Result overlay result={result} onRetry={start}><p>{view().correct} correct · {view().errors} mistakes · {rules.duration} seconds</p></Result>}</Show>
+    </div>
   </div>;
 }

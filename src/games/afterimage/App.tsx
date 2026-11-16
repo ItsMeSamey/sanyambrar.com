@@ -2,8 +2,9 @@ import { Errored, For, Loading, Show, createSignal, lazy, onCleanup, onSettled }
 import { Dynamic } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
+import { HomeBrand } from '../../shared/components/Brand.tsx';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
-import { ArrowUpRight, ChevronLeft, Download, Redo2, Upload, X } from '../../shared/components/Icons.tsx';
+import { ArrowUpRight, ChevronLeft, Download, RotateCw, Upload, X } from '../../shared/components/Icons.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../shared/components/Dialog.tsx';
 import { History } from './History.tsx';
 import { installInputTracking, isRestartBlocked, setRestartBlocked, useRestartBlocked } from './common.tsx';
@@ -31,7 +32,6 @@ export const games: Entry[] = [
   { id: 'pairs', title: 'Pair memory', category: 'Memory', art: 'pairs' },
   { id: 'reaction', title: 'Reaction time', category: 'Speed', art: 'reaction' },
   { id: 'aim', title: 'Aim training', category: 'Speed', art: 'aim' },
-  { id: 'typing', title: 'Typing speed', category: 'Speed', art: 'typing' },
   { id: 'cps', title: 'Click / tap speed', category: 'Speed', art: 'cps' },
   { id: 'number-order', title: 'Number order', category: 'Speed', art: 'order' },
   { id: 'stroop', title: 'Colour words', category: 'Focus', art: 'stroop' },
@@ -40,10 +40,19 @@ export const games: Entry[] = [
   { id: 'patterns', title: 'Number patterns', category: 'Reasoning', art: 'patterns' },
   { id: 'search', title: 'Visual search', category: 'Perception', art: 'search' },
 ];
-const artwork = import.meta.glob<string>('./assets/*.svg', { eager: true, query: '?url', import: 'default' });
+const sourceArtwork = import.meta.glob<string>(['./assets/*.svg', '!./assets/typing.svg'], { eager: true, query: '?raw', import: 'default' });
+// Keep the original drawings, but let their ink and cutouts follow the selected theme.
+const artwork = Object.fromEntries(Object.entries(sourceArtwork).map(([path, svg]) => [path, svg.replace(/#[0-9a-f]{6}/gi, color => {
+  const channels = [1, 3, 5].map(offset => Number.parseInt(color.slice(offset, offset + 2), 16));
+  const brightness = (channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722) / 255;
+  return brightness < .15 ? 'var(--site-accent-on-fg)' : brightness < .33 ? 'var(--ai-art-muted)' : brightness < .7 ? 'var(--ai-accent)' : 'var(--site-fg)';
+})]));
+function AfterimageLogo() {
+  return <svg class="ai-library-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 3v18M3 12h9"/><path d="M12 3h5a4 4 0 0 1 4 4v5h-9Z" fill="currentColor" stroke="none"/></svg>;
+}
 function component(id: GameId) {
   if (id === 'pairs') return PairGame;
-  if (['number', 'verbal', 'typing'].includes(id)) return WordsGame;
+  if (['number', 'verbal'].includes(id)) return WordsGame;
   if (['reaction', 'aim', 'cps'].includes(id)) return SpeedGame;
   if (['stroop', 'arithmetic', 'rotation', 'patterns', 'search'].includes(id)) return ThinkingGame;
   return MemoryGame;
@@ -59,6 +68,7 @@ export function App() {
   const [revision, setRevision] = createSignal(0);
   const [latest, setLatest] = createSignal<GameResult | null>(null);
   const [activeScope, setActiveScope] = createSignal<string>();
+  const [hasActivity, setHasActivity] = createSignal(false);
   const restartBlocked = useRestartBlocked();
   const [message, setMessage] = createSignal('');
   const [transfer, setTransfer] = createSignal(false);
@@ -75,8 +85,11 @@ export function App() {
   function afterPaint(fn: () => void) { cancelAnimationFrame(frame); frame = requestAnimationFrame(fn); }
   function clearResultRestartGuard() { window.clearTimeout(resultRestartTimer); setRestartBlocked(resultRestartGuard, false); }
   function applyRoute(route: AfterimageRoute) {
+    const nextGeneration = ++generation;
     clearResultRestartGuard();
-    setSelection(route.game ? { id: route.game, generation: ++generation } : null); setLatest(null); setActiveScope(undefined);
+    setHasActivity(false);
+    setTransfer(false);
+    setSelection(route.game ? { id: route.game, generation: nextGeneration } : null); setLatest(null); setActiveScope(undefined);
     afterPaint(() => {
       window.scrollTo({ top: route.game ? 0 : route.homeScroll, behavior: 'instant' });
       document.querySelector<HTMLElement>(route.game ? '.ai-play h1' : `[data-game-card="${route.selectedCard}"]`)?.focus({ preventScroll: true });
@@ -93,6 +106,7 @@ export function App() {
     window.clearTimeout(resultRestartTimer); setRestartBlocked(resultRestartGuard, true);
     resultRestartTimer = window.setTimeout(clearResultRestartGuard, 750);
     setLatest(result);
+    setHasActivity(true);
     setActiveScope(result.scope);
     try { saveResult(result); setMessage(''); }
     catch { setMessage('This score could not be saved. Check browser storage, then export your history before making changes.'); }
@@ -130,15 +144,23 @@ export function App() {
   onCleanup(() => cancelAnimationFrame(frame));
   onCleanup(clearResultRestartGuard);
   return <div class="afterimage-app">
-    <TopBar start={<div class="ai-topbar-start"><TopBarIconButton class="ai-back" label="Back" onClick={back}><ChevronLeft size={18}/></TopBarIconButton><SmartLink href="/afterimage/" class="ai-wordmark" title="Afterimage games" onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); if (navigation.current().game) applyRoute(navigation.home()); }}>Afterimage</SmartLink></div>} actions={<><Show when={selection()}><Button class="ai-restart" aria-label="Restart" title="Restart" disabled={restartBlocked()} onClick={() => { if (!isRestartBlocked()) applyRoute(navigation.current()); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><Redo2 size={16}/><span class="ai-restart-label">Restart</span></Button></Show><Show when={install() && !selection()}><TopBarIconButton label="Install Afterimage" onClick={() => { const deferred = install(); if (deferred) void deferred.prompt().then(() => { setInstall(null); }); }}><Download size={18}/></TopBarIconButton></Show><TopBarIconButton ref={element => { transferOpener = element; }} label="Import or export history" onClick={() => setTransfer(true)}><Upload size={18}/></TopBarIconButton></>}/>
+    <TopBar start={<Show when={selection()} fallback={<HomeBrand class="brand home-brand-link"/>}>
+      <div class="ai-topbar-start"><TopBarIconButton class="ai-back" label="Back" onClick={back}><ChevronLeft size={18}/></TopBarIconButton><SmartLink href="/afterimage/" class="ai-wordmark" title="Afterimage games" onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); applyRoute(navigation.home()); }}>Afterimage</SmartLink></div>
+    </Show>} actions={<>
+      <Show when={selection() && hasActivity()}><Button class="ai-restart" aria-label="Restart" title="Restart" disabled={restartBlocked()} onClick={() => { if (!isRestartBlocked()) applyRoute(navigation.current()); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/></Button></Show>
+      <Show when={!selection()}><Show when={install()}><TopBarIconButton label="Install Afterimage" onClick={() => { const deferred = install(); if (deferred) void deferred.prompt().then(() => { setInstall(null); }); }}><Download size={18}/></TopBarIconButton></Show><TopBarIconButton ref={element => { transferOpener = element; }} label="Import or export history" onClick={() => setTransfer(true)}><Upload size={18}/></TopBarIconButton></Show>
+    </>}/>
     <Show when={offline()}><p class="ai-banner" role="status">Offline · scores stay on this device</p></Show>
     <Show when={update() && !selection()}><div class="ai-banner">An update is ready.<Button onClick={() => location.reload()}>Reload</Button><Button aria-label="Dismiss update" onClick={() => setUpdate(false)}><X size={16}/></Button></div></Show>
     <main class={['ai-main', selection() ? 'ai-play' : 'ai-library']} data-category={current()?.category}>
-      <Show when={selection()} keyed fallback={<><div class="ai-library-heading"><h1>Games</h1><span>19 games</span></div><For each={['Memory', 'Speed', 'Focus', 'Spatial', 'Reasoning', 'Perception']}>{category => <section class="ai-category" data-category={category}><h2>{category}</h2><div class="ai-game-library"><For each={games.filter(game => game.category === category)}>{game => <button type="button" class="ai-game-card" data-game-card={game.id} onPointerEnter={() => { void component(game.id).preload().catch(() => {}); }} onFocus={() => { void component(game.id).preload().catch(() => {}); }} onClick={() => open(game.id)}><span class="ai-game-art"><img src={artwork[`./assets/${game.art}.svg`]} alt="" width="88" height="68"/></span><span class="ai-game-name"><span>{game.title}</span><Show when={game.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></span><ArrowUpRight class="ai-card-arrow" size={18}/></button>}</For></div></section>}</For></>}>
-        {selected => <><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={selected.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={finish} onScopeChange={setActiveScope}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
+      <Show when={selection()} keyed fallback={<>
+        <div class="ai-library-heading"><h1><SmartLink href="/afterimage/" class="ai-wordmark ai-library-brand" onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); }}><AfterimageLogo/><span>Afterimage</span></SmartLink></h1><span>{games.length} games</span></div>
+        <For each={['Memory', 'Speed', 'Focus', 'Spatial', 'Reasoning', 'Perception']}>{category => <section class="ai-category" data-category={category}><h2>{category}</h2><div class="ai-game-library"><For each={games.filter(game => game.category === category)}>{game => <button type="button" class="ai-game-card" data-game-card={game.id} onPointerEnter={() => { void component(game.id).preload().catch(() => {}); }} onFocus={() => { void component(game.id).preload().catch(() => {}); }} onClick={() => open(game.id)}><span class="ai-game-art" aria-hidden="true" innerHTML={artwork[`./assets/${game.art}.svg`]}/><span class="ai-game-name">{game.title}</span><span class="ai-card-corner"><Show when={game.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show><ArrowUpRight class="ai-card-arrow" size={16}/></span></button>}</For></div></section>}</For>
+      </>}>
+        {selected => <><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={selected.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={(result: GameResult) => { if (selected.generation === generation) finish(result); }} onScopeChange={(scope: string) => { if (selected.generation === generation) setActiveScope(scope); }} onActivityChange={(active: boolean) => { if (selected.generation === generation) setHasActivity(active); }}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
       </Show>
     </main>
     <Show when={message()}><p class="ai-storage-message" role="status">{message()}</p></Show>
-    <Dialog open={transfer()} onOpenChange={setTransfer}><DialogContent class="ai-transfer" onCloseAutoFocus={event => { event.preventDefault(); transferOpener.focus({ preventScroll: true }); }}><div class="ai-dialog-heading"><DialogTitle>Keep your history</DialogTitle><Button aria-label="Close history transfer" onClick={() => setTransfer(false)}><X size={18}/></Button></div><DialogDescription>Scores are saved in this browser, separately for each input method and rules version.</DialogDescription><p>Export a backup or import an Afterimage history file from another device. Imports merge with your existing runs.</p><p>Browser storage cannot be read across different website addresses. Scores from the previous standalone app must be exported from that original address first.</p><div class="ai-actions"><Button onClick={download}><Download size={18}/>Export history</Button><Button onClick={() => upload.click()}><Upload size={18}/>Import history</Button></div><input ref={upload} type="file" tabindex={-1} accept="application/json,.json" hidden onChange={event => { void uploadHistory(event.currentTarget.files?.[0]); }}/><Show when={message()}><p role="status">{message()}</p></Show></DialogContent></Dialog>
+    <Dialog open={transfer()} onOpenChange={setTransfer}><DialogContent class="ai-transfer" onCloseAutoFocus={event => { event.preventDefault(); if (transferOpener?.isConnected) transferOpener.focus({ preventScroll: true }); }}><div class="ai-dialog-heading"><DialogTitle>Keep your history</DialogTitle><Button aria-label="Close history transfer" onClick={() => setTransfer(false)}><X size={18}/></Button></div><DialogDescription>Scores are saved in this browser, separately for each input method and rules version.</DialogDescription><p>Export a backup or import an Afterimage history file from another device. Imports merge with your existing runs.</p><p>Browser storage cannot be read across different website addresses. Scores from the previous standalone app must be exported from that original address first.</p><div class="ai-actions"><Button onClick={download}><Download size={18}/>Export history</Button><Button onClick={() => upload.click()}><Upload size={18}/>Import history</Button></div><input ref={upload} type="file" tabindex={-1} accept="application/json,.json" hidden onChange={event => { void uploadHistory(event.currentTarget.files?.[0]); }}/><Show when={message()}><p role="status">{message()}</p></Show></DialogContent></Dialog>
   </div>;
 }

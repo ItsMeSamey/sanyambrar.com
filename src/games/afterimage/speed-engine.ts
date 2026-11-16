@@ -129,9 +129,9 @@ export class ReactionEngine {
     if (this.phase === 'waiting' || this.phase === 'go') this.cancel();
     else { this.guard.interrupt(); this.emit(); }
   }
-  cancel() {
+  cancel(message = 'Run cancelled. Start when ready.') {
     this.clock.clear(); this.guard.reset(); this.touchToken = undefined;
-    this.phase = 'ready'; this.samples = []; this.input = null; this.scope = ''; this.message = 'Run cancelled. Start when ready.';
+    this.phase = 'ready'; this.samples = []; this.input = null; this.scope = ''; this.message = message;
     this.emit();
   }
   dispose() { this.clock.clear(); this.guard.reset(); }
@@ -169,7 +169,7 @@ export class TapEngine {
     this.clock.after(() => this.emit(), RESULT_DELAY); this.emit();
   }
   togglePractice() { this.cancel(); this.practice = !this.practice; this.message = ''; this.emit(); }
-  cancel() { this.clock.clear(); this.guard.reset(); this.phase = 'ready'; this.count = 0; this.input = null; this.message = 'Run cancelled. No result saved.'; this.emit(); }
+  cancel(message = 'Run cancelled. No result saved.') { this.clock.clear(); this.guard.reset(); this.phase = 'ready'; this.count = 0; this.input = null; this.message = message; this.emit(); }
   dispose() { this.clock.clear(); this.guard.reset(); }
 }
 
@@ -229,6 +229,6 @@ export class AimEngine {
   }
   tick() { if (this.phase === 'running') this.emit(); }
   release(token: string) { this.guard.release(token); this.emit(); }
-  cancel() { this.clock.clear(); this.guard.reset(); this.phase = 'ready'; this.target = null; this.outgoing = []; this.hits = this.misses = this.measured = this.elapsed = 0; this.input = null; this.message = 'Run cancelled. Start when ready.'; this.emit(); }
+  cancel(message = 'Run cancelled. Start when ready.') { this.clock.clear(); this.guard.reset(); this.phase = 'ready'; this.target = null; this.outgoing = []; this.hits = this.misses = this.measured = this.elapsed = 0; this.input = null; this.message = message; this.emit(); }
   dispose() { this.clock.clear(); this.guard.reset(); }
 }

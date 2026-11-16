@@ -211,7 +211,9 @@ export async function exerciseResultGate() {
   await wait(() => !query('.ai-game .ai-ready'));
   const tiles = [...document.querySelectorAll('.ai-memory-board button')];
   const ordered = Array.from({ length: 25 }, (_, index) => tiles.find(node => node.textContent === String(index + 1)));
-  ordered.forEach((node, index) => pointer(node, 'pointerdown', index + 1));
+  pointer(ordered[0], 'pointerdown', 1);
+  await wait(() => query('.ai-restart'));
+  ordered.slice(1).forEach((node, index) => pointer(node, 'pointerdown', index + 2));
   // This is deliberately before Solid can update the Restart disabled attribute.
   query('.ai-restart').click();
   const retry = await wait(() => query('.ai-result button'));

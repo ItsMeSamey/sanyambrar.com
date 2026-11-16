@@ -1,9 +1,11 @@
 import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
-import { Check, CirclePlay, Redo2, X } from '../../shared/components/Icons.tsx';
-import { Stats, Result, inputKind, useGamePress, useTimers } from './common.tsx';
+import { Check, CirclePlay, RotateCw, X } from '../../shared/components/Icons.tsx';
+import { Stats, inputKind, useGamePress, useTimers } from './common.tsx';
 import { createPairDeck, type PairCard as Card } from './pair-objects.ts';
+import { BoardResult } from './BoardResult.tsx';
+import { MoveHistory, type TileMove } from './MoveHistory.tsx';
 import type { GameProps, GameResult, InputKind } from './types.ts';
 import './pair.css';
 
@@ -23,12 +25,15 @@ function initialRun(): Run {
 export function PairGame(props: GameProps) {
   // Event state is synchronous; Solid 2 stages the corresponding rendered state.
   let current = initialRun();
+  let choices: TileMove[] = [];
   const [run, setRun] = createSignal(current);
   const [cursor, setCursor] = createSignal(0);
   const [columnCount, setColumnCount] = createSignal(2);
+  const [scrollable, setScrollable] = createSignal(false);
   const timers = useTimers();
   const presses = useGamePress();
   const cards = new Map<number, HTMLButtonElement>();
+  const touchStarts = new Map<number, { index: number; x: number; y: number; scroll: number }>();
   let board!: HTMLDivElement;
   let ready!: HTMLButtonElement;
   let columns = 2;
@@ -37,22 +42,25 @@ export function PairGame(props: GameProps) {
   let frame = 0;
 
   function update(next: Run) { current = next; setRun(next); }
-  function clear() { timers.clear(); cancelAnimationFrame(frame); held = false; }
+  function clear() { timers.clear(); cancelAnimationFrame(frame); held = false; touchStarts.clear(); }
   function fitColumns() {
     const width = board?.clientWidth || 320;
     columns = Math.min(Math.max(2, Math.min(6, Math.floor((width + 14) / 62))), Math.max(2, Math.ceil(Math.sqrt(current.cards.length))));
     setColumnCount(columns);
+    timers.after(() => { if (!disposed) setScrollable(board.scrollHeight > board.clientHeight + 1); }, 0);
   }
-  function focusCard(index: number) {
+  function focusCard(index: number, scroll = true) {
     setCursor(index);
     const target = cards.get(index);
     target?.focus({ preventScroll: true });
-    target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (scroll) target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function focusAfterRender(action: () => void) {
     timers.after(() => { if (!disposed && !document.hidden) action(); }, 0);
   }
   function retry() {
+    props.onActivityChange?.(false);
+    choices = [];
     clear(); cards.clear(); update(initialRun()); setCursor(0); fitColumns();
     focusAfterRender(() => { if (current.phase === 'study') ready?.focus({ preventScroll: true }); });
   }
@@ -89,13 +97,17 @@ export function PairGame(props: GameProps) {
     };
     update({ ...current, phase: 'finished', result, mismatch: lastMismatch,
       open: current.cards.map(card => card.index), message: 'No lives left. Review the last mismatch.' });
-    setCursor(lastMismatch[0]);
-    if (current.input === 'keyboard') focusAfterRender(() => focusCard(lastMismatch[0]));
+    setCursor(lastMismatch[1]);
+    if (current.input === 'keyboard') focusAfterRender(() => focusCard(lastMismatch[1], false));
     props.onFinish(result);
   }
   function pick(index: number, event: Event) {
     if (current.phase !== 'ready' || !accepts(event) || current.open.includes(index) || current.matched.includes(index)) return;
+    props.onActivityChange?.(true);
     const first = current.first;
+    choices.push({ round: current.round + 1, choice: `Card ${index + 1} · ${current.cards[index].object.name}`,
+      expected: first === null ? undefined : current.cards[first].object.name,
+      outcome: first === null ? 'Opened first card' : current.cards[first].value === current.cards[index].value ? 'Matched pair' : 'Mismatched pair' });
     const next: Run = { ...current, open: [...current.open, index], first: index, message: 'Find its matching card.' };
     if (first === null) { update(next); return; }
     next.first = null; next.moves++;
@@ -128,9 +140,11 @@ export function PairGame(props: GameProps) {
   }
   function cancel() {
     if (disposed || current.phase === 'finished' || current.phase === 'cancelled') return;
+    if (current.phase === 'study' && current.round === 0 && !current.input) return;
     clear(); update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.' });
   }
   function keydown(event: KeyboardEvent) {
+    if (current.phase === 'finished' || current.phase === 'cancelled') return;
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
@@ -167,29 +181,27 @@ export function PairGame(props: GameProps) {
     observer.observe(board);
     const visibility = () => { if (document.hidden) cancel(); };
     const keyup = (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') held = false; };
+    const releaseTouch = (event: PointerEvent) => { touchStarts.delete(event.pointerId); };
     window.addEventListener('blur', cancel);
     window.addEventListener('pagehide', cancel);
     window.addEventListener('keyup', keyup);
+    window.addEventListener('pointerup', releaseTouch);
+    window.addEventListener('pointercancel', releaseTouch);
     document.addEventListener('visibilitychange', visibility);
     return () => {
       observer.disconnect(); window.removeEventListener('blur', cancel); window.removeEventListener('pagehide', cancel);
       window.removeEventListener('keyup', keyup); document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('pointerup', releaseTouch); window.removeEventListener('pointercancel', releaseTouch);
     };
   });
-  onCleanup(() => { disposed = true; clear(); });
+  onCleanup(() => { disposed = true; clear(); props.onActivityChange?.(false); });
 
-  return <section class="pair-memory" onKeyDown={keydown} aria-label="Pair memory">
-    <Show when={run().phase !== 'finished' && run().phase !== 'cancelled'}>
+  return <section class="pair-memory" data-phase={run().phase} onKeyDown={keydown} aria-label="Pair memory">
       <Stats items={[{ label: 'Round', value: run().round + 1 }, { label: 'Pairs left', value: (run().cards.length - run().matched.length) / 2 }, { label: 'Lives', value: run().lives, lives: true }]}/>
-    </Show>
-    <p class="pair-status-line" aria-live="polite">{run().message}</p>
-    <Show when={run().result}>{result => <Result result={result()} onRetry={retry}>
-      <p>{run().matches} pairs matched &middot; reached round {run().round + 1}</p>
-      <p>Crossed cards are your picks. Pair the matching numbers.</p>
-    </Result>}</Show>
-    <Show when={run().phase === 'cancelled'}><Button class="pair-replay" onClick={retry}><Redo2 size={18}/>Play again</Button></Show>
-    <div ref={board} class={['pair-board', run().phase === 'finished' && 'is-review']}
-      hidden={run().phase === 'cancelled'} role="group" aria-label="Matching cards. Use arrow keys to move between cards."
+    <div class="pair-stage">
+    <div ref={board} class={['pair-board', run().phase === 'finished' && 'is-review', scrollable() && 'is-scrollable']}
+      inert={run().phase === 'cancelled'} role="group" tabindex={scrollable() ? 0 : -1}
+      aria-label={run().phase === 'finished' ? 'Matching cards. Choose Review board, then scroll to inspect every card.' : 'Matching cards. Use arrow keys to move between cards.'}
       style={{ '--pair-columns': columnCount() } as JSX.CSSProperties}>
       <For each={run().cards}>{card => <button ref={element => { cards.set(card.index, element); }}
         type="button" class={['pair-card', run().open.includes(card.index) && 'is-open', run().matched.includes(card.index) && 'is-matched']} data-pair-index={card.index}
@@ -197,13 +209,29 @@ export function PairGame(props: GameProps) {
         data-review-pair={review(card)?.number}
         disabled={run().phase === 'study' || run().phase === 'conceal'}
         aria-disabled={run().phase !== 'ready' || run().open.includes(card.index) ? 'true' : 'false'}
-        aria-label={label(card)} tabindex={cursor() === card.index ? 0 : -1}
+        aria-label={label(card)} tabindex={run().phase !== 'finished' && cursor() === card.index ? 0 : -1}
         onFocus={() => setCursor(card.index)}
         onPointerDown={event => {
-          if (!presses.down(event) || current.phase !== 'ready') return;
+          if (current.phase !== 'ready' || document.hidden || event.button !== 0) return;
+          if (event.pointerType === 'touch' && scrollable()) {
+            if (!touchStarts.has(event.pointerId)) touchStarts.set(event.pointerId, { index: card.index, x: event.clientX, y: event.clientY, scroll: board.scrollTop });
+            return;
+          }
+          if (!presses.down(event)) return;
           focusCard(card.index); pick(card.index, event);
         }}
-        onClick={event => { event.preventDefault(); if (!held && presses.click(event)) pick(card.index, event); }}>
+        onPointerUp={event => {
+          const start = touchStarts.get(event.pointerId);
+          touchStarts.delete(event.pointerId);
+          if (!start || start.index !== card.index || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || Math.abs(board.scrollTop - start.scroll) > 1 || current.phase !== 'ready') return;
+          focusCard(card.index, false); pick(card.index, event);
+        }}
+        onPointerMove={event => {
+          const start = touchStarts.get(event.pointerId);
+          if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) touchStarts.delete(event.pointerId);
+        }}
+        onPointerCancel={event => { touchStarts.delete(event.pointerId); }}
+        onClick={event => { if (current.phase !== 'ready') return; event.preventDefault(); if (!held && presses.click(event)) pick(card.index, event); }}>
         <span class="pair-face" aria-hidden="true">
           <Show when={card.object.svg} fallback={card.object.name}>
             <svg xmlns="http://www.w3.org/2000/svg" class="pair-object" viewBox={card.object.viewBox} aria-hidden="true" innerHTML={card.artwork}/>
@@ -213,8 +241,16 @@ export function PairGame(props: GameProps) {
         <Show when={run().matched.includes(card.index)}><span class="pair-matched-marker" aria-hidden="true"><Check size={13}/></span></Show>
       </button>}</For>
     </div>
+    <Show when={run().phase === 'cancelled'}><div class="pair-cancelled"><Button class="pair-replay ai-primary" onClick={retry}><RotateCw size={18}/>Play again</Button></div></Show>
+    <Show when={run().result}>{result => <BoardResult result={result()} onRetry={retry} />}</Show>
+    </div>
+    <p class="pair-status-line" aria-live="polite">{run().message}</p>
     <Show when={run().phase === 'study' || run().phase === 'conceal'}>
       <div class="pair-actions"><Button ref={ready} class="pair-ready ai-primary" data-pair-ready="true" disabled={run().phase === 'conceal'} onClick={event => { if (!held) hide(event); }}><CirclePlay size={18}/>Hide cards &amp; start</Button></div>
     </Show>
+    <Show when={run().result}><div class="pair-review-summary">
+      <p>{run().matches} pairs matched &middot; reached round {run().round + 1}</p>
+      <p>Crossed cards are your picks. Pair the matching numbers.</p>
+    </div><MoveHistory moves={choices} /></Show>
   </section>;
 }

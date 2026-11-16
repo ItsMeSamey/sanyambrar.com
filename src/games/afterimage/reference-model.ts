@@ -9,8 +9,9 @@ export type HistogramReference = {
 };
 export type MeanReference = { kind: 'mean'; mean: number; source: string };
 
-// Rules, input and board changes invalidate the external comparison even when the game name is unchanged.
-export function referenceFor(id: GameId, scope: string, boardFormat?: 'standard' | 'compact'): HistogramReference | MeanReference | null {
+// The saved scope encodes the rules, input and board used for that result.
+// The currently mounted board must not change a saved result's comparison.
+export function referenceFor(id: GameId, scope: string): HistogramReference | MeanReference | null {
   if (id === 'cps' && ['cps-v1-mouse-10s', 'tps-v1-touch-10s'].includes(scope)) {
     return { kind: 'mean', mean: 6.66, source: 'https://cpstest.app/stats/' };
   }
@@ -25,7 +26,7 @@ export function referenceFor(id: GameId, scope: string, boardFormat?: 'standard'
     reaction: ['reaction-v5-desktop', 'reactiontime', 'ms'],
   };
   const match = compatible[id];
-  if (!match || scope !== match[0] || (id === 'aim' || id === 'chimp') && boardFormat === 'compact') return null;
+  if (!match || scope !== match[0]) return null;
   return { kind: 'histogram', bins: referenceData[match[1]], unit: match[2], source: `https://humanbenchmark.com/tests/${match[1]}` };
 }
 

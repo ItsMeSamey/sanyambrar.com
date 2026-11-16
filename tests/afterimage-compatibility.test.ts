@@ -7,7 +7,7 @@ import type { GameId } from '../src/games/afterimage/types.ts';
 const scopes: [GameId, string][] = [
   ['visual', 'visual-v3-standard'], ['sequence', 'sequence-v3-growing'], ['sequence-fresh', 'sequence-v2-fresh'],
   ['reverse', 'reverse-v2-growing'], ['reverse-fresh', 'reverse-v2-fresh'], ['number', 'number-v2-hb'],
-  ['verbal', 'verbal-v4-balanced'], ['chimp', 'chimp-v2-compact-mouse'], ['pairs', 'pairs-v4-mouse'],
+  ['verbal', 'verbal-v5-progressive'], ['chimp', 'chimp-v2-compact-mouse'], ['pairs', 'pairs-v4-mouse'],
   ['reaction', 'reaction-v7-desktop'], ['aim', 'aim-v4-compact-mouse'], ['typing', 'typing-v4-hardware-passage'],
   ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v1-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
   ['rotation', 'rotation-v3-60s'], ['patterns', 'patterns-v3-60s'], ['search', 'search-v2-30s'],
@@ -30,7 +30,7 @@ function withStorage(run: (storage: Storage) => void) {
 }
 
 describe('Afterimage original score compatibility', () => {
-  test('all nineteen routes retain their original current scopes', () => {
+  test('active and archived games resolve their current rules scopes', () => {
     expect(new Set(scopes.map(([id]) => id)).size).toBe(19);
     for (const [id, scope] of scopes) expect(initialScope(id)).toBe(scope);
   });
@@ -67,6 +67,32 @@ describe('Afterimage original score compatibility', () => {
     expect(importHistory(backup)).toBe(1);
     expect(scopeChoices('visual').map(([value]) => value)).toContain('visual-v2-standard');
     expect(readHistory('visual-v2-standard')).toEqual([{ value: 9 }]);
+  }));
+  test('progressive verbal rules preserve earlier scores as separate selectable histories', () => withStorage(storage => {
+    const raw = '[{"value":42,"date":100,"rulesVersion":4,"custom":"keep"}]';
+    storage.setItem(scoreKey('verbal-v4-balanced'), raw);
+    expect(scopeChoices('verbal')).toEqual([
+      ['verbal-v5-progressive', 'Current rules'], ['verbal-v4-balanced', 'Previous balanced rules'],
+    ]);
+    saveResult({ scope: 'verbal-v5-progressive', value: 17, unit: 'words', details: { rulesVersion: 5 } });
+    expect(storage.getItem(scoreKey('verbal-v4-balanced'))).toBe(raw);
+    expect(readHistory('verbal-v5-progressive')[0]).toMatchObject({ value: 17, rulesVersion: 5 });
+    expect(referenceFor('verbal', 'verbal-v5-progressive')).toBeNull();
+  }));
+  test('archived typing aliases and future revisions remain selectable and restore byte for byte', () => withStorage(storage => {
+    const preserved = new Map<string, string>();
+    for (const [index, scope] of ['typing', 'typing-v3-hardware-60s', 'typing-v3-onscreen-60s', 'typing-v4-hardware-passage', 'typing-v4-onscreen-passage', 'typing-v99-custom'].entries()) {
+      const raw = `[ { "value": ${40 + index}, "date": 123, "future": { "keep": true } } ]`;
+      preserved.set(scoreKey(scope), raw);
+      storage.setItem(scoreKey(scope), raw);
+    }
+    const choices = scopeChoices('typing').map(([scope]) => scoreKey(scope));
+    for (const key of preserved.keys()) expect(choices).toContain(key);
+    const backup = exportHistory();
+    storage.clear();
+    expect(importHistory(backup)).toBe(6);
+    for (const [key, raw] of preserved) expect(storage.getItem(key)).toBe(raw);
+    expect(readHistory('typing')[0].value).toBe(40);
   }));
   test('legacy timed pairs and question sets retain their own units and direction', () => {
     expect(scopeUnit('pairs', 'pairs-v3-touch')).toEqual({ unit: 's', lower: true });
@@ -123,15 +149,23 @@ describe('Afterimage external reference integrity', () => {
     for (const [id, scope] of eligible) expect(referenceFor(id, scope)?.kind).toBe('histogram');
     const excluded: [GameId, string][] = [
       ['reaction', 'reaction-v7-desktop'], ['reaction', 'reaction-v7-touch-release'], ['reaction', 'reaction-v5-touch'],
-      ['verbal', 'verbal-v4-balanced'], ['verbal', 'verbal'], ['sequence-fresh', 'sequence-v2-fresh'],
+      ['verbal', 'verbal-v5-progressive'], ['verbal', 'verbal-v4-balanced'], ['verbal', 'verbal'], ['sequence-fresh', 'sequence-v2-fresh'],
       ['visual', 'visual-v3-long'], ['typing', 'typing-v4-onscreen-passage'], ['number', 'number'],
-      ['aim', 'aim-v4-compact-mouse'], ['aim', 'aim-v6-standard-touch'], ['chimp', 'chimp-v2-standard-keyboard'],
+      ['aim', 'aim-v4-compact-mouse'], ['aim', 'aim-v6-standard-touch'], ['aim', 'aim'], ['chimp', 'chimp-v2-standard-keyboard'], ['chimp', 'chimp-v2-compact-mouse'], ['chimp', 'chimp'],
       ['pairs', 'pairs-v4-mouse'], ['rotation', 'rotation-v3-60s'], ['cps', 'tps-v3-touch-10s'],
     ];
     for (const [id, scope] of excluded) expect(referenceFor(id, scope)).toBeNull();
-    expect(referenceFor('aim', 'aim-v4-standard-mouse', 'compact')).toBeNull();
-    expect(referenceFor('chimp', 'chimp-v2-standard-mouse', 'compact')).toBeNull();
   });
+  test('saved standard-board comparisons remain eligible while the active history format is compact', () => withStorage(storage => {
+    for (const id of ['aim', 'chimp'] as const) {
+      const standard = `${id}-${id === 'aim' ? 'v4' : 'v2'}-standard-mouse`;
+      storage.setItem(scoreKey(standard), '[{"value":10,"date":100}]');
+      expect(initialScope(id)).toContain('-compact-');
+      expect(scopeChoices(id).map(([scope]) => scope)).toContain(standard);
+      expect(referenceFor(id, standard)?.kind).toBe('histogram');
+      expect(referenceFor(id, initialScope(id))).toBeNull();
+    }
+  }));
   test('click reference is a mixed-input mean rather than an invented histogram', () => {
     for (const scope of ['cps-v1-mouse-10s', 'tps-v1-touch-10s']) {
       expect(referenceFor('cps', scope)).toEqual({ kind: 'mean', mean: 6.66, source: 'https://cpstest.app/stats/' });

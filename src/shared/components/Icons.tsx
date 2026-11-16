@@ -2,6 +2,7 @@ import { omit } from 'solid-js';
 import { ChevronLeft as ChevronLeftNode, ChevronRight as ChevronRightNode } from 'lucide';
 import { Copy as CopyNode, Lock as LockNode, LockOpen as LockOpenNode } from 'lucide';
 import { CornerDownLeft as CornerDownLeftNode, Delete as DeleteNode } from 'lucide';
+import { RotateCw as RotateCwNode } from 'lucide';
 import { Dynamic, createComponent, type JSX } from '@solidjs/web';
 import { type IconNode, AlarmClockCheck as AlarmClockCheckNode, ArrowUpRight as ArrowUpRightNode, ChartNoAxesColumn as ChartNoAxesColumnNode, Check as CheckNode, ChevronsUpDown as ChevronsUpDownNode, CircleAlert as CircleAlertNode, CircleCheck as CircleCheckNode, CircleHelp as CircleHelpNode, CirclePlay as CirclePlayNode, CircleStop as CircleStopNode, Download as DownloadNode, Frown as FrownNode, Info as InfoNode, Maximize2 as Maximize2Node, MoonStar as MoonStarNode, Move as MoveNode, Redo2 as Redo2Node, Search as SearchNode, Settings as SettingsNode, Share as ShareNode, SkipBack as SkipBackNode, SkipForward as SkipForwardNode, Smile as SmileNode, Trash2 as Trash2Node, Trophy as TrophyNode, Undo2 as Undo2Node, Upload as UploadNode, X as XNode } from 'lucide';
 
@@ -53,6 +54,7 @@ export const Maximize2 = /* @__PURE__ */ icon(Maximize2Node, 'maximize2');
 export const MoonStar = /* @__PURE__ */ icon(MoonStarNode, 'moon-star');
 export const Move = /* @__PURE__ */ icon(MoveNode, 'move');
 export const Redo2 = /* @__PURE__ */ icon(Redo2Node, 'redo2');
+export const RotateCw = /* @__PURE__ */ icon(RotateCwNode, 'rotate-cw');
 export const Search = /* @__PURE__ */ icon(SearchNode, 'search');
 export const Settings = /* @__PURE__ */ icon(SettingsNode, 'settings');
 export const Share = /* @__PURE__ */ icon(ShareNode, 'share');

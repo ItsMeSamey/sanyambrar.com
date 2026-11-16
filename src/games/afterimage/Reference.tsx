@@ -45,7 +45,7 @@ function Histogram(props: { reference: HistogramReference; value?: number }) {
   };
   return <>
     <div class="ai-reference-metrics"><span class="ai-chart-legend">Mean ≈ <strong>{summary().mean.toFixed(1)}</strong> {props.reference.unit}</span><span>Median bin <strong>{summary().median}</strong></span><span class="ai-chart-selected-legend" aria-hidden={props.value === undefined ? 'true' : undefined}>Selected <strong>{chartLabel(props.value ?? lastValue())}</strong> {props.reference.unit}</span></div>
-    <svg ref={element => { chart = element; geometry.ref(element); }} class="ai-reference-chart" viewBox={`0 0 ${geometry.width()} 236`} role="group" tabindex="0" aria-label={`Human Benchmark score distribution. Horizontal axis: ${scoreAxisLabel(props.reference.unit)}. Vertical axis: percentage of observations. Use arrow keys, Home and End to inspect bins; Escape closes details. Estimated mean ${summary().mean.toFixed(1)} ${props.reference.unit}. ${summary().total} published observations.${props.value !== undefined ? ` Selected run: ${props.value} ${props.reference.unit}.` : ''}`} onKeyDown={keys} onPointerMove={event => { if (event.pointerType !== 'touch') setHovered(pointAt(event)); }} onPointerLeave={() => setHovered(null)} onClick={event => { setChosen(pointAt(event)); setHovered(null); event.currentTarget.focus({ preventScroll: true }); }}>
+    <svg ref={element => { chart = element; geometry.ref(element); }} class="ai-reference-chart" viewBox={`0 0 ${geometry.width()} 236`} role="group" tabindex="0" aria-label={`Benchmark score distribution. Horizontal axis: ${scoreAxisLabel(props.reference.unit)}. Vertical axis: percentage of observations. Use arrow keys, Home and End to inspect bins; Escape closes details. Estimated mean ${summary().mean.toFixed(1)} ${props.reference.unit}. ${summary().total} published observations.${props.value !== undefined ? ` Selected run: ${props.value} ${props.reference.unit}.` : ''}`} onKeyDown={keys} onPointerMove={event => { if (event.pointerType !== 'touch') setHovered(pointAt(event)); }} onPointerLeave={() => setHovered(null)} onClick={event => { setChosen(pointAt(event)); setHovered(null); event.currentTarget.focus({ preventScroll: true }); }}>
       <ChartAxes width={geometry.width()} left={left()} horizontal={scoreAxisLabel(props.reference.unit)} vertical="Observations (%)"/>
       <ChartGrid scale={scale()} width={geometry.width()} top={24} bottom={176} percent/>
       <For each={props.reference.bins}>{bin => <rect class="ai-chart-bar" x={x(bin.id) - barWidth() / 2 + .5} y={y(bin.count)} width={Math.max(0.5, barWidth() - 1)} height={176 - y(bin.count)} rx="1"><title>{bin.id} {props.reference.unit}: {bin.count} observations ({(100 * bin.count / summary().total).toFixed(2)}%)</title></rect>}</For>
@@ -57,7 +57,7 @@ function Histogram(props: { reference: HistogramReference; value?: number }) {
     </svg>
     <ChartScaleNote scale={scale()} unit="%"/>
     <div class="ai-chart-detail-slot"><Show when={inspectedBin()}>{bin => <ChartDetail previous={inspected()! > 0 ? () => choose(inspected()! - 1) : undefined} next={inspected()! < props.reference.bins.length - 1 ? () => choose(inspected()! + 1) : undefined} close={close}><strong>{chartLabel(bin().id)} {props.reference.unit}</strong><br/>{(100 * bin().count / summary().total).toFixed(2)}% · {bin().count.toLocaleString()} observations</ChartDetail>}</Show></div>
-    <p class="ai-reference-source"><a href={props.reference.source} target="_blank" rel="noopener noreferrer">Human Benchmark</a><span>{summary().total.toLocaleString()} observations · 11 Nov 2026</span></p>
+    <p class="ai-reference-source">{summary().total.toLocaleString()} observations · 11 Nov 2026</p>
   </>;
 }
 
@@ -91,7 +91,7 @@ function MeanChart(props: { mean: number; value?: number }) {
     else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') setChosen(Math.min(last, (chosen() ?? -1) + 1));
     else setChosen(0);
   };
-  return <><svg ref={element => { chart = element; geometry.ref(element); }} class="ai-reference-chart ai-mean-chart" viewBox={`0 0 ${geometry.width()} 130`} role="group" tabindex="0" aria-label={`CPS Test published mean: ${props.mean} inputs per second over 10 seconds. Horizontal axis: inputs per second. Mixed input devices; mean marker only, not a distribution. Use arrow keys to inspect markers; Escape closes details.${props.value !== undefined ? ` Selected run: ${props.value} per second.` : ''}`} onKeyDown={keys} onPointerMove={event => { if (event.pointerType !== 'touch') setHovered(pointAt(event)); }} onPointerLeave={() => setHovered(null)} onClick={event => { setChosen(pointAt(event)); setHovered(null); event.currentTarget.focus({ preventScroll: true }); }}>
+  return <><svg ref={element => { chart = element; geometry.ref(element); }} class="ai-reference-chart ai-mean-chart" viewBox={`0 0 ${geometry.width()} 130`} role="group" tabindex="0" aria-label={`Published mean: ${props.mean} inputs per second over 10 seconds. Horizontal axis: inputs per second. Mixed input devices; mean marker only, not a distribution. Use arrow keys to inspect markers; Escape closes details.${props.value !== undefined ? ` Selected run: ${props.value} per second.` : ''}`} onKeyDown={keys} onPointerMove={event => { if (event.pointerType !== 'touch') setHovered(pointAt(event)); }} onPointerLeave={() => setHovered(null)} onClick={event => { setChosen(pointAt(event)); setHovered(null); event.currentTarget.focus({ preventScroll: true }); }}>
     <path class="ai-chart-axis" d={`M${inset()} 60H${geometry.width() - inset()}`}/>
     <For each={scale().ticks}>{(value, index) => <g><path class="ai-chart-axis" d={`M${x(value)} 56V64`}/><Show when={!crowdedTicks() || index() === 0 || index() === scale().ticks.length - 1}><text x={x(value)} y="83" text-anchor="middle">{chartAxis(scale()).labels[index()]}</text></Show></g>}</For>
     <path class="ai-chart-average" d={`M${x(props.mean)} 29V64`}/><circle class="ai-chart-point" cx={x(props.mean)} cy="60" r="4"/>
@@ -102,16 +102,16 @@ function MeanChart(props: { mean: number; value?: number }) {
   </svg><ChartScaleNote scale={scale()} unit="inputs/s"/><div class="ai-chart-detail-slot"><Show when={inspected()}>{marker => <ChartDetail previous={(hovered() ?? chosen() ?? 0) > 0 ? () => choose(0) : undefined} next={(hovered() ?? chosen() ?? 0) < markers().length - 1 ? () => choose(1) : undefined} close={close}>{marker().label}: <strong>{marker().value} inputs/s</strong></ChartDetail>}</Show></div></>;
 }
 
-export function Reference(props: { id: GameId; scope: string; value?: number; boardFormat?: 'standard' | 'compact' }) {
-  const reference = createMemo(() => referenceFor(props.id, props.scope, props.boardFormat));
+export function Reference(props: { id: GameId; scope: string; value?: number }) {
+  const reference = createMemo(() => referenceFor(props.id, props.scope));
   const histogram = createMemo(() => { const ref = reference(); return ref?.kind === 'histogram' && summarizeBins(ref.bins) ? ref : null; });
   const mean = createMemo(() => { const ref = reference(); return ref?.kind === 'mean' ? ref : null; });
-  return <Show when={reference()}><section class="ai-reference" aria-label="External reference"><details open><summary>{mean() ? 'External mean · mixed inputs' : 'Human Benchmark reference'}</summary>
+  return <Show when={histogram() || mean()} fallback={<p class="ai-muted">No matching benchmark measurements have been added for these rules and input settings yet.</p>}>
     <Show when={histogram()}>{ref => <Histogram reference={ref()} value={props.value}/>}</Show>
     <Show when={mean()}>{ref => <>
-      <p>10 seconds · inputs per second. Sample size unpublished.</p>
+      <p>10 seconds · inputs per second · mixed input devices. Sample size unpublished.</p>
       <MeanChart mean={ref().mean} value={props.value}/>
-      <p class="ai-reference-source"><a href={ref().source} target="_blank" rel="noopener noreferrer">CPS Test / arealme</a><span>Retrieved 11 Nov 2026</span></p>
+      <p class="ai-reference-source">Retrieved 11 Nov 2026</p>
     </>}</Show>
-  </details></section></Show>;
+  </Show>;
 }
