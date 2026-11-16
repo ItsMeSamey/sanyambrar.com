@@ -5,6 +5,21 @@ import { CirclePlay, RotateCw } from '../../shared/components/Icons.tsx';
 import type { GameResult, InputKind, Stat } from './types.ts';
 import { createPointerPresses, isVirtualClick } from './press-input.ts';
 
+export function useGameContextMenu(surface: () => HTMLElement | undefined, active: () => boolean) {
+  onSettled(() => {
+    const element = surface();
+    if (!element) return;
+    const contextmenu = (event: MouseEvent) => {
+      if (event.shiftKey && event.button === 2) return;
+      if (!active() || event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      event.preventDefault();
+    };
+    // Cancel on the owning element before the shared document menu runs.
+    element.addEventListener('contextmenu', contextmenu);
+    return () => element.removeEventListener('contextmenu', contextmenu);
+  });
+}
+
 export function useGamePress() {
   const pointers = createPointerPresses();
   onSettled(() => {
@@ -83,8 +98,8 @@ export function Stats(props: { items: Stat[] }) {
   return <div class="ai-stats" aria-label="Current run"><For each={props.items} keyed={item => item.label}>{item => <div class={['ai-stat', item().lives && 'ai-lives']}><span>{item().label}</span>{item().lives ? <strong aria-label={`${item().value} lives`}><For each={Array.from({ length: Math.max(0, Math.min(10, Number(item().value) || 0)) }, (_, index) => index)}>{() => <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 21 3.4 12.6a5.5 5.5 0 0 1 7.8-7.8l.8.8.8-.8a5.5 5.5 0 0 1 7.8 7.8Z"/></svg>}</For></strong> : <strong>{item().value}</strong>}</div>}</For></div>;
 }
 
-export function Ready(props: { onStart: () => void; children?: JSX.Element; label?: string; preview?: boolean; overlay?: boolean }) {
-  return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button><div class="ai-ready-content">{props.children}</div></section>;
+export function Ready(props: { onStart: () => void; children?: JSX.Element; rules?: JSX.Element; label?: string; preview?: boolean; overlay?: boolean }) {
+  return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><div class="ai-ready-controls"><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button>{props.rules}</div><div class="ai-ready-content">{props.children}</div></section>;
 }
 
 export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element; overlay?: boolean }) {

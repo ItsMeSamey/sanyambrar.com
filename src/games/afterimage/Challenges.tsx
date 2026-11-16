@@ -2,7 +2,9 @@ import { createEffect, createSignal, For, onSettled, Show } from 'solid-js';
 import { Dynamic } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, X } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { GameRules } from './GameRules.tsx';
+import { ActiveCountdown } from './active-clock.ts';
 import type { ChallengeDefinition, ChallengeQuestion } from './challenge-types.ts';
 import type { GameProps, GameResult } from './types.ts';
 import './challenges.css';
@@ -13,7 +15,7 @@ const duration = 60;
 
 export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { definition: ChallengeDefinition<Q> }) {
   const definition = props.definition;
-  const scope = `${definition.id}-v1-60s`;
+  const scope = `${definition.id}-v2-60s`;
   const timers = useTimers();
   const presses = useGamePress();
   const heldKeys = new Set<string>();
@@ -21,21 +23,23 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   let state: Run<Q> = { phase: 'ready', question: definition.createQuestion(0), round: 0, correct: 0, errors: 0, selected: -1, remaining: duration, result: null, explanation: '' };
   const [view, setView] = createSignal(state);
   const [notice, setNotice] = createSignal('');
-  let deadline = 0;
+  const clock = new ActiveCountdown();
   function update(next: Partial<Run<Q>>) { state = { ...state, ...next }; setView(state); }
   const live = () => ['answer', 'wrong', 'correct'].includes(state.phase);
+  let playArea: HTMLDivElement | undefined;
+  useGameContextMenu(() => playArea, live);
   const score = () => Math.max(0, view().correct - view().errors);
   function finish() {
     if (!live()) return;
-    timers.clear();
-    const result: GameResult = { value: Math.max(0, state.correct - state.errors), scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, duration, rulesVersion: 1 } };
+    timers.clear(); clock.reset();
+    const result: GameResult = { value: Math.max(0, state.correct - state.errors), scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, duration, rulesVersion: 2 } };
     update({ phase: 'result', remaining: 0, result });
     setNotice('Run finished.');
     props.onFinish(result);
   }
   function tick() {
-    if (!live()) return;
-    const remaining = deadline - performance.now();
+    if (!live() || !clock.running) return;
+    const remaining = clock.remaining(performance.now());
     if (remaining <= 0) { finish(); return; }
     const seconds = Math.ceil(remaining / 1000);
     if (state.remaining !== seconds) update({ remaining: seconds });
@@ -43,17 +47,20 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   }
   function start() {
     timers.clear(); heldKeys.clear();
-    deadline = performance.now() + duration * 1000;
+    clock.start(duration * 1000, performance.now());
     update({ phase: 'answer', question: definition.createQuestion(0), round: 0, correct: 0, errors: 0, selected: -1, remaining: duration, result: null, explanation: '' });
-    setNotice(''); props.onActivityChange?.(false); props.onScopeChange?.(scope);
+    setNotice(''); props.onActivityChange?.(true); props.onScopeChange?.(scope);
     tick();
     timers.after(() => { if (state.phase === 'answer') buttons.get(0)?.focus({ preventScroll: true }); }, 0);
   }
   function advance() {
+    const paused = !clock.running;
+    clock.resume(performance.now());
     update({ phase: 'correct', explanation: '' });
+    if (paused) tick();
     timers.after(() => {
       if (!live() || document.hidden) return;
-      if (performance.now() >= deadline) { finish(); return; }
+      if (clock.remaining(performance.now()) <= 0) { finish(); return; }
       const round = state.round + 1;
       update({ phase: 'answer', question: definition.createQuestion(round), round, selected: -1, explanation: '' });
     }, 220);
@@ -61,7 +68,8 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   function answer(index: number) {
     // A scored answer and its correction must each follow a rendered state.
     if (document.hidden || !live() || state.question !== view().question || state.phase !== view().phase || state.phase === 'correct') return false;
-    if (performance.now() >= deadline) { finish(); return false; }
+    const now = performance.now();
+    if (clock.remaining(now) <= 0) { finish(); return false; }
     if (state.phase === 'wrong') {
       if (index !== state.question.correct) return false;
       setNotice('Correct answer. Next question.'); advance(); return true;
@@ -70,7 +78,11 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     const correct = index === state.question.correct;
     update({ correct: state.correct + Number(correct), errors: state.errors + Number(!correct), selected: index });
     if (correct) { setNotice('Correct.'); advance(); }
-    else { setNotice(`Incorrect. ${state.question.explanation}`); update({ phase: 'wrong', explanation: state.question.explanation }); }
+    else {
+      const remaining = clock.pause(now); timers.clear();
+      setNotice(`Incorrect. ${state.question.explanation}`);
+      update({ phase: 'wrong', remaining: Math.ceil(remaining / 1000), explanation: state.question.explanation });
+    }
     return true;
   }
   const blocked = (index: number) => view().phase === 'wrong' ? index !== view().question.correct : view().phase !== 'answer';
@@ -101,7 +113,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     const blur = () => heldKeys.clear();
     const visibility = () => {
       if (!document.hidden || !live()) return;
-      timers.clear(); heldKeys.clear();
+      timers.clear(); clock.reset(); heldKeys.clear();
       update({ phase: 'ready', remaining: duration, correct: 0, errors: 0, selected: -1, result: null, explanation: '' });
       setNotice('Run interrupted. Start a fresh run.'); props.onActivityChange?.(false);
     };
@@ -112,7 +124,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     <Stats items={[{ label: 'Time', value: `${view().remaining}s` }, { label: 'Score', value: score() }, { label: 'Mistakes', value: view().errors }]}/>
     <span class="ai-sr-only" role="status">{view().phase !== 'ready' ? notice() || undefined : undefined}</span>
     <div class="ai-challenge-stage">
-      <div class="ai-challenge-play" inert={view().phase === 'ready'} aria-hidden={view().phase === 'ready' ? 'true' : undefined}>
+      <div ref={playArea} class="ai-challenge-play" data-game-input={['answer', 'wrong', 'correct'].includes(view().phase) ? '' : undefined} inert={view().phase === 'ready'} aria-hidden={view().phase === 'ready' ? 'true' : undefined}>
         <div class="ai-challenge-prompt"><Dynamic component={definition.Prompt} question={view().question}/></div>
         <div class="ai-challenge-options"><For each={[0, 1, 2, 3]}>{index => <Button ref={element => { buttons.set(index, element); }} class="ai-challenge-option" data-challenge-choice={index} data-outcome={outcome(index)} aria-label={`${view().question.options[index]}, key ${index + 1}`} aria-disabled={blocked(index) ? 'true' : undefined} disabled={view().phase === 'result' || view().phase === 'wrong' && index !== view().question.correct}
           onPointerDown={event => { if (!blocked(index) && presses.down(event) && answer(index)) event.currentTarget.focus({ preventScroll: true }); }} onClick={event => { if (!blocked(index) && presses.click(event)) answer(index); }}>
@@ -121,7 +133,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
           <span class="ai-challenge-outcome" aria-hidden="true"><Show when={outcome(index) === 'correct'}><Check size={18}/></Show><Show when={outcome(index) === 'wrong'}><X size={18}/></Show></span>
         </Button>}</For></div>
       </div>
-      <Show when={view().phase === 'ready'}><Ready overlay onStart={start}><p>{definition.instruction}</p><p>Score = correct − mistakes, minimum 0.</p><p role="status">{notice() || undefined}</p></Ready></Show>
+      <Show when={view().phase === 'ready'}><Ready overlay onStart={start} rules={<GameRules detail="Score is correct answers minus mistakes, minimum 0. After a mistake, the clock pauses until you select the marked answer to continue.">{definition.instruction}</GameRules>}><p role="status">{notice() || undefined}</p></Ready></Show>
       <Show when={view().result} keyed>{result => <Result overlay result={result} onRetry={start}/>}</Show>
     </div>
     <div class="ai-challenge-explanation">{view().explanation || undefined}</div>

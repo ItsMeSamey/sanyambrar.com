@@ -21,6 +21,11 @@ function clock() {
       now = end;
     },
     stall(ms: number) { now += ms; },
+    wakeEarly(ms: number) {
+      const next = [...jobs].sort((a, b) => a.at - b.at)[0];
+      assert.ok(next);
+      now = next.at - ms; jobs.delete(next); next.fn();
+    },
     get jobs() { return jobs.size; },
   };
 }
@@ -66,6 +71,22 @@ test('Reaction old scoring presses cannot auto-retry; a fresh Space can overlap 
   time.advance(1); assert.equal(engine.snapshot().phase, 'waiting');
   engine.down(key()); assert.equal(engine.snapshot().phase, 'waiting');
   engine.release(key().token); assert.equal(engine.snapshot().phase, 'waiting');
+});
+
+test('Reaction retries recover when the timeout wakes a fraction before the full delay', () => {
+  for (const heldRetry of [false, true]) {
+    const time = clock();
+    let publishedBlocked = false;
+    const engine = new ReactionEngine(time, view => { publishedBlocked = view.blocked; }, () => {}, () => 0);
+    engine.down(touch()); time.advance(100); engine.release(touch().token);
+    if (heldRetry) engine.down(touch(2)); else engine.interrupt();
+    time.wakeEarly(0.25);
+    assert.equal(engine.snapshot().phase, 'early', 'fractional early wake cannot start a new trial');
+    assert.equal(publishedBlocked, true);
+    time.advance(1);
+    assert.equal(engine.snapshot().phase, heldRetry ? 'waiting' : 'early');
+    assert.equal(publishedBlocked, false, 'retry controls must refresh after the complete deadline');
+  }
 });
 
 test('Reaction retries wait for old extra fingers; fresh extra fingers cannot inherit cancelled intent', () => {

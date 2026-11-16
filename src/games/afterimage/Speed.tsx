@@ -1,6 +1,7 @@
 import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
-import { Result, Stats, setRestartBlocked, useTimers } from './common.tsx';
+import { Result, Stats, setRestartBlocked, useGameContextMenu, useTimers } from './common.tsx';
+import { GameRules } from './GameRules.tsx';
 import { AimEngine, ReactionEngine, TapEngine, aimScope, reactionScope } from './speed-engine.ts';
 import type { AimView, Press, ReactionView, TapView } from './speed-engine.ts';
 import type { GameProps, GameResult } from './types.ts';
@@ -49,6 +50,7 @@ function usePressEvents(options: {
   inactive: () => boolean;
 }) {
   let lastRelease = -Infinity;
+  useGameContextMenu(options.surface, () => !options.inactive());
   const hidden = () => document.hidden;
   const pointerdown = (event: PointerEvent) => {
     if (options.inactive() || hidden() || event.button !== 0 || !['mouse', 'touch', 'pen'].includes(event.pointerType)) return;
@@ -135,7 +137,7 @@ function Reaction(props: GameProps) {
   };
   const instruction = () => {
     const current = view();
-    if (current.phase === 'ready') return 'Click or press Space. On touch, hold until the cue.';
+    if (current.phase === 'ready') return 'Click or press Space to begin.';
     if (['waiting', 'go', 'result'].includes(current.phase)) return '';
     return current.input === 'touch' ? 'Hold when ready for the next trial' : 'Click when ready for the next trial';
   };
@@ -143,11 +145,12 @@ function Reaction(props: GameProps) {
     <Stats items={[{ label: view().phase === 'result' ? 'Average' : 'Trial', value: view().phase === 'result' ? `${view().average} ms` : `${view().trial} / 5` }, { label: 'Protocol', value: view().input === 'touch' ? 'Touch release' : view().input === 'pen' ? 'Pen press' : 'Mouse / keyboard' }]}/>
     <p class="ai-speed-feedback" aria-live="polite">{view().message || undefined}</p>
     <div class="ai-speed-stage">
-    <button ref={pad} type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
+    <button ref={pad} type="button" data-game-input={view().phase !== 'result' ? '' : undefined} inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <strong role={['between', 'early', 'result'].includes(view().phase) ? 'status' : undefined}>{label() || undefined}</strong><span>{instruction() || undefined}</span>
     </button>
     <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/>}</Show>
     </div>
+    <Show when={view().phase === 'ready'}><GameRules detail="The result is your average across five trials. An early response repeats the trial.">Wait for the cue, then click or press Space. On touch, hold the pad and release when the cue appears.</GameRules></Show>
   </div>;
 }
 
@@ -166,11 +169,12 @@ function Tapping(props: GameProps) {
     <Stats items={[{ label: 'Rate', value: `${(view().count / Math.max(0.1, view().phase === 'result' ? 10 : (10000 - view().remaining) / 1000)).toFixed(2)} / s` }, { label: countLabel(), value: view().count }, { label: 'Time', value: view().phase === 'result' ? '10.0s' : `${(Math.ceil(view().remaining / 100) / 10).toFixed(1)}s` }]}/>
     <p class="ai-speed-feedback" aria-live="polite">{view().practice ? 'Keyboard practice · not saved' : view().message || undefined}</p>
     <div class="ai-speed-stage">
-    <button ref={pad} class="ai-tap-pad" type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
+    <button ref={pad} class="ai-tap-pad" type="button" data-game-input={view().phase !== 'result' ? '' : undefined} inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <Show when={view().phase !== 'result'}><strong>{view().phase === 'ready' ? view().practice ? 'Press Space or Enter' : 'Click or tap to begin' : view().practice ? 'Press' : view().input === 'mouse' ? 'Click' : 'Tap'}</strong></Show>
     </button>
     <Show when={view().phase === 'result'}><Result overlay result={result()} onRetry={() => { engine.cancel(''); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/></Show>
     </div>
+    <Show when={view().phase === 'ready'}><GameRules>{view().practice ? 'Press and release Space or Enter as often as you can for 10 seconds. Practice results are not saved.' : 'Click or tap as often as you can for 10 seconds. The first press starts the clock.'}</GameRules></Show>
     <Button class="ai-speed-practice" disabled={view().phase === 'result'} aria-pressed={view().practice ? 'true' : 'false'} onClick={() => { engine.togglePractice(); pad?.focus({ preventScroll: true }); }}>{view().practice ? 'Return to click / tap test' : 'Keyboard practice'}</Button>
   </div>;
 }
@@ -216,14 +220,14 @@ function Aim(props: GameProps) {
     <div class="ai-aim-progress" aria-hidden="true"><span style={{ transform: `scaleX(${view().hits / 30})` }}/></div>
     <p class="ai-speed-feedback" aria-live="polite">{view().message || undefined}</p>
     <div class="ai-speed-stage">
-    <div ref={arena} class="ai-aim-arena" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
-      <For each={view().outgoing}>{point => <span class="ai-aim-exit" style={{ left: `${point.x}px`, top: `${point.y}px` }} aria-hidden="true"><TargetIcon/></span>}</For>
+    <div ref={arena} class="ai-aim-arena" data-game-input={view().phase !== 'result' ? '' : undefined} inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
       <Show when={view().target} fallback={<button class="ai-aim-target is-start" type="button" aria-label="Start aim training" onKeyDown={events.keydown}><TargetIcon/></button>}>
         <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y} serial={point.serial}/>}</For>
       </Show>
     </div>
     <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => arena?.querySelector('button')?.focus({ preventScroll: true }), 0); }}/>}</Show>
     </div>
+    <Show when={view().phase === 'ready'}><GameRules>Select the centre target to begin, then hit 30 targets as quickly as possible. Misses keep the clock running.</GameRules></Show>
   </div>;
 }
 

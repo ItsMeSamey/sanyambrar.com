@@ -1,0 +1,11 @@
+.ai-game-rules { max-width: 48ch; margin-inline: auto; color: var(--site-fg); font-size: 13px; line-height: 1.55; text-align: center; overflow-wrap: anywhere; }
+.ai-game-rules p { margin: 0; }
+.ai-game-rules p + p { margin-top: 8px; color: var(--site-muted); }
+.ai-ready-controls { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; max-width: 100%; }
+.ai-ready-preview > .ai-ready-controls { display: contents; }
+.ai-ready-preview > .ai-ready-controls > .ai-primary { grid-area: 1/1; z-index: 1; }
+.ai-ready-preview > .ai-ready-controls > .ai-game-rules { grid-area: 2/1; margin-top: 14px; padding-inline: 12px; }
+.ai-word-arena > .ai-ready { flex-direction: column; }
+.ai-word-arena > .ai-ready > .ai-ready-content:empty { display: none; }
+.pair-stage + .ai-game-rules { margin-top: 12px; }
+.ai-speed-stage + .ai-game-rules { margin-top: 14px; }

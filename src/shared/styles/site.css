@@ -141,6 +141,7 @@ button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:backgro
    jump relative to their anchor. */
 @keyframes samey-surface-in{from{opacity:0}to{opacity:1}}
 .game-settings-popover{animation:samey-surface-in var(--site-medium) var(--site-ease-out)}
+.samey-context-menu[data-compact=true]{display:flex;flex-wrap:wrap;width:max-content;min-width:0;gap:2px;padding:4px;user-select:none;-webkit-user-select:none}.samey-context-menu[data-compact=true][hidden]{display:none}.samey-context-menu[data-compact=true] button{width:44px;min-height:44px;padding:0;justify-content:center;flex:0 0 44px}.samey-context-menu[data-compact=true] button svg{flex:none;pointer-events:none}.samey-context-menu button:focus-visible{outline:2px solid var(--site-fg);outline-offset:-3px}.samey-copy-feedback[popover]{width:max-content;max-width:calc(100vw - 24px)}.samey-copy-feedback .samey-toast{padding:9px 12px;font:13px/1.4 var(--site-font,system-ui)}
 .samey-theme-panel:not([hidden]),.samey-context-menu:not([hidden]){animation:samey-surface-in var(--site-medium) var(--site-ease-out)}
 body [role=dialog]:not(.site-search-panel){
   animation:samey-dialog-grow var(--site-medium) var(--site-ease-out);

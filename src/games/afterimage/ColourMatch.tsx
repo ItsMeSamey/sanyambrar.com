@@ -17,7 +17,7 @@ function Option(props: { question: ColourMatchQuestion; index: number }) {
 
 export const colourMatchDefinition: ChallengeDefinition<ColourMatchQuestion> = {
   id: 'colour-match',
-  instruction: 'Choose the exact match. The target stays visible. This game relies on colour vision.',
+  instruction: 'Choose the swatch with exactly the same colour as the target. This game relies on colour vision.',
   createQuestion: createColourMatchQuestion,
   Prompt,
   Option,

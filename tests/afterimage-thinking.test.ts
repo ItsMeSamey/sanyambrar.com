@@ -6,11 +6,11 @@ function seeded(seed: number) {
   return () => { seed = Math.imul(seed, 1664525) + 1013904223 | 0; return (seed >>> 0) / 4294967296; };
 }
 describe('thinking protocols and monotonic deadlines', () => {
-  test('preserves original scope and duration', () => {
+  test('versions paused-error protocols while preserving other scopes and durations', () => {
     expect(protocol('arithmetic')).toEqual({ duration: 60, scope: 'math' });
     expect(protocol('stroop')).toEqual({ duration: 30, scope: 'stroop-v2-30s' });
-    expect(protocol('rotation')).toEqual({ duration: 60, scope: 'rotation-v3-60s' });
-    expect(protocol('patterns')).toEqual({ duration: 60, scope: 'patterns-v3-60s' });
+    expect(protocol('rotation')).toEqual({ duration: 60, scope: 'rotation-v4-60s' });
+    expect(protocol('patterns')).toEqual({ duration: 60, scope: 'patterns-v4-60s' });
     expect(protocol('search')).toEqual({ duration: 30, scope: 'search-v2-30s' });
   });
   test('rounds visible time up but rejects answers exactly at the deadline', () => {

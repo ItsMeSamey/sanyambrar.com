@@ -57,7 +57,7 @@ function PaperPrompt(props: { question: PaperFoldingQuestion }) {
 
 export const paperFoldingDefinition: ChallengeDefinition<PaperFoldingQuestion> = {
   id: 'paper-folding',
-  instruction: 'Follow the folds. Punch through the stack. Choose the opened sheet.',
+  instruction: 'Follow the folds in order, then imagine the marked holes punched through every layer. Choose where all the holes land when the paper unfolds.',
   createQuestion: createPaperFoldingQuestion,
   Prompt: PaperPrompt,
   Option: props => <span class="ai-folding-option"><HoleDiagram holes={props.question.patterns[props.index]}/></span>,

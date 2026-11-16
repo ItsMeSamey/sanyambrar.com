@@ -49,7 +49,7 @@ export function arithmetic(random: Random = Math.random): ArithmeticQuestion {
   return { type: 'arithmetic', a, b, operator: ['+', '−', '×'][op], answer: op === 0 ? a + b : op === 1 ? a - b : a * b };
 }
 export function protocol(mode: ThinkingMode) {
-  return { duration: mode === 'search' || mode === 'stroop' ? 30 : 60, scope: { stroop: 'stroop-v2-30s', arithmetic: 'math', rotation: 'rotation-v3-60s', patterns: 'patterns-v3-60s', search: 'search-v2-30s' }[mode] };
+  return { duration: mode === 'search' || mode === 'stroop' ? 30 : 60, scope: { stroop: 'stroop-v2-30s', arithmetic: 'math', rotation: 'rotation-v4-60s', patterns: 'patterns-v4-60s', search: 'search-v2-30s' }[mode] };
 }
 export function secondsLeft(deadline: number, now: number) { return Math.max(0, Math.ceil((deadline - now) / 1000)); }
 export function acceptsAnswer(deadline: number, now: number) { return now < deadline; }

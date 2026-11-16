@@ -1,7 +1,8 @@
 import { createEffect, createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
 import { CornerDownLeft, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { GameRules } from './GameRules.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { compareDigits, createWordDeck, makeNumber, numberRevealTime } from './words-logic.ts';
 import './words.css';
@@ -91,6 +92,8 @@ function NumberGame(props: GameProps) {
   const [result, setResult] = createSignal<GameResult | null>(null);
   const timers = useTimers();
   let stage = 'ready', digits = 1, answer = '';
+  let arena: HTMLDivElement | undefined;
+  useGameContextMenu(() => arena, () => stage === 'reveal' || stage === 'recall');
   function start(length = 1) {
     if (length === 1) props.onActivityChange?.(false);
     timers.clear(); stage = 'reveal'; digits = length; answer = makeNumber(length);
@@ -115,8 +118,8 @@ function NumberGame(props: GameProps) {
   return <div class="ai-words ai-number-game">
     <Stats items={[{ label: 'Digits', value: phase() === 'ready' ? 1 : round().length }, { label: 'Time', value: phase() === 'reveal' ? `${(remaining() / 1000).toFixed(1)}s` : '—' }]}/>
     <div class="ai-word-status" role="status">{phase() === 'reveal' ? 'Memorise' : phase() === 'recall' ? 'Recall the number' : phase() === 'correct' ? 'Correct' : phase() === 'result' ? entered() === round().answer ? 'All 128 digits recalled' : 'Number missed' : undefined}</div>
-    <div class="ai-word-arena ai-number-arena" data-complete={phase() === 'result' ? 'true' : undefined}>
-      <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">529</div><Ready onStart={() => start()}/></Show>
+    <div ref={arena} class="ai-word-arena ai-number-arena" data-game-input={phase() === 'reveal' || phase() === 'recall' ? '' : undefined} data-complete={phase() === 'result' ? 'true' : undefined}>
+      <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">529</div><Ready onStart={() => start()} rules={<GameRules>Remember the number, then enter it after it disappears. Each correct answer adds a digit; one wrong answer ends the run.</GameRules>}/></Show>
       <Show when={phase() === 'reveal'}><div class="ai-number-track"><span style={{ transform: `scaleX(${remaining() / numberRevealTime(round().length)})` }}/></div><div class="ai-number-stimulus">{round().answer}</div></Show>
       <Show when={phase() === 'recall' || phase() === 'correct'}><NumberEntry length={round().length} correct={phase() === 'correct' ? { answer: round().answer, entered: entered() } : null} onSubmit={submit} onNext={() => { if (stage === 'correct') start(digits + 1); }} onActivity={() => props.onActivityChange?.(true)}/></Show>
       <Show when={result()}>{value => <Result result={value()} onRetry={() => start()}><Show when={entered() !== round().answer}><NumberComparison answer={round().answer} entered={entered()}/></Show></Result>}</Show>
@@ -138,6 +141,8 @@ function VerbalGame(props: GameProps) {
   const heldKeys = new Set<string>();
   const choiceButtons = new Map<boolean, HTMLButtonElement>();
   let deck = createWordDeck(), current = { word: '', wasSeen: false }, points = 0, hearts = 3, active = false, response: Feedback = 'idle';
+  let arena: HTMLDivElement | undefined;
+  useGameContextMenu(() => arena, () => active);
   function showFeedback(next: Feedback) { response = next; setFeedback(next); }
   function start() {
     timers.clear(); heldKeys.clear(); showFeedback('idle');
@@ -193,8 +198,8 @@ function VerbalGame(props: GameProps) {
     <Stats items={[{ label: 'Score', value: score() }, { label: 'Lives', value: lives(), lives: true }]}/>
     <div class="ai-word-status" role="status">{phase() === 'ready' ? status() || undefined : undefined}</div>
     <span class="ai-sr-only" role="status">{phase() !== 'ready' ? status() || undefined : undefined}</span>
-    <div class="ai-word-arena ai-verbal-arena" data-complete={phase() === 'result' ? 'true' : undefined}>
-      <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">garden</div><Ready onStart={start}/></Show>
+    <div ref={arena} class="ai-word-arena ai-verbal-arena" data-game-input={phase() === 'running' ? '' : undefined} data-complete={phase() === 'result' ? 'true' : undefined}>
+      <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">garden</div><Ready onStart={start} rules={<GameRules detail="Each correct answer scores a point. Three mistakes end the run; after a mistake, choose the correct answer to continue.">Choose Seen if the word appeared earlier in this run; otherwise choose New.</GameRules>}/></Show>
       <Show when={phase() === 'running'}><div class="ai-verbal-word-slot"><h2 class={`ai-verbal-stimulus is-${feedback()}`} aria-live="polite">{prompt().word}</h2></div></Show>
       <Show when={phase() === 'running'}><div class="ai-word-choices"><For each={[true, false]}>{seen => <Button ref={element => { choiceButtons.set(seen, element); }} disabled={feedback() === 'wrong' && seen !== prompt().wasSeen} aria-disabled={blocked(seen) ? 'true' : undefined} onPointerDown={event => { if (!blocked(seen) && presses.down(event) && answer(seen)) event.currentTarget.focus({ preventScroll: true }); }} onClick={event => { if (!blocked(seen) && presses.click(event)) answer(seen); }} onKeyDown={event => {
         if (event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;

@@ -24,6 +24,15 @@ export class PressGuard {
     this.allowHeld = allowHeld;
     this.pending = undefined;
   }
+  afterDelay(clock: Clock, notify: () => void) {
+    const wake = () => {
+      const remaining = this.until - this.now();
+      // Timer resolution can wake just before the monotonic deadline.
+      if (this.enabled && remaining > 0) { clock.after(wake, Math.ceil(remaining)); return; }
+      this.tick(); notify();
+    };
+    clock.after(wake, Math.max(0, Math.ceil(this.until - this.now())));
+  }
   down(press: Press) {
     if (this.held.has(press.token)) return false;
     const previousHeld = this.held.size;
@@ -122,7 +131,7 @@ export class ReactionEngine {
       if (this.phase === 'result') this.finish({ value: this.snapshot().average, scope: this.scope, unit: 'ms', lowerIsBetter: true, details: { inputKind: this.input ?? 'mouse', rulesVersion: 7, waitMinMs: 1000, waitMaxMs: 2500, inputFormat: this.input === 'touch' ? 'touch-release' : this.scope.split('-').at(-1) ?? 'desktop', trials: 5 } });
     }
     this.guard.begin(true);
-    this.clock.after(() => { this.guard.tick(); this.emit(); }, RESULT_DELAY);
+    this.guard.afterDelay(this.clock, () => this.emit());
   }
   invalidate(token?: string) { this.guard.invalidate(token); this.emit(); }
   interrupt() {
@@ -166,7 +175,7 @@ export class TapEngine {
     if (this.phase !== 'running') return;
     this.clock.clear(); this.phase = 'result'; this.guard.begin();
     if (!this.practice) this.finished({ value: this.count / 10, scope: this.input === 'mouse' ? 'cps-v1-mouse-10s' : 'tps-v3-touch-10s', unit: this.input === 'mouse' ? 'clicks / s' : 'taps / s', details: { count: this.count, duration: 10, inputKind: this.input ?? 'touch', rulesVersion: this.input === 'touch' ? 3 : 1 } });
-    this.clock.after(() => this.emit(), RESULT_DELAY); this.emit();
+    this.guard.afterDelay(this.clock, () => this.emit()); this.emit();
   }
   togglePractice() { this.cancel(); this.practice = !this.practice; this.message = ''; this.emit(); }
   cancel(message = 'Run cancelled. No result saved.') { this.clock.clear(); this.guard.reset(); this.phase = 'ready'; this.count = 0; this.input = null; this.message = message; this.emit(); }
@@ -219,7 +228,7 @@ export class AimEngine {
     if (this.hits === 30) {
       this.elapsed = this.clock.now() - this.began; this.phase = 'result'; this.outgoing = []; this.guard.begin();
       this.finish({ value: Math.round(this.measured / 30), scope: aimScope(press.kind, this.format), unit: 'ms / target', lowerIsBetter: true, details: { inputKind: press.kind, rulesVersion: press.kind === 'touch' || press.kind === 'keyboard' ? 6 : 4, boardFormat: this.format, misses: this.misses, elapsed: this.elapsed / 1000, targets: 30 } });
-      this.clock.after(() => this.emit(), RESULT_DELAY);
+      this.guard.afterDelay(this.clock, () => this.emit());
     } else {
       const old = this.target;
       if (old) { this.outgoing = [...this.outgoing.slice(-3), old]; this.clock.after(() => { this.outgoing = this.outgoing.filter(point => point !== old); this.emit(); }, 120); }

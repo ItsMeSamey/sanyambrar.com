@@ -2,7 +2,8 @@ import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, CirclePlay, RotateCw, X } from '../../shared/components/Icons.tsx';
-import { Stats, inputKind, useGamePress, useTimers } from './common.tsx';
+import { Stats, inputKind, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { GameRules } from './GameRules.tsx';
 import { createPairDeck, type PairCard as Card } from './pair-objects.ts';
 import { BoardResult } from './BoardResult.tsx';
 import type { GameProps, GameResult, InputKind } from './types.ts';
@@ -33,6 +34,7 @@ export function PairGame(props: GameProps) {
   const cards = new Map<number, HTMLButtonElement>();
   const touchStarts = new Map<number, { index: number; x: number; y: number; scroll: number }>();
   let board!: HTMLDivElement;
+  useGameContextMenu(() => board, () => current.phase !== 'finished' && current.phase !== 'cancelled');
   let ready!: HTMLButtonElement;
   let columns = 2;
   let held = false;
@@ -195,7 +197,7 @@ export function PairGame(props: GameProps) {
       <Stats items={[{ label: 'Round', value: run().round + 1 }, { label: 'Pairs left', value: (run().cards.length - run().matched.length) / 2 }, { label: 'Lives', value: run().lives, lives: true }]}/>
     <div class="pair-stage">
     <div ref={board} class={['pair-board', run().phase === 'finished' && 'is-review', scrollable() && 'is-scrollable']}
-      inert={run().phase === 'cancelled'} role="group" tabindex={scrollable() ? 0 : -1}
+      data-game-input={run().phase !== 'finished' && run().phase !== 'cancelled' ? '' : undefined} inert={run().phase === 'cancelled'} role="group" tabindex={scrollable() ? 0 : -1}
       aria-label={run().phase === 'finished' ? 'Matching cards, read only. Scroll to inspect every card.' : 'Matching cards. Use arrow keys to move between cards.'}
       style={{ '--pair-columns': columnCount() } as JSX.CSSProperties}>
       <For each={run().cards}>{card => <button ref={element => { cards.set(card.index, element); }}
@@ -243,6 +245,7 @@ export function PairGame(props: GameProps) {
       <div class="pair-actions"><Button ref={ready} class="pair-ready ai-primary" data-pair-ready="true" disabled={run().phase === 'conceal'} onClick={event => { if (!held) hide(event); }}><CirclePlay size={18}/>Start</Button></div>
     </Show>
     </div>
+    <Show when={run().phase === 'study'}><GameRules detail="Each mismatch costs a life. Match every pair to reach the next round; three mismatches end the run.">Start hides the cards. Turn over two at a time to find matching pictures.</GameRules></Show>
     <p class="pair-status-line" aria-live="polite"><span class={{ 'ai-sr-only': !run().notice }}>{run().message}</span></p>
   </section>;
 }

@@ -24,7 +24,7 @@ export function DeductionPrompt(props: { question: DeductionQuestion }) {
 
 export const deductionDefinition: ChallengeDefinition<DeductionQuestion> = {
   id: 'deduction',
-  instruction: 'Arrange every tile in a row. Arrows mean before, not necessarily next. Choose what must be true.',
+  instruction: 'Each arrow points from an earlier tile to a later one; they need not be adjacent. Choose the statement true in every order that follows all the arrows.',
   createQuestion: createDeductionQuestion,
   Prompt: DeductionPrompt,
 };

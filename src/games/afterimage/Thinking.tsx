@@ -2,9 +2,11 @@ import { For, Match, Show, Switch, createSignal, onCleanup, onSettled } from 'so
 import { Button } from '../../shared/components/Button.tsx';
 import { topLayer } from '../../shared/overlay.ts';
 import { ChevronRight as ArrowRight, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { GameRules } from './GameRules.tsx';
+import { ActiveCountdown } from './active-clock.ts';
 import type { GameProps, GameResult } from './types.ts';
-import { acceptsAnswer, arithmeticPoints, colorNames, createQuestionFactory, inkColors, points, protocol, rotation, secondsLeft, type Question, type RotationQuestion, type ThinkingMode } from './thinking-core.ts';
+import { arithmeticPoints, colorNames, createQuestionFactory, inkColors, points, protocol, rotation, type Question, type RotationQuestion, type ThinkingMode } from './thinking-core.ts';
 import type { Cell } from './thinking-shapes.ts';
 import { arrowDirection, rotationDescription } from './thinking-description.ts';
 import './thinking.css';
@@ -45,7 +47,8 @@ export function ThinkingGame(props: GameProps) {
   const [searchFocus, setSearchFocus] = createSignal(0);
   const timers = useTimers();
   const presses = useGamePress();
-  let deadline = 0, root!: HTMLDivElement, input: HTMLInputElement | undefined;
+  const clock = new ActiveCountdown();
+  let root!: HTMLDivElement, input: HTMLInputElement | undefined;
   const held = new Set<string>();
   function updateEntry(value: string) {
     setEntry(value);
@@ -61,17 +64,17 @@ export function ThinkingGame(props: GameProps) {
   const live = () => ['running', 'answered', 'between'].includes(state.phase);
   function finish() {
     if (!live()) return;
-    timers.clear();
-    const result: GameResult = { value: state.score, scope: rules.scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, accuracy: `${state.correct + state.errors ? Math.round(state.correct * 100 / (state.correct + state.errors)) : 0}%`, elapsed: rules.duration * 1000, duration: rules.duration, rulesVersion: mode === 'rotation' || mode === 'patterns' ? 3 : mode === 'arithmetic' ? 1 : 2 } };
+    timers.clear(); clock.reset();
+    const result: GameResult = { value: state.score, scope: rules.scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, accuracy: `${state.correct + state.errors ? Math.round(state.correct * 100 / (state.correct + state.errors)) : 0}%`, elapsed: rules.duration * 1000, duration: rules.duration, rulesVersion: mode === 'rotation' || mode === 'patterns' ? 4 : mode === 'arithmetic' ? 1 : 2 } };
     update({ phase: 'result', remaining: 0, result });
     props.onFinish(result);
   }
   function tick() {
-    if (!live()) return;
-    const now = performance.now();
-    if (!acceptsAnswer(deadline, now)) { finish(); return; }
-    update({ remaining: secondsLeft(deadline, now) });
-    timers.after(tick, Math.min(100, deadline - now));
+    if (!live() || !clock.running) return;
+    const remaining = clock.remaining(performance.now());
+    if (remaining <= 0) { finish(); return; }
+    update({ remaining: Math.ceil(remaining / 1000) });
+    timers.after(tick, Math.min(100, remaining));
   }
   function focusAnswer(index = 0) {
     timers.after(() => {
@@ -82,23 +85,29 @@ export function ThinkingGame(props: GameProps) {
   }
   function start() {
     timers.clear(); held.clear(); factory = createQuestionFactory(mode);
-    deadline = performance.now() + rules.duration * 1000;
+    clock.start(rules.duration * 1000, performance.now());
     updateEntry(''); setSearchFocus(0);
     update({ phase: 'running', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, remaining: rules.duration, feedback: '', selected: -1, result: null });
     props.onActivityChange?.(true);
     tick(); focusAnswer();
   }
   function next(keepFeedback = false, focus = 0) {
-    if (!live() || document.hidden) return;
-    if (!acceptsAnswer(deadline, performance.now())) { finish(); return; }
+    if (!['answered', 'between'].includes(state.phase) || document.hidden) return;
+    if (state.phase === 'answered' && (state.phase !== view().phase || state.question !== view().question)) return;
+    const now = performance.now();
+    if (clock.remaining(now) <= 0) { finish(); return; }
+    const paused = !clock.running;
+    clock.resume(now);
     const round = state.round + 1;
     updateEntry('');
     update({ phase: 'running', question: factory(round), round, selected: -1, feedback: keepFeedback ? state.feedback : '' });
+    if (paused) tick();
     if (mode !== 'stroop') focusAnswer(focus);
   }
   function answer(value: number) {
     if (state.phase !== 'running' || document.hidden || state.question !== view().question) return;
-    if (!acceptsAnswer(deadline, performance.now())) { finish(); return; }
+    const now = performance.now();
+    if (clock.remaining(now) <= 0) { finish(); return; }
     const question = state.question;
     const good = value === (question.type === 'arithmetic' ? question.answer : question.correct);
     const correct = state.correct + Number(good), errors = state.errors + Number(!good);
@@ -108,7 +117,8 @@ export function ThinkingGame(props: GameProps) {
       : good ? 'Correct +1' : question.type === 'arithmetic' ? `Answer: ${question.answer}` : question.type === 'stroop' ? `Ink colour was ${colorNames[question.correct]}` : 'Wrong −1';
     const manual = mode === 'rotation' || mode === 'patterns';
     const focused = document.activeElement instanceof HTMLElement ? Number(document.activeElement.dataset.answer ?? 0) : 0;
-    update({ correct, errors, score, feedback, selected: value, phase: manual ? 'answered' : 'between' });
+    if (manual && !good) { clock.pause(now); timers.clear(); }
+    update({ correct, errors, score, feedback, selected: value, remaining: Math.ceil(clock.remaining(now) / 1000), phase: manual ? 'answered' : 'between' });
     if (manual) timers.after(() => root.querySelector<HTMLButtonElement>('[data-next]')?.focus({ preventScroll: true }), 0);
     else timers.after(() => next(true, focused), 0);
   }
@@ -157,7 +167,7 @@ export function ThinkingGame(props: GameProps) {
   function blur() { held.clear(); }
   function visibility() {
     if (document.hidden && live()) {
-      timers.clear(); held.clear(); updateEntry(''); setSearchFocus(0);
+      timers.clear(); clock.reset(); held.clear(); updateEntry(''); setSearchFocus(0);
       update({ phase: 'ready', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, selected: -1, result: null, feedback: 'Run interrupted. Start a fresh run.', remaining: rules.duration });
       props.onActivityChange?.(false);
     }
@@ -167,12 +177,22 @@ export function ThinkingGame(props: GameProps) {
     document.addEventListener('keydown', keys); document.addEventListener('keyup', release); document.addEventListener('visibilitychange', visibility); window.addEventListener('blur', blur);
   });
   onCleanup(() => { document.removeEventListener('keydown', keys); document.removeEventListener('keyup', release); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('blur', blur); });
-  const instructions = { rotation: 'Is the second shape rotated, mirrored, or changed?', patterns: 'Find the next number.', search: 'Find the arrow pointing a different way. Arrow keys move; Enter chooses.', stroop: 'Choose the ink colour.', arithmetic: 'Solve the equation. Negative answers are allowed.' }[mode];
+  const instructions = {
+    rotation: 'Compare the shapes: Same means a rotation can match them; Mirrored needs a flip; Changed has a square moved.',
+    patterns: 'Work out the number pattern and choose the next number.',
+    search: 'Select the arrow pointing a different way. Arrow keys move; Enter chooses.',
+    stroop: 'Choose the colour of the letters, ignoring what the word says. A red BLUE means choose Red.',
+    arithmetic: 'Enter the answer, then press Enter or Answer. Use − for a negative answer.',
+  }[mode];
+  const scoring = mode === 'arithmetic' ? 'Correct +1; wrong −1, never below 0.' : 'Score is correct answers minus mistakes, minimum 0.';
+  const instructionDetail = `${scoring}${mode === 'rotation' || mode === 'patterns' ? ' Choose Next after each answer. The clock pauses after mistakes until you continue.' : ''}`;
   const playing = () => ['running', 'answered', 'between'].includes(view().phase);
+  let playArea: HTMLDivElement | undefined;
+  useGameContextMenu(() => playArea, live);
   return <div ref={root} class="ai-thinking" data-mode={mode} data-state={view().phase}>
     <Stats items={[{ label: 'Time', value: `${view().remaining}s` }, { label: 'Score', value: view().score }, ...(mode === 'arithmetic' ? [] : [{ label: 'Mistakes', value: view().errors }])]}/>
     <div class="ai-thinking-stage">
-      <div class="ai-thinking-play" inert={!playing()} aria-hidden={!playing() ? 'true' : undefined}>
+      <div ref={playArea} class="ai-thinking-play" data-game-input={playing() ? '' : undefined} inert={!playing()} aria-hidden={!playing() ? 'true' : undefined}>
         <p class="ai-thinking-feedback" role="status"><Show when={mode === 'patterns' && view().phase === 'answered'}><span class="ai-sr-only">{answerState(view().selected) === 'correct' ? 'Correct. ' : 'Incorrect. '}</span></Show><span class={{ 'ai-sr-only': mode === 'rotation' && view().phase === 'answered' && answerState(view().selected) === 'correct' }}>{view().feedback || undefined}</span></p>
         <div class="ai-thinking-prompt"><Prompt question={view().question}/></div>
         <Show when={mode === 'arithmetic'} fallback={<div class={['ai-thinking-answers', mode === 'search' && 'ai-thinking-search']}>
@@ -192,7 +212,7 @@ export function ThinkingGame(props: GameProps) {
           </form>
         </Show>
       </div>
-      <Show when={view().phase === 'ready'}><Ready overlay onStart={start}><p>{instructions}<br/>{mode === 'arithmetic' ? 'Correct +1, wrong −1; score stays at or above 0.' : 'Score = correct − mistakes, minimum 0.'}</p><p role="status">{view().feedback || undefined}</p></Ready></Show>
+      <Show when={view().phase === 'ready'}><Ready overlay onStart={start} rules={<GameRules detail={instructionDetail}>{instructions}</GameRules>}><p role="status">{view().feedback || undefined}</p></Ready></Show>
       <Show when={view().result} keyed>{result => <Result overlay result={result} onRetry={start}/>}</Show>
     </div>
   </div>;

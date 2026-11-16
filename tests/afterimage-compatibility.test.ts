@@ -9,9 +9,9 @@ const scopes: [GameId, string][] = [
   ['reverse', 'reverse-v2-growing'], ['reverse-fresh', 'reverse-v2-fresh'], ['number', 'number-v2-hb'],
   ['verbal', 'verbal-v5-progressive'], ['chimp', 'chimp-v3-compact-mouse'], ['pairs', 'pairs-v4-mouse'],
   ['reaction', 'reaction-v7-desktop'], ['aim', 'aim-v4-compact-mouse'], ['typing', 'typing-v4-hardware-passage'],
-  ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v1-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
-  ['rotation', 'rotation-v3-60s'], ['patterns', 'patterns-v3-60s'], ['search', 'search-v2-30s'],
-  ['paper-folding', 'paper-folding-v1-60s'], ['deduction', 'deduction-v1-60s'], ['colour-match', 'colour-match-v1-60s'],
+  ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v2-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
+  ['rotation', 'rotation-v4-60s'], ['patterns', 'patterns-v4-60s'], ['search', 'search-v2-30s'],
+  ['paper-folding', 'paper-folding-v2-60s'], ['deduction', 'deduction-v2-60s'], ['colour-match', 'colour-match-v2-60s'],
 ];
 
 function withStorage(run: (storage: Storage) => void) {
@@ -90,17 +90,45 @@ describe('Afterimage original score compatibility', () => {
     expect(referenceFor('chimp', 'chimp-v3-standard-mouse')).toBeNull();
     expect(referenceFor('chimp', 'chimp-v2-standard-mouse')?.kind).toBe('histogram');
   }));
+  test('Number Order timing from Start preserves earlier first-number timing separately', () => withStorage(storage => {
+    for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) {
+      const earlier = `order-v1-${kind}`, current = `order-v2-${kind}`;
+      const raw = '[{"value":12,"date":100,"rulesVersion":1,"custom":"keep"}]';
+      storage.setItem(scoreKey(earlier), raw);
+      saveResult({ scope: current, value: 18, unit: 's', lowerIsBetter: true, details: { rulesVersion: 2 } });
+      expect(scopeChoices('number-order', current).map(([scope]) => scope)).toContain(earlier);
+      expect(scopeChoices('number-order', current).find(([scope]) => scope === earlier)?.[1]).toStartWith('Earlier rules');
+      expect(storage.getItem(scoreKey(earlier))).toBe(raw);
+      expect(readHistory(current)).toHaveLength(1);
+      expect(readHistory(current)[0]).toMatchObject({ value: 18, rulesVersion: 2 });
+      expect(scopeUnit('number-order', current)).toEqual({ unit: 's', lower: true });
+      expect(referenceFor('number-order', current)).toBeNull();
+    }
+  }));
+  test('paused error review preserves continuous-clock histories separately', () => withStorage(storage => {
+    for (const id of ['rotation', 'patterns', 'paper-folding', 'deduction', 'colour-match'] as const) {
+      const earlierVersion = ['rotation', 'patterns'].includes(id) ? 3 : 1;
+      const earlier = `${id}-v${earlierVersion}-60s`, current = initialScope(id);
+      const raw = '[{"value":12,"date":100,"custom":"keep"}]';
+      storage.setItem(scoreKey(earlier), raw);
+      saveResult({ scope: current, value: 18, unit: 'points', details: { rulesVersion: earlierVersion + 1 } });
+      expect(scopeChoices(id).find(([scope]) => scope === earlier)?.[1]).toStartWith('Earlier rules');
+      expect(storage.getItem(scoreKey(earlier))).toBe(raw);
+      expect(readHistory(current)).toHaveLength(1);
+      expect(referenceFor(id, current)).toBeNull();
+    }
+  }));
   test('new challenge scores export and import independently without invented benchmarks', () => withStorage(storage => {
     for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) {
       const scope = initialScope(id);
-      saveResult({ scope, value: 12, unit: 'points', details: { correct: 15, errors: 3, rulesVersion: 1, duration: 60 } });
+      saveResult({ scope, value: 12, unit: 'points', details: { correct: 15, errors: 3, rulesVersion: 2, duration: 60 } });
       expect(scopeUnit(id, scope)).toEqual({ unit: 'points', lower: false });
       expect(scopeChoices(id)).toEqual([[scope, 'Current rules']]);
       expect(referenceFor(id, scope)).toBeNull();
     }
     const backup = exportHistory(); storage.clear();
     expect(importHistory(backup)).toBe(3);
-    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) expect(readHistory(initialScope(id))[0]).toMatchObject({ value: 12, correct: 15, errors: 3, rulesVersion: 1, duration: 60 });
+    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) expect(readHistory(initialScope(id))[0]).toMatchObject({ value: 12, correct: 15, errors: 3, rulesVersion: 2, duration: 60 });
   }));
   test('archived typing aliases and future revisions remain selectable and restore byte for byte', () => withStorage(storage => {
     const preserved = new Map<string, string>();

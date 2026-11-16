@@ -2,6 +2,9 @@ import { animateRootSwap } from './transitions.ts';
 import { afterVisualTransition } from './afterVisualTransition.ts';
 import { contrastText } from './contrast.ts';
 import { writeClipboardText } from './clipboard.ts';
+import { captureSelection } from './selection.ts';
+import { clampContextMenu, contextMenuBounds } from './contextMenuGeometry.ts';
+import { Copy, Scissors, ClipboardPaste, TextSelect, Search, createElement as createIcon, type IconNode } from 'lucide';
 import { shortcutKey } from './platform.ts';
 import { hideLayer, isTopLayer, showLayer, topLayer } from './overlay.ts';
 import appearanceConfig from './appearance.json';
@@ -1814,14 +1817,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const cutFrom = (el: EditableElement | null) => {
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-      if (el.readOnly || el.disabled || el.selectionStart == null) return;
-      if (!el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }))) return;
+      if (el.readOnly || el.disabled || el.selectionStart == null) return false;
+      if (!el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }))) return false;
       const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
       el.setRangeText("", Math.min(start, end), Math.max(start, end), "end");
       el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
-      return;
+      return true;
     }
-    if (el?.isContentEditable) editContentEditable(el, "", "deleteByCut");
+    if (el?.isContentEditable && el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }))) return editContentEditable(el, "", "deleteByCut");
+    return false;
   };
   const pasteInto = (el: EditableElement | null, text: string) => {
     if (!el?.isConnected) return;
@@ -1873,21 +1877,96 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.body.append(menu);
     let target: EventTarget | null = null;
     let returnFocus: HTMLElement | null = null;
+    let savedSelection: ReturnType<typeof captureSelection> | null = null;
+    let selectionText = "";
     let menuViewportWidth = 0;
     let menuViewportHeight = 0;
+    let menuPoint = { x: 8, y: 8 };
+    let refreshingSelection = false;
+    let viewportFrame = 0;
+    const heldPointers = new Set<number>();
+    const positionMenu = (initial = false) => {
+      if (menu.hidden) return;
+      const bounds = contextMenuBounds({ width: innerWidth, height: innerHeight }, visualViewport);
+      let rect = menu.getBoundingClientRect();
+      const resize = initial || rect.width > bounds.width || rect.height > bounds.height;
+      if (resize) {
+        menu.style.minWidth = menu.dataset.compact === "true" ? "0" : `${Math.min(210, bounds.width)}px`;
+        menu.style.maxWidth = `${Math.min(initial ? 320 : rect.width, bounds.width)}px`;
+        menu.style.maxHeight = `${Math.min(initial ? bounds.height : rect.height, bounds.height)}px`;
+        rect = menu.getBoundingClientRect();
+      }
+      const position = clampContextMenu(initial ? menuPoint : { x: rect.left, y: rect.top }, rect, bounds);
+      if (initial || Math.abs(rect.left - position.x) > .5) menu.style.left = `${position.x}px`;
+      if (initial || Math.abs(rect.top - position.y) > .5) menu.style.top = `${position.y}px`;
+    };
+    const scheduleViewportPosition = () => {
+      if (menu.hidden || viewportFrame) return;
+      viewportFrame = requestAnimationFrame(() => {
+        viewportFrame = 0;
+        // Keyboard/pinch changes must not move a button underneath a held finger.
+        if (!heldPointers.size) positionMenu();
+      });
+    };
+    const feedback = runtimeNode(document.createElement("div"));
+    feedback.className = "samey-toaster samey-copy-feedback";
+    feedback.dataset.sameyLayerDecoration = "";
+    feedback.setAttribute("aria-hidden", "true");
+    const announcement = runtimeNode(document.createElement("div"));
+    announcement.className = "sr-only";
+    announcement.dataset.liveAnnouncer = "";
+    announcement.setAttribute("role", "status");
+    announcement.setAttribute("aria-live", "polite");
+    announcement.setAttribute("aria-atomic", "true");
+    document.body.append(feedback, announcement);
+    let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+    let actionVersion = 0;
+    const notify = (message: string, failed = false) => {
+      clearTimeout(feedbackTimer);
+      const item = document.createElement("div");
+      item.className = "samey-toast";
+      item.dataset.variant = failed ? "error" : "success";
+      item.textContent = message;
+      feedback.replaceChildren(item);
+      const owner = topLayer();
+      (owner ?? document.body).append(feedback, announcement);
+      announcement.textContent = message;
+      showLayer(feedback);
+      feedbackTimer = setTimeout(() => { hideLayer(feedback); announcement.textContent = ""; }, failed ? 5000 : 2200);
+    };
+    const copy = async (text: string, version = actionVersion) => {
+      const copied = await writeClipboardText(text);
+      if (version === actionVersion) notify(copied ? "Copied" : "Could not copy. Use your browser's Copy command.", !copied);
+      return copied;
+    };
     const close = (restoreFocus = false) => {
       if (menu.hidden) return;
+      cancelAnimationFrame(viewportFrame); viewportFrame = 0;
       hideLayer(menu);
       menu.hidden = true; menu.replaceChildren();
       document.body.append(menu);
       const focusTarget = returnFocus; returnFocus = null;
-      if (restoreFocus && focusTarget) requestAnimationFrame(() => focusTarget.isConnected && focusTarget.focus({ preventScroll: true }));
+      if (restoreFocus) {
+        if (focusTarget?.isConnected) focusTarget.focus({ preventScroll: true });
+        savedSelection?.restore();
+      }
     };
-    const add = (label: string, action: () => unknown | Promise<unknown>, enabled = true, hint = "") => {
+    const add = (label: string, action: () => unknown | Promise<unknown>, enabled = true, hint = "", icon?: IconNode) => {
       const button = document.createElement("button"); button.type = "button"; button.disabled = !enabled; button.setAttribute("role", "menuitem");
-      const text = document.createElement("span"); text.textContent = label; button.append(text);
-      if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
-      button.addEventListener("click", async () => { close(); try { await action(); } catch (error) { console.error("Context menu action failed", error); } }); menu.append(button);
+      if (menu.dataset.compact === "true" && icon) {
+        button.setAttribute("aria-label", label);
+        button.title = hint ? `${label} (${hint})` : label;
+        button.append(createIcon(icon, { width: 18, height: 18, 'aria-hidden': 'true' }));
+      } else {
+        const text = document.createElement("span"); text.textContent = label; button.append(text);
+        if (hint) { const key = document.createElement("kbd"); key.textContent = hint; button.append(key); }
+      }
+      button.addEventListener("click", async () => {
+        const version = ++actionVersion;
+        close(true);
+        try { await action(); }
+        catch (error) { if (version === actionVersion) notify(`${label} failed. Try your browser's menu.`, true); console.error("Context menu action failed", error); }
+      }); menu.append(button);
     };
     const sep = () => {
       const gap = document.createElement("div");
@@ -1895,7 +1974,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       gap.setAttribute("role", "separator");
       menu.append(gap);
     };
-    document.addEventListener("contextmenu", (event) => {
+    const openContextMenu = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
       if (menu.inert) {
         if (!(event.shiftKey && event.button === 2)) event.preventDefault();
         return;
@@ -1903,14 +1983,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.shiftKey && event.button === 2) return;
       // Number/date and other non-text inputs do not expose a selection API.
       // Their native menu owns insertion and the browser's value validation.
-      if (event.target instanceof HTMLInputElement && event.target.selectionStart == null) { close(); return; }
+      if (event.target instanceof HTMLInputElement && (event.target.type === "password" || event.target.selectionStart == null)) { close(); return; }
       event.preventDefault();
-      const reopening = !menu.hidden && event.target instanceof Node && menu.contains(event.target);
+      const reopening = refreshingSelection || (!menu.hidden && event.target instanceof Node && menu.contains(event.target));
       const owner = reopening ? menu.parentElement : event.target instanceof Element ? event.target.closest<HTMLElement>('[role="dialog"], :popover-open, dialog[open]') : null;
       if (!reopening) {
         target = event.target;
         const focusTarget = target instanceof HTMLElement ? target.closest<HTMLElement>("a[href],button,input,textarea,select,[tabindex]") : null;
         returnFocus = focusTarget ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+        const editable = editableTarget(target);
+        savedSelection = captureSelection(editable ?? returnFocus, !!editable);
+        selectionText = selectedText(editableTarget(target));
       }
       hideLayer(menu);
       menu.replaceChildren();
@@ -1919,77 +2002,120 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
       const image = target instanceof Element ? target.closest<HTMLImageElement>("img[src]") : null;
       const editable = editableTarget(target);
-      const selection = selectedText(editable);
-      if (selection) add("Copy", () => writeClipboardText(selection), true, shortcutKey("C"));
-      if (editable && selection) add("Cut", async () => { if (await writeClipboardText(selection)) cutFrom(editable); }, !(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) || (!editable.readOnly && !editable.disabled), shortcutKey("X"));
-      if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, shortcutKey("V"));
+      const compact = !!selectionText || !!editable;
+      menu.dataset.compact = String(compact);
+      const writable = !!editable && (!(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) || (!editable.readOnly && !editable.disabled));
+      if (compact) add("Copy", () => copy(selectionText), !!selectionText, shortcutKey("C"), Copy);
+      if (editable) add("Cut", async () => {
+        const selection = savedSelection;
+        const version = actionVersion;
+        const copied = await writeClipboardText(selectionText);
+        if (version !== actionVersion) return;
+        if (!copied) { notify("Could not copy. Nothing was cut.", true); return; }
+        if (!editable.isConnected || !editable.contains(document.activeElement) || !selection?.matches()) { notify("Selection changed. Copied, but nothing was cut.", true); return; }
+        const cut = cutFrom(editable);
+        notify(cut ? "Cut and copied" : "Cut cancelled. Text was copied.", !cut);
+      }, writable && !!selectionText, shortcutKey("X"), Scissors);
+      if (editable) add("Paste", async () => {
+        const selection = savedSelection;
+        const version = actionVersion;
+        const text = await navigator.clipboard.readText();
+        if (version === actionVersion && editable.isConnected && editable.contains(document.activeElement) && selection?.matches()) pasteInto(editable, text);
+        else if (version === actionVersion) notify("Selection changed. Paste again.", true);
+      }, !(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement ? editable.disabled : false) && !!navigator.clipboard?.readText, shortcutKey("V"), ClipboardPaste);
       add("Select all", () => {
         if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) { editable.focus(); editable.select(); }
         else if (editable) { const range = document.createRange(); range.selectNodeContents(editable); const sel = getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(range); } }
         else { const range = document.createRange(); range.selectNodeContents(document.body); const sel = getSelection(); if (sel) { sel.removeAllRanges(); sel.addRange(range); } }
-      }, true, shortcutKey("A"));
-      if (selection && !editable) {
-        sep();
-        add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selection)}`, "_blank", "noopener"));
+      }, true, shortcutKey("A"), TextSelect);
+      if (selectionText && !editable) {
+        add("Search web for selection", () => open(`https://www.google.com/search?q=${encodeURIComponent(selectionText)}`, "_blank", "noopener"), true, "", Search);
       }
-      if (link || image) {
+      if (!compact && (link || image)) {
         sep();
         if (link) {
           add("Open link in new tab", () => open(link.href, "_blank", "noopener"));
-          add("Copy link", () => writeClipboardText(link.href));
-          add("Copy Markdown link", () => writeClipboardText(`[${linkCopyText(link)}](${link.href})`));
+          add("Copy link", () => copy(link.href));
+          add("Copy Markdown link", () => copy(`[${linkCopyText(link)}](${link.href})`));
         }
         if (image) {
           add("Open image in new tab", () => open(image.src, "_blank", "noopener"));
-          add("Copy image address", () => writeClipboardText(image.src));
+          add("Copy image address", () => copy(image.src));
           add("Save image", () => { const a = document.createElement("a"); a.href = image.src; a.download = image.alt || "image"; a.click(); });
         }
       }
+      if (!compact) {
       sep();
       add("Back", () => history.back(), history.length > 1);
       add("Forward", () => history.forward());
       add("Reload", () => location.reload(), true, shortcutKey("R"));
-      add("Copy page link", () => writeClipboardText(location.href));
-      add("Copy page title", () => writeClipboardText(document.title));
+      add("Copy page link", () => copy(location.href));
+      add("Copy page title", () => copy(document.title));
       add("Print…", () => print(), true, shortcutKey("P"));
       if (document.fullscreenEnabled) add(document.fullscreenElement ? "Exit fullscreen" : "Fullscreen", () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
+      }
       menu.hidden = false;
       showLayer(menu);
       menuViewportWidth = innerWidth;
       menuViewportHeight = innerHeight;
-      const rect = menu.getBoundingClientRect();
-      menu.style.left = `${Math.max(8, Math.min(event.clientX, innerWidth - rect.width - 8))}px`;
-      menu.style.top = `${Math.max(8, Math.min(event.clientY, innerHeight - rect.height - 8))}px`;
+      menuPoint = { x: event.clientX, y: event.clientY };
+      positionMenu(true);
       menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
-    }, true);
-    document.addEventListener("pointerdown", (event) => { if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close(); }, true);
-    addEventListener("blur", () => close());
-    addEventListener("samey-pageleave", () => close());
+    };
+    document.addEventListener("contextmenu", openContextMenu);
+    document.addEventListener("selectionchange", () => {
+      if (menu.hidden) return;
+      const editable = editableTarget(target);
+      const current = captureSelection(editable ?? returnFocus, !!editable);
+      const selection = document.getSelection();
+      // Ignore selection collapse caused by menu focus; retain the original range.
+      if (!current.text || (selection?.anchorNode && menu.contains(selection.anchorNode))) return;
+      savedSelection = current;
+      selectionText = current.text;
+      if (menu.dataset.compact !== "true") {
+        refreshingSelection = true;
+        try { openContextMenu(new MouseEvent("contextmenu", { clientX: menuPoint.x, clientY: menuPoint.y })); }
+        finally { refreshingSelection = false; }
+      }
+      menu.querySelector<HTMLButtonElement>('[aria-label="Copy"]')?.removeAttribute("disabled");
+      if (editable && (!(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) || (!editable.readOnly && !editable.disabled))) menu.querySelector<HTMLButtonElement>('[aria-label="Cut"]')?.removeAttribute("disabled");
+    });
+    document.addEventListener("pointerdown", (event) => { heldPointers.add(event.pointerId); if (!menu.hidden && event.target instanceof Node && !menu.contains(event.target)) close(); }, true);
+    const releasePointer = (event: PointerEvent) => { heldPointers.delete(event.pointerId); scheduleViewportPosition(); };
+    document.addEventListener("pointerup", releasePointer, true);
+    document.addEventListener("pointercancel", releasePointer, true);
+    visualViewport?.addEventListener("resize", scheduleViewportPosition);
+    visualViewport?.addEventListener("scroll", scheduleViewportPosition);
+    addEventListener("blur", () => { heldPointers.clear(); close(); });
+    addEventListener("samey-pageleave", () => { close(); actionVersion++; clearTimeout(feedbackTimer); hideLayer(feedback); announcement.textContent = ""; document.body.append(feedback, announcement); });
     document.addEventListener('beforetoggle', event => {
       if ((event as ToggleEvent).newState === 'closed' && event.target instanceof Element && event.target !== menu && event.target.contains(menu)) close();
     }, true);
     addEventListener("resize", () => {
       if (!menu.hidden && (innerWidth !== menuViewportWidth || innerHeight !== menuViewportHeight)) close();
     });
-    addEventListener("scroll", (event) => { if (!(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
+    addEventListener("scroll", (event) => { if (event.target !== visualViewport && !(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
     document.addEventListener("keydown", (event) => {
       if (menu.hidden) {
+        if (event.defaultPrevented) return;
         if ((event.shiftKey && event.key === "F10") || event.key === "ContextMenu") {
-          event.preventDefault();
           const origin = document.activeElement instanceof HTMLElement ? document.activeElement : document.body;
+          if (origin instanceof HTMLInputElement && (origin.type === "password" || origin.selectionStart == null)) return;
+          event.preventDefault();
           const rect = origin.getBoundingClientRect();
           origin.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: rect.left + Math.min(rect.width / 2, 24), clientY: rect.top + Math.min(rect.height, 24) }));
         }
         return;
       }
       if (!isTopLayer(menu)) return;
+      if (event.key === "Tab") { close(true); return; }
       const items = [...menu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(true); return; }
       if (!items.length) return;
       const index = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
       let next = -1;
-      if (event.key === "ArrowDown") next = (index + 1) % items.length;
-      else if (event.key === "ArrowUp") next = (index - 1 + items.length) % items.length;
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") next = (index + 1) % items.length;
+      else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = (index - 1 + items.length) % items.length;
       else if (event.key === "Home") next = 0;
       else if (event.key === "End") next = items.length - 1;
       if (next >= 0) {

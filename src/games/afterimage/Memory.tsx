@@ -1,7 +1,8 @@
 import { createMemo, createSignal, For, onCleanup, onSettled, Show, untrack } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button';
-import { inputKind, Ready, Stats, useGamePress, useResultGate, useTimers } from './common';
+import { inputKind, Ready, Stats, useGameContextMenu, useGamePress, useResultGate, useTimers } from './common';
+import { GameRules } from './GameRules.tsx';
 import { nextSequence, sequenceRules, shuffledRange, visualRound } from './memory-model';
 import { BoardResult } from './BoardResult.tsx';
 import type { GameProps, GameResult, InputKind, Stat } from './types';
@@ -38,6 +39,7 @@ function MemoryBoard(props: {
   const [focusIndex, setFocusIndex] = createSignal(0);
   const indices = createMemo(() => Array.from({ length: props.cells.length }, (_, i) => i));
   let board: HTMLDivElement | undefined;
+  useGameContextMenu(() => board, () => props.phase !== 'intro' && props.phase !== 'result');
   const presses = useGamePress(), keys = new Set<string>();
   const canPick = (index: number) => ['recall', 'ready', 'running'].includes(props.phase) && !props.cells[index]?.inactive;
   const focus = (index: number) => {
@@ -57,7 +59,7 @@ function MemoryBoard(props: {
   return <div ref={element => { board = element; props.boardRef?.(element); }}
     class={['ai-memory-board', `ai-memory-${props.kind}`, { 'is-review': props.phase === 'result' || props.phase === 'between' }]}
     style={{ '--memory-columns': props.columns }} data-chimp-format={props.kind === 'chimp' ? props.boardFormat : undefined}
-    role="group" inert={props.phase === 'intro'} aria-hidden={props.phase === 'intro' ? 'true' : undefined}
+    role="group" data-game-input={props.phase !== 'intro' && props.phase !== 'result' ? '' : undefined} inert={props.phase === 'intro'} aria-hidden={props.phase === 'intro' ? 'true' : undefined}
     aria-label={props.phase === 'result' ? 'Completed board, read only' : 'Game board'}>
     <For each={indices()}>{index => <button type="button"
       class={['ai-memory-tile', `is-${props.cells[index]?.face ?? 'plain'}`]}
@@ -160,7 +162,7 @@ function PatternMemory(props: GameProps): JSX.Element {
   return <section class="ai-memory-game" data-phase={view().phase}>
     <Stats items={view().stats} />
     <div class="ai-memory-stage">
-      <Show when={view().phase !== 'intro' && view().phase !== 'paused'} fallback={<Ready preview onStart={() => phase === 'paused' ? round() : start()} label={view().phase === 'paused' ? 'Resume' : 'Start'}>
+      <Show when={view().phase !== 'intro' && view().phase !== 'paused'} fallback={<Ready preview onStart={() => phase === 'paused' ? round() : start()} label={view().phase === 'paused' ? 'Resume' : 'Start'} rules={<GameRules detail="Three wrong tiles in one pattern cost a life. The run ends when all three lives are gone.">After the lit tiles hide, select every tile that was lit, in any order.</GameRules>}>
         <MemoryBoard cells={view().cells} columns={view().columns} phase="intro" kind="visual" onPick={pick} />
       </Ready>}>
         <MemoryBoard cells={view().cells} columns={view().columns} phase={view().phase} kind="visual" onPick={pick} boardRef={element => { board = element; }} />
@@ -244,7 +246,7 @@ function SequenceMemory(props: GameProps): JSX.Element {
   return <section class="ai-memory-game" data-phase={view().phase}>
     <Stats items={view().stats} />
     <div class="ai-memory-stage">
-    <Show when={view().phase !== 'intro'} fallback={<Ready preview onStart={start}>
+    <Show when={view().phase !== 'intro'} fallback={<Ready preview onStart={start} rules={<GameRules detail={`${rules.fresh ? 'Every level has a new, longer sequence.' : 'Each level adds one flash to the same sequence.'} One wrong tile ends the run.`}>{rules.reverse ? 'Watch the flashes, then select the tiles in reverse order, last to first.' : 'Watch the flashes, then select the tiles in the same order.'}</GameRules>}>
       <MemoryBoard cells={view().cells} columns={3} phase="intro" kind="sequence" onPick={pick} />
     </Ready>}>
       <MemoryBoard cells={view().cells} columns={3} phase={view().phase} kind="sequence" onPick={pick} boardRef={element => { board = element; }} />
@@ -355,7 +357,7 @@ function OrderMemory(props: GameProps): JSX.Element {
   return <section class="ai-memory-game ai-order-memory" data-phase={view().phase}>
     <Stats items={view().stats} />
     <div class="ai-memory-stage">
-    <Show when={view().phase !== 'intro'} fallback={<Ready preview onStart={start}>
+    <Show when={view().phase !== 'intro'} fallback={<Ready preview onStart={start} rules={<GameRules detail="Each wrong tile costs a life. Complete a board to add one number; three mistakes end the run.">Select the numbers in ascending order. Selecting 1 hides the remaining numbers.</GameRules>}>
       <MemoryBoard cells={view().cells} columns={8} phase="intro" kind="chimp" boardFormat={boardFormat()} onPick={pick} boardRef={mountBoard} />
     </Ready>}>
       <MemoryBoard cells={view().cells} columns={8} phase={view().phase} kind="chimp" boardFormat={boardFormat()} onPick={pick} boardRef={mountBoard} />
@@ -380,29 +382,30 @@ function NumberOrder(props: GameProps): JSX.Element {
   const [view, setView] = createSignal<View>(snapshot());
   const publish = () => setView(snapshot());
   function prepare() {
-    props.onActivityChange?.(false);
-    timers.clear(); phase = 'ready'; next = 1; errors = 0; elapsed = 0; input = undefined; result = undefined;
-    values = shuffledRange(25).map(value => value + 1); status = 'Select 1 to start.'; publish();
+    props.onActivityChange?.(true);
+    timers.clear(); phase = 'running'; next = 1; errors = 0; elapsed = 0; input = undefined; result = undefined;
+    values = shuffledRange(25).map(value => value + 1); started = performance.now(); status = 'Select 1.';
+    timers.every(() => { elapsed = (performance.now() - started) / 1000; publish(); }, 100);
+    publish();
     onSettled(() => { focusBoard(board, values.indexOf(1)); });
   }
   function pick(index: number, event: Event) {
-    if (!['ready', 'running'].includes(phase) || document.hidden) return;
+    if (phase !== 'running' || document.hidden) return;
     const source = inputKind(event);
     if (input && input !== source) { status = `${input} input · restart to switch`; publish(); return; }
     const value = values[index];
     if (value < next) return;
     props.onActivityChange?.(true);
     if (value !== next) { errors++; status = `Select ${next}.`; publish(); return; }
-    if (phase === 'ready') {
-      input = source; started = performance.now(); phase = 'running';
-      props.onScopeChange?.(`order-v1-${input}`);
-      timers.every(() => { elapsed = (performance.now() - started) / 1000; publish(); }, 100);
+    if (!input) {
+      input = source;
+      props.onScopeChange?.(`order-v2-${input}`);
     }
     next++; status = '';
     if (next === 26) {
       elapsed = Math.max(0, (performance.now() - started) / 1000); phase = 'result'; timers.clear();
-      result = { value: Math.round(elapsed * 100) / 100, scope: `order-v1-${input ?? 'mouse'}`, unit: 's', lowerIsBetter: true,
-        details: { errors, inputKind: input ?? 'mouse', rulesVersion: 1 } };
+      result = { value: Math.round(elapsed * 100) / 100, scope: `order-v2-${input ?? 'mouse'}`, unit: 's', lowerIsBetter: true,
+        details: { errors, inputKind: input ?? 'mouse', rulesVersion: 2 } };
       status = `25 numbers · ${errors} ${errors === 1 ? 'error' : 'errors'}`;
       props.onFinish(result);
     }
@@ -415,7 +418,7 @@ function NumberOrder(props: GameProps): JSX.Element {
   return <section class="ai-memory-game" data-phase={view().phase}>
     <Stats items={view().stats} />
     <div class="ai-memory-stage">
-    <Show when={view().phase !== 'intro' && view().phase !== 'interrupted'} fallback={<Ready preview onStart={prepare} label={view().phase === 'interrupted' ? 'Start again' : 'Start'}>
+    <Show when={view().phase !== 'intro' && view().phase !== 'interrupted'} fallback={<Ready preview onStart={prepare} label={view().phase === 'interrupted' ? 'Start again' : 'Start'} rules={<GameRules>Select 1 through 25 in order. The clock starts at Start and stops at 25; mistakes keep it running.</GameRules>}>
       <MemoryBoard cells={view().cells} columns={5} phase="intro" kind="number-order" wrapFocus onPick={pick} />
     </Ready>}>
       <MemoryBoard cells={view().cells} columns={5} phase={view().phase} kind="number-order" wrapFocus onPick={pick} boardRef={element => { board = element; }} />

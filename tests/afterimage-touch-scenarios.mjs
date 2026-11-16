@@ -231,6 +231,6 @@ export async function exerciseResultGate() {
   pointer(retry, 'pointerdown', 30); pointer(retry, 'pointerup', 30);
   retry.dispatchEvent(new PointerEvent('click', { bubbles: true, pointerId: 30, pointerType: 'touch', detail: 1 }));
   await wait(() => !query('.ai-result'));
-  check(query('.ai-memory-status')?.textContent === 'Select 1 to start.', 'fresh post-delay press failed to replay');
+  check(query('.ai-memory-game')?.dataset.phase === 'running' && !query('.ai-memory-board .is-complete'), 'fresh post-delay press failed to replay');
   return { game: 'result-gate', passed: true };
 }

@@ -12,7 +12,7 @@
 .ai-speed-feedback { height: 3em; overflow-y: auto; margin: 10px 0; text-align: center; color: var(--site-muted); font-size: 13px; line-height: 1.5; }
 .ai-speed-note { color: var(--site-muted); text-align: center; font-size: 12px; line-height: 1.6; }
 .ai-reaction-game, .ai-tapping-game { max-width: 680px; }
-.ai-reaction-pad, .ai-tap-pad { display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 18px; width: 100%; height: clamp(240px, 42svh, 380px); min-height: 0; padding: 28px 20px; overflow: auto; border: 1px solid var(--site-line); border-radius: 16px; background: var(--site-bg); color: var(--site-fg); font: inherit; text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.ai-reaction-pad, .ai-tap-pad { display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 18px; width: 100%; height: clamp(240px, 42svh, 380px); min-height: 0; padding: 28px 20px; overflow: auto; border: 1px solid var(--site-line); border-radius: 16px; background: var(--site-bg); color: var(--site-fg); font: inherit; text-align: center; touch-action: none; cursor: pointer; }
 .ai-reaction-pad > *, .ai-tap-pad > * { flex-shrink: 0; max-width: 100%; overflow-wrap: anywhere; }
 .ai-reaction-pad strong, .ai-tap-pad strong { font-size: clamp(27px, 5vw, 44px); font-weight: 650; font-variant-numeric: tabular-nums; }
 .ai-reaction-pad span, .ai-tap-pad span { font-size: 14px; line-height: 1.5; }
@@ -23,26 +23,24 @@
 .ai-speed-practice { display: flex; margin: 16px auto 0; font-size: 13px; }
 .ai-aim-game { max-width: 680px; }
 .ai-aim-arena { position: relative; box-sizing: border-box; width: 100%; height: clamp(280px, 43svh, 360px); overflow: hidden; border: 1px solid var(--site-line); border-radius: 12px; background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--ai-accent) 7%, transparent), transparent 72%), var(--site-bg); touch-action: none; }
-.ai-aim-target, .ai-aim-exit { position: absolute; box-sizing: border-box; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 6px solid color-mix(in srgb, var(--ai-accent) 65%, var(--site-fg)); border-radius: 50%; background: var(--ai-accent); color: var(--site-bg); box-shadow: 0 0 0 5px color-mix(in srgb, var(--ai-accent) 8%, transparent); touch-action: none; z-index: 1; }
+.ai-aim-target { position: absolute; box-sizing: border-box; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 6px solid color-mix(in srgb, var(--ai-accent) 65%, var(--site-fg)); border-radius: 50%; background: var(--ai-accent); color: var(--site-bg); box-shadow: 0 0 0 5px color-mix(in srgb, var(--ai-accent) 8%, transparent); touch-action: none; z-index: 1; }
 .ai-aim-target { cursor: crosshair; animation: ai-target-arrival 200ms ease-out; }
 .ai-aim-target:hover, .ai-aim-target:active { border-color: var(--site-fg); background: color-mix(in srgb, var(--ai-accent) 82%, var(--site-fg)); }
 .ai-aim-target:disabled { cursor: default; opacity: 1; }
-.ai-aim-target svg, .ai-aim-exit svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; pointer-events: none; }
+.ai-aim-target svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; pointer-events: none; }
 .ai-aim-target.is-start { left: calc(50% - 26px); top: calc(50% - 26px); }
 .ai-aim-target.is-retry { border-color: var(--site-fg); }
-.ai-aim-exit { pointer-events: none; z-index: 0; animation: ai-target-exit 120ms ease-in forwards; }
 .ai-aim-note, .ai-aim-retry-note { position: absolute; left: 12px; right: 12px; text-align: center; color: var(--site-muted); font-size: 13px; pointer-events: none; }
 .ai-aim-note { top: calc(50% + 52px); }
 .ai-aim-retry-note { bottom: 14px; }
 .ai-aim-progress { height: 2px; margin-top: 12px; background: var(--site-line); overflow: hidden; }
 .ai-aim-progress span { display: block; width: 100%; height: 100%; background: var(--ai-accent); transform-origin: left; }
-.ai-aim-arena[data-aim-format="standard"] .ai-aim-target, .ai-aim-arena[data-aim-format="standard"] .ai-aim-exit { width: 100px; height: 100px; }
+.ai-aim-arena[data-aim-format="standard"] .ai-aim-target { width: 100px; height: 100px; }
 .ai-aim-arena[data-aim-format="standard"] .ai-aim-target.is-start { left: calc(50% - 50px); top: calc(50% - 50px); }
 .ai-aim-arena[data-aim-format="standard"] .ai-aim-note { top: calc(50% + 70px); }
 @keyframes ai-target-arrival { from { opacity: .4; } to { opacity: 1; } }
-@keyframes ai-target-exit { from { opacity: 1; } to { opacity: 0; } }
 @media (max-width: 500px) { .ai-aim-arena { height: clamp(260px, 40svh, 320px); } }
 @media (min-width: 1004px) and (min-height: 800px) { .ai-main:has(.ai-aim-game) { padding-inline: 16px; } .ai-aim-game { max-width: 972px; } .ai-aim-arena { width: 972px; max-width: 100%; height: 502px; } }
 @media (max-height: 500px) and (orientation: landscape) { .ai-reaction-pad, .ai-tap-pad { height: 200px; } }
-@media (prefers-reduced-motion: reduce) { .ai-aim-target { animation: none; } .ai-aim-exit { display: none; } }
+@media (prefers-reduced-motion: reduce) { .ai-aim-target { animation: none; } }
 @media (forced-colors: active) { .ai-reaction-pad.is-go { border: 4px double Highlight; } .ai-aim-target { border-color: ButtonText; background: ButtonFace; color: ButtonText; } .ai-aim-progress span { background: Highlight; } }

@@ -4,6 +4,7 @@ import { installReverbSettings, type ReverbSettingsExtras } from './reverb-setti
 import { REVERB_NOISE_SIZE } from './reverb-reference.ts';
 import { installReverbBlobSupport } from './reverb-blob-support.ts';
 import { reverbExportLimitSeconds } from './reverb-export.ts';
+import { writeClipboardText } from '../../shared/clipboard.ts';
 export type ReverbDemoDocument = Pick<Document, "createElement" | "createElementNS"> & {
   readonly activeElement: Element | null;
   readonly externalFocusActive: boolean;
@@ -3192,6 +3193,7 @@ export function runReverbDemoRuntime(
     ...document.querySelectorAll<HTMLElement>(".incident-card"),
   ];
   const activeIncidentHoldTimers = new Set<number>();
+  let incidentCopyAttempt = 0;
   const syncIncidentAlert = () =>
     setIncidentAlert(
       incidentCards.some((card) => card.dataset.acknowledged === "false"),
@@ -3225,10 +3227,13 @@ export function runReverbDemoRuntime(
     };
     const copyIncident = () => {
       incidentHoldTriggered = true;
-      void navigator.clipboard
-        ?.writeText(incidentCopyText)
-        .catch(() => undefined);
-      showToast("Incident copied", "success");
+      const attempt = ++incidentCopyAttempt;
+      showToast("Copying incident…");
+      const report = (copied: boolean) => {
+        if (attempt !== incidentCopyAttempt || !incidentCard.isConnected) return;
+        showToast(copied ? "Incident copied" : "Could not copy incident", copied ? "success" : "error");
+      };
+      void writeClipboardText(incidentCopyText).then(report, () => report(false));
     };
     const toggleIncident = () => {
       if (incidentHoldTriggered) {
@@ -3250,9 +3255,10 @@ export function runReverbDemoRuntime(
       activeIncidentHoldTimers.delete(incidentHoldTimer);
       incidentHoldTimer = 0;
     };
-    incidentCard.addEventListener("pointerdown", () => {
+    incidentCard.addEventListener("pointerdown", (event) => {
       incidentHoldTriggered = false;
       clearIncidentHold();
+      if (event.button !== 0) return;
       incidentHoldTimer = setTimeout(() => {
         activeIncidentHoldTimers.delete(incidentHoldTimer);
         incidentHoldTimer = 0;
@@ -3264,6 +3270,7 @@ export function runReverbDemoRuntime(
       incidentCard.addEventListener(type, clearIncidentHold),
     );
     incidentCard.addEventListener("contextmenu", (event) => {
+      if (event.shiftKey && event.button === 2) { clearIncidentHold(); return; }
       event.preventDefault();
       clearIncidentHold();
       copyIncident();
@@ -4759,8 +4766,9 @@ export function runReverbDemoRuntime(
       clearTimeout(recordingMenuHoldTimer);
       recordingMenuHoldTimer = 0;
     };
-    summary.addEventListener("pointerdown", () => {
+    summary.addEventListener("pointerdown", (event) => {
       clearRecordingMenuHold();
+      if (event.button !== 0) return;
       recordingMenuHoldTimer = setTimeout(() => {
         recordingMenuHoldTimer = 0;
         recordingMenuSuppressClick = state;
@@ -4777,6 +4785,7 @@ export function runReverbDemoRuntime(
       summary.addEventListener(type, clearRecordingMenuHold),
     );
     summary.addEventListener("contextmenu", (event) => {
+      if (event.shiftKey && event.button === 2) { clearRecordingMenuHold(); return; }
       event.preventDefault();
       clearRecordingMenuHold();
       if (librarySelectionActive()) toggleLibrarySelection(state);
@@ -7246,6 +7255,7 @@ void main(){
       }
     },
     dispose() {
+      ++incidentCopyAttempt;
       extraSettings.dispose();
       setRangePlaying(false);
       for (const state of recordingPlayerStates) {

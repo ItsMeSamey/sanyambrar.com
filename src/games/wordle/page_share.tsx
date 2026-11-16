@@ -18,9 +18,15 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
   const [hard, setHard] = createStore(untrack(() => snapshot(props.hard)))
 
   let copyResetTimer: ReturnType<typeof setTimeout> | undefined
-  onCleanup(() => clearTimeout(copyResetTimer))
+  let copyAttempt = 0
+  onCleanup(() => { ++copyAttempt; clearTimeout(copyResetTimer) })
 
-  return <Dialog open={open()} onOpenChange={setOpen}>
+  function changeOpen(next: boolean) {
+    if (!next) { ++copyAttempt; clearTimeout(copyResetTimer); setCopyButtonText('Copy') }
+    setOpen(next)
+  }
+
+  return <Dialog open={open()} onOpenChange={changeOpen}>
       <DialogTrigger title='Share' type='button' class='wordle-share-trigger' aria-label='Share' onClick={e => e.stopPropagation()}>
         <ShareIcon class='size-5 stroke-foreground' />
       </DialogTrigger>
@@ -34,21 +40,28 @@ export function ShareTrigger(props: {word: Accessor<string>, soft: SettingsSoftP
       <div class='wordle-share-footer flex flex-row gap-2 items-center mt-4'>
         <Button
           class='wordle-copy-button'
+          aria-live='polite'
+          aria-atomic='true'
           onClick={async () => {
-            const wlen = props.word().length
-            if (!isWordLength(wlen)) return showError(new Error('Invalid word length'))
-            const idx = binarySearch(wlen, props.word().toLowerCase())
-            if (idx === -1) return showError(new Error('Word not found in the database'))
-
-            const config: SettingsHardProps = {...hard, wordLength: wlen, wordIndex: idx}
-            const url = challengeUrl(config, soft.fastInvalidate)
-            if (!url) return showError(new Error('Could not create share URL'))
+            const attempt = ++copyAttempt
+            clearTimeout(copyResetTimer)
+            setCopyButtonText('Copying...')
             try {
+              const wlen = props.word().length
+              if (!isWordLength(wlen)) throw new Error('Invalid word length')
+              const idx = binarySearch(wlen, props.word().toLowerCase())
+              if (idx === -1) throw new Error('Word not found in the database')
+
+              const config: SettingsHardProps = {...hard, wordLength: wlen, wordIndex: idx}
+              const url = challengeUrl(config, soft.fastInvalidate)
+              if (!url) throw new Error('Could not create share URL')
               if (!await writeClipboardText(url.href)) throw new Error('Copy failed')
+              if (attempt !== copyAttempt) return
               setCopyButtonText('Copied!')
-              clearTimeout(copyResetTimer)
-              copyResetTimer = setTimeout(() => setCopyButtonText('Copy'), 1000)
+              copyResetTimer = setTimeout(() => { if (attempt === copyAttempt) setCopyButtonText('Copy') }, 1000)
             } catch (error) {
+              if (attempt !== copyAttempt) return
+              setCopyButtonText('Copy failed')
               showError(error instanceof Error ? error : new Error('Could not copy share URL'))
             }
           }}

@@ -69,7 +69,8 @@ export async function exerciseBoardStability(game) {
   await wait(() => game === 'pairs' ? phase() === 'ready' : !query('.ai-ready'), 'started board');
   await pause(30);
   capture('start');
-  check(!restart() || restart().disabled, 'presentation alone exposes Restart');
+  if (game === 'number-order') check(restart() && !restart().disabled, 'timed Number Order run does not expose Restart');
+  else check(!restart() || restart().disabled, 'presentation alone exposes Restart');
   if (game === 'pairs') {
     // Repeatedly choose the same known mismatch, preserving all four card slots.
     const mismatch = pairNames.findIndex((face, index) => index > 0 && face !== pairNames[0]);
@@ -171,6 +172,7 @@ export async function exerciseBoardStability(game) {
   press(query('.ai-result .ai-primary'));
   await wait(() => !query('.ai-result'), 'fresh retry');
   await pause(30); capture('retry');
-  check(!restart() || restart().disabled, 'fresh retry leaves Restart enabled');
+  if (game === 'number-order') check(restart() && !restart().disabled, 'timed Number Order retry does not expose Restart');
+  else check(!restart() || restart().disabled, 'fresh retry leaves Restart enabled');
   return { game, passed: true, geometry, stages };
 }
