@@ -50,19 +50,20 @@
 .site-standard .project { display: flex; min-width: 0; }
 .site-standard .project:nth-child(even), .site-standard .card:nth-child(even) { border-left: 1px solid var(--site-line); }
 .site-standard .project:nth-child(n+3), .site-standard .card:nth-child(n+3) { border-top: 1px solid var(--site-line); }
+.site-standard :is(.project,.card):first-child { border-top-left-radius: 7px; }
+.site-standard :is(.project,.card):nth-child(2) { border-top-right-radius: 7px; }
+.site-standard :is(.project,.card):nth-last-child(2) { border-bottom-left-radius: 7px; }
+.site-standard :is(.project,.card):last-child { border-bottom-right-radius: 7px; }
 .site-standard .project-card-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 210px; padding: 24px; }
-.site-standard .project-head { min-width: 0; }
-.site-standard .project-name { margin: 0; font-size: clamp(28px,3.6vw,44px); font-weight: 650; line-height: 1.1; letter-spacing: -.055em; }
-.site-standard .project-name a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
-.site-standard .project-name .entry-arrow { width: 17px; height: 17px; }
-.site-standard .project-name a:is(:hover,:focus-visible) { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.site-standard .project-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; }
+.site-standard .project-name { min-width: 0; margin: 0; font-size: clamp(28px,3.6vw,44px); font-weight: 650; line-height: 1.1; letter-spacing: -.055em; }
+.site-standard .project-action { display: inline-flex; flex: none; align-items: center; gap: 5px; padding-top: 3px; color: var(--site-muted); font-size: 11px; line-height: 1.5; }
+.site-standard .project-action .entry-arrow { width: 17px; height: 17px; }
+.site-standard .project:is(:hover,:focus-visible) .project-name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.site-standard .project:is(:hover,:focus-visible) .project-action { color: var(--site-fg); }
 .site-standard .project-card-copy > p { margin: 14px 0 22px; max-width: 45ch; color: var(--portfolio-muted); font-size: 12px; line-height: 1.65; }
 .site-standard .project-card-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: auto; }
 .site-standard .project-card-foot .entry-tags { flex: 1 1 90px; }
-.site-standard .project-try { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--site-line); border-radius: 5px; background: var(--site-bg); color: var(--site-fg); font-size: 11px; font-weight: 650; line-height: 1.4; }
-.site-standard .project-try svg { width: 16px; height: 16px; }
-.site-standard .project-try:hover { border-color: var(--site-fg); background: var(--site-soft); }
-.site-standard .project-try:focus-visible { outline-offset: 3px; }
 .site-standard .project-grid a:focus-visible { outline-offset: -3px; }
 .site-standard .project-demo-loading { display: grid; place-items: center; min-height: 180px; color: var(--site-muted); }
 .site-standard .project-demo-error { display: grid; gap: 10px; min-width: 0; padding: 18px; background: var(--site-error-bg); border-radius: 8px; }
@@ -140,8 +141,10 @@
   .site-standard .portfolio-heading-home { padding-top: 36px; }
   .site-standard .portfolio-heading-home h1 { font-size: clamp(44px,9vw,76px); }
   .site-standard .game-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
-  .site-standard .card:nth-child(n) { border-top: 0; }
+  .site-standard .card:nth-child(n) { border-top: 0; border-radius: 0; }
   .site-standard .card + .card { border-left: 1px solid var(--site-line); }
+  .site-standard .card:first-child { border-radius: 7px 0 0 7px; }
+  .site-standard .card:last-child { border-radius: 0 7px 7px 0; }
   .site-standard .card { padding-inline: 14px; }
 }
 @media (max-width: 700px) {
@@ -151,8 +154,13 @@
   .site-standard .profile-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
   .site-standard .profile-links a { justify-content: flex-start; gap: 6px; min-height: 28px; font-size: 11px; }
   .site-standard .game-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .site-standard .card:nth-child(n) { border-radius: 0; }
   .site-standard .card:nth-child(odd) { border-left: 0; }
   .site-standard .card:nth-child(n+3) { border-top: 1px solid var(--site-line); }
+  .site-standard .card:first-child { border-top-left-radius: 7px; }
+  .site-standard .card:nth-child(2) { border-top-right-radius: 7px; }
+  .site-standard .card:nth-last-child(2) { border-bottom-left-radius: 7px; }
+  .site-standard .card:last-child { border-bottom-right-radius: 7px; }
   .site-standard .project-card-copy { padding: 22px 18px; }
   .site-standard .project-name { font-size: 32px; }
   .site-standard .portfolio-heading-workspace { align-items: center; gap: 10px 18px; padding-top: 18px; margin-bottom: 14px; }
@@ -160,8 +168,10 @@
 }
 @media (max-width: 520px) {
   .site-standard .project-grid { grid-template-columns: minmax(0,1fr); }
-  .site-standard .project:nth-child(n) { border-left: 0; border-top: 0; }
+  .site-standard .project:nth-child(n) { border-left: 0; border-top: 0; border-radius: 0; }
   .site-standard .project + .project { border-top: 1px solid var(--site-line); }
+  .site-standard .project:first-child { border-radius: 7px 7px 0 0; }
+  .site-standard .project:last-child { border-radius: 0 0 7px 7px; }
   .site-standard .project-card-copy { min-height: 0; padding: 22px 20px; }
   .site-standard .project-card-copy > p { margin-block: 10px 18px; }
   .site-standard .project-name { font-size: 34px; }
@@ -175,8 +185,10 @@
   .site-standard .portfolio-heading-home h1 { font-size: 46px; }
   .site-standard .portfolio-heading-home h1 > span { display: block; }
   .site-standard .game-grid { grid-template-columns: minmax(0,1fr); }
-  .site-standard .card:nth-child(n) { border-left: 0; border-top: 0; }
+  .site-standard .card:nth-child(n) { border-left: 0; border-top: 0; border-radius: 0; }
   .site-standard .card + .card { border-top: 1px solid var(--site-line); }
+  .site-standard .card:first-child { border-radius: 7px 7px 0 0; }
+  .site-standard .card:last-child { border-radius: 0 0 7px 7px; }
   .site-standard .card { min-height: 106px; padding: 20px 16px; }
   .site-standard .home-tool-matrix { grid-template-columns: minmax(0,1fr); }
   .site-standard .home-tool:nth-child(n) { padding: 10px 0; }

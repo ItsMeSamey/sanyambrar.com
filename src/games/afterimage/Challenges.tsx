@@ -15,7 +15,7 @@ const duration = 60;
 
 export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { definition: ChallengeDefinition<Q> }) {
   const definition = props.definition;
-  const scope = `${definition.id}-v2-60s`;
+  const scope = definition.scope ?? `${definition.id}-v2-60s`;
   const timers = useTimers();
   const presses = useGamePress();
   const heldKeys = new Set<string>();
@@ -32,7 +32,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   function finish() {
     if (!live()) return;
     timers.clear(); clock.reset();
-    const result: GameResult = { value: Math.max(0, state.correct - state.errors), scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, duration, rulesVersion: 2 } };
+    const result: GameResult = { value: Math.max(0, state.correct - state.errors), scope, unit: 'points', details: { correct: state.correct, errors: state.errors, rounds: state.correct + state.errors, duration, rulesVersion: definition.rulesVersion ?? 2 } };
     update({ phase: 'result', remaining: 0, result });
     setNotice('Run finished.');
     props.onFinish(result);

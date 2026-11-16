@@ -4,6 +4,7 @@ import { contrastText } from './contrast.ts';
 import { writeClipboardText } from './clipboard.ts';
 import { captureSelection } from './selection.ts';
 import { clampContextMenu, contextMenuBounds } from './contextMenuGeometry.ts';
+import { containCursorFill, cursorFillClip, cursorFillInset } from './cursorFillGeometry.ts';
 import { Copy, Scissors, ClipboardPaste, TextSelect, Search, createElement as createIcon, type IconNode } from 'lucide';
 import { shortcutKey } from './platform.ts';
 import { hideLayer, isTopLayer, showLayer, topLayer } from './overlay.ts';
@@ -1192,6 +1193,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       return [...record.addedNodes, ...record.removedNodes].some(nodeContainsOverlay);
     };
     new MutationObserver((records) => {
+      if (fillTarget && !fillTarget.isConnected) hideFillImmediate();
       if (records.some(overlayMutationMatters)) refreshOverlayState();
     }).observe(document.documentElement, {
       subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "open", "aria-hidden", "data-open", "data-expanded"],
@@ -1211,6 +1213,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       return value === "grab" || value === "grabbing" || value === "ew-resize" || value === "ns-resize" || value === "col-resize" || value === "row-resize";
     };
     const linkTarget = (target: EventTarget | null): LinkElement | null => target instanceof Element ? target.closest<LinkElement>("a[href],area[href],[role=link]") : null;
+    const fillSelector = 'a[href],area[href],[role=link],button,summary,select,input:is([type=button],[type=submit],[type=reset],[type=checkbox],[type=radio]),[role=button],[role=checkbox],[role=switch],[role=radio],[role=tab],[role=combobox],[data-cursor-fill="on"]';
+    // Game-input zones retain their exact stimulus colours and rapid-input feedback.
+    const fillExcludedSelector = '[data-cursor-fill="off"],[data-game-input],.wordle-keyboard,[inert],[hidden],[aria-hidden="true"],[aria-disabled="true"],:disabled,[contenteditable="true"],[contenteditable="plaintext-only"]';
+    const hoverFillTarget = (target: EventTarget | null): HTMLElement | null => {
+      if (!(target instanceof Element)) return null;
+      const owner = target.closest<HTMLElement>(fillSelector);
+      return owner && !owner.closest(fillExcludedSelector) ? owner : null;
+    };
     const elementAt = (event: PointerEvent | MouseEvent): Element | null => {
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return event.target instanceof Element ? event.target : null;
       return document.elementFromPoint(event.clientX, event.clientY) || (event.target instanceof Element ? event.target : null);
@@ -1308,9 +1318,28 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     const fillCollapseCurve = (t: number) => t - Math.sin(Math.PI * 2 * t) * .1;
     let geometryLink: LinkElement | null = null, geometryRects: DOMRect[] = [], geometryBounds: DOMRect | null = null;
     let geometryRadiusX = 0, geometryRadiusY = 0;
+    let geometryPaddingX = Infinity, geometryPaddingY = Infinity;
+    let geometryCorners = '0px';
     let activeFillRect: DOMRect | null = null;
+    const fillResizeObserver = new ResizeObserver(() => queuePointerGeometryRefresh());
+    const fillStateObserver = new MutationObserver(() => queuePointerGeometryRefresh());
+    const observeFillTarget = (target: HTMLElement | null) => {
+      fillResizeObserver.disconnect();
+      fillStateObserver.disconnect();
+      if (!target) return;
+      fillResizeObserver.observe(target);
+      // Observe only the active ancestry, never scan a reactive game/editor tree.
+      for (let element: HTMLElement | null = target; element; element = element.parentElement) {
+        fillStateObserver.observe(element, { attributes: true, attributeFilter: ['disabled', 'aria-disabled', 'inert', 'hidden', 'aria-hidden', 'data-game-input', 'data-cursor-fill', 'class', 'style'] });
+      }
+    };
     function renderFillSlices() {
       if (!fillVisible) return;
+      if (activeFillRect) {
+        const frame = containCursorFill({ x: fillX, y: fillY, width: fillW, height: fillH }, activeFillRect);
+        fillX = frame.x; fillY = frame.y; fillW = frame.width; fillH = frame.height;
+        fillSlice.style.clipPath = cursorFillClip(frame, activeFillRect, geometryCorners);
+      }
       const width = fillW, height = fillH;
       const left = fillX - width / 2, top = fillY - height / 2;
       fillSlice.hidden = width <= 0 || height <= 0;
@@ -1326,16 +1355,27 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       geometryRects = link ? [...link.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0) : [];
       geometryBounds = link ? link.getBoundingClientRect() : null;
       geometryRadiusX = geometryRadiusY = 0;
+      geometryPaddingX = geometryPaddingY = Infinity;
+      geometryCorners = '0px';
       if (link && geometryBounds) {
         const style = getComputedStyle(link);
+        const localWidth = link.offsetWidth || geometryBounds.width;
+        const localHeight = link.offsetHeight || geometryBounds.height;
+        const scaleX = geometryBounds.width / localWidth, scaleY = geometryBounds.height / localHeight;
+        if (!link.matches('a[href],area[href],[role=link]')) {
+          geometryPaddingX = Math.min(Number.parseFloat(style.paddingLeft) || 0, Number.parseFloat(style.paddingRight) || 0) * scaleX;
+          geometryPaddingY = Math.min(Number.parseFloat(style.paddingTop) || 0, Number.parseFloat(style.paddingBottom) || 0) * scaleY;
+        }
         const radii = [
-          cornerRadius(style.borderTopLeftRadius, geometryBounds.width, geometryBounds.height),
-          cornerRadius(style.borderTopRightRadius, geometryBounds.width, geometryBounds.height),
-          cornerRadius(style.borderBottomRightRadius, geometryBounds.width, geometryBounds.height),
-          cornerRadius(style.borderBottomLeftRadius, geometryBounds.width, geometryBounds.height),
-        ];
+          cornerRadius(style.borderTopLeftRadius, localWidth, localHeight),
+          cornerRadius(style.borderTopRightRadius, localWidth, localHeight),
+          cornerRadius(style.borderBottomRightRadius, localWidth, localHeight),
+          cornerRadius(style.borderBottomLeftRadius, localWidth, localHeight),
+        ].map(radius => ({ x: radius.x * scaleX, y: radius.y * scaleY }));
         geometryRadiusX = Math.max(...radii.map(radius => radius.x));
         geometryRadiusY = Math.max(...radii.map(radius => radius.y));
+        geometryCorners = `${radii.map(radius => `${radius.x}px`).join(' ')} / ${radii.map(radius => `${radius.y}px`).join(' ')}`;
+        if (style.visibility === 'hidden' || style.display === 'none') geometryRects = [];
       }
     };
     const linkRect = (link: LinkElement, force = false) => {
@@ -1355,11 +1395,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       };
     };
     const updateFillGoal = (forceGeometry = false): DOMRect | null => {
-      if (!fillTarget?.isConnected) { setFillTarget(null); return null; }
+      if (!fillTarget?.isConnected) { hideFillImmediate(); return null; }
       const rect = linkRect(fillTarget, forceGeometry);
+      if (!geometryRects.length || rect.right <= 0 || rect.bottom <= 0 || rect.left >= innerWidth || rect.top >= innerHeight) { hideFillImmediate(); return null; }
       activeFillRect = rect;
-      const insetX = Math.min(8, Math.max(2, rect.width * .04));
-      const insetY = Math.min(6, Math.max(1, rect.height * .12));
+      const insetX = cursorFillInset(Math.min(8, Math.max(2, rect.width * .04)), geometryPaddingX);
+      const insetY = cursorFillInset(Math.min(6, Math.max(1, rect.height * .12)), geometryPaddingY);
       const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
       const nx = Math.max(-1, Math.min(1, (pendingX - cx) / Math.max(1, rect.width / 2)));
       const ny = Math.max(-1, Math.min(1, (pendingY - cy) / Math.max(1, rect.height / 2)));
@@ -1378,6 +1419,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const renderFill = (time: number) => {
       fillFrame = 0;
+      if (document.hidden || fillTarget && !fillTarget.isConnected) { hideFillImmediate(); return; }
       const reduced = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
       if (fillCollapsing) {
         if (!fillCollapseStart) fillCollapseStart = time;
@@ -1419,9 +1461,10 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (!done) fillFrame = requestAnimationFrame(renderFill);
       else fillLastTime = 0;
     };
-    const ensureFillFrame = () => { if (!fillFrame) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
+    const ensureFillFrame = () => { if (!fillFrame && !document.hidden) { fillLastTime = 0; fillFrame = requestAnimationFrame(renderFill); } };
     function hideFillImmediate() {
       fillTarget = null;
+      observeFillTarget(null);
       geometryLink = null; geometryRects = []; geometryBounds = activeFillRect = null; geometryRadiusX = geometryRadiusY = 0;
       fillVisible = fillCollapsing = false; fillCollapseStart = fillLastTime = 0;
       if (fillFrame) { cancelAnimationFrame(fillFrame); fillFrame = 0; }
@@ -1489,6 +1532,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (!link) {
         const oldRect = activeFillRect;
         fillTarget = null;
+        observeFillTarget(null);
         if (!fillVisible) return;
         if (!fillCollapsing) {
           fillCollapsing = true;
@@ -1508,7 +1552,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         return;
       }
       const changed = fillTarget !== link;
-      if (changed) refreshLinkGeometry(link);
+      if (changed) { refreshLinkGeometry(link); observeFillTarget(link); }
       fillTarget = link; fillCollapsing = false; fillCollapseStart = 0; linkFill.hidden = false;
       const rect = updateFillGoal();
       if (!rect) return;
@@ -1518,6 +1562,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         fillRadiusX = dot.width / 2; fillRadiusY = dot.height / 2;
         fillVisible = true;
       }
+      if (changed) renderFillSlices();
       ensureFillFrame();
     }
     const textInput = (target: EventTarget | null) => target instanceof HTMLTextAreaElement
@@ -1554,7 +1599,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const setMode = (target: EventTarget | null) => {
       const grab = nativeDragging || pressedGrab || (!selectingText && wantsGrabCached(target));
-      const candidateLink = grab || selectingText ? null : linkTarget(target);
+      const candidateLink = grab || selectingText ? null : hoverFillTarget(target);
       const link = candidateLink;
       const text = !grab && (selectingText || !link && wantsText(target));
       if (cursorMode !== "invert") {
@@ -1603,7 +1648,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       pointerGeometryFrame = requestAnimationFrame(() => {
         pointerGeometryFrame = 0;
         const actual = document.elementFromPoint(pendingX, pendingY);
-        const actualLink = linkTarget(actual);
+        const actualLink = hoverFillTarget(actual);
         if (overlayOwnsInteraction) {
           if (fillTarget && !fillTarget.isConnected) hideFillImmediate();
           else if (fillTarget) { refreshLinkGeometry(fillTarget); updateFillGoal(); ensureFillFrame(); }
@@ -1634,6 +1679,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     syncCursorPresentation(read());
     const hasRawPointer = "onpointerrawupdate" in window;
     const moveCursorOnly = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
       if (nativeDragging) return;
       const x = event.clientX, y = event.clientY;
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -1651,6 +1697,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (!cursorVisible && !cursorLoading) setCursorVisible(true);
     };
     const moveCursorFallback = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
       if (nativeDragging) { hidePointerVisuals(); return; }
       const x = event.clientX, y = event.clientY;
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -1671,6 +1718,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       schedulePointModeRefresh(event.target instanceof Element ? event.target : elementAt(event));
     };
     const refreshPointerTarget = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return;
       if (cursorMode !== "invert") { const x=event.clientX,y=event.clientY; if (Number.isFinite(x)&&Number.isFinite(y)) { hasPointerPosition=true; lastX=pendingX=x; lastY=pendingY=y; } const target=event.target instanceof Element ? event.target : elementAt(event); pointTextTarget=null; textModeNeedsPointRefresh(target); setMode(target); return; }
       if (nativeDragging) { hidePointerVisuals(); return; }
       place(event);
@@ -1688,7 +1736,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     addEventListener("samey-navigationstart", hideFillImmediate);
     addEventListener("samey-transitionstart", hideFillImmediate);
     addEventListener("samey-pageleave", hideFillImmediate);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) hidePointerVisuals(); });
     document.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === 'touch') { hidePointerVisuals(); return; }
       const actual = event.target instanceof Element ? event.target : elementAt(event);
       const pressedLink = linkTarget(actual);
       pressedPointerId = event.pointerId;
@@ -1699,6 +1749,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       setMode(actual);
     }, true);
     document.addEventListener("pointerup", (event) => {
+      if (event.pointerType === 'touch') return;
       selectingText = false;
       hideDragPreview();
       if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
@@ -1879,8 +1930,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let returnFocus: HTMLElement | null = null;
     let savedSelection: ReturnType<typeof captureSelection> | null = null;
     let selectionText = "";
-    let menuViewportWidth = 0;
-    let menuViewportHeight = 0;
     let menuPoint = { x: 8, y: 8 };
     let refreshingSelection = false;
     let viewportFrame = 0;
@@ -2056,8 +2105,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       }
       menu.hidden = false;
       showLayer(menu);
-      menuViewportWidth = innerWidth;
-      menuViewportHeight = innerHeight;
       menuPoint = { x: event.clientX, y: event.clientY };
       positionMenu(true);
       menu.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true });
@@ -2091,10 +2138,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.addEventListener('beforetoggle', event => {
       if ((event as ToggleEvent).newState === 'closed' && event.target instanceof Element && event.target !== menu && event.target.contains(menu)) close();
     }, true);
-    addEventListener("resize", () => {
-      if (!menu.hidden && (innerWidth !== menuViewportWidth || innerHeight !== menuViewportHeight)) close();
-    });
-    addEventListener("scroll", (event) => { if (event.target !== visualViewport && !(event.target instanceof Node && menu.contains(event.target))) close(); }, true);
+    // Focusing the toolbar can dismiss Android's keyboard and auto-scroll the
+    // page. Those geometry changes must not dismiss the menu we just opened.
+    addEventListener("resize", scheduleViewportPosition);
+    addEventListener("scroll", (event) => {
+      if (!(event.target instanceof Node && menu.contains(event.target))) scheduleViewportPosition();
+    }, true);
+    addEventListener("wheel", (event) => {
+      if (!(event.target instanceof Node && menu.contains(event.target))) close();
+    }, { capture: true, passive: true });
     document.addEventListener("keydown", (event) => {
       if (menu.hidden) {
         if (event.defaultPrevented) return;

@@ -5,7 +5,7 @@ const aliases: Record<string, string> = { typing: 'typing-v2-60s', stroop: 'stro
 export const scoreKey = (scope: string) => `afterimage-history-${aliases[scope] ?? scope}`;
 export const baseGame = (id: GameId) => id === 'number-order' ? 'order' : id === 'arithmetic' ? 'math' : id.replace('-fresh', '');
 export function initialScope(id: GameId): string {
-  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v3-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v2-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v4-60s', patterns: 'patterns-v4-60s', search: 'search-v2-30s', 'paper-folding': 'paper-folding-v2-60s', deduction: 'deduction-v2-60s', 'colour-match': 'colour-match-v2-60s' };
+  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v3-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v2-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v4-60s', patterns: 'patterns-v4-60s', search: 'search-v2-30s', 'paper-folding': 'paper-folding-v2-60s', deduction: 'deduction-v3-letters-60s', 'colour-match': 'colour-match-v2-60s' };
   return scopes[id];
 }
 export function readHistory(scope: string): HistoryRow[] {
@@ -39,7 +39,7 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
     rotation: [['rotation-v4-60s', '60 seconds'], ['rotation-v3-60s', 'Earlier rules · 60 seconds'], ['rotation-v2-12', 'Previous · 12 questions'], ['rotation-v1-12', 'Earlier · 12 questions']],
     patterns: [['patterns-v4-60s', '60 seconds'], ['patterns-v3-60s', 'Earlier rules · 60 seconds'], ['patterns-v1-12', 'Previous · 12 questions']],
     'paper-folding': [['paper-folding-v2-60s', 'Current rules'], ['paper-folding-v1-60s', 'Earlier rules']],
-    deduction: [['deduction-v2-60s', 'Current rules'], ['deduction-v1-60s', 'Earlier rules']],
+    deduction: [['deduction-v3-letters-60s', 'Letters'], ['deduction-v3-images-60s', 'Images'], ['deduction-v2-60s', 'Earlier rules · letters'], ['deduction-v1-60s', 'Earlier rules · continuous clock']],
     'colour-match': [['colour-match-v2-60s', 'Current rules'], ['colour-match-v1-60s', 'Earlier rules']],
     search: [['search-v2-30s', '30 seconds'], ['search-v1-30s', 'Previous · release']],
     cps: [['cps-v1-mouse-10s', 'Mouse · 10 seconds'], ['tps-v3-touch-10s', 'Touch · 10 seconds'], ['tps-v2-touch-10s', 'Previous touch · release'], ['tps-v1-touch-10s', 'Earlier touch · press']],

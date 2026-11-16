@@ -96,6 +96,7 @@ export function App() {
   function afterPaint(fn: () => void) { cancelAnimationFrame(frame); frame = requestAnimationFrame(fn); }
   function clearResultRestartGuard() { window.clearTimeout(resultRestartTimer); setRestartBlocked(resultRestartGuard, false); }
   function applyRoute(route: AfterimageRoute) {
+    window.dispatchEvent(new Event('samey-navigationstart'));
     const nextGeneration = ++generation;
     clearResultRestartGuard();
     setHasActivity(false);

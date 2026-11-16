@@ -365,7 +365,7 @@ function OrderMemory(props: GameProps): JSX.Element {
     <Show when={view().phase === 'between'}><ContinueRound onContinue={round} guard={view().cells.some(cell => cell.face === 'wrong')} /></Show>
     <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={start} />}</Show>
     </div>
-    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status"><span class={{ 'ai-sr-only': view().phase === 'between' }}>{view().status}</span></p>
+    <p class="ai-memory-status ai-sr-only" role="status">{view().status}</p>
   </section>;
 }
 
@@ -425,7 +425,7 @@ function NumberOrder(props: GameProps): JSX.Element {
     </Show>
     <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={prepare} />}</Show>
     </div>
-    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status">{view().status}</p>
+    <p class="ai-memory-status ai-sr-only" role="status">{view().status}</p>
   </section>;
 }
 

@@ -2726,7 +2726,7 @@ test('demo CSS remains owned across Writing and Work navigation and project roun
   await visit(page, '/blog/', info);
   await page.locator('.site-topbar-nav a[href="/work/"]').click();
   await expect(page).toHaveURL(/\/work\/?$/);
-  await page.locator('.project-name a[href="/projects/oneserial/"]').hover();
+  await page.locator('.project[href="/projects/oneserial/"]').hover();
   const componentStyle = page.locator('link[data-samey-component-style="demo:oneserial-pack"]');
   await expect(componentStyle).toHaveCount(1);
   await expect(componentStyle).toHaveAttribute('media', 'all');
@@ -2738,7 +2738,7 @@ test('demo CSS remains owned across Writing and Work navigation and project roun
     await expect(page).toHaveURL(new RegExp(`${route}$`));
     await expect(componentStyle).toHaveAttribute('media', 'all');
   }
-  await page.locator('.project-name a[href="/projects/oneserial/"]').hover();
+  await page.locator('.project[href="/projects/oneserial/"]').hover();
   await expect(componentStyle).toHaveCount(1);
   await expect(componentStyle).toHaveAttribute('href', componentHref);
 

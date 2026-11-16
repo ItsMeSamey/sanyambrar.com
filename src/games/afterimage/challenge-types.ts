@@ -10,6 +10,8 @@ export type ChallengeQuestion = {
 
 export type ChallengeDefinition<Q extends ChallengeQuestion> = {
   id: ChallengeId;
+  scope?: string;
+  rulesVersion?: number;
   instruction: string;
   createQuestion: (round: number, random?: () => number) => Q;
   Prompt: (props: { question: Q }) => JSX.Element;

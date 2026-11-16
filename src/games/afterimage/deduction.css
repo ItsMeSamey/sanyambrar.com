@@ -1,4 +1,9 @@
+.ai-deduction-game { width: min(100%, 680px); margin-inline: auto; }
+.ai-deduction-settings { width: min(100%, 15rem); margin: 0 auto 8px; }
+.ai-deduction-settings .keybr-segmented-item:disabled { opacity: .6; cursor: default; }
 .ai-deduction { width: min(100%, 23rem); height: 100%; display: grid; grid-template-rows: 28px 20px minmax(0, 1fr) 24px; gap: 7px; padding-block: 4px; }
+.ai-deduction-symbol { display: inline-grid; place-items: center; flex: 0 0 auto; width: clamp(24px, 8vw, 36px); height: clamp(24px, 8vw, 36px); font-size: 1.375rem; line-height: 1; font-weight: 650; }
+.ai-deduction-object { display: block; width: 100%; height: 100%; }
 .ai-deduction-tiles { display: flex; justify-content: center; gap: 7px; color: var(--site-muted); }
 .ai-deduction-tiles > span { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--site-line); border-radius: 5px; font-size: .75rem; font-weight: 600; }
 .ai-deduction-legend, .ai-deduction-question { margin: 0; text-align: center; line-height: 20px; }
@@ -6,12 +11,15 @@
 .ai-deduction-question { align-self: center; font-size: .875rem; font-weight: 550; }
 .ai-deduction-premises { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 7px; min-height: 0; }
 .ai-deduction-premise { display: flex; align-items: center; justify-content: center; gap: clamp(5px, 2vw, 12px); min-width: 0; border: 1px solid var(--site-line); border-radius: 8px; background: var(--site-bg); color: var(--ai-accent); }
-.ai-deduction-premise > span { font-size: clamp(1rem, 4vw, 1.375rem); line-height: 1; font-weight: 650; }
-.ai-deduction-premise > svg { width: clamp(25px, 8vw, 42px); height: 24px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ai-deduction-arrow { flex: 0 1 auto; width: clamp(25px, 8vw, 42px); height: 24px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ai-deduction-choice { display: flex; align-items: center; justify-content: center; gap: clamp(5px, 2vw, 12px); min-width: 0; max-width: 100%; }
+.ai-deduction-choice .ai-deduction-symbol { width: clamp(24px, 9vw, 42px); height: clamp(24px, 9vw, 42px); font-size: clamp(1.25rem, 5vw, 1.75rem); }
+.ai-deduction-position { font-size: clamp(1rem, 4vw, 1.375rem); font-weight: 550; }
 @media (max-width: 300px) {
   .ai-deduction { gap: 5px; }
   .ai-deduction-premises { gap: 5px; }
 }
 @media (forced-colors: active) {
   .ai-deduction-premise { color: CanvasText; border-color: CanvasText; }
+  .ai-deduction-object { forced-color-adjust: none; }
 }

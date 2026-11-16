@@ -179,3 +179,24 @@ test('visual viewport keyboard/pinch bounds resize the menu without moving a hel
   }).toBe(true);
   await expect(menu(page).getByRole('menuitem', { name: 'Copy', exact: true })).toBeFocused();
 });
+
+test('keyboard dismissal resize and auto-scroll preserve an editable menu, while explicit outside scrolling dismisses it', async ({ page }, info) => {
+  await setup(page, info);
+  await page.setViewportSize({ width: 390, height: 300 });
+  await selectAndOpen(page, 'qa-input', 7, 22);
+  // Android can emit both a layout resize and document scroll after toolbar
+  // focus dismisses its keyboard; neither represents a new outside gesture.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => document.dispatchEvent(new Event('scroll')));
+  await expect(menu(page)).toBeVisible();
+  await expect(menu(page).getByRole('menuitem', { name: 'Copy', exact: true })).toBeFocused();
+  await menu(page).getByRole('menuitem', { name: 'Copy', exact: true }).click();
+  expect(await page.evaluate(() => window.qaWrites)).toEqual(['QA_INPUT_MARKER']);
+  await expect(feedback(page)).toHaveText('Copied');
+
+  await selectAndOpen(page, 'qa-input', 7, 22);
+  await page.evaluate(() => document.querySelector('#samey-context-menu button').dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 60 })));
+  await expect(menu(page)).toBeVisible();
+  await page.evaluate(() => document.querySelector('#qa-text').dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 60 })));
+  await expect(menu(page)).not.toBeVisible();
+});

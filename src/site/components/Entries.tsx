@@ -1,6 +1,6 @@
 import { Dynamic } from '@solidjs/web';
 import { KeybrMark, WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx';
-import { ArrowUpRight, CirclePlay } from '../../shared/components/Icons.tsx';
+import { ArrowUpRight } from '../../shared/components/Icons.tsx';
 import type { Entry } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
 
@@ -36,31 +36,23 @@ export function GameCards(props:{entries:Entry[]}) {
   )}</div>;
 }
 
-function ProjectDemoLink(props:{entry:Entry}) {
-  return props.entry.demoId ? <SmartLink class="project-try" href={props.entry.href} documentPreload={true} aria-label={`Try ${props.entry.title} demo`}>
-    <CirclePlay aria-hidden="true"/>Try
-  </SmartLink> : null;
-}
-
 export function ProjectCards(props:{entries:Entry[];headingLevel?:2|3}) {
   return <div class="project-grid">{props.entries.map(entry =>
-    <article class="project">
+    <SmartLink class="project" href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title} aria-label={entry.demoId ? `Try ${entry.title} demo` : undefined}>
       <div class="project-card-copy">
-        <div class="project-head"><Dynamic component={props.headingLevel === 2 ? 'h2' : 'h3'} class="project-name"><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></Dynamic></div>
+        <div class="project-head">
+          <Dynamic component={props.headingLevel === 2 ? 'h2' : 'h3'} class="project-name">{entry.title}</Dynamic>
+          <span class="project-action">{entry.demoId && <span>Try</span>}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></span>
+        </div>
         <p>{entry.note}</p>
-        <div class="project-card-foot"><EntryTags entry={entry}/><ProjectDemoLink entry={entry}/></div>
+        <div class="project-card-foot"><EntryTags entry={entry}/></div>
       </div>
-    </article>
+    </SmartLink>
   )}</div>;
 }
 
 export function ProjectIndex(props:{entries:Entry[]}) {
-  return <div class="project-index" data-samey-construction-line>{props.entries.map(entry =>
-    <article class="project-index-row" data-samey-construction-line>
-      <div class="project-index-copy"><h2><SmartLink href={entry.href} documentPreload={entry.demo === true} data-copy-label={entry.title}>{entry.title}<ArrowUpRight class="entry-arrow" aria-hidden="true"/></SmartLink></h2><p>{entry.note}</p><EntryTags entry={entry}/></div>
-      <ProjectDemoLink entry={entry}/>
-    </article>
-  )}</div>;
+  return <ProjectCards entries={props.entries} headingLevel={2}/>;
 }
 
 const postDate = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' });

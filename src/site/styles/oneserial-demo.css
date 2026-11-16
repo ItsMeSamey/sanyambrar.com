@@ -1,0 +1,55 @@
+.serial-demo .engine-demo-source { min-height: 15rem; }
+.serial-demo .engine-demo-stats { margin-top: 1.7rem; justify-content: space-between; }
+.serial-hint { margin: .35rem 0 .8rem; color: var(--site-muted); font-size: .74rem; }
+.serial-demo .serial-map { display: block; border: 0; border-radius: 0; overflow: visible; background: none; }
+.serial-map-row { display: grid; grid-template-columns: minmax(8rem, 11rem) 2.5rem minmax(0, 1fr); align-items: stretch; }
+.serial-demo .serial-field { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: .2rem; padding: .7rem 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; text-align: left; }
+.serial-demo .serial-field:hover { background: transparent; }
+.serial-field-name { display: flex; align-items: baseline; gap: .4rem; font-size: .8rem; font-weight: 550; }
+.serial-field-name small { color: var(--site-muted); font-size: .65rem; font-weight: 400; }
+.serial-demo .serial-field-value { display: block; overflow: hidden; text-overflow: ellipsis; font-size: .76rem; }
+.serial-range { color: var(--site-muted); font-size: .65rem; font-variant-numeric: tabular-nums; }
+.serial-connector { width: 100%; height: 1.5rem; align-self: center; overflow: visible; stroke: var(--site-line); fill: none; stroke-width: 1; }
+.serial-map-row.is-active .serial-connector { stroke: var(--site-accent); }
+.serial-map-row.is-active .serial-field-name { color: var(--site-accent); }
+.serial-demo .serial-field[aria-pressed=true] { color: inherit; box-shadow: none; }
+.serial-demo .serial-field[aria-pressed=true] .serial-field-name { text-decoration: underline; text-underline-offset: .25em; }
+.serial-memory { display: grid; min-width: 0; border: 1px solid var(--site-line); border-top: 0; background: var(--site-bg); }
+.serial-map-row:first-child .serial-memory { border-top: 1px solid var(--site-line); border-radius: 7px 7px 0 0; }
+.serial-map-row:last-child .serial-memory { border-radius: 0 0 7px 7px; }
+.serial-demo .engine-demo-bytes { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.2rem, 1fr)); gap: 0; margin: 0; overflow: auto; max-height: 15rem; border-radius: inherit; }
+.serial-demo .engine-demo-bytes code { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; min-height: 3rem; padding: .2rem .15rem; border: 0; border-radius: 0; box-shadow: 1px 0 0 var(--site-line), 0 1px 0 var(--site-line); background: var(--site-bg); font-size: .75rem; line-height: 1.4; }
+.serial-demo .engine-demo-bytes code.is-highlighted { color: var(--site-accent); background: color-mix(in srgb, var(--site-accent) 9%, var(--site-bg)); }
+.serial-demo .engine-demo-bytes code.is-padding { color: var(--site-muted); background: repeating-linear-gradient(135deg, transparent, transparent 3px, var(--site-line) 3px, var(--site-line) 4px), var(--site-bg); }
+.serial-demo .engine-demo-bytes code.is-length::after { content: ''; position: absolute; bottom: .25rem; width: .8rem; border-bottom: 1px solid currentColor; }
+.serial-byte-offset { color: var(--site-muted); font-size: .5rem; font-variant-numeric: tabular-nums; margin-bottom: .12rem; }
+.serial-detail { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .3rem 1rem; padding-top: .75rem; min-height: 3rem; font-size: .74rem; }
+.serial-detail p { margin: 0; }
+.serial-detail strong { font-weight: 550; margin-right: .4rem; }
+.serial-parts { display: flex; flex-wrap: wrap; gap: .8rem; color: var(--site-muted); font-size: .66rem; }
+.serial-part { display: inline-flex; align-items: center; gap: .3rem; }
+.serial-part b { font-weight: 400; font-variant-numeric: tabular-nums; }
+.serial-part i { width: .6rem; height: .6rem; border: 1px solid var(--site-line); background: color-mix(in srgb, var(--site-accent) 9%, var(--site-bg)); }
+.serial-part-length i { border-bottom: 2px solid var(--site-accent); }
+.serial-part-padding i { background: repeating-linear-gradient(135deg, transparent, transparent 2px, var(--site-line) 2px, var(--site-line) 3px); }
+.serial-demo .serial-damaged { border: 1px solid var(--site-line); border-radius: 7px; }
+.serial-demo .engine-demo-inspect { margin-top: 1.3rem; }
+@media (max-width: 560px) {
+  .serial-map-row { grid-template-columns: minmax(6.5rem, 8rem) 1.5rem minmax(0, 1fr); }
+  .serial-field-name { flex-direction: column; gap: 0; }
+  .serial-demo .engine-demo-bytes { grid-template-columns: repeat(auto-fill, minmax(1.85rem, 1fr)); }
+  .serial-demo .engine-demo-bytes code { min-height: 2.6rem; }
+}
+@media (max-width: 360px) {
+  .serial-map-row { grid-template-columns: minmax(0, 1fr); }
+  .serial-demo .serial-field { padding: .8rem 0 .6rem; }
+  .serial-field-name { flex-direction: row; gap: .4rem; }
+  .serial-connector { display: none; }
+  .serial-memory { border-top: 1px solid var(--site-line); border-radius: 5px; }
+  .serial-map-row:first-child .serial-memory, .serial-map-row:last-child .serial-memory { border-radius: 5px; }
+}
+@media (forced-colors: active) {
+  .serial-map-row.is-active .serial-connector { stroke: Highlight; }
+  .serial-demo .serial-field[aria-pressed=true] { outline: 1px solid Highlight; outline-offset: 2px; }
+  .serial-demo .engine-demo-bytes code.is-padding { font-style: italic; }
+}

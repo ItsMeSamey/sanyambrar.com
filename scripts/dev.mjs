@@ -30,6 +30,8 @@ const linkedCss = {
   shared: 'src/shared/styles/site.css',
   home: 'src/site/styles/home.css',
   engines: 'src/site/styles/engine-demos.css',
+  zhtml: 'src/site/styles/zhtml-demo.css',
+  oneserial: 'src/site/styles/oneserial-demo.css',
   tools: 'src/tools/style.css',
   settings: 'src/shared/styles/game-settings.css',
   chain: 'src/games/chain/style.css',
@@ -62,7 +64,8 @@ const routeCssFor = (path, htmlFile) => {
   if (htmlFile.endsWith('/src/blogs/btop-mutex.html')) return [linkedCss.article];
   if (key === '/tools') return [linkedCss.tools];
   if (key === '/chain') return [linkedCss.chain];
-  if (key === '/projects/zhtml' || key === '/projects/oneserial') return [linkedCss.home, linkedCss.engines];
+  if (key === '/projects/zhtml') return [linkedCss.home, linkedCss.engines, linkedCss.zhtml];
+  if (key === '/projects/oneserial') return [linkedCss.home, linkedCss.engines, linkedCss.oneserial];
   return [linkedCss.home];
 };
 const hrefForSourceCss = file => target === 'keybr' ? '/@fs' + resolve(root, file) : '/' + file;
@@ -87,8 +90,8 @@ const devRouteAssets = {
   project: [hrefForSourceCss(linkedCss.home), hrefForSourceCss(linkedCss.engines)],
   'demo:reverb-ui': [],
   'demo:cnn-draw': [],
-  'demo:zhtml-parse': [hrefForSourceCss(linkedCss.engines)],
-  'demo:oneserial-pack': [hrefForSourceCss(linkedCss.engines)],
+  'demo:zhtml-parse': [hrefForSourceCss(linkedCss.engines), hrefForSourceCss(linkedCss.zhtml)],
+  'demo:oneserial-pack': [hrefForSourceCss(linkedCss.engines), hrefForSourceCss(linkedCss.oneserial)],
 };
 process.env.SAMEY_VITE_BUILD = target;
 const mime = { '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.wasm': 'application/wasm', '.png': 'image/png', '.gif': 'image/gif', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };

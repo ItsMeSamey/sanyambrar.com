@@ -11,7 +11,7 @@ const scopes: [GameId, string][] = [
   ['reaction', 'reaction-v7-desktop'], ['aim', 'aim-v4-compact-mouse'], ['typing', 'typing-v4-hardware-passage'],
   ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v2-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
   ['rotation', 'rotation-v4-60s'], ['patterns', 'patterns-v4-60s'], ['search', 'search-v2-30s'],
-  ['paper-folding', 'paper-folding-v2-60s'], ['deduction', 'deduction-v2-60s'], ['colour-match', 'colour-match-v2-60s'],
+  ['paper-folding', 'paper-folding-v2-60s'], ['deduction', 'deduction-v3-letters-60s'], ['colour-match', 'colour-match-v2-60s'],
 ];
 
 function withStorage(run: (storage: Storage) => void) {
@@ -123,12 +123,31 @@ describe('Afterimage original score compatibility', () => {
       const scope = initialScope(id);
       saveResult({ scope, value: 12, unit: 'points', details: { correct: 15, errors: 3, rulesVersion: 2, duration: 60 } });
       expect(scopeUnit(id, scope)).toEqual({ unit: 'points', lower: false });
-      expect(scopeChoices(id)).toEqual([[scope, 'Current rules']]);
+      expect(scopeChoices(id)).toEqual([[scope, id === 'deduction' ? 'Letters' : 'Current rules']]);
       expect(referenceFor(id, scope)).toBeNull();
     }
     const backup = exportHistory(); storage.clear();
     expect(importHistory(backup)).toBe(3);
     for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) expect(readHistory(initialScope(id))[0]).toMatchObject({ value: 12, correct: 15, errors: 3, rulesVersion: 2, duration: 60 });
+  }));
+  test('Deduction letter and image scores stay separate while both older protocols remain selectable', () => withStorage(storage => {
+    const originals = ['deduction-v1-60s', 'deduction-v2-60s'].map((scope, i) => [scope, `[ { "value": ${i + 4}, "date": 123, "custom": "keep" } ]`] as const);
+    for (const [scope, raw] of originals) storage.setItem(scoreKey(scope), raw);
+    saveResult({ scope: 'deduction-v3-letters-60s', value: 9, unit: 'points', details: { rulesVersion: 3 } });
+    saveResult({ scope: 'deduction-v3-images-60s', value: 6, unit: 'points', details: { rulesVersion: 3 } });
+    expect(initialScope('deduction')).toBe('deduction-v3-letters-60s');
+    expect(scopeChoices('deduction', 'deduction-v3-images-60s')).toEqual([
+      ['deduction-v3-images-60s', 'Images'], ['deduction-v3-letters-60s', 'Letters'],
+      ['deduction-v2-60s', 'Earlier rules · letters'], ['deduction-v1-60s', 'Earlier rules · continuous clock'],
+    ]);
+    expect(readHistory('deduction-v3-letters-60s').map(row => row.value)).toEqual([9]);
+    expect(readHistory('deduction-v3-images-60s').map(row => row.value)).toEqual([6]);
+    for (const [scope, raw] of originals) expect(storage.getItem(scoreKey(scope))).toBe(raw);
+    const backup = exportHistory(); storage.clear();
+    expect(importHistory(backup)).toBe(4);
+    for (const [scope, raw] of originals) expect(storage.getItem(scoreKey(scope))).toBe(raw);
+    expect(readHistory('deduction-v3-letters-60s')[0].rulesVersion).toBe(3);
+    expect(readHistory('deduction-v3-images-60s')[0].rulesVersion).toBe(3);
   }));
   test('archived typing aliases and future revisions remain selectable and restore byte for byte', () => withStorage(storage => {
     const preserved = new Map<string, string>();

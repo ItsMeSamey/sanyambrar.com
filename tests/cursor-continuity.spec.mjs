@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-for (const menuOpen of [false, true]) test(`link blob carries its geometry between targets with context menu ${menuOpen}`, async ({ page }, info) => {
+for (const menuOpen of [false, true]) test(`link blob keeps its size inside each owner with context menu ${menuOpen}`, async ({ page }, info) => {
   test.skip(info.project.name === 'production-mobile', 'The blob requires a fine pointer');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   const meta = info.project.metadata;
@@ -27,7 +27,7 @@ for (const menuOpen of [false, true]) test(`link blob carries its geometry betwe
     window.blobRecording = true;
     const record = () => {
       const rect = document.querySelector('.samey-cursor-link-fill-slice').getBoundingClientRect();
-      window.blobFrames.push({ x: rect.x, width: rect.width, height: rect.height });
+      window.blobFrames.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
       if (window.blobRecording) requestAnimationFrame(record);
     };
     requestAnimationFrame(record);
@@ -37,6 +37,9 @@ for (const menuOpen of [false, true]) test(`link blob carries its geometry betwe
   const frames = await page.evaluate(() => { window.blobRecording = false; return window.blobFrames; });
   expect(frames.length).toBeGreaterThan(2);
   expect(frames.every(frame => frame.width > 210 && frame.height > 140)).toBe(true);
-  expect(frames.some(frame => frame.x > 100 && frame.x < 440)).toBe(true);
+  // Handoff carries the expanded shape, but never paints across unrelated space.
+  expect(frames.every(frame => [60, 460].some(left => frame.x >= left - .1 && frame.x + frame.width <= left + 240.1)
+    && frame.y >= 119.9 && frame.y + frame.height <= 280.1)).toBe(true);
+  await expect(fill).toHaveCSS('clip-path', /inset\(.+round/);
   if (menuOpen) await expect(page.getByRole('menu', { name: 'Context menu' })).toBeVisible();
 });
