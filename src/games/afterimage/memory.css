@@ -1,3 +1,4 @@
+.afterimage-app .ai-memory-tile { touch-action: none; }
 .ai-memory-game {
   --memory-face: color-mix(in srgb, var(--site-fg, #ddd) 9%, var(--site-bg, #161820));
   --memory-light: #b9a4e5;

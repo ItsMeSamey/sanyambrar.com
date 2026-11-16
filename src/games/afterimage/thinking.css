@@ -1,3 +1,4 @@
+.afterimage-app .ai-thinking-play button { touch-action: none; }
 .ai-thinking { width: 100%; }
 .ai-thinking .ai-ready-content > p { max-width: 48ch; margin: 0 auto 12px; text-wrap: balance; }
 .ai-thinking .ai-ready-content > p:empty { display: none; }

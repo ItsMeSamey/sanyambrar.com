@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { exportHistory, importHistory, initialScope, readHistory, saveResult, scoreKey, scopeUnit } from '../src/games/afterimage/history.ts';
+import { exportHistory, importHistory, initialScope, readHistory, saveResult, scoreKey, scopeChoices, scopeUnit } from '../src/games/afterimage/history.ts';
 import { referenceData } from '../src/games/afterimage/reference-data.ts';
 import { referenceFor, summarizeBins } from '../src/games/afterimage/reference-model.ts';
 import type { GameId } from '../src/games/afterimage/types.ts';
@@ -43,6 +43,31 @@ describe('Afterimage original score compatibility', () => {
     expect(scoreKey('reverse-v2-growing')).not.toBe(scoreKey('reverse-v2-fresh'));
     expect(scoreKey('future-v87-custom')).toBe('afterimage-history-future-v87-custom');
   });
+  test('fresh history offers only the active protocol across all games', () => withStorage(() => {
+    for (const [id, scope] of scopes) expect(scopeChoices(id).map(([value]) => value)).toEqual([scope]);
+    expect(scopeChoices('aim', 'aim-v6-standard-touch').map(([value]) => value)).toEqual(['aim-v6-standard-touch']);
+    expect(scopeChoices('cps', 'tps-v3-touch-10s').map(([value]) => value)).toEqual(['tps-v3-touch-10s']);
+  }));
+  test('history keeps saved input methods, legacy aliases and unknown revisions without empty choices', () => withStorage(storage => {
+    storage.setItem(scoreKey('aim-v4-standard-mouse'), '[{"value":350}]');
+    storage.setItem(scoreKey('aim-v3-touch'), '[{"value":400}]');
+    storage.setItem(scoreKey('aim-v99-pen'), '[{"value":500}]');
+    storage.setItem(scoreKey('aim-v4-compact-pen'), '[]');
+    storage.setItem(scoreKey('reaction-v7-desktop'), '[{"value":250}]');
+    expect(scopeChoices('aim', 'aim-v6-compact-touch').map(([value]) => value)).toEqual(['aim-v6-compact-touch', 'aim-v4-standard-mouse', 'aim-v3-touch', 'aim-v99-pen']);
+    storage.setItem(scoreKey('reverse-v2-fresh'), '[{"value":4}]');
+    expect(scopeChoices('reverse').map(([value]) => value)).toEqual(['reverse-v2-growing', 'reverse-v2-fresh']);
+    expect(scopeChoices('reverse-fresh').map(([value]) => value)).toEqual(['reverse-v2-fresh']);
+  }));
+  test('legacy bests, damaged data and imported scores remain reachable', () => withStorage(storage => {
+    storage.setItem('afterimage-best-standard', '12');
+    storage.setItem(scoreKey('visual-v2-long'), '{opaque');
+    expect(scopeChoices('visual').map(([value]) => value)).toEqual(['visual-v3-standard', 'visual-v2-long', 'visual']);
+    const backup = JSON.stringify({ version: 2, data: { [scoreKey('visual-v2-standard')]: '[{"value":9}]' } });
+    expect(importHistory(backup)).toBe(1);
+    expect(scopeChoices('visual').map(([value]) => value)).toContain('visual-v2-standard');
+    expect(readHistory('visual-v2-standard')).toEqual([{ value: 9 }]);
+  }));
   test('legacy timed pairs and question sets retain their own units and direction', () => {
     expect(scopeUnit('pairs', 'pairs-v3-touch')).toEqual({ unit: 's', lower: true });
     expect(scopeUnit('pairs', 'pairs-v4-touch')).toEqual({ unit: 'rounds', lower: false });

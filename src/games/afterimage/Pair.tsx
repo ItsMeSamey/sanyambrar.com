@@ -2,7 +2,7 @@ import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, CirclePlay, Redo2, X } from '../../shared/components/Icons.tsx';
-import { Stats, Result, inputKind, useTimers } from './common.tsx';
+import { Stats, Result, inputKind, useGamePress, useTimers } from './common.tsx';
 import { createPairDeck, type PairCard as Card } from './pair-objects.ts';
 import type { GameProps, GameResult, InputKind } from './types.ts';
 import './pair.css';
@@ -27,6 +27,7 @@ export function PairGame(props: GameProps) {
   const [cursor, setCursor] = createSignal(0);
   const [columnCount, setColumnCount] = createSignal(2);
   const timers = useTimers();
+  const presses = useGamePress();
   const cards = new Map<number, HTMLButtonElement>();
   let board!: HTMLDivElement;
   let ready!: HTMLButtonElement;
@@ -67,6 +68,7 @@ export function PairGame(props: GameProps) {
   function hide(event: Event) {
     if (current.phase !== 'study' || !accepts(event)) return;
     const input = inputKind(event);
+    props.onScopeChange?.(`pairs-v4-${input}`);
     update({ ...current, phase: 'conceal', input, open: [], message: 'Cards turning over.' });
     // Begin the lock after the staged faces have committed to the DOM.
     frame = requestAnimationFrame(() => {
@@ -197,10 +199,10 @@ export function PairGame(props: GameProps) {
         aria-label={label(card)} tabindex={cursor() === card.index ? 0 : -1}
         onFocus={() => setCursor(card.index)}
         onPointerDown={event => {
-          if (event.button !== 0 || current.phase !== 'ready') return;
-          event.preventDefault(); focusCard(card.index); pick(card.index, event);
+          if (!presses.down(event) || current.phase !== 'ready') return;
+          focusCard(card.index); pick(card.index, event);
         }}
-        onClick={event => { event.preventDefault(); if (!held && event.detail === 0 && !('pointerType' in event && event.pointerType)) pick(card.index, event); }}>
+        onClick={event => { event.preventDefault(); if (!held && presses.click(event)) pick(card.index, event); }}>
         <span class="pair-face" aria-hidden="true">
           <Show when={card.object.svg} fallback={card.object.name}>
             <svg xmlns="http://www.w3.org/2000/svg" class="pair-object" viewBox={card.object.viewBox} aria-hidden="true" innerHTML={card.artwork}/>

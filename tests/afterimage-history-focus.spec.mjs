@@ -72,6 +72,38 @@ async function openSeededVisualHistory(page, info) {
   await expect(page.locator('.ai-history-chart')).toBeVisible();
 }
 
+test('empty history hides the format picker and reference axes name their quantities', async ({ page }, info) => {
+  test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
+  await page.goto(`http://127.0.0.1:${info.project.metadata.port}/afterimage/`, { waitUntil: 'networkidle' });
+  await page.locator('[data-game-card="visual"]').click();
+  await expect(page.getByRole('combobox', { name: 'Results', exact: true })).toHaveCount(0);
+  await expect(page.locator('.ai-history')).toContainText('No completed runs yet');
+  await expect(page.locator('.ai-history-chart')).toHaveCount(0);
+  const chart = page.locator('.ai-reference-chart');
+  await expect(chart.locator('.ai-chart-labels')).toContainText('Observations (%)');
+  await expect(chart.locator('.ai-chart-labels')).toContainText('Score (levels)');
+  await chart.focus();
+  await page.keyboard.press('Home');
+  await expect(page.locator('.ai-reference .ai-point-detail')).toContainText('observations');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.ai-reference .ai-point-detail')).toHaveCount(0);
+});
+
+test('history picker contains only active and saved formats and restores focus after Escape', async ({ page }, info) => {
+  test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
+  await openSeededVisualHistory(page, info);
+  const results = page.getByRole('combobox', { name: 'Results', exact: true });
+  await results.click();
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await expect(page.getByRole('option', { name: 'Standard', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('option', { name: 'Previous standard', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('option')).toHaveCount(0);
+  await expect(results).toBeFocused();
+  await expect(page.locator('.ai-history-chart .ai-chart-labels')).toContainText('Run number');
+  await expect(page.locator('.ai-history-chart .ai-chart-labels')).toContainText('Score (levels)');
+});
+
 test('history keyboard controls inspect the latest 30 runs and activate detail buttons normally', async ({ page }, info) => {
   test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
   await openSeededVisualHistory(page, info);
@@ -114,6 +146,21 @@ test('history keyboard controls inspect the latest 30 runs and activate detail b
   await expect(chart.locator('.ai-chart-selection')).toHaveCount(0);
 });
 
+test('reference inspection preserves the selected history comparison', async ({ page }, info) => {
+  test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
+  await openSeededVisualHistory(page, info);
+  await page.locator('.ai-history-chart').focus();
+  await page.keyboard.press('End');
+  await page.locator('.ai-reference-chart').focus();
+  await page.keyboard.press('Home');
+  await page.getByRole('button', { name: 'Next reference point', exact: true }).click();
+  await expect(page.locator('.ai-history > .ai-chart-detail-slot .ai-point-detail')).toContainText('Run 35:');
+  await expect(page.locator('.ai-chart-selected-legend')).toContainText('35');
+  await page.getByRole('button', { name: 'Close reference details', exact: true }).click();
+  await expect(page.locator('.ai-reference .ai-point-detail')).toHaveCount(0);
+  await expect(page.locator('.ai-history > .ai-chart-detail-slot .ai-point-detail')).toContainText('Run 35:');
+});
+
 test('switching history formats restores each selected run', async ({ page }, info) => {
   test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
   await openSeededVisualHistory(page, info);
@@ -121,9 +168,8 @@ test('switching history formats restores each selected run', async ({ page }, in
   const detail = page.locator('.ai-point-detail');
   const results = page.getByRole('combobox', { name: 'Results', exact: true });
   const chooseFormat = async scope => {
-    // A native select receives pointerdown before its change event.
-    await results.dispatchEvent('pointerdown', { pointerType: 'mouse', button: 0 });
-    await results.selectOption(scope);
+    await results.click();
+    await page.getByRole('option', { name: scope === 'visual-v2-standard' ? 'Previous standard' : 'Standard', exact: true }).click();
   };
 
   await chart.focus();

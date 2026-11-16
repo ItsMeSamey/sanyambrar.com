@@ -25,7 +25,7 @@ export function saveResult(result: GameResult) {
   }
 }
 const labels: Record<string, string> = { mouse: 'Mouse', touch: 'Touch', keyboard: 'Keyboard practice', pen: 'Pen' };
-export function scopeChoices(id: GameId): [string, string][] {
+export function scopeChoices(id: GameId, activeScope = initialScope(id)): [string, string][] {
   const game = baseGame(id);
   const options: [string, string][] = [];
   const add = (scope: string, label: string) => { if (!options.some(([key]) => scoreKey(key) === scoreKey(scope))) options.push([scope, label]); };
@@ -58,7 +58,22 @@ export function scopeChoices(id: GameId): [string, string][] {
     const scope = key.slice('afterimage-history-'.length);
     if (scope === game || scope.startsWith(`${game}-`) || game === 'cps' && scope.startsWith('tps-')) add(scope, `Saved rules · ${scope}`);
   }
-  return options;
+  add(activeScope, 'Current results');
+  const hasSavedData = (scope: string) => {
+    const raw = localStorage.getItem(scoreKey(scope));
+    if (raw !== null) {
+      try {
+        const value: unknown = JSON.parse(raw);
+        if (!Array.isArray(value) || value.length > 0) return true;
+      } catch { return true; } // Keep damaged or future formats accessible for recovery.
+    }
+    if (game !== 'visual') return false;
+    const legacy = scope === 'visual' ? 'standard' : scope === 'visual-long' ? 'long' : scope;
+    return Number(localStorage.getItem(`afterimage-best-${legacy}`)) > 0;
+  };
+  const currentKey = scoreKey(activeScope);
+  const active = options.find(([scope]) => scoreKey(scope) === currentKey)!;
+  return [[activeScope, active[1]], ...options.filter(([scope]) => scoreKey(scope) !== currentKey && hasSavedData(scope))];
 }
 export function scopeUnit(id: GameId, scope: string): { unit: string; lower: boolean } {
   if (id === 'reaction' || id === 'aim') return { unit: 'ms', lower: true };

@@ -26,3 +26,18 @@ export function chartPosition(value: number, scale: ChartScale, start: number, e
 const compact = new Intl.NumberFormat(undefined, { notation: 'compact', maximumSignificantDigits: 12 });
 const decimal = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 12 });
 export const chartLabel = (value: number) => Math.abs(value) >= 10000 ? compact.format(value) : decimal.format(value);
+
+export function nearestChartIndex(position: number, start: number, end: number, count: number) {
+  if (count <= 0) return null;
+  if (count === 1 || end <= start) return 0;
+  return Math.max(0, Math.min(count - 1, Math.round((position - start) / (end - start) * (count - 1))));
+}
+
+export function scoreAxisLabel(unit: string) {
+  if (unit === 'ms') return 'Time (milliseconds)';
+  if (unit === 's') return 'Time (seconds)';
+  if (unit === 'WPM') return 'Words per minute';
+  if (unit === 'clicks/s') return 'Clicks per second';
+  if (unit === 'taps/s') return 'Taps per second';
+  return `Score (${unit})`;
+}

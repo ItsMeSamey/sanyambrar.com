@@ -1,3 +1,4 @@
+.afterimage-app .pair-card { touch-action: none; }
 .pair-memory { width: 100%; max-width: 36rem; margin-inline: auto; }
 .pair-status-line { min-height: 2.8em; line-height: 1.4; color: var(--color-muted-foreground); text-align: center; font-size: .9rem; }
 .pair-board { display: grid; grid-template-columns: repeat(var(--pair-columns, 2), minmax(0, 1fr)); gap: clamp(8px, 2vw, 14px); width: 100%; align-content: start; }

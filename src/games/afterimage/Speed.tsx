@@ -4,6 +4,7 @@ import { Stats, setRestartBlocked, useTimers } from './common.tsx';
 import { AimEngine, ReactionEngine, TapEngine, aimScope, reactionScope } from './speed-engine.ts';
 import type { AimView, Press, ReactionView, TapView } from './speed-engine.ts';
 import type { GameProps } from './types.ts';
+import { isVirtualClick } from './press-input.ts';
 import './speed.css';
 
 const pointerToken = (event: PointerEvent) => `pointer:${event.pointerId}`;
@@ -59,7 +60,7 @@ function usePressEvents(options: {
   };
   const click = (event: MouseEvent) => {
     event.preventDefault();
-    if (!options.accessibleClick || hidden() || event.detail !== 0 || options.held.size || performance.now() - lastRelease < 500) return;
+    if (!options.accessibleClick || hidden() || !isVirtualClick(event) || options.held.size || performance.now() - lastRelease < 500) return;
     const token = 'accessible-click';
     options.down({ token, kind: 'keyboard' }, event);
     options.release(token, false);
@@ -175,7 +176,10 @@ function Aim(props: GameProps) {
   const events = usePressEvents({
     down: (press, event) => {
       if (!arena) return;
-      const hit = event.target instanceof Element && !!event.target.closest('.ai-aim-target');
+      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('.ai-aim-target') : null;
+      // Solid may still display a consumed target when another finger lands.
+      if (target && Number(target.dataset.targetSerial ?? 0) !== (engine.snapshot().target?.serial ?? 0)) return;
+      const hit = !!target;
       restoreFocus = press.kind === 'keyboard' || hit && event.target === document.activeElement;
       if (!engine.geometry(arena.clientWidth, arena.clientHeight)) return;
       engine.down(press, hit);
@@ -189,10 +193,10 @@ function Aim(props: GameProps) {
     return () => { observer.disconnect(); };
   });
   onCleanup(() => engine.dispose());
-  function Target(props: { x: number; y: number }) {
+  function Target(props: { x: number; y: number; serial: number }) {
     let button: HTMLButtonElement | undefined;
     onSettled(() => { if (restoreFocus && !document.hidden) button?.focus({ preventScroll: true }); });
-    return <button ref={button} type="button" class={['ai-aim-target', { 'is-retry': view().phase === 'result' }]} style={{ left: `${props.x}px`, top: `${props.y}px` }} disabled={view().blocked} aria-label={view().phase === 'result' ? 'Play aim training again' : `Target ${view().hits + 1} of 30`} onKeyDown={events.keydown}><TargetIcon/></button>;
+    return <button ref={button} type="button" class={['ai-aim-target', { 'is-retry': view().phase === 'result' }]} data-target-serial={props.serial} style={{ left: `${props.x}px`, top: `${props.y}px` }} disabled={view().blocked} aria-label={view().phase === 'result' ? 'Play aim training again' : `Target ${view().hits + 1} of 30`} onKeyDown={events.keydown}><TargetIcon/></button>;
   }
   return <div class="ai-speed ai-aim-game" data-state={view().phase}>
     <Stats items={[{ label: view().phase === 'result' ? 'ms / target' : 'Targets', value: view().phase === 'result' ? view().score : `${view().hits} / 30` }, { label: 'Time', value: `${(view().elapsed / 1000).toFixed(view().phase === 'result' ? 2 : 1)}s` }, { label: 'Misses', value: view().misses }]}/>
@@ -201,7 +205,7 @@ function Aim(props: GameProps) {
     <div ref={arena} class="ai-aim-arena" data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
       <For each={view().outgoing}>{point => <span class="ai-aim-exit" style={{ left: `${point.x}px`, top: `${point.y}px` }} aria-hidden="true"><TargetIcon/></span>}</For>
       <Show when={view().target} fallback={<><button class="ai-aim-target is-start" type="button" aria-label="Start aim training" onKeyDown={events.keydown}><TargetIcon/></button><span class="ai-aim-note">Hit the target to start</span></>}>
-        <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y}/>}</For>
+        <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y} serial={point.serial}/>}</For>
       </Show>
       <Show when={view().phase === 'result'}><span class="ai-aim-retry-note">Hit the target to play again</span></Show>
     </div>

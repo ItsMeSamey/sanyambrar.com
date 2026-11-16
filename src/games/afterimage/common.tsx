@@ -1,14 +1,43 @@
-import { For, createEffect, createSignal, onCleanup } from 'solid-js';
+import { For, createEffect, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { CirclePlay, Redo2, Trophy } from '../../shared/components/Icons.tsx';
 import type { GameResult, InputKind, Stat } from './types.ts';
 import { readHistory } from './history.ts';
+import { createPointerPresses, isVirtualClick } from './press-input.ts';
+
+export function useGamePress() {
+  const pointers = createPointerPresses();
+  onSettled(() => {
+    const release = (event: PointerEvent) => pointers.release(event.pointerId);
+    const visibility = () => { if (document.hidden) pointers.reset(); };
+    window.addEventListener('pointerup', release);
+    window.addEventListener('pointercancel', release);
+    window.addEventListener('blur', pointers.reset);
+    document.addEventListener('visibilitychange', visibility);
+    return () => {
+      window.removeEventListener('pointerup', release);
+      window.removeEventListener('pointercancel', release);
+      window.removeEventListener('blur', pointers.reset);
+      document.removeEventListener('visibilitychange', visibility);
+      pointers.reset();
+    };
+  });
+  return {
+    down(event: PointerEvent) {
+      if (document.hidden || !pointers.down(event)) return false;
+      event.preventDefault();
+      return true;
+    },
+    click: (event: MouseEvent) => !document.hidden && isVirtualClick(event),
+  };
+}
 
 const heldKeys = new Set<string>(), heldPointers = new Set<number>(), releases = new Set<() => void>();
 const pressedAt = new Map<string | number, number>();
 let releasedAt = -Infinity, releasedPress = -Infinity;
 const restartBlocks = new Set<object>(), restartSubscribers = new Set<(blocked: boolean) => void>();
+export const isRestartBlocked = () => restartBlocks.size > 0;
 export function setRestartBlocked(owner: object, blocked: boolean) {
   if (blocked) restartBlocks.add(owner); else restartBlocks.delete(owner);
   restartSubscribers.forEach(fn => fn(restartBlocks.size > 0));

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { chartLabel, chartPosition, chartScale } from '../src/games/afterimage/chart-model.ts';
+import { chartLabel, chartPosition, chartScale, nearestChartIndex, scoreAxisLabel } from '../src/games/afterimage/chart-model.ts';
 
 const samples = [
   [7],
@@ -13,6 +13,23 @@ const samples = [
 ];
 
 describe('Afterimage chart geometry', () => {
+  test('plot inspection clamps to actual runs and handles empty or single-point histories', () => {
+    expect(nearestChartIndex(120, 44, 284, 0)).toBeNull();
+    expect(nearestChartIndex(120, 44, 284, 1)).toBe(0);
+    expect(nearestChartIndex(-100, 44, 284, 5)).toBe(0);
+    expect(nearestChartIndex(400, 44, 284, 5)).toBe(4);
+    expect(nearestChartIndex(160, 44, 284, 5)).toBe(2);
+    expect(nearestChartIndex(120, 44, 44, 5)).toBe(0);
+  });
+
+  test('axis labels name score quantities and expand abbreviated units', () => {
+    expect(scoreAxisLabel('ms')).toBe('Time (milliseconds)');
+    expect(scoreAxisLabel('s')).toBe('Time (seconds)');
+    expect(scoreAxisLabel('WPM')).toBe('Words per minute');
+    expect(scoreAxisLabel('clicks/s')).toBe('Clicks per second');
+    expect(scoreAxisLabel('taps/s')).toBe('Taps per second');
+    expect(scoreAxisLabel('levels')).toBe('Score (levels)');
+  });
   test('empty, single and constant histories retain a usable axis', () => {
     for (const values of [[], [7], [12, 12, 12], [0, 0, 0]]) {
       const scale = chartScale(values);

@@ -1,7 +1,7 @@
 import { createMemo, createSignal, For, onSettled, Show, untrack } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button';
-import { inputKind, Ready, Result, Stats, useTimers } from './common';
+import { inputKind, Ready, Result, Stats, useGamePress, useResultGate, useTimers } from './common';
 import { nextSequence, sequenceRules, shuffledRange, visualRound } from './memory-model';
 import type { GameProps, GameResult, InputKind, Stat } from './types';
 import './memory.css';
@@ -32,33 +32,23 @@ function MemoryBoard(props: {
   onPick: (index: number, event: Event) => void;
   boardRef?: (element: HTMLDivElement) => void;
   boardFormat?: 'standard' | 'compact';
-  press?: boolean;
+  wrapFocus?: boolean;
 }): JSX.Element {
   const [focusIndex, setFocusIndex] = createSignal(0);
   const indices = createMemo(() => Array.from({ length: props.cells.length }, (_, i) => i));
   let board: HTMLDivElement | undefined;
-  const held = new Set<number>(), keys = new Set<string>();
-  let suppressClick = false;
-  const timers = useTimers();
+  const presses = useGamePress(), keys = new Set<string>();
   const canPick = (index: number) => ['recall', 'ready', 'running'].includes(props.phase) && !props.cells[index]?.inactive;
   const focus = (index: number) => {
     setFocusIndex(index);
     board?.querySelectorAll<HTMLButtonElement>('button')[index]?.focus({ preventScroll: true });
   };
-  const release = () => {
-    if (!held.size && !keys.size) timers.after(() => { suppressClick = false; }, 0);
-  };
   onSettled(() => {
-    const up = (event: PointerEvent) => { held.delete(event.pointerId); release(); };
-    const keyup = (event: KeyboardEvent) => { keys.delete(event.key); release(); };
-    const reset = () => { held.clear(); keys.clear(); suppressClick = false; };
-    window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
+    const keyup = (event: KeyboardEvent) => { keys.delete(event.key); };
+    const reset = () => { keys.clear(); };
     window.addEventListener('keyup', keyup);
     window.addEventListener('blur', reset);
     return () => {
-      window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', up);
       window.removeEventListener('keyup', keyup);
       window.removeEventListener('blur', reset);
     };
@@ -75,27 +65,25 @@ function MemoryBoard(props: {
       tabindex={props.phase !== 'intro' && focusIndex() === index ? 0 : -1}
       onFocus={() => setFocusIndex(index)}
       onPointerDown={event => {
-        if (!props.press || event.button !== 0 || held.has(event.pointerId)) return;
-        held.add(event.pointerId); suppressClick = true; event.preventDefault();
+        if (!presses.down(event)) return;
         focus(index);
         if (canPick(index)) props.onPick(index, event);
       }}
       onClick={event => {
         if (!canPick(index)) return;
-        if (props.press && (event.detail !== 0 || suppressClick || held.size || keys.size)) return;
+        if (!presses.click(event) || keys.size) return;
         props.onPick(index, event);
       }}
       onKeyDown={event => {
         const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -props.columns, ArrowDown: props.columns } as Record<string, number>)[event.key];
         if (delta !== undefined) {
           event.preventDefault();
-          const next = props.press ? (index + delta + props.cells.length) % props.cells.length : Math.max(0, Math.min(props.cells.length - 1, index + delta));
+          const next = props.wrapFocus ? (index + delta + props.cells.length) % props.cells.length : Math.max(0, Math.min(props.cells.length - 1, index + delta));
           focus(next);
         } else if (event.key === 'Enter' || event.key === ' ') {
-          if (!props.press) { if (event.repeat) event.preventDefault(); return; }
           event.preventDefault();
           if (event.repeat || keys.has(event.key)) return;
-          keys.add(event.key); suppressClick = true;
+          keys.add(event.key);
           if (canPick(index)) props.onPick(index, event);
         }
       }}><Show when={props.kind === 'visual'} fallback={<span class="ai-memory-face" aria-hidden="true">{props.cells[index]?.text}</span>}>
@@ -268,14 +256,13 @@ function SequenceReview(props: { order: number[]; step: number }): JSX.Element {
 
 function ContinueRound(props: { onContinue: () => void; guard: boolean }): JSX.Element {
   let button: HTMLButtonElement | undefined;
-  const [armed, setArmed] = createSignal(untrack(() => !props.guard));
-  const timers = useTimers();
+  const ready = useResultGate(() => props.guard);
+  const armed = () => !props.guard || ready();
   onSettled(() => {
     button?.focus({ preventScroll: true });
-    if (props.guard) timers.after(() => setArmed(true), 750);
   });
   return <div class="ai-memory-continue"><Button ref={element => { button = element; }}
-    aria-disabled={armed() ? 'false' : 'true'} onClick={() => { if (armed()) props.onContinue(); }}
+    aria-disabled={armed() ? 'false' : 'true'} onClick={event => { if (!props.guard || ready.accept(event)) props.onContinue(); }}
     onKeyDown={event => { if (event.repeat && (event.key === 'Enter' || event.key === ' ')) event.preventDefault(); }}>Continue</Button></div>;
 }
 
@@ -324,6 +311,8 @@ function OrderMemory(props: GameProps): JSX.Element {
     if (input && source !== input) { status = `This run uses ${input}. Restart to switch.`; publish(); return; }
     input = source; measure();
     const number = cells.indexOf(index) + 1;
+    if (!number || number < position) return;
+    props.onScopeChange?.(`chimp-v2-${compact ? 'compact' : 'standard'}-${input}`);
     if (number !== position) {
       lives--; phase = 'between'; revealed = true; wrong = index; status = `Wrong tile. Next was ${position}.`;
       if (!lives) finish(count());
@@ -382,9 +371,11 @@ function NumberOrder(props: GameProps): JSX.Element {
     const source = inputKind(event);
     if (input && input !== source) { status = `${input} input · restart to switch`; publish(); return; }
     const value = values[index];
+    if (value < next) return;
     if (value !== next) { errors++; status = `Select ${next}.`; publish(); return; }
     if (phase === 'ready') {
       input = source; started = performance.now(); phase = 'running';
+      props.onScopeChange?.(`order-v1-${input}`);
       timers.every(() => { elapsed = (performance.now() - started) / 1000; publish(); }, 100);
     }
     next++; status = '';
@@ -405,9 +396,9 @@ function NumberOrder(props: GameProps): JSX.Element {
     <Show when={!view().result}><Stats items={view().stats} /></Show>
     <p class="ai-memory-status" role="status">{view().status}</p>
     <Show when={view().phase !== 'intro' && view().phase !== 'interrupted'} fallback={<Ready preview onStart={prepare} label={view().phase === 'interrupted' ? 'Start again' : 'Start'}>
-      <MemoryBoard cells={view().cells} columns={5} phase="intro" kind="number-order" press onPick={pick} />
+      <MemoryBoard cells={view().cells} columns={5} phase="intro" kind="number-order" wrapFocus onPick={pick} />
     </Ready>}>
-      <MemoryBoard cells={view().cells} columns={5} phase={view().phase} kind="number-order" press onPick={pick} boardRef={element => { board = element; }} />
+      <MemoryBoard cells={view().cells} columns={5} phase={view().phase} kind="number-order" wrapFocus onPick={pick} boardRef={element => { board = element; }} />
     </Show>
     <Show when={view().result}>{finished => <Result result={finished()} onRetry={prepare} />}</Show>
   </section>;

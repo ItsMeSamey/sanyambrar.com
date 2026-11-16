@@ -1,7 +1,7 @@
 import { createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
 import { CornerDownLeft, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useResultGate, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGamePress, useResultGate, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { typingPassages } from './words-data.ts';
 import { applyTypingEdit, compareDigits, createWordDeck, makeNumber, numberRevealTime, typingMetrics, type PendingTypingEdit } from './words-logic.ts';
@@ -16,6 +16,7 @@ function onHidden(cancel: () => void) {
 }
 
 function NumberEntry(props: { length: number; onSubmit: (value: string) => void }) {
+  const presses = useGamePress();
   const [value, setValue] = createSignal('');
   const [notice, setNotice] = createSignal('');
   let input!: HTMLInputElement, current = '', submitted = false;
@@ -66,7 +67,7 @@ function NumberEntry(props: { length: number; onSubmit: (value: string) => void 
     }}/>
     <div id="ai-number-count" class="ai-number-count">{value().length} / {props.length} digits{value().length > props.length ? ` · ${value().length - props.length} extra` : value().length < props.length ? ` · ${props.length - value().length} to go` : ''}</div>
     <div class="ai-number-keypad" role="group" aria-label="Number keypad"><For each={[...'123456789', 'Clear', '0', 'Backspace']}>{key =>
-      <Button class="ai-number-key" aria-label={key === 'Backspace' ? 'Erase selection or previous digit' : key === 'Clear' ? 'Clear answer' : `Digit ${key}`} onPointerDown={event => { if (event.button === 0) { event.preventDefault(); press(key); } }} onClick={event => { if (event.detail === 0) press(key); }}><Show when={key === 'Backspace'} fallback={key}><Delete size={22}/></Show></Button>
+      <Button class="ai-number-key" aria-label={key === 'Backspace' ? 'Erase selection or previous digit' : key === 'Clear' ? 'Clear answer' : `Digit ${key}`} onPointerDown={event => { if (presses.down(event)) press(key); }} onClick={event => { if (presses.click(event)) press(key); }}><Show when={key === 'Backspace'} fallback={key}><Delete size={22}/></Show></Button>
     }</For></div>
     <Button class="ai-primary ai-number-submit" disabled={!value()} onClick={() => press('Enter')}>Check answer <CornerDownLeft size={20}/></Button>
     <span class="ai-sr-only" role="status">{notice()}</span>
@@ -116,13 +117,14 @@ function NumberGame(props: GameProps) {
       <Show when={phase() === 'reveal'}><div class="ai-number-track"><span style={{ transform: `scaleX(${remaining() / numberRevealTime(round().length)})` }}/></div><div class="ai-number-stimulus">{round().answer}</div></Show>
       <Show when={phase() === 'recall'}><NumberEntry length={round().length} onSubmit={submit}/></Show>
       <Show when={phase() === 'correct' || phase() === 'result'}><NumberComparison answer={round().answer} entered={entered()}/></Show>
-      <Show when={phase() === 'correct'}><Button class="ai-primary" disabled={!canContinue()} onClick={() => { if (stage === 'correct' && canContinue()) start(digits + 1); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>Next round · {round().length + 1} digits</Button></Show>
+      <Show when={phase() === 'correct'}><Button class="ai-primary" disabled={!canContinue()} onClick={event => { if (stage === 'correct' && canContinue.accept(event)) start(digits + 1); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>Next round · {round().length + 1} digits</Button></Show>
       <Show when={result()}>{value => <Result result={value()} onRetry={() => start()}/>}</Show>
     </div>
   </div>;
 }
 
 function VerbalGame(props: GameProps) {
+  const presses = useGamePress();
   const [phase, setPhase] = createSignal<Phase>('ready');
   const [prompt, setPrompt] = createSignal({ word: '', wasSeen: false });
   const [score, setScore] = createSignal(0), [lives, setLives] = createSignal(3);
@@ -134,7 +136,8 @@ function VerbalGame(props: GameProps) {
     current = deck.next(); setPrompt(current); setScore(0); setLives(3); setStatus(''); setResult(null); setPhase('running');
   }
   function answer(seen: boolean) {
-    if (!active || document.hidden) return;
+    // A second press before the next word renders still belongs to the old word.
+    if (!active || document.hidden || current !== prompt()) return;
     const correct = seen === current.wasSeen;
     if (correct) points++; else hearts--;
     deck.markSeen(current.word); setScore(points); setLives(hearts);
@@ -151,7 +154,7 @@ function VerbalGame(props: GameProps) {
     <div class="ai-word-status" role="status">{status()}</div>
     <div class="ai-word-arena ai-verbal-arena">
       <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">garden</div><Ready onStart={start}/></Show>
-      <Show when={phase() !== 'ready'}><h2 class="ai-verbal-stimulus" aria-live="polite">{prompt().word}</h2><div class="ai-word-choices"><For each={[true, false]}>{seen => <Button disabled={phase() !== 'running'} onClick={() => answer(seen)} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>{seen ? 'Seen' : 'New'}</Button>}</For></div></Show>
+      <Show when={phase() !== 'ready'}><h2 class="ai-verbal-stimulus" aria-live="polite">{prompt().word}</h2><div class="ai-word-choices"><For each={[true, false]}>{seen => <Button disabled={phase() !== 'running'} onPointerDown={event => { if (presses.down(event)) { event.currentTarget.focus({ preventScroll: true }); answer(seen); } }} onClick={event => { if (presses.click(event)) answer(seen); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>{seen ? 'Seen' : 'New'}</Button>}</For></div></Show>
       <Show when={result()}>{value => <Result result={value()} onRetry={start}><p>Correct answer: <strong>{prompt().wasSeen ? 'Seen' : 'New'}</strong></p></Result>}</Show>
     </div>
   </div>;

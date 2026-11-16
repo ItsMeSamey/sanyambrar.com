@@ -1,13 +1,15 @@
 import { Errored, For, Loading, Show, createSignal, lazy, onCleanup, onSettled } from 'solid-js';
 import { Dynamic } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
-import { BackLink, TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
-import { ArrowUpRight, Download, Redo2, Upload, X } from '../../shared/components/Icons.tsx';
+import { TopBar, TopBarIconButton } from '../../shared/components/TopBar.tsx';
+import { SmartLink } from '../../shared/components/NavLink.tsx';
+import { ArrowUpRight, ChevronLeft, Download, Redo2, Upload, X } from '../../shared/components/Icons.tsx';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../shared/components/Dialog.tsx';
 import { History } from './History.tsx';
-import { installInputTracking, useRestartBlocked } from './common.tsx';
+import { installInputTracking, isRestartBlocked, setRestartBlocked, useRestartBlocked } from './common.tsx';
 import { installRipple } from './ripple.ts';
 import { exportHistory, importHistory, saveResult } from './history.ts';
+import { createAfterimageNavigation, type AfterimageRoute } from './navigation.ts';
 import type { GameId, GameResult } from './types.ts';
 
 const MemoryGame = lazy(() => import('./Memory.tsx'), { export: 'MemoryGame' });
@@ -39,19 +41,6 @@ export const games: Entry[] = [
   { id: 'search', title: 'Visual search', category: 'Perception', art: 'search' },
 ];
 const artwork = import.meta.glob<string>('./assets/*.svg', { eager: true, query: '?url', import: 'default' });
-const navigationKey = 'afterimage-navigation-v1';
-type Navigation = { version: 1; screen: 'games' | 'play'; game: string | null; variant: string | null; homeScroll: number };
-function restore(): { id: GameId | null; selected?: GameId | null; homeScroll: number } {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(navigationKey) ?? 'null') as Navigation | null;
-    if (!saved || saved.version !== 1 || !['games', 'play'].includes(saved.screen) || !Number.isFinite(saved.homeScroll) || saved.homeScroll < 0 || saved.homeScroll > 10000000) return { id: null, homeScroll: 0 };
-    let id = saved.game === 'order' ? 'number-order' : saved.game === 'math' ? 'arithmetic' : saved.game === 'tps' ? 'cps' : saved.game;
-    if (['sequence', 'reverse'].includes(id ?? '') ? !['growing', 'fresh'].includes(saved.variant ?? '') : saved.variant !== null) return { id: null, homeScroll: 0 };
-    if (saved.variant === 'fresh' && ['sequence', 'reverse'].includes(id ?? '')) id += '-fresh';
-    const selected = games.some(game => game.id === id) ? id as GameId : null;
-    return { id: saved.screen === 'play' ? selected : null, selected, homeScroll: saved.homeScroll };
-  } catch { return { id: null, homeScroll: 0 }; }
-}
 function component(id: GameId) {
   if (id === 'pairs') return PairGame;
   if (['number', 'verbal', 'typing'].includes(id)) return WordsGame;
@@ -64,8 +53,9 @@ type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<
 export function App() {
   onCleanup(installInputTracking());
   onCleanup(installRipple());
-  const restored = restore();
-  const [selection, setSelection] = createSignal<{ id: GameId; generation: number } | null>(restored.id ? { id: restored.id, generation: 0 } : null);
+  const navigation = createAfterimageNavigation(history, { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value) }, games.map(game => game.id));
+  const restored = navigation.current();
+  const [selection, setSelection] = createSignal<{ id: GameId; generation: number } | null>(restored.game ? { id: restored.game, generation: 0 } : null);
   const [revision, setRevision] = createSignal(0);
   const [latest, setLatest] = createSignal<GameResult | null>(null);
   const [activeScope, setActiveScope] = createSignal<string>();
@@ -75,30 +65,33 @@ export function App() {
   const [install, setInstall] = createSignal<InstallPrompt | null>(null);
   const [update, setUpdate] = createSignal(false);
   const [offline, setOffline] = createSignal(!navigator.onLine);
-  let homeScroll = restored.homeScroll;
-  let selectedCard: GameId | null = restored.selected ?? restored.id;
   let generation = 0;
   let frame = 0;
+  const resultRestartGuard = {};
+  let resultRestartTimer = 0;
   let upload!: HTMLInputElement;
   let transferOpener!: HTMLButtonElement;
   const current = () => games.find(game => game.id === selection()?.id);
-  function saveNavigation(next: GameId | null) {
-    const base = next?.replace('-fresh', '') ?? selectedCard?.replace('-fresh', '') ?? null;
-    const id = next ?? selectedCard;
-    try { sessionStorage.setItem(navigationKey, JSON.stringify({ version: 1, screen: next ? 'play' : 'games', game: base === 'number-order' ? 'order' : base === 'arithmetic' ? 'math' : base, variant: id?.endsWith('-fresh') ? 'fresh' : ['sequence', 'reverse'].includes(id ?? '') ? 'growing' : null, homeScroll })); } catch { /* Navigation still works when storage is unavailable. */ }
-  }
   function afterPaint(fn: () => void) { cancelAnimationFrame(frame); frame = requestAnimationFrame(fn); }
-  function open(id: GameId) {
-    if (!selection()) homeScroll = Math.max(0, window.scrollY);
-    selectedCard = id;
-    setSelection({ id, generation: ++generation }); setLatest(null); setActiveScope(undefined); saveNavigation(id);
-    afterPaint(() => { window.scrollTo({ top: 0, behavior: 'instant' }); document.querySelector<HTMLElement>('.ai-play h1')?.focus({ preventScroll: true }); });
+  function clearResultRestartGuard() { window.clearTimeout(resultRestartTimer); setRestartBlocked(resultRestartGuard, false); }
+  function applyRoute(route: AfterimageRoute) {
+    clearResultRestartGuard();
+    setSelection(route.game ? { id: route.game, generation: ++generation } : null); setLatest(null); setActiveScope(undefined);
+    afterPaint(() => {
+      window.scrollTo({ top: route.game ? 0 : route.homeScroll, behavior: 'instant' });
+      document.querySelector<HTMLElement>(route.game ? '.ai-play h1' : `[data-game-card="${route.selectedCard}"]`)?.focus({ preventScroll: true });
+    });
   }
-  function home() {
-    setSelection(null); setLatest(null); setActiveScope(undefined); saveNavigation(null);
-    afterPaint(() => { window.scrollTo({ top: homeScroll, behavior: 'instant' }); document.querySelector<HTMLElement>(`[data-game-card="${selectedCard}"]`)?.focus({ preventScroll: true }); });
+  function open(id: GameId) { applyRoute(navigation.open(id, Math.max(0, window.scrollY))); }
+  function back() {
+    if (!navigation.current().game && !navigation.canGoBack()) { location.assign('/'); return; }
+    const fallback = navigation.back();
+    if (fallback) applyRoute(fallback);
   }
   function finish(result: GameResult) {
+    // Block synchronously while the result component and its carried-input gate are still being committed.
+    window.clearTimeout(resultRestartTimer); setRestartBlocked(resultRestartGuard, true);
+    resultRestartTimer = window.setTimeout(clearResultRestartGuard, 750);
     setLatest(result);
     setActiveScope(result.scope);
     try { saveResult(result); setMessage(''); }
@@ -120,27 +113,29 @@ export function App() {
   }
   onSettled(() => {
     const originalRestoration = history.scrollRestoration; history.scrollRestoration = 'manual';
-    const scroll = () => { if (!selection()) { homeScroll = Math.max(0, window.scrollY); saveNavigation(null); } };
+    const scroll = () => navigation.recordScroll(Math.max(0, window.scrollY));
+    const popstate = (event: PopStateEvent) => applyRoute(navigation.restore(event.state));
     const connection = () => setOffline(!navigator.onLine);
     const prompt = (event: Event) => { event.preventDefault(); setInstall(event as InstallPrompt); };
     const installed = () => setInstall(null);
     let controlled = !!navigator.serviceWorker?.controller;
     const controller = () => { if (controlled) setUpdate(true); controlled = true; };
-    window.addEventListener('scroll', scroll, { passive: true }); window.addEventListener('pagehide', scroll);
+    window.addEventListener('scroll', scroll, { passive: true }); window.addEventListener('pagehide', scroll); window.addEventListener('popstate', popstate);
     window.addEventListener('online', connection); window.addEventListener('offline', connection);
     window.addEventListener('beforeinstallprompt', prompt); window.addEventListener('appinstalled', installed);
     navigator.serviceWorker?.addEventListener('controllerchange', controller);
-    afterPaint(() => window.scrollTo({ top: restored.id ? 0 : homeScroll, behavior: 'instant' }));
-    return () => { history.scrollRestoration = originalRestoration; window.removeEventListener('scroll', scroll); window.removeEventListener('pagehide', scroll); window.removeEventListener('online', connection); window.removeEventListener('offline', connection); window.removeEventListener('beforeinstallprompt', prompt); window.removeEventListener('appinstalled', installed); navigator.serviceWorker?.removeEventListener('controllerchange', controller); };
+    afterPaint(() => window.scrollTo({ top: restored.game ? 0 : restored.homeScroll, behavior: 'instant' }));
+    return () => { history.scrollRestoration = originalRestoration; window.removeEventListener('scroll', scroll); window.removeEventListener('pagehide', scroll); window.removeEventListener('popstate', popstate); window.removeEventListener('online', connection); window.removeEventListener('offline', connection); window.removeEventListener('beforeinstallprompt', prompt); window.removeEventListener('appinstalled', installed); navigator.serviceWorker?.removeEventListener('controllerchange', controller); };
   });
   onCleanup(() => cancelAnimationFrame(frame));
+  onCleanup(clearResultRestartGuard);
   return <div class="afterimage-app">
-    <TopBar context={<a href="/afterimage/" class="ai-wordmark" onClick={event => { event.preventDefault(); home(); }}>Afterimage</a>} actions={<><Show when={install()}><TopBarIconButton label="Install Afterimage" onClick={() => { const deferred = install(); if (deferred) void deferred.prompt().then(() => { setInstall(null); }); }}><Download size={18}/></TopBarIconButton></Show><TopBarIconButton ref={element => { transferOpener = element; }} label="Import or export history" onClick={() => setTransfer(true)}><Upload size={18}/></TopBarIconButton></>}/>
+    <TopBar start={<div class="ai-topbar-start"><TopBarIconButton class="ai-back" label="Back" onClick={back}><ChevronLeft size={18}/></TopBarIconButton><SmartLink href="/afterimage/" class="ai-wordmark" title="Afterimage games" onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); if (navigation.current().game) applyRoute(navigation.home()); }}>Afterimage</SmartLink></div>} actions={<><Show when={selection()}><Button class="ai-restart" aria-label="Restart" title="Restart" disabled={restartBlocked()} onClick={() => { if (!isRestartBlocked()) applyRoute(navigation.current()); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><Redo2 size={16}/><span class="ai-restart-label">Restart</span></Button></Show><Show when={install() && !selection()}><TopBarIconButton label="Install Afterimage" onClick={() => { const deferred = install(); if (deferred) void deferred.prompt().then(() => { setInstall(null); }); }}><Download size={18}/></TopBarIconButton></Show><TopBarIconButton ref={element => { transferOpener = element; }} label="Import or export history" onClick={() => setTransfer(true)}><Upload size={18}/></TopBarIconButton></>}/>
     <Show when={offline()}><p class="ai-banner" role="status">Offline · scores stay on this device</p></Show>
     <Show when={update() && !selection()}><div class="ai-banner">An update is ready.<Button onClick={() => location.reload()}>Reload</Button><Button aria-label="Dismiss update" onClick={() => setUpdate(false)}><X size={16}/></Button></div></Show>
     <main class={['ai-main', selection() ? 'ai-play' : 'ai-library']} data-category={current()?.category}>
       <Show when={selection()} keyed fallback={<><div class="ai-library-heading"><h1>Games</h1><span>19 games</span></div><For each={['Memory', 'Speed', 'Focus', 'Spatial', 'Reasoning', 'Perception']}>{category => <section class="ai-category" data-category={category}><h2>{category}</h2><div class="ai-game-library"><For each={games.filter(game => game.category === category)}>{game => <button type="button" class="ai-game-card" data-game-card={game.id} onPointerEnter={() => { void component(game.id).preload().catch(() => {}); }} onFocus={() => { void component(game.id).preload().catch(() => {}); }} onClick={() => open(game.id)}><span class="ai-game-art"><img src={artwork[`./assets/${game.art}.svg`]} alt="" width="88" height="68"/></span><span class="ai-game-name"><span>{game.title}</span><Show when={game.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></span><ArrowUpRight class="ai-card-arrow" size={18}/></button>}</For></div></section>}</For></>}>
-        {selected => <><div class="ai-play-nav"><BackLink onClick={home}>Back</BackLink><Button class="ai-restart" disabled={restartBlocked()} onClick={() => open(selected.id)} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><Redo2 size={16}/>Restart</Button></div><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={selected.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={finish} onScopeChange={setActiveScope}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
+        {selected => <><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={selected.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={finish} onScopeChange={setActiveScope}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
       </Show>
     </main>
     <Show when={message()}><p class="ai-storage-message" role="status">{message()}</p></Show>

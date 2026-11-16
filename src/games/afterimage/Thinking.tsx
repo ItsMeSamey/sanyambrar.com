@@ -1,7 +1,7 @@
 import { For, Match, Show, Switch, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
 import { ChevronRight as ArrowRight, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { acceptsAnswer, arithmeticPoints, colorNames, createQuestionFactory, inkColors, points, protocol, rotation, secondsLeft, type Question, type RotationQuestion, type ThinkingMode } from './thinking-core.ts';
 import type { Cell } from './thinking-shapes.ts';
@@ -41,8 +41,19 @@ export function ThinkingGame(props: GameProps) {
   const [entry, setEntry] = createSignal('');
   const [searchFocus, setSearchFocus] = createSignal(0);
   const timers = useTimers();
+  const presses = useGamePress();
   let deadline = 0, root!: HTMLDivElement, input: HTMLInputElement | undefined;
   const held = new Set<string>();
+  function updateEntry(value: string) {
+    setEntry(value);
+    if (input) input.value = value;
+  }
+  function enter(key: string) {
+    if (state.phase !== 'running' || document.hidden) return;
+    const current = input?.value ?? entry();
+    const value = key === 'Delete' ? current.slice(0, -1) : key === '−' ? current.startsWith('-') ? current.slice(1) : `-${current}` : `${current}${key}`.slice(0, 8);
+    updateEntry(value); input?.focus({ preventScroll: true });
+  }
   function update(next: Partial<Run>) { state = { ...state, ...next }; setView(state); }
   const live = () => ['running', 'answered', 'between'].includes(state.phase);
   function finish() {
@@ -69,7 +80,7 @@ export function ThinkingGame(props: GameProps) {
   function start() {
     timers.clear(); held.clear(); factory = createQuestionFactory(mode);
     deadline = performance.now() + rules.duration * 1000;
-    setEntry(''); setSearchFocus(0);
+    updateEntry(''); setSearchFocus(0);
     update({ phase: 'running', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, remaining: rules.duration, feedback: '', selected: -1, result: null });
     tick(); focusAnswer();
   }
@@ -77,12 +88,12 @@ export function ThinkingGame(props: GameProps) {
     if (!live() || document.hidden) return;
     if (!acceptsAnswer(deadline, performance.now())) { finish(); return; }
     const round = state.round + 1;
-    setEntry('');
+    updateEntry('');
     update({ phase: 'running', question: factory(round), round, selected: -1, feedback: keepFeedback ? state.feedback : '' });
     if (mode !== 'stroop') focusAnswer(focus);
   }
   function answer(value: number) {
-    if (state.phase !== 'running' || document.hidden) return;
+    if (state.phase !== 'running' || document.hidden || state.question !== view().question) return;
     if (!acceptsAnswer(deadline, performance.now())) { finish(); return; }
     const question = state.question;
     const good = value === (question.type === 'arithmetic' ? question.answer : question.correct);
@@ -158,20 +169,16 @@ export function ThinkingGame(props: GameProps) {
           <For each={labels()}>{(label, index) => <div class="ai-thinking-answer-slot">
             <Button data-answer={index()} aria-label={mode === 'search' ? label : `${label}, key ${index() + 1}`} data-outcome={answerState(index())} disabled={view().phase === 'answered'} tabindex={mode === 'search' && searchFocus() !== index() ? -1 : 0}
               style={mode === 'stroop' ? { '--answer-ink': inkColors[index()] } : undefined}
-              onPointerDown={event => { if (event.button !== 0) return; event.preventDefault(); event.currentTarget.focus({ preventScroll: true }); if (mode === 'search') setSearchFocus(index()); answer(index()); }}
-              onClick={event => { if (event.detail === 0) answer(index()); }}>
+              onPointerDown={event => { if (!presses.down(event)) return; event.currentTarget.focus({ preventScroll: true }); if (mode === 'search') setSearchFocus(index()); answer(index()); }}
+              onClick={event => { if (presses.click(event)) answer(index()); }}>
               <Show when={mode === 'search'} fallback={<><kbd aria-hidden="true">{index() + 1}</kbd><span>{label}</span></>}><Arrow angle={view().question.type === 'search' ? (view().question as { angles: number[] }).angles[index()] : 0}/></Show>
             </Button>
-            <Show when={view().phase === 'answered' && view().selected === index()}><Button class="ai-thinking-next ai-primary" data-next data-outcome={answerState(index())} aria-label="Next question" onClick={() => { if (state.phase === 'answered') next(); }}><span>Next</span><ArrowRight size={18}/></Button></Show>
+            <Show when={view().phase === 'answered' && view().selected === index()}><Button class="ai-thinking-next ai-primary" data-next data-outcome={answerState(index())} aria-label="Next question" onPointerDown={event => { if (presses.down(event) && state.phase === 'answered') next(); }} onClick={event => { if (presses.click(event) && state.phase === 'answered') next(); }}><span>Next</span><ArrowRight size={18}/></Button></Show>
           </div>}</For>
         </div>}>
           <form class="ai-thinking-math" onSubmit={event => { event.preventDefault(); submit(); }}>
-            <label for="ai-thinking-entry">Your answer</label><div class="ai-thinking-entry"><input id="ai-thinking-entry" ref={input} type="text" inputmode="none" autocomplete="off" value={entry()} onInput={event => setEntry(event.currentTarget.value.replace(/[^\d-]/g, '').slice(0, 8))}/><Button type="submit" class="ai-primary">Answer<ArrowRight size={18}/></Button></div>
-            <div class="ai-thinking-keypad"><For each={['1', '2', '3', '4', '5', '6', '7', '8', '9', '−', '0', 'Delete']}>{key => <Button aria-label={key === '−' ? 'Change sign' : key} onClick={() => {
-              const current = input?.value ?? entry();
-              const value = key === 'Delete' ? current.slice(0, -1) : key === '−' ? current.startsWith('-') ? current.slice(1) : `-${current}` : `${current}${key}`.slice(0, 8);
-              setEntry(value); input?.focus({ preventScroll: true });
-            }}><Show when={key === 'Delete'} fallback={key}><Delete size={18}/></Show></Button>}</For></div>
+            <label for="ai-thinking-entry">Your answer</label><div class="ai-thinking-entry"><input id="ai-thinking-entry" ref={input} type="text" inputmode="none" autocomplete="off" value={entry()} onInput={event => updateEntry(event.currentTarget.value.replace(/[^\d-]/g, '').slice(0, 8))}/><Button type="submit" class="ai-primary">Answer<ArrowRight size={18}/></Button></div>
+            <div class="ai-thinking-keypad"><For each={['1', '2', '3', '4', '5', '6', '7', '8', '9', '−', '0', 'Delete']}>{key => <Button aria-label={key === '−' ? 'Change sign' : key} onPointerDown={event => { if (presses.down(event)) enter(key); }} onClick={event => { if (presses.click(event)) enter(key); }}><Show when={key === 'Delete'} fallback={key}><Delete size={18}/></Show></Button>}</For></div>
           </form>
         </Show>
       </div>
