@@ -26,6 +26,15 @@ export async function exerciseBoardStability(game) {
   };
   const initial = { board: rect(query(boardSelector)), stage: rect(query(stageSelector)), tiles: tiles().map(rect) };
   const geometry = initial.board[2] > 0;
+  if (game === 'pairs') {
+    check(query('.pair-ready').textContent.trim() === 'Start', 'study action is not concise');
+    check(!query('.pair-status-line').textContent.trim(), 'study repeats instructions');
+    check(query(stageSelector).contains(query('.pair-ready')), 'Start is outside the fixed board stage');
+    if (geometry) {
+      const button = query('.pair-ready').getBoundingClientRect(), board = query(boardSelector).getBoundingClientRect(), stage = query(stageSelector).getBoundingClientRect();
+      check(button.top >= board.bottom && button.top - board.bottom < 8 && button.bottom <= stage.bottom + 0.6, 'Start is not directly below the board');
+    }
+  }
   const stages = [];
   const capture = label => {
     check(!!query('.ai-game .ai-stats'), `${label}: metrics disappeared`);
@@ -63,6 +72,8 @@ export async function exerciseBoardStability(game) {
       press(tiles()[0]); await pause(20); capture(`first card ${life}`);
       check(!restart().disabled, 'first card did not enable Restart');
       press(tiles()[mismatch]); await pause(20); capture(`mismatch ${life}`);
+      check(query(boardSelector).querySelectorAll('.is-mismatch .pair-mismatch-marker').length === 2, 'mismatch lacks visible cross markers');
+      check(!!query('.pair-status-line .ai-sr-only'), 'normal pair feedback repeats the visual cue');
       await wait(() => phase() === (life === 2 ? 'finished' : 'ready'), 'pair resolution');
       capture(`review ${life}`);
     }
@@ -81,6 +92,7 @@ export async function exerciseBoardStability(game) {
       press(tiles().find(tile => tile.textContent === '2'));
       await pause(30); capture(`wrong answer ${life}`);
       if (life < 2) {
+        check(!!query('.ai-memory-status .ai-sr-only'), 'between-round prose duplicates the revealed board');
         const control = query('.ai-memory-continue');
         check(query(stageSelector).contains(control), 'Continue is outside the board stage');
         if (geometry) {
@@ -109,20 +121,30 @@ export async function exerciseBoardStability(game) {
       await wait(() => phase() === 'result', 'sequence result');
       capture('wrong answer review');
       check(!!query('.ai-sequence-review'), 'response order disappeared');
+      check(query('.ai-memory-status').classList.contains('ai-sr-only'), 'terminal explanation repeats the visual review');
+      check(query('.ai-sequence-review figcaption').textContent === 'Expected sequence', 'sequence caption repeats the missed-step explanation');
+      check(query('.ai-sequence-review [aria-current="step"]').getAttribute('aria-label').includes('wrong choice'), 'missed step lost accessible choice details');
+      check(!/Correct|Not attempted|Chose|Step/.test(query('.ai-sequence-review ol').textContent), 'sequence review repeats text for every tile');
     } finally { clearInterval(watch); }
   }
   await wait(() => query('.ai-result'), 'result');
   capture('result');
-  check(query(stageSelector).contains(query('.ai-result-overlay')), 'result is not overlaid inside the fixed board stage');
-  const reviewToggle = query('.ai-board-result-controls button');
-  press(reviewToggle);
-  await wait(() => query('.ai-board-result').dataset.review === 'true', 'uncovered review board');
-  capture('uncovered review');
-  check(!!query('.ai-result'), 'review unmounted the carried-input result gate');
-  if (geometry) check(getComputedStyle(query('.ai-result-panel')).visibility === 'hidden', 'review still covers failure tiles');
-  press(reviewToggle);
-  await wait(() => query('.ai-board-result').dataset.review === 'false', 'restored result');
-  const beforeHistory = query('.ai-move-history').textContent;
+  if (game !== 'pairs') check(query('.ai-memory-status').classList.contains('ai-sr-only'), 'terminal status repeats visible board or score');
+  check(query(stageSelector).contains(query('.ai-board-result')), 'Restart is outside the fixed board stage');
+  check(query('.ai-board-result').querySelectorAll('button').length === 1, 'result has more than one action');
+  check(query('.ai-result .ai-primary').textContent.trim() === 'Restart', 'result action is not Restart');
+  check(!query('.ai-move-history'), 'full run move history remains');
+  if (geometry) {
+    const button = query('.ai-result .ai-primary').getBoundingClientRect(), board = query(boardSelector).getBoundingClientRect(), stage = query(stageSelector).getBoundingClientRect();
+    check(button.top >= board.bottom && button.bottom <= stage.bottom + 0.6, 'Restart covers final tiles or escapes its stage');
+    check(getComputedStyle(query('.ai-board-result')).position === 'absolute', 'Restart participates in board layout');
+    check(Number(getComputedStyle(query(boardSelector)).opacity) > .8, 'finished board is too dim to review');
+    if (game === 'pairs') check(getComputedStyle(query(boardSelector)).overflowY === 'auto', 'finished cards cannot be scrolled');
+  }
+  if (game === 'visual') check(tiles().some(tile => tile.classList.contains('is-missed')), 'failed pattern does not reveal missed tiles');
+  if (game === 'chimp') check(tiles().filter(tile => tile.getAttribute('aria-label').includes('number ')).every(tile => tile.textContent.trim()), 'failed order hides remaining numbers');
+  if (game === 'pairs') check(tiles().every(tile => tile.classList.contains('is-open')), 'failed pairs hide cards');
+  const beforeBoard = tiles().map(tile => tile.outerHTML).join('');
   const terminalPress = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'touch', pointerId: 77, button: 0 });
   tiles()[0].dispatchEvent(terminalPress);
   tiles()[0].dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch', pointerId: 77 }));
@@ -130,9 +152,7 @@ export async function exerciseBoardStability(game) {
   const terminalKey = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
   tiles()[0].dispatchEvent(terminalKey);
   check(!terminalKey.defaultPrevented, 'finished tile consumes page navigation');
-  check(query('.ai-move-history').textContent === beforeHistory, 'finished tile appends a move');
-  const expectedMoves = game === 'visual' ? 9 : game === 'chimp' ? 3 : game === 'number-order' ? 25 : game === 'pairs' ? 6 : 1;
-  check(query('.ai-move-history ol').children.length === expectedMoves, 'full move history dropped or duplicated choices');
+  check(tiles().map(tile => tile.outerHTML).join('') === beforeBoard, 'finished input changes the final board');
   if (geometry) check(getComputedStyle(tiles()[0]).touchAction === 'pan-y', 'finished tile blocks touch panning');
   await wait(() => !query('.ai-result .ai-primary').disabled, 'retry gate');
   check(!restart().disabled, 'completed run did not enable Restart after gate');

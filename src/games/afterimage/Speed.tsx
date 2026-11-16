@@ -130,23 +130,21 @@ function Reaction(props: GameProps) {
     if (current.phase === 'go') return current.input === 'touch' ? 'Release now' : 'Tap now';
     if (current.phase === 'early') return 'Too soon';
     if (current.phase === 'between') return `${current.sample} ms`;
-    if (current.phase === 'result') return `${current.average} ms`;
+    if (current.phase === 'result') return '';
     return 'Ready?';
   };
   const instruction = () => {
     const current = view();
-    if (current.phase === 'ready') return 'Click or press Space to begin. On touch, hold until the cue.';
-    if (current.phase === 'waiting') return 'Wait for the cue';
-    if (current.phase === 'go') return current.input === 'touch' ? 'Lift your finger' : 'Click or press Space';
-    if (current.phase === 'result') return current.input === 'touch' ? 'Five-trial average · Hold to play again' : 'Five-trial average · Play again';
+    if (current.phase === 'ready') return 'Click or press Space. On touch, hold until the cue.';
+    if (['waiting', 'go', 'result'].includes(current.phase)) return '';
     return current.input === 'touch' ? 'Hold when ready for the next trial' : 'Click when ready for the next trial';
   };
   return <div class="ai-speed ai-reaction-game" data-state={view().phase}>
-    <Stats items={[{ label: 'Trial', value: `${view().trial} / 5` }, { label: 'Protocol', value: view().input === 'touch' ? 'Touch release' : view().input === 'pen' ? 'Pen press' : 'Mouse / keyboard' }]}/>
-    <p class="ai-speed-feedback" aria-live="polite">{view().message}</p>
+    <Stats items={[{ label: view().phase === 'result' ? 'Average' : 'Trial', value: view().phase === 'result' ? `${view().average} ms` : `${view().trial} / 5` }, { label: 'Protocol', value: view().input === 'touch' ? 'Touch release' : view().input === 'pen' ? 'Pen press' : 'Mouse / keyboard' }]}/>
+    <p class="ai-speed-feedback" aria-live="polite">{view().message || undefined}</p>
     <div class="ai-speed-stage">
     <button ref={pad} type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
-      <strong role={['between', 'early', 'result'].includes(view().phase) ? 'status' : undefined}>{label()}</strong><span>{instruction()}</span>
+      <strong role={['between', 'early', 'result'].includes(view().phase) ? 'status' : undefined}>{label() || undefined}</strong><span>{instruction() || undefined}</span>
     </button>
     <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/>}</Show>
     </div>
@@ -166,12 +164,10 @@ function Tapping(props: GameProps) {
   const result = (): GameResult => ({ value: view().count / 10, scope: view().practice ? 'cps-keyboard-practice' : view().input === 'mouse' ? 'cps-v1-mouse-10s' : 'tps-v3-touch-10s', unit: view().practice ? 'keys / s' : view().input === 'mouse' ? 'clicks / s' : 'taps / s' });
   return <div class="ai-speed ai-tapping-game" data-state={view().phase}>
     <Stats items={[{ label: 'Rate', value: `${(view().count / Math.max(0.1, view().phase === 'result' ? 10 : (10000 - view().remaining) / 1000)).toFixed(2)} / s` }, { label: countLabel(), value: view().count }, { label: 'Time', value: view().phase === 'result' ? '10.0s' : `${(Math.ceil(view().remaining / 100) / 10).toFixed(1)}s` }]}/>
-    <p class="ai-speed-feedback" aria-live="polite">{view().practice ? 'Keyboard practice · not saved' : view().message}</p>
+    <p class="ai-speed-feedback" aria-live="polite">{view().practice ? 'Keyboard practice · not saved' : view().message || undefined}</p>
     <div class="ai-speed-stage">
     <button ref={pad} class="ai-tap-pad" type="button" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
-      <Show when={view().phase === 'result'} fallback={<><strong>{view().phase === 'ready' ? view().practice ? 'Press Space or Enter' : 'Click or tap to begin' : view().practice ? 'Press' : view().input === 'mouse' ? 'Click' : 'Tap'}</strong><span>{view().phase === 'ready' ? 'Ten seconds. Input is detected automatically.' : 'Keep going'}</span></>}>
-        <strong role="status">{(view().count / 10).toFixed(2)} {view().practice ? 'keys' : view().input === 'mouse' ? 'clicks' : 'taps'} / s</strong><span>Play again</span>
-      </Show>
+      <Show when={view().phase !== 'result'}><strong>{view().phase === 'ready' ? view().practice ? 'Press Space or Enter' : 'Click or tap to begin' : view().practice ? 'Press' : view().input === 'mouse' ? 'Click' : 'Tap'}</strong></Show>
     </button>
     <Show when={view().phase === 'result'}><Result overlay result={result()} onRetry={() => { engine.cancel(''); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/></Show>
     </div>
@@ -218,18 +214,16 @@ function Aim(props: GameProps) {
   return <div class="ai-speed ai-aim-game" data-state={view().phase}>
     <Stats items={[{ label: view().phase === 'result' ? 'ms / target' : 'Targets', value: view().phase === 'result' ? view().score : `${view().hits} / 30` }, { label: 'Time', value: `${(view().elapsed / 1000).toFixed(view().phase === 'result' ? 2 : 1)}s` }, { label: 'Misses', value: view().misses }]}/>
     <div class="ai-aim-progress" aria-hidden="true"><span style={{ transform: `scaleX(${view().hits / 30})` }}/></div>
-    <p class="ai-speed-feedback" aria-live="polite">{view().phase === 'result' ? `${view().score} ms per target · ${view().input} · ${view().format} board` : view().message}</p>
+    <p class="ai-speed-feedback" aria-live="polite">{view().message || undefined}</p>
     <div class="ai-speed-stage">
     <div ref={arena} class="ai-aim-arena" inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} data-aim-format={view().format} onPointerDown={events.pointerdown} onClick={events.click}>
       <For each={view().outgoing}>{point => <span class="ai-aim-exit" style={{ left: `${point.x}px`, top: `${point.y}px` }} aria-hidden="true"><TargetIcon/></span>}</For>
-      <Show when={view().target} fallback={<><button class="ai-aim-target is-start" type="button" aria-label="Start aim training" onKeyDown={events.keydown}><TargetIcon/></button><span class="ai-aim-note">Hit the target to start</span></>}>
+      <Show when={view().target} fallback={<button class="ai-aim-target is-start" type="button" aria-label="Start aim training" onKeyDown={events.keydown}><TargetIcon/></button>}>
         <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y} serial={point.serial}/>}</For>
       </Show>
-      <Show when={view().phase === 'result'}><span class="ai-aim-retry-note">Hit the target to play again</span></Show>
     </div>
     <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => arena?.querySelector('button')?.focus({ preventScroll: true }), 0); }}/>}</Show>
     </div>
-    <p class="ai-speed-note">{view().format === 'standard' ? 'Standard board · 970 × 500' : 'Compact board'} · 30 targets · Input methods have separate histories.</p>
   </div>;
 }
 

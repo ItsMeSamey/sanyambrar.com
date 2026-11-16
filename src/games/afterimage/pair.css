@@ -6,17 +6,11 @@
 .pair-memory > .ai-stats .ai-stat > strong { min-height: 20px; line-height: 20px; }
 .pair-stage { position: relative; padding-bottom: 52px; }
 .pair-cancelled { position: absolute; inset: 0; display: grid; place-items: center; }
-.pair-stage .ai-result-overlay { margin: 0; background: transparent; pointer-events: none; touch-action: pan-y; padding: 12px; gap: 8px; overflow: visible; overscroll-behavior: auto; }
-.pair-stage .ai-result-overlay .ai-result-panel { background: color-mix(in srgb, var(--site-bg) 88%, transparent); padding: 12px; gap: 8px; }
-.pair-stage .ai-result-overlay button { pointer-events: auto; touch-action: pan-y; }
-.pair-stage .ai-result-overlay .ai-result-score strong { font-size: 32px; }
+.pair-memory[data-phase=finished] .pair-board { opacity: .85; filter: blur(.45px); }
 .afterimage-app .pair-board.is-scrollable .pair-card,
 .afterimage-app .pair-memory[data-phase=finished] :is(.pair-stage, .pair-board, .pair-card) { touch-action: pan-y; }
-.pair-review-summary { text-align: center; color: var(--site-muted); font-size: .9rem; }
 .pair-status-line { min-height: 2.8em; line-height: 1.4; color: var(--color-muted-foreground); text-align: center; font-size: .9rem; }
 .pair-board { display: grid; grid-template-columns: repeat(var(--pair-columns, 2), minmax(0, 1fr)); gap: clamp(8px, 2vw, 14px); width: 100%; aspect-ratio: 1; min-height: 0; padding: 4px; align-content: start; overflow-y: auto; scrollbar-gutter: stable; }
-.pair-memory[data-phase=finished] .pair-board { overflow-y: hidden; }
-.pair-memory[data-phase=finished] .pair-stage:has(.ai-board-result[data-review=true]) .pair-board { overflow-y: auto; }
 .pair-card { position: relative; aspect-ratio: 1; min-width: 0; min-height: 48px; border: 0; border-radius: 12px; padding: 0; background: transparent; color: var(--color-foreground); font-size: clamp(24px, 6vw, 40px); font-weight: 650; cursor: pointer; touch-action: none; perspective: 600px; }
 .pair-card:disabled { opacity: 1; cursor: default; }
 .pair-card::before, .pair-face { position: absolute; inset: 0; border: 1px solid var(--color-border); border-radius: inherit; backface-visibility: hidden; transition: transform 300ms ease-out; pointer-events: none; }
@@ -28,19 +22,20 @@
 .pair-card.is-matched .pair-face { border-color: var(--color-foreground); }
 .pair-card:focus-visible { outline: 3px solid var(--color-foreground); outline-offset: 3px; }
 .pair-card:not(:disabled):hover::before { border-color: var(--color-foreground); }
-.pair-actions { display: flex; justify-content: center; min-height: 48px; margin-top: 16px; }
+.pair-actions { position: absolute; inset: auto 0 0; height: 48px; display: flex; justify-content: center; }
 .pair-ready { min-height: 48px; }
 .pair-board.is-review .pair-card { cursor: default; touch-action: pan-y; }
-.pair-card[data-review='picked'] .pair-face { border: 2px solid var(--site-error-fg); }
+.pair-card[data-review='picked'] .pair-face, .pair-card.is-mismatch .pair-face { border: 2px solid var(--site-error-fg); }
 .pair-card[data-review='counterpart'] .pair-face { border: 2px dashed var(--site-accent); }
-.pair-review-marker, .pair-matched-marker { position: absolute; z-index: 1; display: inline-flex; align-items: center; justify-content: center; top: 4px; left: 4px; min-width: 19px; padding: 2px 4px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-background); color: var(--color-foreground); font-size: 11px; font-weight: 700; line-height: 1.2; pointer-events: none; }
-.pair-matched-marker { top: auto; left: auto; bottom: 4px; right: 4px; }
+.pair-review-marker, .pair-matched-marker, .pair-mismatch-marker { position: absolute; z-index: 1; display: inline-flex; align-items: center; justify-content: center; top: 4px; left: 4px; min-width: 19px; padding: 2px 4px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-background); color: var(--color-foreground); font-size: 11px; font-weight: 700; line-height: 1.2; pointer-events: none; }
+.pair-matched-marker, .pair-mismatch-marker { top: auto; left: auto; bottom: 4px; right: 4px; }
 .pair-review-marker svg { margin-left: 3px; }
-.pair-memory .ai-result:not(.ai-result-overlay) { margin-block: 12px 24px; }
 @media (prefers-reduced-motion: reduce) { .pair-card::before, .pair-face { transition: none; } }
 @media (forced-colors: active) {
+  .pair-memory[data-phase=finished] .pair-board { opacity: 1; filter: none; }
   .pair-card::before, .pair-face { background: Canvas; border-color: ButtonText; }
   .pair-card[data-review='picked'] .pair-face { border: 3px solid Highlight; }
+  .pair-card.is-mismatch .pair-face { border: 3px double CanvasText; }
   .pair-card[data-review='counterpart'] .pair-face { border: 3px dashed Highlight; }
   .pair-card.is-matched .pair-face { border-width: 3px; }
   .pair-object { forced-color-adjust: none; }

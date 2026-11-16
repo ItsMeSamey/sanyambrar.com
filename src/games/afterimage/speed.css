@@ -1,5 +1,7 @@
 .ai-speed { width: 100%; min-width: 0; margin-inline: auto; }
 .ai-speed-stage { position: relative; border-radius: 16px; }
+.ai-speed[data-state="result"] :is(.ai-reaction-pad, .ai-tap-pad, .ai-aim-arena) { opacity: .85; filter: blur(.45px); }
+.ai-speed[data-state="result"] .ai-speed-practice { visibility: hidden; }
 .ai-aim-game .ai-speed-stage { border-radius: 12px; }
 .afterimage-app .ai-speed[data-state="result"] :is(.ai-reaction-pad, .ai-tap-pad, .ai-aim-arena, .ai-aim-target) { touch-action: pan-y; }
 .afterimage-app .ai-reaction-pad, .afterimage-app .ai-tap-pad, .afterimage-app .ai-aim-target { touch-action: none; }

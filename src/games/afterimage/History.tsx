@@ -59,7 +59,7 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
     const values = rows(), lower = metric().lower;
     let total = 0, best = values[0]?.value ?? 0;
     for (const row of values) { total += row.value / values.length; best = lower ? Math.min(best, row.value) : Math.max(best, row.value); }
-    return { average: total, best };
+    return { average: total, best: Math.max(best, visualStoredBest() ?? best) };
   });
   const scale = createMemo(() => chartScale(recent().map(row => row.value)));
   const left = () => chartGutter(scale());
@@ -68,12 +68,13 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
     const value = scope();
     return value === initialScope(props.id) || /^(aim-v[46]-(standard|compact)-(mouse|pen)|aim-v6-(standard|compact)-(touch|keyboard)|chimp-v2-(standard|compact)-(mouse|touch|pen|keyboard)|pairs-v4-(mouse|touch|pen|keyboard)|order-v1-(mouse|touch|pen|keyboard)|reaction-v7-(desktop|touch-release|pen)|typing-v4-(hardware|onscreen)-passage|cps-v1-mouse-10s|tps-v3-touch-10s|sequence-v3-growing|sequence-v2-fresh|reverse-v2-(growing|fresh))$/.test(value);
   };
-  const legacyVisualBest = () => {
-    if (props.id !== 'visual' || current()) return null;
+  function visualStoredBest() {
+    void props.revision; void revision();
+    if (props.id !== 'visual') return null;
     const name = scope() === 'visual' ? 'standard' : scope() === 'visual-long' ? 'long' : scope();
     try { const value = Number(localStorage.getItem(`afterimage-best-${name}`)); return Number.isFinite(value) && value > 0 ? value : null; }
     catch { return null; }
-  };
+  }
   const x = (index: number) => recent().length < 2 ? (left() + geometry.width() - 16) / 2 : left() + index / (recent().length - 1) * (geometry.width() - left() - 16);
   const y = (value: number) => chartPosition(value, scale(), 176, 24);
   const points = createMemo(() => recent().map((row, index) => `${x(index)},${y(row.value)}`).join(' '));
@@ -108,25 +109,29 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   }
   function closePoint() { setHovered(null); setSelected(null); chart?.focus(); }
   function clear() {
-    try { localStorage.removeItem(scoreKey(scope())); setSelected(null); setHovered(null); setChosen(null); setClearConfirm(false); setRevision(value => value + 1); }
-    catch { setFailure('History could not be cleared. Your saved scores have not been removed. Try again.'); setClearConfirm(false); }
+    try {
+      localStorage.removeItem(scoreKey(scope()));
+      if (props.id === 'visual' && current()) localStorage.removeItem(`afterimage-best-${scope()}`);
+      setFailure(''); setSelected(null); setHovered(null); setChosen(null); setClearConfirm(false); setRevision(value => value + 1);
+    }
+    catch { setFailure('History could not be fully cleared. Try again.'); setClearConfirm(false); setRevision(value => value + 1); }
   }
   onSettled(() => {
     const outside = (event: PointerEvent) => { if (selected() !== null && event.target instanceof Node && !chart?.contains(event.target) && !detail?.contains(event.target) && !(event.target instanceof Element && event.target.closest('.ai-history-scope,.ai-history-select-content,.ai-reference'))) setSelected(null); };
     document.addEventListener('pointerdown', outside);
     return () => { document.removeEventListener('pointerdown', outside); };
   });
-  return <section class="ai-history" aria-label="Score history"><header><h2>History</h2><Show when={current() && rows().length}><Button class="ai-history-clear" onClick={() => setClearConfirm(true)}><Trash2 size={16}/>Clear</Button></Show></header>
+  return <section class="ai-history" aria-label="Score history"><header><h2>History</h2><Show when={current() && (rows().length || visualStoredBest())}><Button class="ai-history-clear" onClick={() => setClearConfirm(true)}><Trash2 size={16}/>Clear</Button></Show></header>
     <Show when={options().length > 1}><div class="ai-history-scope"><span>Results</span><Select.Root options={options()} optionValue="value" optionTextValue="label" value={options().find(option => option.value === scope())} onChange={selectScope} itemComponent={item => <Select.Item class="ai-history-select-item" item={item.item}><Select.ItemLabel>{item.item.rawValue.label}</Select.ItemLabel><Select.ItemIndicator class="ai-history-select-check"><Check size={14}/></Select.ItemIndicator></Select.Item>}>
       <Select.Trigger class="ai-history-select-trigger" aria-label="Results"><Select.Value<{ value: string; label: string }> class="ai-history-select-value">{state => state.selectedOption()?.label}</Select.Value><Select.Icon class="ai-history-select-icon"><ChevronsUpDown size={14}/></Select.Icon></Select.Trigger>
       <Select.Portal><Select.Content class="ai-history-select-content" data-samey-overlay=""><Select.Listbox class="ai-history-select-list"/></Select.Content></Select.Portal>
     </Select.Root></div></Show>
     <Show when={!current()}><p class="ai-muted">Saved under earlier rules</p></Show>
-    <Show when={legacyVisualBest()}>{value => <p class="ai-muted">Earlier personal best: {value()} levels</p>}</Show>
+    <Show when={!rows().length && visualStoredBest()}>{value => <p class="ai-muted">{current() ? 'Personal best' : 'Earlier personal best'}: {value()} levels</p>}</Show>
     <Show when={data().error || choices().error}>{message => <p role="status" class="ai-storage-message">{message()}</p>}</Show>
     <Show when={failure()}><p role="status" class="ai-storage-message">{failure()}</p></Show>
     <Show when={rows().length} fallback={<p class="ai-muted">No completed runs yet</p>}>
-      <dl class="ai-history-metrics"><div><dt>Runs</dt><dd>{rows().length}</dd></div><div><dt>Average</dt><dd>{summary().average.toFixed(1)} <span>{metric().unit}</span></dd></div><div><dt>Best</dt><dd>{chartLabel(summary().best)} <span>{metric().unit}</span></dd></div></dl>
+      <dl class="ai-history-metrics"><div><dt>Runs</dt><dd>{rows().length}</dd></div><div><dt>Average</dt><dd>{summary().average.toFixed(1)} <span>{metric().unit}</span></dd></div><div><dt>Personal best</dt><dd>{chartLabel(summary().best)} <span>{metric().unit}</span></dd></div></dl>
       <div class="ai-chart-heading"><span>{rows().length > 30 ? 'Latest 30 runs' : rows().length === 1 ? '1 run' : `${rows().length} runs`}</span><span class="ai-chart-legend">Average {recentAverage().toFixed(1)} {metric().unit}</span></div>
       <svg ref={element => { chart = element; geometry.ref(element); }} class="ai-history-chart" viewBox={`0 0 ${geometry.width()} 236`} role="group" tabindex="0" aria-label={`Recent scores. Horizontal axis: run number. Vertical axis: ${scoreAxisLabel(metric().unit)}. Select a point, or use arrow keys, Home and End to inspect runs. Escape closes details.`} onKeyDown={keys} onClick={choosePoint} onPointerMove={event => { if (event.pointerType !== 'touch') setHovered(pointAt(event)); }} onPointerLeave={() => setHovered(null)}>
         <ChartAxes width={geometry.width()} left={left()} horizontal="Run number" vertical={scoreAxisLabel(metric().unit)}/>
@@ -142,7 +147,7 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
       <ChartScaleNote scale={scale()} unit={metric().unit}/>
       <div class="ai-chart-detail-slot"><Show when={selectedRow()}>{row => <div ref={detail} class="ai-point-detail" onKeyDown={keys}><p role="status">Run {(inspected() ?? 0) + 1}: <strong>{row().value} {metric().unit}</strong><br/>{Number.isFinite(row().date) && !Number.isNaN(new Date(row().date).getTime()) ? new Date(row().date).toLocaleString() : 'Date unavailable'}</p><div class="ai-point-actions"><Button aria-label="Previous run" disabled={inspected() === offset()} onClick={() => choose((inspected() ?? 0) - 1)}><ChevronLeft size={18}/></Button><Button aria-label="Next run" disabled={inspected() === rows().length - 1} onClick={() => choose((inspected() ?? 0) + 1)}><ChevronRight size={18}/></Button><Button aria-label="Close details" onClick={closePoint}><X size={18}/></Button></div></div>}</Show></div>
     </Show>
-    <Show when={clearConfirm()}><div class="ai-clear-confirm" role="alert"><p>Clear this results format? Export a backup first if you want to keep these runs.</p><Button onClick={clear}>Clear results</Button><Button onClick={() => setClearConfirm(false)}>Cancel</Button></div></Show>
+    <Show when={clearConfirm()}><div class="ai-clear-confirm" role="alert"><p>Clear runs and personal best for this results format? Export a backup first if you want to keep them.</p><Button onClick={clear}>Clear results</Button><Button onClick={() => setClearConfirm(false)}>Cancel</Button></div></Show>
     <section class="ai-reference" aria-label="Benchmark averages"><h2>Averages</h2>
       <Errored fallback={<p class="ai-muted">Benchmark measurements could not be loaded.</p>}><Loading fallback={<p class="ai-muted">Loading averages…</p>}><Reference id={props.id} scope={scope()} value={selectedRow()?.value}/></Loading></Errored>
     </section>

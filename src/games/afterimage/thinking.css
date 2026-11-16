@@ -9,6 +9,9 @@
 .ai-thinking .ai-ready-content > p:empty { display: none; }
 .ai-thinking-stage { position: relative; width: min(100%, 42rem); margin-inline: auto; border-radius: 16px; }
 .ai-thinking-play { display: grid; gap: 1rem; width: 100%; }
+.ai-thinking[data-state="ready"] .ai-thinking-play { opacity: .36; filter: blur(3px); }
+.ai-thinking[data-state="ready"] .ai-ready-overlay { background: transparent; }
+.ai-thinking[data-state="result"] .ai-thinking-play { opacity: .85; filter: blur(.45px); }
 .ai-thinking-feedback { height: 4.2em; overflow-y: auto; margin: 0; text-align: center; font-size: .875rem; line-height: 1.4; }
 .ai-thinking-prompt { display: grid; place-items: center; min-width: 0; height: clamp(96px, 22vw, 160px); overflow: auto; }
 .ai-thinking[data-mode="rotation"] .ai-thinking-prompt { height: clamp(176px, 32vw, 236px); }

@@ -1,7 +1,7 @@
-import { createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
+import { createEffect, createSignal, For, onCleanup, onSettled, Show } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
 import { CornerDownLeft, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGamePress, useResultGate, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
 import { compareDigits, createWordDeck, makeNumber, numberRevealTime } from './words-logic.ts';
 import './words.css';
@@ -14,11 +14,11 @@ function onHidden(cancel: () => void) {
   onCleanup(() => document.removeEventListener('visibilitychange', visibility));
 }
 
-function NumberEntry(props: { length: number; onSubmit: (value: string) => void; onActivity: () => void }) {
+function NumberEntry(props: { length: number; correct: { answer: string; entered: string } | null; onSubmit: (value: string) => void; onNext: () => void; onActivity: () => void }) {
   const presses = useGamePress();
   const [value, setValue] = createSignal('');
   const [notice, setNotice] = createSignal('');
-  let input!: HTMLInputElement, current = '', submitted = false;
+  let input!: HTMLInputElement, submitButton: HTMLButtonElement | undefined, current = '', submitted = false;
   function update(next: string, caret: number) {
     if (next !== current) props.onActivity();
     current = next;
@@ -50,7 +50,8 @@ function NumberEntry(props: { length: number; onSubmit: (value: string) => void;
     } else if (key === 'Enter' && /^\d+$/.test(current)) { submitted = true; props.onSubmit(current); }
   }
   onSettled(() => { input.focus({ preventScroll: true }); });
-  return <div class="ai-number-entry" onKeyDown={event => {
+  createEffect(() => !!props.correct, correct => { if (correct) submitButton?.focus({ preventScroll: true }); });
+  return <div class="ai-number-entry" data-correct={props.correct ? 'true' : undefined} onKeyDown={event => {
     if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
     if (event.target instanceof HTMLButtonElement && ['Enter', ' '].includes(event.key)) {
       event.stopPropagation(); if (event.repeat) event.preventDefault(); return;
@@ -60,17 +61,18 @@ function NumberEntry(props: { length: number; onSubmit: (value: string) => void;
       if (!event.repeat || ['Backspace', 'Delete'].includes(event.key)) press(event.key);
     }
   }}>
-    <input ref={input} class="ai-number-input" aria-label="Remembered number" aria-describedby="ai-number-count" type="text" inputmode="none" readonly autocomplete="off" spellcheck={false} placeholder="Enter number" value={value()} onPaste={event => {
+    <input ref={input} class="ai-number-input" inert={!!props.correct} aria-hidden={props.correct ? 'true' : undefined} aria-label="Remembered number" aria-describedby="ai-number-count" type="text" inputmode="none" readonly autocomplete="off" spellcheck={false} placeholder="Enter number" value={value()} onPaste={event => {
       event.preventDefault(); if (submitted) return;
       const text = event.clipboardData?.getData('text').replace(/\s/g, '') ?? '';
       if (/^\d+$/.test(text)) replace(text); else setNotice('Paste digits only.');
     }}/>
-    <div id="ai-number-count" class="ai-number-count">{value().length} / {props.length} digits{value().length > props.length ? ` · ${value().length - props.length} extra` : value().length < props.length ? ` · ${props.length - value().length} to go` : ''}</div>
-    <div class="ai-number-keypad" role="group" aria-label="Number keypad"><For each={[...'123456789', 'Clear', '0', 'Backspace']}>{key =>
+    <div id="ai-number-count" class="ai-number-count" aria-hidden={props.correct ? 'true' : undefined}>{value().length} / {props.length} digits{value().length > props.length ? ` · ${value().length - props.length} extra` : value().length < props.length ? ` · ${props.length - value().length} to go` : ''}</div>
+    <div class="ai-number-keypad" inert={!!props.correct} aria-hidden={props.correct ? 'true' : undefined} role="group" aria-label="Number keypad"><For each={[...'123456789', 'Clear', '0', 'Backspace']}>{key =>
       <Button class="ai-number-key" aria-label={key === 'Backspace' ? 'Erase selection or previous digit' : key === 'Clear' ? 'Clear answer' : `Digit ${key}`} onPointerDown={event => { if (presses.down(event)) press(key); }} onClick={event => { if (presses.click(event)) press(key); }}><Show when={key === 'Backspace'} fallback={key}><Delete size={22}/></Show></Button>
     }</For></div>
-    <Button class="ai-primary ai-number-submit" disabled={!value()} onClick={() => press('Enter')}>Check answer <CornerDownLeft size={20}/></Button>
-    <span class="ai-sr-only" role="status">{notice()}</span>
+    <Show when={props.correct}>{correct => <div class="ai-number-correct"><NumberComparison answer={correct().answer} entered={correct().entered}/></div>}</Show>
+    <Button ref={submitButton} class="ai-primary ai-number-submit" disabled={!props.correct && !value()} onClick={() => { if (props.correct) props.onNext(); else press('Enter'); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>{props.correct ? 'Next round' : 'Check answer'} <CornerDownLeft size={20}/></Button>
+    <span class="ai-sr-only" role="status">{notice() || undefined}</span>
   </div>;
 }
 
@@ -81,12 +83,11 @@ function NumberComparison(props: { answer: string; entered: string }) {
 }
 
 function NumberGame(props: GameProps) {
-  props.onActivityChange?.(false);
+  onSettled(() => { props.onActivityChange?.(false); });
   const [phase, setPhase] = createSignal<'ready' | 'reveal' | 'recall' | 'correct' | 'result'>('ready');
   const [round, setRound] = createSignal({ length: 1, answer: '' });
   const [entered, setEntered] = createSignal('');
   const [remaining, setRemaining] = createSignal(0);
-  const canContinue = useResultGate(() => phase() === 'correct');
   const [result, setResult] = createSignal<GameResult | null>(null);
   const timers = useTimers();
   let stage = 'ready', digits = 1, answer = '';
@@ -113,55 +114,96 @@ function NumberGame(props: GameProps) {
   onHidden(() => { if (stage === 'reveal' || stage === 'recall') { timers.clear(); stage = 'ready'; setPhase('ready'); props.onActivityChange?.(false); } });
   return <div class="ai-words ai-number-game">
     <Stats items={[{ label: 'Digits', value: phase() === 'ready' ? 1 : round().length }, { label: 'Time', value: phase() === 'reveal' ? `${(remaining() / 1000).toFixed(1)}s` : '—' }]}/>
-    <div class="ai-word-status" role="status">{phase() === 'reveal' ? 'Memorise' : phase() === 'recall' ? 'Recall the number' : phase() === 'correct' ? 'Correct' : phase() === 'result' ? entered() === round().answer ? 'All 128 digits recalled' : 'Number missed' : ''}</div>
-    <div class="ai-word-arena ai-number-arena" data-complete={phase() === 'result'}>
+    <div class="ai-word-status" role="status">{phase() === 'reveal' ? 'Memorise' : phase() === 'recall' ? 'Recall the number' : phase() === 'correct' ? 'Correct' : phase() === 'result' ? entered() === round().answer ? 'All 128 digits recalled' : 'Number missed' : undefined}</div>
+    <div class="ai-word-arena ai-number-arena" data-complete={phase() === 'result' ? 'true' : undefined}>
       <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">529</div><Ready onStart={() => start()}/></Show>
       <Show when={phase() === 'reveal'}><div class="ai-number-track"><span style={{ transform: `scaleX(${remaining() / numberRevealTime(round().length)})` }}/></div><div class="ai-number-stimulus">{round().answer}</div></Show>
-      <Show when={phase() === 'recall'}><NumberEntry length={round().length} onSubmit={submit} onActivity={() => props.onActivityChange?.(true)}/></Show>
-      <Show when={phase() === 'correct'}><NumberComparison answer={round().answer} entered={entered()}/></Show>
-      <Show when={phase() === 'correct'}><Button class="ai-primary" disabled={!canContinue()} onClick={event => { if (stage === 'correct' && canContinue.accept(event)) start(digits + 1); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>Next round · {round().length + 1} digits</Button></Show>
-      <Show when={result()}>{value => <Result result={value()} onRetry={() => start()}><NumberComparison answer={round().answer} entered={entered()}/></Result>}</Show>
+      <Show when={phase() === 'recall' || phase() === 'correct'}><NumberEntry length={round().length} correct={phase() === 'correct' ? { answer: round().answer, entered: entered() } : null} onSubmit={submit} onNext={() => { if (stage === 'correct') start(digits + 1); }} onActivity={() => props.onActivityChange?.(true)}/></Show>
+      <Show when={result()}>{value => <Result result={value()} onRetry={() => start()}><Show when={entered() !== round().answer}><NumberComparison answer={round().answer} entered={entered()}/></Show></Result>}</Show>
     </div>
   </div>;
 }
 
 function VerbalGame(props: GameProps) {
-  props.onActivityChange?.(false);
+  onSettled(() => { props.onActivityChange?.(false); });
   const presses = useGamePress();
+  const timers = useTimers();
   const [phase, setPhase] = createSignal<Phase>('ready');
   const [prompt, setPrompt] = createSignal({ word: '', wasSeen: false });
   const [score, setScore] = createSignal(0), [lives, setLives] = createSignal(3);
   const [status, setStatus] = createSignal('');
+  type Feedback = 'idle' | 'wrong' | 'correct' | 'flip-out' | 'flip-in';
+  const [feedback, setFeedback] = createSignal<Feedback>('idle');
   const [result, setResult] = createSignal<GameResult | null>(null);
-  let deck = createWordDeck(), current = { word: '', wasSeen: false }, points = 0, hearts = 3, active = false;
+  const heldKeys = new Set<string>();
+  const choiceButtons = new Map<boolean, HTMLButtonElement>();
+  let deck = createWordDeck(), current = { word: '', wasSeen: false }, points = 0, hearts = 3, active = false, response: Feedback = 'idle';
+  function showFeedback(next: Feedback) { response = next; setFeedback(next); }
   function start() {
+    timers.clear(); heldKeys.clear(); showFeedback('idle');
     props.onActivityChange?.(false);
     deck = createWordDeck(); points = 0; hearts = 3; active = true;
     current = deck.next(); setPrompt(current); setScore(0); setLives(3); setStatus(''); setResult(null); setPhase('running');
   }
+  function advance() {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    showFeedback('correct');
+    timers.after(() => {
+      if (!active || document.hidden) return;
+      if (reducedMotion) { current = deck.next(); setPrompt(current); showFeedback('idle'); return; }
+      showFeedback('flip-out');
+      timers.after(() => {
+        if (!active || document.hidden) return;
+        current = deck.next(); setPrompt(current); showFeedback('flip-in');
+        timers.after(() => { if (active && !document.hidden) showFeedback('idle'); }, 140);
+      }, 140);
+    }, 140);
+  }
   function answer(seen: boolean) {
-    // A second press before the next word renders still belongs to the old word.
-    if (!active || document.hidden || current !== prompt()) return;
+    // An answer and its correction each need their own rendered prompt and press.
+    if (!active || document.hidden || current !== prompt() || response !== feedback()) return false;
+    if (response === 'wrong') {
+      if (seen !== current.wasSeen) return false;
+      setStatus('Correct answer. Next word.'); advance(); return true;
+    }
+    if (response !== 'idle') return false;
     props.onActivityChange?.(true);
     const correct = seen === current.wasSeen;
     if (correct) points++; else hearts--;
     deck.markSeen(current.word); setScore(points); setLives(hearts);
-    setStatus(correct ? 'Correct' : `${current.word}: ${current.wasSeen ? 'seen before' : 'new'}.`);
+    setStatus(correct ? 'Correct.' : `${current.word}: ${current.wasSeen ? 'seen before' : 'new'}. ${hearts ? `Choose ${current.wasSeen ? 'Seen' : 'New'} to continue.` : 'Run finished.'}`);
     if (!hearts) {
-      active = false; setPhase('result');
+      active = false; showFeedback('wrong'); setPhase('result');
       const next: GameResult = { value: points, scope: 'verbal-v5-progressive', unit: 'words', details: { rulesVersion: 5, 'Last word': current.word, 'Correct answer': current.wasSeen ? 'Seen' : 'New' } };
       setResult(next); props.onFinish(next);
-    } else { current = deck.next(); setPrompt(current); }
+    } else if (correct) advance();
+    else showFeedback('wrong');
+    return true;
   }
-  onHidden(() => { if (active) { active = false; setPhase('ready'); setStatus('Run paused'); props.onActivityChange?.(false); } });
+  onSettled(() => {
+    const release = (event: KeyboardEvent) => heldKeys.delete(event.key);
+    const blur = () => heldKeys.clear();
+    window.addEventListener('keyup', release); window.addEventListener('blur', blur);
+    return () => { window.removeEventListener('keyup', release); window.removeEventListener('blur', blur); };
+  });
+  onHidden(() => { if (active) { timers.clear(); heldKeys.clear(); active = false; showFeedback('idle'); setPhase('ready'); setStatus('Run paused'); props.onActivityChange?.(false); } });
+  createEffect(feedback, next => { if (next === 'wrong' && active) choiceButtons.get(current.wasSeen)?.focus({ preventScroll: true }); });
+  const blocked = (seen: boolean) => feedback() === 'wrong' ? seen !== prompt().wasSeen : feedback() !== 'idle';
   return <div class="ai-words ai-verbal-game">
     <Stats items={[{ label: 'Score', value: score() }, { label: 'Lives', value: lives(), lives: true }]}/>
-    <div class="ai-word-status" role="status">{status()}</div>
-    <div class="ai-word-arena ai-verbal-arena" data-complete={phase() === 'result'}>
+    <div class="ai-word-status" role="status">{phase() === 'ready' ? status() || undefined : undefined}</div>
+    <span class="ai-sr-only" role="status">{phase() !== 'ready' ? status() || undefined : undefined}</span>
+    <div class="ai-word-arena ai-verbal-arena" data-complete={phase() === 'result' ? 'true' : undefined}>
       <Show when={phase() === 'ready'}><div class="ai-word-preview" aria-hidden="true">garden</div><Ready onStart={start}/></Show>
-      <Show when={phase() === 'running'}><h2 class="ai-verbal-stimulus" aria-live="polite">{prompt().word}</h2></Show>
-      <Show when={phase() === 'running'}><div class="ai-word-choices"><For each={[true, false]}>{seen => <Button onPointerDown={event => { if (presses.down(event)) { event.currentTarget.focus({ preventScroll: true }); answer(seen); } }} onClick={event => { if (presses.click(event)) answer(seen); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}>{seen ? 'Seen' : 'New'}</Button>}</For></div></Show>
-      <Show when={result()}>{value => <Result result={value()} onRetry={start}><h2 class="ai-verbal-stimulus">{prompt().word}</h2><p>Correct answer: <strong>{prompt().wasSeen ? 'Seen' : 'New'}</strong></p></Result>}</Show>
+      <Show when={phase() === 'running'}><div class="ai-verbal-word-slot"><h2 class={`ai-verbal-stimulus is-${feedback()}`} aria-live="polite">{prompt().word}</h2></div></Show>
+      <Show when={phase() === 'running'}><div class="ai-word-choices"><For each={[true, false]}>{seen => <Button ref={element => { choiceButtons.set(seen, element); }} disabled={feedback() === 'wrong' && seen !== prompt().wasSeen} aria-disabled={blocked(seen) ? 'true' : undefined} onPointerDown={event => { if (!blocked(seen) && presses.down(event) && answer(seen)) event.currentTarget.focus({ preventScroll: true }); }} onClick={event => { if (!blocked(seen) && presses.click(event)) answer(seen); }} onKeyDown={event => {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+        if (!['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        if (event.repeat || heldKeys.has(event.key) || blocked(seen)) return;
+        heldKeys.add(event.key); answer(seen);
+      }}>{seen ? 'Seen' : 'New'}</Button>}</For></div></Show>
+      <Show when={result()}>{value => <Result result={value()} onRetry={start}><h2 class="ai-verbal-stimulus is-wrong">{prompt().word}</h2><p>Correct answer: <strong>{prompt().wasSeen ? 'Seen' : 'New'}</strong></p></Result>}</Show>
     </div>
   </div>;
 }

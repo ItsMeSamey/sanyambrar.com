@@ -16,10 +16,7 @@
 .ai-memory-game > .ai-stats .ai-stat > span { line-height: 16px; white-space: nowrap; }
 .ai-memory-game > .ai-stats .ai-stat > strong { min-height: 20px; line-height: 20px; }
 .ai-memory-stage { position: relative; min-width: 0; padding-bottom: 52px; }
-.ai-memory-stage .ai-result-overlay { background: transparent; pointer-events: none; touch-action: pan-y; padding: 12px; gap: 8px; overflow: visible; overscroll-behavior: auto; }
-.ai-memory-stage .ai-result-overlay .ai-result-panel { background: color-mix(in srgb, var(--site-bg) 88%, transparent); padding: 12px; gap: 8px; }
-.ai-memory-stage .ai-result-overlay button { pointer-events: auto; touch-action: pan-y; }
-.ai-memory-stage .ai-result-overlay .ai-result-score strong { font-size: 32px; }
+.ai-memory-game[data-phase=result] .ai-memory-board { opacity: .85; filter: blur(.45px); }
 .afterimage-app .ai-memory-game[data-phase=result] :is(.ai-memory-stage, .ai-memory-board, .ai-memory-tile) { touch-action: pan-y; }
 .ai-memory-board {
   display: grid;
@@ -86,8 +83,8 @@
 .ai-memory-continue button { min-width: 140px; min-height: 48px; pointer-events: auto; background: var(--site-bg); border: 1px solid var(--site-fg); border-radius: 999px; box-shadow: 0 4px 20px var(--site-shadow-2); }
 .ai-sequence-review { margin: 0 auto; min-width: 0; max-width: 100%; }
 .ai-sequence-review figcaption { margin-bottom: 8px; text-align: center; font-size: .85rem; color: var(--site-muted); }
-.ai-sequence-review ol { display: flex; gap: 8px; max-width: 100%; padding: 4px; margin: 0; list-style: none; overflow-x: auto; }
-.ai-sequence-review li { flex: 0 0 126px; border: 2px solid transparent; border-radius: 8px; padding: 4px; text-align: center; font-size: .8rem; }
+.ai-sequence-review ol { display: flex; justify-content: safe center; gap: 8px; max-width: 100%; padding: 4px; margin: 0; list-style: none; overflow-x: auto; }
+.ai-sequence-review li { flex: 0 0 60px; border: 2px solid transparent; border-radius: 8px; padding: 4px; text-align: center; font-size: .8rem; }
 .ai-sequence-review li > span { display: block; }
 .ai-sequence-review li.is-next { border-color: var(--memory-light); border-style: dashed; }
 .ai-sequence-review svg { display: block; width: 42px; height: 42px; margin: 0 auto 4px; }
@@ -114,6 +111,7 @@
   .ai-memory-flipper { transition: none; }
 }
 @media (forced-colors: active) {
+  .ai-memory-game[data-phase=result] .ai-memory-board { opacity: 1; filter: none; }
   .ai-memory-face { border: 1px solid ButtonText; }
   .ai-memory-front { border: 1px solid ButtonText; }
   .ai-memory-back { background: Highlight; forced-color-adjust: none; }

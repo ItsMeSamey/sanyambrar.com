@@ -5,7 +5,6 @@ import { Check, CirclePlay, RotateCw, X } from '../../shared/components/Icons.ts
 import { Stats, inputKind, useGamePress, useTimers } from './common.tsx';
 import { createPairDeck, type PairCard as Card } from './pair-objects.ts';
 import { BoardResult } from './BoardResult.tsx';
-import { MoveHistory, type TileMove } from './MoveHistory.tsx';
 import type { GameProps, GameResult, InputKind } from './types.ts';
 import './pair.css';
 
@@ -13,19 +12,18 @@ type Phase = 'study' | 'conceal' | 'ready' | 'resolving' | 'transition' | 'finis
 type Run = {
   phase: Phase; round: number; cards: Card[]; open: number[]; matched: number[];
   first: number | null; lives: number; matches: number; moves: number;
-  input: InputKind | null; message: string; mismatch: number[]; result: GameResult | null;
+  input: InputKind | null; message: string; notice: boolean; mismatch: number[]; result: GameResult | null;
 };
 
 function initialRun(): Run {
   const cards = createPairDeck(0);
   return { phase: 'study', round: 0, cards, open: cards.map(card => card.index), matched: [], first: null,
-    lives: 3, matches: 0, moves: 0, input: null, message: 'Study the cards for as long as you like.', mismatch: [], result: null };
+    lives: 3, matches: 0, moves: 0, input: null, message: '', notice: false, mismatch: [], result: null };
 }
 
 export function PairGame(props: GameProps) {
   // Event state is synchronous; Solid 2 stages the corresponding rendered state.
   let current = initialRun();
-  let choices: TileMove[] = [];
   const [run, setRun] = createSignal(current);
   const [cursor, setCursor] = createSignal(0);
   const [columnCount, setColumnCount] = createSignal(2);
@@ -60,7 +58,6 @@ export function PairGame(props: GameProps) {
   }
   function retry() {
     props.onActivityChange?.(false);
-    choices = [];
     clear(); cards.clear(); update(initialRun()); setCursor(0); fitColumns();
     focusAfterRender(() => { if (current.phase === 'study') ready?.focus({ preventScroll: true }); });
   }
@@ -68,7 +65,7 @@ export function PairGame(props: GameProps) {
     if (disposed || document.hidden) return false;
     const kind = inputKind(event);
     if (current.input && current.input !== kind) {
-      update({ ...current, message: `Use ${current.input} for this run. Restart to switch.` });
+      update({ ...current, message: `Use ${current.input} for this run. Restart to switch.`, notice: true });
       return false;
     }
     return true;
@@ -77,7 +74,7 @@ export function PairGame(props: GameProps) {
     if (current.phase !== 'study' || !accepts(event)) return;
     const input = inputKind(event);
     props.onScopeChange?.(`pairs-v4-${input}`);
-    update({ ...current, phase: 'conceal', input, open: [], message: 'Cards turning over.' });
+    update({ ...current, phase: 'conceal', input, open: [], message: 'Cards turning over.', notice: false });
     // Begin the lock after the staged faces have committed to the DOM.
     frame = requestAnimationFrame(() => {
       timers.after(() => {
@@ -96,7 +93,7 @@ export function PairGame(props: GameProps) {
         inputKind: current.input ?? 'mouse', rulesVersion: 4 },
     };
     update({ ...current, phase: 'finished', result, mismatch: lastMismatch,
-      open: current.cards.map(card => card.index), message: 'No lives left. Review the last mismatch.' });
+      open: current.cards.map(card => card.index), message: 'Crosses mark your picks; numbers mark pairs.', notice: true });
     setCursor(lastMismatch[1]);
     if (current.input === 'keyboard') focusAfterRender(() => focusCard(lastMismatch[1], false));
     props.onFinish(result);
@@ -105,10 +102,7 @@ export function PairGame(props: GameProps) {
     if (current.phase !== 'ready' || !accepts(event) || current.open.includes(index) || current.matched.includes(index)) return;
     props.onActivityChange?.(true);
     const first = current.first;
-    choices.push({ round: current.round + 1, choice: `Card ${index + 1} · ${current.cards[index].object.name}`,
-      expected: first === null ? undefined : current.cards[first].object.name,
-      outcome: first === null ? 'Opened first card' : current.cards[first].value === current.cards[index].value ? 'Matched pair' : 'Mismatched pair' });
-    const next: Run = { ...current, open: [...current.open, index], first: index, message: 'Find its matching card.' };
+    const next: Run = { ...current, open: [...current.open, index], first: index, message: 'Find its matching card.', notice: false };
     if (first === null) { update(next); return; }
     next.first = null; next.moves++;
     if (next.cards[first].value !== next.cards[index].value) {
@@ -130,7 +124,7 @@ export function PairGame(props: GameProps) {
         const round = current.round + 1;
         const nextCards = createPairDeck(round);
         cards.clear();
-        update({ ...current, round, cards: nextCards, phase: 'study', open: nextCards.map(card => card.index), matched: [], mismatch: [], message: 'Study the new cards for as long as you like.' });
+        update({ ...current, round, cards: nextCards, phase: 'study', open: nextCards.map(card => card.index), matched: [], mismatch: [], message: '' });
         setCursor(0); fitColumns();
         if (current.input === 'keyboard') focusAfterRender(() => ready?.focus({ preventScroll: true }));
       }, 700);
@@ -141,7 +135,7 @@ export function PairGame(props: GameProps) {
   function cancel() {
     if (disposed || current.phase === 'finished' || current.phase === 'cancelled') return;
     if (current.phase === 'study' && current.round === 0 && !current.input) return;
-    clear(); update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.' });
+    clear(); update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.', notice: true });
   }
   function keydown(event: KeyboardEvent) {
     if (current.phase === 'finished' || current.phase === 'cancelled') return;
@@ -169,6 +163,7 @@ export function PairGame(props: GameProps) {
     const pair = run().mismatch.findIndex(index => run().cards[index].value === card.value);
     return pair < 0 ? null : { number: pair + 1, picked: run().mismatch.includes(card.index) };
   }
+  const mismatched = (index: number) => run().phase === 'resolving' && run().open.includes(index) && !run().matched.includes(index);
   function label(card: Card) {
     const state = run();
     const shown = state.matched.includes(card.index) ? `matched ${card.object.name}` : state.open.includes(card.index) ? card.object.name : 'face down';
@@ -201,10 +196,10 @@ export function PairGame(props: GameProps) {
     <div class="pair-stage">
     <div ref={board} class={['pair-board', run().phase === 'finished' && 'is-review', scrollable() && 'is-scrollable']}
       inert={run().phase === 'cancelled'} role="group" tabindex={scrollable() ? 0 : -1}
-      aria-label={run().phase === 'finished' ? 'Matching cards. Choose Review board, then scroll to inspect every card.' : 'Matching cards. Use arrow keys to move between cards.'}
+      aria-label={run().phase === 'finished' ? 'Matching cards, read only. Scroll to inspect every card.' : 'Matching cards. Use arrow keys to move between cards.'}
       style={{ '--pair-columns': columnCount() } as JSX.CSSProperties}>
       <For each={run().cards}>{card => <button ref={element => { cards.set(card.index, element); }}
-        type="button" class={['pair-card', run().open.includes(card.index) && 'is-open', run().matched.includes(card.index) && 'is-matched']} data-pair-index={card.index}
+        type="button" class={['pair-card', run().open.includes(card.index) && 'is-open', run().matched.includes(card.index) && 'is-matched', mismatched(card.index) && 'is-mismatch']} data-pair-index={card.index}
         data-review={review(card)?.picked ? 'picked' : review(card) ? 'counterpart' : undefined}
         data-review-pair={review(card)?.number}
         disabled={run().phase === 'study' || run().phase === 'conceal'}
@@ -239,18 +234,15 @@ export function PairGame(props: GameProps) {
         </span>
         <Show when={review(card)}>{marker => <span class="pair-review-marker" aria-hidden="true">{marker().number}<Show when={marker().picked}><X size={11}/></Show></span>}</Show>
         <Show when={run().matched.includes(card.index)}><span class="pair-matched-marker" aria-hidden="true"><Check size={13}/></span></Show>
+        <Show when={mismatched(card.index)}><span class="pair-mismatch-marker" aria-hidden="true"><X size={13}/></span></Show>
       </button>}</For>
     </div>
     <Show when={run().phase === 'cancelled'}><div class="pair-cancelled"><Button class="pair-replay ai-primary" onClick={retry}><RotateCw size={18}/>Play again</Button></div></Show>
     <Show when={run().result}>{result => <BoardResult result={result()} onRetry={retry} />}</Show>
-    </div>
-    <p class="pair-status-line" aria-live="polite">{run().message}</p>
     <Show when={run().phase === 'study' || run().phase === 'conceal'}>
-      <div class="pair-actions"><Button ref={ready} class="pair-ready ai-primary" data-pair-ready="true" disabled={run().phase === 'conceal'} onClick={event => { if (!held) hide(event); }}><CirclePlay size={18}/>Hide cards &amp; start</Button></div>
+      <div class="pair-actions"><Button ref={ready} class="pair-ready ai-primary" data-pair-ready="true" disabled={run().phase === 'conceal'} onClick={event => { if (!held) hide(event); }}><CirclePlay size={18}/>Start</Button></div>
     </Show>
-    <Show when={run().result}><div class="pair-review-summary">
-      <p>{run().matches} pairs matched &middot; reached round {run().round + 1}</p>
-      <p>Crossed cards are your picks. Pair the matching numbers.</p>
-    </div><MoveHistory moves={choices} /></Show>
+    </div>
+    <p class="pair-status-line" aria-live="polite"><span class={{ 'ai-sr-only': !run().notice }}>{run().message}</span></p>
   </section>;
 }

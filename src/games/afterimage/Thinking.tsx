@@ -103,7 +103,7 @@ export function ThinkingGame(props: GameProps) {
     const good = value === (question.type === 'arithmetic' ? question.answer : question.correct);
     const correct = state.correct + Number(good), errors = state.errors + Number(!good);
     const score = mode === 'arithmetic' ? arithmeticPoints(state.score, good) : points(correct, errors);
-    const feedback = question.type === 'patterns' ? `${good ? 'Correct.' : 'Incorrect.'} ${question.rule}. Next: ${question.answer}.`
+    const feedback = question.type === 'patterns' ? `${question.rule}. Next: ${question.answer}.`
       : question.type === 'rotation' ? good ? 'Correct +1' : question.correct === 2 ? 'Changed shape: one square moved.' : question.mirrored ? 'Mirrored: rotation alone cannot match it.' : 'Same shape: only its rotation changed.'
       : good ? 'Correct +1' : question.type === 'arithmetic' ? `Answer: ${question.answer}` : question.type === 'stroop' ? `Ink colour was ${colorNames[question.correct]}` : 'Wrong −1';
     const manual = mode === 'rotation' || mode === 'patterns';
@@ -167,13 +167,13 @@ export function ThinkingGame(props: GameProps) {
     document.addEventListener('keydown', keys); document.addEventListener('keyup', release); document.addEventListener('visibilitychange', visibility); window.addEventListener('blur', blur);
   });
   onCleanup(() => { document.removeEventListener('keydown', keys); document.removeEventListener('keyup', release); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('blur', blur); });
-  const instructions = { rotation: 'Compare the eight-square shapes. Is the second rotated, mirrored, or changed? Use keys 1–3.', patterns: 'Find the next number. Use keys 1–4, then Next to continue.', search: 'Find the arrow pointing a different way. Use the arrow keys to move and Enter to choose.', stroop: 'Choose the ink colour, not the word. Tap a colour or press 1–4.', arithmetic: 'Solve additions, subtractions and multiplications. Negative answers are allowed.' }[mode];
+  const instructions = { rotation: 'Is the second shape rotated, mirrored, or changed?', patterns: 'Find the next number.', search: 'Find the arrow pointing a different way. Arrow keys move; Enter chooses.', stroop: 'Choose the ink colour.', arithmetic: 'Solve the equation. Negative answers are allowed.' }[mode];
   const playing = () => ['running', 'answered', 'between'].includes(view().phase);
   return <div ref={root} class="ai-thinking" data-mode={mode} data-state={view().phase}>
     <Stats items={[{ label: 'Time', value: `${view().remaining}s` }, { label: 'Score', value: view().score }, ...(mode === 'arithmetic' ? [] : [{ label: 'Mistakes', value: view().errors }])]}/>
     <div class="ai-thinking-stage">
       <div class="ai-thinking-play" inert={!playing()} aria-hidden={!playing() ? 'true' : undefined}>
-        <p class="ai-thinking-feedback" role="status">{view().feedback || instructions}</p>
+        <p class="ai-thinking-feedback" role="status"><Show when={mode === 'patterns' && view().phase === 'answered'}><span class="ai-sr-only">{answerState(view().selected) === 'correct' ? 'Correct. ' : 'Incorrect. '}</span></Show><span class={{ 'ai-sr-only': mode === 'rotation' && view().phase === 'answered' && answerState(view().selected) === 'correct' }}>{view().feedback || undefined}</span></p>
         <div class="ai-thinking-prompt"><Prompt question={view().question}/></div>
         <Show when={mode === 'arithmetic'} fallback={<div class={['ai-thinking-answers', mode === 'search' && 'ai-thinking-search']}>
           <For each={labels()}>{(label, index) => <div class="ai-thinking-answer-slot">
@@ -192,8 +192,8 @@ export function ThinkingGame(props: GameProps) {
           </form>
         </Show>
       </div>
-      <Show when={view().phase === 'ready'}><Ready overlay onStart={start}><p>{instructions}</p><p>{rules.duration} seconds · {mode === 'arithmetic' ? 'Correct +1, wrong −1; score never falls below 0.' : 'Score: correct answers − mistakes, minimum 0.'}</p><p role="status">{view().feedback}</p></Ready></Show>
-      <Show when={view().result} keyed>{result => <Result overlay result={result} onRetry={start}><p>{view().correct} correct · {view().errors} mistakes · {rules.duration} seconds</p></Result>}</Show>
+      <Show when={view().phase === 'ready'}><Ready overlay onStart={start}><p>{instructions}<br/>{mode === 'arithmetic' ? 'Correct +1, wrong −1; score stays at or above 0.' : 'Score = correct − mistakes, minimum 0.'}</p><p role="status">{view().feedback || undefined}</p></Ready></Show>
+      <Show when={view().result} keyed>{result => <Result overlay result={result} onRetry={start}/>}</Show>
     </div>
   </div>;
 }

@@ -4,7 +4,6 @@ import { Button } from '../../shared/components/Button';
 import { inputKind, Ready, Stats, useGamePress, useResultGate, useTimers } from './common';
 import { nextSequence, sequenceRules, shuffledRange, visualRound } from './memory-model';
 import { BoardResult } from './BoardResult.tsx';
-import { MoveHistory, type TileMove } from './MoveHistory';
 import type { GameProps, GameResult, InputKind, Stat } from './types';
 import './memory.css';
 
@@ -103,7 +102,6 @@ function focusBoard(board: HTMLDivElement | undefined, index = 0) {
 
 function PatternMemory(props: GameProps): JSX.Element {
   const timers = useTimers();
-  let moves: TileMove[] = [], attempt = 0;
   let level = 1, lives = 3, errors = 0, found = 0, size = 3, phase = 'intro';
   let targets = new Set([0, 4, 8]), chosen = new Set<number>(), shown = true, reveal = false;
   const backFaces = new Map<number, Face>();
@@ -126,7 +124,6 @@ function PatternMemory(props: GameProps): JSX.Element {
     } catch { /* Local best is optional when storage is unavailable. */ }
   }
   function round() {
-    attempt++;
     timers.clear(); phase = 'show'; errors = found = 0; chosen = new Set(); reveal = shown = false;
     const next = visualRound(level); size = next.size; targets = new Set(next.targets);
     status = `Remember the pattern · ${targets.size} tiles`; publish();
@@ -135,11 +132,10 @@ function PatternMemory(props: GameProps): JSX.Element {
       timers.after(() => { shown = false; phase = 'recall'; status = `Your turn · 0 / ${targets.size} found`; publish(); onSettled(() => { focusBoard(board); }); }, 1200);
     }, 500);
   }
-  function start() { props.onActivityChange?.(false); moves = []; attempt = 0; level = 1; lives = 3; result = undefined; round(); }
+  function start() { props.onActivityChange?.(false); level = 1; lives = 3; result = undefined; round(); }
   function pick(index: number) {
     if (phase !== 'recall' || chosen.has(index) || document.hidden) return;
     props.onActivityChange?.(true);
-    moves.push({ round: attempt, choice: `Level ${level} · ${location(index, size)}`, outcome: targets.has(index) ? 'Correct target' : 'Wrong tile' });
     chosen.add(index);
     if (targets.has(index)) found++; else errors++;
     status = `Your turn · ${found} / ${targets.size} found`;
@@ -171,14 +167,13 @@ function PatternMemory(props: GameProps): JSX.Element {
       </Show>
       <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={start} />}</Show>
     </div>
-    <p class="ai-memory-status" role="status">{view().status}</p>
-    <Show when={view().result}><MoveHistory moves={moves} /></Show>
+    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status"><span class={{ 'ai-sr-only': view().phase === 'between' }}>{view().status}</span></p>
   </section>;
 }
 
 function SequenceMemory(props: GameProps): JSX.Element {
   const id = untrack(() => props.id), rules = sequenceRules(id), timers = useTimers();
-  let moves: TileMove[] = [], responses: number[] = [];
+  let responses: number[] = [];
   let phase = 'intro', level = 1, position = 0, sequence: number[] = [];
   let lit = new Set([0, 4, 7]), wrong = -1, expected = -1, status = '';
   const flashes = new Map<number, number>();
@@ -213,7 +208,7 @@ function SequenceMemory(props: GameProps): JSX.Element {
   }
   function start() {
     props.onActivityChange?.(false);
-    moves = []; responses = [];
+    responses = [];
     timers.clear(); level = 1; sequence = []; lit.clear(); flashes.clear(); wrong = expected = -1; result = undefined; round();
   }
   function pick(index: number) {
@@ -221,7 +216,6 @@ function SequenceMemory(props: GameProps): JSX.Element {
     props.onActivityChange?.(true);
     const next = order()[position];
     responses.push(index);
-    moves.push({ round: level, choice: `Step ${position + 1} · ${location(index, 3)}`, expected: location(next, 3), outcome: index === next ? 'Correct' : 'Wrong tile' });
     if (index !== next) {
       wrong = index; expected = next ?? -1; lit.clear(); phase = 'result'; timers.clear();
       status = `Wrong tile at step ${position + 1}. The dashed tile was next.`;
@@ -244,7 +238,7 @@ function SequenceMemory(props: GameProps): JSX.Element {
     if (phase === 'intro' || phase === 'result') return;
     timers.clear(); phase = 'intro'; level = 1; position = 0; sequence = []; lit = new Set([0, 4, 7]);
     props.onActivityChange?.(false);
-    moves = []; responses = [];
+    responses = [];
     status = 'Run interrupted. Start a fresh pattern.'; publish();
   });
   return <section class="ai-memory-game" data-phase={view().phase}>
@@ -257,19 +251,19 @@ function SequenceMemory(props: GameProps): JSX.Element {
     </Show>
     <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={start} />}</Show>
     </div>
-    <p class="ai-memory-status" role="status">{view().status}</p>
-    <Show when={view().result}><SequenceReview order={view().order ?? []} responses={view().responses ?? []} step={view().step ?? 0} /><MoveHistory moves={moves} /></Show>
+    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status"><span class={{ 'ai-sr-only': view().phase === 'between' }}>{view().status}</span></p>
+    <Show when={view().result}><SequenceReview order={view().order ?? []} responses={view().responses ?? []} step={view().step ?? 0} /></Show>
   </section>;
 }
 
 function SequenceReview(props: { order: number[]; responses: number[]; step: number }): JSX.Element {
   const steps = createMemo(() => props.order.map((tile, step) => ({ tile, step })));
-  return <figure class="ai-sequence-review"><figcaption>Final round · expected order and your choices · missed step {props.step + 1} of {props.order.length}</figcaption>
+  return <figure class="ai-sequence-review"><figcaption>Expected sequence</figcaption>
     <ol tabindex="0" aria-label="Full expected sequence and actual choices in the final round"><For each={steps()}>{item => <li
       class={{ 'is-next': item.step === props.step }} aria-current={item.step === props.step ? 'step' : undefined}
       aria-label={`Step ${item.step + 1}: expected ${location(item.tile, 3)}; ${props.responses[item.step] === undefined ? 'not attempted' : `chose ${location(props.responses[item.step], 3)}`}${item.step === props.step ? ', wrong choice' : ''}`}>
       <svg viewBox="0 0 42 42" aria-hidden="true"><For each={Array.from({ length: 9 }, (_, i) => i)}>{index => <rect
-        x={index % 3 * 14} y={Math.floor(index / 3) * 14} width="12" height="12" rx="2" class={{ 'is-lit': index === item.tile }} />}</For></svg><span>Step {item.step + 1}</span><span>{props.responses[item.step] === undefined ? 'Not attempted' : props.responses[item.step] === item.tile ? 'Correct' : `Chose ${location(props.responses[item.step], 3)}`}</span>
+        x={index % 3 * 14} y={Math.floor(index / 3) * 14} width="12" height="12" rx="2" class={{ 'is-lit': index === item.tile }} />}</For></svg><span aria-hidden="true">{item.step + 1}</span>
     </li>}</For></ol>
   </figure>;
 }
@@ -287,7 +281,6 @@ function ContinueRound(props: { onContinue: () => void; guard: boolean }): JSX.E
 }
 
 function OrderMemory(props: GameProps): JSX.Element {
-  let moves: TileMove[] = [], attempt = 0;
   const [boardFormat, setBoardFormat] = createSignal<'standard' | 'compact'>('compact');
   let phase = 'intro', level = 1, lives = 3, position = 1, wrong = -1;
   let cells = [21, 1, 34, 11], input: InputKind | undefined, compact = false, revealed = false, status = '';
@@ -316,12 +309,11 @@ function OrderMemory(props: GameProps): JSX.Element {
   };
   const mountBoard = (element: HTMLDivElement) => { board = element; onSettled(measure); };
   function round() {
-    attempt++;
     phase = 'recall'; position = 1; wrong = -1; revealed = false; cells = shuffledRange(40).slice(0, count());
     status = count() > 4 ? 'Study the numbers. They hide when you select 1.' : 'Select the numbers in order.';
     publish(); onSettled(() => { measure(); focusBoard(board, cells[0]); });
   }
-  function start() { props.onActivityChange?.(false); moves = []; attempt = 0; level = 1; lives = 3; input = undefined; compact = false; result = undefined; round(); }
+  function start() { props.onActivityChange?.(false); level = 1; lives = 3; input = undefined; compact = false; result = undefined; round(); }
   function finish(value: number) {
     phase = 'result';
     result = { value, scope: `chimp-v2-${compact ? 'compact' : 'standard'}-${input ?? 'mouse'}`, unit: 'numbers', details: { inputKind: input ?? 'mouse', rulesVersion: 2 } };
@@ -335,7 +327,6 @@ function OrderMemory(props: GameProps): JSX.Element {
     const number = cells.indexOf(index) + 1;
     if (!number || number < position) return;
     props.onActivityChange?.(true);
-    moves.push({ round: attempt, choice: `Number ${number} · ${location(index, 8)}`, expected: `number ${position}`, outcome: number === position ? 'Correct' : 'Wrong tile' });
     props.onScopeChange?.(`chimp-v2-${compact ? 'compact' : 'standard'}-${input}`);
     if (number !== position) {
       lives--; phase = 'between'; revealed = true; wrong = index; status = `Wrong tile. Next was ${position}.`;
@@ -354,7 +345,6 @@ function OrderMemory(props: GameProps): JSX.Element {
     if (phase === 'intro' || phase === 'result') return;
     phase = 'intro'; level = 1; lives = 3; position = 1; wrong = -1; revealed = false; cells = [21, 1, 34, 11];
     props.onActivityChange?.(false);
-    moves = []; attempt = 0;
     status = 'Run interrupted. Start again when ready.'; publish();
   });
   onSettled(() => {
@@ -373,14 +363,12 @@ function OrderMemory(props: GameProps): JSX.Element {
     <Show when={view().phase === 'between'}><ContinueRound onContinue={round} guard={view().cells.some(cell => cell.face === 'wrong')} /></Show>
     <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={start} />}</Show>
     </div>
-    <p class="ai-memory-status" role="status">{view().status}</p>
-    <Show when={view().result}><MoveHistory moves={moves} /></Show>
+    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status"><span class={{ 'ai-sr-only': view().phase === 'between' }}>{view().status}</span></p>
   </section>;
 }
 
 function NumberOrder(props: GameProps): JSX.Element {
   const timers = useTimers();
-  let moves: TileMove[] = [];
   let phase = 'intro', values = Array.from({ length: 25 }, (_, i) => (i * 7 % 25) + 1);
   let next = 1, errors = 0, started = 0, elapsed = 0, input: InputKind | undefined, status = '';
   let result: GameResult | undefined, board: HTMLDivElement | undefined;
@@ -393,7 +381,6 @@ function NumberOrder(props: GameProps): JSX.Element {
   const publish = () => setView(snapshot());
   function prepare() {
     props.onActivityChange?.(false);
-    moves = [];
     timers.clear(); phase = 'ready'; next = 1; errors = 0; elapsed = 0; input = undefined; result = undefined;
     values = shuffledRange(25).map(value => value + 1); status = 'Select 1 to start.'; publish();
     onSettled(() => { focusBoard(board, values.indexOf(1)); });
@@ -405,7 +392,6 @@ function NumberOrder(props: GameProps): JSX.Element {
     const value = values[index];
     if (value < next) return;
     props.onActivityChange?.(true);
-    moves.push({ round: 1, choice: `Number ${value} · ${location(index, 5)}`, expected: `number ${next}`, outcome: value === next ? 'Correct' : 'Wrong tile' });
     if (value !== next) { errors++; status = `Select ${next}.`; publish(); return; }
     if (phase === 'ready') {
       input = source; started = performance.now(); phase = 'running';
@@ -436,8 +422,7 @@ function NumberOrder(props: GameProps): JSX.Element {
     </Show>
     <Show when={view().result}>{finished => <BoardResult result={finished()} onRetry={prepare} />}</Show>
     </div>
-    <p class="ai-memory-status" role="status">{view().status}</p>
-    <Show when={view().result}><MoveHistory moves={moves} /></Show>
+    <p class={['ai-memory-status', view().result && 'ai-sr-only']} role="status">{view().status}</p>
   </section>;
 }
 

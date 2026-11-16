@@ -1,7 +1,0 @@
-.ai-move-history { min-width: 0; width: min(100%, 640px); margin: 12px auto 0; font-size: .85rem; line-height: 1.5; }
-.ai-move-history summary { min-height: 32px; cursor: pointer; color: var(--site-fg); }
-.ai-move-history ol { max-height: 20rem; overflow: auto; margin: 8px 0 0; padding: 0 8px 0 36px; border: 1px solid var(--site-line); border-radius: 8px; }
-.ai-move-history li { padding: 8px 4px; overflow-wrap: anywhere; }
-.ai-move-history li + li { border-top: 1px solid var(--site-line); }
-.ai-move-history li > span { display: block; }
-.ai-move-round, .ai-move-outcome { color: var(--site-muted); font-size: .8rem; }
