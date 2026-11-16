@@ -7,10 +7,11 @@ import type { GameId } from '../src/games/afterimage/types.ts';
 const scopes: [GameId, string][] = [
   ['visual', 'visual-v3-standard'], ['sequence', 'sequence-v3-growing'], ['sequence-fresh', 'sequence-v2-fresh'],
   ['reverse', 'reverse-v2-growing'], ['reverse-fresh', 'reverse-v2-fresh'], ['number', 'number-v2-hb'],
-  ['verbal', 'verbal-v5-progressive'], ['chimp', 'chimp-v2-compact-mouse'], ['pairs', 'pairs-v4-mouse'],
+  ['verbal', 'verbal-v5-progressive'], ['chimp', 'chimp-v3-compact-mouse'], ['pairs', 'pairs-v4-mouse'],
   ['reaction', 'reaction-v7-desktop'], ['aim', 'aim-v4-compact-mouse'], ['typing', 'typing-v4-hardware-passage'],
   ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v1-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
   ['rotation', 'rotation-v3-60s'], ['patterns', 'patterns-v3-60s'], ['search', 'search-v2-30s'],
+  ['paper-folding', 'paper-folding-v1-60s'], ['deduction', 'deduction-v1-60s'], ['colour-match', 'colour-match-v1-60s'],
 ];
 
 function withStorage(run: (storage: Storage) => void) {
@@ -31,7 +32,7 @@ function withStorage(run: (storage: Storage) => void) {
 
 describe('Afterimage original score compatibility', () => {
   test('active and archived games resolve their current rules scopes', () => {
-    expect(new Set(scopes.map(([id]) => id)).size).toBe(19);
+    expect(new Set(scopes.map(([id]) => id)).size).toBe(22);
     for (const [id, scope] of scopes) expect(initialScope(id)).toBe(scope);
   });
   test('historical aliases remain readable without merging them into current rules', () => {
@@ -78,6 +79,28 @@ describe('Afterimage original score compatibility', () => {
     expect(storage.getItem(scoreKey('verbal-v4-balanced'))).toBe(raw);
     expect(readHistory('verbal-v5-progressive')[0]).toMatchObject({ value: 17, rulesVersion: 5 });
     expect(referenceFor('verbal', 'verbal-v5-progressive')).toBeNull();
+  }));
+  test('hidden four-number Order rounds retain earlier visible-first-round scores separately', () => withStorage(storage => {
+    const raw = '[{"value":8,"date":100,"rulesVersion":2,"custom":"keep"}]';
+    storage.setItem(scoreKey('chimp-v2-standard-mouse'), raw);
+    saveResult({ scope: 'chimp-v3-standard-mouse', value: 7, unit: 'numbers', details: { rulesVersion: 3 } });
+    expect(initialScope('chimp')).toBe('chimp-v3-compact-mouse');
+    expect(scopeChoices('chimp', 'chimp-v3-standard-mouse')).toContainEqual(['chimp-v2-standard-mouse', 'Earlier rules · Mouse · standard']);
+    expect(storage.getItem(scoreKey('chimp-v2-standard-mouse'))).toBe(raw);
+    expect(referenceFor('chimp', 'chimp-v3-standard-mouse')).toBeNull();
+    expect(referenceFor('chimp', 'chimp-v2-standard-mouse')?.kind).toBe('histogram');
+  }));
+  test('new challenge scores export and import independently without invented benchmarks', () => withStorage(storage => {
+    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) {
+      const scope = initialScope(id);
+      saveResult({ scope, value: 12, unit: 'points', details: { correct: 15, errors: 3, rulesVersion: 1, duration: 60 } });
+      expect(scopeUnit(id, scope)).toEqual({ unit: 'points', lower: false });
+      expect(scopeChoices(id)).toEqual([[scope, 'Current rules']]);
+      expect(referenceFor(id, scope)).toBeNull();
+    }
+    const backup = exportHistory(); storage.clear();
+    expect(importHistory(backup)).toBe(3);
+    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) expect(readHistory(initialScope(id))[0]).toMatchObject({ value: 12, correct: 15, errors: 3, rulesVersion: 1, duration: 60 });
   }));
   test('archived typing aliases and future revisions remain selectable and restore byte for byte', () => withStorage(storage => {
     const preserved = new Map<string, string>();
@@ -153,6 +176,8 @@ describe('Afterimage external reference integrity', () => {
       ['visual', 'visual-v3-long'], ['typing', 'typing-v4-onscreen-passage'], ['number', 'number'],
       ['aim', 'aim-v4-compact-mouse'], ['aim', 'aim-v6-standard-touch'], ['aim', 'aim'], ['chimp', 'chimp-v2-standard-keyboard'], ['chimp', 'chimp-v2-compact-mouse'], ['chimp', 'chimp'],
       ['pairs', 'pairs-v4-mouse'], ['rotation', 'rotation-v3-60s'], ['cps', 'tps-v3-touch-10s'],
+      ['chimp', 'chimp-v3-standard-mouse'], ['chimp', 'chimp-v3-compact-mouse'],
+      ['paper-folding', 'paper-folding-v1-60s'], ['deduction', 'deduction-v1-60s'], ['colour-match', 'colour-match-v1-60s'],
     ];
     for (const [id, scope] of excluded) expect(referenceFor(id, scope)).toBeNull();
   });

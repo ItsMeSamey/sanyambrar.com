@@ -1,0 +1,26 @@
+.ai-folding-sequence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 106px; align-content: center; gap: 8px 20px; width: min(100%, 340px); height: 100%; margin: auto; }
+.ai-folding-sequence figure { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-width: 0; margin: 0; }
+.ai-folding-sequence figcaption { display: flex; align-items: center; gap: 5px; color: var(--site-muted); font-size: 11px; line-height: 16px; white-space: nowrap; }
+.ai-folding-sequence figcaption span { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ai-line); border-radius: 50%; color: var(--site-fg); font-size: 10px; font-variant-numeric: tabular-nums; }
+.ai-folding-sheet { display: block; flex: none; width: 80px; height: 80px; max-width: 100%; color: var(--site-fg); }
+.ai-folding-outline { fill: none; stroke: var(--site-muted); stroke-width: .65; stroke-dasharray: 2 3; }
+.ai-folding-paper { fill: var(--ai-art-muted); stroke: var(--ai-accent); stroke-width: 1; }
+.ai-folding-moving { fill: var(--ai-accent); fill-opacity: .18; stroke: none; }
+.ai-folding-crease { fill: none; stroke: var(--site-fg); stroke-width: .9; stroke-dasharray: 3 2; }
+.ai-folding-arrow { fill: none; stroke: var(--site-fg); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ai-folding-hole { fill: var(--site-bg); stroke: var(--site-fg); stroke-width: 1; }
+.ai-folding-option { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.ai-folding-option .ai-folding-sheet { width: 84px; height: 84px; max-height: 100%; }
+@media (max-width: 360px) {
+  .ai-folding-sequence { column-gap: 8px; }
+  .ai-folding-option .ai-folding-sheet { width: 72px; height: 72px; }
+}
+@media (forced-colors: active) {
+  .ai-folding-sheet { forced-color-adjust: none; }
+  .ai-folding-paper { fill: Canvas; stroke: CanvasText; }
+  .ai-folding-moving { fill: GrayText; fill-opacity: .25; }
+  .ai-folding-outline { stroke: GrayText; }
+  .ai-folding-crease, .ai-folding-arrow { stroke: CanvasText; }
+  .ai-folding-hole { fill: CanvasText; stroke: CanvasText; }
+  .ai-folding-sequence figcaption span { border-color: CanvasText; }
+}

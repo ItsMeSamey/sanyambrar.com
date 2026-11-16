@@ -80,6 +80,7 @@
 .ai-memory-number-order { width: min(100%, 440px); gap: 7px; }
 .ai-memory-number-order .ai-memory-tile { font-size: clamp(18px, 5vw, 28px); }
 .ai-memory-continue { position: absolute; inset: auto 0 0; height: 48px; display: flex; justify-content: center; align-items: center; pointer-events: none; z-index: 2; }
+.ai-order-memory .ai-memory-continue { inset: 0 0 52px; height: auto; }
 .ai-memory-continue button { min-width: 140px; min-height: 48px; pointer-events: auto; background: var(--site-bg); border: 1px solid var(--site-fg); border-radius: 999px; box-shadow: 0 4px 20px var(--site-shadow-2); }
 .ai-sequence-review { margin: 0 auto; min-width: 0; max-width: 100%; }
 .ai-sequence-review figcaption { margin-bottom: 8px; text-align: center; font-size: .85rem; color: var(--site-muted); }

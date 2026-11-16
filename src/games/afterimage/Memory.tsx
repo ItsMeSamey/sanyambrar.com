@@ -290,7 +290,7 @@ function OrderMemory(props: GameProps): JSX.Element {
     cells: emptyCells(40, 8).map((cell, index) => {
       const number = cells.indexOf(index) + 1;
       const active = number > 0 && number <= count() && number >= position;
-      const visible = active && (count() <= 4 || position === 1 || revealed);
+      const visible = active && (position === 1 || revealed);
       const missed = revealed && number === position;
       return { face: index === wrong ? 'wrong' : missed ? 'missed' : active ? 'lit' : 'plain',
         text: visible ? String(number) : '', inactive: !active,
@@ -310,13 +310,13 @@ function OrderMemory(props: GameProps): JSX.Element {
   const mountBoard = (element: HTMLDivElement) => { board = element; onSettled(measure); };
   function round() {
     phase = 'recall'; position = 1; wrong = -1; revealed = false; cells = shuffledRange(40).slice(0, count());
-    status = count() > 4 ? 'Study the numbers. They hide when you select 1.' : 'Select the numbers in order.';
+    status = 'Study the numbers. They hide when you select 1.';
     publish(); onSettled(() => { measure(); focusBoard(board, cells[0]); });
   }
   function start() { props.onActivityChange?.(false); level = 1; lives = 3; input = undefined; compact = false; result = undefined; round(); }
   function finish(value: number) {
     phase = 'result';
-    result = { value, scope: `chimp-v2-${compact ? 'compact' : 'standard'}-${input ?? 'mouse'}`, unit: 'numbers', details: { inputKind: input ?? 'mouse', rulesVersion: 2 } };
+    result = { value, scope: `chimp-v3-${compact ? 'compact' : 'standard'}-${input ?? 'mouse'}`, unit: 'numbers', details: { inputKind: input ?? 'mouse', rulesVersion: 3 } };
     props.onFinish(result);
   }
   function pick(index: number, event: Event) {
@@ -327,7 +327,7 @@ function OrderMemory(props: GameProps): JSX.Element {
     const number = cells.indexOf(index) + 1;
     if (!number || number < position) return;
     props.onActivityChange?.(true);
-    props.onScopeChange?.(`chimp-v2-${compact ? 'compact' : 'standard'}-${input}`);
+    props.onScopeChange?.(`chimp-v3-${compact ? 'compact' : 'standard'}-${input}`);
     if (number !== position) {
       lives--; phase = 'between'; revealed = true; wrong = index; status = `Wrong tile. Next was ${position}.`;
       if (!lives) finish(count());

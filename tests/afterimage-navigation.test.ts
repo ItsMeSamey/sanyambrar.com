@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { createAfterimageNavigation } from '../src/games/afterimage/navigation.ts';
 import type { GameId } from '../src/games/afterimage/types.ts';
 
-const ids: GameId[] = ['visual', 'sequence', 'sequence-fresh', 'reverse', 'reverse-fresh', 'number-order', 'arithmetic', 'cps'];
+const ids: GameId[] = ['visual', 'sequence', 'sequence-fresh', 'reverse', 'reverse-fresh', 'number-order', 'arithmetic', 'cps', 'paper-folding', 'deduction', 'colour-match'];
 function fixture(initialState: unknown = null, previous: unknown[] = [], saved?: string) {
   const entries: unknown[] = [...previous, initialState];
   let index = previous.length;
@@ -21,6 +21,14 @@ function fixture(initialState: unknown = null, previous: unknown[] = [], saved?:
 }
 
 describe('Afterimage browser navigation', () => {
+  test('new challenge routes remain restorable without leaking an unsupported identifier', () => {
+    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) {
+      const f = fixture();
+      f.navigation.open(id, 420);
+      const restored = createAfterimageNavigation(f.history, f.storage, ids);
+      expect(restored.current()).toMatchObject({ game: id, selectedCard: id, homeScroll: 420 });
+    }
+  });
   test('each game open adds one entry; Back and Forward restore that exact route', () => {
     const f = fixture();
     f.navigation.open('visual', 640);

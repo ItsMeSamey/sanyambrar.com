@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../sha
 import { History } from './History.tsx';
 import { installInputTracking, isRestartBlocked, setRestartBlocked, useRestartBlocked } from './common.tsx';
 import { installRipple } from './ripple.ts';
+import { installAfterimageFavicon } from './favicon.ts';
 import { exportHistory, importHistory, saveResult } from './history.ts';
 import { createAfterimageNavigation, type AfterimageRoute } from './navigation.ts';
 import type { GameId, GameResult } from './types.ts';
@@ -18,6 +19,9 @@ const PairGame = lazy(() => import('./Pair.tsx'), { export: 'PairGame' });
 const WordsGame = lazy(() => import('./Words.tsx'), { export: 'WordsGame' });
 const SpeedGame = lazy(() => import('./Speed.tsx'), { export: 'SpeedGame' });
 const ThinkingGame = lazy(() => import('./Thinking.tsx'), { export: 'ThinkingGame' });
+const PaperFoldingGame = lazy(() => import('./PaperFolding.tsx'));
+const DeductionGame = lazy(() => import('./Deduction.tsx'), { export: 'DeductionGame' });
+const ColourMatchGame = lazy(() => import('./ColourMatch.tsx'));
 
 type Entry = { id: GameId; title: string; category: string; art: string };
 export const games: Entry[] = [
@@ -37,8 +41,11 @@ export const games: Entry[] = [
   { id: 'stroop', title: 'Colour words', category: 'Focus', art: 'stroop' },
   { id: 'arithmetic', title: 'Mental arithmetic', category: 'Focus', art: 'math' },
   { id: 'rotation', title: 'Mental rotation', category: 'Spatial', art: 'rotation' },
+  { id: 'paper-folding', title: 'Paper folding', category: 'Spatial', art: 'paper-folding' },
   { id: 'patterns', title: 'Number patterns', category: 'Reasoning', art: 'patterns' },
+  { id: 'deduction', title: 'Deduction', category: 'Reasoning', art: 'deduction' },
   { id: 'search', title: 'Visual search', category: 'Perception', art: 'search' },
+  { id: 'colour-match', title: 'Colour match', category: 'Perception', art: 'colour-match' },
 ];
 const sourceArtwork = import.meta.glob<string>(['./assets/*.svg', '!./assets/typing.svg'], { eager: true, query: '?raw', import: 'default' });
 // Keep the original drawings, but let their ink and cutouts follow the selected theme.
@@ -51,6 +58,9 @@ function AfterimageLogo() {
   return <svg class="ai-library-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 3v18M3 12h9"/><path d="M12 3h5a4 4 0 0 1 4 4v5h-9Z" fill="currentColor" stroke="none"/></svg>;
 }
 function component(id: GameId) {
+  if (id === 'paper-folding') return PaperFoldingGame;
+  if (id === 'deduction') return DeductionGame;
+  if (id === 'colour-match') return ColourMatchGame;
   if (id === 'pairs') return PairGame;
   if (['number', 'verbal'].includes(id)) return WordsGame;
   if (['reaction', 'aim', 'cps'].includes(id)) return SpeedGame;
@@ -62,6 +72,7 @@ type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<
 export function App() {
   onCleanup(installInputTracking());
   onCleanup(installRipple());
+  onSettled(installAfterimageFavicon);
   const navigation = createAfterimageNavigation(history, { getItem: key => sessionStorage.getItem(key), setItem: (key, value) => sessionStorage.setItem(key, value) }, games.map(game => game.id));
   const restored = navigation.current();
   const [selection, setSelection] = createSignal<{ id: GameId; generation: number } | null>(restored.game ? { id: restored.game, generation: 0 } : null);

@@ -2,7 +2,7 @@
   "id": "/afterimage/",
   "name": "Afterimage",
   "short_name": "Afterimage",
-  "description": "Games for memory, focus and speed. Play offline and track your personal bests.",
+  "description": "21 games for memory, speed, focus, spatial thinking, reasoning and perception. Play offline and track your personal bests.",
   "lang": "en",
   "start_url": "/afterimage/",
   "scope": "/afterimage/",
@@ -11,6 +11,7 @@
   "theme_color": "#101218",
   "categories": ["games", "education"],
   "icons": [
+    { "src": "/afterimage/icons/afterimage.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/afterimage/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/afterimage/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/afterimage/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }

@@ -8,7 +8,7 @@ export const games:Entry[]=[
   {title:'Wordle',href:'/wordle',kind:'Game',note:'A Wordle clone.',tags:['solidjs','word game']},
   {title:'Keybr',href:'/keybr',kind:'Game',note:'A local-first fork of keybr.com.',tags:['typing','local-first']},
   {title:'Chain Reaction',href:'/chain/',kind:'Game',note:'Chain reaction clone with local AI.',tags:['canvas','game','ai']},
-  {title:'Afterimage',href:'/afterimage/',kind:'Game',note:'18 games for memory, focus and speed.',tags:['solidjs','memory','local-first']},
+  {title:'Afterimage',href:'/afterimage/',kind:'Game',note:'21 games for memory, speed, reasoning and perception.',tags:['solidjs','memory','local-first']},
 ];
 const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[

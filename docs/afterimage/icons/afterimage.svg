@@ -1,8 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#101218"/>
-  <g transform="translate(64 64) scale(16)" fill="none" stroke="#ae97ff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <style>.background{fill:#f8f7fb}.ink{color:#7057c9}@media(prefers-color-scheme:dark){.background{fill:#171923}.ink{color:#ae97ff}}</style>
+  <rect class="background" width="512" height="512" rx="112"/>
+  <g class="ink" transform="translate(64 64) scale(16)" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="4"/>
     <path d="M12 3v18M3 12h9"/>
-    <path d="M12 3h5a4 4 0 0 1 4 4v5h-9Z" fill="#ae97ff" stroke="none"/>
+    <path d="M12 3h5a4 4 0 0 1 4 4v5h-9Z" fill="currentColor" stroke="none"/>
   </g>
 </svg>

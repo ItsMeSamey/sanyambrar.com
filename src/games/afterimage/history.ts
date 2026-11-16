@@ -5,7 +5,7 @@ const aliases: Record<string, string> = { typing: 'typing-v2-60s', stroop: 'stro
 export const scoreKey = (scope: string) => `afterimage-history-${aliases[scope] ?? scope}`;
 export const baseGame = (id: GameId) => id === 'number-order' ? 'order' : id === 'arithmetic' ? 'math' : id.replace('-fresh', '');
 export function initialScope(id: GameId): string {
-  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v2-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v1-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v3-60s', patterns: 'patterns-v3-60s', search: 'search-v2-30s' };
+  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v3-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v1-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v3-60s', patterns: 'patterns-v3-60s', search: 'search-v2-30s', 'paper-folding': 'paper-folding-v1-60s', deduction: 'deduction-v1-60s', 'colour-match': 'colour-match-v1-60s' };
   return scopes[id];
 }
 export function readHistory(scope: string): HistoryRow[] {
@@ -43,7 +43,8 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
     reaction: [['reaction-v7-desktop', 'Mouse / keyboard · short wait'], ['reaction-v7-touch-release', 'Touch · release · short wait'], ['reaction-v7-pen', 'Pen · short wait'], ['reaction-v5-desktop', 'Previous wait · mouse / keyboard'], ['reaction-v6-touch-release', 'Previous wait · touch release'], ['reaction-v5-touch', 'Previous touch · press'], ['reaction-v5-pen', 'Previous wait · pen']],
   };
   fixed[game]?.forEach(([scope, label]) => add(scope, label));
-  if (['aim', 'chimp'].includes(game)) for (const format of ['standard', 'compact']) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`${game}-${game === 'chimp' ? 'v2' : ['touch', 'keyboard'].includes(kind) ? 'v6' : 'v4'}-${format}-${kind}`, `${labels[kind]} · ${format}`);
+  if (['aim', 'chimp'].includes(game)) for (const format of ['standard', 'compact']) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`${game}-${game === 'chimp' ? 'v3' : ['touch', 'keyboard'].includes(kind) ? 'v6' : 'v4'}-${format}-${kind}`, `${labels[kind]} · ${format}`);
+  if (game === 'chimp') for (const format of ['standard', 'compact']) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`chimp-v2-${format}-${kind}`, `Earlier rules · ${labels[kind]} · ${format}`);
   if (game === 'aim') for (const format of ['standard', 'compact']) for (const kind of ['touch', 'keyboard']) for (const version of ['v4', 'v5']) add(`aim-${version}-${format}-${kind}`, `Earlier ${labels[kind]} · ${format} · ${version}`);
   if (['reaction', 'pairs', 'order', 'aim'].includes(game)) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) {
     if (['pairs', 'order'].includes(game)) add(`${game}-${game === 'pairs' ? 'v4' : 'v1'}-${kind}`, labels[kind]);

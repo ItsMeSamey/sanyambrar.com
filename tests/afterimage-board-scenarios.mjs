@@ -48,6 +48,12 @@ export async function exerciseBoardStability(game) {
   };
   const restart = () => query('[aria-label="Restart"]');
   check(!restart() || restart().disabled, 'fresh board exposes Restart');
+  if (game === 'chimp') {
+    check(query(boardSelector).inert && query(boardSelector).getAttribute('aria-hidden') === 'true', 'Order preview is interactive');
+    press(tiles().find(tile => tile.textContent === '1'));
+    await pause(20);
+    check(phase() === 'intro', 'preview choice started a trial before Start');
+  }
   const pairNames = game === 'pairs' ? tiles().map(tile => tile.getAttribute('aria-label').replace(/^Card \d+, /, '')) : [];
   const firstFlash = { index: -1 };
   let watch;
@@ -89,7 +95,12 @@ export async function exerciseBoardStability(game) {
     }
   } else if (game === 'chimp') {
     for (let life = 0; life < 3; life++) {
-      press(tiles().find(tile => tile.textContent === '2'));
+      const wrong = tiles().find(tile => tile.textContent === '3');
+      press(tiles().find(tile => tile.textContent === '1'));
+      await pause(20);
+      check(tiles().every(tile => !tile.textContent.trim()), 'first four-number round exposes hidden answers after selecting 1');
+      capture(`hidden numbers ${life}`);
+      press(wrong);
       await pause(30); capture(`wrong answer ${life}`);
       if (life < 2) {
         check(!!query('.ai-memory-status .ai-sr-only'), 'between-round prose duplicates the revealed board');
@@ -97,7 +108,7 @@ export async function exerciseBoardStability(game) {
         check(query(stageSelector).contains(control), 'Continue is outside the board stage');
         if (geometry) {
           const button = control.querySelector('button').getBoundingClientRect(), board = query(boardSelector).getBoundingClientRect(), stage = query(stageSelector).getBoundingClientRect();
-          check(button.top >= board.bottom && button.bottom <= stage.bottom + 0.6, 'Continue covers review tiles or escapes its stage');
+          check(button.top >= board.top && button.bottom <= board.bottom + 0.6 && button.left >= board.left && button.right <= board.right + 0.6 && button.bottom <= stage.bottom, 'Continue is not overlaid within the play area');
           check(getComputedStyle(control).position === 'absolute', 'Continue participates in layout');
         }
         await wait(() => control.querySelector('button').getAttribute('aria-disabled') === 'false', 'Continue guard');
