@@ -12,13 +12,15 @@ export type DailyGoal = {
 
 export class MutableDailyGoal implements DailyGoal {
   readonly #goal: number;
-  readonly #today: Today;
+  #today: Today;
+  readonly #clock: () => Today;
   #time: number;
   #value: number;
 
-  constructor(settings: Settings, today: Today = new Today()) {
+  constructor(settings: Settings, today: Today | (() => Today) = () => new Today()) {
     this.#goal = settings.get(lessonProps.dailyGoal);
-    this.#today = today;
+    this.#clock = typeof today === 'function' ? today : () => today;
+    this.#today = this.#clock();
     this.#time = 0;
     this.#value = 0;
   }
@@ -28,10 +30,12 @@ export class MutableDailyGoal implements DailyGoal {
   }
 
   get value(): number {
+    this.#refreshDay();
     return this.#value;
   }
 
   append(result: Result) {
+    this.#refreshDay();
     if (this.#today.includes(result.timeStamp)) {
       this.#time += result.time;
       this.#value = this.measure(this.#time);
@@ -43,6 +47,15 @@ export class MutableDailyGoal implements DailyGoal {
   }
 
   copy(): DailyGoal {
-    return { goal: this.#goal, value: this.#value };
+    return { goal: this.#goal, value: this.value };
+  }
+
+  #refreshDay(): void {
+    const today = this.#clock();
+    if (today.from.timeStamp !== this.#today.from.timeStamp) {
+      this.#today = today;
+      this.#time = 0;
+      this.#value = 0;
+    }
   }
 }

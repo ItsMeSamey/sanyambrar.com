@@ -1,6 +1,5 @@
 import { Dynamic } from '@solidjs/web';
 import { KeybrMark, WordleMark, WORDLE_WORDMARK_COLORS } from '../../shared/components/Brand.tsx';
-import { ChainLiveMark } from '../../shared/components/ChainLogo.tsx';
 import { ArrowUpRight, CirclePlay } from '../../shared/components/Icons.tsx';
 import type { Entry } from '../data.ts';
 import { SmartLink } from '../../shared/components/NavLink.tsx';
@@ -24,7 +23,7 @@ export function CompactList(props:{entries:Entry[]}) {
 function GameTitle(props:{entry:Entry}) {
   if (props.entry.href === '/wordle') return <WordleMark text="WORDLE" colors={WORDLE_WORDMARK_COLORS} class="game-title game-wordle"/>;
   if (props.entry.href === '/keybr') return <KeybrMark class="game-title game-keybr"/>;
-  if (props.entry.href === '/chain/') return <ChainLiveMark class="game-chain-live"/>;
+  if (props.entry.href === '/chain/') return <strong class="game-title game-chain">{props.entry.title}</strong>;
   return <strong class="game-title game-afterimage">{props.entry.title}</strong>;
 }
 

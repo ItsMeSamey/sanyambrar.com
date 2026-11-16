@@ -2,7 +2,8 @@ import type * as Monaco from 'monaco-editor/editor/editor.api';
 import { TOOLS, type ToolId } from '../shared/catalog.ts';
 import { resilientImport } from '../shared/resilientImport.ts';
 import { formatThrownError } from '../shared/error.ts';
-import { writeClipboardText } from '../shared/clipboard.ts';
+import { decodeBase32, decodeBase64, encodeBase32 } from './codec.ts';
+import { createToolCopyStatus } from './copyStatus.ts';
 
 type MonacoModule = typeof import('../site/monaco.ts');
 type MonacoApi = MonacoModule['monaco'];
@@ -95,7 +96,6 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
     swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>',
   })[name] || '';
-  const copy = writeClipboardText;
 
   let disposeTool = () => {};
   let disposed = false;
@@ -226,7 +226,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const value = get('text', 'Hello World! Café résumé naïve\n你好世界！\nEmoji: 🎉🚀💡');
     root.innerHTML = '<section class="tool-one-pane"><div id="text-editor" class="monaco-host"></div></section>';
     const model = monaco.editor.createModel(value, 'plaintext');
-    const editor = monaco.editor.create(query<HTMLElement>(root, '#text-editor'), editorOptions('plaintext'));
+    const editor = monaco.editor.create(query<HTMLElement>(root, '#text-editor'), editorOptions('plaintext', { ariaLabel: 'Text input' }));
     editor.setModel(model);
     let decorationIds: string[] = [];
     const paint = () => {
@@ -258,7 +258,6 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   const B88 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;=?@[]^_{|}~';
   const b2s = (bytes: Uint8Array) => { let out = ''; for (let offset = 0; offset < bytes.length; offset += 0x8000) out += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000)); return out; };
-  const s2b = (text: string) => Uint8Array.from(text, char => char.charCodeAt(0));
   const bxE = (bytes: Uint8Array, alphabet: string) => {
     if (!bytes.length) return '';
     let n = 0n;
@@ -295,31 +294,6 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     if (text.length % 8 || !/^[01]*$/.test(text)) throw Error('Invalid binary');
     return Uint8Array.from(text.match(/.{8}/g)?.map(value => parseInt(value, 2)) ?? []);
   };
-  const b32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-  const b32E = (bytes: Uint8Array) => {
-    let out = '', buffer = 0, bits = 0;
-    for (const byte of bytes) {
-      buffer = buffer << 8 | byte;
-      bits += 8;
-      while (bits >= 5) { out += b32[buffer >>> (bits - 5) & 31]; bits -= 5; }
-    }
-    if (bits) out += b32[buffer << (5 - bits) & 31];
-    while (out.length % 8) out += '=';
-    return out;
-  };
-  const b32D = (text: string) => {
-    text = text.toUpperCase().replace(/[\s-=]/g, '');
-    let buffer = 0, bits = 0;
-    const out = [];
-    for (const char of text) {
-      const value = b32.indexOf(char);
-      if (value < 0) throw Error('Invalid Base32');
-      buffer = buffer << 5 | value;
-      bits += 5;
-      if (bits >= 8) { out.push(buffer >>> (bits - 8) & 255); bits -= 8; }
-    }
-    return Uint8Array.from(out);
-  };
   const htmlE = (text: string) => [...text].map(char => { const code = char.codePointAt(0) ?? 0; return HTML_ESCAPES[char] ?? (code > 127 ? `&#${code};` : char); }).join('');
   const htmlD = (text: string) => { const area = document.createElement('textarea'); area.innerHTML = text; return area.value; };
   const uniE = (text: string) => [...text].map(char => {
@@ -332,12 +306,12 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   type Format = (typeof FORMATS)[number][0];
   const isFormat = (value: unknown): value is Format => typeof value === 'string' && FORMATS.some(([format]) => format === value);
   const convert = (format: Format, text: string, decode = false) => {
-    if (format === 'base64') return decode ? td.decode(s2b(atob(text.replace(/\s/g, '')))) : btoa(b2s(te.encode(text)));
+    if (format === 'base64') return decode ? td.decode(decodeBase64(text)) : btoa(b2s(te.encode(text)));
     if (format === 'base64url') {
-      if (decode) { let value = text.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/'); value += '='.repeat((4 - value.length % 4) % 4); return td.decode(s2b(atob(value))); }
+      if (decode) return td.decode(decodeBase64(text, true));
       return btoa(b2s(te.encode(text))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
-    if (format === 'base32') return decode ? td.decode(b32D(text)) : b32E(te.encode(text));
+    if (format === 'base32') return decode ? td.decode(decodeBase32(text)) : encodeBase32(te.encode(text));
     if (format === 'base58') return decode ? td.decode(bxD(text, B58)) : bxE(te.encode(text), B58);
     if (format === 'base88') return decode ? td.decode(bxD(text, B88)) : bxE(te.encode(text), B88);
     if (format === 'hex') return decode ? td.decode(hD(text)) : hE(te.encode(text));
@@ -358,19 +332,6 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     if (format === 'hex') {
       const value = raw.replace(/^0x/i, '').replace(/\s/g, '');
       if (!value || value.length % 2 || !/^[\da-f]+$/i.test(value)) throw Error('Invalid Hex');
-    } else if (format === 'base32') {
-      const value = raw.replace(/\s/g, '');
-      if (!/^[A-Z2-7]+={0,6}$/i.test(value) || /=[^=]/.test(value)) throw Error('Invalid Base32');
-      const body = value.replace(/=+$/, '');
-      if (![0, 2, 4, 5, 7].includes(body.length % 8)) throw Error('Invalid Base32');
-      const decoded = b32D(value);
-      if (b32E(decoded).replace(/=+$/, '') !== body.toUpperCase()) throw Error('Invalid Base32');
-    } else if (format === 'base64') {
-      const value = raw.replace(/\s/g, '');
-      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) throw Error('Invalid Base64');
-    } else if (format === 'base64url') {
-      const value = raw.replace(/\s/g, '');
-      if (!/^[A-Za-z0-9_-]+={0,2}$/.test(value)) throw Error('Invalid Base64URL');
     } else if (format === 'binary') {
       const value = raw.replace(/[\s_]/g, '');
       if (!value || value.length % 8 || !/^[01]+$/.test(value)) throw Error('Invalid Binary');
@@ -405,13 +366,15 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     let selection: Format | 'auto' = isFormat(storedFormat) ? storedFormat : 'auto';
     let separateLines = get('lines', '0') === '1';
     const initial = get('text', 'https%3A%2F%2Fsanyambrar.com%2Ftools%3Ftool%3Dbase');
-    root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto detect</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><button class="codec-line-toggle" type="button" data-codec-lines role="switch" aria-checked="${separateLines}"><span class="codec-switch-track" aria-hidden="true"><span></span></span><span>Per line</span></button><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy aria-label="Copy output" title="Copy output">${icon('copy')}</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="codec-status" data-codec-status></div></div></section>`;
+    root.innerHTML = `<section class="codec-flow"><div class="codec-shell"><section class="codec-pane codec-input-pane"><header><span>Input</span></header><div id="codec-input" class="codec-editor monaco-host"></div></section><div class="codec-controls" aria-label="Conversion options"><label><span>Mode</span><select data-codec-mode><option value="decode"${mode === 'decode' ? ' selected' : ''}>Decode</option><option value="encode"${mode === 'encode' ? ' selected' : ''}>Encode</option></select></label><label><span>Format</span><select data-codec-format><option value="auto"${selection === 'auto' ? ' selected' : ''}>Auto detect</option>${FORMATS.map(([value, label]) => `<option value="${value}"${selection === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label><button class="codec-line-toggle" type="button" data-codec-lines role="switch" aria-checked="${separateLines}"><span class="codec-switch-track" aria-hidden="true"><span></span></span><span>Per line</span></button><span class="codec-auto" data-codec-auto></span></div><section class="codec-pane codec-output-pane"><header><span>Output</span><button type="button" data-codec-copy aria-label="Copy output" title="Copy output">${icon('copy')}</button></header><div id="codec-output" class="codec-editor monaco-host"></div></section><div class="tool-status" data-codec-status role="status" aria-live="polite" aria-atomic="true"></div><div class="tool-status" data-copy-status role="status" aria-live="polite" aria-atomic="true"></div></div></section>`;
     const inputModel = monaco.editor.createModel(initial, 'plaintext');
     const outputModel = monaco.editor.createModel('', 'plaintext');
-    const inputEditor = monaco.editor.create(query<HTMLElement>(root, '#codec-input'), editorOptions('plaintext', { lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
-    const outputEditor = monaco.editor.create(query<HTMLElement>(root, '#codec-output'), editorOptions('plaintext', { readOnly: true, lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
+    const inputEditor = monaco.editor.create(query<HTMLElement>(root, '#codec-input'), editorOptions('plaintext', { ariaLabel: 'Codec input', lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
+    const outputEditor = monaco.editor.create(query<HTMLElement>(root, '#codec-output'), editorOptions('plaintext', { ariaLabel: 'Codec output', readOnly: true, lineNumbers: 'off', folding: false, padding: { top: 12, bottom: 12 } }));
     inputEditor.setModel(inputModel); outputEditor.setModel(outputModel);
     const status = query<HTMLElement>(root, '[data-codec-status]');
+    const copyButton = query<HTMLButtonElement>(root, '[data-codec-copy]');
+    const copyStatus = createToolCopyStatus(query<HTMLElement>(root, '[data-copy-status]'), () => currentRender(generation));
     const autoLabel = query<HTMLElement>(root, '[data-codec-auto]');
     const modeSelect = query<HTMLSelectElement>(root, '[data-codec-mode]');
     const formatSelect = query<HTMLSelectElement>(root, '[data-codec-format]');
@@ -426,6 +389,8 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       catch (error) { throw Error(`${lineNumber ? `Line ${lineNumber}: ` : ''}${errorMessage(error)}`); }
     };
     const paint = () => {
+      copyStatus.reset();
+      copyButton.disabled = true;
       const text = inputModel.getValue();
       set('text', text); set('mode', mode); set('format', selection); set('lines', separateLines ? '1' : '0');
       linesToggle.setAttribute('aria-checked', String(separateLines));
@@ -439,6 +404,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
           ? text.split(/\r?\n/).map((line, index) => line ? transform(line, index + 1) : '').join('\n')
           : transform(text);
         outputModel.setValue(output);
+        copyButton.disabled = output.length === 0;
         const suffix = separateLines ? ` · ${text.split(/\r?\n/).length.toLocaleString()} lines` : '';
         status.textContent = `${[...text].length.toLocaleString()} → ${[...output].length.toLocaleString()} chars${suffix}`;
         status.classList.remove('danger');
@@ -451,7 +417,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     modeSelect.onchange = () => { mode = modeSelect.value === 'encode' ? 'encode' : 'decode'; paint(); };
     formatSelect.onchange = () => { const value = formatSelect.value; selection = isFormat(value) ? value : 'auto'; paint(); };
     linesToggle.onclick = () => { separateLines = !separateLines; paint(); };
-    query<HTMLButtonElement>(root, '[data-codec-copy]').onclick = () => { void copy(outputModel.getValue()); };
+    copyButton.onclick = () => { if (!copyButton.disabled) void copyStatus.copy(outputModel.getValue()); };
     const sub = inputModel.onDidChangeContent(paint);
     paint();
     disposeTool = () => { sub.dispose(); inputEditor.dispose(); outputEditor.dispose(); inputModel.dispose(); outputModel.dispose(); };
@@ -483,7 +449,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       renderSideBySide:true,
       enableSplitViewResizing:true,
       useInlineViewWhenSpaceIsLimited:false,
-      ignoreTrimWhitespace:true,
+      ignoreTrimWhitespace:false,
       renderIndicators:true,
       renderMarginRevertIcon:false,
       diffAlgorithm:'advanced',
@@ -581,11 +547,11 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
   };
 
   type NumberDefinition = readonly [key: string, label: string, radix: number, group: number];
-  function numberTool() {
+  function numberTool(generation: number) {
     let base = normalizeToolRadix(+get('base', '10'), 10);
     let custom = normalizeToolRadix(+get('custom', '36'), 36);
     let text = get('text', '255');
-    root.innerHTML = `<section class="number-tool"><div class="number-shell"><section class="number-input-pane"><label for="number-input">Input</label><input id="number-input" spellcheck="false" value="${esc(text)}"></section><div class="number-options" aria-label="Number options"><label><span>Source base</span><input id="source-base" type="number" min="2" max="62" value="${base}"></label><div class="radix-choices" aria-label="Common source bases">${[2, 8, 10, 16].map(value => `<button type="button" data-base="${value}">Base ${value}</button>`).join('')}</div><label><span>Custom output base</span><input id="custom-base" type="number" min="2" max="62" value="${custom}"></label></div><div class="number-error" id="number-error" hidden></div><section class="number-output-pane"><header><h1>Output</h1></header><div class="number-grid"></div><section class="bit-panel"><header><h2>Bits</h2><span id="bit-caption"></span></header><div id="bit-values" class="bit-values"></div></section></section></div></section>`;
+    root.innerHTML = `<section class="number-tool"><div class="number-shell"><section class="number-input-pane"><label for="number-input">Input</label><input id="number-input" spellcheck="false" value="${esc(text)}"></section><div class="number-options" aria-label="Number options"><label><span>Source base</span><input id="source-base" type="number" min="2" max="62" value="${base}"></label><div class="radix-choices" aria-label="Common source bases">${[2, 8, 10, 16].map(value => `<button type="button" data-base="${value}">Base ${value}</button>`).join('')}</div><label><span>Custom output base</span><input id="custom-base" type="number" min="2" max="62" value="${custom}"></label></div><div class="number-error" id="number-error" role="status" aria-live="polite" aria-atomic="true" hidden></div><section class="number-output-pane"><header><h1>Output</h1></header><div class="number-grid"></div><div class="tool-status" data-copy-status role="status" aria-live="polite" aria-atomic="true"></div><section class="bit-panel"><header><h2>Bits</h2><span id="bit-caption"></span></header><div id="bit-values" class="bit-values"></div></section></section></div></section>`;
     const input = query<HTMLInputElement>(root, '#number-input');
     const sourceBase = query<HTMLInputElement>(root, '#source-base');
     const customBase = query<HTMLInputElement>(root, '#custom-base');
@@ -593,6 +559,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const bits = query<HTMLDivElement>(root, '#bit-values');
     const caption = query<HTMLElement>(root, '#bit-caption');
     const error = query<HTMLElement>(root, '#number-error');
+    const copyStatus = createToolCopyStatus(query<HTMLElement>(root, '[data-copy-status]'), () => currentRender(generation));
     let value: bigint | null = null;
 
     const definitions = (): NumberDefinition[] => [
@@ -617,6 +584,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
       }
     };
     const paint = (activeField?: HTMLInputElement) => {
+      copyStatus.reset();
       try {
         value = parseN(text, base);
         error.hidden = true;
@@ -669,7 +637,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     });
     grid.addEventListener('click', event => {
       const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('[data-copy-number]') : null;
-      if (button && !button.disabled) void copy(button.dataset.copyNumber ?? '');
+      if (button && !button.disabled) void copyStatus.copy(button.dataset.copyNumber ?? '');
     });
     paint();
     disposeTool = () => {};
@@ -702,7 +670,7 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     };
     syncDividerAria();
     const model = monaco.editor.createModel(value, 'markdown');
-    const editor = monaco.editor.create(query<HTMLElement>(root, '#md-input'), editorOptions('markdown'));
+    const editor = monaco.editor.create(query<HTMLElement>(root, '#md-input'), editorOptions('markdown', { ariaLabel: 'Markdown source' }));
     editor.setModel(model);
 
     let richReady = false;

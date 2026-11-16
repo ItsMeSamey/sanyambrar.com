@@ -95,13 +95,10 @@ export function getRandomWord(wlen: WordLength): string {
 
 // Sets the word as done, adding the history to the record
 export async function setDone(entry: {word: string, history: [string, string][]}, hard: SettingsHardProps, kind: KindEnum): Promise<void> {
-  const length = entry.word.length
+  const word = entry.word
+  const length = word.length
   if (!isWordLength(length)) throw new Error('Invalid word length')
-  const readyDb = db ?? await dbReady
-  const store = readyDb.transaction(`w${length}`, 'readwrite').objectStore(`w${length}`)
-
-  const record: Value = await store.index('wordIndex').get(entry.word) ?? {w: entry.word, h: []}
-  record.h.push({
+  const completion: HistoryEntry = {
     a: hard.allowAny,
     k: kind,
     m: hard.maxTries,
@@ -111,7 +108,12 @@ export async function setDone(entry: {word: string, history: [string, string][]}
     d: hard.disabledLetters,
     q: hard.mode === 'daily' ? hard.dailyDate : undefined,
     v: hard.mode === 'daily' ? hard.dailyVersion : undefined,
-  })
+  }
+  const readyDb = db ?? await dbReady
+  const store = readyDb.transaction(`w${length}`, 'readwrite').objectStore(`w${length}`)
+
+  const record: Value = await store.index('wordIndex').get(word) ?? {w: word, h: []}
+  record.h.push(completion)
 
   await store.put(record)
   await store.transaction.done

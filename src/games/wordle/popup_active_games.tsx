@@ -121,7 +121,7 @@ function getActiveGames(): ActiveGame[] {
   return sortGames(games)
 }
 
-export function ActiveGames({hard, onSelect, onBeforeOpen}: {hard: SettingsHardProps, onSelect: (config: SettingsHardProps) => void, onBeforeOpen?: () => void}): JSX.Element {
+export function ActiveGames({hard, onSelect, onBeforeOpen}: {hard: SettingsHardProps, onSelect: (config: SettingsHardProps, sourceKey: string) => void, onBeforeOpen?: () => void}): JSX.Element {
   const [open, setOpen] = createSignal(false)
   const [games, setGames] = createSignal(getActiveGames(), {ownedWrite: true})
   const refresh = () => setGames(getActiveGames())
@@ -171,7 +171,7 @@ export function ActiveGames({hard, onSelect, onBeforeOpen}: {hard: SettingsHardP
             <For each={games()}>{game => <button
               type='button' class='active-game-card' data-current={current(game) ? '' : undefined}
               onClick={() => {
-                if (!current(game)) onSelect({...game.config})
+                onSelect({...game.config}, game.key)
                 setOpen(false)
               }}
             >

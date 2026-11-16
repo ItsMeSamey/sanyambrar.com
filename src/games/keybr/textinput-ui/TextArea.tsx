@@ -41,7 +41,10 @@ export function TextArea(props: {
   });
   createEffect(() => !props.moving && focus() ? "none" : "default", cursor => setElementCursor(root, cursor));
   useWindowEvent("mousemove", () => setElementCursor(root, "default"));
-  useHotkeys({ Enter: () => input?.focus() });
+  useHotkeys({ Enter: () => input?.focus() }, {
+    ignoreInteractive: true,
+    enabled: () => !props.demo && !root.closest('[inert]'),
+  });
 
   const handleFocus = () => { setFocus(true); props.onFocus?.(); };
   const handleBlur = () => { setFocus(false); props.onBlur?.(); };

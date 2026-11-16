@@ -16,6 +16,7 @@ import './btop-mutex.css';
     const owners = $('owners');
     const ownerSlots = [...$('owner-slots').children];
     const caption = $('cas-caption');
+    const status = $('cas-status');
     const eventBox = $('cas-event');
     const eventTag = eventBox.querySelector<HTMLElement>('.event-tag');
     if (!eventTag) throw new Error('Missing .event-tag');
@@ -133,6 +134,7 @@ import './btop-mutex.css';
       eventText.textContent = s.event;
       caption.textContent = s.caption;
       count.textContent = `${step} / 6`;
+      status.textContent = `Step ${step} of ${states.length - 1}. ${s.event} ${s.caption}`;
       codeLine.classList.toggle('hotline', step >= 2 && step <= 5);
 
       jumps.forEach((button, i) => {

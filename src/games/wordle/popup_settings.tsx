@@ -71,7 +71,7 @@ export function SettingsKnobs(props: SettingsControlsProps) {
   </>
 }
 
-export default function Settings(props: SettingsControlsProps & {showActive: boolean, onSelectActiveGame: (config: SettingsHardProps) => void}) {
+export default function Settings(props: SettingsControlsProps & {showActive: boolean, onSelectActiveGame: (config: SettingsHardProps, sourceKey: string) => void}) {
   const [open, setOpen] = createSignal(false)
   return <Popover open={open()} onOpenChange={setOpen} placement='bottom-end' gutter={6} flip='top-end'>
     <PopoverTrigger class='top-icon site-topbar-icon game-settings-trigger settings-trigger' aria-label='Settings'>

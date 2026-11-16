@@ -707,9 +707,8 @@ self.addEventListener('fetch', event => {
         const response = await fetch(event.request);
         if (response.ok) {
           (await caches.open(CACHE)).put(event.request, response.clone());
-          return response;
         }
-        return (await offlineNavigation(event.request)) || response;
+        return response;
       } catch { return offlineNavigation(event.request); }
     })());
     return;

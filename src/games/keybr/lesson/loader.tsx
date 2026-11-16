@@ -50,7 +50,7 @@ function Loader(props: {
         case LessonType.WORDLIST:
           return { type, value: new WordListLesson(settings, keyboard(), model, await loadWordList(language)) };
         case LessonType.BOOKS:
-          return { type, value: new BooksLesson(settings, keyboard(), model, { book, content: await loadContent(book) }) };
+          return { type, value: await new BooksLesson(settings, keyboard(), model, { book, content: await loadContent(book) }).prepare() };
         case LessonType.CUSTOM:
           return { type, value: new CustomTextLesson(settings, keyboard(), model) };
         case LessonType.CODE:

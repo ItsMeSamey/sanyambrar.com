@@ -1,5 +1,6 @@
 import { For, Match, Show, Switch, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
+import { topLayer } from '../../shared/overlay.ts';
 import { ChevronRight as ArrowRight, Delete } from '../../shared/components/Icons.tsx';
 import { Ready, Result, Stats, useGamePress, useTimers } from './common.tsx';
 import type { GameProps, GameResult } from './types.ts';
@@ -124,12 +125,14 @@ export function ThinkingGame(props: GameProps) {
     return current.phase !== 'answered' ? undefined : question.type !== 'arithmetic' && index === question.correct ? 'correct' : index === current.selected ? 'wrong' : undefined;
   };
   function keys(event: KeyboardEvent) {
-    if (!live() || document.hidden || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
+    if (!live() || document.hidden || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing || topLayer()) return;
     const target = event.target instanceof HTMLElement ? event.target : null;
+    if (!target || !root.contains(target)) return;
     if (mode === 'arithmetic') {
       if (event.repeat && event.key === 'Enter') event.preventDefault();
       return;
     }
+    if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
     if (['Enter', ' '].includes(event.key) && target && root.contains(target) && target.tagName === 'BUTTON') {
       event.preventDefault();
       if (event.repeat || held.has(event.key)) return;

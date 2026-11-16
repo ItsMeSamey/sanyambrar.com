@@ -25,7 +25,7 @@ export function Controller(props: {
     "Ctrl+ArrowLeft": lesson.handlePreviousLesson,
     "Ctrl+ArrowRight": lesson.handleSkipLesson,
     Escape: lesson.handleResetLesson,
-  });
+  }, { ignoreModal: true });
   // App switches can swallow keyup. Clear only physical-key state;
   // lesson progress and completion feedback must survive focus changes.
   useWindowEvent("blur", lesson.handleReleaseKeys);

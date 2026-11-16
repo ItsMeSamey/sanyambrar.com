@@ -77,7 +77,7 @@ function renderHistoryEntry(word: string, entry: HistoryEntry) {
   const guesses = []
   for (let i = 0; i < entry.h.length; i += word.length) guesses.push(entry.h.substring(i, i + word.length))
   return <div class='stats-guess-popover'><div class='stats-guess-board'>
-    <For each={guesses}>{guess => new Block(word.length, guess, calcDiff(word, guess)).render()}</For>
+    <For each={guesses}>{(guess, index) => new Block(word.length, guess, entry.k === KindEnum.Revealed && index() === guesses.length - 1 ? 'b'.repeat(word.length) : calcDiff(word, guess)).render()}</For>
   </div></div>
 }
 

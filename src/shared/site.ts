@@ -22,6 +22,7 @@ function score(item: Entry, query: string): number {
 let box: HTMLDivElement | undefined
 let input: HTMLInputElement | undefined
 let results: HTMLDivElement | undefined
+let resultStatus: HTMLDivElement | undefined
 let opener: HTMLElement | null = null
 let active = 0
 let visible: Entry[] = []
@@ -50,6 +51,9 @@ function resultNode(item: Entry, index: number): HTMLAnchorElement {
   const anchor = document.createElement('a')
   anchor.className = `search-result${index === active ? ' active' : ''}`
   anchor.href = new URL(item.href, SCRIPT_ROOT).href
+  const warm = () => globalThis.SameyPreloadPage?.(anchor.href)
+  anchor.addEventListener('pointerenter', warm, { passive: true })
+  anchor.addEventListener('focus', warm)
   const text = document.createElement('span')
   const title = document.createElement('b')
   const note = document.createElement('small')
@@ -89,6 +93,10 @@ function render() {
     empty.className = 'search-empty'
     empty.textContent = 'No match'
     results.replaceChildren(empty)
+  }
+  if (resultStatus) {
+    const selected = visible[active]
+    resultStatus.textContent = selected ? `${active + 1} of ${visible.length}: ${selected.title}, ${selected.kind}. Enter to open.` : 'No matching pages.'
   }
 }
 
@@ -153,6 +161,13 @@ function ensure() {
   if (!searchInput || !searchResults || !searchPanel) { box.remove(); box = undefined; throw new Error('Search UI failed to initialize') }
   input = searchInput
   results = searchResults
+  searchInput.setAttribute('aria-label', 'Search pages')
+  resultStatus = document.createElement('div')
+  resultStatus.className = 'sr-only'
+  resultStatus.setAttribute('role', 'status')
+  resultStatus.setAttribute('aria-live', 'polite')
+  resultStatus.setAttribute('aria-atomic', 'true')
+  searchPanel.append(resultStatus)
   searchPanel.addEventListener('wheel', event => {
     const target = event.target instanceof Element ? event.target : null
     if (!target?.closest('.site-search-results')) event.preventDefault()
@@ -181,6 +196,8 @@ function ensure() {
       active = (active + (event.key === 'ArrowDown' ? 1 : visible.length - 1)) % Math.max(visible.length, 1)
       render()
       scrollActiveIntoView()
+      const destination = visible[active]
+      if (destination) globalThis.SameyPreloadPage?.(new URL(destination.href, SCRIPT_ROOT).href)
     } else if (event.key === 'Enter' && visible[active]) {
       event.preventDefault()
       const targetUrl = new URL(visible[active].href, SCRIPT_ROOT)

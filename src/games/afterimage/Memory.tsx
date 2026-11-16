@@ -75,6 +75,7 @@ function MemoryBoard(props: {
         props.onPick(index, event);
       }}
       onKeyDown={event => {
+        if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
         const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -props.columns, ArrowDown: props.columns } as Record<string, number>)[event.key];
         if (delta !== undefined) {
           event.preventDefault();

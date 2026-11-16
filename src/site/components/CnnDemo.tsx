@@ -82,6 +82,7 @@ export function CnnDemo() {
   let contentEpoch = 0;
   let activeRequestEpoch = 0;
   let disposed = false;
+  let initialized = false;
   let cancelSetup = () => {};
 
   const [scores, setScores] = createSignal<Array<number | null>>(emptyScores());
@@ -89,6 +90,7 @@ export function CnnDemo() {
   const [hasInk, setHasInk] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
   const [workerFailure, setWorkerFailure] = createSignal<string | null>(null);
+  const [ready, setReady] = createSignal(false);
 
   const readThemeInk = () => {
     const style = getComputedStyle(document.documentElement);
@@ -125,6 +127,7 @@ export function CnnDemo() {
       y: (event.clientY - rect.top) * DRAW_SIZE / rect.height,
     };
   };
+  const invalidateCanvasRect = () => { canvasRect = null; };
 
   const extractInput = () => {
     sampleContext.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
@@ -168,7 +171,7 @@ export function CnnDemo() {
   };
 
   const beginStroke = (event: PointerEvent) => {
-    if (activePointerId != null || event.button !== 0) return;
+    if (!initialized || activePointerId != null || event.button !== 0) return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
     activePointerId = event.pointerId;
@@ -225,6 +228,7 @@ export function CnnDemo() {
   };
 
   const clear = () => {
+    if (!initialized) return;
     if (activePointerId != null && canvas.hasPointerCapture(activePointerId)) {
       canvas.releasePointerCapture(activePointerId);
     }
@@ -255,6 +259,7 @@ export function CnnDemo() {
   };
 
   const onInkInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
+    if (!initialized) return;
     const level = Number(event.currentTarget.value) / 100;
     setInkLevel(level);
     configureBrush(level);
@@ -268,6 +273,7 @@ export function CnnDemo() {
   onSettled(() => {
     cancelSetup = afterVisualTransition(() => {
       if (disposed || !canvas.isConnected) return;
+      try {
       canvas.width = DRAW_SIZE;
       canvas.height = DRAW_SIZE;
       // The visible canvas is draw-only. Keeping willReadFrequently off lets
@@ -286,11 +292,11 @@ export function CnnDemo() {
       configureBrush();
       window.addEventListener('samey-themechange', recolorForTheme);
       window.addEventListener('blur', cancelStroke);
-      resizeObserver = new ResizeObserver(() => { canvasRect = null; });
+      window.addEventListener('scroll', invalidateCanvasRect, true);
+      resizeObserver = new ResizeObserver(invalidateCanvasRect);
       resizeObserver.observe(canvas);
 
       worker = new CnnWorker();
-      canvas.toggleAttribute('data-cnn-runtime-ready', true);
       worker.addEventListener('message', event => {
       if (disposed) return;
       const message: unknown = event.data;
@@ -348,11 +354,23 @@ export function CnnDemo() {
       setWorkerFailure(detail);
         console.error('CNN worker crashed', detail);
       });
+      initialized = true;
+      setReady(true);
+      canvas.toggleAttribute('data-cnn-runtime-ready', true);
+      } catch (error) {
+        resizeObserver?.disconnect();
+        worker?.terminate();
+        window.removeEventListener('samey-themechange', recolorForTheme);
+        window.removeEventListener('blur', cancelStroke);
+        window.removeEventListener('scroll', invalidateCanvasRect, true);
+        setWorkerFailure(formatThrownError(error));
+      }
     });
   });
 
   onCleanup(() => {
     disposed = true;
+    initialized = false;
     cancelSetup();
     canvas?.removeAttribute('data-cnn-runtime-ready');
     contentEpoch++;
@@ -363,6 +381,7 @@ export function CnnDemo() {
     if (typeof window !== 'undefined') {
       window.removeEventListener('samey-themechange', recolorForTheme);
       window.removeEventListener('blur', cancelStroke);
+      window.removeEventListener('scroll', invalidateCanvasRect, true);
     }
   });
 
@@ -384,6 +403,7 @@ export function CnnDemo() {
             ref={canvas}
             class="cnn-pad"
             aria-label="Draw a digit or unknown symbol"
+            aria-disabled={ready() ? 'false' : 'true'}
             onPointerDown={beginStroke}
             onPointerMove={moveStroke}
             onPointerUp={endStroke}
@@ -407,6 +427,7 @@ export function CnnDemo() {
                 step="2"
                 value={Math.round(inkLevel() * 100)}
                 aria-label="Drawing intensity"
+                disabled={!ready()}
                 onInput={onInkInput}
               />
             </span>

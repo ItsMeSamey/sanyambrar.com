@@ -9,6 +9,7 @@ import { ResultContext } from "./context.ts";
 import { resultFromJson, resultToJson } from "./json.ts";
 import { recoverResults } from "./recover.ts";
 import { Result } from "./result.ts";
+import { orderResults } from "./order.ts";
 
 type ResultStorage = {
   load(): Promise<Result[]>;
@@ -34,11 +35,11 @@ function ResultProvider(props: {
   readonly initialResults: readonly Result[];
   readonly children: JSX.Element;
 }) {
-  const [results, setResults] = createSignal<readonly Result[]>(props.initialResults, { equals: false });
+  const [results, setResults] = createSignal<readonly Result[]>(orderResults(props.initialResults), { equals: false });
   const value = {
     results,
     appendResults(newResults: readonly Result[]) {
-      setResults(current => [...current, ...newResults]);
+      setResults(current => orderResults([...current, ...newResults]));
       props.storage.append(newResults).catch(reportStorageError);
     },
     clearResults() {

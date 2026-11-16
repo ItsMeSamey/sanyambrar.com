@@ -3,6 +3,7 @@
 import { installReverbSettings, type ReverbSettingsExtras } from './reverb-settings.ts';
 import { REVERB_NOISE_SIZE } from './reverb-reference.ts';
 import { installReverbBlobSupport } from './reverb-blob-support.ts';
+import { reverbExportLimitSeconds } from './reverb-export.ts';
 export type ReverbDemoDocument = Pick<Document, "createElement" | "createElementNS"> & {
   readonly activeElement: Element | null;
   readonly externalFocusActive: boolean;
@@ -193,6 +194,7 @@ export function runReverbDemoRuntime(
   const blobShader = makeBlobShader(byId<HTMLCanvasElement>("blobCanvas"));
   blobShader.setActive(true);
   let runtimeVisible = true;
+  const recordingPlayerStates: RecordingPlayerState[] = [];
   const syncBlobVisibility = () =>
     blobShader.setVisible(
       runtimeVisible &&
@@ -239,7 +241,9 @@ export function runReverbDemoRuntime(
     return seconds;
   }
   function parseRetentionSize(value: string): number | null {
-    const size = Number(value.trim().replace(",", "."));
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const size = Number(trimmed.replace(",", "."));
     return Number.isFinite(size) && size >= 0 ? size : null;
   }
   function bufferRenderedBuffer(): BufferSlot {
@@ -1054,6 +1058,13 @@ export function runReverbDemoRuntime(
       target.focus({ preventScroll: true });
   }
   function activateScreen(id: ScreenId): void {
+    if (id !== "libraryScreen") {
+      for (const state of recordingPlayerStates) {
+        finishRecordingFineAdjust(state, true, false);
+        finishRecordingWaveScrub(state, false);
+        setRecordingPlaying(state, false);
+      }
+    }
     const previous = document.activeElement;
     if (previous instanceof HTMLElement && previous.closest(".screen")?.id !== id) previous.blur();
     screens.forEach((screen) => {
@@ -1509,10 +1520,12 @@ export function runReverbDemoRuntime(
   function appendCapture(seconds: number): void {
     if (!live || activeBuffer == null || seconds <= 0) return;
     if (activeBuffer === "one") {
-      oneSeconds = Math.min(oneLimitSeconds, oneSeconds + seconds);
+      const captured = Math.min(Math.max(0, oneLimitSeconds - oneSeconds), seconds);
+      oneSeconds += captured;
       if (oneSeconds >= oneLimitSeconds) {
         live = loopLimitSeconds > 0;
         activeBuffer = live ? "loop" : null;
+        if (live) loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds - captured);
       }
     } else {
       loopSeconds = Math.min(loopLimitSeconds, loopSeconds + seconds);
@@ -1944,29 +1957,10 @@ export function runReverbDemoRuntime(
     );
   };
 
-  const rangeExportLimitSeconds = () => {
-    const [channelLabel = "Mono", sampleFormatLabel = "16-bit integer", rateLabel = "44.1 kHz"] =
-      settingsInitial.dropdowns;
-    const channelCount = channelLabel === "Stereo" ? 2 : 1;
-    const bytesPerSample = sampleFormatLabel === "8-bit integer"
-      ? 1
-      : sampleFormatLabel === "32-bit float"
-        ? 4
-        : 2;
-    const wavHeaderBytes = sampleFormatLabel === "32-bit float" ? 58 : 44;
-    const rateKhz = Number.parseFloat(rateLabel);
-    const sampleRate = Number.isFinite(rateKhz) && rateKhz > 0
-      ? Math.round(rateKhz * 1000)
-      : 44_100;
-    const frameBytes = channelCount * bytesPerSample;
-    const physicalFileLimitBytes = 0xffff_ffff + 8;
-    const payloadBudget = Math.max(
-      0,
-      physicalFileLimitBytes - wavHeaderBytes - (bytesPerSample === 1 ? 1 : 0),
-    );
-    const frameAlignedPayload = payloadBudget - (payloadBudget % frameBytes);
-    return frameAlignedPayload / (sampleRate * frameBytes);
-  };
+  const rangeExportLimitSeconds = () => reverbExportLimitSeconds(
+    settingsInitial.dropdowns,
+    settingsInitial.extras.compression,
+  );
   const rangeWheelReachableSeconds = (target: RangeEditTarget) =>
     target === "start"
       ? rangeEndSeconds
@@ -2952,6 +2946,7 @@ export function runReverbDemoRuntime(
     if (
       currentScreen !== "homeScreen" ||
       rangeExportPending ||
+      bufferSwipePointerId !== -1 ||
       bufferDragging ||
       bufferTransitionTarget != null
     )
@@ -2986,8 +2981,10 @@ export function runReverbDemoRuntime(
   });
   function finishBufferSwipe(cancelled: boolean): void {
     if (bufferSwipePointerId === -1) return;
+    const pointerId = bufferSwipePointerId;
     const wasDragging = bufferDragging;
     bufferSwipePointerId = -1;
+    if (blobArea?.hasPointerCapture?.(pointerId)) blobArea.releasePointerCapture(pointerId);
     if (!wasDragging) return;
     bufferDragging = false;
     const commit =
@@ -2999,10 +2996,14 @@ export function runReverbDemoRuntime(
       suppressBlobClick = false;
     }, 0);
   }
-  blobArea.addEventListener("pointerup", () => finishBufferSwipe(false));
-  blobArea.addEventListener("pointercancel", () => finishBufferSwipe(true));
-  blobArea.addEventListener("lostpointercapture", () => {
-    if (bufferDragging) finishBufferSwipe(true);
+  blobArea.addEventListener("pointerup", (event) => {
+    if (event.pointerId === bufferSwipePointerId) finishBufferSwipe(false);
+  });
+  blobArea.addEventListener("pointercancel", (event) => {
+    if (event.pointerId === bufferSwipePointerId) finishBufferSwipe(true);
+  });
+  blobArea.addEventListener("lostpointercapture", (event) => {
+    if (event.pointerId === bufferSwipePointerId) finishBufferSwipe(true);
   });
 
   byId("openSettings").addEventListener("click", openSettings);
@@ -3341,7 +3342,6 @@ export function runReverbDemoRuntime(
     waveTarget: RecordingFineTarget;
     waveResumeAfterScrub: boolean;
   };
-  const recordingPlayerStates: RecordingPlayerState[] = [];
   let expandedRecording: RecordingPlayerState | null = null;
   let recordingPredictiveBackRunning = false;
   let recordingMenuTarget: RecordingPlayerState | null = null;
@@ -4216,6 +4216,25 @@ export function runReverbDemoRuntime(
     syncRecordingTrimTargetVisual(state);
   }
   function syncRecordingPlayback(state: RecordingPlayerState): void {
+    state.waveContainer.setAttribute("role", state.trimMode ? "group" : "slider");
+    state.waveContainer.setAttribute("aria-label", state.trimMode ? "Trim recording" : "Playback position");
+    state.waveContainer.tabIndex = state.trimMode ? -1 : 0;
+    for (const [control, value] of [
+      [state.waveContainer, state.positionSeconds],
+      [state.trimStartBoundary, state.trimStartSeconds],
+      [state.trimEndBoundary, state.trimEndSeconds],
+    ] as const) {
+      if (control === state.waveContainer && state.trimMode) {
+        for (const attribute of ["aria-valuemin", "aria-valuemax", "aria-valuenow", "aria-valuetext"]) control.removeAttribute(attribute);
+        continue;
+      }
+      control.setAttribute("aria-valuemin", "0");
+      control.setAttribute("aria-valuemax", String(state.durationSeconds));
+      control.setAttribute("aria-valuenow", String(value));
+      control.setAttribute("aria-valuetext", formatRangeTime(value));
+    }
+    state.trimStartBoundary.tabIndex = state.trimMode ? 0 : -1;
+    state.trimEndBoundary.tabIndex = state.trimMode ? 0 : -1;
     if (state.trimMode) {
       state.positionLabel.textContent = formatRangeTime(state.trimStartSeconds);
       state.durationLabel.textContent = formatRangeTime(state.trimEndSeconds);
@@ -4311,11 +4330,12 @@ export function runReverbDemoRuntime(
   }
   function runRecordingPlayback(state: RecordingPlayerState): void {
     stopRecordingPlaybackFrame(state);
-    if (!state.playing) return;
+    if (!state.playing || !runtimeVisible || currentScreen !== "libraryScreen") return;
     state.playbackStartedAt = performance.now();
     state.playbackBaseSeconds = state.positionSeconds;
     const frame = (now: number) => {
-      if (!state.playing || expandedRecording !== state) return;
+      state.playbackFrame = null;
+      if (!state.playing || expandedRecording !== state || !runtimeVisible || currentScreen !== "libraryScreen") return;
       state.positionSeconds = Math.min(
         state.durationSeconds,
         state.playbackBaseSeconds + (now - state.playbackStartedAt) / 1000,
@@ -4491,11 +4511,11 @@ export function runReverbDemoRuntime(
       list.prepend(header);
     }
     list.insertBefore(card, header.nextSibling);
-    installRecordingCard(card, nextRecordingIndex++);
+    installRecordingCard(card, nextRecordingIndex++, durationSeconds);
     syncLibraryDateHeaders();
     return filename;
   }
-  function installRecordingCard(card: HTMLElement, cardIndex: number): void {
+  function installRecordingCard(card: HTMLElement, cardIndex: number, durationSeconds?: number): void {
     const summary = card.querySelector<HTMLButtonElement>(".recording-summary");
     const expanded = card.querySelector<HTMLElement>(".recording-expanded");
     const player = card.querySelector<HTMLElement>(".recording-player");
@@ -4551,6 +4571,10 @@ export function runReverbDemoRuntime(
     trimStartBoundary.className = "recording-trim-boundary start";
     const trimEndBoundary = document.createElement("div");
     trimEndBoundary.className = "recording-trim-boundary end";
+    trimStartBoundary.setAttribute("role", "slider");
+    trimStartBoundary.setAttribute("aria-label", "Trim start");
+    trimEndBoundary.setAttribute("role", "slider");
+    trimEndBoundary.setAttribute("aria-label", "Trim end");
     waveContainer.append(trimStartBoundary, trimEndBoundary);
     const trimActions = document.createElement("div");
     trimActions.className = "recording-trim-actions";
@@ -4597,7 +4621,7 @@ export function runReverbDemoRuntime(
       trimCancel,
       trimSave,
       trimSaveLabel,
-      durationSeconds: parseRecordingDuration(subtitle.textContent ?? ""),
+      durationSeconds: durationSeconds ?? parseRecordingDuration(subtitle.textContent ?? ""),
       positionSeconds: 0,
       playing: false,
       playbackStartedAt: 0,
@@ -4632,6 +4656,35 @@ export function runReverbDemoRuntime(
     };
     recordingPlayerStates.push(state);
     syncRecordingPlayback(state);
+    const handleWaveKey = (event: KeyboardEvent, target: RecordingFineTarget) => {
+      if (state.trimSaveTimer || state.wavePointerId !== -1 || state.finePointerId !== -1) return;
+      const current = target === "trim-start" ? state.trimStartSeconds
+        : target === "trim-end" ? state.trimEndSeconds : state.positionSeconds;
+      const step = event.shiftKey ? 0.1 : 1;
+      let next: number;
+      switch (event.key) {
+        case "ArrowRight": case "ArrowUp": next = current + step; break;
+        case "ArrowLeft": case "ArrowDown": next = current - step; break;
+        case "PageUp": next = current + 10; break;
+        case "PageDown": next = current - 10; break;
+        case "Home": next = 0; break;
+        case "End": next = state.durationSeconds; break;
+        default: return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      state.fineTarget = target;
+      if (target === "playhead") {
+        state.positionSeconds = Math.max(0, Math.min(state.durationSeconds, next));
+        if (state.playing) runRecordingPlayback(state);
+      } else adjustRecordingTrimTarget(state, target, next);
+      syncRecordingPlayback(state);
+    };
+    waveContainer.addEventListener("keydown", (event) => {
+      if (!state.trimMode && event.target === waveContainer) handleWaveKey(event, "playhead");
+    });
+    trimStartBoundary.addEventListener("keydown", (event) => handleWaveKey(event, "trim-start"));
+    trimEndBoundary.addEventListener("keydown", (event) => handleWaveKey(event, "trim-end"));
     trimCancel.addEventListener("click", () => exitRecordingTrim(state));
     trimSave.addEventListener("click", () => {
       if (!state.trimMode || state.trimSaveTimer) return;
@@ -5479,13 +5532,9 @@ export function runReverbDemoRuntime(
   const extraSettings = installReverbSettings(document, {
     changed: () => recomputeDirty(),
     sampleFormat: () => dropdownValues()[1]?.textContent ?? "16-bit integer",
-    maximumDurationSeconds: (compression) => {
-      if (compression) return 86400;
-      const format = dropdownValues()[1]?.textContent ?? "16-bit integer";
-      const header = format === "32-bit float" ? 58 : 44;
-      const payload = 0xffffffff + 8 - header - (format === "8-bit integer" ? 1 : 0);
-      return Math.max(1, Math.min(86400, Math.floor(payload / draftBytesPerSecond())));
-    },
+    maximumDurationSeconds: (compression) => Math.max(1, Math.min(86400, Math.floor(
+      reverbExportLimitSeconds(dropdownValues().map(value => value.textContent ?? ""), compression),
+    ))),
     maximumFrequencyHz: () => Math.min(20000, (Number.parseFloat(dropdownValues()[2]?.textContent ?? "44.1") || 44.1) * 500),
     setTimeout: (handler, delay) => setTimeout(handler, delay),
     clearTimeout,
@@ -5832,12 +5881,22 @@ export function runReverbDemoRuntime(
     }
     return true;
   };
+  function validateCompressionDraft(): boolean {
+    // Native Settings requires 16-bit capture when switching the export format to FLAC.
+    if (settingsInitial.extras.compression || !extraSettings.snapshot().compression) return true;
+    const sampleFormat = dropdownValues()[1];
+    if (sampleFormat?.textContent === "16-bit integer") return true;
+    showToast("Choose 16-bit capture for FLAC export. WAV preserves the other capture formats.");
+    sampleFormat?.closest<HTMLButtonElement>(".dropdown")?.focus({ preventScroll: false });
+    return false;
+  }
   byId("settingsNav").addEventListener("click", () => {
     if (settingsDirty) restoreSettings();
     else closeSettingsPanel();
   });
   byId("settingsDone").addEventListener("click", () => {
     if (!settingsDirty) return;
+    if (!validateCompressionDraft()) return;
     if (!extraSettings.valid()) {
       byId<HTMLInputElement>("notificationDuration").focus();
       return;
@@ -6379,6 +6438,7 @@ export function runReverbDemoRuntime(
   });
   const removeBlurListener = addWindowEventListener("blur", () => {
     extraSettings.cancelPointer();
+    finishBufferSwipe(true);
     clearGesture(true);
     cancelRangeWheelInteraction();
     cancelRangeWaveScrub(false);

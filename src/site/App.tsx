@@ -238,7 +238,21 @@ export function App(props: { initialUrl?: string } = {}) {
     }
   };
 
-  const commitNavigation = (next: Route, url: URL, replace: boolean) => {
+  const focusDestination = (id: number, previous: Element | null) => {
+    requestAnimationFrame(() => {
+      if (id !== navigationId) return;
+      const active = document.activeElement;
+      if (active !== document.body && active !== previous && active?.isConnected) return;
+      const root = document.querySelector<HTMLElement>('.site-route');
+      const target = root?.querySelector<HTMLElement>('h1') ?? root?.querySelector<HTMLElement>('main') ?? root;
+      if (!target) return;
+      if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+    });
+  };
+
+  const commitNavigation = (next: Route, url: URL, replace: boolean, id: number) => {
+    const previousFocus = document.activeElement;
     dispatchEvent(new Event('samey-pageleave'));
     setRoute(next);
     setNavigationError(null);
@@ -246,35 +260,40 @@ export function App(props: { initialUrl?: string } = {}) {
     syncDocument(next);
     writeHistory(url, replace);
     lastStableUrl = url.href;
+    focusDestination(id, previousFocus);
     dispatchEvent(new CustomEvent('samey-solid-routechange', { detail: { url: url.href, route: next.kind } }));
     queueMicrotask(() => {
+      if (id !== navigationId) return;
       if (url.hash) document.getElementById(hashTarget(url))?.scrollIntoView();
       else scrollTo({ top: 0, left: 0 });
       dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } }));
     });
   };
 
-  const finishNavigation = async (next: Route, url: URL, replace: boolean, preparedStyles: PreparedRouteStyles, requestedDirection?: NavigationDirection) => {
+  const finishNavigation = async (next: Route, url: URL, replace: boolean, preparedStyles: PreparedRouteStyles, id: number, requestedDirection?: NavigationDirection) => {
     const direction: NavigationDirection = requestedDirection ?? (next.kind === 'home' ? 'back' : 'forward');
     document.documentElement.dataset.navDirection = direction;
     try {
       await animateRouteSwap(() => {
+        if (id !== navigationId) return;
         settleRouteStyles(preparedStyles);
-        commitNavigation(next, url, replace);
+        commitNavigation(next, url, replace, id);
       }, direction);
     } finally {
-      delete document.documentElement.dataset.navDirection;
+      if (id === navigationId) delete document.documentElement.dataset.navDirection;
     }
   };
 
   const navigate = async (href: string, replace = false, direction?: NavigationDirection) => {
     const id = ++navigationId;
+    delete document.documentElement.dataset.navDirection;
     const url = new URL(href, location.href);
     if (url.origin !== location.origin) { location.assign(url.href); return; }
     setNavigationError(null);
-    if (url.href === location.href) { retryRenderedRoute(); setLoading(false); return; }
+    if (url.href === location.href && routeFromUrl(url)?.key === route().key) { retryRenderedRoute(); setLoading(false); return; }
+    if (url.href === location.href) replace = true;
     dispatchEvent(new Event('samey-navigationstart'));
-    if (sameDocumentHash(url)) {
+    if (sameDocumentHash(url) && routeFromUrl(url)?.key === route().key) {
       setLoading(false);
       writeHistory(url, replace);
       lastStableUrl = url.href;
@@ -296,7 +315,7 @@ export function App(props: { initialUrl?: string } = {}) {
       else location.assign(url.href);
       return;
     }
-    if (next.kind === route().kind && cleanPath(url.pathname) === cleanPath(location.pathname)) {
+    if (next.key === route().key && cleanPath(url.pathname) === cleanPath(location.pathname)) {
       writeHistory(url, replace);
       lastStableUrl = url.href;
       syncDocument(next);
@@ -309,10 +328,15 @@ export function App(props: { initialUrl?: string } = {}) {
     try {
       const preparedStyles = await prepareSiteRoute(next);
       if (id !== navigationId) return;
-      await finishNavigation(next, url, replace, preparedStyles, direction);
+      await finishNavigation(next, url, replace, preparedStyles, id, direction);
     } catch (error) {
       if (id === navigationId) {
-        try { settleRouteStyles(await prepareRouteStyles(route())); } catch {}
+        try {
+          const styles = await prepareRouteStyles(route());
+          if (id !== navigationId) return;
+          settleRouteStyles(styles);
+        } catch {}
+        if (id !== navigationId) return;
         setNavigationError(navigationFailure(url, error, 'The page module could not be loaded.'));
       }
     } finally {
@@ -372,6 +396,7 @@ export function App(props: { initialUrl?: string } = {}) {
     };
     const pop = () => {
       const id = ++navigationId;
+      delete document.documentElement.dataset.navDirection;
       const url = new URL(location.href);
       const next = routeFromUrl(url);
       const previousIndex = navigationIndex;
@@ -400,21 +425,28 @@ export function App(props: { initialUrl?: string } = {}) {
         document.documentElement.dataset.navDirection = direction;
         try {
           await animateRouteSwap(() => {
+            if (id !== navigationId) return;
+            const previousFocus = document.activeElement;
             settleRouteStyles(preparedStyles);
             dispatchEvent(new Event('samey-pageleave'));
             setRoute(next);
             syncDocument(next);
-            lastStableUrl = location.href;
-            queueMicrotask(() => { retryRenderedRoute(); dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: location.href, solid: true } })); });
+            lastStableUrl = url.href;
+            focusDestination(id, previousFocus);
+            queueMicrotask(() => {
+              if (id !== navigationId) return;
+              retryRenderedRoute();
+              dispatchEvent(new CustomEvent('samey-pageload', { detail: { url: url.href, solid: true } }));
+            });
           }, direction);
         } finally {
-          delete document.documentElement.dataset.navDirection;
+          if (id === navigationId) delete document.documentElement.dataset.navDirection;
           if (id === navigationId) setLoading(false);
         }
       }).catch((error: unknown) => {
         if (id === navigationId) {
           setLoading(false);
-          void prepareRouteStyles(route()).then(settleRouteStyles).catch(() => {});
+          void prepareRouteStyles(route()).then(styles => { if (id === navigationId) settleRouteStyles(styles); }).catch(() => {});
           setNavigationError(navigationFailure(url, error, 'The page could not be restored.'));
         }
       });
@@ -423,6 +455,7 @@ export function App(props: { initialUrl?: string } = {}) {
     document.addEventListener('click', click);
     addEventListener('popstate', pop);
     return () => {
+      navigationId += 1;
       document.removeEventListener('click', click);
       removeEventListener('popstate', pop);
       if (globalThis.SameyPreloadPage === preloadSiteHref) globalThis.SameyPreloadPage = sharedPreloadPage;

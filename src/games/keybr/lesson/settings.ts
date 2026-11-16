@@ -26,7 +26,7 @@ export const lessonProps = {
     book: itemProp("lesson.books.book", Book.ALL, Book.EN_ALICE_WONDERLAND),
     paragraphIndex: numberProp("lesson.books.paragraphIndex", 0, {
       min: 0,
-      max: 1000,
+      max: Number.MAX_SAFE_INTEGER,
     }),
     lettersOnly: booleanProp("lesson.books.lettersOnly", false),
     lowercase: booleanProp("lesson.books.lowercase", false),

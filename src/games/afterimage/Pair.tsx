@@ -131,6 +131,7 @@ export function PairGame(props: GameProps) {
     clear(); update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.' });
   }
   function keydown(event: KeyboardEvent) {
+    if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
     const index = target.dataset.pairIndex === undefined ? null : Number(target.dataset.pairIndex);

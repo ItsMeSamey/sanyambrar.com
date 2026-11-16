@@ -165,8 +165,8 @@ export function ChainPage() {
           <pre ref={el => refs.botErrorDetail = el} class="samey-error-stack" hidden/>
         </aside>
         <main ref={el => refs.stage = el} class="chain-stage">
-          <canvas ref={el => refs.canvas = el} role="grid" tabindex="0" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
-          <div ref={el => refs.statusEl = el} class="sr-only" aria-live="polite"/>
+          <canvas ref={el => refs.canvas = el} role="application" aria-roledescription="game board" tabindex="0" aria-describedby="chain-board-status" aria-label="Chain Reaction board. Use arrow keys to move and Enter or Space to place an atom."/>
+          <div ref={el => refs.statusEl = el} id="chain-board-status" class="sr-only" aria-live="polite" aria-atomic="true"/>
         </main>
         <section ref={el => refs.resultPanel = el} class="chain-result" data-samey-overlay="" hidden role="dialog" aria-modal="true" aria-labelledby="chain-result-title" aria-live="polite">
           <span class="chain-result-eyebrow">Match complete</span>

@@ -630,12 +630,15 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   function renderAppearancePanel() {
     if (!appearancePanel) return;
     const wasHidden = appearancePanel.hidden;
+    const focused = appearancePanel.contains(document.activeElement) ? document.activeElement : null;
+    const focusIndex = focused ? [...appearancePanel.querySelectorAll('button')].indexOf(focused as HTMLButtonElement) : -1;
     appearancePanel.innerHTML = themeSection() + fontSection() + cursorSection();
     appearancePanel.hidden = wasHidden;
     const theme = read();
     appearancePanel.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
     appearancePanel.querySelectorAll<HTMLElement>("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
     bindCursorToggle();
+    if (focusIndex >= 0 && !wasHidden) appearancePanel.querySelectorAll('button')[focusIndex]?.focus({ preventScroll: true });
   }
   const positionAppearancePanel = (trigger: HTMLElement) => {
     if (!appearancePanel || !trigger) return;
@@ -909,11 +912,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     panel.dataset.kbTopLayer = "";
     panel.hidden = true;
     panel.addEventListener("click", (event) => {
+      event.stopPropagation();
       const target = eventElement(event);
       const themeButton = target?.closest<HTMLElement>("[data-theme-choice]");
-      if (themeButton) setPrefs({ color: themeButton.dataset.themeChoice });
       const fontButton = target?.closest<HTMLElement>("[data-font-choice]");
-      if (fontButton) setPrefs({ font: fontButton.dataset.fontChoice });
+      if (themeButton || fontButton) {
+        const trigger = appearanceTrigger;
+        setPrefs(themeButton ? { color: themeButton.dataset.themeChoice } : { font: fontButton?.dataset.fontChoice });
+        closeAppearance();
+        if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+      }
       if (target?.closest("[data-open-advanced]")) openAdvanced();
     });
     document.body.append(panel);
@@ -921,8 +929,14 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.addEventListener("click", (event) => {
       const target = eventElement(event);
       const trigger = target?.closest<HTMLElement>("[data-samey-appearance]");
-      if (trigger) { event.preventDefault(); event.stopPropagation(); toggleAppearance(trigger); return; }
-      if (event.target instanceof Node && !panel.contains(event.target)) closeAppearance();
+      if (trigger) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleAppearance(trigger);
+        if (event.detail === 0 && !panel.hidden) (panel.querySelector<HTMLElement>('[data-theme-choice][data-selected]') ?? panel.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+        return;
+      }
+      if (!event.composedPath().includes(panel)) closeAppearance();
     });
     addEventListener("resize", () => appearanceTrigger && positionAppearancePanel(appearanceTrigger), { passive: true });
     addEventListener("scroll", (event) => {
@@ -1053,7 +1067,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let loadingRaf = 0, loadingStarted = 0;
     let refreshCursorMode = () => {};
     const animateLoadingPaths = (time: number) => {
-      if (!cursorLoading) { loadingRaf = 0; return; }
+      if (!cursorLoading || cursorMode !== "invert" || document.hidden) { loadingRaf = 0; return; }
       const frames = loadingFrames();
       const duration = loadingGeometry.duration * 1000;
       const progress = (Math.max(0, time - loadingStarted) % duration) / duration;
@@ -1071,14 +1085,16 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         cursor.removeAttribute("data-text");
         if (cursorMode === "invert") setCursorVisible(true);
       }
-      if (loading && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
-      if (!loading && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
+      const animate = loading && cursorMode === "invert" && !document.hidden;
+      if (animate && !loadingRaf) { loadingStarted = performance.now(); loadingPath?.setAttribute("d", loadingFrames()[0]); loadingRaf = requestAnimationFrame(animateLoadingPaths); }
+      if (!animate && loadingRaf) { cancelAnimationFrame(loadingRaf); loadingRaf = 0; }
       if (!loading) {
         refreshCursorMode();
         if (cursorMode === "invert" && cursorVisible) armCursorIdle();
       }
     };
     updateLoadingCursor = setLoading;
+    document.addEventListener("visibilitychange", () => setLoading(cursorLoading));
     if (loadingState) queueMicrotask(() => { if (loadingState) setLoading(true); });
 
     // `difference` with a fixed white source has an unavoidable 50% gray
@@ -1222,8 +1238,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     let pendingX = 0, pendingY = 0;
     let hasPointerPosition = false;
     let linkHandoffUntil = 0;
-    let modifiedLinkPending: LinkElement | null = null;
-    let suppressModifiedClick: LinkElement | null = null;
     // Pointer position is a compositor-only transform. Updating it directly from
     // pointerrawupdate avoids the extra requestAnimationFrame of latency that the
     // old cursor path added (up to a full display frame), while the more expensive
@@ -1601,6 +1615,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     };
     const syncCursorPresentation = (theme: ThemeState = read()) => {
       cursorMode = theme.cursorMode;
+      setLoading(cursorLoading);
       document.documentElement.dataset.cursorMode = cursorMode;
       document.documentElement.classList.toggle("samey-custom-cursor", cursorMode === "invert");
       document.documentElement.classList.toggle("samey-hardware-cursor", cursorMode === "hardware");
@@ -1673,30 +1688,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.addEventListener("pointerdown", (event) => {
       const actual = event.target instanceof Element ? event.target : elementAt(event);
       const pressedLink = linkTarget(actual);
-      const modifiedLink = pressedLink && (event.ctrlKey || event.metaKey || event.button === 1);
       pressedPointerId = event.pointerId;
       pressedGrab = !!actual?.closest?.(pressedGrabSelector);
       place(event);
       wakeCursor();
       selectingText = event.button === 0 && !pressedGrab && !pressedLink && wantsText(actual);
       setMode(actual);
-      if (modifiedLink) {
-        event.preventDefault();
-        modifiedLinkPending = pressedLink;
-        suppressModifiedClick = pressedLink;
-        holdLinkCursor(event, pressedLink);
-      }
     }, true);
     document.addEventListener("pointerup", (event) => {
       selectingText = false;
       hideDragPreview();
       if (pressedPointerId === event.pointerId) { pressedPointerId = null; pressedGrab = false; }
-      if (modifiedLinkPending instanceof HTMLAnchorElement && modifiedLinkPending.href) {
-        const link = modifiedLinkPending;
-        modifiedLinkPending = null;
-        holdLinkCursor(event, link);
-        window.open(link.href, "_blank", "noopener,noreferrer");
-      }
       place(event);
       wakeCursor();
       setMode(elementAt(event));
@@ -1704,24 +1706,12 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     document.addEventListener("click", (event) => {
       const link = event.button === 0 ? linkTarget(event.target) : null;
       if (!link) return;
-      if (suppressModifiedClick === link) {
-        event.preventDefault();
-        suppressModifiedClick = null;
-        return;
-      }
       holdLinkCursor(event, link);
     }, true);
     document.addEventListener("auxclick", (event) => {
       const link = event.button === 1 ? linkTarget(event.target) : null;
       if (!link) return;
-      if (suppressModifiedClick === link) {
-        event.preventDefault();
-        suppressModifiedClick = null;
-        return;
-      }
-      event.preventDefault();
       holdLinkCursor(event, link);
-      if (link instanceof HTMLAnchorElement && link.href) window.open(link.href, "_blank", "noopener,noreferrer");
     }, true);
     const selectedEditableText = (target: EventTarget | null) => {
       const editable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
@@ -1765,8 +1755,6 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       selectingText = false;
       pressedGrab = false;
       pressedPointerId = null;
-      modifiedLinkPending = null;
-      suppressModifiedClick = null;
       hideDragPreview();
       setGrabState(false);
       setTextState(false);
@@ -1826,6 +1814,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
   };
   const cutFrom = (el: EditableElement | null) => {
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el.readOnly || el.disabled || el.selectionStart == null) return;
+      if (!el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "deleteByCut", data: null }))) return;
       const start = el.selectionStart ?? 0, end = el.selectionEnd ?? start;
       el.setRangeText("", Math.min(start, end), Math.max(start, end), "end");
       el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "deleteByCut", data: null }));
@@ -1834,10 +1824,21 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     if (el?.isContentEditable) editContentEditable(el, "", "deleteByCut");
   };
   const pasteInto = (el: EditableElement | null, text: string) => {
+    if (!el?.isConnected) return;
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el.disabled) return;
+    }
+    el.focus({ preventScroll: true });
+    const clipboardData = new DataTransfer();
+    clipboardData.setData("text/plain", text);
+    if (!el.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData }))) return;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el.readOnly || el.disabled || el.selectionStart == null) return;
+      if (!el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: text }))) return;
       el.setRangeText(text, el.selectionStart ?? el.value.length, el.selectionEnd ?? el.value.length, "end");
       el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste", data: text }));
     } else if (el?.isContentEditable) {
+      if (!el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertFromPaste", data: text }))) return;
       editContentEditable(el, text, "insertFromPaste");
     }
   };
@@ -1900,6 +1901,9 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         return;
       }
       if (event.shiftKey && event.button === 2) return;
+      // Number/date and other non-text inputs do not expose a selection API.
+      // Their native menu owns insertion and the browser's value validation.
+      if (event.target instanceof HTMLInputElement && event.target.selectionStart == null) { close(); return; }
       event.preventDefault();
       const reopening = !menu.hidden && event.target instanceof Node && menu.contains(event.target);
       const owner = reopening ? menu.parentElement : event.target instanceof Element ? event.target.closest<HTMLElement>('[role="dialog"], :popover-open, dialog[open]') : null;
@@ -1917,7 +1921,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const editable = editableTarget(target);
       const selection = selectedText(editable);
       if (selection) add("Copy", () => writeClipboardText(selection), true, shortcutKey("C"));
-      if (editable && selection) add("Cut", async () => { if (await writeClipboardText(selection)) cutFrom(editable); }, true, shortcutKey("X"));
+      if (editable && selection) add("Cut", async () => { if (await writeClipboardText(selection)) cutFrom(editable); }, !(editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) || (!editable.readOnly && !editable.disabled), shortcutKey("X"));
       if (editable) add("Paste", async () => pasteInto(editable, await navigator.clipboard.readText()), !!navigator.clipboard?.readText, shortcutKey("V"));
       add("Select all", () => {
         if (editable instanceof HTMLInputElement || editable instanceof HTMLTextAreaElement) { editable.focus(); editable.select(); }
@@ -2086,7 +2090,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const { size, total } = scrollMetrics(target); const rect = bar.getBoundingClientRect();
       setScroll(target, ((event.clientY - rect.top) / rect.height) * Math.max(0, total - size)); scheduleVirtualBarsFor(target);
     });
-    target.addEventListener("scroll", () => scheduleVirtualBarsFor(target), { passive: true }); virtualBars.set(target, bar);
+    virtualBars.set(target, bar);
   };
   const virtualXBars = new Map<Element, HTMLDivElement>();
   const addVirtualXBar = (target: Element) => {
@@ -2110,7 +2114,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.target === thumb) return;
       const rect = bar.getBoundingClientRect(); target.scrollLeft = ((event.clientX - rect.left) / rect.width) * Math.max(0, target.scrollWidth - target.clientWidth); scheduleVirtualBars(false);
     });
-    target.addEventListener("scroll", () => scheduleVirtualBars(false), { passive: true }); virtualXBars.set(target, bar);
+    virtualXBars.set(target, bar);
   };
   const updateVirtualXBars = () => {
     for (const [target, bar] of virtualXBars) {

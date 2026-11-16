@@ -79,6 +79,7 @@ export class Progress {
     this.#keyStatsMap.append(result);
     this.#summaryStats.append(result);
     this.#streakList.append(result);
+    this.#lastDailyGoalValue = this.#dailyGoal.value;
     this.#dailyGoal.append(result);
     this.#appendEvents(result, listener);
   }

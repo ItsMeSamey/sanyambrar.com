@@ -12,7 +12,6 @@ import { Lesson } from "./lesson.ts";
 import { lessonProps } from "./settings.ts";
 import { Target } from "./target.ts";
 import { generateFragment } from "./text/fragment.ts";
-import { wordSequence } from "./text/words.ts";
 
 type StoredBookProgress = {
   readonly paragraphIndex: number;
@@ -73,7 +72,9 @@ export class BooksLesson extends Lesson {
   #paragraphCacheKey = "";
   #paragraphCache: readonly string[] = [];
   #wordListCacheKey = "";
-  #wordListCache: readonly string[] = [];
+  #wordListCache: string[] = [];
+  #loadedParagraphs = 0;
+  #wordCodePoints: ReadonlySet<number> = new Set();
   #history: number[] = [0];
   #pageIndex = 0;
   #progressParagraphIndex = 0;
@@ -126,26 +127,45 @@ export class BooksLesson extends Lesson {
 
   get paragraphIndex(): number {
     return clamp(
-      this.settings.get(lessonProps.books.paragraphIndex),
+      Math.floor(this.settings.get(lessonProps.books.paragraphIndex)) || 0,
       0,
       Math.max(0, this.rawParagraphs.length - 1),
     );
   }
 
   get wordList(): readonly string[] {
-    const paragraphs = this.paragraphs;
-    const paragraphIndex = this.paragraphIndex;
-    const key = `${this.#paragraphCacheKey}:${paragraphIndex}`;
+    this.#loadWordsThrough(Infinity);
+    return this.#wordListCache;
+  }
+
+  async prepare(): Promise<this> {
+    // Old saves store a whole-book word offset. Resolve that prefix in short
+    // chunks before mounting practice so resuming a long book stays responsive.
+    do {
+      this.#loadWordsThrough(this.wordIndex, performance.now() + 8);
+      if (this.#wordListCache.length > this.wordIndex || this.#loadedParagraphs >= this.rawParagraphs.length) return this;
+      await new Promise<void>(resolve => setTimeout(resolve, 0));
+    } while (true);
+  }
+
+  #loadWordsThrough(wordIndex: number, deadline = Infinity): void {
+    const lettersOnly = this.settings.get(lessonProps.books.lettersOnly);
+    const lowercase = this.settings.get(lessonProps.books.lowercase);
+    const key = `${Number(lettersOnly)}:${Number(lowercase)}:${this.paragraphIndex}`;
     if (key !== this.#wordListCacheKey) {
       this.#wordListCacheKey = key;
-      this.#wordListCache = [
-        ...paragraphs.slice(paragraphIndex),
-        ...paragraphs.slice(0, paragraphIndex),
-      ]
-        .map(splitParagraph)
-        .flat();
+      this.#wordListCache = [];
+      this.#loadedParagraphs = 0;
+      this.#wordCodePoints = this.#filteredCodePoints(lettersOnly);
     }
-    return this.#wordListCache;
+    // Keep legacy word offsets, but only filter/tokenize as far as the current page.
+    const paragraphs = this.rawParagraphs;
+    while (this.#wordListCache.length <= wordIndex && this.#loadedParagraphs < paragraphs.length) {
+      const index = (this.paragraphIndex + this.#loadedParagraphs++) % paragraphs.length;
+      const words = splitParagraph(this.#filterParagraphWith(paragraphs[index], this.#wordCodePoints, lowercase));
+      for (const word of words) this.#wordListCache.push(word);
+      if (performance.now() >= deadline) break;
+    }
   }
 
   override get letters() {
@@ -214,11 +234,18 @@ export class BooksLesson extends Lesson {
     this.#history[this.#pageIndex] = start;
     this.wordIndex = start;
     this.#saveProgress();
-    return generateFragment(this.settings, wordSequence(this.wordList, this));
+    return generateFragment(this.settings, () => {
+      const index = this.#normalizeWordIndex(this.wordIndex);
+      const word = this.#wordListCache[index] ?? null;
+      this.wordIndex = index + 1;
+      return word;
+    });
   }
 
   #normalizeWordIndex(value: number): number {
-    const length = this.wordList.length;
+    this.#loadWordsThrough(value);
+    if (this.#loadedParagraphs < this.rawParagraphs.length) return value;
+    const length = this.#wordListCache.length;
     return length > 0 ? ((value % length) + length) % length : 0;
   }
 

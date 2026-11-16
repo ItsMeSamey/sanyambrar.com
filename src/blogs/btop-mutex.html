@@ -115,6 +115,7 @@ atomic_lock::~atomic_lock() noexcept {
         <button type="button" id="cas-reset">Reset</button>
         <span class="cas-count" id="cas-count">0 / 6</span>
       </div>
+      <p class="sr-only" id="cas-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <figcaption class="viz-caption" id="cas-caption">No contention yet.</figcaption>
     </figure>
 
@@ -160,7 +161,7 @@ void atomic_wait_for(const atomic&lt;bool&gt;&amp; atom, bool old, uint64_t wait
           <div class="op">UI reads or mutates shared state<small>ordinary, non-atomic access</small></div>
         </div>
       </div>
-      <figcaption class="viz-caption" id="ordering-caption">The flag itself is coherent. Runner's normal writes still have no happens-before path to the waiting thread.</figcaption>
+      <figcaption class="viz-caption" id="ordering-caption" role="status" aria-live="polite" aria-atomic="true">The flag itself is coherent. Runner's normal writes still have no happens-before path to the waiting thread.</figcaption>
     </figure>
 
     <p>My first fix added release ordering to the unlock stores and acquire ordering to the waits. When the acquire observes the release, the runner's earlier writes become visible to the waiting thread.</p>

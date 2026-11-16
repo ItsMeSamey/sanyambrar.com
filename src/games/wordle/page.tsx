@@ -16,6 +16,9 @@ import { WordleBackButton } from './WordleBackButton'
 import { animateRootSwap } from '../../shared/transitions.ts'
 import { pageRoot } from './navigation.ts'
 import { WordleDatePicker } from './WordleDatePicker'
+import { selectedGameStorageKey } from './active-game-storage'
+import { describeGuess, letterFeedback } from './feedback'
+import { isKeyboardActivation } from './pointer-input'
 
 type WordleStringState = 'g' | 'y' | 'r'
 type Keys = 'Q' | 'W' | 'E' | 'R' | 'T' | 'Y' | 'U' | 'I' | 'O' | 'P' | 'A' | 'S' | 'D' | 'F' | 'G' | 'H' | 'J' | 'K' | 'L' | 'Z' | 'X' | 'C' | 'V' | 'B' | 'N' | 'M' | '⏎' | '⌫'
@@ -68,9 +71,9 @@ class Keyboard {
             return <button
               type='button'
               disabled={isDisabled}
-              aria-label={isDisabled ? `${key} disabled for this game` : key}
+              aria-label={isDisabled ? `${key} disabled for this game` : this.state[char as Keys].state ? `${key}, ${letterFeedback(this.state[char as Keys].state!)}` : key}
               onPointerDown={e => {
-                if (isDisabled || activePointerId != null) return
+                if (isDisabled || e.button !== 0 || activePointerId != null) return
                 e.preventDefault()
                 activePointerId = e.pointerId
                 e.currentTarget.setPointerCapture?.(e.pointerId)
@@ -89,7 +92,7 @@ class Keyboard {
               onClick={e => {
                 // Native keyboard activation emits click with detail=0. Pointer input
                 // is already handled on down/up so it must not insert twice.
-                if (!isDisabled && e.detail === 0) { dispatch('keydown'); dispatch('keyup') }
+                if (!isDisabled && isKeyboardActivation(e)) { dispatch('keydown'); dispatch('keyup') }
               }}
               class={'wordle-key text-center ' + (
                 key.length === 1 ? '' : 'wordle-key-wide ' 
@@ -113,9 +116,10 @@ export class Block {
   render(ref?: (element: HTMLSpanElement) => void) {
     this.word = this.word.slice(0, this.wordLength)
     if (this.word.length < this.wordLength) this.word += ' '.repeat(this.wordLength - this.word.length)
-    return <span ref={ref} class='wordle-row text-foreground' style={{'--wordle-length': this.wordLength}}>
+    return <span ref={ref} class='wordle-row text-foreground' role='group' aria-label={describeGuess(this.word, this.mask)} style={{'--wordle-length': this.wordLength}}>
       <For each={[...this.word]}>{(char, i) => (
         <div
+          aria-hidden='true'
           class={'wordle-cell border capitalize relative ' + (
             this.mask[i()] === 'r' ? 'wordle-state-r' :
             this.mask[i()] === 'y' ? 'wordle-state-y' :
@@ -151,8 +155,10 @@ type StorageCell<T> = { get(): T; set(value: T): void }
 
 function storageCell<T>(key: string, fallback: T, parse: (raw: string) => T, serialize: (value: T) => string): StorageCell<T> {
   let value = fallback
+  let writable = true
   const save = (next: T) => {
     value = next
+    if (!writable) return
     try { localStorage.setItem(key, serialize(next)) }
     catch (error) { console.warn(`Could not persist Wordle state "${key}"`, error) }
     window.dispatchEvent(new CustomEvent('wordle:storage-change', {detail: {key}}))
@@ -163,7 +169,8 @@ function storageCell<T>(key: string, fallback: T, parse: (raw: string) => T, ser
     else value = parse(raw)
   } catch (error) {
     console.warn(`Could not read Wordle state "${key}"; using fallback`, error)
-    save(fallback)
+    // Keep unreadable saves intact, including later automatic mount writes.
+    writable = false
   }
   return {get: () => value, set: save}
 }
@@ -177,6 +184,14 @@ class GameState {
     const stored = stateStore.get()
     if (!stored) throw new Error('Wordle state store has no initial state')
     this.stored = stored
+    const savedRules = stored.config ?? hard
+    const lastColors = (stored.history[stored.history.length - 1][1] || '').split('')
+    if (stored.done === undefined && lastColors.length === savedRules.wordLength) {
+      if (lastColors.every(s => s === 'g')) stored.done = KindEnum.Correct
+      else if (lastColors.every(s => s === 'b')) stored.done = KindEnum.Revealed
+      else if (savedRules.maxTries !== 1 && stored.history.length >= savedRules.maxTries) stored.done = KindEnum.Failed
+    }
+    if (stored.done !== undefined && stored.config) this.hard = hard = {...stored.config}
 
     if (!stored.word) {
       if (hard.mode === 'daily') {
@@ -210,12 +225,6 @@ class GameState {
       stored.disabledSeed ??= legacyGameStorageKey(stored.config ?? hard)
     }
 
-    const lastColors = (stored.history[stored.history.length - 1][1] || '').split('')
-    if (stored.done === undefined && lastColors.length === hard.wordLength) {
-      if (lastColors.every(s => s === 'g')) stored.done = KindEnum.Correct
-      else if (lastColors.every(s => s === 'b')) stored.done = KindEnum.Revealed
-      else if (hard.maxTries !== 1 && stored.history.length >= hard.maxTries) stored.done = KindEnum.Failed
-    }
     [this.state, this.setState] = createStore<CurrentState>({
       keyboard: Keyboard.stateFromHistory(stored.history),
       showPopOver: stored.done !== undefined,
@@ -234,8 +243,9 @@ class GameState {
 
   private persist(draft: CurrentState) {
     this.stored.history = snapshot(draft.history)
+    if (this.stored.done === undefined) this.stored.config = snapshot(this.hard)
     this.stored.done = draft.done
-    this.stored.config = snapshot(this.hard)
+    if (draft.done !== undefined) this.hard = {...(this.stored.config ?? this.hard)}
     this.stateStore.set(this.stored)
   }
 
@@ -283,7 +293,7 @@ class GameState {
   }
 
   updateAdvanced(config: SettingsHardProps) {
-    if (config.mode !== 'advanced') return
+    if (config.mode !== 'advanced' || this.isFinished()) return
     this.stored.disabledSeed ??= legacyGameStorageKey(this.stored.config ?? config)
     const disabled = disabledLettersForWord(this.stored.word, config.disabledLetters, this.stored.disabledSeed)
     this.stored.disabled = disabled
@@ -419,12 +429,17 @@ class WordleModel {
           <For each={Array.from({length: Math.max(0, this.state.hard.maxTries - this.state.history.length)}).fill(undefined)}>{() => new Block(this.state.hard.wordLength, '', '').render()}</For>
         </Show>
       </div>
+      <div class='sr-only' role='status' aria-live='polite' aria-atomic='true'>{(() => {
+        const completed = this.state.history.filter(([, mask]) => mask.length > 0)
+        const last = completed.at(-1)
+        return last ? `Guess ${completed.length}. ${describeGuess(last[0], last[1])}` : ''
+      })()}</div>
       <div class='wordle-keyboard justify-center justify-items-center overflow-visible'>{new Keyboard(this.state.state.keyboard, this.state.disabled, suggested()).render()}</div>
     </div>
   }
 }
 
-function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextChallenge: () => void, onChooseMode: () => void) {
+function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onNextChallenge: () => void, onChooseMode: () => void, sourceKey?: string) {
   const fromStorage = (raw: string): WordLocalStorageState => {
     const value: unknown = JSON.parse(raw)
     if (!isRecord(value) || !isWordleHistory(value.history) ||
@@ -495,7 +510,7 @@ function RenderWordleModel(hard: SettingsHardProps, soft: SettingsSoftProps, onN
     delete stored.word
     return JSON.stringify(stored)
   }
-  const storageKey = gameStorageKey(hard)
+  const storageKey = selectedGameStorageKey(hard, sourceKey)
   if (hard.mode === 'advanced' && Number.isInteger(hard.wordIndex)) try {
     if (!localStorage.getItem(storageKey)) {
       const legacyKey = legacyGameStorageKey(hard)
@@ -623,6 +638,7 @@ export default function Wordle() {
   const [soft, setSoft] = createStore({...savedSoft, fastInvalidate: urlChallenge?.fastInvalidate ?? savedSoft.fastInvalidate})
   const [showOpening, setShowOpening] = createSignal(!urlChallenge)
   const [dailyDate, setDailyDate] = createSignal(initialHard.dailyDate ?? localDateKey())
+  const [selectedSourceKey, setSelectedSourceKey] = createSignal<string>()
 
   createEffect(() => ({...hard}), config => {
     hardStore.set(config)
@@ -636,8 +652,9 @@ export default function Wordle() {
   })
 
   const updateSoft = (patch: Partial<SettingsSoftProps>) => setSoft(draft => { Object.assign(draft, patch) })
-  const commitConfig = (raw: ChallengeConfig) => {
+  const commitConfig = (raw: ChallengeConfig, sourceKey?: string) => {
     const config = materializeChallenge(raw)
+    setSelectedSourceKey(sourceKey)
     setHard(draft => {
       Object.assign(draft, {dailyDate: undefined, dailyVersion: undefined, randomId: undefined, wordIndex: undefined}, config)
     })
@@ -683,12 +700,13 @@ export default function Wordle() {
     // Settings are edited from an open popover. Apply them directly so the
     // game surface updates under the pointer instead of animating the whole
     // Wordle root on every slider step.
-    commitConfig(next)
+    commitConfig(next, patch.wordLength !== undefined && patch.wordLength !== hard.wordLength ? undefined : selectedSourceKey())
   }
-  const selectActiveGame = (config: SettingsHardProps) => {
-    void swapWordleView(() => commitConfig(config), 'forward')
+  const selectActiveGame = (config: SettingsHardProps, sourceKey: string) => {
+    if (gameStorageKey(config) === gameStorageKey({...hard}) && sourceKey === selectedGameStorageKey({...hard}, selectedSourceKey())) return
+    void swapWordleView(() => commitConfig(config, sourceKey), 'forward')
   }
-  const gameKey = () => gameStorageKey({...hard})
+  const gameKey = () => `${gameStorageKey({...hard})}:${selectedSourceKey() ?? ''}`
 
   const gameActions = () => <GameTopBarActions ariaLabel='Wordle'>
     <StatsPageTrigger />
@@ -704,7 +722,7 @@ export default function Wordle() {
     />
     <Show when={!showOpening()} fallback={<OpeningScreen date={dailyDate} setDate={setDailyDate} startDaily={startDaily} startRandom={startRandom} startAdvanced={startAdvanced} />}>
       {/* The key owns game lifetime; construction reads a settings snapshot. */}
-      <For each={[gameKey()]}>{() => untrack(() => RenderWordleModel(hard, soft, nextChallenge, chooseMode))}</For>
+      <For each={[gameKey()]}>{() => untrack(() => RenderWordleModel(hard, soft, nextChallenge, chooseMode, selectedSourceKey()))}</For>
     </Show>
   </>
 }

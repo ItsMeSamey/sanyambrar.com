@@ -5,6 +5,7 @@ import { watchDevicePixelRatio } from '../../shared/devicePixelRatio.ts';
 import { formatThrownError } from '../../shared/error.ts';
 import { ChainBotClient } from './bot/client.ts';
 import type { ChainRefs } from './dom.ts';
+import { canResumeReplay, compactMatchHistory } from './match-history.ts';
 
 type GridConfig = { rows: number; cols: number };
 type Config = GridConfig & { enemies: number };
@@ -266,11 +267,11 @@ export function mountChain(refs: ChainRefs) {
       const stored = parseRecord(localStorage.getItem(MATCHES_KEY));
       if (stored?.v === 1 && Array.isArray(stored.matches)) {
         const base = record(stored.base);
-        return {
-          v:1,
+        return compactMatchHistory({
+          v:1 as const,
           base:{games:Math.max(0,Number(base.games)||0),wins:Math.max(0,Number(base.wins)||0),largest:Math.max(0,Number(base.largest)||0)},
-          matches: stored.matches.map(normalizeMatch).filter((match): match is Match => match != null).slice(0,120),
-        };
+          matches: stored.matches.map(normalizeMatch).filter((match): match is Match => match != null),
+        });
       }
       const legacy = loadStats();
       const legacyRecent = legacy.recent || [];
@@ -296,7 +297,7 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function persistMatchDb(db: MatchDb) {
-    try { localStorage.setItem(MATCHES_KEY, JSON.stringify({...db,matches:db.matches.slice(0,120)})); }
+    try { localStorage.setItem(MATCHES_KEY, JSON.stringify(compactMatchHistory(db))); }
     catch (error) { console.warn('Could not persist Chain Reaction match history', error); }
   }
 
@@ -663,7 +664,7 @@ export function mountChain(refs: ChainRefs) {
     const alive = drawBoardScene(replayCtx, geom.cfg, frameData.board, frameData.owners, geom, replayEntry.p, replayParticles, now, -1);
     replayPrev.disabled = replayIndex <= 0 || !!replayTimer;
     replayNext.disabled = replayIndex >= replayFrames.length - 1 || !!replayTimer;
-    replayResume.disabled = !!replayTimer;
+    replayResume.disabled = !canResumeReplay(replayFrames[replayIndex], !!replayTimer || replayPlay.textContent === 'Pause');
     replayStatus.value = `Move ${replayIndex} / ${Math.max(0,replayFrames.length-1)}`;
     if (alive && !replayFrame) replayFrame = requestAnimationFrame(drawReplay);
     else if (!alive) replayParticles = [];
@@ -754,9 +755,9 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function resumeReplayPoint() {
-    if (!replayEntry || !replayFrames.length) return;
-    stopReplay();
     const frameData = replayFrames[replayIndex];
+    if (!replayEntry || !canResumeReplay(frameData, !!replayTimer || replayPlay.textContent === 'Pause')) return;
+    stopReplay();
     abandonCurrentMatch();
     cancelBotTurns();
     gameVersion++;
@@ -1043,6 +1044,12 @@ export function mountChain(refs: ChainRefs) {
       : (turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`));
     if (gameOver) statusEl.textContent = turn === HUMAN ? 'You win' : `Enemy ${turn - 1} wins`;
     else statusEl.textContent = turn === HUMAN ? 'Your turn' : `Enemy ${turn - 1} turn`;
+    if (board.length) {
+      const owner = owners[focusCell];
+      const occupant = owner === EMPTY ? 'Empty' : owner === HUMAN ? 'Your cell' : `Enemy ${owner - 1} cell`;
+      const availability = gameOver ? 'Game over' : locked ? 'Move in progress' : turn !== HUMAN ? 'Wait for your turn' : owner !== EMPTY && owner !== HUMAN ? 'Cannot place an atom here' : 'Press Enter or Space to place an atom';
+      statusEl.textContent += `. Row ${Math.floor(focusCell / cols) + 1}, column ${focusCell % cols + 1}. ${occupant}. ${board[focusCell]} atoms; bursts at ${degree[focusCell]}. ${availability}.`;
+    }
   }
 
 
@@ -1266,10 +1273,10 @@ export function mountChain(refs: ChainRefs) {
     if (e.button !== 0) return;
     e.preventDefault();
     const i = cellFromEvent(e);
-    if (i >= 0) { focusCell = i; canvas.focus({preventScroll:true}); requestDraw(); void humanMove(i); }
+    if (i >= 0) { focusCell = i; canvas.focus({preventScroll:true}); updateStatus(); requestDraw(); void humanMove(i); }
   };
   const onCanvasKeyDown = (e: KeyboardEvent) => {
-    if (gameView.hidden || !board.length) return;
+    if (e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || gameView.hidden || !board.length) return;
     const row = Math.floor(focusCell / cols), col = focusCell % cols;
     let next = focusCell;
     if (e.key === 'ArrowLeft') next = row * cols + Math.max(0, col - 1);
@@ -1280,9 +1287,9 @@ export function mountChain(refs: ChainRefs) {
     else if (e.key === 'Home') next = row * cols;
     else if (e.key === 'End') next = row * cols + cols - 1;
     else return;
-    e.preventDefault(); focusCell = next; requestDraw();
+    e.preventDefault(); focusCell = next; updateStatus(); requestDraw();
   };
-  const onCanvasFocus = () => requestDraw();
+  const onCanvasFocus = () => { updateStatus(); requestDraw(); };
   const onCanvasBlur = () => requestDraw();
   canvas.addEventListener('pointerdown', onCanvasPointerDown);
   canvas.addEventListener('keydown', onCanvasKeyDown);
