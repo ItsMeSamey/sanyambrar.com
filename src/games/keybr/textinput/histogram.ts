@@ -93,7 +93,14 @@ export class Histogram implements Iterable<Sample> {
   }
 }
 
-export function validateSample({ timeToType }: Sample): boolean {
+export function validateSample({ hitCount, missCount, timeToType }: Sample): boolean {
+  if (
+    !Number.isSafeInteger(hitCount) || hitCount < 0 ||
+    !Number.isSafeInteger(missCount) || missCount < 0 ||
+    !Number.isFinite(timeToType) || timeToType < 0
+  ) {
+    return false;
+  }
   if (timeToType > 0) {
     if (timeToType < /* 300WPM/1500CPM */ 40) {
       return false; // Too fast.

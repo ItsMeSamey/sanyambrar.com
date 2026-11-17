@@ -12,8 +12,9 @@ export enum Page {
 const readPage = (): Page => new URL(location.href).searchParams.get('p') === String(Page.Stats) ? Page.Stats : Page.Wordle
 const [page, setPage] = createSignal<Page>(readPage())
 let pageRootElement: HTMLElement | undefined
+let navigationGeneration = 0
 
-export const setPageRoot = (element?: HTMLElement) => { pageRootElement = element }
+export const setPageRoot = (element?: HTMLElement) => { navigationGeneration++; pageRootElement = element }
 export const pageRoot = () => pageRootElement?.isConnected ? pageRootElement : null
 
 export const selectP = (value: Page) => page() === value
@@ -27,20 +28,23 @@ function commitPage(value: Page) {
 }
 
 export function setP(value: Page) {
+  const generation = ++navigationGeneration
   if (value === page()) return
   const current = pageRoot()
-  void animateRootSwap(current, () => commitPage(value), pageRoot, value === Page.Wordle ? 'back' : 'forward')
+  void animateRootSwap(current, () => { if (generation === navigationGeneration) commitPage(value) }, pageRoot, value === Page.Wordle ? 'back' : 'forward')
 }
 
 const onPopState = () => {
+  const generation = ++navigationGeneration
   const value = readPage()
   if (value === page()) return
   const current = pageRoot()
-  void animateRootSwap(current, () => { setPage(value) }, pageRoot, value === Page.Wordle ? 'back' : 'forward')
+  void animateRootSwap(current, () => { if (generation === navigationGeneration) setPage(value) }, pageRoot, value === Page.Wordle ? 'back' : 'forward')
 }
 let pageNavigationMounted = false
 
 export function mountPageNavigation() {
+  navigationGeneration++
   const value = readPage()
   setPage(value)
   if (!pageNavigationMounted) {
@@ -51,6 +55,7 @@ export function mountPageNavigation() {
 }
 
 function disposePageNavigation() {
+  navigationGeneration++
   if (!pageNavigationMounted) return
   removeEventListener('popstate', onPopState)
   pageNavigationMounted = false

@@ -241,7 +241,7 @@ class GameState {
   get currentEntry(): [string, string] { return this.history[this.history.length - 1] }
   isFinished() { return this.state.done !== undefined }
 
-  private persist(draft: CurrentState) {
+  persist(draft: CurrentState) {
     this.stored.history = snapshot(draft.history)
     if (this.stored.done === undefined) this.stored.config = snapshot(this.hard)
     this.stored.done = draft.done
@@ -325,7 +325,7 @@ class WordleModel {
   handleKeyDown(e: KeyboardEvent) {
     const target = e.target instanceof Element ? e.target : null
     const interactive = target?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"], [role="slider"], [role="switch"]')
-    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || interactive) return
+    if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey || interactive) return
     if (this.state.isFinished()) return
     this.setKeyState(e.key, true)
     if (e.key === 'Enter') {
@@ -342,13 +342,14 @@ class WordleModel {
     this.state.setState(draft => {
       if (draft.done !== undefined) return
       const last = draft.history[draft.history.length - 1]
-      if (key === 'escape') { last[0] = ''; last[1] = ''; return }
-      if (key === 'backspace') { last[0] = last[0].slice(0, -1); last[1] = ''; return }
-      if (draft.disabled.includes(key) || last[0].length === this.state.hard.wordLength) {
+      if (key === 'escape') { last[0] = ''; last[1] = '' }
+      else if (key === 'backspace') { last[0] = last[0].slice(0, -1); last[1] = '' }
+      else if (draft.disabled.includes(key) || last[0].length === this.state.hard.wordLength) {
         this.shakeCurrentBlock()
         return
       }
-      last[0] += key
+      else last[0] += key
+      this.state.persist(draft)
     })
   }
 

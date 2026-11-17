@@ -13,7 +13,7 @@ export const games:Entry[]=[
 const tools:Entry[]=TOOLS.map(tool=>({title:tool.title,href:`/tools/?tool=${tool.id}`,kind:'Tool',note:tool.note}));
 export const projects:Entry[]=[
   {title:'Reverb',href:'/projects/reverb/',kind:'Project',note:'Android recorder that keeps a rolling audio window in memory.',tags:['kotlin','android','audio'],demo:true,demoId:'reverb-ui'},
-  {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'CNN in Zig. Draw something and run the model in-browser with WASM.',tags:['python / zig','ml','mnist'],demo:true,demoId:'cnn-draw'},
+  {title:'CNN',href:'/projects/cnn/',kind:'Project',note:'Draw a digit and classify it in-browser with Zig and WASM.',tags:['python / zig','ml','mnist'],demo:true,demoId:'cnn-draw'},
   {title:'zhtml',href:'/projects/zhtml/',kind:'Project',note:'An HTML parser and CSS selector engine written in Zig.',tags:['zig','html','parsing'],demo:true,demoId:'zhtml-parse'},
   {title:'OneSerial',href:'/projects/oneserial/',kind:'Project',note:'Nested structures packed into one contiguous allocation.',tags:['zig','zero-copy','serialization'],demo:true,demoId:'oneserial-pack'},
 ];

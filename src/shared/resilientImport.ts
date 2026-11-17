@@ -12,14 +12,18 @@ function isDynamicImportFetchFailure(error: unknown): boolean {
 }
 
 function reloadForStaleImport(): boolean {
-  if (typeof location === 'undefined' || typeof sessionStorage === 'undefined') return false;
+  if (typeof location === 'undefined') return false;
   const now = Date.now();
-  let previous = 0;
-  try { previous = Number(sessionStorage.getItem(STALE_IMPORT_RELOAD_KEY) || 0); }
-  catch (error) { console.warn('Could not read stale-import reload marker', error); }
-  if (Number.isFinite(previous) && now - previous < STALE_IMPORT_RELOAD_WINDOW_MS) return false;
-  try { sessionStorage.setItem(STALE_IMPORT_RELOAD_KEY, String(now)); }
-  catch (error) { console.warn('Could not persist stale-import reload marker', error); }
+  try {
+    if (typeof sessionStorage === 'undefined') return false;
+    const previous = Number(sessionStorage.getItem(STALE_IMPORT_RELOAD_KEY) || 0);
+    if (Number.isFinite(previous) && now - previous < STALE_IMPORT_RELOAD_WINDOW_MS) return false;
+    sessionStorage.setItem(STALE_IMPORT_RELOAD_KEY, String(now));
+  } catch (error) {
+    // A reload is safe only when the next document can read its loop breaker.
+    console.warn('Could not access stale-import reload marker', error);
+    return false;
+  }
   location.reload();
   return true;
 }

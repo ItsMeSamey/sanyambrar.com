@@ -22,6 +22,7 @@ export type ChainRefs = {
   replayResume: HTMLButtonElement;
   statsButtons: HTMLButtonElement[];
   presets: HTMLButtonElement[];
+  storageNotices: HTMLElement[];
   stage: HTMLElement;
   statusEl: HTMLElement;
   botStatus: HTMLElement;
@@ -58,5 +59,6 @@ export const createChainRefs = () => {
   const refs = Object.create(null) as ChainRefs;
   refs.statsButtons = [];
   refs.presets = [];
+  refs.storageNotices = [];
   return refs;
 };

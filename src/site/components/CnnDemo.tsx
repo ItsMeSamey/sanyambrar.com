@@ -31,6 +31,7 @@ const INPUT_SIZE = 28;
 const DRAW_SIZE = 280;
 const OUTPUTS = ['0','1','2','3','4','5','6','7','8','9','?'] as const;
 const DEFAULT_INK = 0.72;
+const WORKER_STARTUP_TIMEOUT = 15_000;
 
 type WorkerMessage =
   | { type: 'ready' }
@@ -77,6 +78,7 @@ export function CnnDemo() {
   let inferenceBusy = false;
   let inferenceDirty = false;
   let workerReady = false;
+  let startupTimeout: ReturnType<typeof setTimeout> | undefined;
   let requestId = 0;
   let activeRequestId = 0;
   let contentEpoch = 0;
@@ -90,6 +92,7 @@ export function CnnDemo() {
   const [hasInk, setHasInk] = createSignal(false);
   const [inkLevel, setInkLevel] = createSignal(DEFAULT_INK);
   const [workerFailure, setWorkerFailure] = createSignal<string | null>(null);
+  const [modelLoading, setModelLoading] = createSignal(true);
   const [ready, setReady] = createSignal(false);
 
   const readThemeInk = () => {
@@ -270,6 +273,90 @@ export function CnnDemo() {
     return `calc(${ratio * 100}% + ${8 - ratio * 16}px)`;
   };
 
+  const clearStartupTimeout = () => {
+    clearTimeout(startupTimeout);
+    startupTimeout = undefined;
+  };
+
+  const stopWorker = () => {
+    clearStartupTimeout();
+    const previous = worker;
+    worker = undefined;
+    previous?.terminate();
+    workerReady = false;
+    inferenceBusy = false;
+    if (inferenceFrame) cancelAnimationFrame(inferenceFrame);
+    inferenceFrame = 0;
+  };
+
+  const failWorker = (detail: string) => {
+    stopWorker();
+    setModelLoading(false);
+    clearResult();
+    setWorkerFailure(detail);
+    console.error('CNN worker failed', detail);
+  };
+
+  const startWorker = () => {
+    if (disposed || !initialized) return;
+    stopWorker();
+    clearResult();
+    setWorkerFailure(null);
+    setModelLoading(true);
+    inferenceDirty = inkPresent;
+    try {
+      const attempt = new CnnWorker();
+      worker = attempt;
+      startupTimeout = setTimeout(() => {
+        if (disposed || worker !== attempt) return;
+        failWorker('The model took too long to load. Retry to predict your current drawing.');
+      }, WORKER_STARTUP_TIMEOUT);
+      attempt.addEventListener('message', event => {
+        if (disposed || worker !== attempt) return;
+        const message: unknown = event.data;
+        if (!isWorkerMessage(message)) {
+          failWorker('CNN worker returned an invalid protocol message');
+          return;
+        }
+        if (message.type === 'ready') {
+          clearStartupTimeout();
+          workerReady = true;
+          setModelLoading(false);
+          setWorkerFailure(null);
+          if (inferenceDirty && inkPresent) queueInference();
+          return;
+        }
+        if (message.type === 'result') {
+          if (!workerReady || message.id !== activeRequestId) return;
+          inferenceBusy = false;
+          const next = validScores(message.probabilities);
+          if (!next || message.classId < 0 || message.classId >= OUTPUTS.length) {
+            failWorker(`CNN worker returned an invalid result for request ${message.id}`);
+            return;
+          }
+          if (activeRequestEpoch === contentEpoch && inkPresent) {
+            // Show completed predictions while the next inference catches up
+            // with any strokes drawn during this request.
+            setWorkerFailure(null);
+            setScores(next);
+            setPredictedClass(message.classId);
+          }
+          if (inferenceDirty && inkPresent) queueInference();
+          return;
+        }
+        if (message.id == null || message.id === activeRequestId) failWorker(message.detail);
+      });
+      attempt.addEventListener('error', error => {
+        if (disposed || worker !== attempt) return;
+        const rawError = (error as unknown as { error?: unknown }).error;
+        const failure: unknown = rawError ?? new Error(`CNN worker crashed: ${error.message || 'unknown worker error'}`);
+        failWorker(formatThrownError(failure));
+      });
+    } catch (error) {
+      failWorker(formatThrownError(error));
+    }
+  };
+
   onSettled(() => {
     cancelSetup = afterVisualTransition(() => {
       if (disposed || !canvas.isConnected) return;
@@ -296,73 +383,17 @@ export function CnnDemo() {
       resizeObserver = new ResizeObserver(invalidateCanvasRect);
       resizeObserver.observe(canvas);
 
-      worker = new CnnWorker();
-      worker.addEventListener('message', event => {
-      if (disposed) return;
-      const message: unknown = event.data;
-      if (!isWorkerMessage(message)) {
-        workerReady = false;
-        inferenceBusy = false;
-        inferenceDirty = false;
-        clearResult();
-        const failure = new Error('CNN worker returned an invalid protocol message');
-        setWorkerFailure(formatThrownError(failure));
-        console.error(failure, message);
-        return;
-      }
-      if (message.type === 'ready') {
-        workerReady = true;
-        setWorkerFailure(null);
-        if (inferenceDirty && inkPresent) queueInference();
-        return;
-      }
-      if (message.type === 'result') {
-        inferenceBusy = false;
-        const next = validScores(message.probabilities);
-        if (!next || message.classId < 0 || message.classId >= OUTPUTS.length) {
-          const failure = new Error(`CNN worker returned an invalid result for request ${message.id}`);
-          setWorkerFailure(formatThrownError(failure));
-          console.error(failure, message);
-          if (message.id === activeRequestId && activeRequestEpoch === contentEpoch) clearResult();
-        } else if (message.id === activeRequestId && activeRequestEpoch === contentEpoch && inkPresent) {
-          // Show every completed prediction even if a newer canvas state is
-          // already dirty. The next inference immediately catches up instead
-          // of hiding useful in-flight results until drawing stops.
-          setWorkerFailure(null);
-          setScores(next);
-          setPredictedClass(message.classId);
-        }
-        if (inferenceDirty && inkPresent) queueInference();
-        return;
-      }
-      inferenceBusy = false;
-      if (message.id == null) workerReady = false;
-      if (message.id == null || (message.id === activeRequestId && activeRequestEpoch === contentEpoch)) clearResult();
-      setWorkerFailure(message.detail);
-      console.error('CNN worker failed', message.detail);
-      if (inferenceDirty && inkPresent) queueInference();
-      });
-      worker.addEventListener('error', error => {
-      if (disposed) return;
-      workerReady = false;
-      inferenceBusy = false;
-      inferenceDirty = false;
-      clearResult();
-      const rawError = (error as unknown as { error?: unknown }).error;
-      const failure: unknown = rawError ?? new Error(`CNN worker crashed: ${error.message || 'unknown worker error'}`);
-      const detail = formatThrownError(failure);
-      setWorkerFailure(detail);
-        console.error('CNN worker crashed', detail);
-      });
       initialized = true;
       setReady(true);
       canvas.toggleAttribute('data-cnn-runtime-ready', true);
+      startWorker();
       } catch (error) {
         resizeObserver?.disconnect();
-        worker?.terminate();
+        stopWorker();
         window.removeEventListener('samey-themechange', recolorForTheme);
         window.removeEventListener('blur', cancelStroke);
         window.removeEventListener('scroll', invalidateCanvasRect, true);
+        setModelLoading(false);
         setWorkerFailure(formatThrownError(error));
       }
     });
@@ -377,7 +408,7 @@ export function CnnDemo() {
     inferenceDirty = false;
     if (inferenceFrame && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(inferenceFrame);
     resizeObserver?.disconnect();
-    worker?.terminate();
+    stopWorker();
     if (typeof window !== 'undefined') {
       window.removeEventListener('samey-themechange', recolorForTheme);
       window.removeEventListener('blur', cancelStroke);
@@ -386,14 +417,17 @@ export function CnnDemo() {
   });
 
   return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">
-    <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw something</h2></div>
+    <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw a digit</h2></div>
     <Show when={workerFailure()}>{detail =>
       <aside class="cnn-demo-error" role="alert" aria-live="assertive">
-        <strong>CNN demo failed</strong>
-        <pre class="samey-error-stack">{detail()}</pre>
-        <button type="button" onClick={() => location.reload()}>Reload page</button>
+        <strong>{ready() ? 'Prediction unavailable' : 'Drawing unavailable'}</strong>
+        <details><summary>Error details</summary><pre class="samey-error-stack">{detail()}</pre></details>
+        <Show when={ready()} fallback={<button type="button" onClick={() => location.reload()}>Reload page</button>}>
+          <button type="button" onClick={startWorker}>Retry model</button>
+        </Show>
       </aside>
     }</Show>
+    <Show when={modelLoading()}><p role="status">{ready() ? 'Loading model…' : 'Preparing drawing canvas…'}</p></Show>
 
     <div class="cnn-demo-shell">
       <div class="cnn-draw-pane">

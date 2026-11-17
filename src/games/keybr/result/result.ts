@@ -76,6 +76,17 @@ export class Result {
     maxSpeed = Result.filter.maxSpeed,
   }: Partial<Filter> = {}): boolean {
     return (
+      Number.isSafeInteger(this.timeStamp) &&
+      Number.isFinite(new Date(this.timeStamp).getTime()) &&
+      Number.isSafeInteger(this.length) &&
+      this.length >= 0 &&
+      Number.isSafeInteger(this.time) &&
+      this.time >= 0 &&
+      Number.isSafeInteger(this.errors) &&
+      this.errors >= 0 &&
+      Number.isFinite(this.speed) &&
+      Number.isFinite(this.accuracy) &&
+      Number.isFinite(this.score) &&
       this.length >= minLength &&
       this.time >= minTime &&
       this.complexity >= minComplexity &&

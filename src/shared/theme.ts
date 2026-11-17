@@ -642,7 +642,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     appearancePanel.querySelectorAll<HTMLElement>("[data-theme-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.themeChoice === theme.selected));
     appearancePanel.querySelectorAll<HTMLElement>("[data-font-choice]").forEach((el) => el.toggleAttribute("data-selected", el.dataset.fontChoice === theme.font));
     bindCursorToggle();
-    if (focusIndex >= 0 && !wasHidden) appearancePanel.querySelectorAll('button')[focusIndex]?.focus({ preventScroll: true });
+    if (focusIndex >= 0 && !wasHidden && isTopLayer(appearancePanel)) appearancePanel.querySelectorAll('button')[focusIndex]?.focus({ preventScroll: true });
   }
   const positionAppearancePanel = (trigger: HTMLElement) => {
     if (!appearancePanel || !trigger) return;
@@ -660,12 +660,19 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     appearancePanel.style.maxHeight = `${Math.max(80, innerHeight - top - margin)}px`;
     appearancePanel.style.overflowY = "auto";
   };
-  const closeAppearance = () => {
+  const restoreLayerFocus = (trigger: HTMLElement | null, ownedFocus: boolean) => {
+    const currentLayer = topLayer();
+    if (ownedFocus && trigger?.isConnected && (!currentLayer || currentLayer.contains(trigger))) trigger.focus({ preventScroll: true });
+  };
+  const closeAppearance = (restoreFocus = false) => {
     if (!appearancePanel) return;
+    const trigger = appearanceTrigger;
+    const ownedFocus = isTopLayer(appearancePanel);
     hideLayer(appearancePanel);
     appearancePanel.hidden = true;
     appearanceTrigger?.setAttribute("aria-expanded", "false");
     appearanceTrigger = null;
+    if (restoreFocus) restoreLayerFocus(trigger, ownedFocus);
   };
   const toggleAppearance = (trigger: HTMLElement) => {
     if (!appearancePanel) mountControls();
@@ -894,16 +901,17 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
     showLayer(page);
     document.documentElement.classList.add("samey-advanced-open");
     page.scrollTop = 0;
-    requestAnimationFrame(() => page.querySelector<HTMLButtonElement>("[data-close-advanced]")?.focus({ preventScroll: true }));
+    if (isTopLayer(page)) page.querySelector<HTMLButtonElement>("[data-close-advanced]")?.focus({ preventScroll: true });
   };
   const closeAdvanced = (restoreFocus = true) => {
     if (!advancedPage || advancedPage.hidden) return;
+    const ownedFocus = isTopLayer(advancedPage);
     hideLayer(advancedPage);
     advancedPage.hidden = true;
     document.documentElement.classList.remove("samey-advanced-open");
     const trigger = advancedReturnFocus;
     advancedReturnFocus = null;
-    if (restoreFocus && trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
+    if (restoreFocus) restoreLayerFocus(trigger, ownedFocus);
   };
 
   const mountControls = () => {
@@ -921,10 +929,8 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       const themeButton = target?.closest<HTMLElement>("[data-theme-choice]");
       const fontButton = target?.closest<HTMLElement>("[data-font-choice]");
       if (themeButton || fontButton) {
-        const trigger = appearanceTrigger;
         setPrefs(themeButton ? { color: themeButton.dataset.themeChoice } : { font: fontButton?.dataset.fontChoice });
-        closeAppearance();
-        if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+        closeAppearance(true);
       }
       if (target?.closest("[data-open-advanced]")) openAdvanced();
     });
@@ -937,7 +943,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
         event.preventDefault();
         event.stopPropagation();
         toggleAppearance(trigger);
-        if (event.detail === 0 && !panel.hidden) (panel.querySelector<HTMLElement>('[data-theme-choice][data-selected]') ?? panel.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+        if (event.detail === 0 && !panel.hidden && isTopLayer(panel)) (panel.querySelector<HTMLElement>('[data-theme-choice][data-selected]') ?? panel.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
         return;
       }
       if (!event.composedPath().includes(panel)) closeAppearance();
@@ -951,9 +957,7 @@ const eventElement = (event: Event): Element | null => event.target instanceof E
       if (event.key !== "Escape" || event.defaultPrevented) return;
       if (advancedPage && isTopLayer(advancedPage)) { closeAdvanced(); event.preventDefault(); return; }
       if (appearancePanel && isTopLayer(appearancePanel)) {
-        const trigger = appearanceTrigger;
-        closeAppearance();
-        if (trigger) requestAnimationFrame(() => trigger.isConnected && trigger.focus({ preventScroll: true }));
+        closeAppearance(true);
         event.preventDefault();
       }
     });

@@ -1,5 +1,7 @@
 import { onSharedRuntimeReady } from '../shared/runtimeReady.ts';
 import { afterVisualTransition } from '../shared/afterVisualTransition.ts';
+import { resilientImport } from '../shared/resilientImport.ts';
+import { formatThrownError } from '../shared/error.ts';
 
 type SiteRuntime = {
   web: typeof import('@solidjs/web');
@@ -7,10 +9,13 @@ type SiteRuntime = {
 };
 
 let runtimeTask: Promise<SiteRuntime> | undefined;
-const loadSiteRuntime = () => runtimeTask ??= Promise.all([
+const loadSiteRuntime = () => runtimeTask ??= resilientImport(() => Promise.all([
   import('@solidjs/web'),
   import('./App'),
-]).then(([web, site]) => ({ web, site }));
+]).then(([web, site]) => ({ web, site }))).catch(error => {
+  runtimeTask = undefined;
+  throw error;
+});
 
 const looksLikeSolidRoute = (url: URL) => {
   const path = url.pathname.replace(/\.html$/, '').replace(/\/index$/, '').replace(/\/$/, '') || '/';
@@ -38,6 +43,7 @@ let disposeCurrent: (() => void) | undefined;
 let pendingMount: Promise<void> | undefined;
 let cancelPendingMount = () => {};
 let mountGeneration = 0;
+let recoveryPanel: HTMLElement | undefined;
 const siteRoot = () => document.getElementById('site-root');
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 const focusedIndex = (root: HTMLElement) => {
@@ -47,7 +53,43 @@ const focusedIndex = (root: HTMLElement) => {
     : -1;
 };
 
-function mountSolidSite() {
+function clearMountError() {
+  recoveryPanel?.remove();
+  recoveryPanel = undefined;
+}
+
+function showMountError(root: HTMLElement, error: unknown, restoreFocus: boolean) {
+  clearMountError();
+  const panel = document.createElement('section');
+  panel.className = 'site-bootstrap-error';
+  panel.setAttribute('role', 'alert');
+  const message = document.createElement('p');
+  message.textContent = 'Interactive controls could not load.';
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = 'Retry';
+  retry.addEventListener('click', () => {
+    clearMountError();
+    mountSolidSite(true);
+  });
+  const reload = document.createElement('button');
+  reload.type = 'button';
+  reload.textContent = 'Reload page';
+  reload.addEventListener('click', () => location.reload());
+  const details = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = 'Error details';
+  const stack = document.createElement('pre');
+  stack.className = 'samey-error-stack';
+  stack.textContent = formatThrownError(error);
+  details.append(summary, stack);
+  panel.append(message, retry, reload, details);
+  root.before(panel);
+  recoveryPanel = panel;
+  if (restoreFocus) retry.focus({ preventScroll: true });
+}
+
+function mountSolidSite(restoreFocus = false) {
   globalThis.SameySolidPreload = preloadSolidRoute;
   if (disposeCurrent || pendingMount) return;
   const root = siteRoot();
@@ -59,12 +101,25 @@ function mountSolidSite() {
     if (prerendered) await site.preloadSiteRoute(new URL(location.href));
     if (generation !== mountGeneration || root !== siteRoot() || !root.isConnected) return;
     const focusIndex = prerendered ? focusedIndex(root) : -1;
-    if (prerendered) root.replaceChildren();
-    disposeCurrent = web.render(() => web.createComponent(site.App, {}), root);
+    const previousChildren = prerendered ? [...root.childNodes] : [];
+    try {
+      if (prerendered) root.replaceChildren();
+      disposeCurrent = web.render(() => web.createComponent(site.App, {}), root);
+    } catch (error) {
+      if (prerendered) root.replaceChildren(...previousChildren);
+      throw error;
+    }
+    clearMountError();
     root.removeAttribute('data-samey-prerendered');
     root.setAttribute('data-samey-solid-mounted', '');
     if (focusIndex >= 0)
       queueMicrotask(() => root.querySelectorAll<HTMLElement>(FOCUSABLE)[focusIndex]?.focus({ preventScroll: true }));
+    else if (restoreFocus) queueMicrotask(() => {
+      const heading = root.querySelector<HTMLElement>('h1');
+      if (!heading) return;
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    });
   };
 
   const task = new Promise<void>((resolve, reject) => {
@@ -77,7 +132,14 @@ function mountSolidSite() {
     } else start();
   });
   pendingMount = task;
-  void task.finally(() => { if (pendingMount === task) pendingMount = undefined; });
+  void task.then(
+    () => { if (pendingMount === task) pendingMount = undefined; },
+    error => {
+      if (pendingMount === task) pendingMount = undefined;
+      if (generation !== mountGeneration || root !== siteRoot() || !root.isConnected) return;
+      showMountError(root, error, restoreFocus);
+    },
+  );
 }
 
 function disposeSolidSite() {
@@ -86,6 +148,7 @@ function disposeSolidSite() {
   cancelPendingMount();
   cancelPendingMount = () => {};
   pendingMount = undefined;
+  clearMountError();
   disposeCurrent?.();
   disposeCurrent = undefined;
   siteRoot()?.removeAttribute('data-samey-solid-mounted');

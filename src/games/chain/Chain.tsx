@@ -66,6 +66,7 @@ export function ChainPage() {
   });
 
   const statsButton = () => <TopBarIconButton ref={el => refs.statsButtons.push(el)} label="Statistics"><BarChart3 aria-hidden="true"/></TopBarIconButton>;
+  const storageNotice = () => <p ref={el => refs.storageNotices.push(el)} class="chain-storage-notice" role="status" aria-live="polite" hidden/>;
   const gameActions = (settings = false) => <GameTopBarActions ariaLabel="Chain Reaction">
     {statsButton()}
     {settings && <TopBarIconButton
@@ -81,6 +82,7 @@ export function ChainPage() {
     <div class="chain-shell">
       <section ref={el => refs.openingView = el} class="chain-opening chain-view">
         <TopBar nav={gameActions()}/>
+        {storageNotice()}
         <div class="chain-opening-inner">
           <ChainLiveMark class="chain-opening-logo"/>
           <div class="chain-mode-grid">
@@ -112,6 +114,7 @@ export function ChainPage() {
 
       <section ref={el => refs.statsView = el} class="chain-view chain-stats-view" hidden>
         <TopBar start={<button ref={el => refs.statsBackButton = el} class="chain-menu-button chain-pixel-back" type="button" role="link" aria-label="Back to Chain Reaction menu"><ChainBackMark/></button>} nav={gameActions()}/>
+        {storageNotice()}
         <main class="chain-stats-page">
           <header><span class="chain-mode-eyebrow">All time</span><h1>Statistics</h1></header>
           <div class="chain-stats-grid">
@@ -148,6 +151,7 @@ export function ChainPage() {
           </div>}
           nav={gameActions(true)}
         />
+        {storageNotice()}
         <aside ref={el => refs.settingsPanel = el} id="chain-settings" class="game-settings-popover chain-settings" data-samey-overlay="" aria-hidden="true">
           <div class="game-settings-body">
             <div class="game-settings-section-title">BOARD</div>

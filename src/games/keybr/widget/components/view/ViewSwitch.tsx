@@ -74,9 +74,14 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
     }
     setCurrentView(nextName);
   };
+  let viewRequest = 0;
   const swapView = (nextName: ViewName, syncUrl = true, requestedDirection?: "forward" | "back") => {
+    // Even a return to the displayed view supersedes a pending animated commit.
+    const request = ++viewRequest;
     if (props.views[nextName] == null || nextName === currentView()) return;
-    const commit = () => commitView(nextName, syncUrl);
+    const commit = () => {
+      if (request === viewRequest) commitView(nextName, syncUrl);
+    };
     const root = document.getElementById("app");
     const animate = globalThis.SameyAnimateLocalSwap;
     const direction = requestedDirection ?? (nextName === first ? "back" : "forward");
@@ -95,7 +100,10 @@ export function ViewSwitch(props: { readonly views: ViewMap; readonly header?: (
       history.replaceState({...(readHistoryState() ?? {}), keybrView: currentView(), keybrViewIndex: viewHistoryIndex}, "", location.href);
     addEventListener("popstate", onPopState);
   });
-  onCleanup(() => removeEventListener("popstate", onPopState));
+  onCleanup(() => {
+    viewRequest += 1;
+    removeEventListener("popstate", onPopState);
+  });
   return <ViewContext value={{ setView, currentView, setBeforeLeave }}>
     {props.header?.()}
     <Dynamic component={current()}/>

@@ -382,7 +382,10 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     setContext('');
     const transform = (text: string, lineNumber = 0) => {
       let active: Format | null = selection === 'auto' ? null : selection;
-      if (mode === 'decode' && selection === 'auto') active = detectFormat(text);
+      if (mode === 'decode' && selection === 'auto') {
+        if (separateLines && !text.trim()) return text;
+        active = detectFormat(text);
+      }
       if (mode === 'encode' && selection === 'auto') active = 'base64';
       if (!active) throw Error(`${lineNumber ? `Line ${lineNumber}: ` : ''}input does not match a supported encoding`);
       try { return mode === 'decode' ? strictDecode(active, text) : convert(active, text, false); }
@@ -684,11 +687,12 @@ export function mountTool(toolId: ToolId, root: HTMLDivElement, context?: HTMLDi
     const contextMarkup = () => `<span class="markdown-view-toggle" role="group" aria-label="Markdown view"><button type="button" data-md-view="merged" aria-pressed="${viewMode === 'merged'}">Merged</button><button type="button" data-md-view="split" aria-pressed="${viewMode === 'split'}">Split</button></span>`;
     const bindContext = () => {
       setContext(contextMarkup());
-      contextRoot.querySelectorAll<HTMLButtonElement>('[data-md-view]').forEach(button => button.onclick = () => {
+      const viewButtons = contextRoot.querySelectorAll<HTMLButtonElement>('[data-md-view]');
+      viewButtons.forEach(button => button.onclick = () => {
         viewMode = button.dataset.mdView === 'merged' ? 'merged' : 'split';
         localSet('markdown', 'view', viewMode);
         toolRoot.dataset.view = viewMode;
-        bindContext();
+        viewButtons.forEach(candidate => candidate.setAttribute('aria-pressed', String(candidate.dataset.mdView === viewMode)));
         scheduleLayout();
       });
     };

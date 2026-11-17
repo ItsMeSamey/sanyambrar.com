@@ -79,8 +79,11 @@ function resultFromCompactJson(json: Record<string, unknown>): Result | null {
       isString(textTypeId) &&
       Number.isSafeInteger(timeStamp) &&
       Number.isSafeInteger(length) &&
+      (length as number) >= 0 &&
       Number.isSafeInteger(time) &&
-      Number.isSafeInteger(errors)
+      (time as number) >= 0 &&
+      Number.isSafeInteger(errors) &&
+      (errors as number) >= 0
     )
   ) {
     return null;
@@ -104,8 +107,11 @@ function resultFromExportJson(json: Record<string, unknown>): Result | null {
       isString(layout) &&
       isString(textType) &&
       Number.isSafeInteger(length) &&
+      (length as number) >= 0 &&
       Number.isSafeInteger(time) &&
-      Number.isSafeInteger(errors)
+      (time as number) >= 0 &&
+      Number.isSafeInteger(errors) &&
+      (errors as number) >= 0
     )
   ) {
     return null;
@@ -134,7 +140,7 @@ function makeResult(
   errors: number,
   histogram: Histogram | null,
 ): Result | null {
-  if (histogram == null) {
+  if (histogram == null || !Number.isFinite(new Date(timeStamp).getTime())) {
     return null;
   }
   try {
@@ -184,9 +190,12 @@ function histogramFromExportJson(json: unknown): Histogram | null {
         (codePoint as number) > 0 &&
         (codePoint as number) <= 65535 &&
         Number.isSafeInteger(hitCount) &&
+        (hitCount as number) >= 0 &&
         Number.isSafeInteger(missCount) &&
+        (missCount as number) >= 0 &&
         typeof timeToType === "number" &&
-        Number.isFinite(timeToType)
+        Number.isFinite(timeToType) &&
+        timeToType >= 0
       )
     ) {
       return null;
@@ -228,8 +237,11 @@ function histogramFromJson(json: HistogramtJson): Histogram | null {
     if (
       !(
         Number.isSafeInteger(hitCount) &&
+        hitCount >= 0 &&
         Number.isSafeInteger(missCount) &&
-        Number.isFinite(timeToType)
+        missCount >= 0 &&
+        Number.isFinite(timeToType) &&
+        timeToType >= 0
       )
     ) {
       return null;

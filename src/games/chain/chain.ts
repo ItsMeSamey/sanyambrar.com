@@ -49,7 +49,7 @@ export function mountChain(refs: ChainRefs) {
     resultMenuButton, statsButtons, statsBackButton, statsView, statGames, statWins, statRate,
     statLargest, statRecent, replayPanel, replayCanvas, replayTitle, replayCopy, replayClose,
     replayPrev, replayPlay, replayNext, replayResume, replayStatus, presets,
-    botStatus, botStatusLabel, botErrorDetail, botRetryButton,
+    botStatus, botStatusLabel, botErrorDetail, botRetryButton, storageNotices,
   } = refs;
   const mainContext = canvas.getContext('2d', { alpha: false, desynchronized: true });
   if (!mainContext) return () => {};
@@ -107,6 +107,9 @@ export function mountChain(refs: ChainRefs) {
   let replayStageContentWidth = 0;
   let currentMatchId = '';
   let gamePlayers: Player[] = [];
+  let gameSaveFailed = false;
+  let historySaveFailed = false;
+  let settingsSaveFailed = false;
   const replayContext = replayCanvas.getContext('2d', { alpha: false });
   if (!replayContext) return () => {};
   const replayCtx = replayContext;
@@ -146,8 +149,21 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function saveConfig() {
-    try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); }
-    catch (error) { console.warn('Could not persist Chain Reaction settings', error); }
+    try { localStorage.setItem('samey.chain.settings', JSON.stringify(config)); settingsSaveFailed = false; }
+    catch (error) { settingsSaveFailed = true; console.warn('Could not persist Chain Reaction settings', error); }
+    updateStorageNotice();
+  }
+
+  function updateStorageNotice() {
+    const text = [
+      gameSaveFailed ? 'This board could not be saved. Continue in this tab; reloading may restore an older board.' : '',
+      historySaveFailed ? 'Match history could not be saved.' : '',
+      settingsSaveFailed ? 'Board settings could not be saved.' : '',
+    ].filter(Boolean).join(' ');
+    for (const notice of storageNotices) {
+      notice.textContent = text;
+      notice.hidden = !text;
+    }
   }
 
   function bytesToB64(bytes: Uint8Array) {
@@ -297,8 +313,9 @@ export function mountChain(refs: ChainRefs) {
   }
 
   function persistMatchDb(db: MatchDb) {
-    try { localStorage.setItem(MATCHES_KEY, JSON.stringify(compactMatchHistory(db))); }
-    catch (error) { console.warn('Could not persist Chain Reaction match history', error); }
+    try { localStorage.setItem(MATCHES_KEY, JSON.stringify(compactMatchHistory(db))); historySaveFailed = false; }
+    catch (error) { historySaveFailed = true; console.warn('Could not persist Chain Reaction match history', error); }
+    updateStorageNotice();
   }
 
 
@@ -402,9 +419,13 @@ export function mountChain(refs: ChainRefs) {
         b:bytesToB64(board),o:bytesToB64(owners),p:bytesToB64(entered),
         t:turn,g:gameOver,i:inGame,m:moveHistory,q:replayComplete
       }));
-      localStorage.removeItem(LEGACY_GAME_KEY);
-      localStorage.removeItem(LEGACY_GAME_KEY_V2);
-    } catch (error) { console.warn('Could not persist Chain Reaction game state', error); }
+      gameSaveFailed = false;
+      try {
+        localStorage.removeItem(LEGACY_GAME_KEY);
+        localStorage.removeItem(LEGACY_GAME_KEY_V2);
+      } catch (error) { console.warn('Could not remove migrated Chain Reaction saves', error); }
+    } catch (error) { gameSaveFailed = true; console.warn('Could not persist Chain Reaction game state', error); }
+    updateStorageNotice();
     syncMatchRecord(gameOver ? 'completed' : 'active', gameOver ? turn : 0);
     updateResumeCard();
     renderStats();
@@ -1237,7 +1258,7 @@ export function mountChain(refs: ChainRefs) {
         clearBotStatus();
         botStatus.hidden = false;
         botStatus.dataset.error = 'true';
-        botStatusLabel.textContent = 'The opponent could not make its move. Your game is saved.';
+        botStatusLabel.textContent = 'The opponent could not make its move. Retry to continue this board.';
         statusEl.textContent = botStatusLabel.textContent;
         botErrorDetail.textContent = formatThrownError(error);
         botErrorDetail.hidden = false;
@@ -1252,9 +1273,11 @@ export function mountChain(refs: ChainRefs) {
   async function humanMove(i: number) {
     if (locked || gameOver || turn !== HUMAN) return;
     if (board[i] !== 0 && owners[i] !== HUMAN) {
-      canvas.animate([{transform:'translateX(0)'},{transform:'translateX(-2px)'},{transform:'translateX(2px)'},{transform:'translateX(0)'}], {duration:95});
+      canvas.dataset.invalid = 'true';
+      statusEl.textContent = 'Choose an empty cell or one of your atoms.';
       return;
     }
+    canvas.removeAttribute('data-invalid');
     await playMove(i, HUMAN);
     continueTurns();
   }
@@ -1287,7 +1310,7 @@ export function mountChain(refs: ChainRefs) {
     else if (e.key === 'Home') next = row * cols;
     else if (e.key === 'End') next = row * cols + cols - 1;
     else return;
-    e.preventDefault(); focusCell = next; updateStatus(); requestDraw();
+    e.preventDefault(); focusCell = next; canvas.removeAttribute('data-invalid'); updateStatus(); requestDraw();
   };
   const onCanvasFocus = () => { updateStatus(); requestDraw(); };
   const onCanvasBlur = () => requestDraw();
@@ -1298,6 +1321,7 @@ export function mountChain(refs: ChainRefs) {
 
   function reset(nextConfig = config) {
     cancelBotTurns();
+    canvas.removeAttribute('data-invalid');
     gameVersion++;
     particles = [];
     config = {...nextConfig};
@@ -1351,6 +1375,15 @@ export function mountChain(refs: ChainRefs) {
 
   function updateResumeCard() {
     const saved = readSavedGame();
+    if (gameSaveFailed && board.length && currentMatchId) {
+      resumeCard.classList.add('chain-mode-card-primary');
+      resumeEyebrow.textContent = 'Current game';
+      resumeTitle.textContent = gameOver ? 'Match complete' : 'Continue';
+      resumeCopy.textContent = '';
+      resumeSpec.textContent = boardSummary(config);
+      resumeButton.textContent = gameOver ? 'View board' : 'Continue game';
+      return;
+    }
     if (!saved) {
       resumeEyebrow.textContent = 'First match';
       resumeTitle.textContent = 'Start playing';
@@ -1553,8 +1586,10 @@ export function mountChain(refs: ChainRefs) {
   newGameButton.addEventListener('click', () => { const next = settingsFromControls(); setSettingsOpen(false); startNewGame(next); });
   menuButton.addEventListener('click', () => showMenu());
   resumeButton.addEventListener('click', () => {
-    const saved = readSavedGame();
-    if (saved) restoreGame(saved); else reset(config);
+    if (!gameSaveFailed || !board.length || !currentMatchId) {
+      const saved = readSavedGame();
+      if (saved) restoreGame(saved); else reset(config);
+    }
     showGame();
   });
   quickButton.addEventListener('click', () => startNewGame(defaults));
@@ -1613,6 +1648,14 @@ export function mountChain(refs: ChainRefs) {
   if (readPageHistoryIndex() == null)
     history.replaceState({...(readHistoryState() || {}), chainPage: pageFromLocation(), chainPageIndex: pageHistoryIndex}, '', location.href);
   addEventListener('popstate', onPopState);
+  const onRouteChange = (event: Event) => {
+    if (!(event instanceof CustomEvent) || !isRecord(event.detail) || event.detail.route !== 'chain') return;
+    const page = pageFromLocation();
+    const target = page === PAGE_STATS ? statsView : page === PAGE_GAME ? gameView : openingView;
+    if (target === currentView && !pendingPage) return;
+    onPopState();
+  };
+  addEventListener('samey-solid-routechange', onRouteChange);
   const repaintTheme = () => {
     invalidateThemeColors();
     orbCache.clear();
@@ -1671,6 +1714,7 @@ export function mountChain(refs: ChainRefs) {
     pendingPage = null;
     removeEventListener('resize', positionSettingsOnResize);
     removeEventListener('popstate', onPopState);
+    removeEventListener('samey-solid-routechange', onRouteChange);
     resizeObserver.disconnect();
     replayResizeObserver.disconnect();
     stopPixelRatioWatch();

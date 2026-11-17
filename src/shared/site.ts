@@ -1,6 +1,6 @@
 import { searchIndex, type Entry } from '../site/data.ts'
 import { searchShortcutLabel } from './platform.ts'
-import { hideLayer, isTopLayer, showLayer } from './overlay.ts'
+import { hideLayer, isTopLayer, showLayer, topLayer } from './overlay.ts'
 
 const currentScript = document.currentScript
 const runtimeRoot = currentScript instanceof HTMLScriptElement ? currentScript.dataset.sameyRuntimeRoot : ''
@@ -27,19 +27,29 @@ let opener: HTMLElement | null = null
 let active = 0
 let visible: Entry[] = []
 let closeTimer = 0
+let focusEpoch = 0
 
-function finishClose(target: HTMLElement | null, restoreFocus: boolean) {
+function hideSearch(closingBox: HTMLElement, epoch: number, target: HTMLElement | null, restoreFocus: boolean) {
+  if (box !== closingBox || focusEpoch !== epoch) return
+  const ownsFocus = isTopLayer(closingBox)
+    && (closingBox.contains(document.activeElement) || document.activeElement === document.body || document.activeElement === target)
+  hideLayer(closingBox)
+  if (focusEpoch !== epoch) return
+  closingBox.hidden = true
+  closingBox.classList.remove('is-closing')
+  const currentLayer = topLayer()
+  if (restoreFocus && ownsFocus && target?.isConnected && (!currentLayer || currentLayer.contains(target))) target.focus({ preventScroll: true })
+}
+
+function finishClose(closingBox: HTMLElement, epoch: number, target: HTMLElement | null, restoreFocus: boolean) {
   // Keep the terminal opacity frame painted for a frame before removing the
   // surface. Hiding on the exact animation boundary collapses its geometry and
   // produces the square/zero-size flash seen at the end of Search dismissal.
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (!box?.classList.contains('is-closing')) return
+    if (box !== closingBox || focusEpoch !== epoch || !closingBox.classList.contains('is-closing')) return
     clearTimeout(closeTimer)
     closeTimer = 0
-    hideLayer(box)
-    box.hidden = true
-    box.classList.remove('is-closing')
-    if (restoreFocus && target) target.isConnected && target.focus()
+    hideSearch(closingBox, epoch, target, restoreFocus)
   }))
 }
 
@@ -118,29 +128,28 @@ globalThis.visualViewport?.addEventListener('resize', keepActiveVisibleAfterResi
 
 function close(restoreFocus = true) {
   if (!box || box.hidden || box.classList.contains('is-closing')) return
+  const epoch = ++focusEpoch
   const target = opener
   opener = null
+  const closingBox = box
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    hideLayer(box)
-    box.hidden = true
-    if (restoreFocus && target) requestAnimationFrame(() => target.isConnected && target.focus())
+    hideSearch(closingBox, epoch, target, restoreFocus)
     return
   }
   box.classList.add('is-closing')
   clearTimeout(closeTimer)
-  const closingBox = box
   requestAnimationFrame(() => {
-    if (box !== closingBox || !closingBox.classList.contains('is-closing')) return
+    if (box !== closingBox || focusEpoch !== epoch || !closingBox.classList.contains('is-closing')) return
     const animations = closingBox.getAnimations({ subtree: true })
-    if (!animations.length) { finishClose(target, restoreFocus); return }
+    if (!animations.length) { finishClose(closingBox, epoch, target, restoreFocus); return }
     void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
-      if (box === closingBox) finishClose(target, restoreFocus)
+      if (box === closingBox && focusEpoch === epoch) finishClose(closingBox, epoch, target, restoreFocus)
     })
   })
   // Defensive fallback for a browser that drops animation completion events.
   // It is intentionally longer than the visual close so paused animations and
   // DevTools inspection cannot make the surface vanish mid-frame.
-  closeTimer = window.setTimeout(() => finishClose(target, restoreFocus), 1000)
+  closeTimer = window.setTimeout(() => finishClose(closingBox, epoch, target, restoreFocus), 1000)
 }
 
 function ensure() {
@@ -214,6 +223,7 @@ function open(trigger?: EventTarget | null) {
   ensure()
   opener = trigger instanceof HTMLElement ? trigger : document.activeElement instanceof HTMLElement ? document.activeElement : null
   if (!box || !input) return
+  ++focusEpoch
   clearTimeout(closeTimer)
   closeTimer = 0
   box.classList.remove('is-closing')
@@ -222,8 +232,8 @@ function open(trigger?: EventTarget | null) {
   active = 0
   input.value = ''
   render()
-  const searchInput = input
-  requestAnimationFrame(() => searchInput.focus())
+  // Enter the modal before its first paint, including in background windows.
+  if (isTopLayer(box)) input.focus({ preventScroll: true })
 }
 
 addEventListener('samey-pageleave', () => close(false))

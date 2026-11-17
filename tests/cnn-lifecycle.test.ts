@@ -10,7 +10,7 @@ const program = ts.createSourceFile('CnnDemo.tsx', source, ts.ScriptTarget.Lates
 const component = program.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'CnnDemo') as ts.FunctionDeclaration;
 const prelude = program.statements.filter(node => !ts.isImportDeclaration(node) && node !== component && !(ts.isFunctionDeclaration(node) && node.name?.text === 'preloadCnnDemoAssets')).map(node => node.getText(program)).join('\n');
 const body = component.body!.statements.filter(node => !ts.isReturnStatement(node)).map(node => node.getText(program)).join('\n');
-const code = ts.transpileModule(`${prelude}\nfunction CnnDemo() { ${body}\nreturn { bindCanvas(value) { canvas = value; }, beginStroke, moveStroke, onInkInput, clear, ready, workerFailure }; } CnnDemo();`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+const code = ts.transpileModule(`${prelude}\nfunction CnnDemo() { ${body}\nreturn { bindCanvas(value) { canvas = value; }, beginStroke, moveStroke, onInkInput, clear, ready, workerFailure, modelLoading, startWorker, scores }; } CnnDemo();`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
 
 function harness(failure?: 'drawing' | 'sampling' | 'worker') {
   let settled = () => {};
@@ -18,12 +18,19 @@ function harness(failure?: 'drawing' | 'sampling' | 'worker') {
   let cleanup = () => {};
   let cancelled = false;
   let terminated = false;
+  let timerId = 0;
+  let frameId = 0;
+  let clears = 0;
+  const timers = new Map<number, { callback: () => void; delay: number }>();
+  const frames = new Map<number, () => void>();
+  const workers: Array<{ emit: (name: string, event: unknown) => void; sent: any[]; terminated: boolean }> = [];
   const listeners = new Map<string, () => void>();
   const points: number[][] = [];
   const draw = {
     beginPath() {}, arc: (x: number, y: number) => points.push([x, y]), fill() {},
     moveTo() {}, lineTo: (x: number, y: number) => points.push([x, y]), stroke() {},
-    save() {}, restore() {}, clearRect() {},
+    save() {}, restore() {}, clearRect() { clears++; },
+    drawImage() {}, getImageData: () => ({ data: new Uint8Array(28 * 28 * 4).fill(255) }),
   };
   let captures = 0;
   let top = 0;
@@ -43,17 +50,32 @@ function harness(failure?: 'drawing' | 'sampling' | 'worker') {
     getComputedStyle: () => ({ getPropertyValue: () => '#777' }),
     window: { addEventListener: (name: string, listener: () => void) => listeners.set(name, listener), removeEventListener: (name: string) => listeners.delete(name) },
     ResizeObserver: class { observe() {} disconnect() {} },
-    CnnWorker: class { constructor() { if (failure === 'worker') throw new Error('worker unavailable'); } addEventListener() {} terminate() { terminated = true; } },
-    cancelAnimationFrame() {},
+    CnnWorker: class {
+      callbacks = new Map<string, (event: unknown) => void>();
+      sent: any[] = [];
+      terminated = false;
+      constructor() { if (failure === 'worker') throw new Error('worker unavailable'); workers.push(this); }
+      addEventListener(name: string, callback: (event: unknown) => void) { this.callbacks.set(name, callback); }
+      emit(name: string, event: unknown) { this.callbacks.get(name)?.(event); }
+      postMessage(message: unknown) { this.sent.push(message); }
+      terminate() { terminated = true; this.terminated = true; }
+    },
+    setTimeout(callback: () => void, delay: number) { timers.set(++timerId, { callback, delay }); return timerId; },
+    clearTimeout(id: number) { timers.delete(id); },
+    requestAnimationFrame(callback: () => void) { frames.set(++frameId, callback); return frameId; },
+    cancelAnimationFrame(id: number) { frames.delete(id); },
+    console: { error() {} },
   };
   const component = runInNewContext(code, scope) as Record<string, (...args: any[]) => any>;
   component.bindCanvas(canvas);
   const event = (y: number) => ({ button: 0, pointerId: 1, clientX: 20, clientY: y, preventDefault() {} });
   return {
-    component, listeners, points, event,
+    component, listeners, points, event, workers, timers, frames,
     defer() { settled(); }, start() { setup(); }, cleanup() { cleanup(); },
+    flushFrames() { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback()); },
     scroll(value: number) { top = value; listeners.get('scroll')?.(); },
     get captures() { return captures; }, get cancelled() { return cancelled; }, get terminated() { return terminated; },
+    get clears() { return clears; },
   };
 }
 
@@ -78,7 +100,7 @@ test('CNN ignores drawing, intensity, and clear until deferred initialization co
   expect(h.listeners.size).toBe(0);
 });
 
-for (const failure of ['drawing', 'sampling', 'worker'] as const) {
+for (const failure of ['drawing', 'sampling'] as const) {
   test(`CNN displays deferred ${failure} setup failure without escaping the callback`, () => {
     const h = harness(failure);
     h.defer();
@@ -90,6 +112,77 @@ for (const failure of ['drawing', 'sampling', 'worker'] as const) {
     expect(h.captures).toBe(0);
   });
 }
+
+test('CNN worker construction failure keeps drawing available for model retry', () => {
+  const h = harness('worker');
+  h.defer(); h.start();
+  expect(h.component.workerFailure()).toContain('unavailable');
+  expect(h.component.modelLoading()).toBe(false);
+  expect(h.component.ready()).toBe(true);
+  h.component.beginStroke(h.event(20));
+  expect(h.points).toEqual([[20, 20]]);
+  expect(h.timers.size).toBe(0);
+  h.cleanup();
+});
+
+test('CNN bounds silent startup and retries the existing drawing without accepting stale callbacks', () => {
+  const h = harness();
+  h.defer(); h.start();
+  expect(h.component.modelLoading()).toBe(true);
+  h.component.beginStroke(h.event(20));
+  const timeout = [...h.timers.values()][0]!;
+  expect(timeout.delay).toBeGreaterThan(0);
+  expect(timeout.delay).toBeLessThanOrEqual(15_000);
+  timeout.callback();
+  expect(h.component.workerFailure()).toContain('too long');
+  expect(h.component.modelLoading()).toBe(false);
+  expect(h.workers[0]!.terminated).toBe(true);
+  expect(h.timers.size).toBe(0);
+  h.component.startWorker();
+  expect(h.workers).toHaveLength(2);
+  expect(h.clears).toBe(0);
+  expect(h.component.workerFailure()).toBe(null);
+  expect(h.component.modelLoading()).toBe(true);
+  h.workers[0]!.emit('message', { data: { type: 'ready' } });
+  h.workers[0]!.emit('error', { message: 'obsolete failure' });
+  timeout.callback();
+  expect(h.component.modelLoading()).toBe(true);
+  expect(h.component.workerFailure()).toBe(null);
+  h.workers[1]!.emit('message', { data: { type: 'ready' } });
+  expect(h.component.modelLoading()).toBe(false);
+  expect(h.timers.size).toBe(0);
+  h.flushFrames();
+  const prediction = h.workers[1]!.sent[0];
+  expect(prediction.type).toBe('predict');
+  expect([...prediction.input]).toEqual(Array(784).fill(255));
+  h.workers[1]!.emit('message', { data: { type: 'result', id: prediction.id, classId: 2, probabilities: Array(11).fill(0.1) } });
+  expect(h.component.scores()[2]).toBe(0.1);
+  h.cleanup();
+});
+
+test('CNN startup errors and unmount clear deadlines and reject late callbacks', () => {
+  for (const error of ['protocol', 'runtime'] as const) {
+    const h = harness();
+    h.defer(); h.start();
+    if (error === 'protocol') h.workers[0]!.emit('message', { data: { type: 'error', message: 'failed', detail: 'fetch failed' } });
+    else h.workers[0]!.emit('error', { message: 'runtime failed' });
+    expect(h.timers.size).toBe(0);
+    expect(h.component.modelLoading()).toBe(false);
+    expect(h.component.workerFailure()).toContain('failed');
+    h.component.startWorker();
+    const timeout = [...h.timers.values()][0]!;
+    h.cleanup();
+    expect(h.timers.size).toBe(0);
+    expect(h.workers[1]!.terminated).toBe(true);
+    timeout.callback();
+    h.workers[1]!.emit('message', { data: { type: 'ready' } });
+    h.workers[1]!.emit('error', { message: 'late failure' });
+    h.component.startWorker();
+    expect(h.workers).toHaveLength(2);
+    expect(h.component.workerFailure()).toBe(null);
+    expect(h.frames.size).toBe(0);
+  }
+});
 
 test('CNN invalidates cached drawing coordinates when a captured stroke scrolls', () => {
   const h = harness();

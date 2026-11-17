@@ -18,17 +18,33 @@ let preparedTemplate: PreparedReverbTemplate | undefined;
 let preloadTask: Promise<void> | undefined;
 let warmNoiseImage: HTMLImageElement | undefined;
 let fontsTask: Promise<void> | undefined;
+const fontTasks = new Map<string, Promise<void>>();
 const preloadReverbFonts = () => {
   fontsTask ??= Promise.all([
     ['Reverb Sans', new URL('../demos/fonts/Roboto-Regular.ttf', import.meta.url).href, '400'],
     ['Reverb Sans', new URL('../demos/fonts/Roboto-Medium.ttf', import.meta.url).href, '500'],
     ['Reverb Sans', new URL('../demos/fonts/Roboto-Bold.ttf', import.meta.url).href, '700'],
     ['Reverb Mono', new URL('../demos/fonts/DroidSansMono.ttf', import.meta.url).href, '400 700'],
-  ].map(async ([family, url, weight]) => {
-    const face = new FontFace(family!, `url("${url}")`, { weight });
-    await face.load();
-    document.fonts.add(face);
-  })).then(() => {});
+  ].map(([family, url, weight]) => {
+    const fontUrl = url!;
+    const existing = fontTasks.get(fontUrl);
+    if (existing) return existing;
+    // Retain successful and in-flight faces when another font fails, so retry
+    // only repeats failed loads and never registers duplicate loaded faces.
+    const task = Promise.resolve().then(async () => {
+      const face = new FontFace(family!, `url("${fontUrl}")`, { weight });
+      await face.load();
+      document.fonts.add(face);
+    }).catch((error: unknown) => {
+      fontTasks.delete(fontUrl);
+      throw error;
+    });
+    fontTasks.set(fontUrl, task);
+    return task;
+  })).then(() => {}).catch((error: unknown) => {
+    fontsTask = undefined;
+    throw error;
+  });
   return fontsTask;
 };
 const prepareReverbTemplate = () => {
@@ -55,6 +71,9 @@ export function preloadReverbDemoAssets(): Promise<void> {
     await preloadReverbFonts();
     warmNoiseImage ??= new Image();
     if (!warmNoiseImage.src) warmNoiseImage.src = REVERB_NOISE_URL;
+  }).catch((error: unknown) => {
+    preloadTask = undefined;
+    throw error;
   });
   return preloadTask;
 }
