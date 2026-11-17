@@ -1,4 +1,4 @@
-import { ArrowRight, X, createElement } from 'lucide';
+import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, createElement } from 'lucide';
 
 import { highlightArticleCode } from '../shared/article-code';
 
@@ -31,28 +31,37 @@ import './btop-mutex.css';
     const bInstruction = $('b-instruction');
     const count = $('cas-count');
     const play = $('cas-play');
+    const previous = $('cas-prev');
+    const next = $('cas-step');
+    const reset = $('cas-reset');
+    const playLabel = $('cas-play-label');
+    const playIcon = play.querySelector<HTMLElement>('.control-icon');
+    if (!playIcon) throw new Error('Missing play icon');
     const codeLine = $('cas-code-line');
     const jumps = [...root.querySelectorAll<HTMLElement>('[data-cas-jump]')];
+    for (const [name, icon] of [['previous', ChevronLeft], ['next', ChevronRight], ['reset', RotateCcw]] as const) {
+      root.querySelector(`[data-cas-icon="${name}"]`)?.replaceChildren(createElement(icon, { 'aria-hidden': 'true', width: 15, height: 15 }));
+    }
 
     const states = [
       {
         atom: false, owners: [], aState: 'waiting', bState: 'waiting',
         aExpected: 'false', bExpected: 'false',
-        aInstruction: 'about to acquire', bInstruction: 'not contending yet',
-        tag: 'state', kind: '', event: 'The atomic is false. Nobody owns the critical section.',
-        caption: 'No contention yet.'
+        aInstruction: 'ready to acquire', bInstruction: 'waiting to run',
+        tag: 'ready', kind: '', event: 'The atomic is false. The critical section is empty.',
+        caption: 'The lock is available.'
       },
       {
         atom: false, owners: [], aState: 'running', bState: 'waiting',
         aExpected: 'false', bExpected: 'false',
-        aInstruction: 'expected = false', bInstruction: 'not contending yet',
+        aInstruction: 'expected = false', bInstruction: 'waiting to run',
         tag: 'A', kind: '', event: 'A sets expected to false, the value of an unlocked flag.',
         caption: 'A tries to change the flag from false to true.'
       },
       {
         atom: true, owners: ['A'], aState: 'owner', bState: 'waiting',
         aExpected: 'false', bExpected: 'false',
-        aInstruction: 'CAS(false → true) → success', bInstruction: 'not contending yet',
+        aInstruction: 'CAS(false → true) → success', bInstruction: 'waiting to run',
         tag: 'A', kind: '', event: 'The comparison matches, so A changes the flag to true and enters the critical section.',
         caption: 'A has the lock.'
       },
@@ -71,10 +80,10 @@ import './btop-mutex.css';
         caption: 'B retries with expected still set to true.'
       },
       {
-        atom: true, owners: ['A'], aState: 'inside', bState: 'owner?',
+        atom: true, owners: ['A'], aState: 'inside', bState: 'acquired',
         aExpected: 'false', bExpected: 'true',
         aInstruction: 'inside critical section', bInstruction: 'CAS(true → true) → success',
-        tag: 'CAS success', kind: 'breach', event: 'Now the comparison is true == true. The CAS succeeds, but the flag stays true and A has not released the lock.',
+        tag: 'CAS success', kind: 'breach', event: 'The comparison is true == true. B succeeds with a true → true exchange while A still owns the lock.',
         caption: 'B gets a successful result while A still holds the lock.'
       },
       {
@@ -89,10 +98,19 @@ import './btop-mutex.css';
     let step = 0;
     let timer: number | null = null;
 
+    const syncControls = () => {
+      const playing = timer !== null;
+      playLabel.textContent = playing ? 'Pause' : step === states.length - 1 ? 'Replay' : 'Play';
+      play.setAttribute('aria-label', playing ? 'Pause simulation' : step === states.length - 1 ? 'Replay simulation' : 'Play simulation');
+      playIcon.replaceChildren(createElement(playing ? Pause : Play, { 'aria-hidden': 'true', width: 15, height: 15 }));
+      previous.setAttribute('aria-disabled', String(step === 0));
+      next.setAttribute('aria-disabled', String(step === states.length - 1));
+      reset.setAttribute('aria-disabled', String(step === 0 && !playing));
+    };
     const stop = () => {
-      if (timer) clearInterval(timer);
+      if (timer !== null) clearInterval(timer);
       timer = null;
-      play.textContent = 'Play';
+      syncControls();
     };
     addEventListener('samey-pageleave', stop);
     addEventListener('pagehide', stop);
@@ -133,7 +151,7 @@ import './btop-mutex.css';
       eventTag.textContent = s.tag;
       eventText.textContent = s.event;
       caption.textContent = s.caption;
-      count.textContent = `${step} / 6`;
+      count.textContent = `Step ${step} / ${states.length - 1}`;
       status.textContent = `Step ${step} of ${states.length - 1}. ${s.event} ${s.caption}`;
       codeLine.classList.toggle('hotline', step >= 2 && step <= 5);
 
@@ -142,6 +160,7 @@ import './btop-mutex.css';
         button.classList.toggle('current', i === step);
         button.setAttribute('aria-current', i === step ? 'step' : 'false');
       });
+      syncControls();
     };
 
     const go = (next: number) => {
@@ -150,20 +169,25 @@ import './btop-mutex.css';
       if (step === states.length - 1) stop();
     };
 
-    $('cas-step')?.addEventListener('click', () => go(step + 1));
-    $('cas-prev')?.addEventListener('click', () => go(step - 1));
-    $('cas-reset')?.addEventListener('click', () => { stop(); go(0); });
-    play?.addEventListener('click', () => {
-      if (timer) return stop();
+    next.addEventListener('click', () => { if (step < states.length - 1) { stop(); go(step + 1); } });
+    previous.addEventListener('click', () => { if (step > 0) { stop(); go(step - 1); } });
+    reset.addEventListener('click', () => { if (step > 0 || timer !== null) { stop(); go(0); } });
+    play.addEventListener('click', () => {
+      if (timer !== null) return stop();
       if (step === states.length - 1) step = 0;
-      play.textContent = 'Pause';
+      timer = setInterval(() => go(step + 1), 1600);
       paint();
-      timer = setInterval(() => go(step + 1), 1050);
     });
     jumps.forEach((button) => button.addEventListener('click', () => { stop(); go(Number(button.dataset.casJump)); }));
     root.addEventListener('keydown', (event) => {
-      if (event.key === 'ArrowRight') { event.preventDefault(); stop(); go(step + 1); }
-      if (event.key === 'ArrowLeft') { event.preventDefault(); stop(); go(step - 1); }
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable]')) return;
+      const target = event.key === 'ArrowRight' ? step + 1
+        : event.key === 'ArrowLeft' ? step - 1
+          : event.key === 'Home' ? 0
+            : event.key === 'End' ? states.length - 1 : null;
+      if (target !== null) { event.preventDefault(); stop(); go(target); }
+      else if (event.key === 'Escape' && timer !== null) { event.preventDefault(); stop(); }
     });
 
     paint();
@@ -175,6 +199,8 @@ import './btop-mutex.css';
     const release = $('release-op');
     const acquire = $('acquire-op');
     const arrow = $('hb-arrow');
+    const arrowIcon = $('hb-icon');
+    const arrowLabel = $('hb-label');
     const caption = $('ordering-caption');
     const setMode = (mode?: string) => {
       buttons.forEach(button => {
@@ -183,15 +209,14 @@ import './btop-mutex.css';
         button.setAttribute('aria-pressed', String(selected));
       });
       const fixed = mode === 'fixed';
-      release.innerHTML = fixed ? 'active = false<small>release</small>' : 'active = false<small>relaxed / no release edge</small>';
-      acquire.innerHTML = fixed ? 'wait observes false<small>acquire</small>' : 'wait observes false<small>relaxed / no acquire edge</small>';
-      arrow.replaceChildren(createElement(fixed ? ArrowRight : X, { 'aria-hidden': 'true', width: 24, height: 24 }));
-      arrow.setAttribute('role', 'img');
-      arrow.setAttribute('aria-label', fixed ? 'Synchronized hand-off' : 'Missing synchronization');
+      release.innerHTML = fixed ? 'active = false<small>release store</small>' : 'active = false<small>seq_cst store · includes release</small>';
+      acquire.innerHTML = fixed ? 'wait observes false<small>acquire load</small>' : 'wait observes false<small>relaxed load</small>';
+      arrowIcon.replaceChildren(createElement(fixed ? ArrowRight : X, { 'aria-hidden': 'true', width: 24, height: 24 }));
+      arrowLabel.textContent = fixed ? 'Synchronized' : 'Unsynchronized';
       arrow.className = `hb ${fixed ? 'good' : 'bad'}`;
       caption.textContent = fixed
-        ? 'The wait sees the runner\'s release. Its acquire ordering makes the runner\'s earlier writes visible before the UI uses them.'
-        : 'The UI sees the flag change, but the relaxed operations do not order the runner\'s writes before the UI reads shared state.';
+        ? 'When the acquire wait observes the runner\'s release, its earlier writes happen before the UI accesses shared state.'
+        : 'The runner\'s store has release semantics. The relaxed wait leaves its earlier writes unsynchronized with the UI\'s access.';
     };
     buttons.forEach(b => b.addEventListener('click', () => setMode(b.dataset.order)));
     setMode('old');

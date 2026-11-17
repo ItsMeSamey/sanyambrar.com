@@ -24,8 +24,9 @@
 .site-standard .portfolio-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; min-width: 0; margin-bottom: 28px; padding-block: 34px 6px; }
 .site-standard .portfolio-heading h1 { min-width: 0; margin: 0; font-size: clamp(40px,6vw,72px); font-weight: 700; line-height: 1; letter-spacing: -.065em; }
 .site-standard .portfolio-heading-home { align-items: center; padding-block: 48px 14px; }
-.site-standard .portfolio-heading-home h1 { font-size: clamp(44px,8.2vw,104px); line-height: .98; letter-spacing: -.075em; }
-.site-standard .portfolio-surname { font-weight: 350; font-style: italic; }
+.site-standard .portfolio-heading-home h1 { font-size: clamp(58px,9.5vw,124px); font-weight: 650; line-height: .96; letter-spacing: -.075em; }
+.site-standard .portfolio-surname { font-weight: 350; color: color-mix(in srgb, var(--site-fg) 16%, var(--site-muted)); }
+html:is([data-color="custom"],[data-color^="saved:"]) .site-standard .portfolio-heading-home .portfolio-surname { color: var(--site-fg); }
 .site-standard .profile-links { display: grid; flex: 0 1 auto; min-width: 0; max-inline-size: 100%; gap: 2px; }
 .site-standard .profile-links a, .site-standard .portfolio-footer a { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 28px; font-size: 12px; }
 .site-standard .profile-links svg, .site-standard .portfolio-footer svg { width: 13px; height: 13px; flex: none; color: var(--site-muted); }
@@ -139,7 +140,6 @@
 @media (max-width: 900px) {
   .site-standard .portfolio-sheet-home { grid-template-columns: minmax(0,1fr); }
   .site-standard .portfolio-heading-home { padding-top: 36px; }
-  .site-standard .portfolio-heading-home h1 { font-size: clamp(44px,9vw,76px); }
   .site-standard .game-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
   .site-standard .card:nth-child(n) { border-top: 0; border-radius: 0; }
   .site-standard .card + .card { border-left: 1px solid var(--site-line); }
@@ -147,10 +147,13 @@
   .site-standard .card:last-child { border-radius: 0 7px 7px 0; }
   .site-standard .card { padding-inline: 14px; }
 }
+@media (max-width: 760px) {
+  .site-standard .portfolio-heading-home h1 { font-size: clamp(54px,11.8vw,90px); }
+}
 @media (max-width: 700px) {
   .site-standard .portfolio-heading { flex-wrap: wrap; align-items: flex-start; gap: 18px; padding-top: 28px; margin-bottom: 24px; }
   .site-standard .portfolio-heading-home { padding-block: 28px 2px; }
-  .site-standard .portfolio-heading-home h1 { flex: 1 1 100%; font-size: clamp(44px,10.5vw,70px); }
+  .site-standard .portfolio-heading-home h1 { flex: 1 1 100%; }
   .site-standard .profile-links { display: flex; flex-wrap: wrap; gap: 4px 20px; }
   .site-standard .profile-links a { justify-content: flex-start; gap: 6px; min-height: 28px; font-size: 11px; }
   .site-standard .game-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -182,7 +185,7 @@
 }
 @media (max-width: 360px) {
   .site-standard > main { padding-inline: 12px; }
-  .site-standard .portfolio-heading-home h1 { font-size: 46px; }
+  .site-standard .portfolio-heading-home h1 { font-size: 52px; }
   .site-standard .portfolio-heading-home h1 > span { display: block; }
   .site-standard .game-grid { grid-template-columns: minmax(0,1fr); }
   .site-standard .card:nth-child(n) { border-left: 0; border-top: 0; border-radius: 0; }
