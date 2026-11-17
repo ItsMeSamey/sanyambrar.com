@@ -1,0 +1,71 @@
+.rhythm-game { display: grid; gap: 12px; width: 100%; }
+.rhythm-game .ai-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+.rhythm-game .ai-stat { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 8px 6px; }
+.rhythm-game .ai-lives strong { min-height: 24px; }
+.rhythm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.rhythm-palette { color: var(--site-muted); font-size: .8rem; letter-spacing: .04em; }
+.rhythm-audio-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.rhythm-audio-controls button { font-size: .75rem; padding: 6px 9px; min-height: 36px; }
+.rhythm-volume { display: flex; width: 68px; min-height: 36px; align-items: center; }
+.rhythm-volume input { width: 100%; accent-color: var(--site-fg); cursor: pointer; }
+.rhythm-status { margin: 0; height: 4.2em; color: var(--site-muted); font-size: .85rem; line-height: 1.4; }
+.rhythm-board { position: relative; width: 100%; height: 330px; border: 1px solid var(--site-line); border-radius: 12px; overflow: hidden; }
+.rhythm-pad { display: grid; align-content: center; justify-items: center; width: 100%; height: 100%; padding: 12px 20px 58px; border: 0; background: transparent; color: var(--site-fg); cursor: default; -webkit-tap-highlight-color: transparent; }
+.rhythm-pad:disabled { opacity: 1; }
+.rhythm-board.is-active, .rhythm-board.is-active .rhythm-pad { touch-action: none; user-select: none; }
+.rhythm-game[data-phase="response"] .rhythm-pad { cursor: pointer; }
+.rhythm-pad:focus-visible { outline: 2px solid var(--site-fg); outline-offset: -5px; }
+.rhythm-art { display: grid; justify-items: center; width: 100%; }
+.rhythm-orbit { display: block; width: 240px; max-width: 100%; height: 180px; overflow: visible; }
+.rhythm-ring { fill: none; stroke: var(--site-line); stroke-width: 1; }
+.rhythm-ring-outer { stroke-dasharray: 1 10; stroke-linecap: round; }
+.rhythm-core { fill: color-mix(in srgb, var(--ai-accent) 6%, transparent); stroke: var(--site-line); stroke-width: 1.5; transition: fill 70ms, stroke 70ms; }
+.rhythm-wave { fill: none; stroke: var(--ai-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.has-pulse .rhythm-core { fill: color-mix(in srgb, var(--ai-accent) 24%, transparent); stroke: var(--ai-accent); stroke-width: 3; }
+.has-pulse .rhythm-wave { stroke: var(--ai-accent); stroke-width: 3; }
+.has-pulse .rhythm-ring { stroke: var(--site-muted); }
+.rhythm-note-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 260px; margin: 3px 0 12px; }
+.rhythm-note-slots span { width: 8px; height: 8px; border: 1px solid var(--site-muted); border-radius: 50%; }
+.rhythm-note-slots .is-lit { background: var(--ai-accent); outline: 3px solid color-mix(in srgb, var(--ai-accent) 18%, transparent); }
+.rhythm-note-slots .is-tapped { background: var(--site-muted); }
+.rhythm-board.is-preview .rhythm-art { filter: blur(3px); opacity: .65; }
+.rhythm-board.is-preview .rhythm-ring { stroke: var(--site-muted); stroke-width: 2; }
+.rhythm-board.is-preview .rhythm-core { fill: color-mix(in srgb, var(--ai-accent) 16%, transparent); stroke: var(--site-muted); stroke-width: 2; }
+.rhythm-board .ai-ready-overlay { position: absolute; inset: 0; display: grid; place-content: center; padding: 20px; background: transparent; }
+.rhythm-board .ai-ready-content { display: none; }
+.rhythm-board .ai-ready-controls { max-width: 440px; }
+.rhythm-board .ai-game-rules { margin-top: 12px; }
+.rhythm-next { position: absolute; inset: auto 0 0; height: 48px; display: flex; align-items: center; justify-content: center; }
+.rhythm-next button { max-width: calc(100% - 16px); }
+.rhythm-review { width: 100%; max-width: 620px; }
+.rhythm-review svg { display: block; width: 100%; overflow: visible; }
+.rhythm-board.is-failed .rhythm-art { display: none; }
+.rhythm-track { stroke: var(--site-line); fill: none; }
+.rhythm-target { fill: var(--ai-accent); }
+.rhythm-actual { fill: var(--site-bg); stroke: var(--site-fg); stroke-width: 2.5; }
+.rhythm-missing { fill: none; stroke: var(--site-error-fg); stroke-width: 2; }
+.rhythm-error-line { stroke: var(--site-muted); stroke-dasharray: 3 5; opacity: .5; fill: none; }
+.rhythm-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 16px; color: var(--site-muted); font-size: .7rem; margin-top: 12px; }
+.rhythm-legend span { display: flex; align-items: center; gap: 6px; }
+.rhythm-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.rhythm-target-key { background: var(--ai-accent); }
+.rhythm-actual-key { border: 1px solid var(--site-fg); }
+.rhythm-review-detail { display: block; margin-top: 4px; font-size: .75rem; color: var(--site-muted); line-height: 1.5; }
+@media (max-width: 380px) {
+  .rhythm-game .ai-lives strong { gap: 2px; }
+  .rhythm-game .ai-lives svg { width: 14px; height: 14px; }
+  .rhythm-board { height: 300px; }
+  .rhythm-status { height: 5.2em; }
+  .rhythm-pad { padding-right: 12px; padding-left: 12px; }
+  .rhythm-toolbar { gap: 8px; }
+  .rhythm-volume { width: 46px; }
+  .rhythm-audio-controls { gap: 4px; }
+  .rhythm-legend { gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .rhythm-core { transition: none; } }
+@media (forced-colors: active) {
+  .rhythm-target, .rhythm-target-key, .rhythm-note-slots .is-lit { fill: CanvasText; background: CanvasText; }
+  .rhythm-actual { fill: Canvas; stroke: CanvasText; }
+  .rhythm-core, .rhythm-wave, .rhythm-ring, .rhythm-track, .rhythm-error-line, .rhythm-missing { stroke: CanvasText; }
+  .has-pulse .rhythm-core { fill: Highlight; }
+}

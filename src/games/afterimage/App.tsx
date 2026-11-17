@@ -12,7 +12,7 @@ import { installRipple } from './ripple.ts';
 import { installAfterimageFavicon } from './favicon.ts';
 import { exportHistory, importHistory, saveResult } from './history.ts';
 import { createAfterimageNavigation, type AfterimageRoute } from './navigation.ts';
-import type { GameId, GameResult } from './types.ts';
+import { isHardGame, type GameId, type GameResult } from './types.ts';
 
 const MemoryGame = lazy(() => import('./Memory.tsx'), { export: 'MemoryGame' });
 const PairGame = lazy(() => import('./Pair.tsx'), { export: 'PairGame' });
@@ -22,6 +22,8 @@ const ThinkingGame = lazy(() => import('./Thinking.tsx'), { export: 'ThinkingGam
 const PaperFoldingGame = lazy(() => import('./PaperFolding.tsx'));
 const DeductionGame = lazy(() => import('./Deduction.tsx'), { export: 'DeductionGame' });
 const ColourMatchGame = lazy(() => import('./ColourMatch.tsx'));
+const RhythmGame = lazy(() => import('./Rhythm.tsx'), { export: 'RhythmGame' });
+const TrackingGame = lazy(() => import('./Tracking.tsx'), { export: 'TrackingGame' });
 
 type Entry = { id: GameId; title: string; category: string; art: string };
 export const games: Entry[] = [
@@ -34,12 +36,15 @@ export const games: Entry[] = [
   { id: 'reverse', title: 'Reverse span', category: 'Memory', art: 'reverse' },
   { id: 'reverse-fresh', title: 'Reverse span', category: 'Memory', art: 'reverse-fresh' },
   { id: 'pairs', title: 'Pair memory', category: 'Memory', art: 'pairs' },
+  { id: 'rhythm', title: 'Rhythm memory', category: 'Memory', art: 'rhythm' },
   { id: 'reaction', title: 'Reaction time', category: 'Speed', art: 'reaction' },
   { id: 'aim', title: 'Aim training', category: 'Speed', art: 'aim' },
   { id: 'cps', title: 'Click / tap speed', category: 'Speed', art: 'cps' },
   { id: 'number-order', title: 'Number order', category: 'Speed', art: 'order' },
   { id: 'stroop', title: 'Colour words', category: 'Focus', art: 'stroop' },
   { id: 'arithmetic', title: 'Mental arithmetic', category: 'Focus', art: 'math' },
+  { id: 'tracking', title: 'Object tracking', category: 'Focus', art: 'tracking' },
+  { id: 'tracking-hard', title: 'Object tracking', category: 'Focus', art: 'tracking' },
   { id: 'rotation', title: 'Mental rotation', category: 'Spatial', art: 'rotation' },
   { id: 'paper-folding', title: 'Paper folding', category: 'Spatial', art: 'paper-folding' },
   { id: 'patterns', title: 'Number patterns', category: 'Reasoning', art: 'patterns' },
@@ -58,6 +63,8 @@ function AfterimageLogo() {
   return <svg class="ai-library-logo" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 3v18M3 12h9"/><path d="M12 3h5a4 4 0 0 1 4 4v5h-9Z" fill="currentColor" stroke="none"/></svg>;
 }
 function component(id: GameId) {
+  if (id === 'rhythm') return RhythmGame;
+  if (id === 'tracking' || id === 'tracking-hard') return TrackingGame;
   if (id === 'paper-folding') return PaperFoldingGame;
   if (id === 'deduction') return DeductionGame;
   if (id === 'colour-match') return ColourMatchGame;
@@ -167,9 +174,9 @@ export function App() {
     <main class={['ai-main', selection() ? 'ai-play' : 'ai-library']} data-category={current()?.category}>
       <Show when={selection()} keyed fallback={<>
         <div class="ai-library-heading"><h1><SmartLink href="/afterimage/" class="ai-wordmark ai-library-brand" onClick={event => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); }}><AfterimageLogo/><span>Afterimage</span></SmartLink></h1><span>{games.length} games</span></div>
-        <For each={['Memory', 'Speed', 'Focus', 'Spatial', 'Reasoning', 'Perception']}>{category => <section class="ai-category" data-category={category}><h2>{category}</h2><div class="ai-game-library"><For each={games.filter(game => game.category === category)}>{game => <button type="button" class="ai-game-card" data-game-card={game.id} onPointerEnter={() => { void component(game.id).preload().catch(() => {}); }} onFocus={() => { void component(game.id).preload().catch(() => {}); }} onClick={() => open(game.id)}><span class="ai-game-art" aria-hidden="true" innerHTML={artwork[`./assets/${game.art}.svg`]}/><span class="ai-game-name">{game.title}</span><span class="ai-card-corner"><Show when={game.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show><ArrowUpRight class="ai-card-arrow" size={16}/></span></button>}</For></div></section>}</For>
+        <For each={['Memory', 'Speed', 'Focus', 'Spatial', 'Reasoning', 'Perception']}>{category => <section class="ai-category" data-category={category}><h2>{category}</h2><div class="ai-game-library"><For each={games.filter(game => game.category === category)}>{game => <button type="button" class="ai-game-card" data-game-card={game.id} data-hard={isHardGame(game.id) ? "true" : undefined} onPointerEnter={() => { void component(game.id).preload().catch(() => {}); }} onFocus={() => { void component(game.id).preload().catch(() => {}); }} onClick={() => open(game.id)}><span class="ai-game-art" aria-hidden="true" innerHTML={artwork[`./assets/${game.art}.svg`]}/><span class="ai-game-name">{game.title}</span><span class="ai-card-corner"><Show when={isHardGame(game.id)}><span class="ai-hard">Hard</span></Show><ArrowUpRight class="ai-card-arrow" size={16}/></span></button>}</For></div></section>}</For>
       </>}>
-        {selected => <><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={selected.id.endsWith('-fresh')}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={(result: GameResult) => { if (selected.generation === generation) finish(result); }} onScopeChange={(scope: string) => { if (selected.generation === generation) setActiveScope(scope); }} onActivityChange={(active: boolean) => { if (selected.generation === generation) setHasActivity(active); }}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
+        {selected => <><header class="ai-play-heading"><h1 tabindex="-1">{current()?.title}</h1><Show when={isHardGame(selected.id)}><span class="ai-hard">Hard</span></Show></header><section class="ai-game" data-game={selected.id}><Errored fallback={(_error, reset) => <div class="ai-load-error" role="alert"><p>This game could not be loaded.</p><Button onClick={reset}>Try again</Button></div>}><Loading fallback={<p class="ai-loading" role="status">Loading game…</p>}><Dynamic component={component(selected.id)} id={selected.id} onFinish={(result: GameResult) => { if (selected.generation === generation) finish(result); }} onScopeChange={(scope: string) => { if (selected.generation === generation) setActiveScope(scope); }} onActivityChange={(active: boolean) => { if (selected.generation === generation) setHasActivity(active); }}/></Loading></Errored></section><History id={selected.id} revision={revision()} latestScope={activeScope() ?? latest()?.scope}/></>}
       </Show>
     </main>
     <Show when={message()}><p class="ai-storage-message" role="status">{message()}</p></Show>

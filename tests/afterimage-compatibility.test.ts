@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { exportHistory, importHistory, initialScope, readHistory, saveResult, scoreKey, scopeChoices, scopeUnit } from '../src/games/afterimage/history.ts';
+import { exportHistory, importHistory, initialScope, isCurrentScope, readHistory, saveResult, scoreKey, scopeChoices, scopeUnit } from '../src/games/afterimage/history.ts';
 import { referenceData } from '../src/games/afterimage/reference-data.ts';
 import { referenceFor, summarizeBins } from '../src/games/afterimage/reference-model.ts';
-import type { GameId } from '../src/games/afterimage/types.ts';
+import { isHardGame, type GameId } from '../src/games/afterimage/types.ts';
 
 const scopes: [GameId, string][] = [
   ['visual', 'visual-v3-standard'], ['sequence', 'sequence-v3-growing'], ['sequence-fresh', 'sequence-v2-fresh'],
@@ -12,6 +12,7 @@ const scopes: [GameId, string][] = [
   ['cps', 'cps-v1-mouse-10s'], ['number-order', 'order-v2-mouse'], ['stroop', 'stroop'], ['arithmetic', 'math'],
   ['rotation', 'rotation-v4-60s'], ['patterns', 'patterns-v4-60s'], ['search', 'search-v2-30s'],
   ['paper-folding', 'paper-folding-v2-60s'], ['deduction', 'deduction-v3-letters-60s'], ['colour-match', 'colour-match-v2-60s'],
+  ['rhythm', 'rhythm-v1-mouse'], ['tracking', 'tracking-v1'], ['tracking-hard', 'tracking-hard-v1'],
 ];
 
 function withStorage(run: (storage: Storage) => void) {
@@ -32,7 +33,7 @@ function withStorage(run: (storage: Storage) => void) {
 
 describe('Afterimage original score compatibility', () => {
   test('active and archived games resolve their current rules scopes', () => {
-    expect(new Set(scopes.map(([id]) => id)).size).toBe(22);
+    expect(new Set(scopes.map(([id]) => id)).size).toBe(25);
     for (const [id, scope] of scopes) expect(initialScope(id)).toBe(scope);
   });
   test('historical aliases remain readable without merging them into current rules', () => {
@@ -44,6 +45,50 @@ describe('Afterimage original score compatibility', () => {
     expect(scoreKey('reverse-v2-growing')).not.toBe(scoreKey('reverse-v2-fresh'));
     expect(scoreKey('future-v87-custom')).toBe('afterimage-history-future-v87-custom');
   });
+  test('new survival games use their own units and only their exact current protocols', () => {
+    for (const kind of ['mouse', 'touch', 'pen', 'keyboard']) {
+      expect(isCurrentScope('rhythm', `rhythm-v1-${kind}`)).toBe(true);
+      expect(scopeUnit('rhythm', `rhythm-v1-${kind}`)).toEqual({ unit: 'levels', lower: false });
+      expect(referenceFor('rhythm', `rhythm-v1-${kind}`)).toBeNull();
+    }
+    for (const scope of ['rhythm-v1', 'rhythm-v1-controller', 'rhythm-v2-mouse', 'rhythm-v1-mouse-extra', 'tracking-v1']) expect(isCurrentScope('rhythm', scope)).toBe(false);
+    for (const id of ['tracking', 'tracking-hard'] as const) {
+      expect(isCurrentScope(id, initialScope(id))).toBe(true);
+      expect(isCurrentScope(id, `${id}-v2`)).toBe(false);
+      expect(isCurrentScope(id, initialScope(id === 'tracking' ? 'tracking-hard' : 'tracking'))).toBe(false);
+      expect(scopeUnit(id, initialScope(id))).toEqual({ unit: 'rounds', lower: false });
+      expect(referenceFor(id, initialScope(id))).toBeNull();
+    }
+    expect(['sequence-fresh', 'reverse-fresh', 'tracking-hard'].every(id => isHardGame(id as GameId))).toBe(true);
+    expect(['sequence', 'reverse', 'rhythm', 'tracking'].some(id => isHardGame(id as GameId))).toBe(false);
+  });
+  test('rhythm input filters are relevant, named, and appear only after a saved run', () => withStorage(storage => {
+    expect(scopeChoices('rhythm')).toEqual([['rhythm-v1-mouse', 'Mouse']]);
+    storage.setItem(scoreKey('rhythm-v1-mouse'), '[{"value":3}]');
+    storage.setItem(scoreKey('rhythm-v1-touch'), '[{"value":5}]');
+    storage.setItem(scoreKey('rhythm-v1-pen'), '[]');
+    storage.setItem(scoreKey('rhythm-v99-custom'), '[{"value":7}]');
+    expect(scopeChoices('rhythm', 'rhythm-v1-keyboard')).toEqual([
+      ['rhythm-v1-keyboard', 'Keyboard'], ['rhythm-v1-mouse', 'Mouse'], ['rhythm-v1-touch', 'Touch'],
+      ['rhythm-v99-custom', 'Saved rules · rhythm-v99-custom'],
+    ]);
+  }));
+  test('tracking difficulty histories never appear in the other difficulty filter', () => withStorage(storage => {
+    for (const scope of ['tracking-v1', 'tracking-hard-v1', 'tracking-v99', 'tracking-hard-v99', 'tracking-hard']) storage.setItem(scoreKey(scope), '[{"value":5}]');
+    expect(scopeChoices('tracking')).toEqual([['tracking-v1', 'Current rules'], ['tracking-v99', 'Saved rules · tracking-v99']]);
+    expect(scopeChoices('tracking-hard')).toEqual([['tracking-hard-v1', 'Current rules'], ['tracking-hard-v99', 'Saved rules · tracking-hard-v99'], ['tracking-hard', 'Saved rules · tracking-hard']]);
+  }));
+  test('new scores and export/import preserve every previous scope and opaque metadata', () => withStorage(storage => {
+    const preserved = scopes.filter(([id]) => !['rhythm', 'tracking', 'tracking-hard'].includes(id)).map(([, scope]) => [scoreKey(scope), '[ { "value": 9, "date": 123, "future": { "keep": true } } ]'] as const);
+    for (const [key, raw] of preserved) storage.setItem(key, raw);
+    for (const id of ['rhythm', 'tracking', 'tracking-hard'] as const) saveResult({ scope: initialScope(id), value: 7, unit: scopeUnit(id, initialScope(id)).unit, details: { rulesVersion: 1, inputKind: 'mouse', accuracy: 85 } });
+    for (const [key, raw] of preserved) expect(storage.getItem(key)).toBe(raw);
+    const backup = exportHistory(); storage.clear();
+    expect(importHistory(backup)).toBe(25);
+    for (const [key, raw] of preserved) expect(storage.getItem(key)).toBe(raw);
+    for (const id of ['rhythm', 'tracking', 'tracking-hard'] as const) expect(readHistory(initialScope(id))[0]).toMatchObject({ value: 7, rulesVersion: 1, inputKind: 'mouse', accuracy: 85, unit: scopeUnit(id, initialScope(id)).unit });
+    expect(importHistory(backup)).toBe(0);
+  }));
   test('fresh history offers only the active protocol across all games', () => withStorage(() => {
     for (const [id, scope] of scopes) expect(scopeChoices(id).map(([value]) => value)).toEqual([scope]);
     expect(scopeChoices('aim', 'aim-v6-standard-touch').map(([value]) => value)).toEqual(['aim-v6-standard-touch']);

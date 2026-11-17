@@ -2,8 +2,8 @@ import { Result } from './common.tsx';
 import type { GameResult } from './types.ts';
 import './board-result.css';
 
-export function BoardResult(props: { result: GameResult; onRetry: () => void }) {
+export function BoardResult(props: { result: GameResult; onRetry: () => void; announceResult?: boolean }) {
   return <div class="ai-board-result">
-    <Result result={props.result} onRetry={props.onRetry} />
+    <Result result={props.result} onRetry={props.onRetry} announceResult={props.announceResult} />
   </div>;
 }

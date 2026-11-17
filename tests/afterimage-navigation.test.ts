@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { createAfterimageNavigation } from '../src/games/afterimage/navigation.ts';
 import type { GameId } from '../src/games/afterimage/types.ts';
 
-const ids: GameId[] = ['visual', 'sequence', 'sequence-fresh', 'reverse', 'reverse-fresh', 'number-order', 'arithmetic', 'cps', 'paper-folding', 'deduction', 'colour-match'];
+const ids: GameId[] = ['visual', 'sequence', 'sequence-fresh', 'reverse', 'reverse-fresh', 'number-order', 'arithmetic', 'cps', 'paper-folding', 'deduction', 'colour-match', 'rhythm', 'tracking', 'tracking-hard'];
 function fixture(initialState: unknown = null, previous: unknown[] = [], saved?: string) {
   const entries: unknown[] = [...previous, initialState];
   let index = previous.length;
@@ -22,12 +22,21 @@ function fixture(initialState: unknown = null, previous: unknown[] = [], saved?:
 
 describe('Afterimage browser navigation', () => {
   test('new challenge routes remain restorable without leaking an unsupported identifier', () => {
-    for (const id of ['paper-folding', 'deduction', 'colour-match'] as const) {
+    for (const id of ['paper-folding', 'deduction', 'colour-match', 'rhythm', 'tracking', 'tracking-hard'] as const) {
       const f = fixture();
       f.navigation.open(id, 420);
       const restored = createAfterimageNavigation(f.history, f.storage, ids);
       expect(restored.current()).toMatchObject({ game: id, selectedCard: id, homeScroll: 420 });
     }
+  });
+  test('normal and hard tracking preserve distinct cards through Back, Forward and reload', () => {
+    const f = fixture();
+    f.navigation.open('tracking', 710);
+    f.navigation.open('tracking-hard', 0);
+    f.navigation.back();
+    expect(f.navigation.restore(f.history.state)).toMatchObject({ game: 'tracking', selectedCard: 'tracking', homeScroll: 710 });
+    expect(f.forward()).toMatchObject({ game: 'tracking-hard', selectedCard: 'tracking-hard', homeScroll: 710 });
+    expect(createAfterimageNavigation(f.history, f.storage, ids).current()).toMatchObject({ game: 'tracking-hard', selectedCard: 'tracking-hard' });
   });
   test('each game open adds one entry; Back and Forward restore that exact route', () => {
     const f = fixture();

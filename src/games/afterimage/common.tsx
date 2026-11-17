@@ -1,4 +1,4 @@
-import { For, createEffect, createSignal, onCleanup, onSettled } from 'solid-js';
+import { For, Show, createEffect, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { CirclePlay, RotateCw } from '../../shared/components/Icons.tsx';
@@ -102,11 +102,11 @@ export function Ready(props: { onStart: () => void; children?: JSX.Element; rule
   return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><div class="ai-ready-controls"><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button>{props.rules}</div><div class="ai-ready-content">{props.children}</div></section>;
 }
 
-export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element; overlay?: boolean }) {
+export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element; overlay?: boolean; announceResult?: boolean }) {
   const ready = useResultGate();
   let retry: HTMLButtonElement | undefined;
   createEffect(ready, enabled => { if (enabled && document.activeElement === document.body) retry?.focus({ preventScroll: true }); });
-  return <section class={['ai-result', props.overlay && 'ai-result-overlay']} aria-label="Run result"><div class="ai-result-panel"><span class="ai-sr-only" role="status">{props.result.value} {unit(props.result.value, props.result.unit)}</span><Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/>Restart</Button>{props.children}</div></section>;
+  return <section class={['ai-result', props.overlay && 'ai-result-overlay']} aria-label={props.announceResult === false ? 'Restart interrupted run' : 'Run result'}><div class="ai-result-panel"><Show when={props.announceResult !== false}><span class="ai-sr-only" role="status">{props.result.value} {unit(props.result.value, props.result.unit)}</span></Show><Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/>Restart</Button>{props.children}</div></section>;
 }
 
 export function unit(value: number, name: string) {

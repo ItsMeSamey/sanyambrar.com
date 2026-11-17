@@ -5,8 +5,14 @@ const aliases: Record<string, string> = { typing: 'typing-v2-60s', stroop: 'stro
 export const scoreKey = (scope: string) => `afterimage-history-${aliases[scope] ?? scope}`;
 export const baseGame = (id: GameId) => id === 'number-order' ? 'order' : id === 'arithmetic' ? 'math' : id.replace('-fresh', '');
 export function initialScope(id: GameId): string {
-  const scopes: Record<string, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v3-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v2-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v4-60s', patterns: 'patterns-v4-60s', search: 'search-v2-30s', 'paper-folding': 'paper-folding-v2-60s', deduction: 'deduction-v3-letters-60s', 'colour-match': 'colour-match-v2-60s' };
+  const scopes: Record<GameId, string> = { visual: 'visual-v3-standard', sequence: 'sequence-v3-growing', 'sequence-fresh': 'sequence-v2-fresh', reverse: 'reverse-v2-growing', 'reverse-fresh': 'reverse-v2-fresh', number: 'number-v2-hb', verbal: 'verbal-v5-progressive', chimp: 'chimp-v3-compact-mouse', pairs: 'pairs-v4-mouse', reaction: 'reaction-v7-desktop', aim: 'aim-v4-compact-mouse', typing: 'typing-v4-hardware-passage', cps: 'cps-v1-mouse-10s', 'number-order': 'order-v2-mouse', stroop: 'stroop', arithmetic: 'math', rotation: 'rotation-v4-60s', patterns: 'patterns-v4-60s', search: 'search-v2-30s', 'paper-folding': 'paper-folding-v2-60s', deduction: 'deduction-v3-letters-60s', 'colour-match': 'colour-match-v2-60s', rhythm: 'rhythm-v1-mouse', tracking: 'tracking-v1', 'tracking-hard': 'tracking-hard-v1' };
   return scopes[id];
+}
+export function isCurrentScope(id: GameId, scope: string): boolean {
+  if (id === 'rhythm') return /^rhythm-v1-(mouse|touch|pen|keyboard)$/.test(scope);
+  if (id === 'tracking' || id === 'tracking-hard') return scope === initialScope(id);
+  if (id === 'deduction' && /^deduction-v3-(letters|images)-60s$/.test(scope)) return true;
+  return scope === initialScope(id) || /^(aim-v[46]-(standard|compact)-(mouse|pen)|aim-v6-(standard|compact)-(touch|keyboard)|chimp-v3-(standard|compact)-(mouse|touch|pen|keyboard)|pairs-v4-(mouse|touch|pen|keyboard)|order-v2-(mouse|touch|pen|keyboard)|reaction-v7-(desktop|touch-release|pen)|typing-v4-(hardware|onscreen)-passage|cps-v1-mouse-10s|tps-v3-touch-10s|sequence-v3-growing|sequence-v2-fresh|reverse-v2-(growing|fresh))$/.test(scope);
 }
 export function readHistory(scope: string): HistoryRow[] {
   const parsed: unknown = JSON.parse(localStorage.getItem(scoreKey(scope)) ?? '[]');
@@ -45,6 +51,7 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
     cps: [['cps-v1-mouse-10s', 'Mouse · 10 seconds'], ['tps-v3-touch-10s', 'Touch · 10 seconds'], ['tps-v2-touch-10s', 'Previous touch · release'], ['tps-v1-touch-10s', 'Earlier touch · press']],
     reaction: [['reaction-v7-desktop', 'Mouse / keyboard · short wait'], ['reaction-v7-touch-release', 'Touch · release · short wait'], ['reaction-v7-pen', 'Pen · short wait'], ['reaction-v5-desktop', 'Previous wait · mouse / keyboard'], ['reaction-v6-touch-release', 'Previous wait · touch release'], ['reaction-v5-touch', 'Previous touch · press'], ['reaction-v5-pen', 'Previous wait · pen']],
   };
+  if (game === 'rhythm') for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`rhythm-v1-${kind}`, kind === 'keyboard' ? 'Keyboard' : labels[kind]);
   fixed[game]?.forEach(([scope, label]) => add(scope, label));
   if (['aim', 'chimp'].includes(game)) for (const format of ['standard', 'compact']) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`${game}-${game === 'chimp' ? 'v3' : ['touch', 'keyboard'].includes(kind) ? 'v6' : 'v4'}-${format}-${kind}`, `${labels[kind]} · ${format}`);
   if (game === 'chimp') for (const format of ['standard', 'compact']) for (const kind of ['mouse', 'touch', 'keyboard', 'pen']) add(`chimp-v2-${format}-${kind}`, `Earlier rules · ${labels[kind]} · ${format}`);
@@ -61,6 +68,7 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
     const key = localStorage.key(i);
     if (!key?.startsWith('afterimage-history-')) continue;
     const scope = key.slice('afterimage-history-'.length);
+    if (game === 'tracking' && (scope === 'tracking-hard' || scope.startsWith('tracking-hard-'))) continue;
     if (scope === game || scope.startsWith(`${game}-`) || game === 'cps' && scope.startsWith('tps-')) add(scope, `Saved rules · ${scope}`);
   }
   add(activeScope, 'Current results');
@@ -83,7 +91,7 @@ export function scopeChoices(id: GameId, activeScope = initialScope(id)): [strin
 export function scopeUnit(id: GameId, scope: string): { unit: string; lower: boolean } {
   if (id === 'reaction' || id === 'aim') return { unit: 'ms', lower: true };
   if (id === 'number-order' || id === 'pairs' && !scope.startsWith('pairs-v4-')) return { unit: 's', lower: true };
-  const units: Partial<Record<GameId, string>> = { visual: 'levels', sequence: 'levels', 'sequence-fresh': 'levels', reverse: 'levels', 'reverse-fresh': 'levels', number: 'digits', verbal: 'words', chimp: 'numbers', pairs: 'rounds', typing: 'WPM', cps: scope.startsWith('tps') ? 'taps/s' : 'clicks/s' };
+  const units: Partial<Record<GameId, string>> = { visual: 'levels', sequence: 'levels', 'sequence-fresh': 'levels', reverse: 'levels', 'reverse-fresh': 'levels', number: 'digits', verbal: 'words', chimp: 'numbers', pairs: 'rounds', rhythm: 'levels', tracking: 'rounds', 'tracking-hard': 'rounds', typing: 'WPM', cps: scope.startsWith('tps') ? 'taps/s' : 'clicks/s' };
   return { unit: units[id] ?? (scope.endsWith('-12') ? 'correct' : 'points'), lower: false };
 }
 export function exportHistory() {

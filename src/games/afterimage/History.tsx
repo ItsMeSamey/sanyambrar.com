@@ -2,7 +2,7 @@ import { Errored, For, Loading, Show, createMemo, createSignal, lazy, onSettled,
 import * as Select from '@kobalte/core/select';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, ChevronLeft, ChevronRight, ChevronsUpDown, Trash2, X } from '../../shared/components/Icons.tsx';
-import { readHistory, scopeChoices, initialScope, scoreKey, scopeUnit } from './history.ts';
+import { readHistory, scopeChoices, initialScope, isCurrentScope, scoreKey, scopeUnit } from './history.ts';
 import type { GameId } from './types.ts';
 import { ChartAxes, ChartGrid, ChartScaleNote, useChartWidth } from './Chart.tsx';
 import { chartGutter, chartLabel, chartPosition, chartScale, nearestChartIndex, scoreAxisLabel } from './chart-model.ts';
@@ -64,11 +64,7 @@ export function History(props: { id: GameId; revision: number; latestScope?: str
   const scale = createMemo(() => chartScale(recent().map(row => row.value)));
   const left = () => chartGutter(scale());
   const recentAverage = createMemo(() => recent().reduce((sum, row) => sum + row.value / recent().length, 0));
-  const current = () => {
-    const value = scope();
-    if (props.id === 'deduction' && /^deduction-v3-(letters|images)-60s$/.test(value)) return true;
-    return value === initialScope(props.id) || /^(aim-v[46]-(standard|compact)-(mouse|pen)|aim-v6-(standard|compact)-(touch|keyboard)|chimp-v3-(standard|compact)-(mouse|touch|pen|keyboard)|pairs-v4-(mouse|touch|pen|keyboard)|order-v2-(mouse|touch|pen|keyboard)|reaction-v7-(desktop|touch-release|pen)|typing-v4-(hardware|onscreen)-passage|cps-v1-mouse-10s|tps-v3-touch-10s|sequence-v3-growing|sequence-v2-fresh|reverse-v2-(growing|fresh))$/.test(value);
-  };
+  const current = () => isCurrentScope(props.id, scope());
   function visualStoredBest() {
     void props.revision; void revision();
     if (props.id !== 'visual') return null;

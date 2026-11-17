@@ -1,0 +1,34 @@
+.ai-tracking-game { width: min(100%, 560px); margin-inline: auto; }
+.ai-tracking-game > .ai-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+.ai-tracking-game .ai-stat { min-width: 0; flex-direction: column; gap: 5px; padding: 9px 5px; }
+.ai-tracking-game .ai-stat strong { min-height: 18px; }
+.ai-tracking-status { height: 4.8em; align-content: center; margin: 0 0 12px; text-align: center; color: var(--site-muted); font-size: 13px; line-height: 1.6; text-wrap: balance; }
+.ai-tracking-stage { position: relative; padding-bottom: 56px; }
+.ai-tracking-board { position: relative; width: 100%; aspect-ratio: 1; border: 1px solid var(--ai-line); border-radius: 18px; background: var(--ai-soft); overflow: hidden; isolation: isolate; }
+.ai-tracking-board[data-game-input] { touch-action: none; user-select: none; -webkit-user-select: none; }
+.afterimage-app .ai-tracking-ball { position: absolute; display: grid; place-items: center; width: 13.333333%; height: 13.333333%; padding: 0; border: 2px solid color-mix(in srgb, var(--site-fg) 40%, var(--site-bg)); border-radius: 50%; background: var(--site-bg); color: var(--site-fg); transform: translate(-50%, -50%); font: 600 clamp(18px, 4vw, 30px)/1 var(--site-font, system-ui); cursor: default; touch-action: pan-y; }
+.afterimage-app .ai-tracking-board[data-game-input] .ai-tracking-ball { touch-action: none; }
+.ai-tracking-ball span { display: grid; place-items: center; width: 100%; height: 100%; }
+.ai-tracking-ball.is-lit, .ai-tracking-ball.is-correct { border-color: var(--ai-accent); background: var(--ai-accent); color: var(--ai-on-accent); }
+.ai-tracking-ball.is-missed { border: 3px dashed var(--ai-accent); color: var(--ai-accent); background: color-mix(in srgb, var(--ai-accent) 12%, var(--site-bg)); }
+.ai-tracking-ball.is-red, .ai-tracking-ball.is-wrong { border-color: var(--site-error-fg); background: var(--site-error-bg); color: var(--site-error-fg); }
+.ai-tracking-ball.is-wrong { border-style: double; border-width: 5px; }
+.ai-tracking-game[data-phase=mark] .ai-tracking-ball.is-lit { animation: ai-tracking-mark 1s ease-in-out 2; }
+.ai-tracking-game[data-phase=recall] .ai-tracking-ball[aria-disabled=false] { cursor: pointer; }
+.ai-tracking-game[data-phase=recall] .ai-tracking-ball[aria-disabled=false]:hover { background: color-mix(in srgb, var(--ai-accent) 13%, var(--site-bg)); border-color: var(--ai-accent); }
+.afterimage-app .ai-tracking-ball:focus-visible { outline: 2px solid var(--ai-accent); outline-offset: 2px; }
+.ai-tracking-game[data-phase=move] .ai-tracking-ball:focus { outline: none; }
+.ai-tracking-board > .ai-ready { background: transparent; }
+.ai-tracking-game[data-phase=intro] .ai-tracking-ball { filter: blur(3px); opacity: .36; pointer-events: none; }
+.ai-tracking-game:is([data-phase=result], [data-phase=interrupted]) .ai-tracking-board { opacity: .85; filter: blur(.45px); }
+.ai-tracking-game > .ai-game-rules { margin-top: 4px; }
+@keyframes ai-tracking-mark { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ai-accent) 18%, transparent); } }
+@media (max-height: 650px) and (min-width: 600px) { .ai-tracking-game { width: min(100%, 390px); } }
+@media (prefers-reduced-motion: reduce) { .ai-tracking-game[data-phase=mark] .ai-tracking-ball.is-lit { animation: none; } }
+@media (forced-colors: active) {
+  .ai-tracking-board { border-color: CanvasText; }
+  .afterimage-app .ai-tracking-ball { border-color: ButtonText; background: Canvas; color: CanvasText; }
+  .ai-tracking-ball.is-lit, .ai-tracking-ball.is-correct { border-width: 4px; }
+  .ai-tracking-ball.is-missed { border-style: dashed; }
+  .ai-tracking-ball.is-red, .ai-tracking-ball.is-wrong { border-style: double; border-width: 5px; }
+}
