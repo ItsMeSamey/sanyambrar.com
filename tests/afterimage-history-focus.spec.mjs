@@ -1,4 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { exerciseDialogFocusBeforePaint, exerciseDialogRestoreOwnership } from './dialog-focus-scenarios.mjs';
+
+test('history transfer owns focus while background animation frames are suspended', async ({ page }, info) => {
+  test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
+  await page.goto(`http://127.0.0.1:${info.project.metadata.port}/afterimage/`, { waitUntil: 'networkidle' });
+  await page.evaluate(exerciseDialogFocusBeforePaint);
+});
+
+test('history transfer ignores stale close focus after reopening or opening a newer layer', async ({ page }, info) => {
+  test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');
+  await page.goto(`http://127.0.0.1:${info.project.metadata.port}/afterimage/`, { waitUntil: 'networkidle' });
+  await page.evaluate(exerciseDialogRestoreOwnership);
+});
 
 test('history transfer returns focus to its opener after Escape and Close', async ({ page }, info) => {
   test.skip(info.project.metadata.development, 'Afterimage has its own development entry.');

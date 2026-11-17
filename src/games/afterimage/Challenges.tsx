@@ -2,7 +2,8 @@ import { createEffect, createSignal, For, onSettled, Show } from 'solid-js';
 import { Dynamic } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, X } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { topLayer } from '../../shared/overlay.ts';
+import { Ready, Result, Stats, useGameContextMenu, useGameLayerInterrupt, useGamePress, useTimers } from './common.tsx';
 import { GameRules } from './GameRules.tsx';
 import { ActiveCountdown } from './active-clock.ts';
 import type { ChallengeDefinition, ChallengeQuestion } from './challenge-types.ts';
@@ -28,6 +29,12 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   const live = () => ['answer', 'wrong', 'correct'].includes(state.phase);
   let playArea: HTMLDivElement | undefined;
   useGameContextMenu(() => playArea, live);
+  function focusChoice(index: number) {
+    const button = buttons.get(index);
+    if (!button?.isConnected || button.disabled || document.hidden || topLayer()) return;
+    if (document.activeElement !== document.body && !button.closest('.ai-challenge')?.contains(document.activeElement)) return;
+    button.focus({ preventScroll: true });
+  }
   const score = () => Math.max(0, view().correct - view().errors);
   function finish() {
     if (!live()) return;
@@ -46,12 +53,13 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     timers.after(tick, Math.min(100, remaining));
   }
   function start() {
+    if (document.hidden || topLayer()) return;
     timers.clear(); heldKeys.clear();
     clock.start(duration * 1000, performance.now());
     update({ phase: 'answer', question: definition.createQuestion(0), round: 0, correct: 0, errors: 0, selected: -1, remaining: duration, result: null, explanation: '' });
     setNotice(''); props.onActivityChange?.(true); props.onScopeChange?.(scope);
     tick();
-    timers.after(() => { if (state.phase === 'answer') buttons.get(0)?.focus({ preventScroll: true }); }, 0);
+    timers.after(() => { if (state.phase === 'answer') focusChoice(0); }, 0);
   }
   function advance() {
     const paused = !clock.running;
@@ -59,7 +67,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     update({ phase: 'correct', explanation: '' });
     if (paused) tick();
     timers.after(() => {
-      if (!live() || document.hidden) return;
+      if (!live() || document.hidden || topLayer()) return;
       if (clock.remaining(performance.now()) <= 0) { finish(); return; }
       const round = state.round + 1;
       update({ phase: 'answer', question: definition.createQuestion(round), round, selected: -1, explanation: '' });
@@ -67,7 +75,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   }
   function answer(index: number) {
     // A scored answer and its correction must each follow a rendered state.
-    if (document.hidden || !live() || state.question !== view().question || state.phase !== view().phase || state.phase === 'correct') return false;
+    if (document.hidden || topLayer() || !live() || state.question !== view().question || state.phase !== view().phase || state.phase === 'correct') return false;
     const now = performance.now();
     if (clock.remaining(now) <= 0) { finish(); return false; }
     if (state.phase === 'wrong') {
@@ -88,7 +96,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
   const blocked = (index: number) => view().phase === 'wrong' ? index !== view().question.correct : view().phase !== 'answer';
   const outcome = (index: number) => (view().phase === 'result' || ['wrong', 'correct'].includes(view().phase) && view().selected >= 0) ? index === view().question.correct ? 'correct' : index === view().selected ? 'wrong' : undefined : undefined;
   function keys(event: KeyboardEvent) {
-    if (!live() || document.hidden || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+    if (!live() || document.hidden || topLayer() || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
     const target = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>('[data-challenge-choice]') : null;
     if (!target) return;
     const index = Number(target.dataset.challengeChoice);
@@ -96,7 +104,7 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
       event.preventDefault();
       const offset = event.key === 'ArrowLeft' ? 3 : event.key === 'ArrowRight' ? 1 : 2;
       const next = (index + offset) % 4;
-      if (!buttons.get(next)?.disabled) buttons.get(next)?.focus({ preventScroll: true });
+      focusChoice(next);
       return;
     }
     if (!['Enter', ' ', '1', '2', '3', '4'].includes(event.key)) return;
@@ -104,19 +112,21 @@ export function ChallengeGame<Q extends ChallengeQuestion>(props: GameProps & { 
     if (event.repeat || heldKeys.has(event.key)) return;
     heldKeys.add(event.key);
     const selected = /^[1-4]$/.test(event.key) ? Number(event.key) - 1 : index;
-    if (!blocked(selected) && answer(selected)) buttons.get(selected)?.focus({ preventScroll: true });
+    if (!blocked(selected) && answer(selected)) focusChoice(selected);
   }
-  createEffect(() => view().phase, phase => { if (phase === 'wrong') buttons.get(state.question.correct)?.focus({ preventScroll: true }); });
+  createEffect(() => view().phase, phase => { if (phase === 'wrong') focusChoice(state.question.correct); });
+  function interrupt() {
+    if (!live()) return;
+    timers.clear(); clock.reset(); heldKeys.clear();
+    update({ phase: 'ready', remaining: duration, correct: 0, errors: 0, selected: -1, result: null, explanation: '' });
+    setNotice('Run interrupted. Start a fresh run.'); props.onActivityChange?.(false);
+  }
+  useGameLayerInterrupt(interrupt);
   onSettled(() => {
     props.onActivityChange?.(false);
     const release = (event: KeyboardEvent) => heldKeys.delete(event.key);
     const blur = () => heldKeys.clear();
-    const visibility = () => {
-      if (!document.hidden || !live()) return;
-      timers.clear(); clock.reset(); heldKeys.clear();
-      update({ phase: 'ready', remaining: duration, correct: 0, errors: 0, selected: -1, result: null, explanation: '' });
-      setNotice('Run interrupted. Start a fresh run.'); props.onActivityChange?.(false);
-    };
+    const visibility = () => { if (document.hidden) interrupt(); };
     window.addEventListener('keyup', release); window.addEventListener('blur', blur); document.addEventListener('visibilitychange', visibility);
     return () => { window.removeEventListener('keyup', release); window.removeEventListener('blur', blur); document.removeEventListener('visibilitychange', visibility); };
   });

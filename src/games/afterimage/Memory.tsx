@@ -1,7 +1,8 @@
 import { createMemo, createSignal, For, onCleanup, onSettled, Show, untrack } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button';
-import { inputKind, Ready, Stats, useGameContextMenu, useGamePress, useResultGate, useTimers } from './common';
+import { topLayer } from '../../shared/overlay.ts';
+import { inputKind, Ready, Stats, useGameContextMenu, useGameLayerInterrupt, useGamePress, useResultGate, useTimers } from './common';
 import { GameRules } from './GameRules.tsx';
 import { nextSequence, sequenceRules, shuffledRange, visualRound } from './memory-model';
 import { BoardResult } from './BoardResult.tsx';
@@ -18,6 +19,7 @@ const location = (index: number, columns: number) => `Row ${Math.floor(index / c
 const emptyCells = (count: number, columns: number): Cell[] => Array.from({ length: count }, (_, i) => ({ face: 'plain', label: location(i, columns) }));
 
 function useInterrupt(interrupt: () => void, blur = false) {
+  useGameLayerInterrupt(interrupt);
   onSettled(() => {
     const hidden = () => { if (document.hidden) interrupt(); };
     document.addEventListener('visibilitychange', hidden);
@@ -43,6 +45,7 @@ function MemoryBoard(props: {
   const presses = useGamePress(), keys = new Set<string>();
   const canPick = (index: number) => ['recall', 'ready', 'running'].includes(props.phase) && !props.cells[index]?.inactive;
   const focus = (index: number) => {
+    if (document.hidden || topLayer()) return;
     setFocusIndex(index);
     board?.querySelectorAll<HTMLButtonElement>('button')[index]?.focus({ preventScroll: true });
   };
@@ -79,7 +82,7 @@ function MemoryBoard(props: {
         props.onPick(index, event);
       }}
       onKeyDown={event => {
-        if (props.phase === 'result') return;
+        if (props.phase === 'result' || document.hidden || topLayer()) return;
         if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
         const delta = ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -props.columns, ArrowDown: props.columns } as Record<string, number>)[event.key];
         if (delta !== undefined) {
@@ -99,6 +102,8 @@ function MemoryBoard(props: {
 }
 
 function focusBoard(board: HTMLDivElement | undefined, index = 0) {
+  if (!board?.isConnected || document.hidden || topLayer()) return;
+  if (document.activeElement !== document.body && !board.closest('.ai-memory-game')?.contains(document.activeElement)) return;
   board?.querySelectorAll<HTMLButtonElement>('button')[index]?.focus({ preventScroll: true });
 }
 
@@ -136,7 +141,7 @@ function PatternMemory(props: GameProps): JSX.Element {
   }
   function start() { props.onActivityChange?.(false); level = 1; lives = 3; result = undefined; round(); }
   function pick(index: number) {
-    if (phase !== 'recall' || chosen.has(index) || document.hidden) return;
+    if (phase !== 'recall' || chosen.has(index) || document.hidden || topLayer()) return;
     props.onActivityChange?.(true);
     chosen.add(index);
     if (targets.has(index)) found++; else errors++;
@@ -214,7 +219,7 @@ function SequenceMemory(props: GameProps): JSX.Element {
     timers.clear(); level = 1; sequence = []; lit.clear(); flashes.clear(); wrong = expected = -1; result = undefined; round();
   }
   function pick(index: number) {
-    if (phase !== 'recall' || document.hidden) return;
+    if (phase !== 'recall' || document.hidden || topLayer()) return;
     props.onActivityChange?.(true);
     const next = order()[position];
     responses.push(index);
@@ -275,10 +280,12 @@ function ContinueRound(props: { onContinue: () => void; guard: boolean }): JSX.E
   const ready = useResultGate(() => props.guard);
   const armed = () => !props.guard || ready();
   onSettled(() => {
+    if (!button?.isConnected || document.hidden || topLayer()) return;
+    if (document.activeElement !== document.body && !button.closest('.ai-memory-game')?.contains(document.activeElement)) return;
     button?.focus({ preventScroll: true });
   });
   return <div class="ai-memory-continue"><Button ref={element => { button = element; }}
-    aria-disabled={armed() ? 'false' : 'true'} onClick={event => { if (!props.guard || ready.accept(event)) props.onContinue(); }}
+    aria-disabled={armed() ? 'false' : 'true'} onClick={event => { if (!document.hidden && !topLayer() && (!props.guard || ready.accept(event))) props.onContinue(); }}
     onKeyDown={event => { if (event.repeat && (event.key === 'Enter' || event.key === ' ')) event.preventDefault(); }}>Continue</Button></div>;
 }
 
@@ -322,7 +329,7 @@ function OrderMemory(props: GameProps): JSX.Element {
     props.onFinish(result);
   }
   function pick(index: number, event: Event) {
-    if (phase !== 'recall' || document.hidden) return;
+    if (phase !== 'recall' || document.hidden || topLayer()) return;
     const source = inputKind(event);
     if (input && source !== input) { status = `This run uses ${input}. Restart to switch.`; publish(); return; }
     input = source; measure();
@@ -390,7 +397,7 @@ function NumberOrder(props: GameProps): JSX.Element {
     onSettled(() => { focusBoard(board, values.indexOf(1)); });
   }
   function pick(index: number, event: Event) {
-    if (phase !== 'running' || document.hidden) return;
+    if (phase !== 'running' || document.hidden || topLayer()) return;
     const source = inputKind(event);
     if (input && input !== source) { status = `${input} input · restart to switch`; publish(); return; }
     const value = values[index];

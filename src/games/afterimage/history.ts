@@ -23,11 +23,14 @@ export function saveResult(result: GameResult) {
   const rows: unknown = JSON.parse(localStorage.getItem(scoreKey(result.scope)) ?? '[]');
   if (!Array.isArray(rows)) throw new Error('Saved scores are not a valid history.');
   rows.push({ ...result.details, value: result.value, date: Date.now(), scoreMode: result.scope, unit: result.unit, lowerIsBetter: !!result.lowerIsBetter });
-  localStorage.setItem(scoreKey(result.scope), JSON.stringify(rows.slice(-200)));
+  // Keep full history, including merged imports. A failed write must surface instead of pruning old runs.
+  localStorage.setItem(scoreKey(result.scope), JSON.stringify(rows));
   if (result.scope.startsWith('visual')) {
-    const key = `afterimage-best-${result.scope}`;
-    const previous = Number(localStorage.getItem(key)) || 0;
-    localStorage.setItem(key, String(Math.max(previous, result.value)));
+    try {
+      const key = `afterimage-best-${result.scope}`;
+      const previous = Number(localStorage.getItem(key)) || 0;
+      localStorage.setItem(key, String(Math.max(previous, result.value)));
+    } catch { /* History is authoritative; a legacy best cache failure must not report this saved run as unsaved. */ }
   }
 }
 const labels: Record<string, string> = { mouse: 'Mouse', touch: 'Touch', keyboard: 'Keyboard practice', pen: 'Pen' };

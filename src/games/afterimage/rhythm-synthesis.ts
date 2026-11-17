@@ -121,11 +121,17 @@ export function renderRhythmPCM(composition: RhythmComposition, options: { sampl
     }
   }
   let nextTarget = 0;
-  let duckUntil = -1;
   const onsets = composition.targetTimesMs.map(time => Math.round(time / 1000 * sampleRate));
+  const duckAttack = sampleRate * 0.012;
+  const duckHold = sampleRate * 0.04;
+  const duckRelease = sampleRate * 0.1;
   for (let frame = 0; frame < length; frame++) {
-    if (frame >= onsets[nextTarget]) { duckUntil = frame + sampleRate * 0.14; nextTarget++; }
-    const duck = frame < duckUntil ? 1 - 0.5 * Math.min(1, (duckUntil - frame) / (sampleRate * 0.1)) : 1;
+    while (frame >= onsets[nextTarget]) nextTarget++;
+    const sinceTarget = frame - (onsets[nextTarget - 1] ?? -Infinity);
+    const untilTarget = (onsets[nextTarget] ?? Infinity) - frame;
+    // Ease the backing down before each exact target onset, then smoothly restore it.
+    const progress = Math.max(0, Math.min(1, untilTarget / duckAttack, (sinceTarget - duckHold) / duckRelease));
+    const duck = 0.5 + 0.5 * progress * progress * (3 - 2 * progress);
     const ending = Math.min(1, (length - 1 - frame) / (sampleRate * 0.08));
     // A fixed soft ceiling preserves dynamics without per-phrase loudness surprises.
     left[frame] = 0.94 * Math.tanh((left[frame] * duck + target[frame]) / 0.94) * ending;

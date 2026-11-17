@@ -1,9 +1,10 @@
 import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
 import { CirclePlay } from '../../shared/components/Icons.tsx';
+import { topLayer } from '../../shared/overlay.ts';
 import { BoardResult } from './BoardResult.tsx';
 import { GameRules } from './GameRules.tsx';
-import { Ready, Stats, inputKind, useGameContextMenu, useGamePress, useResultGate, useTimers } from './common.tsx';
+import { Ready, Stats, inputKind, useGameContextMenu, useGameLayerInterrupt, useGamePress, useResultGate, useTimers } from './common.tsx';
 import { createRhythmAudio } from './rhythm-audio.ts';
 import { composeRhythm, type RhythmComposition } from './rhythm-composition.ts';
 import { RHYTHM_FIRST_TAP_MS, judgeRhythm, rhythmResponseDeadline, type RhythmJudgment } from './rhythm-model.ts';
@@ -40,10 +41,12 @@ export function RhythmGame(props: GameProps) {
   const heldPointers = new Set<number>();
   const active = () => ['loading', 'listen', 'response', 'review'].includes(current.phase);
   const terminal = () => run().phase === 'finished' || run().phase === 'cancelled';
+  const ownsFocus = () => !document.hidden && !topLayer() && (document.activeElement === document.body || board.contains(document.activeElement));
   useGameContextMenu(() => board, active);
   function update(next: Run) { current = next; setRun(next); }
   function stop() { epoch++; timers.clear(); cancelAnimationFrame(frame); audio.stop(); setPulse(-1); }
   function retry() {
+    if (document.hidden || topLayer()) return;
     stop(); props.onActivityChange?.(false); props.onScopeChange?.(scope(null));
     update(initialRun()); held = false; heldPointers.clear(); setSuccessReady(false);
   }
@@ -52,6 +55,8 @@ export function RhythmGame(props: GameProps) {
     stop(); props.onActivityChange?.(false);
     update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.' });
   }
+  // A covered timed phrase cannot be resumed fairly; leave it unscored.
+  useGameLayerInterrupt(interrupt);
   function flash(index: number) {
     setPulse(index); pulseUntil = performance.now() + 125;
     timers.after(() => { if (current.phase === 'response' && performance.now() >= pulseUntil) setPulse(-1); }, 130);
@@ -69,11 +74,11 @@ export function RhythmGame(props: GameProps) {
     cancelAnimationFrame(frame); setPulse(-1);
     responseDeadline = performance.now() + RHYTHM_FIRST_TAP_MS;
     update({ ...current, phase: 'response', message: 'Your turn. Tap the rhythm.' });
-    pad.focus({ preventScroll: true });
+    if (ownsFocus()) pad.focus({ preventScroll: true });
     timers.after(() => { if (token === epoch && current.phase === 'response' && current.taps.length === 0) resolve(); }, RHYTHM_FIRST_TAP_MS);
   }
   async function start() {
-    if (disposed || document.hidden || !['ready', 'review'].includes(current.phase)) return;
+    if (disposed || document.hidden || topLayer() || !['ready', 'review'].includes(current.phase)) return;
     if (current.phase === 'review' && !(current.judgment?.passed ? successReady() : reviewReady())) return;
     stop();
     const token = epoch;
@@ -102,7 +107,7 @@ export function RhythmGame(props: GameProps) {
       props.onActivityChange?.(false); return;
     }
     update({ ...current, phase: 'listen', message: 'Listen and watch the pulses.' });
-    pad.focus({ preventScroll: true });
+    if (ownsFocus()) pad.focus({ preventScroll: true });
     paintListening(playback.startedAtMs, token);
     timers.after(() => respond(token), Math.max(0, playback.startedAtMs + playback.durationMs + 350 - performance.now()));
   }
@@ -129,13 +134,13 @@ export function RhythmGame(props: GameProps) {
       if (judgment.passed) {
         const ready = !held && !heldPointers.size;
         setSuccessReady(ready);
-        if (ready) timers.after(() => { if (current.phase === 'review') nextButton?.focus({ preventScroll: true }); }, 0);
+        if (ready) timers.after(() => { if (current.phase === 'review' && ownsFocus()) nextButton?.focus({ preventScroll: true }); }, 0);
       }
-      else timers.after(() => { if (current.phase === 'review' && !document.hidden) nextButton?.focus({ preventScroll: true }); }, 800);
+      else timers.after(() => { if (current.phase === 'review' && ownsFocus()) nextButton?.focus({ preventScroll: true }); }, 800);
     }
   }
   function tap(event: Event) {
-    if (disposed || document.hidden || current.phase !== 'response') return;
+    if (disposed || document.hidden || topLayer() || current.phase !== 'response') return;
     const now = performance.now();
     if (now >= responseDeadline) { resolve(); return; }
     const input = inputKind(event);
@@ -153,7 +158,7 @@ export function RhythmGame(props: GameProps) {
     if (taps.length > current.composition.targetTimesMs.length) resolve();
   }
   function keydown(event: KeyboardEvent) {
-    if (event.target !== pad || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing || ![' ', 'Enter'].includes(event.key) || !active()) return;
+    if (document.hidden || topLayer() || event.target !== pad || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing || ![' ', 'Enter'].includes(event.key) || !active()) return;
     event.preventDefault();
     if (event.repeat || held) return;
     held = true; tap(event);
@@ -163,7 +168,7 @@ export function RhythmGame(props: GameProps) {
       if (successReady() || held || heldPointers.size || current.phase !== 'review' || !current.judgment?.passed) return;
       timers.after(() => {
         if (successReady() || held || heldPointers.size || current.phase !== 'review' || !current.judgment?.passed) return;
-        setSuccessReady(true); nextButton?.focus({ preventScroll: true });
+        setSuccessReady(true); if (ownsFocus()) nextButton?.focus({ preventScroll: true });
       }, 0);
     };
     const keyup = (event: KeyboardEvent) => { if ([' ', 'Enter'].includes(event.key)) { held = false; releaseSuccess(); } };
@@ -208,8 +213,8 @@ export function RhythmGame(props: GameProps) {
     <Show when={failed()}><p class="ai-sr-only">{accessibleReview()}</p></Show>
     <div ref={board} class={['rhythm-board', run().phase === 'ready' && 'is-preview', ['loading', 'listen', 'response', 'review'].includes(run().phase) && 'is-active', terminal() && 'is-terminal', failed() && 'is-failed']}>
       <button ref={pad} type="button" class="rhythm-pad" disabled={terminal()} aria-label={run().phase === 'response' ? 'Tap the rhythm. Space, Enter, or press here.' : 'Rhythm pulse surface'} aria-disabled={run().phase !== 'response' ? 'true' : 'false'} tabindex={terminal() || run().phase === 'ready' || run().phase === 'review' ? -1 : 0} data-game-input={['loading', 'listen', 'response', 'review'].includes(run().phase) ? '' : undefined}
-        onPointerDown={event => { if (!active() || !presses.down(event)) return; heldPointers.add(event.pointerId); pad.focus({ preventScroll: true }); tap(event); }}
-        onClick={event => { if (!active()) return; event.preventDefault(); if (!held && presses.click(event)) tap(event); }}>
+        onPointerDown={event => { if (topLayer() || !active() || !presses.down(event)) return; heldPointers.add(event.pointerId); pad.focus({ preventScroll: true }); tap(event); }}
+        onClick={event => { if (topLayer() || !active()) return; event.preventDefault(); if (!held && presses.click(event)) tap(event); }}>
         <div class={['rhythm-art', pulse() >= 0 && 'has-pulse']} aria-hidden="true">
           <svg class="rhythm-orbit" viewBox="0 0 240 180"><circle class="rhythm-ring rhythm-ring-outer" cx="120" cy="90" r="74"/><circle class="rhythm-ring" cx="120" cy="90" r="56"/><circle class="rhythm-core" cx="120" cy="90" r="38"/><path class="rhythm-wave" d="M85 90h15l6-16 9 33 10-42 10 38 7-13h13"/></svg>
           <div class="rhythm-note-slots"><For each={run().composition.targetTimesMs}>{(_, index) => <span class={[pulse() === index() && 'is-lit', run().phase === 'response' && index() < run().taps.length && 'is-tapped']}/>}</For></div>

@@ -1,5 +1,6 @@
 import { For, Show, createSignal, onCleanup, onSettled, untrack } from 'solid-js';
-import { Ready, Stats, inputKind, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { topLayer } from '../../shared/overlay.ts';
+import { Ready, Stats, inputKind, useGameContextMenu, useGameLayerInterrupt, useGamePress, useTimers } from './common.tsx';
 import { GameRules } from './GameRules.tsx';
 import { BoardResult } from './BoardResult.tsx';
 import { TRACKING_STEP, TRACKING_WORLD, createTrackingBalls, initialTrackingScore, pickTrackingBall, stepTrackingBalls, trackingFrameDelta, trackingRules } from './tracking-model.ts';
@@ -28,7 +29,7 @@ export function TrackingGame(props: GameProps) {
   const publish = () => setView(snapshot());
   const active = () => !['intro', 'result', 'interrupted'].includes(phase);
   useGameContextMenu(() => board, active);
-  const focusBall = (id: number) => { setCursor(id); elements.get(id)?.focus({ preventScroll: true }); };
+  const focusBall = (id: number) => { if (document.hidden || topLayer()) return; setCursor(id); elements.get(id)?.focus({ preventScroll: true }); };
   const stop = () => { timers.clear(); cancelAnimationFrame(frame); frame = 0; held = false; };
   function paint() {
     for (const ball of balls) {
@@ -42,6 +43,8 @@ export function TrackingGame(props: GameProps) {
     message = 'Run interrupted. Restart with fresh balls. This run was not scored.';
     props.onActivityChange?.(false); publish();
   }
+  // Covering the field loses tracking information, so restart without scoring.
+  useGameLayerInterrupt(interrupt);
   function tick(now: number) {
     frame = 0;
     if (disposed || phase !== 'move') return;
@@ -64,7 +67,7 @@ export function TrackingGame(props: GameProps) {
     if (elapsed >= rules.duration) {
       phase = 'recall'; message = `Select the ${rules.targets - Number(hard)} remaining ${hard ? 'safe targets' : 'lit balls'}. Any order.`; publish();
       // Focus enters only after movement ends, so a focus ring cannot identify a moving ball.
-      timers.after(() => { if (phase === 'recall') focusBall(0); }, 0);
+      timers.after(() => { if (phase === 'recall' && (document.activeElement === document.body || board.contains(document.activeElement))) focusBall(0); }, 0);
     } else frame = requestAnimationFrame(tick);
   }
   function round() {
@@ -86,7 +89,7 @@ export function TrackingGame(props: GameProps) {
     }, 2000);
   }
   function start() {
-    if (document.hidden || !visible) return;
+    if (document.hidden || !visible || topLayer()) return;
     score = initialTrackingScore(); input = undefined; result = undefined;
     props.onScopeChange?.(scope); props.onActivityChange?.(true); round();
   }
@@ -99,7 +102,7 @@ export function TrackingGame(props: GameProps) {
     publish(); props.onActivityChange?.(false); props.onFinish(result);
   }
   function pick(id: number, event: Event) {
-    if (phase !== 'recall' || disposed || document.hidden) return;
+    if (phase !== 'recall' || disposed || document.hidden || topLayer()) return;
     const next = pickTrackingBall(score, balls, id);
     if (next.outcome === 'ignored') return;
     input ??= inputKind(event); score = next.score;
@@ -128,7 +131,7 @@ export function TrackingGame(props: GameProps) {
     return `Ball ${ball.id + 1}${state === 'plain' ? '' : state === 'lit' ? ', target' : state === 'red' ? ', red decoy, avoid' : state === 'wrong' ? ', incorrect pick' : state === 'missed' ? ', missed target' : ', selected target'}`;
   }
   function keydown(event: KeyboardEvent, id: number) {
-    if (phase !== 'recall' || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+    if (phase !== 'recall' || document.hidden || topLayer() || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
       event.preventDefault();
       const current = balls[id], direction = event.key;
@@ -173,7 +176,7 @@ export function TrackingGame(props: GameProps) {
           tabindex={view().phase === 'recall' && cursor() === ball().id ? 0 : -1}
           style={{ left: `${ball().x / TRACKING_WORLD * 100}%`, top: `${ball().y / TRACKING_WORLD * 100}%` }}
           onFocus={() => setCursor(ball().id)} onKeyDown={event => keydown(event, ball().id)}
-          onPointerDown={event => { if (phase === 'recall' && presses.down(event)) { focusBall(ball().id); pick(ball().id, event); } }}
+          onPointerDown={event => { if (!topLayer() && phase === 'recall' && presses.down(event)) { focusBall(ball().id); pick(ball().id, event); } }}
           onClick={event => { if (presses.click(event) && !held) pick(ball().id, event); }}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <Show when={face(ball()) === 'red' || face(ball()) === 'wrong'}><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></Show>

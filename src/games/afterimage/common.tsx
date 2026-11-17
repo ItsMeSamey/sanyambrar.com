@@ -2,8 +2,17 @@ import { For, Show, createEffect, createSignal, onCleanup, onSettled } from 'sol
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { CirclePlay, RotateCw } from '../../shared/components/Icons.tsx';
+import { topLayer } from '../../shared/overlay.ts';
 import type { GameResult, InputKind, Stat } from './types.ts';
 import { createPointerPresses, isVirtualClick } from './press-input.ts';
+
+export function useGameLayerInterrupt(interrupt: () => void) {
+  onSettled(() => {
+    const changed = () => { if (topLayer()) interrupt(); };
+    window.addEventListener('samey-layer-change', changed);
+    return () => window.removeEventListener('samey-layer-change', changed);
+  });
+}
 
 export function useGameContextMenu(surface: () => HTMLElement | undefined, active: () => boolean) {
   onSettled(() => {
@@ -39,11 +48,11 @@ export function useGamePress() {
   });
   return {
     down(event: PointerEvent) {
-      if (document.hidden || !pointers.down(event)) return false;
+      if (document.hidden || topLayer() || !pointers.down(event)) return false;
       event.preventDefault();
       return true;
     },
-    click: (event: MouseEvent) => !document.hidden && isVirtualClick(event),
+    click: (event: MouseEvent) => !document.hidden && !topLayer() && isVirtualClick(event),
   };
 }
 
@@ -99,14 +108,14 @@ export function Stats(props: { items: Stat[] }) {
 }
 
 export function Ready(props: { onStart: () => void; children?: JSX.Element; rules?: JSX.Element; label?: string; preview?: boolean; overlay?: boolean }) {
-  return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><div class="ai-ready-controls"><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={props.onStart}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button>{props.rules}</div><div class="ai-ready-content">{props.children}</div></section>;
+  return <section class={['ai-ready', props.preview && 'ai-ready-preview', props.overlay && 'ai-ready-overlay']}><div class="ai-ready-controls"><Button class="ai-primary" onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }} onClick={() => { if (!document.hidden && !topLayer()) props.onStart(); }}><CirclePlay size={20}/>{props.label ?? 'Start'}</Button>{props.rules}</div><div class="ai-ready-content">{props.children}</div></section>;
 }
 
 export function Result(props: { result: GameResult; onRetry: () => void; children?: JSX.Element; overlay?: boolean; announceResult?: boolean }) {
   const ready = useResultGate();
   let retry: HTMLButtonElement | undefined;
-  createEffect(ready, enabled => { if (enabled && document.activeElement === document.body) retry?.focus({ preventScroll: true }); });
-  return <section class={['ai-result', props.overlay && 'ai-result-overlay']} aria-label={props.announceResult === false ? 'Restart interrupted run' : 'Run result'}><div class="ai-result-panel"><Show when={props.announceResult !== false}><span class="ai-sr-only" role="status">{props.result.value} {unit(props.result.value, props.result.unit)}</span></Show><Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/>Restart</Button>{props.children}</div></section>;
+  createEffect(ready, enabled => { if (enabled && !document.hidden && !topLayer() && document.activeElement === document.body) retry?.focus({ preventScroll: true }); });
+  return <section class={['ai-result', props.overlay && 'ai-result-overlay']} aria-label={props.announceResult === false ? 'Restart interrupted run' : 'Run result'}><div class="ai-result-panel"><Show when={props.announceResult !== false}><span class="ai-sr-only" role="status">{props.result.value} {unit(props.result.value, props.result.unit)}</span></Show><Button ref={retry} class="ai-primary" disabled={!ready()} onClick={event => { if (!document.hidden && !topLayer() && ready.accept(event)) props.onRetry(); }} onKeyDown={event => { if (event.repeat && ['Enter', ' '].includes(event.key)) event.preventDefault(); }}><RotateCw size={18}/>Restart</Button>{props.children}</div></section>;
 }
 
 export function unit(value: number, name: string) {

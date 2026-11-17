@@ -228,16 +228,74 @@ describe('Afterimage original score compatibility', () => {
     expect(storage.getItem(scoreKey('sequence-v2-growing'))).toBe('[{"value":99}]');
     expect(readHistory('sequence-v3-growing')).toHaveLength(2);
   }));
-  test('normal new scores retain the latest 200 without rewriting unrelated storage', () => withStorage(storage => {
+  test('new scores retain the entire history without rewriting unrelated storage', () => withStorage(storage => {
     const key = scoreKey('math');
     storage.setItem(key, JSON.stringify(Array.from({ length: 200 }, (_, date) => ({ value: date, date }))));
     storage.setItem('unrelated-site-key', 'untouched');
     saveResult({ value: 300, scope: 'math', unit: 'points' });
     const rows = readHistory('math');
-    expect(rows).toHaveLength(200);
-    expect(rows[0].date).toBe(1);
+    expect(rows).toHaveLength(201);
+    expect(rows[0].date).toBe(0);
     expect(rows.at(-1)?.value).toBe(300);
     expect(storage.getItem('unrelated-site-key')).toBe('untouched');
+  }));
+  test('merged imports survive later games and a full export/import round trip', () => withStorage(storage => {
+    const scope = 'math', key = scoreKey(scope);
+    const original = Array.from({ length: 150 }, (_, date) => ({ value: date, date, id: `local-${date}`, future: { keep: true } }));
+    const imported = Array.from({ length: 150 }, (_, date) => ({ value: date, date, id: `imported-${date}`, future: { keep: true } }));
+    storage.setItem(key, JSON.stringify(original));
+    const incoming = JSON.stringify({ version: 2, data: { [key]: JSON.stringify(imported) } });
+    expect(importHistory(incoming)).toBe(150);
+    expect(readHistory(scope)).toHaveLength(300);
+    saveResult({ value: 300, scope, unit: 'points', details: { id: 'next-run', correct: 12, errors: 2 } });
+    const saved = readHistory(scope);
+    expect(saved).toHaveLength(301);
+    expect(saved.slice(0, 300)).toEqual([...original, ...imported]);
+    expect(saved.at(-1)).toMatchObject({ value: 300, id: 'next-run', correct: 12, errors: 2 });
+    expect(importHistory(incoming)).toBe(0);
+    const backup = exportHistory(); storage.clear();
+    expect(importHistory(backup)).toBe(301);
+    expect(readHistory(scope)).toEqual(saved);
+  }));
+  test('quota failure rejects the new run without pruning existing rows or retrying a smaller history', () => withStorage(storage => {
+    const scope = 'visual-v3-standard', key = scoreKey(scope);
+    const original = JSON.stringify(Array.from({ length: 300 }, (_, date) => ({ value: date, date, custom: { keep: true } })));
+    storage.setItem(key, original);
+    storage.setItem(`afterimage-best-${scope}`, '299');
+    const before = exportHistory(), quota = new DOMException('Storage is full', 'QuotaExceededError');
+    let writes = 0;
+    storage.setItem = () => { writes++; throw quota; };
+    expect(() => saveResult({ value: 400, scope, unit: 'levels' })).toThrow(quota);
+    expect(writes).toBe(1);
+    expect(storage.getItem(key)).toBe(original);
+    expect(storage.getItem(`afterimage-best-${scope}`)).toBe('299');
+    expect(JSON.parse(exportHistory()).data).toEqual(JSON.parse(before).data);
+  }));
+  test('a failed visual best cache update does not report an already saved run as unsaved', () => withStorage(storage => {
+    const scope = 'visual-v3-standard', bestKey = `afterimage-best-${scope}`;
+    storage.setItem(scoreKey(scope), '[{"value":12,"date":123}]');
+    storage.setItem(bestKey, '12');
+    const write = storage.setItem.bind(storage), quota = new DOMException('Storage is full', 'QuotaExceededError');
+    let writes = 0;
+    storage.setItem = (key, value) => { writes++; if (key === bestKey) throw quota; write(key, value); };
+    expect(() => saveResult({ value: 15, scope, unit: 'levels', details: { rulesVersion: 3 } })).not.toThrow();
+    expect(writes).toBe(2);
+    expect(readHistory(scope)).toHaveLength(2);
+    expect(readHistory(scope).at(-1)).toMatchObject({ value: 15, rulesVersion: 3 });
+    expect(storage.getItem(bestKey)).toBe('12');
+    const exported = JSON.parse(exportHistory()).data;
+    expect(JSON.parse(exported[scoreKey(scope)])).toEqual(readHistory(scope));
+    expect(exported[bestKey]).toBe('12');
+  }));
+  test('a quota failure during import restores earlier writes and keeps the existing export intact', () => withStorage(storage => {
+    const first = scoreKey('math'), second = scoreKey('tracking-v1');
+    storage.setItem(first, '[ { "value": 1, "custom": "keep" } ]');
+    const before = JSON.parse(exportHistory()).data;
+    const write = storage.setItem.bind(storage), quota = new DOMException('Storage is full', 'QuotaExceededError');
+    storage.setItem = (key, value) => { if (key === second) throw quota; write(key, value); };
+    const incoming = JSON.stringify({ version: 2, data: { [first]: '[{"value":2}]', [second]: '[{"value":3}]' } });
+    expect(() => importHistory(incoming)).toThrow(quota);
+    expect(JSON.parse(exportHistory()).data).toEqual(before);
   }));
   test('export preserves opaque storage and import retains distinct equal-score records and undated runs', () => withStorage(storage => {
     const key = scoreKey('future-v9');

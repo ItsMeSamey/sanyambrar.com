@@ -2,7 +2,8 @@ import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import type { JSX } from '@solidjs/web';
 import { Button } from '../../shared/components/Button.tsx';
 import { Check, CirclePlay, RotateCw, X } from '../../shared/components/Icons.tsx';
-import { Stats, inputKind, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { topLayer } from '../../shared/overlay.ts';
+import { Stats, inputKind, useGameContextMenu, useGameLayerInterrupt, useGamePress, useTimers } from './common.tsx';
 import { GameRules } from './GameRules.tsx';
 import { createPairDeck, type PairCard as Card } from './pair-objects.ts';
 import { BoardResult } from './BoardResult.tsx';
@@ -50,21 +51,25 @@ export function PairGame(props: GameProps) {
     timers.after(() => { if (!disposed) setScrollable(board.scrollHeight > board.clientHeight + 1); }, 0);
   }
   function focusCard(index: number, scroll = true) {
+    if (document.hidden || topLayer()) return;
     setCursor(index);
     const target = cards.get(index);
     target?.focus({ preventScroll: true });
     if (scroll) target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   function focusAfterRender(action: () => void) {
-    timers.after(() => { if (!disposed && !document.hidden) action(); }, 0);
+    timers.after(() => {
+      if (!disposed && !document.hidden && !topLayer() && (document.activeElement === document.body || document.activeElement === ready || board.contains(document.activeElement))) action();
+    }, 0);
   }
   function retry() {
+    if (document.hidden || topLayer()) return;
     props.onActivityChange?.(false);
     clear(); cards.clear(); update(initialRun()); setCursor(0); fitColumns();
     focusAfterRender(() => { if (current.phase === 'study') ready?.focus({ preventScroll: true }); });
   }
   function accepts(event: Event) {
-    if (disposed || document.hidden) return false;
+    if (disposed || document.hidden || topLayer()) return false;
     const kind = inputKind(event);
     if (current.input && current.input !== kind) {
       update({ ...current, message: `Use ${current.input} for this run. Restart to switch.`, notice: true });
@@ -138,9 +143,11 @@ export function PairGame(props: GameProps) {
     if (disposed || current.phase === 'finished' || current.phase === 'cancelled') return;
     if (current.phase === 'study' && current.round === 0 && !current.input) return;
     clear(); update({ ...current, phase: 'cancelled', message: 'Run interrupted. This unfinished run was not scored.', notice: true });
+    props.onActivityChange?.(false);
   }
+  useGameLayerInterrupt(cancel);
   function keydown(event: KeyboardEvent) {
-    if (current.phase === 'finished' || current.phase === 'cancelled') return;
+    if (document.hidden || topLayer() || current.phase === 'finished' || current.phase === 'cancelled') return;
     if (event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return;
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
@@ -209,7 +216,7 @@ export function PairGame(props: GameProps) {
         aria-label={label(card)} tabindex={run().phase !== 'finished' && cursor() === card.index ? 0 : -1}
         onFocus={() => setCursor(card.index)}
         onPointerDown={event => {
-          if (current.phase !== 'ready' || document.hidden || event.button !== 0) return;
+          if (current.phase !== 'ready' || document.hidden || topLayer() || event.button !== 0) return;
           if (event.pointerType === 'touch' && scrollable()) {
             if (!touchStarts.has(event.pointerId)) touchStarts.set(event.pointerId, { index: card.index, x: event.clientX, y: event.clientY, scroll: board.scrollTop });
             return;
@@ -220,7 +227,7 @@ export function PairGame(props: GameProps) {
         onPointerUp={event => {
           const start = touchStarts.get(event.pointerId);
           touchStarts.delete(event.pointerId);
-          if (!start || start.index !== card.index || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || Math.abs(board.scrollTop - start.scroll) > 1 || current.phase !== 'ready') return;
+          if (document.hidden || topLayer() || !start || start.index !== card.index || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8 || Math.abs(board.scrollTop - start.scroll) > 1 || current.phase !== 'ready') return;
           focusCard(card.index, false); pick(card.index, event);
         }}
         onPointerMove={event => {

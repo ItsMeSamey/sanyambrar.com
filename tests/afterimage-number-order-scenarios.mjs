@@ -42,7 +42,7 @@ export async function exerciseNumberOrderClock() {
   for (let number = 2; number <= 25; number++) tiles().find(tile => tile.textContent === String(number)).click();
   await wait(() => phase() === 'result', 'result');
   const saved = scores();
-  check(saved.length === Math.min(200, count + 1), 'completed run was not saved exactly once');
+  check(saved.length === count + 1, 'completed run was not saved exactly once');
   check(saved.at(-1).value >= beforeFirst && saved.at(-1).rulesVersion === 2, 'score omits time before 1 or uses old rules');
   for (const [key, raw] of Object.entries(oldScores)) check(localStorage.getItem(key) === raw, 'earlier timing history changed');
   await wait(() => !query('.ai-result .ai-primary').disabled, 'retry gate');

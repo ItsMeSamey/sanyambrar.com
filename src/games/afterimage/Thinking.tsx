@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createSignal, onCleanup, onSettled } from 'so
 import { Button } from '../../shared/components/Button.tsx';
 import { topLayer } from '../../shared/overlay.ts';
 import { ChevronRight as ArrowRight, Delete } from '../../shared/components/Icons.tsx';
-import { Ready, Result, Stats, useGameContextMenu, useGamePress, useTimers } from './common.tsx';
+import { Ready, Result, Stats, useGameContextMenu, useGameLayerInterrupt, useGamePress, useTimers } from './common.tsx';
 import { GameRules } from './GameRules.tsx';
 import { ActiveCountdown } from './active-clock.ts';
 import type { GameProps, GameResult } from './types.ts';
@@ -49,13 +49,14 @@ export function ThinkingGame(props: GameProps) {
   const presses = useGamePress();
   const clock = new ActiveCountdown();
   let root!: HTMLDivElement, input: HTMLInputElement | undefined;
+  const ownsFocus = () => !document.hidden && !topLayer() && (document.activeElement === document.body || root.contains(document.activeElement));
   const held = new Set<string>();
   function updateEntry(value: string) {
     setEntry(value);
     if (input) input.value = value;
   }
   function enter(key: string) {
-    if (state.phase !== 'running' || document.hidden) return;
+    if (state.phase !== 'running' || document.hidden || topLayer()) return;
     const current = input?.value ?? entry();
     const value = key === 'Delete' ? current.slice(0, -1) : key === '−' ? current.startsWith('-') ? current.slice(1) : `-${current}` : `${current}${key}`.slice(0, 8);
     updateEntry(value); input?.focus({ preventScroll: true });
@@ -78,12 +79,13 @@ export function ThinkingGame(props: GameProps) {
   }
   function focusAnswer(index = 0) {
     timers.after(() => {
-      if (state.phase !== 'running') return;
+      if (state.phase !== 'running' || !ownsFocus()) return;
       if (mode === 'arithmetic') input?.focus({ preventScroll: true });
       else root.querySelector<HTMLButtonElement>(`[data-answer="${index}"]`)?.focus({ preventScroll: true });
     }, 0);
   }
   function start() {
+    if (document.hidden || topLayer()) return;
     timers.clear(); held.clear(); factory = createQuestionFactory(mode);
     clock.start(rules.duration * 1000, performance.now());
     updateEntry(''); setSearchFocus(0);
@@ -92,7 +94,7 @@ export function ThinkingGame(props: GameProps) {
     tick(); focusAnswer();
   }
   function next(keepFeedback = false, focus = 0) {
-    if (!['answered', 'between'].includes(state.phase) || document.hidden) return;
+    if (!['answered', 'between'].includes(state.phase) || document.hidden || topLayer()) return;
     if (state.phase === 'answered' && (state.phase !== view().phase || state.question !== view().question)) return;
     const now = performance.now();
     if (clock.remaining(now) <= 0) { finish(); return; }
@@ -105,7 +107,7 @@ export function ThinkingGame(props: GameProps) {
     if (mode !== 'stroop') focusAnswer(focus);
   }
   function answer(value: number) {
-    if (state.phase !== 'running' || document.hidden || state.question !== view().question) return;
+    if (state.phase !== 'running' || document.hidden || topLayer() || state.question !== view().question) return;
     const now = performance.now();
     if (clock.remaining(now) <= 0) { finish(); return; }
     const question = state.question;
@@ -119,7 +121,7 @@ export function ThinkingGame(props: GameProps) {
     const focused = document.activeElement instanceof HTMLElement ? Number(document.activeElement.dataset.answer ?? 0) : 0;
     if (manual && !good) { clock.pause(now); timers.clear(); }
     update({ correct, errors, score, feedback, selected: value, remaining: Math.ceil(clock.remaining(now) / 1000), phase: manual ? 'answered' : 'between' });
-    if (manual) timers.after(() => root.querySelector<HTMLButtonElement>('[data-next]')?.focus({ preventScroll: true }), 0);
+    if (manual) timers.after(() => { if (ownsFocus()) root.querySelector<HTMLButtonElement>('[data-next]')?.focus({ preventScroll: true }); }, 0);
     else timers.after(() => next(true, focused), 0);
   }
   function submit() { const value = input?.value ?? entry(); if (/^-?\d+$/.test(value)) answer(Number(value)); }
@@ -165,13 +167,15 @@ export function ThinkingGame(props: GameProps) {
   }
   function release(event: KeyboardEvent) { held.delete(event.key); }
   function blur() { held.clear(); }
-  function visibility() {
-    if (document.hidden && live()) {
+  function interrupt() {
+    if (live()) {
       timers.clear(); clock.reset(); held.clear(); updateEntry(''); setSearchFocus(0);
       update({ phase: 'ready', question: factory(0), correct: 0, errors: 0, score: 0, round: 0, selected: -1, result: null, feedback: 'Run interrupted. Start a fresh run.', remaining: rules.duration });
       props.onActivityChange?.(false);
     }
   }
+  function visibility() { if (document.hidden) interrupt(); }
+  useGameLayerInterrupt(interrupt);
   onSettled(() => {
     props.onActivityChange?.(false);
     document.addEventListener('keydown', keys); document.addEventListener('keyup', release); document.addEventListener('visibilitychange', visibility); window.addEventListener('blur', blur);

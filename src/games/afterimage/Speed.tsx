@@ -1,6 +1,7 @@
 import { For, Show, createSignal, onCleanup, onSettled } from 'solid-js';
 import { Button } from '../../shared/components/Button.tsx';
-import { Result, Stats, setRestartBlocked, useGameContextMenu, useTimers } from './common.tsx';
+import { topLayer } from '../../shared/overlay.ts';
+import { Result, Stats, setRestartBlocked, useGameContextMenu, useGameLayerInterrupt, useTimers } from './common.tsx';
 import { GameRules } from './GameRules.tsx';
 import { AimEngine, ReactionEngine, TapEngine, aimScope, reactionScope } from './speed-engine.ts';
 import type { AimView, Press, ReactionView, TapView } from './speed-engine.ts';
@@ -11,6 +12,12 @@ import './speed.css';
 const pointerToken = (event: PointerEvent) => `pointer:${event.pointerId}`;
 const keyToken = (event: KeyboardEvent) => `key:${event.key}`;
 const activationKey = (event: KeyboardEvent) => event.key === ' ' || event.key === 'Enter';
+
+function focusSpeedControl(element: HTMLElement | undefined | null) {
+  if (!element?.isConnected || document.hidden || topLayer()) return;
+  if (document.activeElement !== document.body && !element.closest('.ai-speed')?.contains(document.activeElement)) return;
+  element.focus({ preventScroll: true });
+}
 
 function useGuardedView<T extends { blocked: boolean; phase: string }>(publish: (view: T) => void, scope: (view: T) => string | undefined, props: GameProps) {
   const owner = {};
@@ -51,32 +58,39 @@ function usePressEvents(options: {
 }) {
   let lastRelease = -Infinity;
   useGameContextMenu(options.surface, () => !options.inactive());
-  const hidden = () => document.hidden;
+  useGameLayerInterrupt(options.cancel);
+  const unavailable = () => document.hidden || !!topLayer();
   const pointerdown = (event: PointerEvent) => {
-    if (options.inactive() || hidden() || event.button !== 0 || !['mouse', 'touch', 'pen'].includes(event.pointerType)) return;
+    if (options.inactive() || unavailable() || event.button !== 0 || !['mouse', 'touch', 'pen'].includes(event.pointerType)) return;
     if (event.pointerType === 'mouse' && 'sourceCapabilities' in event && (event.sourceCapabilities as { firesTouchEvents?: boolean } | null)?.firesTouchEvents) return;
     event.preventDefault();
     if (event.target instanceof Element) event.target.closest('button')?.focus({ preventScroll: true });
     options.down({ token: pointerToken(event), kind: event.pointerType as Press['kind'] }, event);
   };
   const keydown = (event: KeyboardEvent) => {
-    if (options.inactive() || !activationKey(event)) return;
+    if (options.inactive() || unavailable() || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey || event.isComposing || !activationKey(event)) return;
     event.preventDefault();
-    if (hidden() || event.repeat) return;
+    if (event.repeat) return;
     options.down({ token: keyToken(event), kind: 'keyboard' }, event);
   };
   const click = (event: MouseEvent) => {
-    if (options.inactive()) return;
+    if (options.inactive() || unavailable() || event.defaultPrevented || event.ctrlKey || event.altKey || event.metaKey) return;
     event.preventDefault();
-    if (!options.accessibleClick || hidden() || !isVirtualClick(event) || options.held.size || performance.now() - lastRelease < 500) return;
+    if (!options.accessibleClick || !isVirtualClick(event) || options.held.size || performance.now() - lastRelease < 500) return;
     const token = 'accessible-click';
     options.down({ token, kind: 'keyboard' }, event);
     options.release(token, false);
   };
   onSettled(() => {
-    const release = (event: PointerEvent) => { lastRelease = performance.now(); options.release(pointerToken(event), event.type !== 'pointerup'); };
+    const release = (event: PointerEvent) => {
+      lastRelease = performance.now();
+      // A captured touch release must never score a covered Reaction trial.
+      if (unavailable()) { options.cancel(); return; }
+      options.release(pointerToken(event), event.type !== 'pointerup');
+    };
     const keyup = (event: KeyboardEvent) => {
       if (!activationKey(event)) return;
+      if (unavailable()) { options.cancel(); return; }
       if (options.held.has(keyToken(event))) event.preventDefault();
       lastRelease = performance.now(); options.release(keyToken(event), false);
     };
@@ -148,7 +162,7 @@ function Reaction(props: GameProps) {
     <button ref={pad} type="button" data-game-input={view().phase !== 'result' ? '' : undefined} inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} class={['ai-reaction-pad', { 'is-waiting': view().phase === 'waiting', 'is-go': view().phase === 'go', 'is-result': ['between', 'early', 'result'].includes(view().phase) }]} aria-disabled={view().blocked ? 'true' : undefined} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <strong role={['between', 'early', 'result'].includes(view().phase) ? 'status' : undefined}>{label() || undefined}</strong><span>{instruction() || undefined}</span>
     </button>
-    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/>}</Show>
+    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => focusSpeedControl(pad), 0); }}/>}</Show>
     </div>
     <Show when={view().phase === 'ready'}><GameRules detail="The result is your average across five trials. An early response repeats the trial.">Wait for the cue, then click or press Space. On touch, hold the pad and release when the cue appears.</GameRules></Show>
   </div>;
@@ -172,10 +186,10 @@ function Tapping(props: GameProps) {
     <button ref={pad} class="ai-tap-pad" type="button" data-game-input={view().phase !== 'result' ? '' : undefined} inert={view().phase === 'result'} aria-hidden={view().phase === 'result' ? 'true' : undefined} disabled={view().blocked} onPointerDown={events.pointerdown} onKeyDown={events.keydown} onClick={events.click}>
       <Show when={view().phase !== 'result'}><strong>{view().phase === 'ready' ? view().practice ? 'Press Space or Enter' : 'Click or tap to begin' : view().practice ? 'Press' : view().input === 'mouse' ? 'Click' : 'Tap'}</strong></Show>
     </button>
-    <Show when={view().phase === 'result'}><Result overlay result={result()} onRetry={() => { engine.cancel(''); timers.after(() => pad?.focus({ preventScroll: true }), 0); }}/></Show>
+    <Show when={view().phase === 'result'}><Result overlay result={result()} onRetry={() => { engine.cancel(''); timers.after(() => focusSpeedControl(pad), 0); }}/></Show>
     </div>
     <Show when={view().phase === 'ready'}><GameRules>{view().practice ? 'Press and release Space or Enter as often as you can for 10 seconds. Practice results are not saved.' : 'Click or tap as often as you can for 10 seconds. The first press starts the clock.'}</GameRules></Show>
-    <Button class="ai-speed-practice" disabled={view().phase === 'result'} aria-pressed={view().practice ? 'true' : 'false'} onClick={() => { engine.togglePractice(); pad?.focus({ preventScroll: true }); }}>{view().practice ? 'Return to click / tap test' : 'Keyboard practice'}</Button>
+    <Button class="ai-speed-practice" disabled={view().phase === 'result'} aria-pressed={view().practice ? 'true' : 'false'} onClick={() => { if (document.hidden || topLayer()) return; engine.togglePractice(); pad?.focus({ preventScroll: true }); }}>{view().practice ? 'Return to click / tap test' : 'Keyboard practice'}</Button>
   </div>;
 }
 
@@ -212,7 +226,7 @@ function Aim(props: GameProps) {
   onCleanup(() => engine.dispose());
   function Target(props: { x: number; y: number; serial: number }) {
     let button: HTMLButtonElement | undefined;
-    onSettled(() => { if (restoreFocus && !document.hidden) button?.focus({ preventScroll: true }); });
+    onSettled(() => { if (restoreFocus) focusSpeedControl(button); });
     return <button ref={button} type="button" class={['ai-aim-target', { 'is-retry': view().phase === 'result' }]} data-target-serial={props.serial} style={{ left: `${props.x}px`, top: `${props.y}px` }} disabled={view().blocked} aria-label={view().phase === 'result' ? 'Play aim training again' : `Target ${view().hits + 1} of 30`} onKeyDown={events.keydown}><TargetIcon/></button>;
   }
   return <div class="ai-speed ai-aim-game" data-state={view().phase}>
@@ -225,7 +239,7 @@ function Aim(props: GameProps) {
         <For each={view().target ? [view().target!] : []}>{point => <Target x={point.x} y={point.y} serial={point.serial}/>}</For>
       </Show>
     </div>
-    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => arena?.querySelector('button')?.focus({ preventScroll: true }), 0); }}/>}</Show>
+    <Show when={view().phase === 'result' && result()} keyed>{value => <Result overlay result={value} onRetry={() => { engine.cancel(''); setResult(null); timers.after(() => focusSpeedControl(arena?.querySelector('button')), 0); }}/>}</Show>
     </div>
     <Show when={view().phase === 'ready'}><GameRules>Select the centre target to begin, then hit 30 targets as quickly as possible. Misses keep the clock running.</GameRules></Show>
   </div>;
