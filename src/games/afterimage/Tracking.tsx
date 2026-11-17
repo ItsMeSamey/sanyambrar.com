@@ -175,7 +175,11 @@ export function TrackingGame(props: GameProps) {
           onFocus={() => setCursor(ball().id)} onKeyDown={event => keydown(event, ball().id)}
           onPointerDown={event => { if (phase === 'recall' && presses.down(event)) { focusBall(ball().id); pick(ball().id, event); } }}
           onClick={event => { if (presses.click(event) && !held) pick(ball().id, event); }}>
-          <span aria-hidden="true">{face(ball()) === 'red' || face(ball()) === 'wrong' ? '×' : face(ball()) === 'correct' ? '✓' : face(ball()) === 'lit' || face(ball()) === 'missed' ? '•' : ''}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <Show when={face(ball()) === 'red' || face(ball()) === 'wrong'}><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></Show>
+            <Show when={face(ball()) === 'correct'}><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></Show>
+            <Show when={face(ball()) === 'lit' || face(ball()) === 'missed'}><circle cx="12" cy="12" r="3.5" fill="currentColor"/></Show>
+          </svg>
         </button>}</For>
         <Show when={view().phase === 'intro'}><Ready overlay onStart={start}/></Show>
       </div>
