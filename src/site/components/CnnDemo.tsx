@@ -291,6 +291,7 @@ export function CnnDemo() {
 
   const failWorker = (detail: string) => {
     stopWorker();
+    invalidateCanvasRect();
     setModelLoading(false);
     clearResult();
     setWorkerFailure(detail);
@@ -300,6 +301,7 @@ export function CnnDemo() {
   const startWorker = () => {
     if (disposed || !initialized) return;
     stopWorker();
+    invalidateCanvasRect();
     clearResult();
     setWorkerFailure(null);
     setModelLoading(true);
@@ -320,6 +322,7 @@ export function CnnDemo() {
         }
         if (message.type === 'ready') {
           clearStartupTimeout();
+          invalidateCanvasRect();
           workerReady = true;
           setModelLoading(false);
           setWorkerFailure(null);
@@ -418,16 +421,6 @@ export function CnnDemo() {
 
   return <section class="cnn-demo-section" aria-labelledby="cnn-demo-title">
     <div class="cnn-demo-head"><h2 id="cnn-demo-title">Draw a digit</h2></div>
-    <Show when={workerFailure()}>{detail =>
-      <aside class="cnn-demo-error" role="alert" aria-live="assertive">
-        <strong>{ready() ? 'Prediction unavailable' : 'Drawing unavailable'}</strong>
-        <details><summary>Error details</summary><pre class="samey-error-stack">{detail()}</pre></details>
-        <Show when={ready()} fallback={<button type="button" onClick={() => location.reload()}>Reload page</button>}>
-          <button type="button" onClick={startWorker}>Retry model</button>
-        </Show>
-      </aside>
-    }</Show>
-    <Show when={modelLoading()}><p role="status">{ready() ? 'Loading model…' : 'Preparing drawing canvas…'}</p></Show>
 
     <div class="cnn-demo-shell">
       <div class="cnn-draw-pane">
@@ -501,5 +494,15 @@ export function CnnDemo() {
         </div>
       </div>
     </div>
+    <Show when={modelLoading()}><p class="cnn-demo-status" role="status">{ready() ? 'Loading model…' : 'Preparing drawing canvas…'}</p></Show>
+    <Show when={workerFailure()}>{detail =>
+      <aside class="cnn-demo-error" role="alert" aria-live="assertive">
+        <strong>{ready() ? 'Prediction unavailable' : 'Drawing unavailable'}</strong>
+        <details><summary>Error details</summary><pre class="samey-error-stack">{detail()}</pre></details>
+        <Show when={ready()} fallback={<button type="button" onClick={() => location.reload()}>Reload page</button>}>
+          <button type="button" onClick={startWorker}>Retry model</button>
+        </Show>
+      </aside>
+    }</Show>
   </section>;
 }

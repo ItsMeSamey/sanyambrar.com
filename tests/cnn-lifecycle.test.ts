@@ -21,6 +21,7 @@ function harness(failure?: 'drawing' | 'sampling' | 'worker') {
   let timerId = 0;
   let frameId = 0;
   let clears = 0;
+  let boundsReads = 0;
   const timers = new Map<number, { callback: () => void; delay: number }>();
   const frames = new Map<number, () => void>();
   const workers: Array<{ emit: (name: string, event: unknown) => void; sent: any[]; terminated: boolean }> = [];
@@ -36,7 +37,7 @@ function harness(failure?: 'drawing' | 'sampling' | 'worker') {
   let top = 0;
   const canvas = {
     isConnected: true, getContext: () => failure === 'drawing' ? null : draw,
-    getBoundingClientRect: () => ({ left: 0, top, width: 280, height: 280 }),
+    getBoundingClientRect: () => { boundsReads++; return { left: 0, top, width: 280, height: 280 }; },
     setPointerCapture() { captures++; }, hasPointerCapture: () => false,
     toggleAttribute() {}, removeAttribute() {},
   };
@@ -74,8 +75,10 @@ function harness(failure?: 'drawing' | 'sampling' | 'worker') {
     defer() { settled(); }, start() { setup(); }, cleanup() { cleanup(); },
     flushFrames() { const pending = [...frames.values()]; frames.clear(); pending.forEach(callback => callback()); },
     scroll(value: number) { top = value; listeners.get('scroll')?.(); },
+    reposition(value: number) { top = value; },
     get captures() { return captures; }, get cancelled() { return cancelled; }, get terminated() { return terminated; },
     get clears() { return clears; },
+    get boundsReads() { return boundsReads; },
   };
 }
 
@@ -191,5 +194,41 @@ test('CNN invalidates cached drawing coordinates when a captured stroke scrolls'
   h.scroll(-100);
   h.component.moveStroke(h.event(20));
   expect(h.points).toEqual([[20, 20], [20, 120]]);
+  h.cleanup();
+});
+
+test('CNN keeps an active stroke aligned through position-only changes and model state transitions', () => {
+  const h = harness();
+  h.defer(); h.start();
+  h.reposition(100);
+  h.component.beginStroke(h.event(120));
+  expect(h.points).toEqual([[20, 20]]);
+  expect(h.boundsReads).toBe(1);
+
+  h.workers[0]!.emit('message', { data: { type: 'ready' } });
+  h.reposition(50);
+  h.component.moveStroke({ ...h.event(125), getCoalescedEvents: () => [h.event(120), h.event(125)] });
+  expect(h.points.slice(1)).toEqual([[20, 70], [20, 75]]);
+  expect(h.boundsReads).toBe(2);
+  h.component.moveStroke(h.event(130));
+  expect(h.points.at(-1)).toEqual([20, 80]);
+  expect(h.boundsReads).toBe(2);
+
+  h.workers[0]!.emit('error', { message: 'model failed' });
+  h.reposition(20);
+  h.component.moveStroke(h.event(120));
+  expect(h.points.at(-1)).toEqual([20, 100]);
+
+  h.component.startWorker();
+  h.reposition(60);
+  h.component.moveStroke(h.event(120));
+  expect(h.points.at(-1)).toEqual([20, 60]);
+  h.workers[1]!.emit('message', { data: { type: 'ready' } });
+  h.reposition(80);
+  h.component.moveStroke(h.event(120));
+  expect(h.points.at(-1)).toEqual([20, 40]);
+  expect(h.boundsReads).toBe(5);
+  expect(h.captures).toBe(1);
+  expect(h.clears).toBe(0);
   h.cleanup();
 });
